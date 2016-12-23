@@ -30,8 +30,6 @@ $(TR $(TH Function Name) $(TH Description))
 $(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks.
     If the slice has two dimensions, it is a block matrix.)
 $(T2 flattened, flat, random access range of all elements with `index` property)
-$(T2 flattenedSimplex, an input range of all elements in standard simplex of hypercube with `index` property.
-    If the slice has two dimensions, it is a range of all elements of upper left triangular matrix.)
 $(T2 diagonal, 1-dimensional slice composed of diagonal elements)
 $(T2 ndiota, lazy slice with initial multidimensional index)
 $(T2 iota, lazy slice with initial flattened (continuous) index)
@@ -61,6 +59,7 @@ import std.meta; //: allSatisfy;
 import mir.ndslice.internal;
 import mir.internal.utility;
 import mir.ndslice.slice; //: Slice;
+import mir.ndslice.cursor;
 
 /++
 Creates a packed slice, i.e. slice of slices.
@@ -371,54 +370,6 @@ unittest
 
     assert(sl == [[10, 20, 30],
                   [40, 50, 60]]);
-}
-
-///++
-//Slice composed of flattened indexes.
-//See_also: $(LREF iota)
-//+/
-//template IotaSlice(size_t N)
-//    if (N)
-//{
-//    alias IotaSlice = Slice!(N, IotaMap!());
-//}
-
-struct IotaCursor(I)
-    if (isIntegral!I || isPointer!I)
-{
-    ///
-    I cursor;
-    ///
-    alias cursor this;
-
-    ///
-    I opIndex(size_t index) @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        return cast(I)(cursor + index);
-    }
-
-    ///
-    IotaCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        IotaCursor ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ///
-    I opUnary(string op : "*")() @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        return cursor;
-    }
-
-    auto opUnary(string op)() @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        return mixin(op ~ `cursor`);
-    }
 }
 
 /++
@@ -1543,79 +1494,6 @@ unittest
         s = s[1 .. $];
 }
 
-struct ShellCursor(Field)
-{
-    ///
-    size_t cursor;
-    ///
-    alias cursor this;
-    ///
-    Field field;
-
-    ///
-    auto ref opIndex(size_t index) @safe pure nothrow @nogc @property
-    {
-        return field[cursor + index];
-    }
-
-    ///
-    ShellCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
-    {
-        ShellCursor ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ///
-    auto ref opUnary(string op : "*")()
-    {
-        return field[cursor];
-    }
-
-    ///
-    auto opUnary(string op)() @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        return mixin(op ~ `cursor`);
-    }
-}
-
-auto shellCursor(Field)(Field field)
-{
-    return ShellCursor!Field(0, field);
-}
-
-/++
-Cursor composed of indexes.
-See_also: $(LREF ndiota)
-+/
-struct ndIotaField(size_t N)
-    if (N)
-{
-    private size_t[N-1] _lengths;
-
-    @fmb size_t[N] opIndex(size_t index) const
-    {
-        size_t[N] indexes = void;
-        foreach_reverse (i; Iota!(0, N - 1))
-        {
-            indexes[i + 1] = index % _lengths[i];
-            index /= _lengths[i];
-        }
-        indexes[0] = index;
-        return indexes;
-    }
-}
-
-unittest
-{
-    auto r = ndiota(1);
-    auto d = r.front;
-    r.popFront;
-    import std.range.primitives;
-    //static assert(isInputRange!(typeof(r)));
-}
-
 /++
 Returns a slice, the elements of which are equal to the initial multidimensional index value.
 This is multidimensional analog of $(REF iota, std, range).
@@ -1629,7 +1507,10 @@ Returns:
 See_also: $(LREF ndIotaField), $(LREF iota)
 +/
 Slice!(SliceKind.continious, [N], ShellCursor!(ndIotaField!N))
-    ndiota(size_t N)(size_t[N] lengths...)
+    ndiota
+    (size_t N)
+    (size_t[N] lengths...)
+    if (N)
 {
     import mir.ndslice.slice : sliced;
     with (typeof(return)) return ndIotaField!N(lengths[1 .. $]).shellCursor.sliced(lengths);
@@ -1670,67 +1551,13 @@ Slice!(SliceKind.continious, [N], ShellCursor!(ndIotaField!N))
     assert(imByElement.front == [0, 0]);
 }
 
-// undocumented
-// zero cost variant of `std.range.repeat`
-// in addition, the internal value is mutable
-@LikePtr struct RepeatCursor(T)
+unittest
 {
-    // UT definition is from std.range
-    // Store a non-qualified T when possible: This is to make RepeatCursor assignable
-    static if ((is(T == class) || is(T == interface)) && (is(T == const) || is(T == immutable)))
-    {
-        import std.typecons : Rebindable;
-        private alias UT = Rebindable!T;
-    }
-    else static if (is(T : Unqual!T) && is(Unqual!T : T))
-        private alias UT = Unqual!T;
-    else
-        private alias UT = T;
-    private UT _value;
-
-    @fmb:
-
-    ///
-    ref T opIndex(sizediff_t)
-    {
-        return _value;
-    }
-
-    ///
-    RepeatCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
-    {
-        RepeatCursor ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ///
-    void opOpAssign(string op)(sizediff_t)
-        if (op == `+` || op == `-`)
-    {
-    }
-
-    ///
-    ref opUnary(string op : "*")()
-    {
-        return _value;
-    }
-
-    ///
-    auto ref opUnary(string op)()
-        if (op == `++` || op == `--`)
-    {
-        return this;
-    }
-}
-
-@safe pure nothrow @nogc unittest
-{
-    RepeatCursor!double val;
-    val._value = 3;
-    assert((++val)._value == 3);
-    val += 2;
-    assert((val + 3)._value == 3);
+    auto r = ndiota(1);
+    auto d = r.front;
+    r.popFront;
+    import std.range.primitives;
+    //static assert(isInputRange!(typeof(r)));
 }
 
 /++
@@ -1754,7 +1581,10 @@ Slice!(SliceKind.continious, [M], RepeatCursor!T)
 }
 
 /// ditto
-Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, M ~ packs, Cursor) repeat(SliceKind kind, size_t[] packs, Cursor, size_t M)(Slice!(kind, packs, Cursor) slice, size_t[M] lengths...)
+Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, M ~ packs, Cursor)
+    repeat
+    (SliceKind kind, size_t[] packs, Cursor, size_t M)
+    (Slice!(kind, packs, Cursor) slice, size_t[M] lengths...)
     if (M)
 {
     mixin _DefineRet;
