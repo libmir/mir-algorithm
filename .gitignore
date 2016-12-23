@@ -1,0 +1,7 @@
+
+*.sublime-project
+__*
+.dub
+.o
+.s
+.a

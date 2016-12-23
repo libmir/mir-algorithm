@@ -1,0 +1,10 @@
+{
+	"name": "mir-algorithm",
+	"authors": [
+		"Ilya Yaroshenko"
+	],
+	"description": "Standard algorithms, ranges and tensors for Dlang",
+	"copyright": "Copyright © 2016, Ilya Yaroshenko",
+	"license": "BSD 3-Clause License",
+	"dependencies": {"mir-internal": "~>0.0.2"}
+}
