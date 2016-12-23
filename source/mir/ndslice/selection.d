@@ -1926,7 +1926,7 @@ pure nothrow unittest
 {
     import mir.ndslice.selection : iota, windows;
 
-    //  iota        windows     map  sums ( ndFold!"a + b" )
+    //  iota        windows     map  sums ( reduce!"a + b" )
     //                --------------
     //  -------      |  ---    ---  |      ------
     // | 0 1 2 |  => || 0 1 || 1 2 ||  => | 8 12 |

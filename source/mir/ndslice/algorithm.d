@@ -6,18 +6,18 @@ It contains basic multidimensional iteration algorithms.
 
 $(BOOKTABLE Iteration operators,
 $(TR $(TH Operator Name) $(TH Type) $(TH Functions / Seeds #)  $(TH Vectorization) $(TH Tensors #) $(TH Returns) $(TH First Argument)  $(TH Triangular and Half Selection))
-$(T8 ndFold, Eagerly, `>=1`, No, `1`, Scalar, Tensor, No)
-$(T8 ndReduce, Eagerly, `1`, Optional, `>=1`, Scalar, Seed, Yes)
-$(T8 ndEach, Eagerly, `1`/`0`, Optional, `>=1`, `void`, Tensor, Yes)
+$(T8 fold, Eagerly, `>=1`, No, `1`, Scalar, Tensor, No)
+$(T8 reduce, Eagerly, `1`, Optional, `>=1`, Scalar, Seed, Yes)
+$(T8 each, Eagerly, `1`/`0`, Optional, `>=1`, `void`, Tensor, Yes)
 )
 
 $(BOOKTABLE Eagerly iteration operators with stop condition,
 $(TR $(TH Operator Name) $(TH Has Needle) $(TH Finds Index) $(TH Tensors #) $(TH Returns) $(TH Requires Equal Shapes) $(TH Triangular and Half Selection))
-$(T7 ndFind, No, Yes, `>=1`, `void`, Yes, Yes)
-$(T7 ndAny, No, No, `>=1`, `bool`, Yes, Yes)
-$(T7 ndAll, No, No, `>=1`, `bool`, Yes, Yes)
-$(T7 ndEqual, No, No, `>=2`, `bool`, No, Yes)
-$(T7 ndCmp, No, No, `2`, `int`, No, No)
+$(T7 find, No, Yes, `>=1`, `void`, Yes, Yes)
+$(T7 any, No, No, `>=1`, `bool`, Yes, Yes)
+$(T7 all, No, No, `>=1`, `bool`, Yes, Yes)
+$(T7 equal, No, No, `>=2`, `bool`, No, Yes)
+$(T7 cmp, No, No, `2`, `int`, No, No)
 )
 
 All operators are suitable to change tensors using `ref` argument qualification in a function declaration.
@@ -328,13 +328,13 @@ private template implement(Iteration iteration, alias fun, Flag!"vectorized" vec
 /++
 Selection type.
 `Select` can be used with
-$(LREF ndReduce),
-$(LREF ndEach),
-$(LREF ndFind),
-$(LREF ndAny),
-$(LREF ndAll),
-$(LREF ndEqual),
-$(LREF ndCmp).
+$(LREF reduce),
+$(LREF each),
+$(LREF find),
+$(LREF any),
+$(LREF all),
+$(LREF equal),
+$(LREF cmp).
 
 Any dimension count is supported.
 Types has examples for 1D, 2D, and 3D cases.
@@ -440,7 +440,7 @@ also called the accumulator. Then, for each element `x` in
 `tensor`, `result = fun(result, x)` gets evaluated. Finally,
 `result` is returned.
 
-$(LREF ndFold) allows to compute values for multiple functions.
+$(LREF fold) allows to compute values for multiple functions.
 
 Note:
     $(SUBREF iteration, transposed) and
@@ -452,14 +452,14 @@ Params:
 Returns:
     the accumulated `result`
 See_Also:
-    This is functionally similar to $(LREF ndReduce) with the argument order reversed.
-    $(LREF ndReduce) allows to iterate multiple tensors in the lockstep.
+    This is functionally similar to $(LREF reduce) with the argument order reversed.
+    $(LREF reduce) allows to iterate multiple tensors in the lockstep.
 
     $(REF fold, std,algorithm,iteration)
 
     $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
 +/
-template ndFold(fun...)
+template fold(fun...)
     if (fun.length)
 {
     import std.functional : binaryFun;
@@ -468,7 +468,7 @@ template ndFold(fun...)
         import std.typecons : Tuple;
 
     ///
-    auto ndFold(size_t N, Range, S...)(Slice!(N, Range) tensor, S seed)
+    auto fold(size_t N, Range, S...)(Slice!(N, Range) tensor, S seed)
         if (S.length == fun.length)
     {
         alias US = staticMap!(Unqual, S);
@@ -479,10 +479,10 @@ template ndFold(fun...)
             else
                 return Tuple!US(seed);
         }
-        return ndFoldImpl!(N, Range, staticMap!(Unqual, S))(tensor, seed);
+        return foldImpl!(N, Range, staticMap!(Unqual, S))(tensor, seed);
     }
 
-    private auto ndFoldImpl(size_t N, Range, S...)(Slice!(N, Range) tensor, S seed)
+    private auto foldImpl(size_t N, Range, S...)(Slice!(N, Range) tensor, S seed)
     {
         do
         {
@@ -498,9 +498,9 @@ template ndFold(fun...)
                 }
             else
             static if (S.length == 1)
-                seed[0] = ndFoldImpl!(N - 1, Range, S)(tensor.front, seed);
+                seed[0] = foldImpl!(N - 1, Range, S)(tensor.front, seed);
             else
-                seed = ndFoldImpl!(N - 1, Range, S)(tensor.front, seed).expand;
+                seed = foldImpl!(N - 1, Range, S)(tensor.front, seed).expand;
             tensor.popFront;
         }
         while (tensor.length);
@@ -522,7 +522,7 @@ unittest
     auto sl = iotaSlice(2, 3);
 
     // sum of all element in the tensor
-    auto res = sl.ndFold!"a + b"(size_t(0));
+    auto res = sl.fold!"a + b"(size_t(0));
 
     assert(res == 15);
 }
@@ -536,7 +536,7 @@ unittest
     //| 4 5 6 |
     auto sl = iotaSlice([2, 3], 1);
 
-    alias sumAndProduct = ndFold!("a + b", "a * b");
+    alias sumAndProduct = fold!("a + b", "a * b");
     auto res = sumAndProduct(sl, size_t(0), size_t(1));
 
     assert(res[0] == 21);
@@ -564,7 +564,7 @@ pure unittest
 
     auto zip = assumeSameStructure!("a", "b")(sl1, sl2);
 
-    auto dot = zip.ndFold!((seed, z) => seed + z.a * z.b)(0.0);
+    auto dot = zip.fold!((seed, z) => seed + z.a * z.b)(0.0);
 
     assert(dot == dotProduct(iota(0, 6), iota(1, 7)));
 }
@@ -582,7 +582,7 @@ unittest
 
     alias fun = (seed, ref elem) => seed + elem++;
 
-    auto res = sl.ndFold!fun(0.0);
+    auto res = sl.fold!fun(0.0);
 
     assert(res == 15);
 
@@ -602,8 +602,8 @@ unittest
     import mir.ndslice.iteration : transposed;
     import mir.ndslice.selection : iotaSlice, pack, mapSlice;
 
-    alias maxVal = (a) => a.ndFold!max(size_t.min);
-    alias minVal = (a) => a.ndFold!min(size_t.max);
+    alias maxVal = (a) => a.fold!max(size_t.min);
+    alias minVal = (a) => a.fold!min(size_t.max);
     alias minimaxVal = (a) => minVal(a.pack!1.mapSlice!maxVal);
 
     auto sl = iotaSlice(2, 3);
@@ -624,8 +624,8 @@ unittest
 {
     import mir.ndslice.iteration : dropOne;
     import mir.ndslice.selection : iotaSlice;
-    auto a = iotaSlice(1, 1).dropOne!0.ndFold!"a + b"(size_t(7));
-    auto b = iotaSlice(1, 1).dropOne!1.ndFold!("a + b", "a * b")(size_t(7), size_t(8));
+    auto a = iotaSlice(1, 1).dropOne!0.fold!"a + b"(size_t(7));
+    auto b = iotaSlice(1, 1).dropOne!1.fold!("a + b", "a * b")(size_t(7), size_t(8));
     assert(a == 7);
     assert(b[0] == 7);
     assert(b[1] == 8);
@@ -640,7 +640,7 @@ also called the accumulator. Then, for each set of element `x1, ..., xN` in
 `tensors1, ..., tensorN`, `result = fun(result, x1, ..., xN)` gets evaluated. Finally,
 `result` is returned.
 
-`ndReduce` allows to iterate multiple tensors in the lockstep.
+`reduce` allows to iterate multiple tensors in the lockstep.
 
 Note:
     $(SUBREF iteration, transposed) and
@@ -659,21 +659,21 @@ Returns:
 See_Also:
     $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
 
-    This is functionally similar to $(LREF ndReduce) with the argument order reversed.
-    $(LREF ndFold) allows to compute values for multiple functions.
+    This is functionally similar to $(LREF reduce) with the argument order reversed.
+    $(LREF fold) allows to compute values for multiple functions.
 
     $(REF reduce, std,algorithm,iteration)
 
     $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
 +/
-alias ndReduce(alias fun, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec) =
-    .ndReduce!(fun, Select.full, vec, fm);
+alias reduce(alias fun, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec) =
+    .reduce!(fun, Select.full, vec, fm);
 
 /// ditto
-template ndReduce(alias fun, Select select, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec)
+template reduce(alias fun, Select select, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec)
 {
     ///
-    auto ndReduce(S, Args...)(S seed, Args tensors)
+    auto reduce(S, Args...)(S seed, Args tensors)
         if (Args.length)
     {
         tensors.checkShapesMatch!(true, select);
@@ -705,7 +705,7 @@ unittest
     auto sl = iotaSlice(2, 3);
 
     // sum of all element in the tensor
-    auto res = size_t(0).ndReduce!"a + b"(sl);
+    auto res = size_t(0).reduce!"a + b"(sl);
 
     assert(res == 15);
 }
@@ -730,7 +730,7 @@ unittest
     //| 4 5 6 |
     auto b = iotaSlice([2, 3], 1).as!double.slice;
 
-    alias dot = ndReduce!(fmuladd, Yes.vectorized);
+    alias dot = reduce!(fmuladd, Yes.vectorized);
     auto res = dot(0.0, a, b);
 
     // check the result:
@@ -767,7 +767,7 @@ pure unittest
 
     auto zip = assumeSameStructure!("a", "b")(sl1, sl2);
 
-    auto dot = ndReduce!(fmuladd, Yes.vectorized)(0.0, zip);
+    auto dot = reduce!(fmuladd, Yes.vectorized)(0.0, zip);
 
     assert(dot == dotProduct(iota(0, 6), iota(1, 7)));
 }
@@ -790,7 +790,7 @@ unittest
     //| 3 4 5 |
     auto sl = iotaSlice(2, 3).as!double.slice;
 
-    auto res = ndReduce!(fun, Yes.vectorized)(double(0), sl);
+    auto res = reduce!(fun, Yes.vectorized)(double(0), sl);
 
     assert(res == 15);
 
@@ -818,8 +818,8 @@ unittest
     import mir.ndslice.iteration : transposed;
     import mir.ndslice.selection : iotaSlice, pack, mapSlice;
 
-    alias maxVal = (a) => ndReduce!(fmax, Yes.vectorized)(-double.infinity, a);
-    alias minVal = (a) => ndReduce!fmin(double.infinity, a);
+    alias maxVal = (a) => reduce!(fmax, Yes.vectorized)(-double.infinity, a);
+    alias minVal = (a) => reduce!fmin(double.infinity, a);
     alias minimaxVal = (a) => minVal(a.pack!1.mapSlice!maxVal);
 
     auto sl = iotaSlice(2, 3).as!double.slice;
@@ -842,16 +842,16 @@ unittest
 {
     import mir.ndslice.iteration : dropOne;
     import mir.ndslice.selection : iotaSlice;
-    auto a = ndReduce!"a + b"(size_t(7), iotaSlice(1, 1).dropOne!0);
+    auto a = reduce!"a + b"(size_t(7), iotaSlice(1, 1).dropOne!0);
     assert(a == 7);
 }
 
 /++
-The call `ndEach!(fun)(tensors1, ..., tesnsorN)`
+The call `each!(fun)(tensors1, ..., tesnsorN)`
 evaluates `fun` for each set of elements `x1, ..., xN` in
 `tensors1, ..., tensorN` respectively.
 
-`ndEach` allows to iterate multiple tensors in the lockstep.
+`each` allows to iterate multiple tensors in the lockstep.
 
 Note:
     $(SUBREF iteration, transposed) and
@@ -867,18 +867,18 @@ Params:
 See_Also:
     $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
 
-    This is functionally similar to $(LREF ndReduce) but has not seed.
+    This is functionally similar to $(LREF reduce) but has not seed.
 
     $(REF each, std,algorithm,iteration)
 +/
-alias ndEach(alias fun, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec) =
-    .ndEach!(fun, Select.full, vec, fm);
+alias each(alias fun, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec) =
+    .each!(fun, Select.full, vec, fm);
 
 /// ditto
-template ndEach(alias fun, Select select, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec)
+template each(alias fun, Select select, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec)
 {
     ///
-    void ndEach(Args...)(Args tensors)
+    void each(Args...)(Args tensors)
         if (Args.length)
     {
         tensors.checkShapesMatch!(false, select);
@@ -913,7 +913,7 @@ unittest
     //| 3 4 5 |
     auto sl = iotaSlice(2, 3).as!double.slice;
 
-    sl.ndEach!((ref a) { a = a * 10 + 5; }, Yes.vectorized);
+    sl.each!((ref a) { a = a * 10 + 5; }, Yes.vectorized);
 
     import std.stdio;
     assert(sl ==
@@ -936,7 +936,7 @@ unittest
     //| 13 14 15 |
     auto b = iotaSlice([2, 3], 10).as!double.slice;
 
-    ndEach!(swap, Yes.vectorized)(a, b);
+    each!(swap, Yes.vectorized)(a, b);
 
     assert(a == iotaSlice([2, 3], 10));
     assert(b == iotaSlice([2, 3], 0));
@@ -960,7 +960,7 @@ unittest
 
     auto zip = assumeSameStructure!("a", "b")(a, b);
 
-    zip.ndEach!(z => swap(z.a, z.b), Yes.vectorized);
+    zip.each!(z => swap(z.a, z.b), Yes.vectorized);
 
     assert(a == iotaSlice([2, 3], 10));
     assert(b == iotaSlice([2, 3], 0));
@@ -980,7 +980,7 @@ pure nothrow unittest
     //| 3 4 5 |
     auto a = iotaSlice(2, 3).as!double.slice;
 
-    ndEach!(swap, Select.half)(a, a.allReversed);
+    each!(swap, Select.half)(a, a.allReversed);
 
     assert(a == iotaSlice(2, 3).allReversed);
 }
@@ -998,7 +998,7 @@ pure nothrow unittest
     auto a = iotaSlice(2, 3).as!double.slice;
     auto b = a.slice;
 
-    alias reverseRows = a => ndEach!(swap, Select.halfPacked)(a.pack!1, a.reversed!1.pack!1);
+    alias reverseRows = a => each!(swap, Select.halfPacked)(a.pack!1, a.reversed!1.pack!1);
 
     // reverse rows
     reverseRows(a);
@@ -1027,7 +1027,7 @@ pure nothrow unittest
 
     if (a.length)
         // dropOne is used because we do not need to transpose the diagonal
-        ndEach!(swap, Select.triangular)(a.dropOne, a.transposed.dropOne);
+        each!(swap, Select.triangular)(a.dropOne, a.transposed.dropOne);
 
     assert(a == iotaSlice(3, 3).transposed);
 }
@@ -1037,7 +1037,7 @@ pure nothrow unittest
     import mir.ndslice.iteration : dropOne;
     import mir.ndslice.selection : iotaSlice;
     size_t i;
-    iotaSlice(1, 2).dropOne!0.ndEach!((a){i++;});
+    iotaSlice(1, 2).dropOne!0.each!((a){i++;});
     assert(i == 0);
 }
 
@@ -1074,14 +1074,14 @@ Constraints:
     All tensors must have the same shape.
 
 See_also:
-    $(LREF ndAny)
+    $(LREF any)
 
     $(REF Slice.backward, mir,ndslice,slice)
 +/
-template ndFind(alias pred, Select select = Select.full)
+template find(alias pred, Select select = Select.full)
 {
     ///
-    void ndFind(size_t N, Args...)(out size_t[N] backwardIndex, Args tensors)
+    void find(size_t N, Args...)(out size_t[N] backwardIndex, Args tensors)
         if (Args.length)
     {
         tensors.checkShapesMatch!(false, select);
@@ -1103,10 +1103,10 @@ template ndFind(alias pred, Select select = Select.full)
     auto sl = iotaSlice(2, 3);
     size_t[2] bi;
 
-    ndFind!"a == 3"(bi, sl);
+    find!"a == 3"(bi, sl);
     assert(sl.backward(bi) == 3);
 
-    ndFind!"a == 6"(bi, sl);
+    find!"a == 6"(bi, sl);
     assert(bi[0] == 0);
     assert(bi[1] == 0);
 }
@@ -1125,7 +1125,7 @@ template ndFind(alias pred, Select select = Select.full)
 
     size_t[2] bi;
 
-    ndFind!((a, b) => a * b == 39)(bi, a, b);
+    find!((a, b) => a * b == 39)(bi, a, b);
     assert(a.backward(bi) == 3);
     assert(b.backward(bi) == 13);
 }
@@ -1146,7 +1146,7 @@ template ndFind(alias pred, Select select = Select.full)
     auto zip = assumeSameStructure!("a", "b")(a, b);
     size_t[2] bi;
 
-    ndFind!((z) => z.a * z.b == 39)(bi, zip);
+    find!((z) => z.a * z.b == 39)(bi, zip);
 
     assert(a.backward(bi) == 3);
     assert(b.backward(bi) == 13);
@@ -1172,7 +1172,7 @@ pure nothrow unittest
     }
 
     size_t[2] bi;
-    ndFind!pred(bi, sl);
+    find!pred(bi, sl);
 
     assert(bi == [1, 1]);
     assert(sl.backward(bi) == 5);
@@ -1194,7 +1194,7 @@ pure nothrow unittest
     // 6 7 |_8
     auto sl = iotaSlice(3, 3).as!double.slice;
     size_t[2] bi;
-    ndFind!("a > 5", Select.triangular)(bi, sl);
+    find!("a > 5", Select.triangular)(bi, sl);
     assert(sl.backward(bi) == 8);
 }
 
@@ -1213,7 +1213,7 @@ pure nothrow unittest
          [6, 5, 8, 5, 6]];
 
     size_t[2] bi;
-    ndFind!("a != b", Select.halfPacked)(bi, sl.pack!1, sl.reversed!1.pack!1);
+    find!("a != b", Select.halfPacked)(bi, sl.pack!1, sl.reversed!1.pack!1);
     assert(sl.backward(bi) == 9);
 }
 
@@ -1223,7 +1223,7 @@ pure nothrow unittest
     import mir.ndslice.selection : iotaSlice;
     size_t i;
     size_t[2] bi;
-    ndFind!((elem){i++; return true;})
+    find!((elem){i++; return true;})
         (bi, iotaSlice(2, 1).dropOne!1);
     assert(i == 0);
     assert(bi == [0, 0]);
@@ -1231,7 +1231,7 @@ pure nothrow unittest
 
 
 /++
-Like $(LREF ndFind), but only returns whether or not the search was successful.
+Like $(LREF find), but only returns whether or not the search was successful.
 
 Params:
     pred = The predicate.
@@ -1244,10 +1244,10 @@ Returns:
 Constraints:
     All tensors must have the same shape.
 +/
-template ndAny(alias pred, Select select = Select.full)
+template any(alias pred, Select select = Select.full)
 {
     ///
-    bool ndAny(Args...)(Args tensors)
+    bool any(Args...)(Args tensors)
         if (Args.length)
     {
         tensors.checkShapesMatch!(false, select);
@@ -1270,8 +1270,8 @@ template ndAny(alias pred, Select select = Select.full)
     // 3 4 5
     auto sl = iotaSlice(2, 3);
 
-    assert(sl.ndAny!"a == 3");
-    assert(!sl.ndAny!"a == 6");
+    assert(sl.any!"a == 3");
+    assert(!sl.any!"a == 6");
 }
 
 /// Multiple tensors
@@ -1286,7 +1286,7 @@ template ndAny(alias pred, Select select = Select.full)
     // 13 14 15
     auto b = iotaSlice([2, 3], 10);
 
-    assert(ndAny!((a, b) => a * b == 39)(a, b));
+    assert(any!((a, b) => a * b == 39)(a, b));
 }
 
 /// Zipped tensors
@@ -1304,7 +1304,7 @@ template ndAny(alias pred, Select select = Select.full)
     // tensors must have the same strides
     auto zip = assumeSameStructure!("a", "b")(a, b);
 
-    assert(zip.ndAny!((z) => z.a * z.b == 39));
+    assert(zip.any!((z) => z.a * z.b == 39));
 }
 
 /// Mutation on-the-fly
@@ -1326,7 +1326,7 @@ pure nothrow unittest
         return false;
     }
 
-    assert(sl.ndAny!pred);
+    assert(sl.any!pred);
 
     // sl was changed
     assert(sl == [[8, 8, 8],
@@ -1344,10 +1344,10 @@ Returns:
 Constraints:
     All tensors must have the same shape.
 +/
-template ndAll(alias pred, Select select = Select.full)
+template all(alias pred, Select select = Select.full)
 {
     ///
-    bool ndAll(Args...)(Args tensors)
+    bool all(Args...)(Args tensors)
         if (Args.length)
     {
         tensors.checkShapesMatch!(false, select);
@@ -1366,8 +1366,8 @@ template ndAll(alias pred, Select select = Select.full)
     // 3 4 5
     auto sl = iotaSlice(2, 3);
 
-    assert(sl.ndAll!"a < 6");
-    assert(!sl.ndAll!"a < 5");
+    assert(sl.all!"a < 6");
+    assert(!sl.all!"a < 5");
 }
 
 /// Multiple tensors
@@ -1379,7 +1379,7 @@ template ndAll(alias pred, Select select = Select.full)
     // 3 4 5
     auto sl = iotaSlice(2, 3);
 
-    assert(ndAll!"a - b == 0"(sl, sl));
+    assert(all!"a - b == 0"(sl, sl));
 }
 
 /// Zipped tensors
@@ -1394,7 +1394,7 @@ template ndAll(alias pred, Select select = Select.full)
     // tensors must have the same strides
     auto zip = assumeSameStructure!("a", "b")(sl, sl);
 
-    assert(zip.ndAll!"a.a - a.b == 0");
+    assert(zip.all!"a.a - a.b == 0");
 }
 
 /// Mutation on-the-fly
@@ -1418,7 +1418,7 @@ pure nothrow unittest
         return false;
     }
 
-    assert(!sl.ndAll!pred);
+    assert(!sl.all!pred);
 
     // sl was changed
     assert(sl == [[8, 8, 8],
@@ -1430,7 +1430,7 @@ pure nothrow unittest
     import mir.ndslice.iteration : dropOne;
     import mir.ndslice.selection : iotaSlice;
     size_t i;
-    assert(ndAll!((elem){i++; return true;})
+    assert(all!((elem){i++; return true;})
         (iotaSlice(2, 1).dropOne!1));
     assert(i == 0);
 }
@@ -1446,10 +1446,10 @@ Params:
 Returns:
     `true` any of the elements verify `pred` and `false` otherwise.
 +/
-template ndEqual(alias pred, Select select = Select.full)
+template equal(alias pred, Select select = Select.full)
 {
     ///
-    bool ndEqual(Args...)(Args tensors)
+    bool equal(Args...)(Args tensors)
         if (Args.length >= 2)
     {
         enum msg = "all arguments must be tensors" ~ tailErrorMessage!();
@@ -1466,7 +1466,7 @@ template ndEqual(alias pred, Select select = Select.full)
                         goto False;
             }
         }
-        return ndAll!(pred, select)(tensors);
+        return all!(pred, select)(tensors);
         False: return false;
     }
 }
@@ -1485,11 +1485,11 @@ template ndEqual(alias pred, Select select = Select.full)
     // 4 5 6
     auto sl2 = iotaSlice([2, 3], 1);
 
-    assert(ndEqual!"a == b"(sl1, sl1));
-    assert(ndEqual!"a < b"(sl1, sl2));
+    assert(equal!"a == b"(sl1, sl1));
+    assert(equal!"a < b"(sl1, sl2));
 
-    assert(!ndEqual!"a == b"(sl1.dropBackOne!0, sl1));
-    assert(!ndEqual!"a == b"(sl1.dropBackOne!1, sl1));
+    assert(!equal!"a == b"(sl1.dropBackOne!0, sl1));
+    assert(!equal!"a == b"(sl1.dropBackOne!1, sl1));
 }
 
 /// check if matrix is symmetric
@@ -1503,7 +1503,7 @@ pure nothrow unittest
            [3, 5, 8],
            [4, 8, 2]];
 
-    alias isSymmetric = matrix => ndEqual!("a == b", Select.triangular)(matrix, matrix.transposed);
+    alias isSymmetric = matrix => equal!("a == b", Select.triangular)(matrix, matrix.transposed);
 
     assert(isSymmetric(a));
 
@@ -1539,10 +1539,10 @@ Returns:
     Positive value if the first differing element of `sl2` is less than the corresponding
     element of `sl1` according to `pred`.
 +/
-template ndCmp(alias pred = "a < b")
+template cmp(alias pred = "a < b")
 {
     ///
-    int ndCmp(size_t N, RangeA, RangeB)(Slice!(N, RangeA) sl1, Slice!(N, RangeB) sl2)
+    int cmp(size_t N, RangeA, RangeB)(Slice!(N, RangeA) sl1, Slice!(N, RangeB) sl2)
     {
         auto b = sl2.anyEmpty;
         if (sl1.anyEmpty)
@@ -1559,10 +1559,10 @@ template ndCmp(alias pred = "a < b")
         }
         if (b)
             return 1;
-        return ndCmpImpl(sl1, sl2);
+        return cmpImpl(sl1, sl2);
     }
 
-    private int ndCmpImpl(size_t N, RangeA, RangeB)(Slice!(N, RangeA) sl1, Slice!(N, RangeB) sl2)
+    private int cmpImpl(size_t N, RangeA, RangeB)(Slice!(N, RangeA) sl1, Slice!(N, RangeB) sl2)
     {
         for (;;)
         {
@@ -1578,7 +1578,7 @@ template ndCmp(alias pred = "a < b")
             }
             else
             {
-                if (auto res = ndCmpImpl(a, b))
+                if (auto res = cmpImpl(a, b))
                     return res;
             }
             sl1.popFront;
@@ -1604,9 +1604,9 @@ template ndCmp(alias pred = "a < b")
     // 4 5 6
     auto sl2 = iotaSlice([2, 3], 1);
 
-    assert(ndCmp(sl1, sl1) == 0);
-    assert(ndCmp(sl1, sl2) < 0);
-    assert(ndCmp!"a >= b"(sl1, sl2) > 0);
+    assert(cmp(sl1, sl1) == 0);
+    assert(cmp(sl1, sl2) < 0);
+    assert(cmp!"a >= b"(sl1, sl2) > 0);
 }
 
 @safe pure nothrow @nogc unittest
@@ -1617,12 +1617,12 @@ template ndCmp(alias pred = "a < b")
     auto sl1 = iotaSlice(2, 3);
     auto sl2 = iotaSlice([2, 3], 1);
 
-    assert(ndCmp(sl1.dropBackOne!0, sl1) < 0);
-    assert(ndCmp(sl1, sl1.dropBackOne!1) > 0);
+    assert(cmp(sl1.dropBackOne!0, sl1) < 0);
+    assert(cmp(sl1, sl1.dropBackOne!1) > 0);
 
-    assert(ndCmp(sl1.dropExactly!0(2), sl1) < 0);
-    assert(ndCmp(sl1, sl1.dropExactly!1(3)) > 0);
-    assert(ndCmp(sl1.dropExactly!1(3), sl1.dropExactly!1(3)) == 0);
-    assert(ndCmp(sl1.dropExactly!1(3), sl1.dropExactly!(0, 1)(1, 3)) > 0);
-    assert(ndCmp(sl1.dropExactly!(0, 1)(1, 3), sl1.dropExactly!1(3)) < 0);
+    assert(cmp(sl1.dropExactly!0(2), sl1) < 0);
+    assert(cmp(sl1, sl1.dropExactly!1(3)) > 0);
+    assert(cmp(sl1.dropExactly!1(3), sl1.dropExactly!1(3)) == 0);
+    assert(cmp(sl1.dropExactly!1(3), sl1.dropExactly!(0, 1)(1, 3)) > 0);
+    assert(cmp(sl1.dropExactly!(0, 1)(1, 3), sl1.dropExactly!1(3)) < 0);
 }
