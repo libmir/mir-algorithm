@@ -30,13 +30,13 @@ $(TR $(TH Function Name) $(TH Description))
 $(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks.
     If the slice has two dimensions, it is a block matrix.)
 $(T2 flattened, flat, random access range of all elements with `index` property)
-$(T2 flattenedInStandardSimplex, an input range of all elements in standard simplex of hypercube with `index` property.
+$(T2 flattenedSimplex, an input range of all elements in standard simplex of hypercube with `index` property.
     If the slice has two dimensions, it is a range of all elements of upper left triangular matrix.)
 $(T2 diagonal, 1-dimensional slice composed of diagonal elements)
-$(T2 indexSlice, lazy slice with initial multidimensional index)
+$(T2 ndiota, lazy slice with initial multidimensional index)
 $(T2 iota, lazy slice with initial flattened (continuous) index)
-$(T2 mapSlice, lazy multidimensional functional map)
-$(T2 repeatSlice, slice with identical values)
+$(T2 map, lazy multidimensional functional map)
+$(T2 repeat, slice with identical values)
 $(T2 reshape, new slice with changed dimensions for the same data)
 $(T2 windows, n-dimensional slice of n-dimensional overlapping windows.
     If the slice has two dimensions, it is a sliding window.)
@@ -302,7 +302,7 @@ pure nothrow unittest
 
 /++
 Returns a slice, the elements of which are equal to the initial flattened index value.
-For a multidimensional index, see $(LREF indexSlice).
+For a multidimensional index, see $(LREF ndiota).
 
 Params:
     N = dimension count
@@ -311,7 +311,7 @@ Params:
     step = value of the step between elements (optional)
 Returns:
     `N`-dimensional slice composed of indexes
-See_also: $(LREF IotaSlice), $(LREF indexSlice)
+See_also: $(LREF IotaSlice), $(LREF ndiota)
 +/
 Slice!(SliceKind.continious, [N], IotaCursor!I)
 iota(I = size_t, size_t N)(size_t[N] lengths...)
@@ -744,8 +744,6 @@ unittest
          [1, 1, 1,  2, 2, 2,  3, 3, 3,  4, 4, 4,  0]]);
 }
 
-version(none):
-
 /++
 Returns an n-dimensional slice of n-dimensional overlapping windows.
 `windows` can be generalized with other selectors.
@@ -758,7 +756,11 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(N, Slice!(N+1, Cursor)) windows(size_t N, Cursor)(Slice!(N, Cursor) slice, size_t[N] lengths...)
+Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
+    windows
+    (SliceKind kind, size_t[] packs, Cursor, size_t N)
+    (Slice!(kind, packs, Cursor) slice, size_t[N] lengths...)
+        if (packs[0] == N)
 in
 {
     foreach (i, length; lengths)
@@ -768,31 +770,41 @@ in
 body
 {
     mixin _DefineRet;
-    foreach (dimension; Iota!(0, N))
+    foreach (dimension; Iota!(0, packs[0]))
     {
         ret._lengths[dimension] = slice._lengths[dimension] >= lengths[dimension] ?
                                   slice._lengths[dimension] - lengths[dimension] + 1: 0;
-        ret._strides[dimension] = slice._strides[dimension];
-        ret._lengths[dimension + N] = lengths[dimension];
-        ret._strides[dimension + N] = slice._strides[dimension];
+        ret._lengths[dimension + packs[0]] = lengths[dimension];
     }
-    foreach (dimension; Iota!(N, slice.PureN))
+    foreach (dimension; Iota!(packs[0], slice.N))
     {
-        ret._lengths[dimension + N] = slice._lengths[dimension];
-        ret._strides[dimension +  N] = slice._strides[dimension];
+        ret._lengths[dimension + packs[0]] = slice._lengths[dimension];
+    }
+    auto strides = slice.unpack.strides;
+    foreach (dimension; Iota!(packs[0]))
+    {
+        ret._strides[dimension] = strides[dimension];
+    }
+    foreach (dimension; Iota!(packs[0], ret.S))
+    {
+        ret._strides[dimension] = strides[dimension - packs[0]];
     }
     ret._cursor = slice._cursor;
     return ret;
 }
 
 ///
-pure nothrow unittest
+pure nothrow
+unittest
 {
     import mir.ndslice.slice;
     auto slice = slice!int(5, 8);
     auto windows = slice.windows(2, 3);
-    foreach (window; windows.flattened)
-        window[] += 1;
+
+    int i;
+    foreach (windowsRaw; windows)
+        foreach (window; windowsRaw)
+            ++window[];
 
     assert(slice ==
         [[1,  2,  3, 3, 3, 3,  2,  1],
@@ -861,7 +873,7 @@ pure nothrow unittest
         .pack!2;
 
 
-    foreach (window; windows.flattened)
+    foreach (window; windows)
         window[] += 1;
 
     assert(slice ==
@@ -872,40 +884,40 @@ pure nothrow unittest
          [1,  2,  3, 3, 3, 3,  2,  1]]);
 }
 
-/// Overlapping blocks using windows
-pure nothrow unittest
-{
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 |
-    // | 15 16 17 18 19 |
-    // | 20 21 22 23 24 |
-    //  ----------------
-    //->
-    //  ---------------------
-    // |  0  1  2 |  2  3  4 |
-    // |  5  6  7 |  7  8  9 |
-    // | 10 11 12 | 12 13 14 |
-    // | - - - - - - - - - - |
-    // | 10 11 13 | 12 13 14 |
-    // | 15 16 17 | 17 18 19 |
-    // | 20 21 22 | 22 23 24 |
-    //  ---------------------
+///// Overlapping blocks using windows
+//pure nothrow unittest
+//{
+//    //  ----------------
+//    // |  0  1  2  3  4 |
+//    // |  5  6  7  8  9 |
+//    // | 10 11 12 13 14 |
+//    // | 15 16 17 18 19 |
+//    // | 20 21 22 23 24 |
+//    //  ----------------
+//    //->
+//    //  ---------------------
+//    // |  0  1  2 |  2  3  4 |
+//    // |  5  6  7 |  7  8  9 |
+//    // | 10 11 12 | 12 13 14 |
+//    // | - - - - - - - - - - |
+//    // | 10 11 13 | 12 13 14 |
+//    // | 15 16 17 | 17 18 19 |
+//    // | 20 21 22 | 22 23 24 |
+//    //  ---------------------
 
-    import mir.ndslice.slice;
-    import mir.ndslice.iteration : strided;
+//    import mir.ndslice.slice;
+//    import mir.ndslice.iteration : strided;
 
-    auto overlappingBlocks = iota(5, 5)
-        .windows(3, 3)
-        .strided!(0, 1)(2, 2);
+//    auto overlappingBlocks = iota(5, 5)
+//        .windows(3, 3)
+//        .strided!(0, 1)(2, 2);
 
-    assert(overlappingBlocks ==
-            [[[[ 0,  1,  2], [ 5,  6,  7], [10, 11, 12]],
-              [[ 2,  3,  4], [ 7,  8,  9], [12, 13, 14]]],
-             [[[10, 11, 12], [15, 16, 17], [20, 21, 22]],
-              [[12, 13, 14], [17, 18, 19], [22, 23, 24]]]]);
-}
+//    assert(overlappingBlocks ==
+//            [[[[ 0,  1,  2], [ 5,  6,  7], [10, 11, 12]],
+//              [[ 2,  3,  4], [ 7,  8,  9], [12, 13, 14]]],
+//             [[[10, 11, 12], [15, 16, 17], [20, 21, 22]],
+//              [[12, 13, 14], [17, 18, 19], [22, 23, 24]]]]);
+//}
 
 /++
 Error codes for $(LREF reshape).
@@ -933,92 +945,102 @@ Params:
 Returns:
     reshaped slice
 +/
-Slice!(M, Cursor) reshape
-        (size_t N, Cursor, size_t M)
-        (Slice!(N, Cursor) slice, size_t[M] lengths, ref int err)
+Slice!(kind, M ~ packs[1 .. $], Cursor) reshape
+        (SliceKind kind, size_t[] packs, Cursor, size_t M)
+        (Slice!(kind, packs, Cursor) slice, ptrdiff_t[M] lengths, ref int err)
 {
-    mixin _DefineRet;
-    foreach (i; Iota!(0, ret.N))
-        ret._lengths[i] = lengths[i];
-
-    /// Code size optimization
-    goto B;
-R:
-        return ret;
-B:
-    immutable size_t eco = slice.elementsCount;
-    if (eco == 0)
+    static if (kind == SliceKind.canonical)
     {
-        err = ReshapeError.empty;
-        goto R;
+        auto r = slice.universal.reshape(err);
+        assert(err || r._strides[$-1] == 1);
+        r._strides[$-1] = 1;
+        return r.assumeCanonical;
     }
-    size_t ecn = ret  .elementsCount;
-
-
-    foreach (i; Iota!(0, ret.N))
-        if (ret._lengths[i] == -1)
-        {
-            ecn = -ecn;
-            ret._lengths[i] = eco / ecn;
-            ecn *= ret._lengths[i];
-            break;
-        }
-
-    if (eco != ecn)
+    else
     {
-        err = ReshapeError.total;
-        goto R;
-    }
-
-    for (size_t oi, ni, oj, nj; oi < slice.N && ni < ret.N; oi = oj, ni = nj)
-    {
-        size_t op = slice._lengths[oj++];
-        size_t np = ret  ._lengths[nj++];
-
-        for (;;)
+        mixin _DefineRet;
+        foreach (i; Iota!M)
+            ret._lengths[i] = lengths[i];
+        /// Code size optimization
+        goto B;
+    R:
+            return ret;
+    B:
+        immutable size_t eco = slice.elementsCount;
+        if (eco == 0)
         {
-            if (op < np)
-                op *= slice._lengths[oj++];
-            if (op > np)
-                np *= ret  ._lengths[nj++];
-            if (op == np)
-                break;
+            err = ReshapeError.empty;
+            goto R;
         }
-        while (oj < slice.N && slice._lengths[oj] == 1) oj++;
-        while (nj < ret  .N && ret  ._lengths[nj] == 1) nj++;
-
-        for (size_t l = oi, r = oi + 1; r < oj; r++)
-            if (slice._lengths[r] != 1)
+        size_t ecn = ret.elementsCount;
+        foreach (i; Iota!(0, ret.N))
+            if (ret._lengths[i] == -1)
             {
-                if (slice._strides[l] != slice._lengths[r] * slice._strides[r])
-                {
-                    err = ReshapeError.incompatible;
-                    goto R;
-                }
-                l = r;
+                ecn = -ecn;
+                ret._lengths[i] = eco / ecn;
+                ecn *= ret._lengths[i];
+                break;
             }
+        if (eco != ecn)
+        {
+            err = ReshapeError.total;
+            goto R;
+        }
+        static if (kind == SliceKind.universal)
+        {
+            for (size_t oi, ni, oj, nj; oi < packs[0] && ni < M; oi = oj, ni = nj)
+            {
+                size_t op = slice._lengths[oj++];
+                size_t np = ret  ._lengths[nj++];
 
-        ret._strides[nj - 1] = slice._strides[oj - 1];
-        foreach_reverse (i; ni .. nj - 1)
-            ret._strides[i] = ret._lengths[i + 1] * ret._strides[i + 1];
-    assert((oi == slice.N) == (ni == ret.N));
+                for (;;)
+                {
+                    if (op < np)
+                        op *= slice._lengths[oj++];
+                    if (op > np)
+                        np *= ret  ._lengths[nj++];
+                    if (op == np)
+                        break;
+                }
+                while (oj < packs[0] && slice._lengths[oj] == 1) oj++;
+                while (nj < M        && ret  ._lengths[nj] == 1) nj++;
+
+                for (size_t l = oi, r = oi + 1; r < oj; r++)
+                    if (slice._lengths[r] != 1)
+                    {
+                        if (slice._strides[l] != slice._lengths[r] * slice._strides[r])
+                        {
+                            err = ReshapeError.incompatible;
+                            goto R;
+                        }
+                        l = r;
+                    }
+                assert((oi == packs[0]) == (ni == M));
+
+                ret._strides[nj - 1] = slice._strides[oj - 1];
+                foreach_reverse (i; ni .. nj - 1)
+                    ret._strides[i] = ret._lengths[i + 1] * ret._strides[i + 1];
+            }
+        }
+        foreach (i; Iota!(M, ret.N))
+            ret._lengths[i] = slice._lengths[i + packs[0] - M];
+        static if (M < ret.S)
+        foreach (i; Iota!(M, ret.S))
+            ret._strides[i] = slice._strides[i + packs[0] - M];
+        ret._cursor = slice._cursor;
+        err = 0;
+        goto R;
     }
-    foreach (i; Iota!(ret.N, ret.PureN))
-    {
-        ret._lengths[i] = slice._lengths[i + slice.N - ret.N];
-        ret._strides[i] = slice._strides[i + slice.N - ret.N];
-    }
-    ret._cursor = slice._cursor;
-    err = 0;
-    goto R;
 }
 
 ///
-nothrow @safe pure unittest
+nothrow @safe pure
+unittest
 {
     import mir.ndslice.iteration : allReversed;
     int err;
     auto slice = iota(3, 4)
+        .universal
         .allReversed
         .reshape([-1, 3], err);
     assert(err == 0);
@@ -1029,43 +1051,43 @@ nothrow @safe pure unittest
          [ 2,  1, 0]]);
 }
 
-/// Reshaping with memory allocation
-pure unittest
-{
-    import mir.ndslice.slice;
-    import mir.ndslice.iteration : reversed;
-    import std.array : array;
+///// Reshaping with memory allocation
+//pure unittest
+//{
+//    import mir.ndslice.slice;
+//    import mir.ndslice.iteration : reversed;
+//    import std.array : array;
 
-    auto reshape2(S, size_t M)(S slice, size_t[M] lengths...)
-    {
-        int err;
-        // Tries to reshape without allocation
-        auto ret = slice.reshape(lengths, err);
-        if (!err)
-            return ret;
-        if (err == ReshapeError.incompatible)
-            return slice.slice.reshape(lengths, err);
-        throw new Exception("total elements count is different or equals to zero");
-    }
+//    auto reshape2(S, size_t M)(S slice, size_t[M] lengths...)
+//    {
+//        int err;
+//        // Tries to reshape without allocation
+//        auto ret = slice.reshape(lengths, err);
+//        if (!err)
+//            return ret;
+//        if (err == ReshapeError.incompatible)
+//            return slice.slice.reshape(lengths, err);
+//        throw new Exception("total elements count is different or equals to zero");
+//    }
 
-    auto slice =
-        [0, 1,  2,  3,
-         4, 5,  6,  7,
-         8, 9, 10, 11]
-        .sliced(3, 4)
-        .reversed!0;
+//    auto slice =
+//        [0, 1,  2,  3,
+//         4, 5,  6,  7,
+//         8, 9, 10, 11]
+//        .sliced(3, 4)
+//        .reversed!0;
 
-    assert(reshape2(slice, 4, 3) ==
-        [[ 8, 9, 10],
-         [11, 4,  5],
-         [ 6, 7,  0],
-         [ 1, 2,  3]]);
-}
+//    assert(reshape2(slice, 4, 3) ==
+//        [[ 8, 9, 10],
+//         [11, 4,  5],
+//         [ 6, 7,  0],
+//         [ 1, 2,  3]]);
+//}
 
 nothrow @safe pure unittest
 {
     import mir.ndslice.iteration : allReversed;
-    auto slice = iota(1, 1, 3, 2, 1, 2, 1).allReversed;
+    auto slice = iota(1, 1, 3, 2, 1, 2, 1).universal.allReversed;
     int err;
     assert(slice.reshape([1, -1, 1, 1, 3, 1], err) ==
         [[[[[[11], [10], [9]]]],
@@ -1086,13 +1108,12 @@ nothrow @nogc @safe pure unittest
 nothrow @nogc @safe pure unittest
 {
     import mir.ndslice.slice;
-    import std.range : iota;
     import std.exception : assertThrown;
 
     int err;
-    auto e = 1.iota(1);
+    auto e = iota(1);
     // resize to the wrong dimension
-    e.reshape([2], err);
+    auto s = e.reshape([2], err);
     assert(err == ReshapeError.total);
     e.popFront;
     // test with an empty slice
@@ -1104,9 +1125,176 @@ unittest
 {
     auto pElements = iota(3, 4, 5, 6, 7)
         .pack!2
-        .flattened();
+        .flattened;
     assert(pElements[0][0] == iota(7));
     assert(pElements[$-1][$-1] == iota([7], 2513));
+}
+
+Slice!(SliceKind.continious, 1 ~ packs[1 .. $], Cursor) 
+    flattened
+    (size_t[] packs, Cursor)
+    (Slice!(SliceKind.continious, packs, Cursor) slice)
+{
+    static if (packs[0] == 1)
+    {
+        return slice;
+    }
+    else
+    {
+        mixin _DefineRet;
+        ret._lengths[0] = slice._lengths[0 .. packs[0]].lengthsProduct;
+        foreach(i; Iota!(1, ret.N))
+            ret._lengths[i] = slice._lengths[i - 1 + packs[0]];
+        ret._cursor = slice._cursor;
+        return ret;
+    }
+}
+
+struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
+    if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
+{
+    ///
+    Slice!(kind, packs, Cursor) _slice;
+    ///
+    ptrdiff_t[packs[0]] _indexes;
+
+
+    private sizediff_t getShift(size_t n)
+    {
+        sizediff_t _shift;
+        n += _indexes[$ - 1];
+        with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
+        {
+            immutable v = n / _lengths[i];
+            n %= _lengths[i];
+            static if (i == _slice.S)
+                _shift += (n - _indexes[i]);
+            else
+                _shift += (n - _indexes[i]) * _strides[i];
+            n = _indexes[i - 1] + v;
+        }
+        debug (ndslice) assert(n < _slice._lengths[0]);
+        with (_slice)
+            _shift += (n - _indexes[0]) * _strides[0];
+        return _shift;
+    }
+
+    ///
+    auto ref opIndex(size_t index)
+    {
+        static if (packs.length == 1)
+        {
+            return _slice._cursor[getShift(index)];
+        }
+        else with (_slice)
+        {
+            alias M = DeepElemType.N;
+            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor + getShift(index));
+        }
+    }
+
+    //static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
+    /////
+    //auto opIndexAssign(E)(E elem, size_t index)
+    //{
+    //    static if (N == PureN)
+    //    {
+    //        return _slice._cursor[getShift(index)] = elem;
+    //    }
+    //    else
+    //    {
+    //        static assert(0,
+    //            "ByElement.opIndexAssign is not implemented for packed slices."
+    //            ~ "Use additional empty slicing `elemsOfSlice[index][] = value`"
+    //            ~ tailErrorMessage());
+    //    }
+    //}
+
+    ///
+    FlattenedCursor opBinary(string op)(size_t index) const
+    {
+        pragma(inline, true);
+        FlattenedCursor ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ///
+    auto ref opUnary(string op : "*")()
+    {
+        static if (packs.length == 1)
+        {
+            return *_slice._cursor;
+        }
+        else with (_slice)
+        {
+            alias M = DeepElemType.N;
+            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor);
+        }
+    }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    {
+        with(_slice) foreach_reverse (i; Iota!(packs[0]))
+        {
+            static if (i == _slice.S)
+                mixin(op ~ `_cursor;`);
+            else
+                mixin(`_cursor ` ~ op[0] ~ `= _strides[i];`);
+            mixin (op ~ `_indexes[i];`);
+            static if (op == "++")
+            {
+                if (_indexes[i] < _lengths[i])
+                    return;
+                //debug (ndslice) assert(_indexes[i] == _lengths[i]);
+                static if (i == _slice.S)
+                    _cursor -= _lengths[i];
+                else
+                    _cursor -= _lengths[i] * _strides[i];
+                _indexes[i] = 0;
+            }
+            else
+            {
+                if (_indexes[i] >= 0)
+                    return;
+                static if (i == _slice.S)
+                    _cursor += _lengths[i];
+                else
+                    _cursor += _lengths[i] * _strides[i];
+                _indexes[i] = _lengths[i] - 1;
+            }
+        }
+    }
+
+    void opOpAssign(string op : "+")(size_t n)
+    {
+        sizediff_t _shift;
+        n += _indexes[$ - 1];
+        with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
+        {
+            immutable v = n / _lengths[i];
+            n %= _lengths[i];
+            static if (i == _slice.S)
+                _shift += (n - _indexes[i]);
+            else
+                _shift += (n - _indexes[i]) * _strides[i];
+            _indexes[i] = n;
+            n = _indexes[i - 1] + v;
+        }
+        assert(n <= _slice._lengths[0]);
+        with (_slice)
+        {
+            _shift += (n - _indexes[0]) * _strides[0];
+            _indexes[0] = n;
+        }
+        _slice._cursor += _shift;
+    }
+
+    void opOpAssign(string op : "-")(size_t n)
+    {
+        this += this.elementsCount - n;
+    }
 }
 
 /++
@@ -1120,267 +1308,25 @@ Params:
 Returns:
     random access range composed of elements of the `slice`
 +/
-auto flattened(size_t N, Cursor)(Slice!(N, Cursor) slice)
+Slice!(SliceKind.continious, [1], FlattenedCursor!(kind, packs, Cursor))
+    flattened
+    (SliceKind kind, size_t[] packs, Cursor)
+    (Slice!(kind, packs, Cursor) slice)
+    if (kind == SliceKind.canonical || kind == SliceKind.universal)
 {
-    with (Slice!(N, Cursor))
-    {
-        /++
-        ByElement shifts the range's `_cursor` without modifying its strides and lengths.
-        +/
-        static struct ByElement
-        {
-            @fmb:
-            size_t _length;
-            Repeat!(N, size_t) _indexes;
-            This _slice;
-
-            auto save() @property
-            {
-                return this;
-            }
-
-            bool empty() const @property
-            {
-                return _length == 0;
-            }
-
-            size_t length() const @property
-            {
-                return _length;
-            }
-
-            auto ref front() @property
-            {
-                assert(!this.empty);
-                static if (N == PureN)
-                {
-                    return _slice._cursor[0];
-                }
-                else with (_slice)
-                {
-                    alias M = DeepElemType.PureN;
-                    return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor);
-                }
-            }
-
-            static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
-            auto front(E)(E elem) @property
-            {
-                assert(!this.empty);
-                return _slice._cursor[0] = elem;
-            }
-
-            void popFront()
-            {
-                assert(_length != 0);
-                _length--;
-                popFrontImpl;
-            }
-
-            private void popFrontImpl()
-            {
-                foreach_reverse (i; Iota!(0, N)) with (_slice)
-                {
-                    _cursor += _strides[i];
-                    _indexes[i]++;
-                    if (_indexes[i] < _lengths[i])
-                        return;
-                    debug (ndslice) assert(_indexes[i] == _lengths[i]);
-                    _cursor -= _lengths[i] * _strides[i];
-                    _indexes[i] = 0;
-                }
-            }
-
-            auto ref back() @property
-            {
-                assert(!this.empty);
-                return opIndex(_length - 1);
-            }
-
-            static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
-            auto back(E)(E elem) @property
-            {
-                assert(!this.empty);
-                return opIndexAssign(elem, _length - 1);
-            }
-
-            void popBack()
-            {
-                assert(_length != 0);
-                _length--;
-            }
-
-            void popFrontExactly(size_t n)
-            in
-            {
-                assert(n <= _length);
-            }
-            body
-            {
-                _length -= n;
-                //calculates shift and new indexes
-                sizediff_t _shift;
-                n += _indexes[N-1];
-                foreach_reverse (i; Iota!(1, N)) with (_slice)
-                {
-                    immutable v = n / _lengths[i];
-                    n %= _lengths[i];
-                    _shift += (n - _indexes[i]) * _strides[i];
-                    _indexes[i] = n;
-                    n = _indexes[i - 1] + v;
-                }
-                assert(n <= _slice._lengths[0]);
-                with (_slice)
-                {
-                    _shift += (n - _indexes[0]) * _strides[0];
-                    _indexes[0] = n;
-                }
-                _slice._cursor += _shift;
-            }
-
-            void popBackExactly(size_t n)
-            in
-            {
-                assert(n <= _length);
-            }
-            body
-            {
-                _length -= n;
-            }
-
-            //calculates shift for index n
-            private sizediff_t getShift(size_t n)
-            in
-            {
-                assert(n < _length);
-            }
-            body
-            {
-                sizediff_t _shift;
-                n += _indexes[N-1];
-                foreach_reverse (i; Iota!(1, N)) with (_slice)
-                {
-                    immutable v = n / _lengths[i];
-                    n %= _lengths[i];
-                    _shift += (n - _indexes[i]) * _strides[i];
-                    n = _indexes[i - 1] + v;
-                }
-                debug (ndslice) assert(n < _slice._lengths[0]);
-                with (_slice)
-                    _shift += (n - _indexes[0]) * _strides[0];
-                return _shift;
-            }
-
-            auto ref opIndex(size_t index)
-            {
-                static if (N == PureN)
-                {
-                    return _slice._cursor[getShift(index)];
-                }
-                else with (_slice)
-                {
-                    alias M = DeepElemType.PureN;
-                    return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor + getShift(index));
-                }
-            }
-
-            static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
-            auto opIndexAssign(E)(E elem, size_t index)
-            {
-                static if (N == PureN)
-                {
-                    return _slice._cursor[getShift(index)] = elem;
-                }
-                else
-                {
-                    static assert(0,
-                        "ByElement.opIndexAssign is not implemented for packed slices."
-                        ~ "Use additional empty slicing `elemsOfSlice[index][] = value`"
-                        ~ tailErrorMessage());
-                }
-            }
-
-            static if (isMutable!DeepElemType && N == PureN)
-            {
-                auto opIndexAssign(V)(V val, _Slice slice)
-                {
-                    return this[slice][] = val;
-                }
-
-                auto opIndexAssign(V)(V val)
-                {
-                    foreach (ref e; this)
-                        e = val;
-                    return this;
-                }
-
-                auto opIndexAssign(V : T[], T)(V val)
-                    if (__traits(compiles, front = val[0]))
-                {
-                    assert(_length == val.length, "lengths should be equal" ~ tailErrorMessage!());
-                    foreach (ref e; this)
-                    {
-                        e = val[0];
-                        val = val[1 .. $];
-                    }
-                    return this;
-                }
-
-                auto opIndexAssign(V : Slice!(1, _Cursor), _Cursor)(V val)
-                    if (__traits(compiles, front = val.front))
-                {
-                    assert(_length == val.length, "lengths should be equal" ~ tailErrorMessage!());
-                    foreach (ref e; this)
-                    {
-                        e = val.front;
-                        val.popFront;
-                    }
-                    return this;
-                }
-            }
-
-            auto opIndex(_Slice sl)
-            {
-                auto ret = this;
-                ret.popFrontExactly(sl.i);
-                ret.popBackExactly(_length - sl.j);
-                return ret;
-            }
-
-            alias opDollar = length;
-
-            _Slice opSlice(size_t pos : 0)(size_t i, size_t j)
-            in
-            {
-                assert(i <= j,
-                    "the left bound must be less than or equal to the right bound"
-                    ~ tailErrorMessage!());
-                assert(j - i <= _length,
-                    "the difference between the right and the left bound must be less than or equal to range length"
-                    ~ tailErrorMessage!());
-            }
-            body
-            {
-                return typeof(return)(i, j);
-            }
-
-            size_t[N] index() @property
-            {
-                return _indexes;
-            }
-        }
-        return ByElement(slice, slice.elementsCount);
-    }
+    mixin _DefineRet;
+    ret._lengths[0] = slice.elementsCount;
+    ret._cursor = typeof(ret._cursor)(slice);
+    return ret;
 }
+
 
 /// Regular slice
 @safe @nogc pure nothrow unittest
 {
-    import std.algorithm.comparison : equal;
-    import std.range : iota;
-    assert(iota(4, 5)
-        .flattened
-        .equal(20.iota));
+    assert(iota(4, 5).flattened == iota(20));
+    assert(iota(4, 5).canonical.flattened == iota(20));
+    assert(iota(4, 5).universal.flattened == iota(20));
 }
 
 /// Packed slice
@@ -1400,11 +1346,12 @@ auto flattened(size_t N, Cursor)(Slice!(N, Cursor) slice)
 /// Properties
 pure nothrow unittest
 {
-    auto elems = iota(3, 4).flattened;
+    auto elems = iota(3, 4).universal.flattened;
 
     elems.popFrontExactly(2);
     assert(elems.front == 2);
-    assert(elems.index == [0, 2]);
+    /// `_index` is availble only for canonical and universal ndslices.
+    assert(elems._cursor._indexes == [0, 2]);
 
     elems.popBackExactly(2);
     assert(elems.back == 9);
@@ -1417,9 +1364,9 @@ pure nothrow unittest
     import mir.ndslice.slice;
     auto slice = new long[20].sliced(5, 4);
 
-    for (auto elems = slice.flattened; !elems.empty; elems.popFront)
+    for (auto elems = slice.universal.flattened; !elems.empty; elems.popFront)
     {
-        size_t[2] index = elems.index;
+        ptrdiff_t[2] index = elems._cursor._indexes;
         elems.front = index[0] * 10 + index[1] * 3;
     }
     assert(slice ==
@@ -1432,11 +1379,8 @@ pure nothrow unittest
 
 pure nothrow unittest
 {
-    // test save
     import std.range : dropOne;
-    import std.range : iota;
-
-    auto elems = 12.iota.sliced(3, 4).flattened;
+    auto elems = iota(3, 4).universal.flattened;
     assert(elems.front == 0);
     assert(elems.save.dropOne.front == 1);
     assert(elems.front == 0);
@@ -1492,19 +1436,19 @@ Use $(SUBREF iteration, allReversed) in pipeline before
     auto slice = iota(3, 4, 5);
 
     /// Slow backward iteration #1
-    foreach (ref e; slice.flattened.retro)
+    foreach (ref e; slice.universal.flattened.retro)
     {
         //...
     }
 
     /// Slow backward iteration #2
-    foreach_reverse (ref e; slice.flattened)
+    foreach_reverse (ref e; slice.universal.flattened)
     {
         //...
     }
 
     /// Fast backward iteration
-    foreach (ref e; slice.allReversed.flattened)
+    foreach (ref e; slice.universal.allReversed.flattened)
     {
         //...
     }
@@ -1523,7 +1467,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 {
     import mir.ndslice.iteration;
     import std.range : isRandomAccessRange;
-    auto elems = iota(4, 5).everted.flattened;
+    auto elems = iota(4, 5).universal.everted.flattened;
     static assert(isRandomAccessRange!(typeof(elems)));
 
     elems = elems[11 .. $ - 2];
@@ -1539,11 +1483,11 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 {
     import mir.ndslice.slice;
     import mir.ndslice.iteration;
-    import std.range : iota, isForwardCursor, hasLength;
+    import std.range : isRandomAccessRange, hasLength;
     import std.algorithm.comparison : equal;
 
     auto range = (3 * 4 * 5 * 6 * 7).iota;
-    auto slice0 = range.sliced(3, 4, 5, 6, 7);
+    auto slice0 = range.sliced(3, 4, 5, 6, 7).universal;
     auto slice1 = slice0.transposed!(2, 1).pack!2;
     auto elems0 = slice0.flattened;
     auto elems1 = slice1.flattened;
@@ -1551,7 +1495,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
     import std.meta;
     foreach (S; AliasSeq!(typeof(elems0), typeof(elems1)))
     {
-        static assert(isForwardCursor!S);
+        static assert(isRandomAccessRange!S);
         static assert(hasLength!S);
     }
 
@@ -1599,169 +1543,77 @@ unittest
         s = s[1 .. $];
 }
 
-/++
-Returns an forward range of all elements of standard simplex of a slice.
-In case the slice has two dimensions, it is composed of elements of upper left triangular matrix.
-The order of elements is preserved.
-`flattenedInStandardSimplex` can be generalized with other selectors.
-
-Params:
-    N = dimension count
-    slice = slice to be iterated
-    maxHypercubeLength = maximal length of simplex hypercube.
-Returns:
-    forward range composed of all elements of standard simplex of the `slice`
-+/
-auto flattenedInStandardSimplex(size_t N, Cursor)(Slice!(N, Cursor) slice, size_t maxHypercubeLength = size_t.max)
+struct ShellCursor(Field)
 {
-    with (Slice!(N, Cursor))
+    ///
+    size_t cursor;
+    ///
+    alias cursor this;
+    ///
+    Field field;
+
+    ///
+    auto ref opIndex(size_t index) @safe pure nothrow @nogc @property
     {
-        /++
-        ByElementInTopSimplex shifts the range's `_cursor` without modifying its strides and lengths.
-        +/
-        static struct ByElementInTopSimplex
-        {
-            @fmb:
-            This _slice;
-            size_t _length;
-            size_t maxHypercubeLength;
-            size_t sum;
-            size_t[N] _indexes;
+        return field[cursor + index];
+    }
 
-            auto save() @property
-            {
-                return this;
-            }
+    ///
+    ShellCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
+    {
+        ShellCursor ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
 
-            bool empty() const @property
-            {
-                return _length == 0;
-            }
+    ///
+    auto ref opUnary(string op : "*")()
+    {
+        return field[cursor];
+    }
 
-            size_t length() const @property
-            {
-                return _length;
-            }
-
-            auto ref front() @property
-            {
-                assert(!this.empty);
-                static if (N == PureN)
-                    return _slice._cursor[0];
-                else with (_slice)
-                {
-                    alias M = DeepElemType.PureN;
-                    return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor);
-                }
-            }
-
-            static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
-            auto front(E)(E elem) @property
-            {
-                assert(!this.empty);
-                return _slice._cursor[0] = elem;
-            }
-
-            void popFront()
-            {
-                assert(_length != 0);
-                _length--;
-                popFrontImpl;
-            }
-
-            private void popFrontImpl()
-            {
-                foreach_reverse (i; Iota!(0, N)) with (_slice)
-                {
-                    _cursor += _strides[i];
-                    _indexes[i]++;
-                    debug (ndslice) assert(_indexes[i] <= _lengths[i]);
-                    sum++;
-                    if (sum < maxHypercubeLength)
-                        return;
-                    debug (ndslice) assert(sum == maxHypercubeLength);
-                    _cursor -= _indexes[i] * _strides[i];
-                    sum -= _indexes[i];
-                    _indexes[i] = 0;
-                }
-            }
-
-            size_t[N] index() @property
-            {
-                return _indexes;
-            }
-        }
-        foreach (i; Iota!(0, N))
-            if (maxHypercubeLength > slice._lengths[i])
-                maxHypercubeLength = slice._lengths[i];
-        immutable size_t elementsCount = ((maxHypercubeLength + 1) * maxHypercubeLength ^^ (N - 1)) / 2;
-        return ByElementInTopSimplex(slice, elementsCount, maxHypercubeLength);
+    ///
+    auto opUnary(string op)() @safe pure nothrow @nogc @property
+    {
+        pragma(inline, true);
+        return mixin(op ~ `cursor`);
     }
 }
 
-///
-pure nothrow unittest
+auto shellCursor(Field)(Field field)
 {
-    import mir.ndslice.slice;
-    auto slice = slice!int(4, 5);
-    auto elems = slice
-        .flattenedInStandardSimplex;
-    int i;
-    foreach (ref e; elems)
-        e = ++i;
-    assert(slice ==
-        [[ 1, 2, 3, 4, 0],
-         [ 5, 6, 7, 0, 0],
-         [ 8, 9, 0, 0, 0],
-         [10, 0, 0, 0, 0]]);
+    return ShellCursor!Field(0, field);
 }
 
-///
-pure nothrow unittest
+/++
+Cursor composed of indexes.
+See_also: $(LREF ndiota)
++/
+struct ndIotaField(size_t N)
+    if (N)
 {
-    import mir.ndslice.slice;
-    import mir.ndslice.iteration;
-    auto slice = slice!int(4, 5);
-    auto elems = slice
-        .transposed
-        .allReversed
-        .flattenedInStandardSimplex;
-    int i;
-    foreach (ref e; elems)
-        e = ++i;
-    assert(slice ==
-        [[0,  0, 0, 0, 4],
-         [0,  0, 0, 7, 3],
-         [0,  0, 9, 6, 2],
-         [0, 10, 8, 5, 1]]);
+    private size_t[N-1] _lengths;
+
+    @fmb size_t[N] opIndex(size_t index) const
+    {
+        size_t[N] indexes = void;
+        foreach_reverse (i; Iota!(0, N - 1))
+        {
+            indexes[i + 1] = index % _lengths[i];
+            index /= _lengths[i];
+        }
+        indexes[0] = index;
+        return indexes;
+    }
 }
 
-/// Properties
-@safe @nogc pure nothrow unittest
+unittest
 {
-    import std.range.primitives : popFrontN;
-
-    auto elems = iota(3, 4).flattenedInStandardSimplex;
-
-    elems.popFront;
-    assert(elems.front == 1);
-    assert(elems.index == cast(size_t[2])[0, 1]);
-
-    elems.popFrontN(3);
-    assert(elems.front == 5);
-}
-
-/// Save
-@safe @nogc pure nothrow unittest
-{
-    auto elems = iota(3, 4).flattenedInStandardSimplex;
-    import std.range : dropOne, popFrontN;
-    elems.popFrontN(4);
-
-    assert(elems.save.dropOne.front == 8);
-    assert(elems.front == 5);
-    assert(elems.index == cast(size_t[2])[1, 1]);
-    assert(elems.length == 2);
+    auto r = ndiota(1);
+    auto d = r.front;
+    r.popFront;
+    import std.range.primitives;
+    //static assert(isInputRange!(typeof(r)));
 }
 
 /++
@@ -1774,33 +1626,30 @@ Params:
     lengths = list of dimension lengths
 Returns:
     `N`-dimensional slice composed of indexes
-See_also: $(LREF IndexSlice), $(LREF iota)
+See_also: $(LREF ndIotaField), $(LREF iota)
 +/
-IndexSlice!N indexSlice(size_t N)(size_t[N] lengths...)
+Slice!(SliceKind.continious, [N], ShellCursor!(ndIotaField!N))
+    ndiota(size_t N)(size_t[N] lengths...)
 {
     import mir.ndslice.slice : sliced;
-    with (typeof(return)) return Cursor(lengths[1 .. $]).sliced(lengths);
+    with (typeof(return)) return ndIotaField!N(lengths[1 .. $]).shellCursor.sliced(lengths);
 }
 
 ///
 @safe pure nothrow @nogc unittest
 {
-    auto slice = indexSlice(2, 3);
+    auto slice = ndiota(2, 3);
     static immutable array =
         [[[0, 0], [0, 1], [0, 2]],
          [[1, 0], [1, 1], [1, 2]]];
 
     assert(slice == array);
-
-
-    static assert(is(IndexSlice!2 : Slice!(2, Cursor), Cursor));
-    static assert(is(DeepElementType!(IndexSlice!2) == size_t[2]));
 }
 
 ///
 @safe pure nothrow unittest
 {
-    auto im = indexSlice(7, 9);
+    auto im = ndiota(7, 9);
 
     assert(im[2, 1] == [2, 1]);
 
@@ -1814,152 +1663,20 @@ IndexSlice!N indexSlice(size_t N)(size_t[N] lengths...)
     // test save
     import std.range : dropOne;
 
-    auto im = indexSlice(7, 9);
+    auto im = ndiota(7, 9);
     auto imByElement = im.flattened;
     assert(imByElement.front == [0, 0]);
     assert(imByElement.save.dropOne.front == [0, 1]);
     assert(imByElement.front == [0, 0]);
 }
 
-/++
-Slice composed of indexes.
-See_also: $(LREF indexSlice)
-+/
-template IndexSlice(size_t N)
-    if (N)
-{
-    struct IndexMap
-    {
-        private size_t[N-1] _lengths;
-
-        @fmb size_t[N] opIndex(size_t index) const
-        {
-            size_t[N] indexes = void;
-            foreach_reverse (i; Iota!(0, N - 1))
-            {
-                indexes[i + 1] = index % _lengths[i];
-                index /= _lengths[i];
-            }
-            indexes[0] = index;
-            return indexes;
-        }
-    }
-    alias IndexSlice = Slice!(N, IndexMap);
-}
-
-unittest
-{
-    auto r = indexSlice(1);
-    import std.range.primitives : isRandomAccessRange;
-    static assert(isRandomAccessRange!(typeof(r)));
-}
-
-/++
-Returns a slice with identical elements.
-`RepeatSlice` stores only single value.
-Params:
-    lengths = list of dimension lengths
-Returns:
-    `n`-dimensional slice composed of identical values, where `n` is dimension count.
-See_also: $(REF repeat, std,range)
-+/
-RepeatSlice!(M, T) repeatSlice(T, size_t M)(T value, size_t[M] lengths...)
-    if (!is(T : Slice!(N, Cursor), size_t N, Cursor))
-{
-    typeof(return) ret;
-    foreach (i; Iota!(0, ret.N))
-        ret._lengths[i] = lengths[i];
-    ret._cursor = RepeatPtr!T(value);
-    return ret;
-}
-
-/// ditto
-Slice!(M, Slice!(N + 1, Cursor)) repeatSlice(size_t N, Cursor, size_t M)(Slice!(N, Cursor) slice, size_t[M] lengths...)
-{
-    typeof(return) ret;
-    ret._cursor = slice._cursor;
-    foreach (i; Iota!(0, M))
-        ret._lengths[i] = lengths[i];
-    foreach (i; Iota!(0, N))
-    {
-        ret._lengths[M + i] = slice._lengths[i];
-        ret._strides[M + i] = slice._strides[i];
-    }
-    return ret;
-}
-
-///
-@safe pure nothrow unittest
-{
-    auto sl = iota(3)
-        .repeatSlice(4);
-    assert(sl == [[0, 1, 2],
-                  [0, 1, 2],
-                  [0, 1, 2],
-                  [0, 1, 2]]);
-}
-
-///
-@safe pure nothrow unittest
-{
-    import mir.ndslice.iteration : transposed;
-
-    auto sl = iota(3)
-        .repeatSlice(4)
-        .unpack
-        .transposed;
-
-    assert(sl == [[0, 0, 0, 0],
-                  [1, 1, 1, 1],
-                  [2, 2, 2, 2]]);
-}
-
-///
-pure nothrow unittest
-{
-    import mir.ndslice.slice : slice;
-
-    auto sl = iota([3], 6).slice;
-    auto slC = sl.repeatSlice(2, 3);
-    sl[1] = 4;
-    assert(slC == [[[6, 4, 8],
-                    [6, 4, 8],
-                    [6, 4, 8]],
-                   [[6, 4, 8],
-                    [6, 4, 8],
-                    [6, 4, 8]]]);
-}
-
-///
-@safe pure nothrow unittest
-{
-    auto sl = repeatSlice(4.0, 2, 3);
-    assert(sl == [[4.0, 4.0, 4.0],
-                  [4.0, 4.0, 4.0]]);
-
-    static assert(is(DeepElementType!(typeof(sl)) == double));
-
-    sl[1, 1] = 3;
-    assert(sl == [[3.0, 3.0, 3.0],
-                  [3.0, 3.0, 3.0]]);
-}
-
-/++
-Slice composed of identical values.
-+/
-template  RepeatSlice(size_t N, T)
-    if (N)
-{
-    alias RepeatSlice = Slice!(N, RepeatPtr!T);
-}
-
 // undocumented
 // zero cost variant of `std.range.repeat`
 // in addition, the internal value is mutable
-@LikePtr struct RepeatPtr(T)
+@LikePtr struct RepeatCursor(T)
 {
     // UT definition is from std.range
-    // Store a non-qualified T when possible: This is to make RepeatPtr assignable
+    // Store a non-qualified T when possible: This is to make RepeatCursor assignable
     static if ((is(T == class) || is(T == interface)) && (is(T == const) || is(T == immutable)))
     {
         import std.typecons : Rebindable;
@@ -1973,22 +1690,33 @@ template  RepeatSlice(size_t N, T)
 
     @fmb:
 
+    ///
     ref T opIndex(sizediff_t)
     {
         return _value;
     }
 
+    ///
+    RepeatCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
+    {
+        RepeatCursor ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ///
     void opOpAssign(string op)(sizediff_t)
         if (op == `+` || op == `-`)
     {
     }
 
-    auto opBinary(string op)(sizediff_t)
-        if (op == `+` || op == `-`)
+    ///
+    ref opUnary(string op : "*")()
     {
-        return this;
+        return _value;
     }
 
+    ///
     auto ref opUnary(string op)()
         if (op == `++` || op == `--`)
     {
@@ -1998,7 +1726,7 @@ template  RepeatSlice(size_t N, T)
 
 @safe pure nothrow @nogc unittest
 {
-    RepeatPtr!double val;
+    RepeatCursor!double val;
     val._value = 3;
     assert((++val)._value == 3);
     val += 2;
@@ -2006,8 +1734,105 @@ template  RepeatSlice(size_t N, T)
 }
 
 /++
+Returns a slice with identical elements.
+`RepeatSlice` stores only single value.
+Params:
+    lengths = list of dimension lengths
+Returns:
+    `n`-dimensional slice composed of identical values, where `n` is dimension count.
+See_also: $(REF repeat, std,range)
++/
+Slice!(SliceKind.continious, [M], RepeatCursor!T)
+    repeat(T, size_t M)(T value, size_t[M] lengths...)
+    if (M && !is(T : Slice!(kind, packs, Cursor), SliceKind kind, size_t[] packs, Cursor))
+{
+    mixin _DefineRet;
+    foreach (i; Iota!M)
+        ret._lengths[i] = lengths[i];
+    ret._cursor = RepeatCursor!T(value);
+    return ret;
+}
+
+/// ditto
+Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, M ~ packs, Cursor) repeat(SliceKind kind, size_t[] packs, Cursor, size_t M)(Slice!(kind, packs, Cursor) slice, size_t[M] lengths...)
+    if (M)
+{
+    mixin _DefineRet;
+    foreach (i; Iota!M)
+        ret._lengths[i] = lengths[i];
+    foreach (i; Iota!(slice.N))
+        ret._lengths[M + i] = slice._lengths[i];
+    foreach (i; Iota!M)
+        ret._strides[i] = 0;
+    auto strides = slice.unpack.strides;
+    foreach (i; Iota!(M, ret.S))
+        ret._strides[i] = strides[i - M];
+    ret._cursor = slice._cursor;
+    return ret;
+}
+
+///
+@safe pure nothrow
+unittest
+{
+    auto sl = iota(3).repeat(4);
+    assert(sl == [[0, 1, 2],
+                  [0, 1, 2],
+                  [0, 1, 2],
+                  [0, 1, 2]]);
+}
+
+///
+@safe pure nothrow unittest
+{
+    import mir.ndslice.iteration : transposed;
+
+    auto sl = iota(3)
+        .repeat(4)
+        .unpack
+        .universal
+        .transposed;
+
+    assert(sl == [[0, 0, 0, 0],
+                  [1, 1, 1, 1],
+                  [2, 2, 2, 2]]);
+}
+
+///
+pure nothrow unittest
+{
+    import mir.ndslice.slice : slice;
+
+    auto sl = iota([3], 6).slice;
+    auto slC = sl.repeat(2, 3);
+    sl[1] = 4;
+    assert(slC == [[[6, 4, 8],
+                    [6, 4, 8],
+                    [6, 4, 8]],
+                   [[6, 4, 8],
+                    [6, 4, 8],
+                    [6, 4, 8]]]);
+}
+
+///
+@safe pure nothrow unittest
+{
+    auto sl = repeat(4.0, 2, 3);
+    assert(sl == [[4.0, 4.0, 4.0],
+                  [4.0, 4.0, 4.0]]);
+
+    static assert(is(DeepElementType!(typeof(sl)) == double));
+
+    sl[1, 1] = 3;
+    assert(sl == [[3.0, 3.0, 3.0],
+                  [3.0, 3.0, 3.0]]);
+}
+
+version(none):
+
+/++
 Implements the homonym function (also known as `transform`) present
-in many languages of functional flavor. The call `mapSlice!(fun)(tensor)`
+in many languages of functional flavor. The call `map!(fun)(tensor)`
 returns a tensor of which elements are obtained by applying `fun`
 for all elements in `tensor`. The original tensors are
 not changed. Evaluation is done lazily.
@@ -2025,11 +1850,11 @@ See_Also:
     $(REF map, std,algorithm,iteration)
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
-template mapSlice(fun...)
+template map(fun...)
     if (fun.length)
 {
     ///
-    @fmb auto mapSlice(size_t N, Cursor)
+    @fmb auto map(size_t N, Cursor)
         (Slice!(N, Cursor) tensor)
     {
         // this static if-else block
@@ -2084,7 +1909,7 @@ pure nothrow unittest
 {
     import mir.ndslice.selection : iota;
 
-    auto s = iota(2, 3).mapSlice!(a => a * 3);
+    auto s = iota(2, 3).map!(a => a * 3);
     assert(s == [[ 0,  3,  6],
                  [ 9, 12, 15]]);
 }
@@ -2093,7 +1918,7 @@ pure nothrow unittest
 {
     import mir.ndslice.selection : iota;
 
-    assert(iota(2, 3).slice.mapSlice!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
+    assert(iota(2, 3).slice.map!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
 }
 
 /// Packed tensors.
@@ -2101,7 +1926,7 @@ pure nothrow unittest
 {
     import mir.ndslice.selection : iota, windows;
 
-    //  iota        windows     mapSlice  sums ( ndFold!"a + b" )
+    //  iota        windows     map  sums ( ndFold!"a + b" )
     //                --------------
     //  -------      |  ---    ---  |      ------
     // | 0 1 2 |  => || 0 1 || 1 2 ||  => | 8 12 |
@@ -2110,7 +1935,7 @@ pure nothrow unittest
     //                --------------
     auto s = iota(2, 3)
         .windows(2, 2)
-        .mapSlice!((a) {
+        .map!((a) {
             size_t s;
             foreach (r; a)
                 foreach (e; r)
@@ -2128,7 +1953,7 @@ pure nothrow unittest
     auto s = iota(2, 3)
         .slice
         .windows(2, 2)
-        .mapSlice!((a) {
+        .map!((a) {
             size_t s;
             foreach (r; a)
                 foreach (e; r)
@@ -2157,22 +1982,22 @@ pure nothrow unittest
 
     auto zip = assumeSameStructure!("a", "b")(sl1, sl2);
 
-    auto lazySum = zip.mapSlice!(z => z.a + z.b);
+    auto lazySum = zip.map!(z => z.a + z.b);
 
     assert(lazySum == [[ 1,  3,  5],
                        [ 7,  9, 11]]);
 }
 
 /++
-Multiple functions can be passed to `mapSlice`.
-In that case, the element type of `mapSlice` is a tuple containing
+Multiple functions can be passed to `map`.
+In that case, the element type of `map` is a tuple containing
 one element for each function.
 +/
 pure nothrow unittest
 {
     import mir.ndslice.selection : iota;
 
-    auto s = iota(2, 3).mapSlice!("a + a", "a * a");
+    auto s = iota(2, 3).map!("a + a", "a * a");
 
     auto sums     = [[0, 2, 4], [6,  8, 10]];
     auto products = [[0, 1, 4], [9, 16, 25]];
@@ -2187,13 +2012,13 @@ pure nothrow unittest
 }
 
 /++
-You may alias `mapSlice` with some function(s) to a symbol and use it separately:
+You may alias `map` with some function(s) to a symbol and use it separately:
 +/
 pure nothrow unittest
 {
     import std.conv : to;
     import mir.ndslice.selection : iota;
 
-    alias stringize = mapSlice!(to!string);
+    alias stringize = map!(to!string);
     assert(stringize(iota(2, 3)) == [["0", "1", "2"], ["3", "4", "5"]]);
 }

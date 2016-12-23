@@ -1978,7 +1978,10 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         if (this.unpack.anyEmpty)
                 return true;
         static if (N > 1 && kind == SliceKind.continious && rkind == SliceKind.continious)
+        {
+            import mir.ndslice.selection : flattened;
             return opEqualsImpl(this.unpack.flattened, rslice.unpack.flattened);
+        }
         else
             return opEqualsImpl(this.unpack, rslice.unpack);
     }
@@ -2243,7 +2246,10 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RCursor)(Slice!(rkind, rpacks, RCursor) value)
         {
             static if (N > 1 && rpacks == packs && kind == SliceKind.continious && rkind == SliceKind.continious)
+            {
+                import mir.ndslice.selection : flattened;
                 this.flattened.opIndexOpAssignImplSlice!op(value.flattened);
+            }
             else
             {
                 auto ls = this;
@@ -2793,7 +2799,10 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         private void opIndexOpAssignImplValue(string op, T)(T value)
         {
             static if (N > 1 && kind == SliceKind.continious)
+            {
+                import mir.ndslice.selection : flattened;
                 this.flattened.opIndexOpAssignImplValue!op(value);
+            }
             else
             {
                 auto sl = this;
@@ -3287,15 +3296,6 @@ private bool opEqualsImpl
 //        assert(range[7] == 333);
 //    }
 //}
-
-Slice!(SliceKind.continious, [1], Cursor) flattened(size_t[] packs, Cursor)(Slice!(SliceKind.continious, packs, Cursor) slice)
-    if (packs.length == 1)
-{
-    mixin _DefineRet;
-    ret._lengths[0] = slice._lengths.lengthsProduct;
-    ret._cursor = slice._cursor;
-    return ret;
-}
 
 Slice!(SliceKind.universal, packs, Cursor) universal(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
 {
