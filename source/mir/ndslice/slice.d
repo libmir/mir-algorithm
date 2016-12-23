@@ -330,7 +330,7 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Cursor)
         {
             ret._strides[i] = stride;
             static if(i)
-                stride *= length[i];
+                stride *= lengths[i];
         }
     }
     ret._cursor = slice._cursor;
@@ -1743,7 +1743,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popFront(size_t dimension = 0)()
-        if (dimension < packs[0])
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
         _lengths[dimension]--;
@@ -1758,7 +1758,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popBack(size_t dimension = 0)()
-        if (dimension < packs[0])
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
         --_lengths[dimension];
@@ -1766,7 +1766,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popFrontExactly(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0])
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
     {
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
@@ -1776,7 +1776,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popBackExactly(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0])
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
     {
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
@@ -1785,7 +1785,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popFrontN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0])
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
     {
         import std.algorithm.comparison : min;
         popFrontExactly!dimension(min(n, _lengths[dimension]));
@@ -1793,7 +1793,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popBackN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0])
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
     {
         import std.algorithm.comparison : min;
         popBackExactly!dimension(min(n, _lengths[dimension]));
@@ -1805,7 +1805,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     {
         import std.range.primitives;
         import mir.ndslice.selection : iota;
-        auto slice = iota(10, 20, 30);
+        auto slice = iota(10, 20, 30).canonical;
 
         static assert(isRandomAccessRange!(typeof(slice)));
         static assert(hasSlicing!(typeof(slice)));
@@ -1897,7 +1897,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     unittest
     {
         import mir.ndslice.selection : iota;
-        auto s = iota(2, 3);
+        auto s = iota(2, 3).canonical;
         assert(!s.anyEmpty);
         s.popFrontExactly!1(3);
         assert(s.anyEmpty);
@@ -3321,6 +3321,30 @@ Slice!(SliceKind.universal, packs, Cursor) universal(SliceKind kind, size_t[] pa
                 static if (i)
                     ball *= slice._lengths[i];
             }
+        }
+        ret._cursor = slice._cursor;
+        return ret;
+    }
+}
+
+Slice!(packs.sum == 1 ? SliceKind.continious : SliceKind.canonical, packs, Cursor)
+    canonical
+    (SliceKind kind, size_t[] packs, Cursor)
+    (Slice!(kind, packs, Cursor) slice)
+    if (kind == SliceKind.continious || kind == SliceKind.canonical)
+{
+    static if (kind == SliceKind.canonical || packs.sum == 1)
+        return slice;
+    else
+    {
+        mixin _DefineRet;
+        foreach (i; Iota!(slice.N))
+            ret._lengths[i] = slice._lengths[i];
+        ptrdiff_t ball = 1;
+        foreach_reverse (i; Iota!(ret.S))
+        {
+            ball *= slice._lengths[i + 1];
+            ret._strides[i] = ball;
         }
         ret._cursor = slice._cursor;
         return ret;

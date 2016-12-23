@@ -80,7 +80,7 @@ pack(size_t p, SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Curso
     static assert(p < packs[0], "pack = " ~ p.stringof
                 ~ " should be less than packs[0] = "~ packs[0].stringof
                 ~ tailErrorMessage!());
-    with (slice) return typeof(return)(_lengths, _strides, _cursor);
+    return typeof(return)(slice._lengths, slice._strides, slice._cursor);
 }
 
 Slice!(kind, [p, packs[0] - p] ~ packs[1 .. $], Cursor)
@@ -90,7 +90,7 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Curs
     static assert(p < packs[0], "pack = " ~ p.stringof
                 ~ " should be less than packs[0] = "~ packs[0].stringof
                 ~ tailErrorMessage!());
-    with (slice) return typeof(return)(_lengths, _strides, _cursor);
+    return typeof(return)(slice._lengths, slice._strides, slice._cursor);
 }
 
 /////
@@ -174,7 +174,7 @@ Slice!(kind, [packs.sum], Cursor) unpack(SliceKind kind, size_t[] packs, Cursor)
     static if (packs.length == 1)
         return slice;
     else
-        with (slice) return typeof(return)(_lengths, _strides, _cursor);
+        return typeof(return)(slice._lengths, slice._strides, slice._cursor);
 }
 
 /++
@@ -264,7 +264,8 @@ pure nothrow unittest
     static assert(is(typeof(e) == size_t));
 }
 
-@safe @nogc pure nothrow unittest
+//@safe @nogc pure nothrow 
+unittest
 {
     import mir.ndslice.slice;
     static assert(is(typeof(slice!int(20)
@@ -280,23 +281,24 @@ pure nothrow unittest
         .evertPack()
         )
          == Slice!(SliceKind.universal, [2, 1], int*)));
+    auto s = slice!int(6).universal.sliced(1,2,3);
     static assert(is(typeof(
         slice!int(6)
-        //.universal,
+        .universal
         .sliced(1,2,3)
-        .evertPack())
-         == Slice!(SliceKind.continious, [3], int*)));
+        .evertPack)
+         == Slice!(SliceKind.universal, [3], int*)));
 }
 
 
-/////
-//pure nothrow unittest
-//{
-//    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
-//    auto b = a.pack!(2, 3).unpack();
-//    static assert(is(typeof(a) == typeof(b)));
-//    assert(a == b);
-//}
+///
+pure nothrow unittest
+{
+    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
+    auto b = a.pack!2.unpack;
+    static assert(is(typeof(a) == typeof(b)));
+    assert(a == b);
+}
 
 /++
 Returns a slice, the elements of which are equal to the initial flattened index value.
@@ -419,13 +421,6 @@ struct IotaCursor(I)
     }
 }
 
-
-version(none):
-
-
-@fmb:
-
-
 /++
 Returns a 1-dimensional slice over the main diagonal of an n-dimensional slice.
 `diagonal` can be generalized with other selectors such as
@@ -437,25 +432,33 @@ Params:
 Returns:
     1-dimensional slice composed of diagonal elements
 +/
-Slice!(1, Cursor) diagonal(size_t N, Cursor)(Slice!(N, Cursor) slice)
+Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Cursor) 
+    diagonal
+    (SliceKind kind, size_t[] packs, Cursor)
+    (Slice!(kind, packs, Cursor) slice)
 {
-    auto NewN = slice.PureN - N + 1;
-    mixin _DefineRet;
-    ret._lengths[0] = slice._lengths[0];
-    ret._strides[0] = slice._strides[0];
-    foreach (i; Iota!(1, N))
+    static if (packs[0] == 1)
     {
-        if (ret._lengths[0] > slice._lengths[i])
-            ret._lengths[0] = slice._lengths[i];
-        ret._strides[0] += slice._strides[i];
+        return slice;
     }
-    foreach (i; Iota!(1, ret.PureN))
+    else
     {
-        ret._lengths[i] = slice._lengths[i + N - 1];
-        ret._strides[i] = slice._strides[i + N - 1];
+        mixin _DefineRet;
+        ret._lengths[0] = slice._lengths[0];
+        foreach (i; Iota!(1, packs[0]))
+            if (ret._lengths[0] > slice._lengths[i])
+                ret._lengths[0] = slice._lengths[i];
+        foreach (i; Iota!(1, ret.N))
+            ret._lengths[i] = slice._lengths[i + packs[0] - 1];
+        auto strides = slice.unpack.strides;
+        ret._strides[0] = strides[0];
+        foreach (i; Iota!(1, packs[0]))
+            ret._strides[0] += strides[i];
+        foreach (i; Iota!(1, ret.S))
+            ret._strides[i] = strides[i + packs[0] - 1];
+        ret._cursor = slice._cursor;
+        return ret;
     }
-    ret._cursor = slice._cursor;
-    return ret;
 }
 
 /// Matrix, main diagonal
@@ -506,9 +509,9 @@ pure nothrow unittest
 }
 
 /// Matrix, subdiagonal
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow
+unittest
 {
-    import mir.ndslice.iteration : dropOne;
     //  -------
     // | 0 1 2 |
     // | 3 4 5 |
@@ -516,7 +519,9 @@ pure nothrow unittest
     //->
     // | 1 5 |
     static immutable d = [1, 5];
-    assert(iota(2, 3).dropOne!1.diagonal == d);
+    auto a = iota(2, 3).canonical;
+    a.popFront!1;
+    assert(a.diagonal == d);
 }
 
 /// Matrix, antidiagonal
@@ -530,7 +535,7 @@ pure nothrow unittest
     //->
     // | 1 3 |
     static immutable d = [1, 3];
-    assert(iota(2, 3).dropToHypercube.reversed!1.diagonal == d);
+    assert(iota(2, 3).universal.dropToHypercube.reversed!1.diagonal == d);
 }
 
 /// 3D, main diagonal
@@ -552,7 +557,6 @@ pure nothrow unittest
 /// 3D, subdiagonal
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.iteration : dropOne;
     //  -----------
     // |  0   1  2 |
     // |  3   4  5 |
@@ -563,11 +567,14 @@ pure nothrow unittest
     //->
     // | 1 11 |
     static immutable d = [1, 11];
-    assert(iota(2, 2, 3).dropOne!2.diagonal == d);
+    auto a = iota(2, 2, 3).canonical;
+    a.popFront!2;
+    assert(a.diagonal == d);
 }
 
 /// 3D, diagonal plain
-@nogc @safe pure nothrow unittest
+@nogc @safe pure nothrow
+unittest
 {
     //  -----------
     // |  0   1  2 |
@@ -616,7 +623,11 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(N, Slice!(N+1, Cursor)) blocks(size_t N, Cursor)(Slice!(N, Cursor) slice, size_t[N] lengths...)
+Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
+    blocks
+    (SliceKind kind, size_t[] packs, Cursor, size_t N)
+    (Slice!(kind, packs, Cursor) slice, size_t[N] lengths...)
+        if (packs[0] == N)
 in
 {
     foreach (i, length; lengths)
@@ -626,19 +637,25 @@ in
 body
 {
     mixin _DefineRet;
-    foreach (dimension; Iota!(0, N))
+    foreach (dimension; Iota!(packs[0]))
     {
         ret._lengths[dimension] = slice._lengths[dimension] / lengths[dimension];
-        ret._strides[dimension] = slice._strides[dimension];
+        ret._lengths[dimension + packs[0]] = lengths[dimension];
+    }
+    foreach (dimension; Iota!(packs[0], slice.N))
+    {
+        ret._lengths[dimension + packs[0]] = slice._lengths[dimension];
+    }
+    auto strides = slice.unpack.strides;
+    foreach (dimension; Iota!(packs[0]))
+    {
+        ret._strides[dimension] = strides[dimension];
         if (ret._lengths[dimension]) //do not remove `if (...)`
             ret._strides[dimension] *= lengths[dimension];
-        ret._lengths[dimension + N] = lengths[dimension];
-        ret._strides[dimension + N] = slice._strides[dimension];
     }
-    foreach (dimension; Iota!(N, slice.PureN))
+    foreach (dimension; Iota!(packs[0], ret.S))
     {
-        ret._lengths[dimension + N] = slice._lengths[dimension];
-        ret._strides[dimension + N] = slice._strides[dimension];
+        ret._strides[dimension] = strides[dimension - packs[0]];
     }
     ret._cursor = slice._cursor;
     return ret;
@@ -651,8 +668,9 @@ pure nothrow unittest
     auto slice = slice!int(5, 8);
     auto blocks = slice.blocks(2, 3);
     int i;
-    foreach (block; blocks.flattened)
-        block[] = ++i;
+    foreach (blocksRaw; blocks)
+        foreach (block; blocksRaw)
+            block[] = ++i;
 
     assert(blocks ==
         [[[[1, 1, 1], [1, 1, 1]],
@@ -702,7 +720,8 @@ pure nothrow unittest
 }
 
 /// Matrix divided into vertical blocks
-pure nothrow unittest
+//pure nothrow
+unittest
 {
     import mir.ndslice.slice;
     auto slice = slice!int(5, 13);
@@ -714,7 +733,7 @@ pure nothrow unittest
         .pack!2;
 
     int i;
-    foreach (block; blocks.flattened)
+    foreach (block; blocks)
         block[] = ++i;
 
     assert(slice ==
@@ -724,6 +743,8 @@ pure nothrow unittest
          [1, 1, 1,  2, 2, 2,  3, 3, 3,  4, 4, 4,  0],
          [1, 1, 1,  2, 2, 2,  3, 3, 3,  4, 4, 4,  0]]);
 }
+
+version(none):
 
 /++
 Returns an n-dimensional slice of n-dimensional overlapping windows.
@@ -2053,7 +2074,7 @@ template mapSlice(fun...)
         {
             alias M = Map!(SlicePtr!Cursor, _fun);
             alias R = Slice!(N, M);
-            with(tensor) return R(_lengths, _strides, M(_cursor));
+            return R(tensor._lengths, tensor._strides, M(tensor._cursor));
         }
     }
 }
