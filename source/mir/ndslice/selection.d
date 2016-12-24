@@ -269,11 +269,11 @@ unittest
     import mir.ndslice.slice;
     static assert(is(typeof(slice!int(20)
         .evertPack)
-         == Slice!(SliceKind.continious, [1], int*)));
+         == Slice!(SliceKind.continuous, [1], int*)));
     static assert(is(typeof(slice!int(20)
         .sliced(20)
         .evertPack())
-         == Slice!(SliceKind.continious, [1], int*)));
+         == Slice!(SliceKind.continuous, [1], int*)));
     static assert(is(typeof(slice!int(6)
         .sliced(1,2,3)
         .sliced(3)
@@ -312,7 +312,7 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF IotaSlice), $(LREF ndiota)
 +/
-Slice!(SliceKind.continious, [N], IotaCursor!I)
+Slice!(SliceKind.continuous, [N], IotaCursor!I)
 iota(I = size_t, size_t N)(size_t[N] lengths...)
     if (isIntegral!I || isPointer!I)
 {
@@ -321,7 +321,7 @@ iota(I = size_t, size_t N)(size_t[N] lengths...)
 }
 
 ///ditto
-Slice!(SliceKind.continious, [N], IotaCursor!I)
+Slice!(SliceKind.continuous, [N], IotaCursor!I)
 iota(I = size_t, size_t N)(size_t[N] lengths, I start)
     if (isIntegral!I || isPointer!I)
 {
@@ -574,7 +574,7 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
+Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
     blocks
     (SliceKind kind, size_t[] packs, Cursor, size_t N)
     (Slice!(kind, packs, Cursor) slice, size_t[N] lengths...)
@@ -707,7 +707,7 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
+Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
     windows
     (SliceKind kind, size_t[] packs, Cursor, size_t N)
     (Slice!(kind, packs, Cursor) slice, size_t[N] lengths...)
@@ -1081,10 +1081,10 @@ unittest
     assert(pElements[$-1][$-1] == iota([7], 2513));
 }
 
-Slice!(SliceKind.continious, 1 ~ packs[1 .. $], Cursor) 
+Slice!(SliceKind.continuous, 1 ~ packs[1 .. $], Cursor) 
     flattened
     (size_t[] packs, Cursor)
-    (Slice!(SliceKind.continious, packs, Cursor) slice)
+    (Slice!(SliceKind.continuous, packs, Cursor) slice)
 {
     static if (packs[0] == 1)
     {
@@ -1259,7 +1259,7 @@ Params:
 Returns:
     random access range composed of elements of the `slice`
 +/
-Slice!(SliceKind.continious, [1], FlattenedCursor!(kind, packs, Cursor))
+Slice!(SliceKind.continuous, [1], FlattenedCursor!(kind, packs, Cursor))
     flattened
     (SliceKind kind, size_t[] packs, Cursor)
     (Slice!(kind, packs, Cursor) slice)
@@ -1506,7 +1506,7 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF ndIotaField), $(LREF iota)
 +/
-Slice!(SliceKind.continious, [N], ShellCursor!(ndIotaField!N))
+Slice!(SliceKind.continuous, [N], ShellCursor!(ndIotaField!N))
     ndiota
     (size_t N)
     (size_t[N] lengths...)
@@ -1569,7 +1569,7 @@ Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 See_also: $(REF repeat, std,range)
 +/
-Slice!(SliceKind.continious, [M], RepeatCursor!T)
+Slice!(SliceKind.continuous, [M], RepeatCursor!T)
     repeat(T, size_t M)(T value, size_t[M] lengths...)
     if (M && !is(T : Slice!(kind, packs, Cursor), SliceKind kind, size_t[] packs, Cursor))
 {
@@ -1581,7 +1581,7 @@ Slice!(SliceKind.continious, [M], RepeatCursor!T)
 }
 
 /// ditto
-Slice!(kind == SliceKind.continious ? SliceKind.canonical : kind, M ~ packs, Cursor)
+Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, M ~ packs, Cursor)
     repeat
     (SliceKind kind, size_t[] packs, Cursor, size_t M)
     (Slice!(kind, packs, Cursor) slice, size_t[M] lengths...)
