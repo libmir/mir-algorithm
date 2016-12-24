@@ -1513,35 +1513,30 @@ pure nothrow unittest
                   [3.0, 3.0, 3.0]]);
 }
 
+
 /++
 +/
-Slice!(SliceKind.continuous, [1], FieldIterator!(BitField!RandomAccess))
+Slice!(kind, packs, FieldIterator!(BitField!Iterator))
     bitwise
-    (RandomAccess)
-    (RandomAccess ra)
-    if (__traits(compiles, {size_t len = RandomAccess.init.length;}) && isIntegral!(typeof(RandomAccess.init[size_t.init])))
+    (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
+    (Slice!(kind, packs, Iterator) slice)
+    if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
 {
-    return .bitwise(ra, ra.length * typeof(RandomAccess.init[size_t.init]).sizeof * 8);
+    mixin _DefineRet;
+    foreach(i; Iota!(ret.N))
+        ret._lengths[i] = slice._lengths[i];
+    ret._lengths[$ - 1] *= I.sizeof * 8;
+    foreach(i; Iota!(ret.S))
+        ret._strides[i] = slice._strides[i];
+    ret._iterator = slice._iterator.bitField.fieldIterator;
+    return ret;
 }
-
-/// ditto
-Slice!(SliceKind.continuous, [M], FieldIterator!(BitField!RandomAccess))
-    bitwise
-    (RandomAccess, size_t M)
-    (RandomAccess ra, size_t[M] lengths...)
-    if (isIntegral!(typeof(RandomAccess.init[size_t.init])))
-{
-    static if (__traits(compiles, {size_t len = RandomAccess.init.length;}))
-        assert(ra.length <= lengths.lengthsProduct);
-    return ra.bitField.fieldIterator.sliced(lengths);
-}
-
 
 ///
 unittest
 {
     size_t[10] data;
-    auto arr = data[].bitwise;
+    auto arr = data[].ptr.sliced(10).bitwise;
     arr[111] = true;
     assert(arr[111]);
     
@@ -1553,18 +1548,18 @@ unittest
     assert(arr[100] == false);
 }
 
-///
-unittest
-{
-    short[10] data;
-    auto arr = data[]
-        .bitwise(20, data.length * short.sizeof * 8 / 20)
-        .universal;
-    arr[11, 3] = true;
-    assert(arr[11][3]);
-    arr = arr[2 .. $, 1 .. $];
-    assert(arr[9, 2]);
-}
+/////
+//unittest
+//{
+//    short[10] data;
+//    auto arr = data[]
+//        .bitwise(20, data.length * short.sizeof * 8 / 20)
+//        .universal;
+//    arr[11, 3] = true;
+//    assert(arr[11][3]);
+//    arr = arr[2 .. $, 1 .. $];
+//    assert(arr[9, 2]);
+//}
 
 
 version(none):
