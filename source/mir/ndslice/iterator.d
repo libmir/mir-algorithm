@@ -37,6 +37,9 @@ struct IotaIterator(I)
         if (op == `+` || op == `-`) { mixin(`_iterator ` ~ op ~ `= index;`); }
 
     mixin _opBinary;
+
+    ptrdiff_t opCmp()(IotaIterator left)
+    { return this._iterator - left._iterator; }
 }
 
 ///
@@ -49,6 +52,7 @@ struct IotaIterator(I)
     iterator++;
     assert(*iterator == 1);
     assert(iterator[2] == 3);
+    assert(iterator[-1] == 0);
     iterator--;
     assert(*iterator == 0);
 
@@ -58,6 +62,7 @@ struct IotaIterator(I)
 
     // construction
     assert(*IotaIterator!int(3) == 3);
+    assert(iterator - 1 < iterator);
 }
 
 ///
