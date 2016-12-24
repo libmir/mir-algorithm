@@ -1233,7 +1233,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     else
         alias DeepElemType = Slice!(kind, packs[1 .. $], Cursor);
 
-    enum hasAccessByRef = isPointer!Cursor || __traits(compiles, &_cursor[0]);
+    enum hasAccessByRef = __traits(compiles, &_cursor[0]);
 
     enum PureIndexLength(Slices...) = Filter!(isIndex, Slices).length;
 
@@ -1698,7 +1698,10 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             if (dimension == 0)
         {
             assert(!empty!dimension);
-            return *_cursor = value;
+            static if (__traits(compiles, *_cursor = value))
+                return *_cursor = value;
+            else
+                _cursor[0] = value;
         }
     }
 
@@ -2144,16 +2147,19 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             enum bool shrink = kind == SliceKind.canonical && slices.length == N;
             static if (shrink)
             {
-                auto slice = slices[$-1];
-                static if (isIndex!(Slices[i]))
                 {
-                    assert(slice < _lengths[i], "Slice.opIndex: index must be less than length");
-                    stride += slice;
-                }
-                else
-                {
-                    stride += slice.i;
-                    ret._lengths[j!i] = slice.j - slice.i;
+                    enum i = Slices.length - 1;
+                    auto slice = slices[i];
+                    static if (isIndex!(Slices[i]))
+                    {
+                        assert(slice < _lengths[i], "Slice.opIndex: index must be less than length");
+                        stride += slice;
+                    }
+                    else
+                    {
+                        stride += slice.i;
+                        ret._lengths[j!i] = slice.j - slice.i;
+                    }
                 }
             }
             static if (kind == SliceKind.universal || kind == SliceKind.canonical)

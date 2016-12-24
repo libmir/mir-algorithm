@@ -1081,173 +1081,6 @@ unittest
     assert(pElements[$-1][$-1] == iota([7], 2513));
 }
 
-Slice!(SliceKind.continious, 1 ~ packs[1 .. $], Cursor) 
-    flattened
-    (size_t[] packs, Cursor)
-    (Slice!(SliceKind.continious, packs, Cursor) slice)
-{
-    static if (packs[0] == 1)
-    {
-        return slice;
-    }
-    else
-    {
-        mixin _DefineRet;
-        ret._lengths[0] = slice._lengths[0 .. packs[0]].lengthsProduct;
-        foreach(i; Iota!(1, ret.N))
-            ret._lengths[i] = slice._lengths[i - 1 + packs[0]];
-        ret._cursor = slice._cursor;
-        return ret;
-    }
-}
-
-struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
-    if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
-{
-    ///
-    Slice!(kind, packs, Cursor) _slice;
-    ///
-    ptrdiff_t[packs[0]] _indexes;
-
-
-    private sizediff_t getShift(size_t n)
-    {
-        sizediff_t _shift;
-        n += _indexes[$ - 1];
-        with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
-        {
-            immutable v = n / _lengths[i];
-            n %= _lengths[i];
-            static if (i == _slice.S)
-                _shift += (n - _indexes[i]);
-            else
-                _shift += (n - _indexes[i]) * _strides[i];
-            n = _indexes[i - 1] + v;
-        }
-        debug (ndslice) assert(n < _slice._lengths[0]);
-        with (_slice)
-            _shift += (n - _indexes[0]) * _strides[0];
-        return _shift;
-    }
-
-    ///
-    auto ref opIndex(size_t index)
-    {
-        static if (packs.length == 1)
-        {
-            return _slice._cursor[getShift(index)];
-        }
-        else with (_slice)
-        {
-            alias M = DeepElemType.N;
-            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor + getShift(index));
-        }
-    }
-
-    //static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
-    /////
-    //auto opIndexAssign(E)(E elem, size_t index)
-    //{
-    //    static if (N == PureN)
-    //    {
-    //        return _slice._cursor[getShift(index)] = elem;
-    //    }
-    //    else
-    //    {
-    //        static assert(0,
-    //            "ByElement.opIndexAssign is not implemented for packed slices."
-    //            ~ "Use additional empty slicing `elemsOfSlice[index][] = value`"
-    //            ~ tailErrorMessage());
-    //    }
-    //}
-
-    ///
-    FlattenedCursor opBinary(string op)(size_t index) const
-    {
-        pragma(inline, true);
-        FlattenedCursor ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ///
-    auto ref opUnary(string op : "*")()
-    {
-        static if (packs.length == 1)
-        {
-            return *_slice._cursor;
-        }
-        else with (_slice)
-        {
-            alias M = DeepElemType.N;
-            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor);
-        }
-    }
-
-    void opUnary(string op)()
-        if (op == "--" || op == "++")
-    {
-        with(_slice) foreach_reverse (i; Iota!(packs[0]))
-        {
-            static if (i == _slice.S)
-                mixin(op ~ `_cursor;`);
-            else
-                mixin(`_cursor ` ~ op[0] ~ `= _strides[i];`);
-            mixin (op ~ `_indexes[i];`);
-            static if (op == "++")
-            {
-                if (_indexes[i] < _lengths[i])
-                    return;
-                //debug (ndslice) assert(_indexes[i] == _lengths[i]);
-                static if (i == _slice.S)
-                    _cursor -= _lengths[i];
-                else
-                    _cursor -= _lengths[i] * _strides[i];
-                _indexes[i] = 0;
-            }
-            else
-            {
-                if (_indexes[i] >= 0)
-                    return;
-                static if (i == _slice.S)
-                    _cursor += _lengths[i];
-                else
-                    _cursor += _lengths[i] * _strides[i];
-                _indexes[i] = _lengths[i] - 1;
-            }
-        }
-    }
-
-    void opOpAssign(string op : "+")(size_t n)
-    {
-        sizediff_t _shift;
-        n += _indexes[$ - 1];
-        with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
-        {
-            immutable v = n / _lengths[i];
-            n %= _lengths[i];
-            static if (i == _slice.S)
-                _shift += (n - _indexes[i]);
-            else
-                _shift += (n - _indexes[i]) * _strides[i];
-            _indexes[i] = n;
-            n = _indexes[i - 1] + v;
-        }
-        assert(n <= _slice._lengths[0]);
-        with (_slice)
-        {
-            _shift += (n - _indexes[0]) * _strides[0];
-            _indexes[0] = n;
-        }
-        _slice._cursor += _shift;
-    }
-
-    void opOpAssign(string op : "-")(size_t n)
-    {
-        this += this.elementsCount - n;
-    }
-}
-
 /++
 Returns a random access range of all elements of a slice.
 The order of elements is preserved.
@@ -1271,6 +1104,26 @@ Slice!(SliceKind.continious, [1], FlattenedCursor!(kind, packs, Cursor))
     return ret;
 }
 
+/// ditto
+Slice!(SliceKind.continious, 1 ~ packs[1 .. $], Cursor) 
+    flattened
+    (size_t[] packs, Cursor)
+    (Slice!(SliceKind.continious, packs, Cursor) slice)
+{
+    static if (packs[0] == 1)
+    {
+        return slice;
+    }
+    else
+    {
+        mixin _DefineRet;
+        ret._lengths[0] = slice._lengths[0 .. packs[0]].lengthsProduct;
+        foreach(i; Iota!(1, ret.N))
+            ret._lengths[i] = slice._lengths[i - 1 + packs[0]];
+        ret._cursor = slice._cursor;
+        return ret;
+    }
+}
 
 /// Regular slice
 @safe @nogc pure nothrow unittest
@@ -1657,6 +1510,60 @@ pure nothrow unittest
     assert(sl == [[3.0, 3.0, 3.0],
                   [3.0, 3.0, 3.0]]);
 }
+
+/++
++/
+Slice!(SliceKind.continious, [1], ShellCursor!(BitField!RandomAccess))
+    bitwise
+    (RandomAccess)
+    (RandomAccess ra)
+    if (__traits(compiles, {size_t len = RandomAccess.init.length;}) && isIntegral!(typeof(RandomAccess.init[size_t.init])))
+{
+    return .bitwise(ra, ra.length * typeof(RandomAccess.init[size_t.init]).sizeof * 8);
+}
+
+/// ditto
+Slice!(SliceKind.continious, [M], ShellCursor!(BitField!RandomAccess))
+    bitwise
+    (RandomAccess, size_t M)
+    (RandomAccess ra, size_t[M] lengths...)
+    if (isIntegral!(typeof(RandomAccess.init[size_t.init])))
+{
+    static if (__traits(compiles, {size_t len = RandomAccess.init.length;}))
+        assert(ra.length <= lengths.lengthsProduct);
+    return ra.bitField.shellCursor.sliced(lengths);
+}
+
+
+///
+unittest
+{
+    size_t[10] data;
+    auto arr = data[].bitwise;
+    arr[111] = true;
+    assert(arr[111]);
+    
+    arr.popFront;
+    assert(arr[110]);
+    arr.opIndexAssign(true);
+    arr[110] = false;
+    arr = arr[10 .. $];
+    assert(arr[100] == false);
+}
+
+///
+unittest
+{
+    short[10] data;
+    auto arr = data[]
+        .bitwise(20, data.length * short.sizeof * 8 / 20)
+        .universal;
+    arr[11, 3] = true;
+    assert(arr[11][3]);
+    arr = arr[2 .. $, 1 .. $];
+    assert(arr[9, 2]);
+}
+
 
 version(none):
 
