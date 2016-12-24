@@ -1570,10 +1570,14 @@ unittest
 unittest
 {
     size_t[10] data;
-    auto bits = data[].fieldIterator.sliced(10).bitwise;
-    assert(bits.length == data.length * size_t.sizeof * 8);
+    auto slice = data[].fieldIterator.sliced(10);
+    slice.popFrontExactly(2);
+    auto bits_normal = data[].ptr.sliced(10).bitwise;
+    auto bits = slice.bitwise;
+    assert(bits.length == (data.length - 2) * size_t.sizeof * 8);
     bits[111] = true;
     assert(bits[111]);
+    assert(bits_normal[111 + size_t.sizeof * 2 * 8]);
     
     bits.popFront;
     assert(bits[110]);
@@ -1582,20 +1586,6 @@ unittest
     bits = bits[10 .. $];
     assert(bits[100] == false);
 }
-
-/////
-//unittest
-//{
-//    short[10] data;
-//    auto arr = data[]
-//        .bitwise(20, data.length * short.sizeof * 8 / 20)
-//        .universal;
-//    arr[11, 3] = true;
-//    assert(arr[11][3]);
-//    arr = arr[2 .. $, 1 .. $];
-//    assert(arr[9, 2]);
-//}
-
 
 version(none):
 
