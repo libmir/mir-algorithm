@@ -38,6 +38,9 @@ struct IotaIterator(I)
 
     mixin _opBinary;
 
+    bool opEquals()(typeof(this) left) const
+    { return this._index == left._index; }
+
     ptrdiff_t opCmp()(typeof(this) left) const
     { return this._index - left._index; }
 }
@@ -93,7 +96,10 @@ struct FieldIterator(Field)
 
     mixin _opBinary;
 
-    ptrdiff_t opCmp()(auto ref typeof(this) left) const
+    bool opEquals()(auto ref const typeof(this) left) const
+    { return this._index == left._index; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) left) const
     { return this._index - left._index; }
 }
 
@@ -239,4 +245,20 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     { this += -n; }
 
     mixin _opBinary;
+
+    bool opEquals()(auto ref const typeof(this) left) const
+    {
+        foreach_reverse (i; Iota!(this._indexes.length))
+            if (this._indexes[i] != left._indexes[i])
+                return false;
+        return true;
+    }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) left) const
+    {
+        foreach (i; Iota!(this._indexes.length - 1))
+            if (auto ret = this._indexes[i] - left._indexes[i])
+                return ret;
+        return this._indexes[$ - 1] - left._indexes[$ - 1];
+    }
 }
