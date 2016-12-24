@@ -26,12 +26,12 @@ import mir.ndslice.internal;
 ///
 enum SliceKind
 {
-    ///
+    /// tensors with strides for all dimensions
     universal,
-    ///
+    /// has >=2 dimensions and row dimension is continuous
     canonical,
-    ///
-    continious,
+    /// flat continuous data
+    continuous,
 }
 
 template SkipDimension(size_t dimension, size_t index)
@@ -97,9 +97,9 @@ body
 {
     alias C = ImplicitlyUnqual!(typeof(cursor));
     static if (ra && isDynamicArray!Cursor)
-        alias S = Slice!(SliceKind.continious, [N], typeof(C.init[0])*);
+        alias S = Slice!(SliceKind.continuous, [N], typeof(C.init[0])*);
     else
-        alias S = Slice!(SliceKind.continious, [N], C);
+        alias S = Slice!(SliceKind.continuous, [N], C);
     static if (hasElaborateAssign!Cursor)
         S ret;
     else
@@ -321,7 +321,7 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Cursor)
         ret._lengths[i] = lengths[i];
     foreach (i; Iota!(slice.N - 1))
         ret._lengths[N + i] = slice._lengths[i + 1];
-    static if (kind != SliceKind.continious)
+    static if (kind != SliceKind.continuous)
     {
         foreach (i; Iota!(slice.S - 1))
             ret._strides[N + i] = slice._strides[i + 1];
@@ -338,7 +338,7 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Cursor)
 }
 
 // sliced slice
-//pure nothrow 
+//pure nothrow
 unittest
 {
     import mir.ndslice.selection : iota;
@@ -543,7 +543,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(SliceKind.continious, [N], Select!(ra, T*, T[]))
+Slice!(SliceKind.continuous, [N], Select!(ra, T*, T[]))
 slice(T,
     Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
     size_t N)(size_t[N] lengths...)
@@ -589,7 +589,7 @@ pure nothrow unittest
     auto tensor = slice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(SliceKind.continious, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(SliceKind.continuous, [3], int*)));
 
     // creates duplicate using `slice`
     auto dup = tensor.slice;
@@ -635,7 +635,7 @@ pure nothrow unittest
     auto tensor = uninitializedSlice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(SliceKind.continious, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(SliceKind.continuous, [3], int*)));
 }
 
 /++
@@ -793,7 +793,7 @@ struct SliceAllocationResult(size_t N, T, Flag!`replaceArrayWithPointer` ra)
     ///
     T[] array;
     ///
-    Slice!(SliceKind.continious, [N], Select!(ra, T*, T[])) slice;
+    Slice!(SliceKind.continuous, [N], Select!(ra, T*, T[])) slice;
 }
 
 /++
@@ -1201,7 +1201,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///
     enum S = kind == SliceKind.universal ? N : kind == SliceKind.canonical ? N - 1 : 0;
-    
+
     ///
     alias This = Slice!(kind, packs, Cursor);
 
@@ -1221,7 +1221,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
                 alias ElemType = Slice!(SliceKind.universal, packs.decDim, Cursor);
             else
             static if (N == 2)
-                alias ElemType = Slice!(SliceKind.continious, packs.decDim, Cursor);
+                alias ElemType = Slice!(SliceKind.continuous, packs.decDim, Cursor);
             else
                 alias ElemType = Slice!(SliceKind.canonical, packs.decDim, Cursor);
         else
@@ -1262,7 +1262,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     {
         static if (_indexes.length)
         {
-            static if (kind == SliceKind.continious)
+            static if (kind == SliceKind.continuous)
             {
                 enum E = I - 1;
                 assert(_indexes[E] < _lengths[E], indexError!(E, N));
@@ -1743,11 +1743,11 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popFront(size_t dimension = 0)()
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
         _lengths[dimension]--;
-        static if ((kind == SliceKind.continious || kind == SliceKind.canonical) && dimension + 1 == N)
+        static if ((kind == SliceKind.continuous || kind == SliceKind.canonical) && dimension + 1 == N)
             ++_cursor;
         else
         static if (kind == SliceKind.canonical || kind == SliceKind.universal)
@@ -1758,7 +1758,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popBack(size_t dimension = 0)()
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
         --_lengths[dimension];
@@ -1766,7 +1766,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popFrontExactly(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
     {
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
@@ -1776,7 +1776,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popBackExactly(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
     {
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
@@ -1785,7 +1785,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popFrontN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
     {
         import std.algorithm.comparison : min;
         popFrontExactly!dimension(min(n, _lengths[dimension]));
@@ -1793,7 +1793,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     ///ditto
     void popBackN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continious))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
     {
         import std.algorithm.comparison : min;
         popBackExactly!dimension(min(n, _lengths[dimension]));
@@ -1977,7 +1977,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         import mir.ndslice.selection : unpack;
         if (this.unpack.anyEmpty)
                 return true;
-        static if (N > 1 && kind == SliceKind.continious && rkind == SliceKind.continious)
+        static if (N > 1 && kind == SliceKind.continuous && rkind == SliceKind.continuous)
         {
             import mir.ndslice.selection : flattened;
             return opEqualsImpl(this.unpack.flattened, rslice.unpack.flattened);
@@ -2134,7 +2134,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
                 enum K = SliceKind.universal;
             else
             static if (Filter!(isIndex, Slices[0 .. $-1]).length == Slices.length - 1 || N - F == 1)
-                enum K = SliceKind.continious;
+                enum K = SliceKind.continuous;
             else
                 enum K = SliceKind.canonical;
             static if (hasElaborateAssign!Cursor)
@@ -2245,7 +2245,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     {
         private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RCursor)(Slice!(rkind, rpacks, RCursor) value)
         {
-            static if (N > 1 && rpacks == packs && kind == SliceKind.continious && rkind == SliceKind.continious)
+            static if (N > 1 && rpacks == packs && kind == SliceKind.continuous && rkind == SliceKind.continuous)
             {
                 import mir.ndslice.selection : flattened;
                 this.flattened.opIndexOpAssignImplSlice!op(value.flattened);
@@ -2798,7 +2798,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
         private void opIndexOpAssignImplValue(string op, T)(T value)
         {
-            static if (N > 1 && kind == SliceKind.continious)
+            static if (N > 1 && kind == SliceKind.continuous)
             {
                 import mir.ndslice.selection : flattened;
                 this.flattened.opIndexOpAssignImplValue!op(value);
@@ -3064,7 +3064,7 @@ unittest
     import std.algorithm,  std.conv, std.exception, std.format,
         std.functional, std.string, std.range;
 
-    Slice!(SliceKind.continious, [2], int*) toMatrix(string str)
+    Slice!(SliceKind.continuous, [2], int*) toMatrix(string str)
     {
         string[][] data = str.lineSplitter.filter!(not!empty).map!split.array;
 
@@ -3171,13 +3171,13 @@ unittest
 {
     // Arrays
     foreach (T; AliasSeq!(int, const int, immutable int))
-        static assert(is(typeof((T[]).init.sliced(3, 4)) == Slice!(SliceKind.continious, [2], T*)));
+        static assert(is(typeof((T[]).init.sliced(3, 4)) == Slice!(SliceKind.continuous, [2], T*)));
 
     // Container Array
     import std.container.array;
     Array!int ar;
     ar.length = 12;
-    Slice!(SliceKind.continious, [2], typeof(ar[])) arSl = ar[].sliced(3, 4);
+    Slice!(SliceKind.continuous, [2], typeof(ar[])) arSl = ar[].sliced(3, 4);
 
     // Implicit conversion of a range to its unqualified type.
     //import std.range : iota;
@@ -3327,11 +3327,11 @@ Slice!(SliceKind.universal, packs, Cursor) universal(SliceKind kind, size_t[] pa
     }
 }
 
-Slice!(packs.sum == 1 ? SliceKind.continious : SliceKind.canonical, packs, Cursor)
+Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Cursor)
     canonical
     (SliceKind kind, size_t[] packs, Cursor)
     (Slice!(kind, packs, Cursor) slice)
-    if (kind == SliceKind.continious || kind == SliceKind.canonical)
+    if (kind == SliceKind.continuous || kind == SliceKind.canonical)
 {
     static if (kind == SliceKind.canonical || packs.sum == 1)
         return slice;
