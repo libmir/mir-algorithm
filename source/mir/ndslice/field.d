@@ -7,15 +7,15 @@ import std.traits;
 struct BitField(Field, I = typeof(Field.init[size_t.init]))
     if (isIntegral!I)
 {
+    Field _field;
     import core.bitop: bsr;
-    private Field field;
     private enum shift = bsr(I.sizeof) + 3;
     private enum mask = (1 << shift) - 1;
 
     ///
     bool opIndex(size_t index)
     {
-        return ((field[index >> shift] & (I(1) << (index & mask)))) != 0;
+        return ((_field[index >> shift] & (I(1) << (index & mask)))) != 0;
     }
 
     static if (__traits(compiles, Field.init[size_t.init] |= I.init))
@@ -25,9 +25,9 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
         auto m = I(1) << (index & mask);
         index >>= shift;
         if (value)
-            field[index] |= m;
+            _field[index] |= m;
         else
-            field[index] &= ~m;
+            _field[index] &= ~m;
         return value;
     }
 }

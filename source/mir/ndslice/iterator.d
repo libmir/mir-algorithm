@@ -128,23 +128,23 @@ struct IotaIterator(I)
 struct FieldIterator(Field)
 {
     ///
-    size_t iterator;
+    size_t _iterator;
     ///
-    alias iterator this;
+    alias _iterator this;
     ///
-    Field field;
+    Field _field;
 
     ///
     auto ref opIndex(size_t index)
     {
-        return field[iterator + index];
+        return _field[_iterator + index];
     }
 
-    static if (!__traits(compiles, &field[iterator]) && isMutable!(typeof(field[iterator])))
+    static if (!__traits(compiles, &_field[_iterator]) && isMutable!(typeof(_field[_iterator])))
     ///
     auto opIndexAssign(T)(T value, size_t index)
     {
-        return field[iterator + index] = value;
+        return _field[_iterator + index] = value;
     }
 
     static if (__traits(compiles, Field.init[size_t.init] |= I.init))
@@ -159,14 +159,14 @@ struct FieldIterator(Field)
     ///
     auto ref opUnary(string op : "*")()
     {
-        return field[iterator];
+        return _field[_iterator];
     }
 
     ///
     auto opUnary(string op)() @safe pure nothrow @nogc @property
     {
         pragma(inline, true);
-        return mixin(op ~ `iterator`);
+        return mixin(op ~ `_iterator`);
     }
 }
 

@@ -1513,6 +1513,14 @@ pure nothrow unittest
                   [3.0, 3.0, 3.0]]);
 }
 
+private enum _bitwiseCode = q{
+    mixin _DefineRet;
+    foreach(i; Iota!(ret.N))
+        ret._lengths[i] = slice._lengths[i];
+    ret._lengths[$ - 1] *= I.sizeof * 8;
+    foreach(i; Iota!(ret.S))
+        ret._strides[i] = slice._strides[i];
+};
 
 /++
 +/
@@ -1520,15 +1528,24 @@ Slice!(kind, packs, FieldIterator!(BitField!Iterator))
     bitwise
     (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
     (Slice!(kind, packs, Iterator) slice)
+    if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical)
+        && !is(Iterator : FieldIterator!Field, Field))
+{
+    mixin(_bitwiseCode);
+    ret._iterator = slice._iterator.bitField.fieldIterator;
+    return ret;
+}
+
+/// ditto
+Slice!(kind, packs, FieldIterator!(BitField!Field))
+    bitwise
+    (SliceKind kind, size_t[] packs, Field, I = typeof(Field.init[size_t.init]))
+    (Slice!(kind, packs, FieldIterator!Field) slice)
     if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
 {
-    mixin _DefineRet;
-    foreach(i; Iota!(ret.N))
-        ret._lengths[i] = slice._lengths[i];
-    ret._lengths[$ - 1] *= I.sizeof * 8;
-    foreach(i; Iota!(ret.S))
-        ret._strides[i] = slice._strides[i];
-    ret._iterator = slice._iterator.bitField.fieldIterator;
+    mixin(_bitwiseCode);
+    ret._iterator = slice._iterator._field.bitField.fieldIterator;
+    ret._iterator._iterator = slice._iterator._iterator * I.sizeof * 8;
     return ret;
 }
 
@@ -1536,16 +1553,34 @@ Slice!(kind, packs, FieldIterator!(BitField!Iterator))
 unittest
 {
     size_t[10] data;
-    auto arr = data[].ptr.sliced(10).bitwise;
-    arr[111] = true;
-    assert(arr[111]);
+    auto bits = data[].ptr.sliced(10).bitwise;
+    assert(bits.length == data.length * size_t.sizeof * 8);
+    bits[111] = true;
+    assert(bits[111]);
     
-    arr.popFront;
-    assert(arr[110]);
-    arr.opIndexAssign(true);
-    arr[110] = false;
-    arr = arr[10 .. $];
-    assert(arr[100] == false);
+    bits.popFront;
+    assert(bits[110]);
+    bits[] = true;
+    bits[110] = false;
+    bits = bits[10 .. $];
+    assert(bits[100] == false);
+}
+
+///
+unittest
+{
+    size_t[10] data;
+    auto bits = data[].fieldIterator.sliced(10).bitwise;
+    assert(bits.length == data.length * size_t.sizeof * 8);
+    bits[111] = true;
+    assert(bits[111]);
+    
+    bits.popFront;
+    assert(bits[110]);
+    bits[] = true;
+    bits[110] = false;
+    bits = bits[10 .. $];
+    assert(bits[100] == false);
 }
 
 /////
