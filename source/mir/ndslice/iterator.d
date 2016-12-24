@@ -5,8 +5,27 @@ import mir.internal.utility;
 import mir.ndslice.slice: SliceKind, Slice;
 import std.traits;
 
-private mixin template _opBinary()
+/++
++/
+struct IotaIterator(I)
+    if (isIntegral!I || isPointer!I)
 {
+    ///
+    I _index;
+
+    I opUnary(string op : "*")() const
+    { return _index; }
+
+    I opUnary(string op)()
+        if (op == "--" || op == "++")
+    { return mixin(op ~ `_index`); }
+
+    I opIndex()(ptrdiff_t index) const
+    { return cast(I)(_index + index); }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == `+` || op == `-`) { mixin(`_index ` ~ op ~ `= index;`); }
+
     auto opBinary(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")
     {
@@ -14,38 +33,17 @@ private mixin template _opBinary()
         mixin(`ret ` ~ op ~ `= index;`);
         return ret;
     }
+
+    ptrdiff_t opBinary(string op : "-")(typeof(this) right) const
+    { return this._index - right._index; }
+
+    bool opEquals()(typeof(this) right) const
+    { return this._index == right._index; }
+
+    ptrdiff_t opCmp()(typeof(this) right) const
+    { return this._index - right._index; }
 }
 
-///
-struct IotaIterator(I)
-    if (isIntegral!I || isPointer!I)
-{
-    ///
-    I _index;
-
-    auto opUnary(string op : "*")()
-    { return _index; }
-
-    auto opUnary(string op)()
-        if (op == "--" || op == "++")
-    { return mixin(op ~ `_index`); }
-
-    auto opIndex(ptrdiff_t index)
-    { return cast(I)(_index + index); }
-
-    void opOpAssign(string op)(ptrdiff_t index)
-        if (op == `+` || op == `-`) { mixin(`_index ` ~ op ~ `= index;`); }
-
-    mixin _opBinary;
-
-    bool opEquals()(typeof(this) left) const
-    { return this._index == left._index; }
-
-    ptrdiff_t opCmp()(typeof(this) left) const
-    { return this._index - left._index; }
-}
-
-///
 @safe pure nothrow @nogc unittest
 {
     IotaIterator!int iterator;
@@ -62,13 +60,15 @@ struct IotaIterator(I)
     // opBinary
     assert(*(iterator + 2) == 2);
     assert(*(iterator - 3) == -3);
+    assert((iterator - 3) - iterator == -3);
 
     // construction
     assert(*IotaIterator!int(3) == 3);
     assert(iterator - 1 < iterator);
 }
 
-///
+/++
++/
 struct FieldIterator(Field)
 {
     ///
@@ -83,7 +83,7 @@ struct FieldIterator(Field)
         if (op == "++" || op == "--")
     { return mixin(op ~ `_index`); }
 
-    auto ref opIndex(ptrdiff_t index)
+    auto ref opIndex()(ptrdiff_t index)
     { return _field[_index + index]; }
 
     static if (!__traits(compiles, &_field[_index]) && isMutable!(typeof(_field[_index])))
@@ -94,20 +94,33 @@ struct FieldIterator(Field)
         if (op == "+" || op == "-")
     { mixin(`_index ` ~ op ~ `= index;`); }
 
-    mixin _opBinary;
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
 
-    bool opEquals()(auto ref const typeof(this) left) const
-    { return this._index == left._index; }
+    ptrdiff_t opBinary()(auto ref const typeof(this) right) const
+    { return this._index - right._index; }
 
-    ptrdiff_t opCmp()(auto ref const typeof(this) left) const
-    { return this._index - left._index; }
+    bool opEquals()(auto ref const typeof(this) right) const
+    { return this._index == right._index; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
+    { return this._index - right._index; }
 }
 
+/++
++/
 auto fieldIterator(Field)(Field field, ptrdiff_t _index = 0)
 {
     return FieldIterator!Field(_index, field);
 }
 
+/++
++/
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
 {
@@ -158,25 +171,28 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
             else
                 mixin(`_iterator ` ~ op[0] ~ `= _strides[i];`);
             mixin (op ~ `_indexes[i];`);
-            static if (op == "++")
+            static if (i)
             {
-                if (_indexes[i] < _lengths[i])
-                    return;
-                static if (i == _slice.S)
-                    _iterator -= _lengths[i];
+                static if (op == "++")
+                {
+                    if (_indexes[i] < _lengths[i])
+                        return;
+                    static if (i == _slice.S)
+                        _iterator -= _lengths[i];
+                    else
+                        _iterator -= _lengths[i] * _strides[i];
+                    _indexes[i] = 0;
+                }
                 else
-                    _iterator -= _lengths[i] * _strides[i];
-                _indexes[i] = 0;
-            }
-            else
-            {
-                if (_indexes[i] >= 0)
-                    return;
-                static if (i == _slice.S)
-                    _iterator += _lengths[i];
-                else
-                    _iterator += _lengths[i] * _strides[i];
-                _indexes[i] = _lengths[i] - 1;
+                {
+                    if (_indexes[i] >= 0)
+                        return;
+                    static if (i == _slice.S)
+                        _iterator += _lengths[i];
+                    else
+                        _iterator += _lengths[i] * _strides[i];
+                    _indexes[i] = _lengths[i] - 1;
+                }
             }
         }
     }
@@ -244,22 +260,39 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     void opOpAssign(string op : "-")(ptrdiff_t n)
     { this += -n; }
 
-    mixin _opBinary;
-
-    bool opEquals()(auto ref const typeof(this) left) const
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
     {
-        foreach_reverse (i; Iota!(this._indexes.length))
-            if (this._indexes[i] != left._indexes[i])
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    {
+        ptrdiff_t ret = this._indexes[0] - right._indexes[0];
+        foreach (i; Iota!(1, packs[0]))
+        {
+            ret *= _slice._lengths[i];
+            ret += this._indexes[i] - right._indexes[i];
+        }
+        return ret;
+    }
+
+    bool opEquals()(auto ref const typeof(this) right) const
+    {
+        foreach_reverse (i; Iota!(packs[0]))
+            if (this._indexes[i] != right._indexes[i])
                 return false;
         return true;
     }
 
-    ptrdiff_t opCmp()(auto ref const typeof(this) left) const
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
     {
-        foreach (i; Iota!(this._indexes.length - 1))
-            if (auto ret = this._indexes[i] - left._indexes[i])
+        foreach (i; Iota!(packs[0] - 1))
+            if (auto ret = this._indexes[i] - right._indexes[i])
                 return ret;
-        return this._indexes[$ - 1] - left._indexes[$ - 1];
+        return this._indexes[$ - 1] - right._indexes[$ - 1];
     }
 }
 
@@ -285,6 +318,7 @@ unittest
     assert(it0 == it1);
     assert(it0 <= it1);
     assert(it0 >= it1);
+
     ++it0;
     ++it0;
     ++it0;
@@ -294,6 +328,21 @@ unittest
     ++it0;
     ++it0;
     ++it0;
+
+    assert(it0 - it1 == 9);
+    assert(it1 - it0 == -9);
+
+    ++it0;
+
+    assert(it0 - it1 == 10);
+    assert(it1 - it0 == -10);
+
+    --it0;
+
+    assert(it0 - it1 == 9);
+    assert(it1 - it0 == -9);
+    assert(it0[-9] == *it1);
+    assert(*it0 == it1[9]);
 
     --it0;
     --it0;
