@@ -102,6 +102,26 @@ struct IotaCursor(I)
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    IotaCursor!int cursor;
+    assert(*cursor == 0);
+
+    // iteration
+    cursor++;
+    assert(*cursor == 1);
+    assert(cursor[2] == 3);
+    cursor--;
+    assert(cursor == 0);
+
+    // opBinary
+    assert(*(cursor + 2) == 2);
+    assert(*(cursor - 3) == -3);
+
+    // construction
+    assert(IotaCursor!int(3) == 3);
+}
 
 struct ShellCursor(Field)
 {
