@@ -5,6 +5,18 @@ import mir.internal.utility;
 import mir.ndslice.slice: SliceKind, Slice;
 import std.traits;
 
+private mixin template _opBinary()
+{
+    auto opBinary(string op, T)(const T index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+}
+
+///
 struct RepeatIterator(T)
 {
     // UT definition is from std.range
@@ -20,41 +32,24 @@ struct RepeatIterator(T)
         private alias UT = T;
     private UT _value;
 
+    auto ref opUnary(string op : "*")()
+    { return _value; }
 
-    ///
-    ref T opIndex(sizediff_t)
-    {
-        return _value;
-    }
-
-    ///
-    RepeatIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
-    {
-        RepeatIterator ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ///
-    void opOpAssign(string op)(sizediff_t)
-        if (op == `+` || op == `-`)
-    {
-    }
-
-    ///
-    ref opUnary(string op : "*")()
-    {
-        return _value;
-    }
-
-    ///
     auto ref opUnary(string op)()
         if (op == `++` || op == `--`)
-    {
-        return this;
-    }
+    { return this; }
+
+    auto ref T opIndex(size_t)
+    { return _value; }
+
+    void opOpAssign(string op)(ptrdiff_t)
+        if (op == `+` || op == `-`) {}
+
+    RepeatIterator opBinary(string op)(ptrdiff_t)
+    { return this; }
 }
 
+///
 @safe pure nothrow @nogc unittest
 {
     RepeatIterator!double val;
@@ -64,44 +59,27 @@ struct RepeatIterator(T)
     assert((val + 3)._value == 3);
 }
 
+///
 struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {
     ///
-    I iterator;
-    ///
-    alias iterator this;
+    I _iterator;
 
-    ///
-    I opIndex(size_t index) @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        return cast(I)(iterator + index);
-    }
+    auto opUnary(string op : "*")()
+    { return _iterator; }
 
-    ///
-    IotaIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        IotaIterator ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ///
-    I opUnary(string op : "*")() const @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        return iterator;
-    }
-
-    ///
-    auto opUnary(string op)() @safe pure nothrow @nogc @property
+    auto opUnary(string op)()
         if (op == "--" || op == "++")
-    {
-        pragma(inline, true);
-        return mixin(op ~ `iterator`);
-    }
+    { return mixin(op ~ `_iterator`); }
+
+    auto opIndex(size_t index)
+    { return cast(I)(_iterator + index); }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == `+` || op == `-`) { mixin(`_iterator ` ~ op ~ `= index;`); }
+
+    mixin _opBinary;
 }
 
 ///
@@ -115,59 +93,43 @@ struct IotaIterator(I)
     assert(*iterator == 1);
     assert(iterator[2] == 3);
     iterator--;
-    assert(iterator == 0);
+    assert(*iterator == 0);
 
     // opBinary
     assert(*(iterator + 2) == 2);
     assert(*(iterator - 3) == -3);
 
     // construction
-    assert(IotaIterator!int(3) == 3);
+    assert(*IotaIterator!int(3) == 3);
 }
 
+///
 struct FieldIterator(Field)
 {
     ///
     size_t _iterator;
     ///
-    alias _iterator this;
-    ///
     Field _field;
 
-    ///
+    auto ref opUnary(string op : "*")()
+    { return _field[_iterator]; }
+
+    auto ref opUnary(string op)()
+        if (op == "++" || op == "--")
+    { return mixin(op ~ `_iterator`); }
+
     auto ref opIndex(size_t index)
-    {
-        return _field[_iterator + index];
-    }
+    { return _field[_iterator + index]; }
 
     static if (!__traits(compiles, &_field[_iterator]) && isMutable!(typeof(_field[_iterator])))
-    ///
     auto opIndexAssign(T)(T value, size_t index)
-    {
-        return _field[_iterator + index] = value;
-    }
+    { return _field[_iterator + index] = value; }
 
-    static if (__traits(compiles, Field.init[size_t.init] |= I.init))
-    ///
-    FieldIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
-    {
-        FieldIterator ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
+    void opOpAssign(string op, T)(const T index)
+        if (op == "+" || op == "-")
+    { mixin(`_iterator ` ~ op ~ `= index;`); }
 
-    ///
-    auto ref opUnary(string op : "*")()
-    {
-        return _field[_iterator];
-    }
-
-    ///
-    auto opUnary(string op)() @safe pure nothrow @nogc @property
-    {
-        pragma(inline, true);
-        return mixin(op ~ `_iterator`);
-    }
+    mixin _opBinary;
 }
 
 auto fieldIterator(Field)(Field field)
@@ -179,14 +141,13 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
 {
     ///
-    Slice!(kind, packs, Iterator) _slice;
-    ///
     ptrdiff_t[packs[0]] _indexes;
+    ///
+    Slice!(kind, packs, Iterator) _slice;
 
-
-    private sizediff_t getShift(size_t n)
+    private ptrdiff_t getShift(size_t n)
     {
-        sizediff_t _shift;
+        ptrdiff_t _shift;
         n += _indexes[$ - 1];
         with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
         {
@@ -204,47 +165,6 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         return _shift;
     }
 
-    ///
-    auto ref opIndex(size_t index)
-    {
-        static if (packs.length == 1)
-        {
-            return _slice._iterator[getShift(index)];
-        }
-        else with (_slice)
-        {
-            alias M = DeepElemType.N;
-            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _iterator + getShift(index));
-        }
-    }
-
-    //static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
-    /////
-    //auto opIndexAssign(E)(E elem, size_t index)
-    //{
-    //    static if (N == PureN)
-    //    {
-    //        return _slice._iterator[getShift(index)] = elem;
-    //    }
-    //    else
-    //    {
-    //        static assert(0,
-    //            "ByElement.opIndexAssign is not implemented for packed slices."
-    //            ~ "Use additional empty slicing `elemsOfSlice[index][] = value`"
-    //            ~ tailErrorMessage());
-    //    }
-    //}
-
-    ///
-    FlattenedIterator opBinary(string op)(size_t index) const
-    {
-        pragma(inline, true);
-        FlattenedIterator ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ///
     auto ref opUnary(string op : "*")()
     {
         static if (packs.length == 1)
@@ -292,9 +212,40 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
+
+    auto ref opIndex(size_t index)
+    {
+        static if (packs.length == 1)
+        {
+            return _slice._iterator[getShift(index)];
+        }
+        else with (_slice)
+        {
+            alias M = DeepElemType.N;
+            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _iterator + getShift(index));
+        }
+    }
+
+    //static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
+    /////
+    //auto opIndexAssign(E)(E elem, size_t index)
+    //{
+    //    static if (N == PureN)
+    //    {
+    //        return _slice._iterator[getShift(index)] = elem;
+    //    }
+    //    else
+    //    {
+    //        static assert(0,
+    //            "ByElement.opIndexAssign is not implemented for packed slices."
+    //            ~ "Use additional empty slicing `elemsOfSlice[index][] = value`"
+    //            ~ tailErrorMessage());
+    //    }
+    //}
+
     void opOpAssign(string op : "+")(size_t n)
     {
-        sizediff_t _shift;
+        ptrdiff_t _shift;
         n += _indexes[$ - 1];
         with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
         {
@@ -320,4 +271,6 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     {
         this += this.elementsCount - n;
     }
+
+    mixin _opBinary;
 }

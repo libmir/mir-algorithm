@@ -1102,7 +1102,9 @@ Slice!(SliceKind.continuous, [1], FlattenedIterator!(kind, packs, Iterator))
 {
     mixin _DefineRet;
     ret._lengths[0] = slice.elementsCount;
-    ret._iterator = typeof(ret._iterator)(slice);
+    foreach(i; Iota!(ret._iterator._indexes.length))
+        ret._iterator._indexes[i] = 0;
+    ret._iterator._slice = slice;
     return ret;
 }
 
