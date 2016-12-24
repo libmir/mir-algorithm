@@ -262,3 +262,50 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         return this._indexes[$ - 1] - left._indexes[$ - 1];
     }
 }
+
+unittest
+{
+    import mir.ndslice.selection;
+    import mir.ndslice.slice;
+
+    auto it0 = iota(3, 4).universal.flattened._iterator;
+    auto it1 = it0;
+    assert(it0 == it1);
+    it0 += 5;
+    assert(it0 > it1);
+    it0 -= 5;
+    assert(*it0 == *it1);
+    assert(it0 == it1);
+    it0 += 5;
+    it0 += 7;
+    it0 -= 9;
+    assert(it0 > it1);
+    it1 += 3;
+    assert(*it0 == *it1);
+    assert(it0 == it1);
+    assert(it0 <= it1);
+    assert(it0 >= it1);
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    assert(*it0 == *it1);
+    assert(it0 == it1);
+    assert(it0 <= it1);
+    assert(it0 >= it1);
+}
