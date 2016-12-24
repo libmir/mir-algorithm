@@ -1,14 +1,14 @@
 
-module mir.ndslice.cursor;
+module mir.ndslice.iterator;
 
 import mir.internal.utility;
 import mir.ndslice.slice: SliceKind, Slice;
 import std.traits;
 
-struct RepeatCursor(T)
+struct RepeatIterator(T)
 {
     // UT definition is from std.range
-    // Store a non-qualified T when possible: This is to make RepeatCursor assignable
+    // Store a non-qualified T when possible: This is to make RepeatIterator assignable
     static if ((is(T == class) || is(T == interface)) && (is(T == const) || is(T == immutable)))
     {
         import std.typecons : Rebindable;
@@ -28,9 +28,9 @@ struct RepeatCursor(T)
     }
 
     ///
-    RepeatCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
+    RepeatIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
     {
-        RepeatCursor ret = this;
+        RepeatIterator ret = this;
         mixin(`ret ` ~ op ~ `= index;`);
         return ret;
     }
@@ -57,33 +57,33 @@ struct RepeatCursor(T)
 
 @safe pure nothrow @nogc unittest
 {
-    RepeatCursor!double val;
+    RepeatIterator!double val;
     val._value = 3;
     assert((++val)._value == 3);
     val += 2;
     assert((val + 3)._value == 3);
 }
 
-struct IotaCursor(I)
+struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {
     ///
-    I cursor;
+    I iterator;
     ///
-    alias cursor this;
+    alias iterator this;
 
     ///
     I opIndex(size_t index) @safe pure nothrow @nogc @property
     {
         pragma(inline, true);
-        return cast(I)(cursor + index);
+        return cast(I)(iterator + index);
     }
 
     ///
-    IotaCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
+    IotaIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
     {
         pragma(inline, true);
-        IotaCursor ret = this;
+        IotaIterator ret = this;
         mixin(`ret ` ~ op ~ `= index;`);
         return ret;
     }
@@ -92,7 +92,7 @@ struct IotaCursor(I)
     I opUnary(string op : "*")() const @safe pure nothrow @nogc @property
     {
         pragma(inline, true);
-        return cursor;
+        return iterator;
     }
 
     ///
@@ -100,58 +100,58 @@ struct IotaCursor(I)
         if (op == "--" || op == "++")
     {
         pragma(inline, true);
-        return mixin(op ~ `cursor`);
+        return mixin(op ~ `iterator`);
     }
 }
 
 ///
 @safe pure nothrow @nogc unittest
 {
-    IotaCursor!int cursor;
-    assert(*cursor == 0);
+    IotaIterator!int iterator;
+    assert(*iterator == 0);
 
     // iteration
-    cursor++;
-    assert(*cursor == 1);
-    assert(cursor[2] == 3);
-    cursor--;
-    assert(cursor == 0);
+    iterator++;
+    assert(*iterator == 1);
+    assert(iterator[2] == 3);
+    iterator--;
+    assert(iterator == 0);
 
     // opBinary
-    assert(*(cursor + 2) == 2);
-    assert(*(cursor - 3) == -3);
+    assert(*(iterator + 2) == 2);
+    assert(*(iterator - 3) == -3);
 
     // construction
-    assert(IotaCursor!int(3) == 3);
+    assert(IotaIterator!int(3) == 3);
 }
 
-struct ShellCursor(Field)
+struct ShellIterator(Field)
 {
     ///
-    size_t cursor;
+    size_t iterator;
     ///
-    alias cursor this;
+    alias iterator this;
     ///
     Field field;
 
     ///
     auto ref opIndex(size_t index)
     {
-        return field[cursor + index];
+        return field[iterator + index];
     }
 
-    static if (!__traits(compiles, &field[cursor]) && isMutable!(typeof(field[cursor])))
+    static if (!__traits(compiles, &field[iterator]) && isMutable!(typeof(field[iterator])))
     ///
     auto opIndexAssign(T)(T value, size_t index)
     {
-        return field[cursor + index] = value;
+        return field[iterator + index] = value;
     }
 
     static if (__traits(compiles, Field.init[size_t.init] |= I.init))
     ///
-    ShellCursor opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
+    ShellIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
     {
-        ShellCursor ret = this;
+        ShellIterator ret = this;
         mixin(`ret ` ~ op ~ `= index;`);
         return ret;
     }
@@ -159,24 +159,24 @@ struct ShellCursor(Field)
     ///
     auto ref opUnary(string op : "*")()
     {
-        return field[cursor];
+        return field[iterator];
     }
 
     ///
     auto opUnary(string op)() @safe pure nothrow @nogc @property
     {
         pragma(inline, true);
-        return mixin(op ~ `cursor`);
+        return mixin(op ~ `iterator`);
     }
 }
 
-auto shellCursor(Field)(Field field)
+auto shellIterator(Field)(Field field)
 {
-    return ShellCursor!Field(0, field);
+    return ShellIterator!Field(0, field);
 }
 
 /++
-Cursor composed of indexes.
+Iterator composed of indexes.
 See_also: $(LREF ndiota)
 +/
 struct ndIotaField(size_t N)
@@ -237,18 +237,18 @@ BitField!Field bitField(Field)(Field field)
 unittest
 {
     short[10] data;
-    auto f = data.ptr.bitField.shellCursor;
+    auto f = data.ptr.bitField.shellIterator;
     f[123] = true;
     f++;
     assert(f[122]);
 }
 
 
-struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
+struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
 {
     ///
-    Slice!(kind, packs, Cursor) _slice;
+    Slice!(kind, packs, Iterator) _slice;
     ///
     ptrdiff_t[packs[0]] _indexes;
 
@@ -278,12 +278,12 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
     {
         static if (packs.length == 1)
         {
-            return _slice._cursor[getShift(index)];
+            return _slice._iterator[getShift(index)];
         }
         else with (_slice)
         {
             alias M = DeepElemType.N;
-            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor + getShift(index));
+            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _iterator + getShift(index));
         }
     }
 
@@ -293,7 +293,7 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
     //{
     //    static if (N == PureN)
     //    {
-    //        return _slice._cursor[getShift(index)] = elem;
+    //        return _slice._iterator[getShift(index)] = elem;
     //    }
     //    else
     //    {
@@ -305,10 +305,10 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
     //}
 
     ///
-    FlattenedCursor opBinary(string op)(size_t index) const
+    FlattenedIterator opBinary(string op)(size_t index) const
     {
         pragma(inline, true);
-        FlattenedCursor ret = this;
+        FlattenedIterator ret = this;
         mixin(`ret ` ~ op ~ `= index;`);
         return ret;
     }
@@ -318,12 +318,12 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
     {
         static if (packs.length == 1)
         {
-            return *_slice._cursor;
+            return *_slice._iterator;
         }
         else with (_slice)
         {
             alias M = DeepElemType.N;
-            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _cursor);
+            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _iterator);
         }
     }
 
@@ -333,9 +333,9 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
         with(_slice) foreach_reverse (i; Iota!(packs[0]))
         {
             static if (i == _slice.S)
-                mixin(op ~ `_cursor;`);
+                mixin(op ~ `_iterator;`);
             else
-                mixin(`_cursor ` ~ op[0] ~ `= _strides[i];`);
+                mixin(`_iterator ` ~ op[0] ~ `= _strides[i];`);
             mixin (op ~ `_indexes[i];`);
             static if (op == "++")
             {
@@ -343,9 +343,9 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
                     return;
                 //debug (ndslice) assert(_indexes[i] == _lengths[i]);
                 static if (i == _slice.S)
-                    _cursor -= _lengths[i];
+                    _iterator -= _lengths[i];
                 else
-                    _cursor -= _lengths[i] * _strides[i];
+                    _iterator -= _lengths[i] * _strides[i];
                 _indexes[i] = 0;
             }
             else
@@ -353,9 +353,9 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
                 if (_indexes[i] >= 0)
                     return;
                 static if (i == _slice.S)
-                    _cursor += _lengths[i];
+                    _iterator += _lengths[i];
                 else
-                    _cursor += _lengths[i] * _strides[i];
+                    _iterator += _lengths[i] * _strides[i];
                 _indexes[i] = _lengths[i] - 1;
             }
         }
@@ -382,7 +382,7 @@ struct FlattenedCursor(SliceKind kind, size_t[] packs, Cursor)
             _shift += (n - _indexes[0]) * _strides[0];
             _indexes[0] = n;
         }
-        _slice._cursor += _shift;
+        _slice._iterator += _shift;
     }
 
     void opOpAssign(string op : "-")(size_t n)

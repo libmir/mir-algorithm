@@ -8,10 +8,10 @@ Selectors create new views and iteration patterns over the same data, without co
 $(H2 Subspace selectors)
 
 Subspace selectors serve to generalize and combine other selectors easily.
-For a slice of `Slice!(N, Cursor)` type `slice.pack!K` creates a slice of
-slices of `Slice!(N-K, Slice!(K+1, Cursor))` type by packing
+For a slice of `Slice!(N, Iterator)` type `slice.pack!K` creates a slice of
+slices of `Slice!(N-K, Slice!(K+1, Iterator))` type by packing
 the last `K` dimensions of the top dimension pack,
-and the type of element of `slice.flattened` is `Slice!(K, Cursor)`.
+and the type of element of `slice.flattened` is `Slice!(K, Iterator)`.
 Another way to use $(LREF pack) is transposition of dimension packs using
 $(LREF evertPack). Examples of use of subspace selectors are available for selectors,
 $(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementsCount).
@@ -59,7 +59,7 @@ import std.meta; //: allSatisfy;
 import mir.ndslice.internal;
 import mir.internal.utility;
 import mir.ndslice.slice; //: Slice;
-import mir.ndslice.cursor;
+import mir.ndslice.iterator;
 
 /++
 Creates a packed slice, i.e. slice of slices.
@@ -69,27 +69,27 @@ binary data presented differently.
 Params:
     K = sizes of dimension packs
 Returns:
-    `pack!K` returns `Slice!(N-K, Slice!(K+1, Cursor))`;
+    `pack!K` returns `Slice!(N-K, Slice!(K+1, Iterator))`;
     `slice.pack!(K1, K2, ..., Kn)` is the same as `slice.pack!K1.pack!K2. ... pack!Kn`.
 +/
-Slice!(kind, [packs[0] - p, p] ~ packs[1 .. $], Cursor)
-pack(size_t p, SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+Slice!(kind, [packs[0] - p, p] ~ packs[1 .. $], Iterator)
+pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (p)
 {
     static assert(p < packs[0], "pack = " ~ p.stringof
                 ~ " should be less than packs[0] = "~ packs[0].stringof
                 ~ tailErrorMessage!());
-    return typeof(return)(slice._lengths, slice._strides, slice._cursor);
+    return typeof(return)(slice._lengths, slice._strides, slice._iterator);
 }
 
-Slice!(kind, [p, packs[0] - p] ~ packs[1 .. $], Cursor)
-ipack(size_t p, SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+Slice!(kind, [p, packs[0] - p] ~ packs[1 .. $], Iterator)
+ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (p)
 {
     static assert(p < packs[0], "pack = " ~ p.stringof
                 ~ " should be less than packs[0] = "~ packs[0].stringof
                 ~ tailErrorMessage!());
-    return typeof(return)(slice._lengths, slice._strides, slice._cursor);
+    return typeof(return)(slice._lengths, slice._strides, slice._iterator);
 }
 
 /////
@@ -168,12 +168,12 @@ Returns:
 
 See_also: $(LREF pack), $(LREF evertPack)
 +/
-Slice!(kind, [packs.sum], Cursor) unpack(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+Slice!(kind, [packs.sum], Iterator) unpack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     static if (packs.length == 1)
         return slice;
     else
-        return typeof(return)(slice._lengths, slice._strides, slice._cursor);
+        return typeof(return)(slice._lengths, slice._strides, slice._iterator);
 }
 
 /++
@@ -187,9 +187,9 @@ Returns:
 
 See_also: $(LREF pack), $(LREF unpack)
 +/
-Slice!(SliceKind.universal, reverse(packs), Cursor)
+Slice!(SliceKind.universal, reverse(packs), Iterator)
 //auto
-evertPack(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (packs.length > 1)
 {
     static if (kind != SliceKind.universal)
@@ -212,15 +212,15 @@ evertPack(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) sl
                     ret._strides[j + D[i + 1]] = _strides[j + C[i]];
                 }
             }
-            ret._cursor = _cursor;
+            ret._iterator = _iterator;
         }
         return ret;
     }
 }
 
 ///
-Slice!(kind, packs, Cursor) 
-evertPack(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+Slice!(kind, packs, Iterator) 
+evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (packs.length == 1)
 {
     return slice;
@@ -257,9 +257,9 @@ pure nothrow unittest
     assert(e == g);
     assert(a == b.evertPack);
     assert(c == a.transposed!(7, 8, 4, 5, 6)[8, 9]);
-    static assert(is(typeof(b) == Slice!(SliceKind.universal, [2, 3, 4], IotaCursor!size_t)));
-    static assert(is(typeof(c) == Slice!(SliceKind.universal, [3, 4], IotaCursor!size_t)));
-    static assert(is(typeof(d) == Slice!(SliceKind.universal, [4], IotaCursor!size_t)));
+    static assert(is(typeof(b) == Slice!(SliceKind.universal, [2, 3, 4], IotaIterator!size_t)));
+    static assert(is(typeof(c) == Slice!(SliceKind.universal, [3, 4], IotaIterator!size_t)));
+    static assert(is(typeof(d) == Slice!(SliceKind.universal, [4], IotaIterator!size_t)));
     static assert(is(typeof(e) == size_t));
 }
 
@@ -312,25 +312,25 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF IotaSlice), $(LREF ndiota)
 +/
-Slice!(SliceKind.continuous, [N], IotaCursor!I)
+Slice!(SliceKind.continuous, [N], IotaIterator!I)
 iota(I = size_t, size_t N)(size_t[N] lengths...)
     if (isIntegral!I || isPointer!I)
 {
     import mir.ndslice.slice : sliced;
-    return IotaCursor!I.init.sliced(lengths);
+    return IotaIterator!I.init.sliced(lengths);
 }
 
 ///ditto
-Slice!(SliceKind.continuous, [N], IotaCursor!I)
+Slice!(SliceKind.continuous, [N], IotaIterator!I)
 iota(I = size_t, size_t N)(size_t[N] lengths, I start)
     if (isIntegral!I || isPointer!I)
 {
     import mir.ndslice.slice : sliced;
-    return IotaCursor!I(start).sliced(lengths);
+    return IotaIterator!I(start).sliced(lengths);
 }
 
 ///ditto
-Slice!(SliceKind.universal, [N], IotaCursor!I)
+Slice!(SliceKind.universal, [N], IotaIterator!I)
 iota(I = size_t, size_t N)(size_t[N] lengths, I start, size_t step)
     if (isIntegral!I || isPointer!I)
 {
@@ -383,10 +383,10 @@ Params:
 Returns:
     1-dimensional slice composed of diagonal elements
 +/
-Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Cursor) 
+Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Iterator) 
     diagonal
-    (SliceKind kind, size_t[] packs, Cursor)
-    (Slice!(kind, packs, Cursor) slice)
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
 {
     static if (packs[0] == 1)
     {
@@ -407,7 +407,7 @@ Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Cursor)
             ret._strides[0] += strides[i];
         foreach (i; Iota!(1, ret.S))
             ret._strides[i] = strides[i + packs[0] - 1];
-        ret._cursor = slice._cursor;
+        ret._iterator = slice._iterator;
         return ret;
     }
 }
@@ -574,10 +574,10 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
+Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
     blocks
-    (SliceKind kind, size_t[] packs, Cursor, size_t N)
-    (Slice!(kind, packs, Cursor) slice, size_t[N] lengths...)
+    (SliceKind kind, size_t[] packs, Iterator, size_t N)
+    (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
         if (packs[0] == N)
 in
 {
@@ -608,7 +608,7 @@ body
     {
         ret._strides[dimension] = strides[dimension - packs[0]];
     }
-    ret._cursor = slice._cursor;
+    ret._iterator = slice._iterator;
     return ret;
 }
 
@@ -707,10 +707,10 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Cursor) 
+Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
     windows
-    (SliceKind kind, size_t[] packs, Cursor, size_t N)
-    (Slice!(kind, packs, Cursor) slice, size_t[N] lengths...)
+    (SliceKind kind, size_t[] packs, Iterator, size_t N)
+    (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
         if (packs[0] == N)
 in
 {
@@ -740,7 +740,7 @@ body
     {
         ret._strides[dimension] = strides[dimension - packs[0]];
     }
-    ret._cursor = slice._cursor;
+    ret._iterator = slice._iterator;
     return ret;
 }
 
@@ -896,9 +896,9 @@ Params:
 Returns:
     reshaped slice
 +/
-Slice!(kind, M ~ packs[1 .. $], Cursor) reshape
-        (SliceKind kind, size_t[] packs, Cursor, size_t M)
-        (Slice!(kind, packs, Cursor) slice, ptrdiff_t[M] lengths, ref int err)
+Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
+        (SliceKind kind, size_t[] packs, Iterator, size_t M)
+        (Slice!(kind, packs, Iterator) slice, ptrdiff_t[M] lengths, ref int err)
 {
     static if (kind == SliceKind.canonical)
     {
@@ -978,7 +978,7 @@ Slice!(kind, M ~ packs[1 .. $], Cursor) reshape
         static if (M < ret.S)
         foreach (i; Iota!(M, ret.S))
             ret._strides[i] = slice._strides[i + packs[0] - M];
-        ret._cursor = slice._cursor;
+        ret._iterator = slice._iterator;
         err = 0;
         goto R;
     }
@@ -1081,26 +1081,6 @@ unittest
     assert(pElements[$-1][$-1] == iota([7], 2513));
 }
 
-Slice!(SliceKind.continuous, 1 ~ packs[1 .. $], Cursor) 
-    flattened
-    (size_t[] packs, Cursor)
-    (Slice!(SliceKind.continuous, packs, Cursor) slice)
-{
-    static if (packs[0] == 1)
-    {
-        return slice;
-    }
-    else
-    {
-        mixin _DefineRet;
-        ret._lengths[0] = slice._lengths[0 .. packs[0]].lengthsProduct;
-        foreach(i; Iota!(1, ret.N))
-            ret._lengths[i] = slice._lengths[i - 1 + packs[0]];
-        ret._cursor = slice._cursor;
-        return ret;
-    }
-}
-
 /++
 Returns a random access range of all elements of a slice.
 The order of elements is preserved.
@@ -1112,23 +1092,23 @@ Params:
 Returns:
     random access range composed of elements of the `slice`
 +/
-Slice!(SliceKind.continuous, [1], FlattenedCursor!(kind, packs, Cursor))
+Slice!(SliceKind.continuous, [1], FlattenedIterator!(kind, packs, Iterator))
     flattened
-    (SliceKind kind, size_t[] packs, Cursor)
-    (Slice!(kind, packs, Cursor) slice)
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
     if (kind == SliceKind.canonical || kind == SliceKind.universal)
 {
     mixin _DefineRet;
     ret._lengths[0] = slice.elementsCount;
-    ret._cursor = typeof(ret._cursor)(slice);
+    ret._iterator = typeof(ret._iterator)(slice);
     return ret;
 }
 
 /// ditto
-Slice!(SliceKind.continious, 1 ~ packs[1 .. $], Cursor) 
+Slice!(SliceKind.continuous, 1 ~ packs[1 .. $], Iterator) 
     flattened
-    (size_t[] packs, Cursor)
-    (Slice!(SliceKind.continious, packs, Cursor) slice)
+    (size_t[] packs, Iterator)
+    (Slice!(SliceKind.continuous, packs, Iterator) slice)
 {
     static if (packs[0] == 1)
     {
@@ -1140,7 +1120,7 @@ Slice!(SliceKind.continious, 1 ~ packs[1 .. $], Cursor)
         ret._lengths[0] = slice._lengths[0 .. packs[0]].lengthsProduct;
         foreach(i; Iota!(1, ret.N))
             ret._lengths[i] = slice._lengths[i - 1 + packs[0]];
-        ret._cursor = slice._cursor;
+        ret._iterator = slice._iterator;
         return ret;
     }
 }
@@ -1175,7 +1155,7 @@ pure nothrow unittest
     elems.popFrontExactly(2);
     assert(elems.front == 2);
     /// `_index` is availble only for canonical and universal ndslices.
-    assert(elems._cursor._indexes == [0, 2]);
+    assert(elems._iterator._indexes == [0, 2]);
 
     elems.popBackExactly(2);
     assert(elems.back == 9);
@@ -1190,7 +1170,7 @@ pure nothrow unittest
 
     for (auto elems = slice.universal.flattened; !elems.empty; elems.popFront)
     {
-        ptrdiff_t[2] index = elems._cursor._indexes;
+        ptrdiff_t[2] index = elems._iterator._indexes;
         elems.front = index[0] * 10 + index[1] * 3;
     }
     assert(slice ==
@@ -1379,14 +1359,14 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF ndIotaField), $(LREF iota)
 +/
-Slice!(SliceKind.continuous, [N], ShellCursor!(ndIotaField!N))
+Slice!(SliceKind.continuous, [N], ShellIterator!(ndIotaField!N))
     ndiota
     (size_t N)
     (size_t[N] lengths...)
     if (N)
 {
     import mir.ndslice.slice : sliced;
-    with (typeof(return)) return ndIotaField!N(lengths[1 .. $]).shellCursor.sliced(lengths);
+    with (typeof(return)) return ndIotaField!N(lengths[1 .. $]).shellIterator.sliced(lengths);
 }
 
 ///
@@ -1442,22 +1422,22 @@ Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 See_also: $(REF repeat, std,range)
 +/
-Slice!(SliceKind.continuous, [M], RepeatCursor!T)
+Slice!(SliceKind.continuous, [M], RepeatIterator!T)
     repeat(T, size_t M)(T value, size_t[M] lengths...)
-    if (M && !is(T : Slice!(kind, packs, Cursor), SliceKind kind, size_t[] packs, Cursor))
+    if (M && !is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
 {
     mixin _DefineRet;
     foreach (i; Iota!M)
         ret._lengths[i] = lengths[i];
-    ret._cursor = RepeatCursor!T(value);
+    ret._iterator = RepeatIterator!T(value);
     return ret;
 }
 
 /// ditto
-Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, M ~ packs, Cursor)
+Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, M ~ packs, Iterator)
     repeat
-    (SliceKind kind, size_t[] packs, Cursor, size_t M)
-    (Slice!(kind, packs, Cursor) slice, size_t[M] lengths...)
+    (SliceKind kind, size_t[] packs, Iterator, size_t M)
+    (Slice!(kind, packs, Iterator) slice, size_t[M] lengths...)
     if (M)
 {
     mixin _DefineRet;
@@ -1470,7 +1450,7 @@ Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, M ~ packs, Cur
     auto strides = slice.unpack.strides;
     foreach (i; Iota!(M, ret.S))
         ret._strides[i] = strides[i - M];
-    ret._cursor = slice._cursor;
+    ret._iterator = slice._iterator;
     return ret;
 }
 
@@ -1533,7 +1513,7 @@ pure nothrow unittest
 
 /++
 +/
-Slice!(SliceKind.continious, [1], ShellCursor!(BitField!RandomAccess))
+Slice!(SliceKind.continuous, [1], ShellIterator!(BitField!RandomAccess))
     bitwise
     (RandomAccess)
     (RandomAccess ra)
@@ -1543,7 +1523,7 @@ Slice!(SliceKind.continious, [1], ShellCursor!(BitField!RandomAccess))
 }
 
 /// ditto
-Slice!(SliceKind.continious, [M], ShellCursor!(BitField!RandomAccess))
+Slice!(SliceKind.continuous, [M], ShellIterator!(BitField!RandomAccess))
     bitwise
     (RandomAccess, size_t M)
     (RandomAccess ra, size_t[M] lengths...)
@@ -1551,7 +1531,7 @@ Slice!(SliceKind.continious, [M], ShellCursor!(BitField!RandomAccess))
 {
     static if (__traits(compiles, {size_t len = RandomAccess.init.length;}))
         assert(ra.length <= lengths.lengthsProduct);
-    return ra.bitField.shellCursor.sliced(lengths);
+    return ra.bitField.shellIterator.sliced(lengths);
 }
 
 
@@ -1611,8 +1591,8 @@ template map(fun...)
     if (fun.length)
 {
     ///
-    @fmb auto map(size_t N, Cursor)
-        (Slice!(N, Cursor) tensor)
+    @fmb auto map(size_t N, Iterator)
+        (Slice!(N, Iterator) tensor)
     {
         // this static if-else block
         // may be unified with std.algorithms.iteration.map
@@ -1644,19 +1624,19 @@ template map(fun...)
         }
 
         // Specialization for packed tensors (tensors composed of tensors).
-        static if (is(Cursor : Slice!(NI, CursorI), size_t NI, CursorI))
+        static if (is(Iterator : Slice!(NI, IteratorI), size_t NI, IteratorI))
         {
-            alias Ptr = Pack!(NI - 1, CursorI);
+            alias Ptr = Pack!(NI - 1, IteratorI);
             alias M = Map!(Ptr, _fun);
             alias R = Slice!(N, M);
             return R(tensor._lengths[0 .. N], tensor._strides[0 .. N],
-                M(Ptr(tensor._lengths[N .. $], tensor._strides[N .. $], tensor._cursor)));
+                M(Ptr(tensor._lengths[N .. $], tensor._strides[N .. $], tensor._iterator)));
         }
         else
         {
-            alias M = Map!(SlicePtr!Cursor, _fun);
+            alias M = Map!(SlicePtr!Iterator, _fun);
             alias R = Slice!(N, M);
-            return R(tensor._lengths, tensor._strides, M(tensor._cursor));
+            return R(tensor._lengths, tensor._strides, M(tensor._iterator));
         }
     }
 }

@@ -135,7 +135,7 @@ See_also: $(LREF everted), $(LREF transposed)
 +/
 template swapped(size_t dimensionA, size_t dimensionB)
 {
-    @fastmath auto swapped(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice)
+    @fastmath auto swapped(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice)
     {
         {
             enum i = 0;
@@ -152,7 +152,7 @@ template swapped(size_t dimensionA, size_t dimensionB)
 }
 
 /// ditto
-Slice!(SliceKind.universal, packs, Cursor) swapped(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice, size_t dimensionA, size_t dimensionB)
+Slice!(SliceKind.universal, packs, Iterator) swapped(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, size_t dimensionA, size_t dimensionB)
 in{
     {
         alias dimension = dimensionA;
@@ -169,7 +169,7 @@ body
 }
 
 /// ditto
-Slice!(SliceKind.universal, [2], Cursor) swapped(Cursor)(Slice!(SliceKind.universal, [2], Cursor) slice)
+Slice!(SliceKind.universal, [2], Iterator) swapped(Iterator)(Slice!(SliceKind.universal, [2], Iterator) slice)
 body
 {
     return slice.swapped!(0, 1);
@@ -247,7 +247,7 @@ Returns:
 +/
 template rotated(size_t dimensionA, size_t dimensionB)
 {
-    @fastmath auto rotated(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice, sizediff_t k = 1)
+    @fastmath auto rotated(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, sizediff_t k = 1)
     {
         {
             enum i = 0;
@@ -264,7 +264,7 @@ template rotated(size_t dimensionA, size_t dimensionB)
 }
 
 /// ditto
-Slice!(SliceKind.universal, packs, Cursor) rotated(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice,
+Slice!(SliceKind.universal, packs, Iterator) rotated(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice,
     size_t dimensionA, size_t dimensionB, sizediff_t k = 1)
 in{
     {
@@ -282,7 +282,7 @@ body
 }
 
 /// ditto
-Slice!(SliceKind.universal, [2], Cursor) rotated(Cursor)(Slice!(SliceKind.universal, [2], Cursor) slice, sizediff_t k = 1)
+Slice!(SliceKind.universal, [2], Iterator) rotated(Iterator)(Slice!(SliceKind.universal, [2], Iterator) slice, sizediff_t k = 1)
 body
 {
     return slice.rotated!(0, 1)(k);
@@ -335,7 +335,7 @@ Returns:
     n-dimensional slice of the same type
 See_also: $(LREF swapped), $(LREF transposed)
 +/
-Slice!(SliceKind.universal, packs, Cursor) everted(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice)
+Slice!(SliceKind.universal, packs, Iterator) everted(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice)
 {
     mixin _DefineRet;
     with (slice)
@@ -350,7 +350,7 @@ Slice!(SliceKind.universal, packs, Cursor) everted(size_t[] packs, Cursor)(Slice
             ret._lengths[i] = _lengths[i];
             ret._strides[i] = _strides[i];
         }
-        ret._cursor = _cursor;
+        ret._iterator = _iterator;
         return ret;
     }
 }
@@ -380,7 +380,7 @@ private enum _transposedCode = q{
             ret._lengths[i] = _lengths[i];
             ret._strides[i] = _strides[i];
         }
-        ret._cursor = _cursor;
+        ret._iterator = _iterator;
         return ret;
     }
 };
@@ -420,7 +420,7 @@ template transposed(Dimensions...)
     static if (!allSatisfy!(isSize_t, Dimensions))
         alias transposed = .transposed!(staticMap!(toSize_t, Dimensions));
     else
-    @fastmath Slice!(SliceKind.universal, packs, Cursor) transposed(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice)
+    @fastmath Slice!(SliceKind.universal, packs, Iterator) transposed(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice)
     {
         mixin DimensionsCountCTError;
         foreach (i, dimension; Dimensions)
@@ -435,7 +435,7 @@ template transposed(Dimensions...)
 }
 
 ///ditto
-Slice!(SliceKind.universal, packs, Cursor) transposed(size_t[] packs, Cursor, size_t M)(Slice!(SliceKind.universal, packs, Cursor) slice, size_t[M] dimensions...)
+Slice!(SliceKind.universal, packs, Iterator) transposed(size_t[] packs, Iterator, size_t M)(Slice!(SliceKind.universal, packs, Iterator) slice, size_t[M] dimensions...)
 in
 {
     mixin (DimensionsCountRTError);
@@ -453,7 +453,7 @@ body
 }
 
 ///ditto
-Slice!(SliceKind.universal, [2], Cursor) transposed(Cursor)(Slice!(SliceKind.universal, [2], Cursor) slice)
+Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind.universal, [2], Iterator) slice)
 {
     return .transposed!(1, 0)(slice);
 }
@@ -506,7 +506,7 @@ private enum _reversedCode = q{
     with (slice)
     {
         if (_lengths[dimension])
-            _cursor += _strides[dimension] * (_lengths[dimension] - 1);
+            _iterator += _strides[dimension] * (_lengths[dimension] - 1);
         _strides[dimension] = -_strides[dimension];
     }
 };
@@ -518,7 +518,7 @@ Params:
 Returns:
     n-dimensional slice of the same type
 +/
-Slice!(SliceKind.universal, packs, Cursor) allReversed(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice)
+Slice!(SliceKind.universal, packs, Iterator) allReversed(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice)
 {
     foreach (dimension; Iota!(packs[0]))
     {
@@ -556,7 +556,7 @@ template reversed(Dimensions...)
     static if (!allSatisfy!(isSize_t, Dimensions))
         alias reversed = .reversed!(staticMap!(toSize_t, Dimensions));
     else
-    @fastmath auto reversed(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice)
+    @fastmath auto reversed(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice)
     {
         foreach (i, dimension; Dimensions)
         {
@@ -568,7 +568,7 @@ template reversed(Dimensions...)
 }
 
 ///ditto
-Slice!(SliceKind.universal, packs, Cursor) reversed(size_t[] packs, Cursor, size_t M)(Slice!(SliceKind.universal, packs, Cursor) slice, size_t[M] dimensions...)
+Slice!(SliceKind.universal, packs, Iterator) reversed(size_t[] packs, Iterator, size_t M)(Slice!(SliceKind.universal, packs, Iterator) slice, size_t[M] dimensions...)
 in
 {
     foreach (dimension; dimensions)
@@ -664,7 +664,7 @@ template strided(Dimensions...)
     static if (!allSatisfy!(isSize_t, Dimensions))
         alias strided = .strided!(staticMap!(toSize_t, Dimensions));
     else
-    @fastmath auto strided(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice, Repeat!(Dimensions.length, size_t) factors)
+    @fastmath auto strided(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, Repeat!(Dimensions.length, size_t) factors)
     body
     {
         foreach (i, dimension; Dimensions)
@@ -678,7 +678,7 @@ template strided(Dimensions...)
 }
 
 ///ditto
-Slice!(SliceKind.universal, packs, Cursor) strided(size_t[] packs, Cursor)(Slice!(SliceKind.universal, packs, Cursor) slice, size_t dimension, size_t factor)
+Slice!(SliceKind.universal, packs, Iterator) strided(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, size_t dimension, size_t factor)
 in
 {
     mixin (DimensionRTError);
@@ -757,7 +757,7 @@ Params:
 Returns:
     n-dimensional slice of the same type
 +/
-Slice!(kind, packs, Cursor) dropToHypercube(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+Slice!(kind, packs, Iterator) dropToHypercube(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (kind == SliceKind.canonical || kind == SliceKind.universal)
 body
 {

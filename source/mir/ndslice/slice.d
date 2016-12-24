@@ -63,7 +63,7 @@ Params:
     ra = If `yes`, the array will be replaced with
         its pointer to improve performance.
         Use `no` for compile time function evaluation.
-    ad = If `yes`, no assert error will be thrown for cursor, which
+    ad = If `yes`, no assert error will be thrown for iterator, which
         has a length and its length is greater then the sum of shift and the product of
         lengths.
 Returns:
@@ -72,48 +72,48 @@ Returns:
 auto sliced(
     Flag!"replaceArrayWithPointer" ra = Yes.replaceArrayWithPointer,
     Flag!"allowDownsize" ad = No.allowDownsize,
-    size_t N, Cursor)(Cursor cursor, size_t[N] lengths...)
-    if (!isStaticArray!Cursor && !isNarrowString!Cursor && N
-        && !is(Cursor : Slice!(kind, packs, _Cursor), SliceKind kind, size_t[] packs, _Cursor))
+    size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
+    if (!isStaticArray!Iterator && !isNarrowString!Iterator && N
+        && !is(Iterator : Slice!(kind, packs, _Iterator), SliceKind kind, size_t[] packs, _Iterator))
 in
 {
-    static if (hasLength!Cursor)
+    static if (hasLength!Iterator)
     {
         static if (ad)
         {
-            assert(lengthsProduct!N(lengths) <= cursor.length,
-                "Cursor length must be greater than or equal to the product of lengths."
+            assert(lengthsProduct!N(lengths) <= iterator.length,
+                "Iterator length must be greater than or equal to the product of lengths."
                 ~ tailErrorMessage!());
         }
         else
         {
-            assert(lengthsProduct!N(lengths) == cursor.length,
-                "Cursor length must be equal to the product of lengths."
+            assert(lengthsProduct!N(lengths) == iterator.length,
+                "Iterator length must be equal to the product of lengths."
                 ~ tailErrorMessage!());
         }
     }
 }
 body
 {
-    alias C = ImplicitlyUnqual!(typeof(cursor));
-    static if (ra && isDynamicArray!Cursor)
+    alias C = ImplicitlyUnqual!(typeof(iterator));
+    static if (ra && isDynamicArray!Iterator)
         alias S = Slice!(SliceKind.continuous, [N], typeof(C.init[0])*);
     else
         alias S = Slice!(SliceKind.continuous, [N], C);
-    static if (hasElaborateAssign!Cursor)
+    static if (hasElaborateAssign!Iterator)
         S ret;
     else
         S ret = void;
-    static if (ra && isDynamicArray!Cursor)
-        ret._cursor = cursor.ptr;
+    static if (ra && isDynamicArray!Iterator)
+        ret._iterator = iterator.ptr;
     else
-        ret._cursor = cursor;
+        ret._iterator = iterator;
     foreach(i; Iota!N)
         ret._lengths[i] = lengths[i];
     return ret;
 }
 
-//private enum bool _isSlice(T) = is(T : Slice!(N, Cursor), size_t N, Cursor);
+//private enum bool _isSlice(T) = is(T : Slice!(N, Iterator), size_t N, Iterator);
 
 /////ditto
 //template sliced(Names...)
@@ -124,31 +124,31 @@ body
 //    auto sliced(
 //            Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
 //            Flag!`allowDownsize` ad = No.allowDownsize,
-//            " ~ _Cursor_Types!Names ~ "
+//            " ~ _Iterator_Types!Names ~ "
 //            size_t N)
-//            (" ~ _Cursor_DeclarationList!Names ~
+//            (" ~ _Iterator_DeclarationList!Names ~
 //            "size_t[N] lengths...)
 //    {
 //        alias sl = .sliced!Names;
-//        return sl!(ra, ad)(" ~ _Cursor_Values!Names ~ "lengths, 0);
+//        return sl!(ra, ad)(" ~ _Iterator_Values!Names ~ "lengths, 0);
 //    }
 
 //    auto sliced(
 //            Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
 //            Flag!`allowDownsize` ad = No.allowDownsize,
-//            size_t N, " ~ _Cursor_Types!Names ~ ")
-//            (" ~ _Cursor_DeclarationList!Names ~"
+//            size_t N, " ~ _Iterator_Types!Names ~ ")
+//            (" ~ _Iterator_DeclarationList!Names ~"
 //            size_t[N] lengths,
 //            size_t shift = 0)
 //    {
-//        alias RS = AliasSeq!(" ~ _Cursor_Types!Names ~ ");"
+//        alias RS = AliasSeq!(" ~ _Iterator_Types!Names ~ ");"
 //        ~ q{
 //            import std.meta : staticMap;
 //            static assert(!anySatisfy!(_isSlice, RS),
 //                `Packed slices are not allowed in slice tuples`
 //                ~ tailErrorMessage!());
 //            alias PT = PtrTuple!Names;
-//            alias SPT = PT!(staticMap!(PrepareCursorType, RS));
+//            alias SPT = PT!(staticMap!(PrepareIteratorType, RS));
 //            static if (hasElaborateAssign!SPT)
 //                SPT range;
 //            else
@@ -156,7 +156,7 @@ body
 //            version(assert) immutable minLength = lengthsProduct!N(lengths) + shift;
 //            foreach (i, name; Names)
 //            {
-//                alias T = typeof(range.cursors[i]);
+//                alias T = typeof(range.iterators[i]);
 //                alias R = RS[i];
 //                static assert(!isStaticArray!R);
 //                static assert(!isNarrowString!R);
@@ -179,9 +179,9 @@ body
 //                    }
 //                }
 //                static if (isDynamicArray!T && ra)
-//                    range.cursors[i] = r.cursor;
+//                    range.iterators[i] = r.iterator;
 //                else
-//                    range.cursors[i] = T(0, r);
+//                    range.iterators[i] = T(0, r);
 //            }
 //            return .sliced!(ra, ad, N, SPT)(range, lengths, shift);
 //        }
@@ -192,10 +192,10 @@ body
 //auto sliced(
 //    Flag!"replaceArrayWithPointer" ra = Yes.replaceArrayWithPointer,
 //    Flag!"allowDownsize" ad = No.allowDownsize,
-//    Cursor)(Cursor range)
-//    if (!isStaticArray!Cursor && !isNarrowString!Cursor && hasLength!Cursor)
+//    Iterator)(Iterator range)
+//    if (!isStaticArray!Iterator && !isNarrowString!Iterator && hasLength!Iterator)
 //{
-//    return .sliced!(ra, ad, 1, Cursor)(range, [range.length]);
+//    return .sliced!(ra, ad, 1, Iterator)(range, [range.length]);
 //}
 
 ///// Creates a slice from an array.
@@ -309,10 +309,10 @@ body
 //}
 
 /// ditto
-Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Cursor)
+Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator)
     sliced
-    (SliceKind kind, size_t[] packs, Cursor, size_t N)
-    (Slice!(kind, packs, Cursor) slice, size_t[N] lengths...)
+    (SliceKind kind, size_t[] packs, Iterator, size_t N)
+    (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
     if (N)
 {
     mixin _DefineRet;
@@ -333,7 +333,7 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Cursor)
                 stride *= lengths[i];
         }
     }
-    ret._cursor = slice._cursor;
+    ret._iterator = slice._iterator;
     return ret;
 }
 
@@ -391,38 +391,38 @@ nothrow unittest
     //Mallocator.instance.dispose(tup2.array);
 }
 
-//private template _Cursor_Types(Names...)
+//private template _Iterator_Types(Names...)
 //{
 //    static if (Names.length)
-//        enum string _Cursor_Types = "Cursor_" ~ Names[0] ~ ", " ~ _Cursor_Types!(Names[1..$]);
+//        enum string _Iterator_Types = "Iterator_" ~ Names[0] ~ ", " ~ _Iterator_Types!(Names[1..$]);
 //    else
-//        enum string _Cursor_Types = "";
+//        enum string _Iterator_Types = "";
 //}
 
-//private template _Cursor_Values(Names...)
+//private template _Iterator_Values(Names...)
 //{
 //    static if (Names.length)
-//        enum string _Cursor_Values = "range_" ~ Names[0] ~ ", " ~ _Cursor_Values!(Names[1..$]);
+//        enum string _Iterator_Values = "range_" ~ Names[0] ~ ", " ~ _Iterator_Values!(Names[1..$]);
 //    else
-//        enum string _Cursor_Values = "";
+//        enum string _Iterator_Values = "";
 //}
 
-//private template _Cursor_DeclarationList(Names...)
+//private template _Iterator_DeclarationList(Names...)
 //{
 //    static if (Names.length)
 //    {
-//        enum string _Cursor_DeclarationList = "Cursor_" ~ Names[0] ~ " range_"
-//             ~ Names[0] ~ ", " ~ _Cursor_DeclarationList!(Names[1..$]);
+//        enum string _Iterator_DeclarationList = "Iterator_" ~ Names[0] ~ " range_"
+//             ~ Names[0] ~ ", " ~ _Iterator_DeclarationList!(Names[1..$]);
 //    }
 //    else
-//        enum string _Cursor_DeclarationList = "";
+//        enum string _Iterator_DeclarationList = "";
 //}
 
 //private template _Slice_DeclarationList(Names...)
 //{
 //    static if (Names.length)
 //    {
-//        enum string _Slice_DeclarationList = "Slice!(N, Cursor_" ~ Names[0] ~ ") slice_"
+//        enum string _Slice_DeclarationList = "Slice!(N, Iterator_" ~ Names[0] ~ ") slice_"
 //             ~ Names[0] ~ ", " ~ _Slice_DeclarationList!(Names[1..$]);
 //    }
 //    else
@@ -445,17 +445,17 @@ nothrow unittest
 //    mixin (
 //    "
 //    auto assumeSameStructure(
-//            size_t N, " ~ _Cursor_Types!Names ~ ")
+//            size_t N, " ~ _Iterator_Types!Names ~ ")
 //            (" ~ _Slice_DeclarationList!Names ~ ")
 //    {
-//        alias RS = AliasSeq!("  ~_Cursor_Types!Names ~ ");"
+//        alias RS = AliasSeq!("  ~_Iterator_Types!Names ~ ");"
 //        ~ q{
 //            import std.meta : staticMap;
 //            static assert(!anySatisfy!(_isSlice, RS),
 //                `Packed slices not allowed in slice tuples`
 //                ~ tailErrorMessage!());
 //            alias PT = PtrTuple!Names;
-//            alias SPT = PT!(staticMap!(PrepareCursorType, RS));
+//            alias SPT = PT!(staticMap!(PrepareIteratorType, RS));
 //            static if (hasElaborateAssign!SPT)
 //                Slice!(N, SPT) ret;
 //            else
@@ -463,7 +463,7 @@ nothrow unittest
 //            mixin (`alias slice0 = slice_` ~ Names[0] ~`;`);
 //            ret._lengths = slice0._lengths;
 //            ret._strides = slice0._strides;
-//            ret._cursor.cursors[0] = slice0._cursor;
+//            ret._iterator.iterators[0] = slice0._iterator;
 //            foreach (i, name; Names[1..$])
 //            {
 //                mixin (`alias slice = slice_` ~ name ~`;`);
@@ -473,7 +473,7 @@ nothrow unittest
 //                assert(ret._strides == slice._strides,
 //                    `Strides must be identical`
 //                    ~ tailErrorMessage!());
-//                ret._cursor.cursors[i+1] = slice._cursor;
+//                ret._iterator.iterators[i+1] = slice._iterator;
 //            }
 //            return ret;
 //        }
@@ -576,7 +576,7 @@ auto slice(T,
 auto slice(
     Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
     SliceKind kind,
-    size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+    size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     auto ret = .slice!(Unqual!(slice.DeepElemType), ra)(slice.shape);
     ret[] = slice;
@@ -654,7 +654,7 @@ Note:
 auto makeSlice(
     Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
     Allocator,
-    size_t N, Cursor)(auto ref Allocator alloc, Slice!(N, Cursor) slice)
+    size_t N, Iterator)(auto ref Allocator alloc, Slice!(N, Iterator) slice)
 {
     alias T = Unqual!(slice.DeepElemType);
     return makeSlice!(T, ra)(alloc, slice);
@@ -693,7 +693,7 @@ makeSlice(T,
 //makeSlice(T,
 //    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
 //    Allocator,
-//    SliceKind kind, size_t[] packs, Cursor)(auto ref Allocator alloc, Slice!(kind, packs, Cursor) slice)
+//    SliceKind kind, size_t[] packs, Iterator)(auto ref Allocator alloc, Slice!(kind, packs, Iterator) slice)
 //{
 //    import std.experimental.allocator : makeArray;
 //    import mir.ndslice.selection : flattened;
@@ -803,7 +803,7 @@ Params:
 Returns:
     multidimensional D array
 +/
-auto ndarray(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+auto ndarray(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     import std.array : array;
     static if (slice.N == 1)
@@ -835,7 +835,7 @@ Params:
 Returns:
     multidimensional D array
 +/
-auto makeNdarray(T, Allocator, SliceKind kind, size_t[] packs, Cursor)(auto ref Allocator alloc, Slice!(kind, packs, Cursor) slice)
+auto makeNdarray(T, Allocator, SliceKind kind, size_t[] packs, Iterator)(auto ref Allocator alloc, Slice!(kind, packs, Iterator) slice)
 {
     import std.experimental.allocator : makeArray;
     static if (slice.N == 1)
@@ -943,7 +943,7 @@ Throws:
 //template as(T)
 //{
 //    ///
-//    auto as(size_t N, Cursor)(Slice!(N, Cursor) slice)
+//    auto as(size_t N, Iterator)(Slice!(N, Iterator) slice)
 //    {
 //        static if (is(slice.DeepElemType == T))
 //        {
@@ -982,7 +982,7 @@ Throws:
 /++
 Returns the element type of the `Slice` type.
 +/
-alias DeepElementType(S : Slice!(kind, packs, Cursor), SliceKind kind, size_t[] packs, Cursor) = S.DeepElemType;
+alias DeepElementType(S : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = S.DeepElemType;
 
 /////
 //unittest
@@ -1059,7 +1059,7 @@ Schema
 Slice!(N, T*)
     size_t[N]     lengths
     sizediff_t[N] strides
-    T*            cursor
+    T*            iterator
 -------
 
 Example:
@@ -1086,7 +1086,7 @@ s________________________
     strides[1] ::=  4
     strides[2] ::=  1
 
-    cursor        ::= &a[0]
+    iterator        ::= &a[0]
 
 t____transposed!(1, 2, 0)
     lengths[0] ::=  3
@@ -1097,7 +1097,7 @@ t____transposed!(1, 2, 0)
     strides[1] ::=  1
     strides[2] ::= 12
 
-    cursor        ::= &a[0]
+    iterator        ::= &a[0]
 
 r______________reversed!1
     lengths[0] ::=  2
@@ -1108,26 +1108,26 @@ r______________reversed!1
     strides[1] ::= -4
     strides[2] ::=  1
 
-    cursor        ::= &a[8] // (old_strides[1] * (lengths[1] - 1)) = 8
+    iterator        ::= &a[8] // (old_strides[1] * (lengths[1] - 1)) = 8
 -------
 
-$(H4 Internal Representation for Cursors)
+$(H4 Internal Representation for Iterators)
 
 Type definition
 
 -------
-Slice!(N, Cursor)
+Slice!(N, Iterator)
 -------
 
 Representation
 
 -------
-Slice!(N, Cursor)
+Slice!(N, Iterator)
     size_t[N]     lengths
     sizediff_t[N] strides
-    PtrShell!T    cursor
+    PtrShell!T    iterator
         sizediff_t shift
-        Cursor      range
+        Iterator      range
 -------
 
 
@@ -1189,7 +1189,7 @@ r______________reversed!1
 
 alias eded = Slice!(SliceKind.universal, [1], int*);
 
-struct Slice(SliceKind kind, size_t[] packs, Cursor)
+struct Slice(SliceKind kind, size_t[] packs, Iterator)
     if (packs.sum < 255)
 {
     //@fastmath:
@@ -1203,37 +1203,37 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     enum S = kind == SliceKind.universal ? N : kind == SliceKind.canonical ? N - 1 : 0;
 
     ///
-    alias This = Slice!(kind, packs, Cursor);
+    alias This = Slice!(kind, packs, Iterator);
 
     ///
-    alias PureThis = Slice!(kind, [N], Cursor);
+    alias PureThis = Slice!(kind, [N], Iterator);
 
-    enum doUnittest = is(Cursor == int*) && N == 1 && kind == SliceKind.universal;
+    enum doUnittest = is(Iterator == int*) && N == 1 && kind == SliceKind.universal;
 
     template ElemType(size_t dimension)
         if (dimension < packs[0])
     {
         static if (N == 1)
-            alias ElemType = typeof(Cursor.init[size_t.init]);
+            alias ElemType = typeof(Iterator.init[size_t.init]);
         else
         static if (kind == SliceKind.canonical)
             static if (dimension == N - 1)
-                alias ElemType = Slice!(SliceKind.universal, packs.decDim, Cursor);
+                alias ElemType = Slice!(SliceKind.universal, packs.decDim, Iterator);
             else
             static if (N == 2)
-                alias ElemType = Slice!(SliceKind.continuous, packs.decDim, Cursor);
+                alias ElemType = Slice!(SliceKind.continuous, packs.decDim, Iterator);
             else
-                alias ElemType = Slice!(SliceKind.canonical, packs.decDim, Cursor);
+                alias ElemType = Slice!(SliceKind.canonical, packs.decDim, Iterator);
         else
-            alias ElemType = Slice!(kind, packs.decDim, Cursor);
+            alias ElemType = Slice!(kind, packs.decDim, Iterator);
     }
 
     static if (packs.length == 1)
-        alias DeepElemType = typeof(Cursor.init[size_t.init]);
+        alias DeepElemType = typeof(Iterator.init[size_t.init]);
     else
-        alias DeepElemType = Slice!(kind, packs[1 .. $], Cursor);
+        alias DeepElemType = Slice!(kind, packs[1 .. $], Iterator);
 
-    enum hasAccessByRef = __traits(compiles, &_cursor[0]);
+    enum hasAccessByRef = __traits(compiles, &_iterator[0]);
 
     enum PureIndexLength(Slices...) = Filter!(isIndex, Slices).length;
 
@@ -1250,7 +1250,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     size_t[N] _lengths;
     ptrdiff_t[S] _strides;
-    Cursor _cursor;
+    Iterator _iterator;
 
     sizediff_t backIndex(size_t dimension = 0)() @property const
         if (dimension < packs[0])
@@ -1334,13 +1334,13 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         strides = strides
         range = range or pointer to iterate on
     +/
-    this(in size_t[N] lengths, in sizediff_t[S] strides, Cursor cursor)
+    this(in size_t[N] lengths, in sizediff_t[S] strides, Iterator iterator)
     {
         foreach (i; Iota!N)
             _lengths[i] = lengths[i];
         foreach (i; Iota!S)
             _strides[i] = strides[i];
-        _cursor = cursor;
+        _iterator = iterator;
     }
 
     ///// Creates a 2-dimentional slice with custom strides.
@@ -1352,7 +1352,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     //    import std.range : only;
 
     //    uint[8] array = [1, 2, 3, 4, 5, 6, 7, 8];
-    //    auto slice = Slice!(2, uint*)([2, 2], [4, 1], array.cursor);
+    //    auto slice = Slice!(2, uint*)([2, 2], [4, 1], array.iterator);
 
     //    assert(&slice[0, 0] == &array[0]);
     //    assert(&slice[0, 1] == &array[1]);
@@ -1367,7 +1367,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     //    assert(slice.flattened.equal(only(1, 99, 5, 6)));
     //}
 
-    //static if (isPointer!Cursor)
+    //static if (isPointer!Iterator)
     //{
     //    static if (!is(ConstThis == This))
     //    {
@@ -1452,15 +1452,15 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         For slices with named elements the type of a return value
         has the same behavior like a pointer.
     Note:
-        `cursor` is defined only for non-packed slices.
+        `iterator` is defined only for non-packed slices.
     Attention:
-        `cursor` refers to the first element in the memory representation
+        `iterator` refers to the first element in the memory representation
         if and only if all strides are positive.
     +/
-    static if (is(Cursor == Cursor))
-    auto cursor() @property
+    static if (is(Iterator == Iterator))
+    auto iterator() @property
     {
-        return _cursor;
+        return _iterator;
     }
 
     /++
@@ -1671,11 +1671,11 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         assert(!empty!dimension);
         static if (N == 1)
         {
-            return *_cursor;
+            return *_iterator;
         }
         else
         {
-            static if (hasElaborateAssign!Cursor)
+            static if (hasElaborateAssign!Iterator)
                 ElemType!dimension ret;
             else
                 ElemType!dimension ret = void;
@@ -1686,7 +1686,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             foreach (i; Erase!(dimension, Iota!S))
                 ret._strides[SkipDimension!(dimension, i)] = _strides[i];
 
-            ret._cursor = _cursor;
+            ret._iterator = _iterator;
             return ret;
         }
     }
@@ -1698,10 +1698,10 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             if (dimension == 0)
         {
             assert(!empty!dimension);
-            static if (__traits(compiles, *_cursor = value))
-                return *_cursor = value;
+            static if (__traits(compiles, *_iterator = value))
+                return *_iterator = value;
             else
-                _cursor[0] = value;
+                _iterator[0] = value;
         }
     }
 
@@ -1712,11 +1712,11 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         assert(!empty!dimension);
         static if (N == 1)
         {
-            return _cursor[backIndex];
+            return _iterator[backIndex];
         }
         else
         {
-            static if (hasElaborateAssign!Cursor)
+            static if (hasElaborateAssign!Iterator)
                 ElemType!dimension ret;
             else
                 ElemType!dimension ret = void;
@@ -1727,8 +1727,8 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             foreach (i; Erase!(dimension, Iota!S))
                 ret._strides[SkipDimension!(dimension, i)] = _strides[i];
 
-            ret._cursor = _cursor;
-            ret._cursor += backIndex!dimension;
+            ret._iterator = _iterator;
+            ret._iterator += backIndex!dimension;
             return ret;
         }
     }
@@ -1740,7 +1740,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             if (dimension == 0)
         {
             assert(!empty!dimension);
-            return _cursor[backIndex] = value;
+            return _iterator[backIndex] = value;
         }
     }
 
@@ -1751,12 +1751,12 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
         _lengths[dimension]--;
         static if ((kind == SliceKind.continuous || kind == SliceKind.canonical) && dimension + 1 == N)
-            ++_cursor;
+            ++_iterator;
         else
         static if (kind == SliceKind.canonical || kind == SliceKind.universal)
-            _cursor += _strides[dimension];
+            _iterator += _strides[dimension];
         else
-            _cursor += stride!dimension;
+            _iterator += stride!dimension;
     }
 
     ///ditto
@@ -1774,7 +1774,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
         _lengths[dimension] -= n;
-        _cursor += stride!dimension * n;
+        _iterator += stride!dimension * n;
     }
 
     ///ditto
@@ -1844,7 +1844,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
     //    assert(_lengths[dimension], ": length!dim should be greater than 0.");
     //    _lengths[dimension]--;
-    //    _cursor += _strides[dimension];
+    //    _iterator += _strides[dimension];
     //}
 
 
@@ -1860,7 +1860,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
     //    assert(n <= _lengths[dimension], __FUNCTION__ ~ ": n should be less than or equal to length!dim");
     //    _lengths[dimension] -= n;
-    //    _cursor += _strides[dimension] * n;
+    //    _iterator += _strides[dimension] * n;
     //}
 
     //package void popBackExactly(size_t dimension, size_t n)
@@ -1962,7 +1962,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     /++
     Overloading `==` and `!=`
     +/
-    bool opEquals(SliceKind rkind, size_t[] rpacks, CursorR)(Slice!(rkind, rpacks, CursorR) rslice)
+    bool opEquals(SliceKind rkind, size_t[] rpacks, IteratorR)(Slice!(rkind, rpacks, IteratorR) rslice)
         if (rpacks.sum == N)
     {
         foreach (i; Iota!N)
@@ -1971,10 +1971,10 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         static if (
                !hasReference!(typeof(this))
             && !hasReference!(typeof(rslice))
-            && __traits(compiles, this._cursor == rslice._cursor)
+            && __traits(compiles, this._iterator == rslice._iterator)
             )
         {
-            if (this._strides == rslice._strides && this._cursor == rslice._cursor)
+            if (this._strides == rslice._strides && this._iterator == rslice._iterator)
                 return true;
         }
         import mir.ndslice.selection : unpack;
@@ -2051,7 +2051,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     auto ref opIndex(size_t I)(size_t[I] _indexes...)
         if (I && I <= packs[0])
     {
-        Cursor c = _cursor;
+        Iterator c = _iterator;
         c += indexStride(_indexes);
         static if (I == N)
             return *c;
@@ -2063,7 +2063,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
                 return DeepElemType(_lengths[packs[0] .. $], _strides, c);
         else
         {
-            alias Ret = Slice!(kind, (packs[0] - I) ~ packs[1 .. $], Cursor);
+            alias Ret = Slice!(kind, (packs[0] - I) ~ packs[1 .. $], Iterator);
             static if (S)
                 return Ret(_lengths[I .. N], _strides[I .. S], c);
             else
@@ -2075,9 +2075,9 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
     //auto ref opCall()(size_t[N] _indexes...)
     //{
     //    static if (packs.length == 1)
-    //        return _cursor[mathIndexStride(_indexes)];
+    //        return _iterator[mathIndexStride(_indexes)];
     //    else
-    //        return DeepElemType(_lengths[N .. $], _strides[N .. $], _cursor + mathIndexStride(_indexes));
+    //        return DeepElemType(_lengths[N .. $], _strides[N .. $], _iterator + mathIndexStride(_indexes));
     //}
 
     //static if (doUnittest)
@@ -2140,10 +2140,10 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
                 enum K = SliceKind.continuous;
             else
                 enum K = SliceKind.canonical;
-            static if (hasElaborateAssign!Cursor)
-                Slice!(K, (packs[0] - F) ~ packs[1 .. $], Cursor) ret;
+            static if (hasElaborateAssign!Iterator)
+                Slice!(K, (packs[0] - F) ~ packs[1 .. $], Iterator) ret;
             else
-                Slice!(K, (packs[0] - F) ~ packs[1 .. $], Cursor) ret = void;
+                Slice!(K, (packs[0] - F) ~ packs[1 .. $], Iterator) ret = void;
             enum bool shrink = kind == SliceKind.canonical && slices.length == N;
             static if (shrink)
             {
@@ -2208,8 +2208,8 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             else
                 foreach (i; Iota!(Slices.length, S))
                     ret._strides[i - F] = _strides[i];
-            ret._cursor = _cursor;
-            ret._cursor += stride;
+            ret._iterator = _iterator;
+            ret._iterator += stride;
             return ret;
         }
         else
@@ -2249,7 +2249,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
 
     static if (isMutable!(PureThis.DeepElemType))
     {
-        private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RCursor)(Slice!(rkind, rpacks, RCursor) value)
+        private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RIterator)(Slice!(rkind, rpacks, RIterator) value)
         {
             static if (N > 1 && rpacks == packs && kind == SliceKind.continuous && rkind == SliceKind.continuous)
             {
@@ -2285,7 +2285,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         Optimization:
             SIMD instructions may be used if both slices have the last stride equals to 1.
         +/
-        void opIndexAssign(SliceKind rkind, size_t[] rpacks, RCursor, Slices...)(Slice!(rkind, rpacks, RCursor) value, Slices slices)
+        void opIndexAssign(SliceKind rkind, size_t[] rpacks, RIterator, Slices...)(Slice!(rkind, rpacks, RIterator) value, Slices slices)
             if (isFullPureSlice!Slices)
         {
             auto sl = this[slices];
@@ -2487,7 +2487,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         void opIndexAssign(T, Slices...)(T value, Slices slices)
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
-                && !is(T : Slice!(rkind, rpacks, RCursor), SliceKind rkind, size_t[] rpacks, RCursor))
+                && !is(T : Slice!(rkind, rpacks, RIterator), SliceKind rkind, size_t[] rpacks, RIterator))
         {
             import mir.ndslice.selection : unpack;
             auto sl = this[slices].unpack;
@@ -2563,7 +2563,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         +/
         auto ref opIndexAssign(T)(T value, size_t[N] _indexes...)
         {
-            return _cursor[indexStride(_indexes)] = value;
+            return _iterator[indexStride(_indexes)] = value;
         }
 
         static if (doUnittest)
@@ -2609,7 +2609,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         +/
         auto ref opIndexOpAssign(string op, T)(T value, size_t[N] _indexes...)
         {
-            return mixin (`_cursor[indexStride(_indexes)] ` ~ op ~ `= value`);
+            return mixin (`_iterator[indexStride(_indexes)] ` ~ op ~ `= value`);
         }
 
         static if (doUnittest)
@@ -2655,8 +2655,8 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         Optimization:
             SIMD instructions may be used if both slices have the last stride equals to 1.
         +/
-        void opIndexOpAssign(string op, SliceKind kind, size_t[] rpacks, RCursor, Slices...)
-            (Slice!(kind, rpacks, RCursor) value, Slices slices)
+        void opIndexOpAssign(string op, SliceKind kind, size_t[] rpacks, RIterator, Slices...)
+            (Slice!(kind, rpacks, RIterator) value, Slices slices)
             if (isFullPureSlice!Slices)
         {
             auto sl = this[slices];
@@ -2833,7 +2833,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
         void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices)
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
-                && !is(T : Slice!(rkind, rpacks, RCursor), SliceKind rkind, size_t[] rpacks, RCursor))
+                && !is(T : Slice!(rkind, rpacks, RIterator), SliceKind rkind, size_t[] rpacks, RIterator))
         {
             import mir.ndslice.selection : unpack;
             auto sl = this[slices].unpack;
@@ -2892,7 +2892,7 @@ struct Slice(SliceKind kind, size_t[] packs, Cursor)
             // @@@workaround@@@ for Issue 16473
             //if (op == `++` || op == `--`)
         {
-            return mixin (op ~ `_cursor[indexStride(_indexes)]`);
+            return mixin (op ~ `_iterator[indexStride(_indexes)]`);
         }
 
         static if (doUnittest)
@@ -3247,8 +3247,8 @@ unittest
 }
 
 private bool opEqualsImpl
-    (SliceKind lkind, SliceKind rkind, size_t[] packs, LCursor, RCursor)
-    (Slice!(lkind, packs, LCursor) ls, Slice!(rkind, packs, RCursor) rs)
+    (SliceKind lkind, SliceKind rkind, size_t[] packs, LIterator, RIterator)
+    (Slice!(lkind, packs, LIterator) ls, Slice!(rkind, packs, RIterator) rs)
 {
     do
     {
@@ -3289,7 +3289,7 @@ private bool opEqualsImpl
 //    import std.internal.test.dummyrange;
 //    foreach (RB; AliasSeq!(ReturnBy.Reference, ReturnBy.Value))
 //    {
-//        DummyCursor!(RB, Length.Yes, CursorType.Random) range;
+//        DummyIterator!(RB, Length.Yes, IteratorType.Random) range;
 //        range.reinit;
 //        assert(range.length >= 10);
 //        auto slice = range.sliced(10);
@@ -3303,7 +3303,7 @@ private bool opEqualsImpl
 //    }
 //}
 
-Slice!(SliceKind.universal, packs, Cursor) universal(SliceKind kind, size_t[] packs, Cursor)(Slice!(kind, packs, Cursor) slice)
+Slice!(SliceKind.universal, packs, Iterator) universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     static if (kind == SliceKind.universal)
         return slice;
@@ -3328,15 +3328,15 @@ Slice!(SliceKind.universal, packs, Cursor) universal(SliceKind kind, size_t[] pa
                     ball *= slice._lengths[i];
             }
         }
-        ret._cursor = slice._cursor;
+        ret._iterator = slice._iterator;
         return ret;
     }
 }
 
-Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Cursor)
+Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Iterator)
     canonical
-    (SliceKind kind, size_t[] packs, Cursor)
-    (Slice!(kind, packs, Cursor) slice)
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
     if (kind == SliceKind.continuous || kind == SliceKind.canonical)
 {
     static if (kind == SliceKind.canonical || packs.sum == 1)
@@ -3352,17 +3352,17 @@ Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Curso
             ball *= slice._lengths[i + 1];
             ret._strides[i] = ball;
         }
-        ret._cursor = slice._cursor;
+        ret._iterator = slice._iterator;
         return ret;
     }
 }
 
-private template PrepareCursorType(Cursor)
+private template PrepareIteratorType(Iterator)
 {
-    static if (isPointer!Cursor)
-        alias PrepareCursorType = Cursor;
+    static if (isPointer!Iterator)
+        alias PrepareIteratorType = Iterator;
     else
-        alias PrepareCursorType = PtrShell!Cursor;
+        alias PrepareIteratorType = PtrShell!Iterator;
 }
 
 private enum bool isType(alias T) = false;
@@ -3375,9 +3375,9 @@ private enum isStringValue(alias T) = is(typeof(T) : string);
 private bool _checkAssignLengths(
     SliceKind lkind, SliceKind rkind,
     size_t[] rpacks, size_t[] lpacks,
-    LCursor, RCursor)
-    (Slice!(lkind, lpacks, LCursor) ls,
-     Slice!(rkind, rpacks, RCursor) rs)
+    LIterator, RIterator)
+    (Slice!(lkind, lpacks, LIterator) ls,
+     Slice!(rkind, rpacks, RIterator) rs)
     if (lpacks[0] >= rpacks[0])
 {
     foreach (i; Iota!(0, rpacks[0]))

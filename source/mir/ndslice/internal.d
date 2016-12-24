@@ -377,7 +377,7 @@ _____";
 mixin template _DefineRet()
 {
     alias Ret = typeof(return);
-    static if (hasElaborateAssign!(typeof(Ret._cursor)))
+    static if (hasElaborateAssign!(typeof(Ret._iterator)))
         Ret ret;
     else
         Ret ret = void;
