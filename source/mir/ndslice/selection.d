@@ -925,7 +925,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
             goto R;
         }
         size_t ecn = ret.elementsCount;
-        foreach (i; Iota!(0, ret.N))
+        foreach (i; Iota!M)
             if (ret._lengths[i] == -1)
             {
                 ecn = -ecn;
@@ -1050,7 +1050,8 @@ nothrow @safe pure unittest
 }
 
 // Issue 15919
-nothrow @nogc @safe pure unittest
+nothrow @nogc @safe pure
+unittest
 {
     int err;
     assert(iota(3, 4, 5, 6, 7).pack!2.reshape([4, 3, 5], err)[0, 0, 0].shape == cast(size_t[2])[6, 7]);
