@@ -8,3 +8,5 @@ __*
 *.log
 
 *.lst
+
+dub.selections.json
