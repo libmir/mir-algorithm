@@ -1194,6 +1194,44 @@ pure nothrow unittest
     assert(elems.front == 0);
 }
 
+unittest
+{
+    auto it0 = iota(3, 4).universal.flattened._iterator;
+    auto it1 = it0;
+    assert(it0 == it1);
+    it0 += 5;
+    it0 -= 5;
+    assert(*it0 == *it1);
+    assert(it0 == it1);
+    it0 += 5;
+    it0 += 7;
+    it0 -= 9;
+    it1 += 3;
+    assert(*it0 == *it1);
+    assert(it0 == it1);
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+    ++it0;
+
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    --it0;
+    assert(*it0 == *it1);
+    assert(it0 == it1);
+}
+
 /++
 Random access and slicing
 +/

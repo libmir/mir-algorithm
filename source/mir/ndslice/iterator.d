@@ -7,7 +7,7 @@ import std.traits;
 
 private mixin template _opBinary()
 {
-    auto opBinary(string op, T)(const T index)
+    auto opBinary(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")
     {
         auto ret = this;
@@ -39,7 +39,7 @@ struct RepeatIterator(T)
         if (op == `++` || op == `--`)
     { return this; }
 
-    auto ref T opIndex(size_t)
+    auto ref T opIndex(ptrdiff_t)
     { return _value; }
 
     void opOpAssign(string op)(ptrdiff_t)
@@ -73,7 +73,7 @@ struct IotaIterator(I)
         if (op == "--" || op == "++")
     { return mixin(op ~ `_iterator`); }
 
-    auto opIndex(size_t index)
+    auto opIndex(ptrdiff_t index)
     { return cast(I)(_iterator + index); }
 
     void opOpAssign(string op)(ptrdiff_t index)
@@ -118,14 +118,14 @@ struct FieldIterator(Field)
         if (op == "++" || op == "--")
     { return mixin(op ~ `_iterator`); }
 
-    auto ref opIndex(size_t index)
+    auto ref opIndex(ptrdiff_t index)
     { return _field[_iterator + index]; }
 
     static if (!__traits(compiles, &_field[_iterator]) && isMutable!(typeof(_field[_iterator])))
-    auto opIndexAssign(T)(T value, size_t index)
+    auto opIndexAssign(T)(T value, ptrdiff_t index)
     { return _field[_iterator + index] = value; }
 
-    void opOpAssign(string op, T)(const T index)
+    void opOpAssign(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")
     { mixin(`_iterator ` ~ op ~ `= index;`); }
 
@@ -145,21 +145,20 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     ///
     Slice!(kind, packs, Iterator) _slice;
 
-    private ptrdiff_t getShift(size_t n)
+    private ptrdiff_t getShift(ptrdiff_t n)
     {
         ptrdiff_t _shift;
         n += _indexes[$ - 1];
         with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
         {
-            immutable v = n / _lengths[i];
-            n %= _lengths[i];
+            immutable v = n / ptrdiff_t(_lengths[i]);
+            n %= ptrdiff_t(_lengths[i]);
             static if (i == _slice.S)
                 _shift += (n - _indexes[i]);
             else
                 _shift += (n - _indexes[i]) * _strides[i];
             n = _indexes[i - 1] + v;
         }
-        debug (ndslice) assert(n < _slice._lengths[0]);
         with (_slice)
             _shift += (n - _indexes[0]) * _strides[0];
         return _shift;
@@ -192,7 +191,6 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
             {
                 if (_indexes[i] < _lengths[i])
                     return;
-                //debug (ndslice) assert(_indexes[i] == _lengths[i]);
                 static if (i == _slice.S)
                     _iterator -= _lengths[i];
                 else
@@ -212,8 +210,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
-
-    auto ref opIndex(size_t index)
+    auto ref opIndex(ptrdiff_t index)
     {
         static if (packs.length == 1)
         {
@@ -226,55 +223,51 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
-    //static if (PureN == 1 && isMutable!DeepElemType && !hasAccessByRef)
-    /////
-    //auto opIndexAssign(E)(E elem, size_t index)
-    //{
-    //    static if (N == PureN)
-    //    {
-    //        return _slice._iterator[getShift(index)] = elem;
-    //    }
-    //    else
-    //    {
-    //        static assert(0,
-    //            "ByElement.opIndexAssign is not implemented for packed slices."
-    //            ~ "Use additional empty slicing `elemsOfSlice[index][] = value`"
-    //            ~ tailErrorMessage());
-    //    }
-    //}
-
-    void opOpAssign(string op : "+")(size_t n)
+    static if (isMutable!(_slice.DeepElemType) && !_slice.hasAccessByRef)
+    ///
+    auto opIndexAssign(E)(E elem, size_t index)
     {
-        ptrdiff_t _shift;
-        n += _indexes[$ - 1];
-        with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
+        static if (packs.length == 1)
         {
-            immutable v = n / _lengths[i];
-            n %= _lengths[i];
-            static if (i == _slice.S)
-                _shift += (n - _indexes[i]);
-            else
-                _shift += (n - _indexes[i]) * _strides[i];
-            _indexes[i] = n;
-            n = _indexes[i - 1] + v;
+            return _slice._iterator[getShift(index)] = elem;
         }
-        assert(n <= _slice._lengths[0]);
-        with (_slice)
+        else
         {
-            _shift += (n - _indexes[0]) * _strides[0];
-            _indexes[0] = n;
+            static assert(0,
+                "flattened.opIndexAssign is not implemented for packed slices."
+                ~ "Use additional empty slicing `flattenedSlice[index][] = value;`"
+                ~ tailErrorMessage());
         }
-        _slice._iterator += _shift;
     }
-
-    void opOpAssign(string op : "-")(size_t n)
-    { this += this.elementsCount - n; }
 
     void opOpAssign(string op : "+")(ptrdiff_t n)
     {
-        if (n < 0)
-            n += this.elementsCount;
-        this += size_t(n);
+        ptrdiff_t _shift;
+        with (_slice)
+        {
+            n += _indexes[$ - 1];
+            foreach_reverse (i; Iota!(1, packs[0]))
+            {
+                immutable v = n / ptrdiff_t(_lengths[i]);
+                n %= ptrdiff_t(_lengths[i]);
+                static if (i == _slice.S)
+                    _shift += (n - _indexes[i]);
+                else
+                    _shift += (n - _indexes[i]) * _strides[i];
+                _indexes[i] = n;
+                n = _indexes[i - 1] + v;
+            }
+            _shift += (n - _indexes[0]) * _strides[0];
+            _indexes[0] = n;
+            foreach_reverse (i; Iota!(1, packs[0]))
+            {
+                if (_indexes[i] >= 0)
+                    break;
+                _indexes[i] += _lengths[i];
+                _indexes[i - 1]--;
+            }
+        }
+        _slice._iterator += _shift;
     }
 
     void opOpAssign(string op : "-")(ptrdiff_t n)
