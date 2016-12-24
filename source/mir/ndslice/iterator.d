@@ -125,7 +125,7 @@ struct IotaIterator(I)
     assert(IotaIterator!int(3) == 3);
 }
 
-struct ShellIterator(Field)
+struct FieldIterator(Field)
 {
     ///
     size_t iterator;
@@ -149,9 +149,9 @@ struct ShellIterator(Field)
 
     static if (__traits(compiles, Field.init[size_t.init] |= I.init))
     ///
-    ShellIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
+    FieldIterator opBinary(string op)(size_t index) const @safe pure nothrow @nogc @property
     {
-        ShellIterator ret = this;
+        FieldIterator ret = this;
         mixin(`ret ` ~ op ~ `= index;`);
         return ret;
     }
@@ -170,79 +170,10 @@ struct ShellIterator(Field)
     }
 }
 
-auto shellIterator(Field)(Field field)
+auto fieldIterator(Field)(Field field)
 {
-    return ShellIterator!Field(0, field);
+    return FieldIterator!Field(0, field);
 }
-
-/++
-Iterator composed of indexes.
-See_also: $(LREF ndiota)
-+/
-struct ndIotaField(size_t N)
-    if (N)
-{
-    private size_t[N-1] _lengths;
-
-    ///
-    size_t[N] opIndex(size_t index) const
-    {
-        size_t[N] indexes = void;
-        foreach_reverse (i; Iota!(N - 1))
-        {
-            indexes[i + 1] = index % _lengths[i];
-            index /= _lengths[i];
-        }
-        indexes[0] = index;
-        return indexes;
-    }
-}
-
-///
-struct BitField(Field, I = typeof(Field.init[size_t.init]))
-    if (isIntegral!I)
-{
-    import core.bitop: bsr;
-    private Field field;
-    private enum shift = bsr(I.sizeof) + 3;
-    private enum mask = (1 << shift) - 1;
-
-    ///
-    bool opIndex(size_t index)
-    {
-        return ((field[index >> shift] & (I(1) << (index & mask)))) != 0;
-    }
-
-    static if (__traits(compiles, Field.init[size_t.init] |= I.init))
-    ///
-    bool opIndexAssign(bool value, size_t index)
-    {
-        auto m = I(1) << (index & mask);
-        index >>= shift;
-        if (value)
-            field[index] |= m;
-        else
-            field[index] &= ~m;
-        return value;
-    }
-}
-
-///
-BitField!Field bitField(Field)(Field field)
-{
-    return typeof(return)(field);
-}
-
-///
-unittest
-{
-    short[10] data;
-    auto f = data.ptr.bitField.shellIterator;
-    f[123] = true;
-    f++;
-    assert(f[122]);
-}
-
 
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))

@@ -60,6 +60,7 @@ import mir.ndslice.internal;
 import mir.internal.utility;
 import mir.ndslice.slice; //: Slice;
 import mir.ndslice.iterator;
+import mir.ndslice.field;
 
 /++
 Creates a packed slice, i.e. slice of slices.
@@ -1359,14 +1360,14 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF ndIotaField), $(LREF iota)
 +/
-Slice!(SliceKind.continuous, [N], ShellIterator!(ndIotaField!N))
+Slice!(SliceKind.continuous, [N], FieldIterator!(ndIotaField!N))
     ndiota
     (size_t N)
     (size_t[N] lengths...)
     if (N)
 {
     import mir.ndslice.slice : sliced;
-    with (typeof(return)) return ndIotaField!N(lengths[1 .. $]).shellIterator.sliced(lengths);
+    with (typeof(return)) return ndIotaField!N(lengths[1 .. $]).fieldIterator.sliced(lengths);
 }
 
 ///
@@ -1513,7 +1514,7 @@ pure nothrow unittest
 
 /++
 +/
-Slice!(SliceKind.continuous, [1], ShellIterator!(BitField!RandomAccess))
+Slice!(SliceKind.continuous, [1], FieldIterator!(BitField!RandomAccess))
     bitwise
     (RandomAccess)
     (RandomAccess ra)
@@ -1523,7 +1524,7 @@ Slice!(SliceKind.continuous, [1], ShellIterator!(BitField!RandomAccess))
 }
 
 /// ditto
-Slice!(SliceKind.continuous, [M], ShellIterator!(BitField!RandomAccess))
+Slice!(SliceKind.continuous, [M], FieldIterator!(BitField!RandomAccess))
     bitwise
     (RandomAccess, size_t M)
     (RandomAccess ra, size_t[M] lengths...)
@@ -1531,7 +1532,7 @@ Slice!(SliceKind.continuous, [M], ShellIterator!(BitField!RandomAccess))
 {
     static if (__traits(compiles, {size_t len = RandomAccess.init.length;}))
         assert(ra.length <= lengths.lengthsProduct);
-    return ra.bitField.shellIterator.sliced(lengths);
+    return ra.bitField.fieldIterator.sliced(lengths);
 }
 
 
