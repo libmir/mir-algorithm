@@ -21,25 +21,25 @@ struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {
     ///
-    I _iterator;
+    I _index;
 
     auto opUnary(string op : "*")()
-    { return _iterator; }
+    { return _index; }
 
     auto opUnary(string op)()
         if (op == "--" || op == "++")
-    { return mixin(op ~ `_iterator`); }
+    { return mixin(op ~ `_index`); }
 
     auto opIndex(ptrdiff_t index)
-    { return cast(I)(_iterator + index); }
+    { return cast(I)(_index + index); }
 
     void opOpAssign(string op)(ptrdiff_t index)
-        if (op == `+` || op == `-`) { mixin(`_iterator ` ~ op ~ `= index;`); }
+        if (op == `+` || op == `-`) { mixin(`_index ` ~ op ~ `= index;`); }
 
     mixin _opBinary;
 
-    ptrdiff_t opCmp()(IotaIterator left)
-    { return this._iterator - left._iterator; }
+    ptrdiff_t opCmp()(typeof(this) left) const
+    { return this._index - left._index; }
 }
 
 ///
@@ -69,34 +69,37 @@ struct IotaIterator(I)
 struct FieldIterator(Field)
 {
     ///
-    size_t _iterator;
+    ptrdiff_t _index;
     ///
     Field _field;
 
     auto ref opUnary(string op : "*")()
-    { return _field[_iterator]; }
+    { return _field[_index]; }
 
     auto ref opUnary(string op)()
         if (op == "++" || op == "--")
-    { return mixin(op ~ `_iterator`); }
+    { return mixin(op ~ `_index`); }
 
     auto ref opIndex(ptrdiff_t index)
-    { return _field[_iterator + index]; }
+    { return _field[_index + index]; }
 
-    static if (!__traits(compiles, &_field[_iterator]) && isMutable!(typeof(_field[_iterator])))
+    static if (!__traits(compiles, &_field[_index]) && isMutable!(typeof(_field[_index])))
     auto opIndexAssign(T)(T value, ptrdiff_t index)
-    { return _field[_iterator + index] = value; }
+    { return _field[_index + index] = value; }
 
     void opOpAssign(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")
-    { mixin(`_iterator ` ~ op ~ `= index;`); }
+    { mixin(`_index ` ~ op ~ `= index;`); }
 
     mixin _opBinary;
+
+    ptrdiff_t opCmp()(auto ref typeof(this) left) const
+    { return this._index - left._index; }
 }
 
-auto fieldIterator(Field)(Field field, size_t _iterator = 0)
+auto fieldIterator(Field)(Field field, ptrdiff_t _index = 0)
 {
-    return FieldIterator!Field(_iterator, field);
+    return FieldIterator!Field(_index, field);
 }
 
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
