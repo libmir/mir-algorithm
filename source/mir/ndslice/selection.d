@@ -1526,7 +1526,7 @@ private enum _bitwiseCode = q{
 
 /++
 +/
-Slice!(kind, packs, FieldIterator!(BitField!Iterator))
+Slice!(kind, packs, FieldIterator!(BitwiseField!Iterator))
     bitwise
     (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
     (Slice!(kind, packs, Iterator) slice)
@@ -1534,19 +1534,19 @@ Slice!(kind, packs, FieldIterator!(BitField!Iterator))
         && !is(Iterator : FieldIterator!Field, Field))
 {
     mixin(_bitwiseCode);
-    ret._iterator = slice._iterator.bitField.fieldIterator;
+    ret._iterator = slice._iterator.bitwiseField.fieldIterator;
     return ret;
 }
 
 /// ditto
-Slice!(kind, packs, FieldIterator!(BitField!Field))
+Slice!(kind, packs, FieldIterator!(BitwiseField!Field))
     bitwise
     (SliceKind kind, size_t[] packs, Field, I = typeof(Field.init[size_t.init]))
     (Slice!(kind, packs, FieldIterator!Field) slice)
     if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
 {
     mixin(_bitwiseCode);
-    ret._iterator = slice._iterator._field.bitField.fieldIterator(slice._iterator._index * I.sizeof * 8);
+    ret._iterator = slice._iterator._field.bitwiseField.fieldIterator(slice._iterator._index * I.sizeof * 8);
     return ret;
 }
 

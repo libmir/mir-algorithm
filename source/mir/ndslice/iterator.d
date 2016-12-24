@@ -129,7 +129,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     ///
     Slice!(kind, packs, Iterator) _slice;
 
-    private ptrdiff_t getShift(ptrdiff_t n)
+    private ptrdiff_t getShift()(ptrdiff_t n)
     {
         ptrdiff_t _shift;
         n += _indexes[$ - 1];
@@ -197,7 +197,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
-    auto ref opIndex(ptrdiff_t index)
+    auto ref opIndex()(ptrdiff_t index)
     {
         static if (packs.length == 1)
         {

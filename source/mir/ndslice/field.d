@@ -24,7 +24,7 @@ struct RepeatField(T)
 }
 
 ///
-struct BitField(Field, I = typeof(Field.init[size_t.init]))
+struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     if (isIntegral!I)
 {
     Field _field;
@@ -53,7 +53,7 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
 }
 
 ///
-BitField!Field bitField(Field)(Field field)
+BitwiseField!Field bitwiseField(Field)(Field field)
 {
     return typeof(return)(field);
 }
@@ -63,7 +63,7 @@ unittest
 {
 	import mir.ndslice.iterator: fieldIterator;
     short[10] data;
-    auto f = data.ptr.bitField.fieldIterator;
+    auto f = data.ptr.bitwiseField.fieldIterator;
     f[123] = true;
     f++;
     assert(f[122]);
