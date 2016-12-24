@@ -1,0 +1,25 @@
+sudo: false
+os:
+ - linux
+ - osx
+language: d
+d:
+ - ldc-1.1.0-beta6
+ - dmd-nightly
+ - dmd-beta
+ - dmd
+env:
+ - ARCH="x86_64"
+ - ARCH="x86"
+matrix:
+  include:
+    - {os: linux, d: ldc-1.1.0-beta2, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+branches:
+  only:
+    - master
+script:
+ - echo "$ARCH"
+ - dub test --arch "$ARCH" --build=unittest-cov
+ - dub test --arch "$ARCH" --build=unittest-release
+after_success:
+ - bash <(curl -s https://codecov.io/bash)
