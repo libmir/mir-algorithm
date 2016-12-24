@@ -1464,14 +1464,14 @@ Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 See_also: $(REF repeat, std,range)
 +/
-Slice!(SliceKind.continuous, [M], RepeatIterator!T)
+Slice!(SliceKind.continuous, [M], FieldIterator!(RepeatField!T))
     repeat(T, size_t M)(T value, size_t[M] lengths...)
     if (M && !is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
 {
     mixin _DefineRet;
     foreach (i; Iota!M)
         ret._lengths[i] = lengths[i];
-    ret._iterator = RepeatIterator!T(value);
+    ret._iterator = RepeatField!T(value).fieldIterator;
     return ret;
 }
 

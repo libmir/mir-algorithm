@@ -17,49 +17,6 @@ private mixin template _opBinary()
 }
 
 ///
-struct RepeatIterator(T)
-{
-    // UT definition is from std.range
-    // Store a non-qualified T when possible: This is to make RepeatIterator assignable
-    static if ((is(T == class) || is(T == interface)) && (is(T == const) || is(T == immutable)))
-    {
-        import std.typecons : Rebindable;
-        private alias UT = Rebindable!T;
-    }
-    else static if (is(T : Unqual!T) && is(Unqual!T : T))
-        private alias UT = Unqual!T;
-    else
-        private alias UT = T;
-    private UT _value;
-
-    auto ref opUnary(string op : "*")()
-    { return _value; }
-
-    auto ref opUnary(string op)()
-        if (op == `++` || op == `--`)
-    { return this; }
-
-    auto ref T opIndex(ptrdiff_t)
-    { return _value; }
-
-    void opOpAssign(string op)(ptrdiff_t)
-        if (op == `+` || op == `-`) {}
-
-    RepeatIterator opBinary(string op)(ptrdiff_t)
-    { return this; }
-}
-
-///
-@safe pure nothrow @nogc unittest
-{
-    RepeatIterator!double val;
-    val._value = 3;
-    assert((++val)._value == 3);
-    val += 2;
-    assert((val + 3)._value == 3);
-}
-
-///
 struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {

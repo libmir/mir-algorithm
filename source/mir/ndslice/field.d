@@ -4,6 +4,26 @@ import mir.internal.utility;
 import std.traits;
 
 ///
+struct RepeatField(T)
+{
+    // UT definition is from std.range
+    // Store a non-qualified T when possible: This is to make RepeatField assignable
+    static if ((is(T == class) || is(T == interface)) && (is(T == const) || is(T == immutable)))
+    {
+        import std.typecons : Rebindable;
+        private alias UT = Rebindable!T;
+    }
+    else static if (is(T : Unqual!T) && is(Unqual!T : T))
+        private alias UT = Unqual!T;
+    else
+        private alias UT = T;
+    private UT _value;
+
+    auto ref T opIndex(ptrdiff_t)
+    { return _value; }
+}
+
+///
 struct BitField(Field, I = typeof(Field.init[size_t.init]))
     if (isIntegral!I)
 {
