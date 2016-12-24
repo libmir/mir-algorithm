@@ -1546,8 +1546,7 @@ Slice!(kind, packs, FieldIterator!(BitField!Field))
     if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
 {
     mixin(_bitwiseCode);
-    ret._iterator = slice._iterator._field.bitField.fieldIterator;
-    ret._iterator._iterator = slice._iterator._iterator * I.sizeof * 8;
+    ret._iterator = slice._iterator._field.bitField.fieldIterator(slice._iterator._iterator * I.sizeof * 8);
     return ret;
 }
 

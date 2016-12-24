@@ -132,9 +132,9 @@ struct FieldIterator(Field)
     mixin _opBinary;
 }
 
-auto fieldIterator(Field)(Field field)
+auto fieldIterator(Field)(Field field, size_t _iterator = 0)
 {
-    return FieldIterator!Field(0, field);
+    return FieldIterator!Field(_iterator, field);
 }
 
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
@@ -268,9 +268,17 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     }
 
     void opOpAssign(string op : "-")(size_t n)
+    { this += this.elementsCount - n; }
+
+    void opOpAssign(string op : "+")(ptrdiff_t n)
     {
-        this += this.elementsCount - n;
+        if (n < 0)
+            n += this.elementsCount;
+        this += size_t(n);
     }
+
+    void opOpAssign(string op : "-")(ptrdiff_t n)
+    { this += -n; }
 
     mixin _opBinary;
 }
