@@ -1369,8 +1369,7 @@ Slice!(SliceKind.continuous, [N], FieldIterator!(ndIotaField!N))
     (size_t[N] lengths...)
     if (N)
 {
-    import mir.ndslice.slice : sliced;
-    with (typeof(return)) return ndIotaField!N(lengths[1 .. $]).fieldIterator.sliced(lengths);
+    return FieldIterator!(ndIotaField!N)(0, ndIotaField!N(lengths[1 .. $])).sliced(lengths);
 }
 
 ///
@@ -1433,7 +1432,7 @@ Slice!(SliceKind.continuous, [M], FieldIterator!(RepeatField!T))
     mixin _DefineRet;
     foreach (i; Iota!M)
         ret._lengths[i] = lengths[i];
-    ret._iterator = RepeatField!T(value).fieldIterator;
+    ret._iterator = FieldIterator!(RepeatField!T)(0, RepeatField!T(value));
     return ret;
 }
 
@@ -1534,7 +1533,7 @@ Slice!(kind, packs, FieldIterator!(BitwiseField!Iterator))
         && !is(Iterator : FieldIterator!Field, Field))
 {
     mixin(_bitwiseCode);
-    ret._iterator = slice._iterator.bitwiseField.fieldIterator;
+    ret._iterator = FieldIterator!(BitwiseField!Iterator)(0, slice._iterator.bitwiseField);
     return ret;
 }
 
@@ -1546,7 +1545,7 @@ Slice!(kind, packs, FieldIterator!(BitwiseField!Field))
     if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
 {
     mixin(_bitwiseCode);
-    ret._iterator = slice._iterator._field.bitwiseField.fieldIterator(slice._iterator._index * I.sizeof * 8);
+    ret._iterator = FieldIterator!(BitwiseField!Field)(slice._iterator._index * I.sizeof * 8, slice._iterator._field.bitwiseField);
     return ret;
 }
 
@@ -1567,11 +1566,10 @@ unittest
     assert(bits[100] == false);
 }
 
-///
 unittest
 {
     size_t[10] data;
-    auto slice = data[].fieldIterator.sliced(10);
+    auto slice = FieldIterator!(size_t[])(0, data[]).sliced(10);
     slice.popFrontExactly(2);
     auto bits_normal = data[].ptr.sliced(10).bitwise;
     auto bits = slice.bitwise;

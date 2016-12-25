@@ -284,13 +284,6 @@ struct FieldIterator(Field)
 
 /++
 +/
-auto fieldIterator(Field)(Field field, ptrdiff_t _index = 0)
-{
-    return FieldIterator!Field(_index, field);
-}
-
-/++
-+/
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
 {
