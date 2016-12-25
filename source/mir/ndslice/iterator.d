@@ -156,6 +156,89 @@ struct RetroIterator(Iterator)
 
 /++
 +/
+struct StrideIterator(Iterator)
+{
+    ///
+    ptrdiff_t _stride;
+    ///
+    Iterator _iterator;
+
+    auto ref opUnary(string op : "*")()
+    { return *_iterator; }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    { mixin("_iterator " ~ op[0] ~ "= _stride;"); }
+
+    auto ref opIndex()(ptrdiff_t index)
+    { return _iterator[index * _stride]; }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    { mixin("_iterator " ~ op ~ "= index * _stride;"); }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return _stride ? (this._iterator - right._iterator) / _stride : _stride; }
+
+    bool opEquals()(auto ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            ptrdiff_t ret = this._iterator - right._iterator;
+        else
+            ptrdiff_t ret = this._iterator.opCmp(right._iterator);
+        return _stride ? _stride > 0 ? ret : -ret : _stride;
+    }
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    IotaIterator!int iota;
+    StrideIterator!(IotaIterator!int) stride;
+    stride._stride = -3;
+
+    iota -= stride._stride;
+    --stride;
+    assert(*stride == *iota);
+
+    iota += stride._stride;
+    ++stride;
+    assert(*stride == *iota);
+
+    assert(stride[7] == iota[7 * stride._stride]);
+
+    iota -= 100 * stride._stride;
+    stride -= 100;
+    assert(*stride == *iota);
+
+    iota += 100 * stride._stride;
+    stride += 100;
+    assert(*stride == *iota);
+
+    assert(*(stride + 10) == *(iota + 10 * stride._stride));
+
+    assert(stride - 1 < stride);
+
+    assert((stride - 5) - stride == -5);
+
+    //iota = IotaIterator!int(3);
+    //stride = RetroIterator!(IotaIterator!int)(iota);
+    //assert(*stride == *iota);
+}
+
+/++
++/
 struct FieldIterator(Field)
 {
     ///
