@@ -506,7 +506,7 @@ nothrow unittest
 //{
 //    import std.algorithm.iteration : map, sum, reduce;
 //    import std.algorithm.comparison : max;
-//    import mir.ndslice.iteration : transposed;
+//    import mir.ndslice.dynamic : transposed;
 //    /// Returns maximal column average.
 //    auto maxAvg(S)(S matrix) {
 //        return matrix.universal.transposed.map!sum.reduce!max
@@ -523,7 +523,7 @@ nothrow unittest
 //{
 //    import std.algorithm.iteration : map, sum, reduce;
 //    import std.algorithm.comparison : max;
-//    import mir.ndslice.iteration : transposed;
+//    import mir.ndslice.dynamic : transposed;
 //    /// Returns maximal column average.
 //    auto maxAvg(S)(S matrix) {
 //        return matrix.transposed.map!sum.reduce!max
@@ -1532,7 +1532,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     @safe @nogc pure nothrow unittest
     {
         import mir.ndslice.topology : pack, iota;
-        import mir.ndslice.iteration : reversed, strided, transposed;
+        import mir.ndslice.dynamic : reversed, strided, transposed;
         assert(iota(3, 4, 50)
             .universal
             .reversed!2      //makes stride negative
@@ -1645,7 +1645,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     ///// Modified regular slice
     //@safe @nogc pure nothrow unittest
     //{
-    //    import mir.ndslice.iteration : reversed, strided, swapped;
+    //    import mir.ndslice.dynamic : reversed, strided, swapped;
     //    import mir.ndslice.topology : iota;
     //    assert(iota(3, 4, 50)
     //        .reversed!2      //makes stride negative
@@ -3001,7 +3001,7 @@ Slicing, indexing, and arithmetic operations.
 +/
 pure nothrow unittest
 {
-    import mir.ndslice.iteration : transposed;
+    import mir.ndslice.dynamic : transposed;
     import mir.ndslice.topology : iota;
     auto tensor = iota(3, 4, 5).slice;
 
@@ -3034,7 +3034,7 @@ Operations with rvalue slices.
 +/
 pure nothrow unittest
 {
-    import mir.ndslice.iteration : transposed, everted;
+    import mir.ndslice.dynamic : transposed, everted;
 
     auto tensor = slice!int(3, 4, 5).universal;
     auto matrix = slice!int(3, 4).universal;
@@ -3272,7 +3272,7 @@ private bool opEqualsImpl
 
 //pure nothrow unittest
 //{
-//    import mir.ndslice.iteration : dropExactly;
+//    import mir.ndslice.dynamic : dropExactly;
 //    import mir.ndslice.topology : flattened;
 //    auto sl1 = slice!double([2, 3], 2);
 //    auto sl2 = slice!double([2, 3], 3);

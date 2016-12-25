@@ -39,27 +39,6 @@ $(T2 rotated, Rotates two selected dimensions by `k*90` degrees. $(BR)
 $(H4 Drop operators)
 
 $(LREF dropToHypercube)
-$(LREF drop) $(LREF dropBack)
-$(LREF dropOne) $(LREF dropBackOne)
-$(LREF dropExactly) $(LREF dropBackExactly)
-$(LREF allDrop) $(LREF allDropBack)
-$(LREF allDropOne) $(LREF allDropBackOne)
-$(LREF allDropExactly) $(LREF allDropBackExactly)
-
-$(GRAMMAR
-$(GNAME DropOperatorName):
-    $(D dropToHypercube)
-    $(GLINK DropRoot)
-    $(GLINK DropRoot) $(GLINK DropSuffix)
-    $(GLINK DropRoot) $(D Back)
-    $(GLINK DropRoot) $(D Back) $(GLINK DropSuffix)
-$(GNAME DropRoot):
-    $(D drop)
-    $(D allDrop)
-$(GNAME DropSuffix):
-    $(D One)
-    $(D Exactly)
-)
 
 $(H2 Bifacial operators)
 
@@ -96,7 +75,7 @@ SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 */
-module mir.ndslice.iteration;
+module mir.ndslice.dynamic;
 
 
 import std.traits;

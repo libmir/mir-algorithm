@@ -230,7 +230,7 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
 ///
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.iteration : transposed;
+    import mir.ndslice.dynamic : transposed;
     auto slice = iota(3, 4, 5, 6, 7, 8, 9, 10, 11).universal;
     assert(slice
         .pack!2
@@ -245,7 +245,7 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
 pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.iteration : transposed;
+    import mir.ndslice.dynamic : transposed;
     auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11).universal;
     auto b = a
         .pack!2
@@ -479,7 +479,7 @@ unittest
 /// Matrix, antidiagonal
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.iteration : dropToHypercube, reversed;
+    import mir.ndslice.dynamic : dropToHypercube, reversed;
     //  -------
     // | 0 1 2 |
     // | 3 4 5 |
@@ -858,7 +858,7 @@ pure nothrow unittest
 //    //  ---------------------
 
 //    import mir.ndslice.slice;
-//    import mir.ndslice.iteration : strided;
+//    import mir.ndslice.dynamic : strided;
 
 //    auto overlappingBlocks = iota(5, 5)
 //        .windows(3, 3)
@@ -989,7 +989,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
 nothrow @safe pure
 unittest
 {
-    import mir.ndslice.iteration : allReversed;
+    import mir.ndslice.dynamic : allReversed;
     int err;
     auto slice = iota(3, 4)
         .universal
@@ -1007,7 +1007,7 @@ unittest
 //pure unittest
 //{
 //    import mir.ndslice.slice;
-//    import mir.ndslice.iteration : reversed;
+//    import mir.ndslice.dynamic : reversed;
 //    import std.array : array;
 
 //    auto reshape2(S, size_t M)(S slice, size_t[M] lengths...)
@@ -1038,7 +1038,7 @@ unittest
 
 nothrow @safe pure unittest
 {
-    import mir.ndslice.iteration : allReversed;
+    import mir.ndslice.dynamic : allReversed;
     auto slice = iota(1, 1, 3, 2, 1, 2, 1).universal.allReversed;
     int err;
     assert(slice.reshape([1, -1, 1, 1, 3, 1], err) ==
@@ -1141,7 +1141,7 @@ Slice!(SliceKind.continuous, 1 ~ packs[1 .. $], Iterator)
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.iteration;
+    import mir.ndslice.dynamic;
     import std.range : drop;
     assert(iota(3, 4, 5, 6, 7)
         .pack!2
@@ -1239,7 +1239,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 @safe @nogc pure nothrow unittest
 {
     import std.range : retro;
-    import mir.ndslice.iteration : allReversed;
+    import mir.ndslice.dynamic : allReversed;
 
     auto slice = iota(3, 4, 5);
 
@@ -1273,7 +1273,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 // Checks strides
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.iteration;
+    import mir.ndslice.dynamic;
     import std.range : isRandomAccessRange;
     auto elems = iota(4, 5).universal.everted.flattened;
     static assert(isRandomAccessRange!(typeof(elems)));
@@ -1290,7 +1290,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.iteration;
+    import mir.ndslice.dynamic;
     import std.range : isRandomAccessRange, hasLength;
     import std.algorithm.comparison : equal;
 
@@ -1472,7 +1472,7 @@ unittest
 ///
 @safe pure nothrow unittest
 {
-    import mir.ndslice.iteration : transposed;
+    import mir.ndslice.dynamic : transposed;
 
     auto sl = iota(3)
         .repeat(4)
