@@ -53,17 +53,11 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
 }
 
 ///
-BitwiseField!Field bitwiseField(Field)(Field field)
-{
-    return typeof(return)(field);
-}
-
-///
 unittest
 {
-	import mir.ndslice.iterator: fieldIterator;
+	import mir.ndslice.iterator: FieldIterator;
     short[10] data;
-    auto f = data.ptr.bitwiseField.fieldIterator;
+    auto f = FieldIterator!(BitwiseField!(short*))(0, BitwiseField!(short*)(data.ptr));
     f[123] = true;
     f++;
     assert(f[122]);

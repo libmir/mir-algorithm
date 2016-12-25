@@ -1533,7 +1533,7 @@ Slice!(kind, packs, FieldIterator!(BitwiseField!Iterator))
         && !is(Iterator : FieldIterator!Field, Field))
 {
     mixin(_bitwiseCode);
-    ret._iterator = FieldIterator!(BitwiseField!Iterator)(0, slice._iterator.bitwiseField);
+    ret._iterator = FieldIterator!(BitwiseField!Iterator)(0, BitwiseField!Iterator(slice._iterator));
     return ret;
 }
 
@@ -1545,7 +1545,7 @@ Slice!(kind, packs, FieldIterator!(BitwiseField!Field))
     if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
 {
     mixin(_bitwiseCode);
-    ret._iterator = FieldIterator!(BitwiseField!Field)(slice._iterator._index * I.sizeof * 8, slice._iterator._field.bitwiseField);
+    ret._iterator = FieldIterator!(BitwiseField!Field)(slice._iterator._index * I.sizeof * 8, BitwiseField!Field(slice._iterator._field));
     return ret;
 }
 
