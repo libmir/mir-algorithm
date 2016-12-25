@@ -214,11 +214,6 @@ unittest
     static assert(!is(typeof(naryFun!FuncObj)));
 }
 
-private template _isReversedArgs(alias fun)
-{
-
-}
-
 /**
    N-ary predicate that reverses the order of arguments, e.g., given
    $(D pred(a, b, c)), returns $(D pred(c, b, a)).
@@ -329,7 +324,6 @@ template compose(fun...)
     else
         alias compose = compose!(fun[0], compose!(fun[1 .. $]));
 }
-
 
 ///
 @safe unittest
