@@ -468,7 +468,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
 
 unittest
 {
-    import mir.ndslice.selection;
+    import mir.ndslice.topology;
     import mir.ndslice.slice;
 
     auto it0 = iota(3, 4).universal.flattened._iterator;

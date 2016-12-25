@@ -51,7 +51,7 @@ SUBREF = $(REF_ALTTEXT $(TT $2), $2, std,experimental, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 */
-module mir.ndslice.selection;
+module mir.ndslice.topology;
 
 import std.traits;
 import std.meta; //: allSatisfy;
@@ -1599,7 +1599,7 @@ not changed. Evaluation is done lazily.
 
 Note:
     $(SUBREF iteration, transposed) and
-    $(SUBREF selection, pack) can be used to specify dimensions.
+    $(SUBREF topology, pack) can be used to specify dimensions.
 Params:
     fun = One or more functions.
     tensor = An input tensor.
@@ -1667,7 +1667,7 @@ template map(fun...)
 ///
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     auto s = iota(2, 3).map!(a => a * 3);
     assert(s == [[ 0,  3,  6],
@@ -1676,7 +1676,7 @@ pure nothrow unittest
 
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     assert(iota(2, 3).slice.map!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
 }
@@ -1684,7 +1684,7 @@ pure nothrow unittest
 /// Packed tensors.
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota, windows;
+    import mir.ndslice.topology : iota, windows;
 
     //  iota        windows     map  sums ( reduce!"a + b" )
     //                --------------
@@ -1708,7 +1708,7 @@ pure nothrow unittest
 
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota, windows;
+    import mir.ndslice.topology : iota, windows;
 
     auto s = iota(2, 3)
         .slice
@@ -1728,7 +1728,7 @@ pure nothrow unittest
 pure nothrow unittest
 {
     import mir.ndslice.slice : assumeSameStructure;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
@@ -1755,7 +1755,7 @@ one element for each function.
 +/
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     auto s = iota(2, 3).map!("a + a", "a * a");
 
@@ -1777,7 +1777,7 @@ You may alias `map` with some function(s) to a symbol and use it separately:
 pure nothrow unittest
 {
     import std.conv : to;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     alias stringize = map!(to!string);
     assert(stringize(iota(2, 3)) == [["0", "1", "2"], ["3", "4", "5"]]);

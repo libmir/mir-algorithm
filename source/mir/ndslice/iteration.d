@@ -17,7 +17,7 @@ $(T2 swapped, Swaps dimensions $(BR)
 $(T2 everted, Reverses the order of dimensions $(BR)
     `iota(3, 4, 5).everted.shape` returns `[5, 4, 3]`.)
 )
-See also $(SUBREF selection, evertPack).
+See also $(SUBREF topology, evertPack).
 
 $(BOOKTABLE $(H2 Iteration operators),
 
@@ -179,7 +179,7 @@ body
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4, 5, 6)
         .universal
         .swapped!(3, 1)
@@ -190,7 +190,7 @@ body
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4, 5, 6)
         .universal
         .swapped(1, 3)
@@ -201,7 +201,7 @@ body
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4)
         .universal
         .swapped
@@ -292,7 +292,7 @@ body
 @safe pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     auto slice = iota(2, 3).universal;
 
     auto a = [[0, 1, 2],
@@ -359,7 +359,7 @@ Slice!(SliceKind.universal, packs, Iterator) everted(size_t[] packs, Iterator)(S
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4, 5)
         .universal
         .everted
@@ -462,7 +462,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4, 5, 6, 7)
         .universal
         .transposed!(4, 1, 0)
@@ -473,7 +473,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4, 5, 6, 7)
         .universal
         .transposed(4, 1, 0)
@@ -484,7 +484,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4, 5, 6, 7)
         .universal
         .transposed(4)
@@ -495,7 +495,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(3, 4)
         .universal
         .transposed
@@ -611,7 +611,7 @@ pure nothrow unittest
 //@safe @nogc pure nothrow unittest
 //{
 //    import mir.ndslice.slice;
-//    import mir.ndslice.selection;
+//    import mir.ndslice.topology;
 //    import std.algorithm.comparison : equal;
 //    import std.range : iota, retro, chain;
 //    auto i0 = iota(0,  4); auto r0 = i0.retro;
@@ -723,7 +723,7 @@ pure nothrow unittest
 ///
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     static assert(iota(13, 40).universal.strided!(0, 1)(2, 5).shape == [7, 8]);
     static assert(iota(93).universal.strided!(0, 0)(7, 3).shape == [5]);
 }
@@ -731,7 +731,7 @@ pure nothrow unittest
 //@safe @nogc pure nothrow unittest
 //{
 //    import mir.ndslice.slice;
-//    import mir.ndslice.selection;
+//    import mir.ndslice.topology;
 //    import std.algorithm.comparison : equal;
 //    import std.range : iota, stride, chain;
 //    auto i0 = iota(0,  4); auto s0 = i0.stride(3);
@@ -773,7 +773,7 @@ body
 ///
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     assert(iota(5, 3, 6, 7)
         .universal
         .dropToHypercube

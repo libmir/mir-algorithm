@@ -254,7 +254,7 @@ body
 //pure nothrow unittest
 //{
 //    import std.algorithm.comparison : equal;
-//    import mir.ndslice.selection : flattened;
+//    import mir.ndslice.topology : flattened;
 //    import std.range : iota;
 
 //    auto alpha = 12.iota;
@@ -341,7 +341,7 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator
 //pure nothrow
 unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     auto data = new int[24];
     foreach (int i,ref e; data)
         e = i;
@@ -371,7 +371,7 @@ unittest
 
 nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     auto sl = iota([0, 0], 1);
 
@@ -484,7 +484,7 @@ nothrow unittest
 //pure nothrow unittest
 //{
 //    import std.algorithm.comparison : equal;
-//    import mir.ndslice.selection : flattened, iota;
+//    import mir.ndslice.topology : flattened, iota;
 
 //    auto alpha = iota(4, 3);
 //    auto beta = slice!int(4, 3);
@@ -606,7 +606,7 @@ pure nothrow unittest
 
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     auto tensor = iota(2, 3).slice;
     assert(tensor == [[0, 1, 2], [3, 4, 5]]);
 }
@@ -696,7 +696,7 @@ makeSlice(T,
 //    SliceKind kind, size_t[] packs, Iterator)(auto ref Allocator alloc, Slice!(kind, packs, Iterator) slice)
 //{
 //    import std.experimental.allocator : makeArray;
-//    import mir.ndslice.selection : flattened;
+//    import mir.ndslice.topology : flattened;
 //    auto array = alloc.makeArray!T(slice.flattened);
 //    auto _slice = array.sliced!ra(slice.shape);
 //    return typeof(return)(array, _slice);
@@ -820,7 +820,7 @@ auto ndarray(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Itera
 ///
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     auto slice = iota(3, 4);
     auto m = slice.ndarray;
     static assert(is(typeof(m) == size_t[][]));
@@ -857,7 +857,7 @@ auto makeNdarray(T, Allocator, SliceKind kind, size_t[] packs, Iterator)(auto re
 {
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     auto slice = iota(3, 4);
     auto m = Mallocator.instance.makeNdarray!long(slice);
@@ -933,7 +933,7 @@ Throws:
 ///++
 //Convenience function that creates a lazy view,
 //where each element of the original slice is converted to the type `T`.
-//It uses $(SUBREF selection, mapSlice) and $(REF_ALTTEXT $(TT to), to, std,conv)$(NBSP)
+//It uses $(SUBREF topology, mapSlice) and $(REF_ALTTEXT $(TT to), to, std,conv)$(NBSP)
 //composition under the hood.
 //Params:
 //    slice = a slice to create a view on.
@@ -952,7 +952,7 @@ Throws:
 //        else
 //        {
 //            import std.conv : to;
-//            import mir.ndslice.selection : mapSlice;
+//            import mir.ndslice.topology : mapSlice;
 //            return mapSlice!(to!T)(slice);
 //        }
 //    }
@@ -962,7 +962,7 @@ Throws:
 //unittest
 //{
 //    import mir.ndslice.slice : as;
-//    import mir.ndslice.selection : diagonal;
+//    import mir.ndslice.topology : diagonal;
 
 //    auto matrix = slice!double([2, 2], 0);
 //    auto stringMatrixView = matrix.as!string;
@@ -1347,7 +1347,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     //@nogc nothrow pure
     //unittest
     //{
-    //    import mir.ndslice.selection : flattened;
+    //    import mir.ndslice.topology : flattened;
     //    import std.algorithm.comparison : equal;
     //    import std.range : only;
 
@@ -1476,7 +1476,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Regular slice
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         assert(iota(3, 4, 5).shape == cast(size_t[3])[3, 4, 5]);
     }
 
@@ -1485,7 +1485,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     //@safe @nogc pure nothrow
     unittest
     {
-        import mir.ndslice.selection : pack, iota;
+        import mir.ndslice.topology : pack, iota;
         size_t[3] s = [3, 4, 5];
         assert(iota(3, 4, 5, 6, 7).pack!2.shape == s);
     }
@@ -1522,7 +1522,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     @safe @nogc pure nothrow
     unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         size_t[3] s = [20, 5, 1];
         assert(iota(3, 4, 5).strides == s);
     }
@@ -1531,7 +1531,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Modified regular slice
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : pack, iota;
+        import mir.ndslice.topology : pack, iota;
         import mir.ndslice.iteration : reversed, strided, transposed;
         assert(iota(3, 4, 50)
             .universal
@@ -1545,7 +1545,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Packed slice
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : pack, iota;
+        import mir.ndslice.topology : pack, iota;
         size_t[3] s = [20 * 42, 5 * 42, 1 * 42];
         assert(iota(3, 4, 5, 6, 7)
             .pack!2
@@ -1564,7 +1564,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Save range
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         auto slice = iota(2, 3).save;
     }
 
@@ -1592,7 +1592,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     ///
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         auto slice = iota(3, 4, 5);
         assert(slice.length   == 3);
         assert(slice.length!0 == 3);
@@ -1633,7 +1633,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Regular slice
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         auto slice = iota(3, 4, 5);
         assert(slice.stride   == 20);
         assert(slice.stride!0 == 20);
@@ -1646,7 +1646,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     //@safe @nogc pure nothrow unittest
     //{
     //    import mir.ndslice.iteration : reversed, strided, swapped;
-    //    import mir.ndslice.selection : iota;
+    //    import mir.ndslice.topology : iota;
     //    assert(iota(3, 4, 50)
     //        .reversed!2      //makes stride negative
     //        .strided!2(6)    //multiplies stride by 6 and changes the corresponding length
@@ -1807,7 +1807,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     @safe @nogc pure nothrow unittest
     {
         import std.range.primitives;
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         auto slice = iota(10, 20, 30).canonical;
 
         static assert(isRandomAccessRange!(typeof(slice)));
@@ -1899,7 +1899,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     ///
     unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         auto s = iota(2, 3).canonical;
         assert(!s.anyEmpty);
         s.popFrontExactly!1(3);
@@ -1922,7 +1922,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     ///
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         auto s = iota(2, 3);
         assert(s[$ - 1, $ - 2] == s.backward([1, 2]));
     }
@@ -1942,7 +1942,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Regular slice
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         assert(iota(3, 4, 5).elementsCount == 60);
     }
 
@@ -1951,7 +1951,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Packed slice
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.selection : pack, evertPack, iota;
+        import mir.ndslice.topology : pack, evertPack, iota;
         auto slice = iota(3, 4, 5, 6, 7, 8);
         auto p = slice.pack!2;
         assert(p.elementsCount == 360);
@@ -1977,12 +1977,12 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             if (this._strides == rslice._strides && this._iterator == rslice._iterator)
                 return true;
         }
-        import mir.ndslice.selection : unpack;
+        import mir.ndslice.topology : unpack;
         if (this.unpack.anyEmpty)
                 return true;
         static if (N > 1 && kind == SliceKind.continuous && rkind == SliceKind.continuous)
         {
-            import mir.ndslice.selection : flattened;
+            import mir.ndslice.topology : flattened;
             return opEqualsImpl(this.unpack.flattened, rslice.unpack.flattened);
         }
         else
@@ -2026,7 +2026,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     static if (doUnittest)
     pure nothrow unittest
     {
-        import mir.ndslice.selection : iota;
+        import mir.ndslice.topology : iota;
         assert(iota(2, 3).slice[0 .. $ - 2] == iota([4, 3], 2)[0 .. $ - 4]);
     }
 
@@ -2103,7 +2103,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     //pure nothrow unittest
     //{
     //    // check with different N
-    //    import mir.ndslice.selection : pack, iota;
+    //    import mir.ndslice.topology : pack, iota;
     //    auto pElements = iota(2, 3, 4, 5).pack!2;
     //    import std.range : iota;
     //    import std.algorithm.comparison : equal;
@@ -2253,7 +2253,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         {
             static if (N > 1 && rpacks == packs && kind == SliceKind.continuous && rkind == SliceKind.continuous)
             {
-                import mir.ndslice.selection : flattened;
+                import mir.ndslice.topology : flattened;
                 this.flattened.opIndexOpAssignImplSlice!op(value.flattened);
             }
             else
@@ -2290,7 +2290,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         {
             auto sl = this[slices];
             assert(_checkAssignLengths(sl, value));
-            import mir.ndslice.selection: unpack;
+            import mir.ndslice.topology: unpack;
             if(!sl.unpack.anyEmpty)
                 sl.opIndexOpAssignImplSlice!""(value);
         }
@@ -2320,7 +2320,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         ///// Left slice is packed
         //pure nothrow unittest
         //{
-        //    import mir.ndslice.selection : blocks, iota;
+        //    import mir.ndslice.topology : blocks, iota;
         //    auto a = slice!size_t(4, 4);
         //    a.blocks(2, 2)[] = iota(2, 2);
 
@@ -2335,7 +2335,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         ///// Both slices are packed
         //pure nothrow unittest
         //{
-        //    import mir.ndslice.selection : blocks, iota, pack;
+        //    import mir.ndslice.topology : blocks, iota, pack;
         //    auto a = slice!size_t(4, 4);
         //    a.blocks(2, 2)[] = iota(2, 2, 2).pack!1;
 
@@ -2445,7 +2445,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         ///// Packed slices
         //pure nothrow unittest
         //{
-        //    import mir.ndslice.selection : blocks;
+        //    import mir.ndslice.topology : blocks;
         //    auto a = slice!int(4, 4);
         //    a.blocks(2, 2)[] = [[0, 1], [2, 3]];
 
@@ -2489,7 +2489,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !is(T : Slice!(rkind, rpacks, RIterator), SliceKind rkind, size_t[] rpacks, RIterator))
         {
-            import mir.ndslice.selection : unpack;
+            import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
             if(!sl.anyEmpty)
                 sl.opIndexOpAssignImplValue!""(value);
@@ -2526,7 +2526,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// Packed slices have the same behavior.
         pure nothrow unittest
         {
-            import mir.ndslice.selection : pack;
+            import mir.ndslice.topology : pack;
             auto a = slice!int(2, 3).pack!1;
 
             a[] = 9;
@@ -2661,7 +2661,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         {
             auto sl = this[slices];
             assert(_checkAssignLengths(sl, value));
-            import mir.ndslice.selection: unpack;
+            import mir.ndslice.topology: unpack;
             if(!sl.unpack.anyEmpty)
                 sl.opIndexOpAssignImplSlice!op(value);
         }
@@ -2690,7 +2690,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         ///// Left slice is packed
         //pure nothrow unittest
         //{
-        //    import mir.ndslice.selection : blocks, iota;
+        //    import mir.ndslice.topology : blocks, iota;
         //    auto a = slice!size_t(4, 4);
         //    a.blocks(2, 2)[] += iota(2, 2);
 
@@ -2705,7 +2705,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         ///// Both slices are packed
         //pure nothrow unittest
         //{
-        //    import mir.ndslice.selection : blocks, iota, pack;
+        //    import mir.ndslice.topology : blocks, iota, pack;
         //    auto a = slice!size_t(4, 4);
         //    a.blocks(2, 2)[] += iota(2, 2, 2).pack!1;
 
@@ -2746,7 +2746,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 && !isDynamicArray!DeepElemType
                 && DynamicArrayDimensionsCount!(T[]) <= ReturnType!(opIndex!Slices).N)
         {
-            import mir.ndslice.selection: unpack;
+            import mir.ndslice.topology: unpack;
             this[slices].unpack.opIndexOpAssignImplArray!op(value);
         }
 
@@ -2773,7 +2773,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         ///// Packed slices
         //pure nothrow unittest
         //{
-        //    import mir.ndslice.selection : blocks;
+        //    import mir.ndslice.topology : blocks;
         //    auto a = slice!int(4, 4);
         //    a.blocks(2, 2)[] += [[0, 1], [2, 3]];
 
@@ -2806,7 +2806,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         {
             static if (N > 1 && kind == SliceKind.continuous)
             {
-                import mir.ndslice.selection : flattened;
+                import mir.ndslice.topology : flattened;
                 this.flattened.opIndexOpAssignImplValue!op(value);
             }
             else
@@ -2835,7 +2835,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !is(T : Slice!(rkind, rpacks, RIterator), SliceKind rkind, size_t[] rpacks, RIterator))
         {
-            import mir.ndslice.selection : unpack;
+            import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
             if(!sl.anyEmpty)
                 sl.opIndexOpAssignImplValue!op(value);
@@ -2861,7 +2861,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// Packed slices have the same behavior.
         pure nothrow unittest
         {
-            import mir.ndslice.selection : pack;
+            import mir.ndslice.topology : pack;
             auto a = slice!int(2, 3).pack!1;
 
             a[] += 9;
@@ -2961,7 +2961,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         void opIndexUnary(string op, Slices...)(Slices slices)
             if (isFullPureSlice!Slices && (op == `++` || op == `--`))
         {
-            import mir.ndslice.selection: unpack;
+            import mir.ndslice.topology: unpack;
             auto sl = this[slices].unpack;
             if (!sl.anyEmpty)
                 sl.opIndexUnaryImpl!op;
@@ -3002,7 +3002,7 @@ Slicing, indexing, and arithmetic operations.
 pure nothrow unittest
 {
     import mir.ndslice.iteration : transposed;
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     auto tensor = iota(3, 4, 5).slice;
 
     assert(tensor[1, 2] == tensor[1][2]);
@@ -3099,7 +3099,7 @@ unittest
 // Slicing
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
     auto a = iota(10, 20, 30, 40);
     auto b = a[0..$, 10, 4 .. 27, 4];
     auto c = b[2 .. 9, 5 .. 10];
@@ -3112,7 +3112,7 @@ unittest
 // Operator overloading. # 1
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     auto fun(ref size_t x) { x *= 3; }
 
@@ -3154,7 +3154,7 @@ pure nothrow unittest
 // Operator overloading. # 3
 pure nothrow unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     auto matrix = iota(8, 9).slice;
     matrix[] = matrix;
@@ -3273,7 +3273,7 @@ private bool opEqualsImpl
 //pure nothrow unittest
 //{
 //    import mir.ndslice.iteration : dropExactly;
-//    import mir.ndslice.selection : flattened;
+//    import mir.ndslice.topology : flattened;
 //    auto sl1 = slice!double([2, 3], 2);
 //    auto sl2 = slice!double([2, 3], 3);
 //    sl1.dropExactly!0(2)[] = sl2.dropExactly!0(2);
@@ -3400,7 +3400,7 @@ private bool _checkAssignLengths(
 
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.selection : iota;
+    import mir.ndslice.topology : iota;
 
     assert(_checkAssignLengths(iota(2, 2), iota(2, 2)));
     assert(!_checkAssignLengths(iota(2, 2), iota(2, 3)));
