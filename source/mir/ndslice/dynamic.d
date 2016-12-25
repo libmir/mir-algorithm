@@ -707,26 +707,26 @@ pure nothrow unittest
     static assert(iota(93).universal.strided!(0, 0)(7, 3).shape == [5]);
 }
 
-//@safe @nogc pure nothrow unittest
-//{
-//    import mir.ndslice.slice;
-//    import mir.ndslice.topology;
-//    import std.algorithm.comparison : equal;
-//    import std.range : iota, stride, chain;
-//    auto i0 = iota(0,  4); auto s0 = i0.stride(3);
-//    auto i1 = iota(4,  8); auto s1 = i1.stride(3);
-//    auto i2 = iota(8, 12); auto s2 = i2.stride(3);
-//    auto slice = 12.iota.sliced(3, 4);
-//    assert(slice              .flattened.equal(chain(i0, i1, i2)));
-//    // Template
-//    assert(slice.strided!0(2) .flattened.equal(chain(i0, i2)));
-//    assert(slice.strided!1(3) .flattened.equal(chain(s0, s1, s2)));
-//    assert(slice.strided!(0, 1)(2, 3).flattened.equal(chain(s0, s2)));
-//    // Function
-//    assert(slice.strided(0, 2).flattened.equal(chain(i0, i2)));
-//    assert(slice.strided(1, 3).flattened.equal(chain(s0, s1, s2)));
-//    assert(slice.strided(0, 2).strided(1, 3).flattened.equal(chain(s0, s2)));
-//}
+@safe @nogc pure nothrow unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.topology;
+    import std.algorithm.comparison : equal;
+    import std.range : stride, chain;
+    auto i0 = iota([4], 0); auto s0 = stride(i0, 3);
+    auto i1 = iota([4], 4); auto s1 = stride(i1, 3);
+    auto i2 = iota([4], 8); auto s2 = stride(i2, 3);
+    auto slice = iota(3, 4).universal;
+    assert(slice              .flattened.equal(chain(i0, i1, i2)));
+    // Template
+    assert(slice.strided!0(2) .flattened.equal(chain(i0, i2)));
+    assert(slice.strided!1(3) .flattened.equal(chain(s0, s1, s2)));
+    assert(slice.strided!(0, 1)(2, 3).flattened.equal(chain(s0, s2)));
+    // Function
+    assert(slice.strided(0, 2).flattened.equal(chain(i0, i2)));
+    assert(slice.strided(1, 3).flattened.equal(chain(s0, s1, s2)));
+    assert(slice.strided(0, 2).strided(1, 3).flattened.equal(chain(s0, s2)));
+}
 
 /++
 Returns maximal multidimensional cube.

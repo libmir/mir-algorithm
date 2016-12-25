@@ -1248,14 +1248,17 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         && PureIndexLength!Slices < packs[0]
         && allSatisfy!(templateOr!(isIndex, is_Slice), Slices);
 
+    ///
     size_t[N] _lengths;
+    ///
     ptrdiff_t[S] _strides;
+    ///
     Iterator _iterator;
 
     sizediff_t backIndex(size_t dimension = 0)() @property const
         if (dimension < packs[0])
     {
-        return stride!dimension * (_lengths[dimension] - 1);
+        return _stride!dimension * (_lengths[dimension] - 1);
     }
 
     size_t indexStride(size_t I)(size_t[I] _indexes...) const
@@ -1266,7 +1269,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             {
                 enum E = I - 1;
                 assert(_indexes[E] < _lengths[E], indexError!(E, N));
-                ptrdiff_t ball = this.stride!E;
+                ptrdiff_t ball = this._stride!E;
                 ptrdiff_t stride = _indexes[E] * ball;
                 foreach_reverse (i; Iota!E) //static
                 {
@@ -1509,7 +1512,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             }
             else
             {
-                ret[$ - 1] = stride!(packs[0] - 1);
+                ret[$ - 1] = _stride!(packs[0] - 1);
                 foreach_reverse (i; Iota!(packs[0] - 1))
                     ret[i] = ret[i + 1] * _lengths[i + 1];
             }
@@ -1607,7 +1610,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         Returns: stride of the corresponding dimension
         See_also: $(LREF .Slice.structure)
     +/
-    sizediff_t stride(size_t dimension = 0)() @property const
+    sizediff_t _stride(size_t dimension = 0)() @property const
         if (dimension < packs[0])
     {
         static if (dimension < S)
@@ -1635,10 +1638,10 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     {
         import mir.ndslice.topology : iota;
         auto slice = iota(3, 4, 5);
-        assert(slice.stride   == 20);
-        assert(slice.stride!0 == 20);
-        assert(slice.stride!1 == 5);
-        assert(slice.stride!2 == 1);
+        assert(slice._stride   == 20);
+        assert(slice._stride!0 == 20);
+        assert(slice._stride!1 == 5);
+        assert(slice._stride!2 == 1);
     }
 
     //static if (doUnittest)
@@ -1651,7 +1654,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     //        .reversed!2      //makes stride negative
     //        .strided!2(6)    //multiplies stride by 6 and changes the corresponding length
     //        .swapped!(1, 2)  //swaps dimensions `1` and `2`
-    //        .stride!1 == -6);
+    //        ._stride!1 == -6);
     //}
 
     /++
@@ -1756,7 +1759,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         static if (kind == SliceKind.canonical || kind == SliceKind.universal)
             _iterator += _strides[dimension];
         else
-            _iterator += stride!dimension;
+            _iterator += _stride!dimension;
     }
 
     ///ditto
@@ -1774,7 +1777,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
         _lengths[dimension] -= n;
-        _iterator += stride!dimension * n;
+        _iterator += _stride!dimension * n;
     }
 
     ///ditto
@@ -2181,7 +2184,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             }
             else
             {
-                ptrdiff_t ball = this.stride!(slices.length - 1);
+                ptrdiff_t ball = this._stride!(slices.length - 1);
                 foreach_reverse (i, slice; slices) //static
                 {
                     static if (isIndex!(Slices[i]))
