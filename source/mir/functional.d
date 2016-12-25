@@ -24,7 +24,7 @@ $(TR $(TH Function Name) $(TH Description)
 )
 Copyright: Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Authors:   Ilya Yaroshenko, $(HTTP erdani.org, Andrei Alexandrescu (original std.functional))
+Authors:   $(HTTP erdani.org, Andrei Alexandrescu (original std.functional)), Ilya Yaroshenko
 */
 /*
          Copyright Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
@@ -34,9 +34,8 @@ Distributed under the Boost Software License, Version 1.0.
 */
 module mir.functional;
 
-import std.meta; // AliasSeq, Reverse
-import std.traits; // isCallable, Parameters
-
+import std.meta;
+import std.traits;
 
 private template needOpCallAlias(alias fun)
 {
