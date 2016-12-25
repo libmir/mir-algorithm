@@ -6,40 +6,37 @@ import std.traits;
 ///
 struct RepeatField(T)
 {
-    // UT definition is from std.range
-    // Store a non-qualified T when possible: This is to make RepeatField assignable
-    static if ((is(T == class) || is(T == interface)) && (is(T == const) || is(T == immutable)))
-    {
-        import std.typecons : Rebindable;
-        private alias UT = Rebindable!T;
-    }
-    else static if (is(T : Unqual!T) && is(Unqual!T : T))
-        private alias UT = Unqual!T;
+    static if (is(T == class) || is(T == interface) || is(T : Unqual!T) && is(Unqual!T : T))
+        ///
+        alias UT = Unqual!T;
     else
-        private alias UT = T;
-    private UT _value;
+        ///
+        alias UT = T;
+
+    ///
+    UT _value;
 
     auto ref T opIndex(ptrdiff_t)
-    { return _value; }
+    { return cast(T) _value; }
 }
 
 ///
 struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     if (isIntegral!I)
 {
-    Field _field;
     import core.bitop: bsr;
     private enum shift = bsr(I.sizeof) + 3;
     private enum mask = (1 << shift) - 1;
 
     ///
+    Field _field;
+
     bool opIndex(size_t index)
     {
         return ((_field[index >> shift] & (I(1) << (index & mask)))) != 0;
     }
 
     static if (__traits(compiles, Field.init[size_t.init] |= I.init))
-    ///
     bool opIndexAssign(bool value, size_t index)
     {
         auto m = I(1) << (index & mask);
@@ -70,9 +67,9 @@ See_also: $(LREF ndiota)
 struct ndIotaField(size_t N)
     if (N)
 {
-    private size_t[N-1] _lengths;
-
     ///
+    size_t[N - 1] _lengths;
+
     size_t[N] opIndex(size_t index) const
     {
         size_t[N] indexes = void;

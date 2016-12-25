@@ -1432,7 +1432,7 @@ Slice!(SliceKind.continuous, [M], FieldIterator!(RepeatField!T))
     mixin _DefineRet;
     foreach (i; Iota!M)
         ret._lengths[i] = lengths[i];
-    ret._iterator = FieldIterator!(RepeatField!T)(0, RepeatField!T(value));
+    ret._iterator = FieldIterator!(RepeatField!T)(0, RepeatField!T(cast(RepeatField!T.UT) value));
     return ret;
 }
 
