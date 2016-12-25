@@ -16,15 +16,16 @@ struct IotaIterator(I)
     I opUnary(string op : "*")() const
     { return _index; }
 
-    I opUnary(string op)()
+    void opUnary(string op)()
         if (op == "--" || op == "++")
-    { return mixin(op ~ `_index`); }
+    { mixin(op ~ `_index;`); }
 
     I opIndex()(ptrdiff_t index) const
     { return cast(I)(_index + index); }
 
     void opOpAssign(string op)(ptrdiff_t index)
-        if (op == `+` || op == `-`) { mixin(`_index ` ~ op ~ `= index;`); }
+        if (op == `+` || op == `-`)
+    { mixin(`_index ` ~ op ~ `= index;`); }
 
     auto opBinary(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")
@@ -69,6 +70,75 @@ struct IotaIterator(I)
 
 /++
 +/
+struct RetroIterator(Iterator)
+{
+    ///
+    Iterator _iterator;
+
+    auto ref opUnary(string op : "*")()
+    { return *_iterator; }
+
+    void opUnary(string op : "--")()
+    { ++_iterator; }
+
+    void opUnary(string op : "++")()
+    { --_iterator; }
+
+    auto ref opIndex()(ptrdiff_t index)
+    { return _iterator[-index]; }
+
+    void opOpAssign(string op : "-")(ptrdiff_t index)
+    { _iterator += index; }
+
+    void opOpAssign(string op : "+")(ptrdiff_t index)
+    { _iterator -= index; }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return right._iterator - this._iterator; }
+
+    bool opEquals()(auto ref const typeof(this) right) const
+    { return right._iterator == this._iterator; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return right - this;
+        else
+            return right._iterator.opCmp(this._iterator);
+    }
+}
+
+unittest
+{
+    IotaIterator!int iota;
+    RetroIterator!(IotaIterator!int) retro;
+    ++iota;
+    --retro;
+    assert(*retro == *iota);
+    assert(retro[-7] == iota[7]);
+    --iota;
+    ++retro;
+    assert(*retro == *iota);
+    iota += 100;
+    retro -= 100;
+    assert(*retro == *iota);
+    iota -= 100;
+    retro += 100;
+    assert(*retro == *iota);
+    assert(*(retro + 10) == *(iota - 10));
+    assert(retro - 1 < retro);
+}
+
+/++
++/
 struct FieldIterator(Field)
 {
     ///
@@ -79,9 +149,9 @@ struct FieldIterator(Field)
     auto ref opUnary(string op : "*")()
     { return _field[_index]; }
 
-    auto ref opUnary(string op)()
+    void opUnary(string op)()
         if (op == "++" || op == "--")
-    { return mixin(op ~ `_index`); }
+    { mixin(op ~ `_index;`); }
 
     auto ref opIndex()(ptrdiff_t index)
     { return _field[_index + index]; }
