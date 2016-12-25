@@ -45,27 +45,30 @@ struct IotaIterator(I)
     { return this._index - right._index; }
 }
 
+///
 @safe pure nothrow @nogc unittest
 {
-    IotaIterator!int iterator;
-    assert(*iterator == 0);
+    IotaIterator!int iota;
+    assert(*iota == 0);
 
     // iteration
-    iterator++;
-    assert(*iterator == 1);
-    assert(iterator[2] == 3);
-    assert(iterator[-1] == 0);
-    iterator--;
-    assert(*iterator == 0);
+    ++iota;
+    assert(*iota == 1);
+    
+    assert(iota[2] == 3);
+    assert(iota[-1] == 0);
+
+    --iota;
+    assert(*iota == 0);
 
     // opBinary
-    assert(*(iterator + 2) == 2);
-    assert(*(iterator - 3) == -3);
-    assert((iterator - 3) - iterator == -3);
+    assert(*(iota + 2) == 2);
+    assert(*(iota - 3) == -3);
+    assert((iota - 3) - iota == -3);
 
     // construction
     assert(*IotaIterator!int(3) == 3);
-    assert(iterator - 1 < iterator);
+    assert(iota - 1 < iota);
 }
 
 /++
@@ -110,31 +113,45 @@ struct RetroIterator(Iterator)
     ptrdiff_t opCmp()(auto ref const typeof(this) right) const
     {
         static if (isPointer!Iterator)
-            return right - this;
+            return right._iterator - this._iterator;
         else
             return right._iterator.opCmp(this._iterator);
     }
 }
 
-unittest
+///
+@safe pure nothrow @nogc unittest
 {
     IotaIterator!int iota;
     RetroIterator!(IotaIterator!int) retro;
+
     ++iota;
     --retro;
     assert(*retro == *iota);
-    assert(retro[-7] == iota[7]);
+
     --iota;
     ++retro;
     assert(*retro == *iota);
+
+    assert(retro[-7] == iota[7]);
+
     iota += 100;
     retro -= 100;
     assert(*retro == *iota);
+
     iota -= 100;
     retro += 100;
     assert(*retro == *iota);
+
     assert(*(retro + 10) == *(iota - 10));
+
     assert(retro - 1 < retro);
+
+    assert((retro - 5) - retro == -5);
+
+    iota = IotaIterator!int(3);
+    retro = RetroIterator!(IotaIterator!int)(iota);
+    assert(*retro == *iota);
 }
 
 /++
