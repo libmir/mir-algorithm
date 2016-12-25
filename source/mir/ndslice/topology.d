@@ -268,6 +268,7 @@ pure nothrow unittest
 unittest
 {
     import mir.ndslice.slice;
+    import mir.ndslice.allocation;
     static assert(is(typeof(slice!int(20)
         .evertPack)
          == Slice!(SliceKind.continuous, [1], int*)));
@@ -449,6 +450,7 @@ Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Iterator)
 pure nothrow unittest
 {
     import mir.ndslice.slice;
+    import mir.ndslice.allocation;
 
     auto slice = slice!int(3, 3);
     int i;
@@ -617,6 +619,7 @@ body
 pure nothrow unittest
 {
     import mir.ndslice.slice;
+    import mir.ndslice.allocation;
     auto slice = slice!int(5, 8);
     auto blocks = slice.blocks(2, 3);
     int i;
@@ -644,6 +647,7 @@ pure nothrow unittest
 pure nothrow unittest
 {
     import mir.ndslice.slice;
+    import mir.ndslice.allocation;
     auto slice = slice!int(5, 8);
     auto blocks = slice.blocks(2, 3);
     auto diagonalBlocks = blocks.diagonal.unpack;
@@ -675,6 +679,7 @@ pure nothrow unittest
 //pure nothrow
 unittest
 {
+    import mir.ndslice.allocation;
     import mir.ndslice.slice;
     auto slice = slice!int(5, 13);
     auto blocks = slice
@@ -749,6 +754,7 @@ body
 pure nothrow
 unittest
 {
+    import mir.ndslice.allocation;
     import mir.ndslice.slice;
     auto slice = slice!int(5, 8);
     auto windows = slice.windows(2, 3);
@@ -771,6 +777,7 @@ unittest
 ///
 pure nothrow unittest
 {
+    import mir.ndslice.allocation;
     import mir.ndslice.slice;
     auto slice = slice!int(5, 8);
     auto windows = slice.windows(2, 3);
@@ -791,6 +798,7 @@ pure nothrow unittest
 /// Multi-diagonal matrix
 pure nothrow unittest
 {
+    import mir.ndslice.allocation;
     import mir.ndslice.slice;
     auto slice = slice!int(8, 8);
     auto windows = slice.windows(3, 3);
@@ -815,6 +823,7 @@ pure nothrow unittest
 /// Sliding window over matrix columns
 pure nothrow unittest
 {
+    import mir.ndslice.allocation;
     import mir.ndslice.slice;
     auto slice = slice!int(5, 8);
     auto windows = slice
@@ -1333,6 +1342,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 unittest
 {
     import std.range.primitives;
+    import mir.ndslice.allocation;
     alias A = typeof(iota(2, 5).sliced(1, 1, 1, 1));
     static assert(isRandomAccessRange!A);
     static assert(hasLength!A);
@@ -1487,7 +1497,7 @@ unittest
 ///
 pure nothrow unittest
 {
-    import mir.ndslice.slice : slice;
+    import mir.ndslice.allocation;
 
     auto sl = iota([3], 6).slice;
     auto slC = sl.repeat(2, 3);
