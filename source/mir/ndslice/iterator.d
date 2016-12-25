@@ -232,9 +232,9 @@ struct StrideIterator(Iterator)
 
     assert((stride - 5) - stride == -5);
 
-    //iota = IotaIterator!int(3);
-    //stride = RetroIterator!(IotaIterator!int)(iota);
-    //assert(*stride == *iota);
+    iota = IotaIterator!int(3);
+    stride = StrideIterator!(IotaIterator!int)(3, iota);
+    assert(*stride == *iota);
 }
 
 /++
