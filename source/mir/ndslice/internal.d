@@ -377,11 +377,17 @@ _____";
 mixin template _DefineRet()
 {
     alias Ret = typeof(return);
+    mixin _DefineRet_;
+}
+
+mixin template _DefineRet_()
+{
     static if (hasElaborateAssign!(typeof(Ret._iterator)))
         Ret ret;
     else
         Ret ret = void;
 }
+
 
 mixin template DimensionsCountCTError()
 {

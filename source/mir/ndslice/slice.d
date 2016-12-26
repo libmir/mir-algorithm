@@ -23,6 +23,14 @@ import std.range.primitives; //: hasLength;
 import mir.internal.utility;
 import mir.ndslice.internal;
 
+template isSlice(T)
+{
+    static if (is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
+        enum isSlice = packs;
+    else
+        enum isSlice = null;
+}
+
 ///
 enum SliceKind
 {
@@ -1194,7 +1202,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Modified regular slice
     @safe @nogc pure nothrow unittest
     {
-        import mir.ndslice.topology : pack, iota;
+        import mir.ndslice.topology : pack, iota, universal;
         import mir.ndslice.dynamic : reversed, strided, transposed;
         assert(iota(3, 4, 50)
             .universal
@@ -1471,7 +1479,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     @safe @nogc pure nothrow unittest
     {
         import std.range.primitives;
-        import mir.ndslice.topology : iota;
+        import mir.ndslice.topology : iota, canonical;
         auto slice = iota(10, 20, 30).canonical;
 
         static assert(isRandomAccessRange!(typeof(slice)));
@@ -1563,7 +1571,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     ///
     unittest
     {
-        import mir.ndslice.topology : iota;
+        import mir.ndslice.topology : iota, canonical;
         auto s = iota(2, 3).canonical;
         assert(!s.anyEmpty);
         s.popFrontExactly!1(3);
@@ -2682,7 +2690,7 @@ pure nothrow unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.dynamic : transposed;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     auto tensor = iota(3, 4, 5).slice;
 
     assert(tensor[1, 2] == tensor[1][2]);
@@ -2715,7 +2723,8 @@ Operations with rvalue slices.
 pure nothrow unittest
 {
     import mir.ndslice.allocation;
-    import mir.ndslice.dynamic : transposed, everted;
+    import mir.ndslice.topology: universal;
+    import mir.ndslice.dynamic: transposed, everted;
 
     auto tensor = slice!int(3, 4, 5).universal;
     auto matrix = slice!int(3, 4).universal;
@@ -2985,60 +2994,6 @@ private bool opEqualsImpl
 //        assert(range[7] == 333);
 //    }
 //}
-
-Slice!(SliceKind.universal, packs, Iterator) universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
-{
-    static if (kind == SliceKind.universal)
-        return slice;
-    else
-    {
-        mixin _DefineRet;
-        foreach (i; Iota!(slice.N))
-            ret._lengths[i] = slice._lengths[i];
-        static if (kind == SliceKind.canonical)
-        {
-            foreach (i; Iota!(slice.S))
-                ret._strides[i] = slice._strides[i];
-            ret._strides[$-1] = 1;
-        }
-        else
-        {
-            ptrdiff_t ball = 1;
-            foreach_reverse (i; Iota!(ret.S))
-            {
-                ret._strides[i] = ball;
-                static if (i)
-                    ball *= slice._lengths[i];
-            }
-        }
-        ret._iterator = slice._iterator;
-        return ret;
-    }
-}
-
-Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Iterator)
-    canonical
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
-    if (kind == SliceKind.continuous || kind == SliceKind.canonical)
-{
-    static if (kind == SliceKind.canonical || packs.sum == 1)
-        return slice;
-    else
-    {
-        mixin _DefineRet;
-        foreach (i; Iota!(slice.N))
-            ret._lengths[i] = slice._lengths[i];
-        ptrdiff_t ball = 1;
-        foreach_reverse (i; Iota!(ret.S))
-        {
-            ball *= slice._lengths[i + 1];
-            ret._strides[i] = ball;
-        }
-        ret._iterator = slice._iterator;
-        return ret;
-    }
-}
 
 private template PrepareIteratorType(Iterator)
 {

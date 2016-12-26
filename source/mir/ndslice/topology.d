@@ -62,6 +62,61 @@ import mir.ndslice.slice; //: Slice;
 import mir.ndslice.iterator;
 import mir.ndslice.field;
 
+
+Slice!(SliceKind.universal, packs, Iterator) universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+{
+    static if (kind == SliceKind.universal)
+        return slice;
+    else
+    {
+        mixin _DefineRet;
+        foreach (i; Iota!(slice.N))
+            ret._lengths[i] = slice._lengths[i];
+        static if (kind == SliceKind.canonical)
+        {
+            foreach (i; Iota!(slice.S))
+                ret._strides[i] = slice._strides[i];
+            ret._strides[$-1] = 1;
+        }
+        else
+        {
+            ptrdiff_t ball = 1;
+            foreach_reverse (i; Iota!(ret.S))
+            {
+                ret._strides[i] = ball;
+                static if (i)
+                    ball *= slice._lengths[i];
+            }
+        }
+        ret._iterator = slice._iterator;
+        return ret;
+    }
+}
+
+Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Iterator)
+    canonical
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
+    if (kind == SliceKind.continuous || kind == SliceKind.canonical)
+{
+    static if (kind == SliceKind.canonical || packs.sum == 1)
+        return slice;
+    else
+    {
+        mixin _DefineRet;
+        foreach (i; Iota!(slice.N))
+            ret._lengths[i] = slice._lengths[i];
+        ptrdiff_t ball = 1;
+        foreach_reverse (i; Iota!(ret.S))
+        {
+            ball *= slice._lengths[i + 1];
+            ret._strides[i] = ball;
+        }
+        ret._iterator = slice._iterator;
+        return ret;
+    }
+}
+
 /++
 Creates a packed slice, i.e. slice of slices.
 The function does not carry out any calculations, it simply returns the same
@@ -429,11 +484,8 @@ Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Iterator)
 }
 
 /// Non-square matrix
-@safe @nogc pure nothrow unittest
+@safe pure nothrow unittest
 {
-    import std.algorithm.comparison : equal;
-    import std.range : only;
-
     //  -------
     // | 0 1 |
     // | 2 3 |
@@ -442,9 +494,7 @@ Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Iterator)
     //->
     // | 0 3 |
 
-    assert(iota(3, 2)
-        .diagonal
-        .equal(only(0, 3)));
+    assert(iota(3, 2).diagonal == iota([2], 0, 3));
 }
 
 /// Loop through diagonal
@@ -1021,7 +1071,6 @@ unittest
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
     import mir.ndslice.dynamic : reversed;
-    import std.array : array;
 
     auto reshape2(S, size_t M)(S sl, ptrdiff_t[M] lengths)
     {
@@ -1074,7 +1123,6 @@ unittest
 nothrow @nogc @safe pure unittest
 {
     import mir.ndslice.slice;
-    import std.exception : assertThrown;
 
     int err;
     auto e = iota(1);
@@ -1155,13 +1203,7 @@ Slice!(SliceKind.continuous, 1 ~ packs[1 .. $], Iterator)
 {
     import mir.ndslice.slice;
     import mir.ndslice.dynamic;
-    import std.range : drop;
-    assert(iota(3, 4, 5, 6, 7)
-        .pack!2
-        .flattened()
-        .drop(1)
-        .front
-         == iota([6, 7], 6 * 7));
+    assert(iota(3, 4, 5, 6, 7).pack!2.flattened()[1] == iota([6, 7], 6 * 7));
 }
 
 /// Properties
@@ -1200,24 +1242,19 @@ pure nothrow unittest
 
 pure nothrow unittest
 {
-    import std.range : dropOne;
     auto elems = iota(3, 4).universal.flattened;
     assert(elems.front == 0);
-    assert(elems.save.dropOne.front == 1);
-    assert(elems.front == 0);
+    assert(elems.save[1] == 1);
 }
 
 /++
 Random access and slicing
 +/
-@nogc nothrow unittest
+nothrow unittest
 {
-    import mir.ndslice.slice;
-    import std.algorithm.comparison : equal;
-    import std.array : array;
-    import std.range : iota, repeat;
-    static data = 20.iota.array;
-    auto elems = data.sliced(4, 5).flattened;
+    import mir.ndslice.allocation: slice;
+
+    auto elems = iota(4, 5).slice.flattened;
 
     elems = elems[11 .. $ - 2];
 
@@ -1230,45 +1267,36 @@ Random access and slicing
 
     // assign an element
     elems[2 .. 6] = -1;
-    assert(elems[2 .. 6].equal(repeat(-1, 4)));
+    assert(elems[2 .. 6] == repeat(-1, 4));
 
     // assign an array
     static ar = [-1, -2, -3, -4];
     elems[2 .. 6] = ar;
-    assert(elems[2 .. 6].equal(ar));
+    assert(elems[2 .. 6] == ar);
 
     // assign a slice
     ar[] *= 2;
     auto sl = ar.sliced(ar.length);
     elems[2 .. 6] = sl;
-    assert(elems[2 .. 6].equal(sl));
+    assert(elems[2 .. 6] == sl);
 }
 
-/++
-Forward access works faster than random access or backward access.
-Use $(SUBREF iteration, allReversed) in pipeline before
-`flattened` to achieve fast backward access.
-+/
 @safe @nogc pure nothrow unittest
 {
-    import std.range : retro;
     import mir.ndslice.dynamic : allReversed;
 
     auto slice = iota(3, 4, 5);
 
-    /// Slow backward iteration #1
     foreach (ref e; slice.universal.flattened.retro)
     {
         //...
     }
 
-    /// Slow backward iteration #2
     foreach_reverse (ref e; slice.universal.flattened)
     {
         //...
     }
 
-    /// Fast backward iteration
     foreach (ref e; slice.universal.allReversed.flattened)
     {
         //...
@@ -1287,7 +1315,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.dynamic;
-    import std.range : isRandomAccessRange;
+    import std.range.primitives : isRandomAccessRange;
     auto elems = iota(4, 5).universal.everted.flattened;
     static assert(isRandomAccessRange!(typeof(elems)));
 
@@ -1304,8 +1332,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
 {
     import mir.ndslice.slice;
     import mir.ndslice.dynamic;
-    import std.range : isRandomAccessRange, hasLength;
-    import std.algorithm.comparison : equal;
+    import std.range.primitives : isRandomAccessRange, hasLength;
 
     auto range = (3 * 4 * 5 * 6 * 7).iota;
     auto slice0 = range.sliced(3, 4, 5, 6, 7).universal;
@@ -1313,7 +1340,6 @@ Use $(SUBREF iteration, allReversed) in pipeline before
     auto elems0 = slice0.flattened;
     auto elems1 = slice1.flattened;
 
-    import std.meta;
     foreach (S; AliasSeq!(typeof(elems0), typeof(elems1)))
     {
         static assert(isRandomAccessRange!S);
@@ -1337,7 +1363,7 @@ Use $(SUBREF iteration, allReversed) in pipeline before
     elems0.popFront();
     elems0.popFrontExactly(slice0.elementsCount - 14);
     assert(elems0.length == 13);
-    assert(elems0.equal(range[slice0.elementsCount - 13 .. slice0.elementsCount]));
+    assert(elems0 == range[slice0.elementsCount - 13 .. slice0.elementsCount]);
 
     foreach (elem; elems0) {}
 }
@@ -1409,25 +1435,13 @@ Slice!(SliceKind.continuous, [N], FieldIterator!(ndIotaField!N))
     assert(cm[2, 1] == [3, 5]);
 }
 
-@safe pure nothrow unittest
-{
-    // test save
-    import std.range : dropOne;
-
-    auto im = ndiota(7, 9);
-    auto imByElement = im.flattened;
-    assert(imByElement.front == [0, 0]);
-    assert(imByElement.save.dropOne.front == [0, 1]);
-    assert(imByElement.front == [0, 0]);
-}
-
 unittest
 {
     auto r = ndiota(1);
     auto d = r.front;
     r.popFront;
     import std.range.primitives;
-    //static assert(isInputRange!(typeof(r)));
+    static assert(isRandomAccessRange!(typeof(r)));
 }
 
 /++
@@ -1528,38 +1542,104 @@ pure nothrow unittest
                   [3.0, 3.0, 3.0]]);
 }
 
-private enum _bitwiseCode = q{
-    mixin _DefineRet;
+/++
++/
+auto stride
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice, ptrdiff_t factor)
+    if (packs.sum == 1)
+in
+{
+    assert (factor > 0, "factor must be positive.");
+}
+body
+{
+    static if (kind == SliceKind.continuous || kind == SliceKind.canonical)
+        return slice.universal.stride(factor);
+    else
+    {
+        import mir.ndslice.dynamic: strided;
+        return slice.strided!0(factor);
+    }
+}
+
+/++
++/
+auto retro
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
+    if (packs.length == 1)
+{
+    static if (kind == SliceKind.continuous || kind == SliceKind.canonical)
+    {
+        import mir.ndslice.dynamic: allReversed;
+        static if (kind == SliceKind.continuous)
+        {
+            ptrdiff_t shift = 1;
+            foreach(i; Iota!(packs[0]))
+                shift *= slice._lengths[i];
+            --shift;
+        }
+        else
+        {
+            ptrdiff_t shift = 0;
+            foreach(i; Iota!(packs[0]))
+                shift += slice.backIndex!i;
+        }
+        static if (is(Iterator : RetroIterator!It, It))
+        {
+            alias Ret = Slice!(kind, packs, It);
+            mixin _DefineRet_;
+            ret._iterator = slice._iterator._iterator;
+        }
+        else
+        {
+            alias Ret = Slice!(kind, packs, RetroIterator!Iterator);
+            mixin _DefineRet_;
+            ret._iterator = RetroIterator!Iterator(slice._iterator);
+        }
+        ret._iterator -= shift;
+        foreach (i; Iota!(ret.N))
+            ret._lengths[i] = slice._lengths[i];
+        foreach (i; Iota!(ret.S))
+            ret._strdies[i] = slice._strdies[i];
+        return ret;
+    }
+    else
+    {
+        import mir.ndslice.dynamic: allReversed;
+        return slice.allReversed;
+    }
+}
+
+/++
++/
+auto bitwise
+    (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
+    (Slice!(kind, packs, Iterator) slice)
+    if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
+{
+    static if (is(Iterator : FieldIterator!Field, Field))
+    {
+        enum simplified = true;
+        alias It = FieldIterator!(BitwiseField!Field);
+    }
+    else
+    {
+        enum simplified = false;
+        alias It = FieldIterator!(BitwiseField!Iterator);
+    }
+    alias Ret = Slice!(kind, packs, It);
+    mixin _DefineRet_;
     foreach(i; Iota!(ret.N))
         ret._lengths[i] = slice._lengths[i];
     ret._lengths[$ - 1] *= I.sizeof * 8;
     foreach(i; Iota!(ret.S))
         ret._strides[i] = slice._strides[i];
-};
-
-/++
-+/
-Slice!(kind, packs, FieldIterator!(BitwiseField!Iterator))
-    bitwise
-    (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
-    (Slice!(kind, packs, Iterator) slice)
-    if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical)
-        && !is(Iterator : FieldIterator!Field, Field))
-{
-    mixin(_bitwiseCode);
-    ret._iterator = FieldIterator!(BitwiseField!Iterator)(0, BitwiseField!Iterator(slice._iterator));
-    return ret;
-}
-
-/// ditto
-Slice!(kind, packs, FieldIterator!(BitwiseField!Field))
-    bitwise
-    (SliceKind kind, size_t[] packs, Field, I = typeof(Field.init[size_t.init]))
-    (Slice!(kind, packs, FieldIterator!Field) slice)
-    if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
-{
-    mixin(_bitwiseCode);
-    ret._iterator = FieldIterator!(BitwiseField!Field)(slice._iterator._index * I.sizeof * 8, BitwiseField!Field(slice._iterator._field));
+    static if (simplified)
+        ret._iterator = It(slice._iterator._index * I.sizeof * 8, BitwiseField!Field(slice._iterator._field));
+    else
+        ret._iterator = It(0, BitwiseField!Iterator(slice._iterator));
     return ret;
 }
 
@@ -1632,31 +1712,14 @@ template map(fun...)
         // this static if-else block
         // may be unified with std.algorithms.iteration.map
         // after ndslice be removed from the Mir library.
-        static if (fun.length > 1)
-        {
-            import std.functional : adjoin, unaryFun;
+            import mir.functional : nary;
 
-            alias _funs = staticMap!(unaryFun, fun);
-            alias _fun = adjoin!_funs;
-
-            // Once DMD issue #5710 is fixed, this validation loop can be moved into a template.
-            foreach (f; _funs)
-            {
-                static assert(!is(typeof(f(RE.init)) == void),
-                    "Mapping function(s) must not return void: " ~ _funs.stringof);
-            }
-        }
-        else
-        {
-            import std.functional : unaryFun;
-
-            alias _fun = unaryFun!fun;
+            alias _fun = nary!fun;
             alias _funs = AliasSeq!(_fun);
 
             // Do the validation separately for single parameters due to DMD issue #15777.
             static assert(!is(typeof(_fun(RE.init)) == void),
                 "Mapping function(s) must not return void: " ~ _funs.stringof);
-        }
 
         // Specialization for packed tensors (tensors composed of tensors).
         static if (is(Iterator : Slice!(NI, IteratorI), size_t NI, IteratorI))

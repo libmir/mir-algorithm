@@ -158,7 +158,7 @@ body
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4, 5, 6)
         .universal
         .swapped!(3, 1)
@@ -169,7 +169,7 @@ body
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4, 5, 6)
         .universal
         .swapped(1, 3)
@@ -180,7 +180,7 @@ body
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4)
         .universal
         .swapped
@@ -271,7 +271,7 @@ body
 @safe pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     auto slice = iota(2, 3).universal;
 
     auto a = [[0, 1, 2],
@@ -338,7 +338,7 @@ Slice!(SliceKind.universal, packs, Iterator) everted(size_t[] packs, Iterator)(S
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4, 5)
         .universal
         .everted
@@ -441,7 +441,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4, 5, 6, 7)
         .universal
         .transposed!(4, 1, 0)
@@ -452,7 +452,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4, 5, 6, 7)
         .universal
         .transposed(4, 1, 0)
@@ -463,7 +463,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4, 5, 6, 7)
         .universal
         .transposed(4)
@@ -474,7 +474,7 @@ Slice!(SliceKind.universal, [2], Iterator) transposed(Iterator)(Slice!(SliceKind
 @safe @nogc pure nothrow unittest
 {
     import mir.ndslice.slice;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(3, 4)
         .universal
         .transposed
@@ -506,17 +506,14 @@ Slice!(SliceKind.universal, packs, Iterator) allReversed(size_t[] packs, Iterato
     return slice;
 }
 
-/////
-//@safe @nogc pure nothrow unittest
-//{
-//    import mir.ndslice.slice;
-//    import std.range : iota, retro;
-//    auto a = 20.iota
-//        .sliced(4, 5)
-//        .allReversed;
-//    auto b = 20.iota.retro.sliced(4, 5);
-//    assert(a == b);
-//}
+///
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.topology : iota, retro, universal;
+    assert(iota(4, 5).universal.allReversed == iota(4, 5).retro);
+}
 
 /++
 Reverses the direction of iteration for selected dimensions.
@@ -566,8 +563,8 @@ body
 ///
 pure nothrow unittest
 {
-    import mir.ndslice.slice;
-    auto slice = [1, 2, 3, 4].sliced(2, 2).universal;
+    import mir.ndslice.topology: iota, universal;
+    auto slice = iota([2, 2], 1).universal;
     assert(slice                    == [[1, 2], [3, 4]]);
 
     // Template
@@ -587,32 +584,32 @@ pure nothrow unittest
     assert(slice.reversed (0, 0, 0) == [[3, 4], [1, 2]]);
 }
 
-//@safe @nogc pure nothrow unittest
-//{
-//    import mir.ndslice.slice;
-//    import mir.ndslice.topology;
-//    import std.algorithm.comparison : equal;
-//    import std.range : iota, retro, chain;
-//    auto i0 = iota(0,  4); auto r0 = i0.retro;
-//    auto i1 = iota(4,  8); auto r1 = i1.retro;
-//    auto i2 = iota(8, 12); auto r2 = i2.retro;
-//    auto slice = 12.iota.sliced(3, 4).universal;
-//    assert(slice                   .flattened.equal(chain(i0, i1, i2)));
-//    // Template
-//    assert(slice.reversed!(0)      .flattened.equal(chain(i2, i1, i0)));
-//    assert(slice.reversed!(1)      .flattened.equal(chain(r0, r1, r2)));
-//    assert(slice.reversed!(0, 1)   .flattened.equal(chain(r2, r1, r0)));
-//    assert(slice.reversed!(1, 0)   .flattened.equal(chain(r2, r1, r0)));
-//    assert(slice.reversed!(1, 1)   .flattened.equal(chain(i0, i1, i2)));
-//    assert(slice.reversed!(0, 0, 0).flattened.equal(chain(i2, i1, i0)));
-//    // Function
-//    assert(slice.reversed (0)      .flattened.equal(chain(i2, i1, i0)));
-//    assert(slice.reversed (1)      .flattened.equal(chain(r0, r1, r2)));
-//    assert(slice.reversed (0, 1)   .flattened.equal(chain(r2, r1, r0)));
-//    assert(slice.reversed (1, 0)   .flattened.equal(chain(r2, r1, r0)));
-//    assert(slice.reversed (1, 1)   .flattened.equal(chain(i0, i1, i2)));
-//    assert(slice.reversed (0, 0, 0).flattened.equal(chain(i2, i1, i0)));
-//}
+@safe @nogc pure nothrow unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.topology;
+    import std.algorithm.comparison : equal;
+    import std.range : chain;
+    auto i0 = iota([4], 0); auto r0 = i0.retro;
+    auto i1 = iota([4], 4); auto r1 = i1.retro;
+    auto i2 = iota([4], 8); auto r2 = i2.retro;
+    auto slice = iota(3, 4).universal;
+    assert(slice                   .flattened.equal(chain(i0, i1, i2)));
+    // Template
+    assert(slice.reversed!(0)      .flattened.equal(chain(i2, i1, i0)));
+    assert(slice.reversed!(1)      .flattened.equal(chain(r0, r1, r2)));
+    assert(slice.reversed!(0, 1)   .flattened.equal(chain(r2, r1, r0)));
+    assert(slice.reversed!(1, 0)   .flattened.equal(chain(r2, r1, r0)));
+    assert(slice.reversed!(1, 1)   .flattened.equal(chain(i0, i1, i2)));
+    assert(slice.reversed!(0, 0, 0).flattened.equal(chain(i2, i1, i0)));
+    // Function
+    assert(slice.reversed (0)      .flattened.equal(chain(i2, i1, i0)));
+    assert(slice.reversed (1)      .flattened.equal(chain(r0, r1, r2)));
+    assert(slice.reversed (0, 1)   .flattened.equal(chain(r2, r1, r0)));
+    assert(slice.reversed (1, 0)   .flattened.equal(chain(r2, r1, r0)));
+    assert(slice.reversed (1, 1)   .flattened.equal(chain(i0, i1, i2)));
+    assert(slice.reversed (0, 0, 0).flattened.equal(chain(i2, i1, i0)));
+}
 
 private enum _stridedCode = q{
     assert(factor > 0, "factor must be positive"
@@ -643,7 +640,7 @@ template strided(Dimensions...)
     static if (!allSatisfy!(isSize_t, Dimensions))
         alias strided = .strided!(staticMap!(toSize_t, Dimensions));
     else
-    @fastmath auto strided(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, Repeat!(Dimensions.length, size_t) factors)
+    @fastmath auto strided(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
     body
     {
         foreach (i, dimension; Dimensions)
@@ -657,7 +654,7 @@ template strided(Dimensions...)
 }
 
 ///ditto
-Slice!(SliceKind.universal, packs, Iterator) strided(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, size_t dimension, size_t factor)
+Slice!(SliceKind.universal, packs, Iterator) strided(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, size_t dimension, ptrdiff_t factor)
 in
 {
     mixin (DimensionRTError);
@@ -671,9 +668,8 @@ body
 ///
 pure nothrow unittest
 {
-    import mir.ndslice.slice;
-    auto slice
-         = [0,1,2,3,    4,5,6,7,   8,9,10,11].sliced(3, 4).universal;
+    import mir.ndslice.topology: iota, universal;
+    auto slice = iota(3, 4).universal;
 
     assert(slice
         == [[0,1,2,3], [4,5,6,7], [8,9,10,11]]);
@@ -702,7 +698,7 @@ pure nothrow unittest
 ///
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     static assert(iota(13, 40).universal.strided!(0, 1)(2, 5).shape == [7, 8]);
     static assert(iota(93).universal.strided!(0, 0)(7, 3).shape == [5]);
 }
@@ -712,7 +708,7 @@ pure nothrow unittest
     import mir.ndslice.slice;
     import mir.ndslice.topology;
     import std.algorithm.comparison : equal;
-    import std.range : stride, chain;
+    import std.range : chain;
     auto i0 = iota([4], 0); auto s0 = stride(i0, 3);
     auto i1 = iota([4], 4); auto s1 = stride(i1, 3);
     auto i2 = iota([4], 8); auto s2 = stride(i2, 3);
@@ -752,7 +748,7 @@ body
 ///
 @safe @nogc pure nothrow unittest
 {
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, universal;
     assert(iota(5, 3, 6, 7)
         .universal
         .dropToHypercube

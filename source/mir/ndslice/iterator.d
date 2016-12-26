@@ -213,7 +213,7 @@ struct StrideIterator(Iterator)
     }
 
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
-    { return _stride ? (this._iterator - right._iterator) / _stride : _stride; }
+    { return (this._iterator - right._iterator) / _stride; }
 
     bool opEquals()(auto ref const typeof(this) right) const
     { return this._iterator == right._iterator; }
@@ -224,7 +224,7 @@ struct StrideIterator(Iterator)
             ptrdiff_t ret = this._iterator - right._iterator;
         else
             ptrdiff_t ret = this._iterator.opCmp(right._iterator);
-        return _stride ? _stride > 0 ? ret : -ret : _stride;
+        return _stride >= 0 ? ret : -ret;
     }
 }
 
