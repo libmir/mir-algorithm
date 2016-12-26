@@ -40,7 +40,7 @@ $(T2 windows, n-dimensional slice of n-dimensional overlapping windows.
     If the slice has two dimensions, it is a sliding window.)
 )
 
-License:   BSD 3-Clause License
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
 Copyright: Copyright © 2016, Ilya Yaroshenko
 
@@ -1042,8 +1042,6 @@ unittest
         .universal
         .reversed!0;
 
-    import std.stdio;
-    writeln(reshape2(sl, [4, 3]));
     assert(reshape2(sl, [4, 3]) ==
         [[ 8, 9, 10],
          [11, 4,  5],

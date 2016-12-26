@@ -1,7 +1,7 @@
 /**
 This is a submodule of $(MREF mir, ndslice).
 
-License:   BSD 3-Clause License
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
 Copyright: Copyright © 2016, Ilya Yaroshenko
 
