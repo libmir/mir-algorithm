@@ -93,68 +93,61 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     return typeof(return)(slice._lengths, slice._strides, slice._iterator);
 }
 
-/////
-//@safe @nogc pure nothrow unittest
-//{
-//    import mir.ndslice : sliced, Slice, pack;
-//    import std.range : iota;
+///
+@safe @nogc pure nothrow unittest
+{
+    import mir.ndslice.slice : sliced, Slice;
 
-//    auto r = (3 * 4 * 5 * 6).iota;
-//    auto a = r.sliced(3, 4, 5, 6);
-//    auto b = a.pack!2;
+    auto a = iota(3, 4, 5, 6);
+    auto b = a.pack!2;
 
-//    static immutable res1 = [3, 4];
-//    static immutable res2 = [5, 6];
-//    assert(b.shape == res1);
-//    assert(b[0, 0].shape == res2);
-//    assert(a == b);
-//    static assert(is(typeof(b) == typeof(a.pack!2)));
-//    static assert(is(typeof(b) == Slice!(2, Slice!(3, typeof(r)))));
-//}
+    static immutable res1 = [3, 4];
+    static immutable res2 = [5, 6];
+    assert(b.shape == res1);
+    assert(b[0, 0].shape == res2);
+    assert(a == b);
+    static assert(is(typeof(b) == typeof(a.pack!2)));
+    static assert(is(typeof(b) == Slice!(SliceKind.continuous, [2, 2], IotaIterator!size_t)));
+}
 
-//@safe @nogc pure nothrow unittest
-//{
-//    import mir.ndslice.slice;
-//    import std.range.primitives : ElementType;
-//    import std.range : iota;
-//    auto r = (3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11).iota;
-//    auto a = r.sliced(3, 4, 5, 6, 7, 8, 9, 10, 11);
-//    auto b = a.pack!(2, 3); // same as `a.pack!2.pack!3`
-//    auto c = b[1, 2, 3, 4];
-//    auto d = c[5, 6, 7];
-//    auto e = d[8, 9];
-//    auto g = a[1, 2, 3, 4, 5, 6, 7, 8, 9];
-//    assert(e == g);
-//    assert(a == b);
-//    assert(c == a[1, 2, 3, 4]);
-//    alias R = typeof(r);
-//    static assert(is(typeof(b) == typeof(a.pack!2.pack!3)));
-//    static assert(is(typeof(b) == Slice!(4, Slice!(4, Slice!(3, R)))));
-//    static assert(is(typeof(c) == Slice!(3, Slice!(3, R))));
-//    static assert(is(typeof(d) == Slice!(2, R)));
-//    static assert(is(typeof(e) == ElementType!R));
-//}
+@safe @nogc pure nothrow unittest
+{
+    import mir.ndslice.slice;
+    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
+    auto b = a.pack!2.pack!3;
+    auto c = b[1, 2, 3, 4];
+    auto d = c[5, 6, 7];
+    auto e = d[8, 9];
+    auto g = a[1, 2, 3, 4, 5, 6, 7, 8, 9];
+    assert(e == g);
+    assert(a == b);
+    assert(c == a[1, 2, 3, 4]);
+    static assert(is(typeof(b) == typeof(a.pack!2.pack!3)));
+    static assert(is(typeof(b) == Slice!(SliceKind.continuous, [4, 3, 2], IotaIterator!size_t)));
+    static assert(is(typeof(c) == Slice!(SliceKind.continuous, [3, 2], IotaIterator!size_t)));
+    static assert(is(typeof(d) == Slice!(SliceKind.continuous, [2], IotaIterator!size_t)));
+    static assert(is(typeof(e) == size_t));
+}
 
-//@safe @nogc pure nothrow unittest
-//{
-//    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
-//    auto b = a.pack!(2, 3);
-//    static assert(b.shape.length == 4);
-//    static assert(b.structure.lengths.length == 4);
-//    static assert(b.structure.strides.length == 4);
-//    static assert(b
-//        .flattened.front
-//        .shape.length == 3);
-//    static assert(b
-//        .flattened.front
-//        .flattened.front
-//        .shape.length == 2);
-//    // test save
-//    b.flattened.save.popFront;
-//    static assert(b
-//        .flattened.front
-//        .shape.length == 3);
-//}
+@safe @nogc pure nothrow unittest
+{
+    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
+    auto b = a.pack!2.pack!3;
+    static assert(b.shape.length == 4);
+    static assert(b.strides.length == 4);
+    static assert(b
+        .flattened.front
+        .shape.length == 3);
+    static assert(b
+        .flattened.front
+        .flattened.front
+        .shape.length == 2);
+    // test save
+    b.flattened.save.popFront;
+    static assert(b
+        .flattened.front
+        .shape.length == 3);
+}
 
 /++
 Unpacks a packed slice.
@@ -264,7 +257,6 @@ pure nothrow unittest
     static assert(is(typeof(e) == size_t));
 }
 
-//@safe @nogc pure nothrow 
 unittest
 {
     import mir.ndslice.slice;
@@ -282,7 +274,6 @@ unittest
         .evertPack()
         )
          == Slice!(SliceKind.universal, [2, 1], int*)));
-    auto s = slice!int(6).universal.sliced(1,2,3);
     static assert(is(typeof(
         slice!int(6)
         .universal
@@ -308,15 +299,15 @@ For a multidimensional index, see $(LREF ndiota).
 Params:
     N = dimension count
     lengths = list of dimension lengths
-    shift = value of the first element in a slice (optional)
-    step = value of the step between elements (optional)
+    start = value of the first element in a slice (optional for integer `I`)
+    stride = value of the stride between elements (optional)
 Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF IotaSlice), $(LREF ndiota)
 +/
 Slice!(SliceKind.continuous, [N], IotaIterator!I)
 iota(I = size_t, size_t N)(size_t[N] lengths...)
-    if (isIntegral!I || isPointer!I)
+    if (isIntegral!I)
 {
     import mir.ndslice.slice : sliced;
     return IotaIterator!I.init.sliced(lengths);
@@ -332,14 +323,12 @@ iota(I = size_t, size_t N)(size_t[N] lengths, I start)
 }
 
 ///ditto
-Slice!(SliceKind.universal, [N], IotaIterator!I)
-iota(I = size_t, size_t N)(size_t[N] lengths, I start, size_t step)
+Slice!(SliceKind.continuous, [N], StrideIterator!(IotaIterator!I))
+iota(I = size_t, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (isIntegral!I || isPointer!I)
 {
-    auto iota = iota(lengths, start).universal;
-    foreach (i; Iota!N)
-        iota._strides[i] *= step;
-    return iota;
+    import mir.ndslice.slice : sliced;
+    return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
 }
 
 ///
@@ -354,7 +343,19 @@ iota(I = size_t, size_t N)(size_t[N] lengths, I start, size_t step)
 }
 
 ///
-//@safe pure nothrow @nogc 
+pure nothrow unittest
+{
+    int[6] data;
+    auto slice = iota([2, 3], data.ptr);
+    auto array =
+        [[data.ptr + 0, data.ptr + 1, data.ptr + 2],
+         [data.ptr + 3, data.ptr + 4, data.ptr + 5]];
+
+    assert(slice == array);
+}
+
+///
+@safe pure nothrow @nogc
 unittest
 {
     auto im = iota([10, 5], 100);

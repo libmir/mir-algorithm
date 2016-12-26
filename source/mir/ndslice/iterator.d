@@ -13,7 +13,7 @@ struct IotaIterator(I)
     ///
     I _index;
 
-    I opUnary(string op : "*")() const
+    I opUnary(string op : "*")()
     { return _index; }
 
     void opUnary(string op)()
@@ -68,6 +68,33 @@ struct IotaIterator(I)
 
     // construction
     assert(*IotaIterator!int(3) == 3);
+    assert(iota - 1 < iota);
+}
+
+///
+pure nothrow @nogc unittest
+{
+    int[32] data;
+    auto iota = IotaIterator!(int*)(data.ptr);
+    assert(*iota == data.ptr);
+
+    // iteration
+    ++iota;
+    assert(*iota == 1 + data.ptr);
+    
+    assert(iota[2] == 3 + data.ptr);
+    assert(iota[-1] == 0 + data.ptr);
+
+    --iota;
+    assert(*iota == 0 + data.ptr);
+
+    // opBinary
+    assert(*(iota + 2) == 2 + data.ptr);
+    assert(*(iota - 3) == -3 + data.ptr);
+    assert((iota - 3) - iota == -3);
+
+    // construction
+    assert(*IotaIterator!(int*)(data.ptr) == data.ptr);
     assert(iota - 1 < iota);
 }
 
