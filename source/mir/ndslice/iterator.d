@@ -266,6 +266,106 @@ struct StrideIterator(Iterator)
 
 /++
 +/
+/++
++/
+struct MapIterator(Iterator, alias fun)
+{
+    ///
+    Iterators _iterator;
+
+    auto ref opUnary(string op : "*")()
+    { return fun(*_iterator); }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    { mixin(op ~ "_iterator;"); }
+
+    auto ref opIndex()(ptrdiff_t index)
+    { return fun(_iterator[index]); }
+
+    static if (!__traits(compiles, &fun(_iterator[ptrdiff_t.init])))
+    void opIndexAssign(T)(T value, ptrdiff_t index)
+    { return fun(_iterator[index]) = value; }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    { mixin("_iterator " ~ op ~ "= index;"); }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return this._iterator - right._iterator; }
+
+    bool opEquals()(auto ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
+}
+
+/++
++/
+struct IndexIterator(Iterator, Field)
+{
+    ///
+    Iterators _iterator;
+    ///
+    Field _field;
+
+    auto ref opUnary(string op : "*")()
+    { return _field[*_iterator]; }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    { mixin(op ~ "_iterator;"); }
+
+    auto ref opIndex()(ptrdiff_t index)
+    { return _field[_iterator[index]]; }
+
+    static if (!__traits(compiles, &_field[_iterator[ptrdiff_t.init]]))
+    void opIndexAssign(T)(T value, ptrdiff_t index)
+    { return _field[_iterator[index]] = value; }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    { mixin("_iterator " ~ op ~ "= index;"); }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return this._iterator - right._iterator; }
+
+    bool opEquals()(auto ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
+}
+
+/++
++/
 struct FieldIterator(Field)
 {
     ///

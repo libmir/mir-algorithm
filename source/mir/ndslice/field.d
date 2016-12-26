@@ -37,7 +37,7 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     }
 
     static if (__traits(compiles, Field.init[size_t.init] |= I.init))
-    bool opIndexAssign(bool value, size_t index)
+    bool opIndexAssign()(bool value, size_t index)
     {
         auto m = I(1) << (index & mask);
         index >>= shift;
