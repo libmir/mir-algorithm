@@ -846,40 +846,41 @@ pure nothrow unittest
          [1,  2,  3, 3, 3, 3,  2,  1]]);
 }
 
-///// Overlapping blocks using windows
-//pure nothrow unittest
-//{
-//    //  ----------------
-//    // |  0  1  2  3  4 |
-//    // |  5  6  7  8  9 |
-//    // | 10 11 12 13 14 |
-//    // | 15 16 17 18 19 |
-//    // | 20 21 22 23 24 |
-//    //  ----------------
-//    //->
-//    //  ---------------------
-//    // |  0  1  2 |  2  3  4 |
-//    // |  5  6  7 |  7  8  9 |
-//    // | 10 11 12 | 12 13 14 |
-//    // | - - - - - - - - - - |
-//    // | 10 11 13 | 12 13 14 |
-//    // | 15 16 17 | 17 18 19 |
-//    // | 20 21 22 | 22 23 24 |
-//    //  ---------------------
+/// Overlapping blocks using windows
+pure nothrow unittest
+{
+    //  ----------------
+    // |  0  1  2  3  4 |
+    // |  5  6  7  8  9 |
+    // | 10 11 12 13 14 |
+    // | 15 16 17 18 19 |
+    // | 20 21 22 23 24 |
+    //  ----------------
+    //->
+    //  ---------------------
+    // |  0  1  2 |  2  3  4 |
+    // |  5  6  7 |  7  8  9 |
+    // | 10 11 12 | 12 13 14 |
+    // | - - - - - - - - - - |
+    // | 10 11 13 | 12 13 14 |
+    // | 15 16 17 | 17 18 19 |
+    // | 20 21 22 | 22 23 24 |
+    //  ---------------------
 
-//    import mir.ndslice.slice;
-//    import mir.ndslice.dynamic : strided;
+    import mir.ndslice.slice;
+    import mir.ndslice.dynamic : strided;
 
-//    auto overlappingBlocks = iota(5, 5)
-//        .windows(3, 3)
-//        .strided!(0, 1)(2, 2);
+    auto overlappingBlocks = iota(5, 5)
+        .windows(3, 3)
+        .universal
+        .strided!(0, 1)(2, 2);
 
-//    assert(overlappingBlocks ==
-//            [[[[ 0,  1,  2], [ 5,  6,  7], [10, 11, 12]],
-//              [[ 2,  3,  4], [ 7,  8,  9], [12, 13, 14]]],
-//             [[[10, 11, 12], [15, 16, 17], [20, 21, 22]],
-//              [[12, 13, 14], [17, 18, 19], [22, 23, 24]]]]);
-//}
+    assert(overlappingBlocks ==
+            [[[[ 0,  1,  2], [ 5,  6,  7], [10, 11, 12]],
+              [[ 2,  3,  4], [ 7,  8,  9], [12, 13, 14]]],
+             [[[10, 11, 12], [15, 16, 17], [20, 21, 22]],
+              [[12, 13, 14], [17, 18, 19], [22, 23, 24]]]]);
+}
 
 /++
 Error codes for $(LREF reshape).
@@ -1013,38 +1014,42 @@ unittest
          [ 2,  1, 0]]);
 }
 
-///// Reshaping with memory allocation
-//pure unittest
-//{
-//    import mir.ndslice.slice;
-//    import mir.ndslice.dynamic : reversed;
-//    import std.array : array;
+/// Reshaping with memory allocation
+//pure 
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.dynamic : reversed;
+    import std.array : array;
 
-//    auto reshape2(S, size_t M)(S slice, size_t[M] lengths...)
-//    {
-//        int err;
-//        // Tries to reshape without allocation
-//        auto ret = slice.reshape(lengths, err);
-//        if (!err)
-//            return ret;
-//        if (err == ReshapeError.incompatible)
-//            return slice.slice.reshape(lengths, err);
-//        throw new Exception("total elements count is different or equals to zero");
-//    }
+    auto reshape2(S, size_t M)(S sl, ptrdiff_t[M] lengths)
+    {
+        int err;
+        // Tries to reshape without allocation
+        auto ret = sl.reshape(lengths, err);
+        if (!err)
+            return ret;
+        if (err == ReshapeError.incompatible)
+            // allocates, flattens, reshapes with `sliced`, converts to universal kind
+            return sl.slice.flattened.sliced(cast(size_t[M])lengths).universal;
+        throw new Exception("total elements count is different or equals to zero");
+    }
 
-//    auto slice =
-//        [0, 1,  2,  3,
-//         4, 5,  6,  7,
-//         8, 9, 10, 11]
-//        .sliced(3, 4)
-//        .reversed!0;
+    auto sl =
+        .iota!int(3, 4)
+        .slice
+        .universal
+        .reversed!0;
 
-//    assert(reshape2(slice, 4, 3) ==
-//        [[ 8, 9, 10],
-//         [11, 4,  5],
-//         [ 6, 7,  0],
-//         [ 1, 2,  3]]);
-//}
+    import std.stdio;
+    writeln(reshape2(sl, [4, 3]));
+    assert(reshape2(sl, [4, 3]) ==
+        [[ 8, 9, 10],
+         [11, 4,  5],
+         [ 6, 7,  0],
+         [ 1, 2,  3]]);
+}
 
 nothrow @safe pure unittest
 {
