@@ -23,12 +23,26 @@ import std.range.primitives; //: hasLength;
 import mir.internal.utility;
 import mir.ndslice.internal;
 
+///
 template isSlice(T)
 {
     static if (is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
-        enum isSlice = packs;
+        enum size_t[] isSlice = packs[];
     else
-        enum isSlice = null;
+        enum size_t[] isSlice = null;
+}
+
+///
+unittest
+{
+    alias A = uint[];
+    alias S = Slice!(SliceKind.universal, [2, 3], int*);
+
+    static assert(isSlice!S);
+    static assert(!isSlice!A);
+
+    static assert(isSlice!S == [2, 3]);
+    static assert(isSlice!A == null);
 }
 
 ///
