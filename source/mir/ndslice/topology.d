@@ -63,13 +63,21 @@ import mir.ndslice.iterator;
 import mir.ndslice.field;
 
 
-Slice!(SliceKind.universal, packs, Iterator) universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     static if (kind == SliceKind.universal)
+    {
         return slice;
+    }
+    else
+    static if (is(Iterator : RetroIterator!It, It))
+    {
+        return slice.retro.universal;
+    }
     else
     {
-        mixin _DefineRet;
+        alias Ret = Slice!(SliceKind.universal, packs, Iterator);
+        mixin _DefineRet_;
         foreach (i; Iota!(slice.N))
             ret._lengths[i] = slice._lengths[i];
         static if (kind == SliceKind.canonical)
@@ -112,6 +120,44 @@ Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Itera
             ball *= slice._lengths[i + 1];
             ret._strides[i] = ball;
         }
+        ret._iterator = slice._iterator;
+        return ret;
+    }
+}
+
+Slice!(SliceKind.canonical, packs, Iterator)
+    assumeCanonical
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
+{
+    static if (kind == SliceKind.continuous)
+        return slice.canonical;
+    static if (kind == SliceKind.canonical)
+        return slice;
+    else
+    {
+        mixin _DefineRet;
+        foreach (i; Iota!(slice.N))
+            ret._lengths[i] = slice._lengths[i];
+        foreach (i; Iota!(ret.S))
+            ret._strides[i] = slice._strides[i];
+        ret._iterator = slice._iterator;
+        return ret;
+    }
+}
+
+Slice!(SliceKind.continuous, packs, Iterator)
+    assumeContinious
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
+{
+    static if (kind == SliceKind.continuous)
+        return slice;
+    else
+    {
+        mixin _DefineRet;
+        foreach (i; Iota!(slice.N))
+            ret._lengths[i] = slice._lengths[i];
         ret._iterator = slice._iterator;
         return ret;
     }
@@ -1554,7 +1600,7 @@ in
 }
 body
 {
-    static if (kind == SliceKind.continuous || kind == SliceKind.canonical)
+    static if (kind == SliceKind.continuous)
         return slice.universal.stride(factor);
     else
     {
