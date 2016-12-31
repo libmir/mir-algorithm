@@ -6,7 +6,7 @@ $(MREF mir, algorithm) or $(MREF mir, ndslice).
 $(BOOKTABLE ,
 $(TR $(TH Function Name) $(TH Description)
 )
-    $(TR $(TD $(LREF compose))
+    $(TR $(TD $(LREF pipe))
         $(TD Join a couple of functions into one that executes the original
         functions one after the other, using one function's result for the next
         function's argument.
@@ -24,7 +24,7 @@ $(TR $(TH Function Name) $(TH Description)
 )
 Copyright: Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Authors:   $(HTTP erdani.org, Andrei Alexandrescu (original std.functional)), Ilya Yaroshenko
+Authors:   Ilya Yaroshenko, $(HTTP erdani.org, Andrei Alexandrescu (some original code from std.functional))
 */
 /*
          Copyright Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
@@ -36,6 +36,51 @@ module mir.functional;
 
 import std.meta;
 import std.traits;
+
+private enum isRef(T) = is(T : Ref!T0, T0);
+
+///
+struct Ref(T)
+    if (!isRef!T)
+{
+    @disable this();
+    ///
+    this(ref T value)
+    {
+        __ptr = &value;
+    }
+    ///
+    T* __ptr;
+    ///
+    ref T __value() @property { return *__ptr; }
+    alias __value this;
+}
+
+Ref!T _ref(T)(ref T value)
+{
+    return Ref!T(value);
+}
+
+private mixin template _RefTupleMixin(T...)
+    if (T.length <= 26)
+{
+    static if (T.length)
+    {
+        enum i = T.length - 1;
+        static if (isRef!(T[i]))
+            mixin(`ref ` ~ cast(char)('a' + i) ~ `() @property { return *expand[` ~ i.stringof ~ `].__ptr; }` );
+        else
+            mixin(`alias ` ~ cast(char)('a' + i) ~ ` = expand[` ~ i.stringof ~ `];`);
+        mixin ._RefTupleMixin!(T[0 .. $-1]);
+    }
+}
+
+///
+struct RefTuple(T...)
+{
+    T expand;
+    mixin _RefTupleMixin!T;
+}
 
 private template needOpCallAlias(alias fun)
 {
@@ -297,44 +342,78 @@ template not(alias pred)
     assert(not!((a, b, c) => a * b * c != 125 )(5, 5, 5));
 }
 
+private template _pipe(size_t n)
+{
+    static if (n)
+    {
+        enum i = n - 1;
+        enum _pipe = "f[" ~ i.stringof ~ "](" ~ ._pipe!i ~ ")";
+    }
+    else
+        enum _pipe = "args";
+}
+
+private template _unpipe(alias fun)
+{
+    static if (__traits(compiles, TemplateOf!fun))
+    static if (__traits(isSame, TemplateOf!fun, .pipe))
+        alias _unpipe = TemplateArgsOf!fun;
+    else
+        alias _unpipe = fun;
+    else
+        alias _unpipe = fun;
+
+}
+
+private enum _needNary(alias fun) = is(typeof(fun) : string) || needOpCallAlias!fun;
+
 /**
    Composes passed-in functions `fun[0], fun[1], ...` returning a
    function `f(x)` that in turn returns
-   `fun[0](fun[1](...(x)))...`. Each function can be a regular
-   functions, a delegate, or a string.
+   `...(fun[1](fun[0](x)))...`. Each function can be a regular
+   functions, a delegate, a lambda, or a string.
 */
-template compose(fun...)
+template pipe(fun...)
 {
-    static if (fun.length == 2)
+    static if (fun.length != 1)
     {
-        // starch
-        alias fun0 = naryFun!(fun[0]);
-        alias fun1 = naryFun!(fun[1]);
-
-        ///
-        auto ref compose(Args...)(auto ref Args args)
+        alias f = staticMap!(_unpipe, fun);
+        static if (f.length == fun.length && Filter!(_needNary, f).length == 0)
         {
-            return fun0(fun1(args));
+            ///
+            auto ref pipe(Args...)(auto ref Args args)
+            {
+                return mixin (_pipe!(fun.length));
+            }
         }
+        else alias pipe = .pipe!(staticMap!(naryFun, f));
     }
-    else
-    static if (fun.length == 1)
-        alias compose = naryFun!(fun[0]);
-    else
-        alias compose = compose!(fun[0], compose!(fun[1 .. $]));
+    else alias pipe = naryFun!(fun[0]);
 }
 
 ///
 @safe unittest
 {
-    assert(compose!(a => a * 10, "a + b")(2, 3) == 50);
+    assert(pipe!("a + b", a => a * 10)(2, 3) == 50);
 }
 
-/// `compose` can return by reference.
+/// `pipe` can return by reference.
 unittest
 {
     int a;
-    assert(&compose!("a", "a")(a) == &a);
+    assert(&pipe!("a", "a")(a) == &a);
+}
+
+/// Template bloat reduction
+unittest
+{
+    enum  a = "a * 2";
+    alias b = e => e + 2;
+
+    alias p0 = pipe!(pipe!(a, b), pipe!(b, a));
+    alias p1 = pipe!(a, b, b, a);
+
+    static assert(__traits(isSame, p0, p1));
 }
 
 @safe unittest
@@ -346,5 +425,5 @@ unittest
 
     // First split a string in whitespace-separated tokens and then
     // convert each token into an integer
-    assert(compose!(map!(to!(int)), split)("1 2 3").equal([1, 2, 3]));
+    assert(pipe!(split, map!(to!(int)))("1 2 3").equal([1, 2, 3]));
 }
