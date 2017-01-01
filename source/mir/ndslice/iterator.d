@@ -264,8 +264,139 @@ struct StrideIterator(Iterator)
     assert(*stride == *iota);
 }
 
+private template _zip_types(Iterators...)
+{
+    import std.meta: AliasSeq;
+    static if (Iterators.length)
+    {
+        enum i = Iterators.length - 1;
+        static if (__traits(compiles, &*Iterators[i].init))
+        {
+            import mir.functional: Ref;
+            alias _zip_types = AliasSeq!(_zip_types!(Iterators[0 .. i]), Ref!(typeof(*Iterators[i].init)));
+        }
+        else
+            alias _zip_types = AliasSeq!(_zip_types!(Iterators[0 .. i]), typeof(*Iterators[i].init));
+    }
+    else
+        alias _zip_types = AliasSeq!();
+}
+
+private template _zip_fronts(Iterators...)
+{
+    static if (Iterators.length)
+    {
+        enum i = Iterators.length - 1;
+        static if (__traits(compiles, &*Iterators[i].init))
+            enum _zip_fronts = _zip_fronts!(Iterators[0 .. i]) ~ "Ref!(typeof(*Iterators[" ~ i.stringof ~ "].init))(*_iterators[" ~ i.stringof ~ "]), ";
+        else
+            enum _zip_fronts = _zip_fronts!(Iterators[0 .. i]) ~ "*_iterators[" ~ i.stringof ~ "], ";
+    }
+    else
+        enum _zip_fronts = "";
+}
+
+private template _zip_index(Iterators...)
+{
+    static if (Iterators.length)
+    {
+        enum i = Iterators.length - 1;
+        static if (__traits(compiles, &*Iterators[i].init))
+            enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "Ref!(typeof(*Iterators[" ~ i.stringof ~ "].init))(_iterators[" ~ i.stringof ~ "][index]), ";
+        else
+            enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "_iterators[" ~ i.stringof ~ "][index], ";
+    }
+    else
+        enum _zip_index = "";
+}
+
 /++
 +/
+struct ZipIterator(Iterators...)
+    if (Iterators.length > 1)
+{
+    import mir.functional: RefTuple, Ref;
+    ///
+    Iterators _iterators;
+
+    auto opUnary(string op : "*")()
+    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
+
+    void opUnary(string op)()
+        if (op == "++" || op == "--")
+    {
+        foreach (ref _iterator; _iterators)
+            mixin(op ~ `_iterator;`);
+    }
+
+    auto ref opIndex()(ptrdiff_t index)
+    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_index!Iterators ~ ")"); }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        foreach (ref _iterator; _iterators)
+            mixin(`_iterator ` ~ op ~ `= index;`);
+    }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return this._iterators[0] - right._iterators[0]; }
+
+    bool opEquals()(auto ref const typeof(this) right) const
+    { return this._iterators[0] == right._iterators[0]; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
+    {
+        static if (isPointer!(Iterators[0]))
+            return this._iterators[0] - right._iterators[0];
+        else
+            return this._iterators[0].opCmp(right._iterators[0]);
+    }
+}
+
+///
+pure nothrow @nogc unittest
+{
+    double[10] data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    alias ItA = IotaIterator!int;
+    alias ItB = double*;
+    alias ItZ = ZipIterator!(ItA, ItB);
+    auto zip = ItZ(ItA(3), data.ptr);
+    assert((*zip).a == 3);
+    assert((*zip).b == 1);
+
+    // iteration
+    ++zip;
+    assert((*zip).a == 3 + 1);
+    assert((*zip).b == 1 + 1);
+    assert(&(*zip).b() == data.ptr + 1);
+    
+    assert(zip[4].a == 3 + 5);
+    assert(zip[4].b == 1 + 5);
+    assert(&zip[4].b() == data.ptr + 5);
+
+    --zip;
+    assert((*zip).a == 3);
+    assert((*zip).b == 1);
+
+    assert((*(zip + 2)).a == 3 + 2);
+    assert((*(zip - 3)).a == 3 + -3);
+    assert((*(zip + 2)).b == 1 + 2);
+    assert((*(zip + 3 - 3)).b == 1);
+    assert((zip - 3).opBinary!"-"(zip) == -3);
+
+    assert(zip == zip);
+    assert(zip - 1 < zip);
+}
+
 /++
 +/
 struct MapIterator(Iterator, alias fun)
@@ -322,6 +453,7 @@ struct IndexIterator(Iterator, Field)
     Iterators _iterator;
     ///
     Field _field;
+
 
     auto ref opUnary(string op : "*")()
     { return _field[*_iterator]; }
@@ -399,7 +531,7 @@ struct FieldIterator(Field)
         return ret;
     }
 
-    ptrdiff_t opBinary()(auto ref const typeof(this) right) const
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return this._index - right._index; }
 
     bool opEquals()(auto ref const typeof(this) right) const

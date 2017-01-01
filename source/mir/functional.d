@@ -68,11 +68,16 @@ private mixin template _RefTupleMixin(T...)
     {
         enum i = T.length - 1;
         static if (isRef!(T[i]))
-            mixin(`ref ` ~ cast(char)('a' + i) ~ `() @property { return *expand[` ~ i.stringof ~ `].__ptr; }` );
+            mixin(` @property ref ` ~ cast(char)('a' + i) ~ `() { return *expand[` ~ i.stringof ~ `].__ptr; }` );
         else
             mixin(`alias ` ~ cast(char)('a' + i) ~ ` = expand[` ~ i.stringof ~ `];`);
         mixin ._RefTupleMixin!(T[0 .. $-1]);
     }
+}
+
+auto tuple(T...)(auto ref T args)
+{
+    return RefTuple!T(args);
 }
 
 ///
