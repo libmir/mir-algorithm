@@ -14,13 +14,11 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(SliceKind.continuous, [N], Select!(ra, T*, T[]))
-slice(T,
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    size_t N)(size_t[N] lengths...)
+Slice!(SliceKind.continuous, [N], T*)
+slice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
-    return new T[len].sliced!ra(lengths);
+    return new T[len].sliced(lengths);
 }
 
 /// ditto
@@ -39,7 +37,7 @@ auto slice(T,
         auto arr = new Unqual!T[len];
     }
     arr[] = init;
-    auto ret = .sliced!ra(cast(T[])arr, lengths);
+    auto ret = .sliced(cast(T[])arr, lengths);
     return ret;
 }
 
@@ -49,7 +47,7 @@ auto slice(
     SliceKind kind,
     size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
-    auto ret = .slice!(Unqual!(slice.DeepElemType), ra)(slice.shape);
+    auto ret = .slice!(Unqual!(slice.DeepElemType))(slice.shape);
     ret[] = slice;
     return ret;
 }
@@ -97,7 +95,7 @@ auto uninitializedSlice(T,
     immutable len = lengthsProduct(lengths);
     import std.array : uninitializedArray;
     auto arr = uninitializedArray!(T[])(len);
-    return arr.sliced!ra(lengths);
+    return arr.sliced(lengths);
 }
 
 ///
@@ -155,7 +153,7 @@ makeSlice(T,
     import std.experimental.allocator : makeArray;
     immutable len = lengthsProduct(lengths);
     auto array = alloc.makeArray!T(len, init);
-    auto slice = array.sliced!ra(lengths);
+    auto slice = array.sliced(lengths);
     return typeof(return)(array, slice);
 }
 
@@ -237,7 +235,7 @@ makeUninitializedSlice(T,
 {
     immutable len = lengthsProduct(lengths);
     auto array = cast(T[]) alloc.allocate(len * T.sizeof);
-    auto slice = array.sliced!ra(lengths);
+    auto slice = array.sliced(lengths);
     return typeof(return)(array, slice);
 }
 

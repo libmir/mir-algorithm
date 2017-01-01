@@ -92,33 +92,12 @@ Returns:
     n-dimensional slice
 +/
 auto sliced(
-    Flag!"replaceArrayWithPointer" ra = Yes.replaceArrayWithPointer,
-    Flag!"allowDownsize" ad = No.allowDownsize,
     size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
     if (!isStaticArray!Iterator && !isNarrowString!Iterator && N
         && !is(Iterator : Slice!(kind, packs, _Iterator), SliceKind kind, size_t[] packs, _Iterator))
-in
-{
-    static if (hasLength!Iterator)
-    {
-        static if (ad)
-        {
-            assert(lengthsProduct!N(lengths) <= iterator.length,
-                "Iterator length must be greater than or equal to the product of lengths."
-                ~ tailErrorMessage!());
-        }
-        else
-        {
-            assert(lengthsProduct!N(lengths) == iterator.length,
-                "Iterator length must be equal to the product of lengths."
-                ~ tailErrorMessage!());
-        }
-    }
-}
-body
 {
     alias C = ImplicitlyUnqual!(typeof(iterator));
-    static if (ra && isDynamicArray!Iterator)
+    static if (isDynamicArray!Iterator)
         alias S = Slice!(SliceKind.continuous, [N], typeof(C.init[0])*);
     else
         alias S = Slice!(SliceKind.continuous, [N], C);
@@ -126,7 +105,7 @@ body
         S ret;
     else
         S ret = void;
-    static if (ra && isDynamicArray!Iterator)
+    static if (isDynamicArray!Iterator)
         ret._iterator = iterator.ptr;
     else
         ret._iterator = iterator;
@@ -210,34 +189,19 @@ body
 //    ~ "}");
 //}
 
-///// ditto
-//auto sliced(
-//    Flag!"replaceArrayWithPointer" ra = Yes.replaceArrayWithPointer,
-//    Flag!"allowDownsize" ad = No.allowDownsize,
-//    Iterator)(Iterator range)
-//    if (!isStaticArray!Iterator && !isNarrowString!Iterator && hasLength!Iterator)
-//{
-//    return .sliced!(ra, ad, 1, Iterator)(range, [range.length]);
-//}
+/// ditto
+auto sliced(T)(T[] array)
+{
+    return .sliced(array, [array.length]);
+}
 
-///// Creates a slice from an array.
-//pure nothrow unittest
-//{
-//    auto slice = slice!int(5, 6, 7);
-//    assert(slice.length == 5);
-//    assert(slice.elementsCount == 5 * 6 * 7);
-//    static assert(is(typeof(slice) == Slice!(3, int*)));
-//}
-
-///// Creates a slice using shift parameter.
-//@safe @nogc pure nothrow unittest
-//{
-//    import std.range : iota;
-//    auto slice = (5 * 6 * 7 + 9).iota.sliced([5, 6, 7], 9);
-//    assert(slice.length == 5);
-//    assert(slice.elementsCount == 5 * 6 * 7);
-//    assert(slice[0, 0, 0] == 9);
-//}
+/// Creates a slice from an array.
+pure nothrow unittest
+{
+    auto slice = new int[10].sliced;
+    assert(slice.length == 10);
+    static assert(is(typeof(slice) == Slice!(SliceKind.continuous, [1], int*)));
+}
 
 ///// Creates an 1-dimensional slice over a range.
 //@safe @nogc pure nothrow unittest
@@ -247,27 +211,29 @@ body
 //    assert(slice.length == 10);
 //}
 
-///// $(LINK2 https://en.wikipedia.org/wiki/Vandermonde_matrix, Vandermonde matrix)
-//pure nothrow unittest
-//{
-//    auto vandermondeMatrix(Slice!(1, double*) x)
-//    {
-//        auto ret = slice!double(x.length, x.length);
-//        foreach (i; 0 .. x.length)
-//        foreach (j; 0 .. x.length)
-//            ret[i, j] = x[i] ^^ j;
-//        return ret;
-//    }
+/// $(LINK2 https://en.wikipedia.org/wiki/Vandermonde_matrix, Vandermonde matrix)
+pure nothrow unittest
+{
+    auto vandermondeMatrix(Slice!(SliceKind.universal, [1], double*) x)
+    {
+        import mir.ndslice.allocation: slice;
+        auto ret = slice!double(x.length, x.length);
+        foreach (i; 0 .. x.length)
+        foreach (j; 0 .. x.length)
+            ret[i, j] = x[i] ^^ j;
+        return ret;
+    }
 
-//    auto x = [1.0, 2, 3, 4, 5].sliced(5);
-//    auto v = vandermondeMatrix(x);
-//    assert(v ==
-//        [[  1.0,   1,   1,   1,   1],
-//         [  1.0,   2,   4,   8,  16],
-//         [  1.0,   3,   9,  27,  81],
-//         [  1.0,   4,  16,  64, 256],
-//         [  1.0,   5,  25, 125, 625]]);
-//}
+    import mir.ndslice.topology: universal;
+    auto x = [1.0, 2, 3, 4, 5].sliced.universal;
+    auto v = vandermondeMatrix(x);
+    assert(v ==
+        [[  1.0,   1,   1,   1,   1],
+         [  1.0,   2,   4,   8,  16],
+         [  1.0,   3,   9,  27,  81],
+         [  1.0,   4,  16,  64, 256],
+         [  1.0,   5,  25, 125, 625]]);
+}
 
 ///++
 //Creates a slice composed of named elements, each one of which corresponds
@@ -338,7 +304,7 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator
     if (N)
 {
     mixin _DefineRet;
-    assert(lengths.lengthsProduct == slice.length);
+    assert(lengths.lengthsProduct == slice.length, "elements count mismatch");
     foreach (i; Iota!N)
         ret._lengths[i] = lengths[i];
     foreach (i; Iota!(slice.N - 1))
