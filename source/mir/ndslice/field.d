@@ -4,6 +4,34 @@ import mir.internal.utility;
 import std.traits;
 
 ///
+struct MapField(Field, alias fun)
+{
+    ///
+    Field _field;
+
+    auto __map(alias fun1)()
+    {
+        import mir.funcitonal: pipe;
+        return MapField!(Field, pipe!(fun, fun1))(_field);
+    }
+
+    auto ref opIndex()(ptrdiff_t index)
+    {
+        return fun(_field[index]);
+    }
+}
+
+/++
++/
+auto mapField(alias fun, Field)(Field field)
+{
+    static if (__traits(hasMember, Field, "__map"))
+        return field.__map!fun;
+    else
+       return MapField!(Field, fun)(field);
+}
+
+///
 struct RepeatField(T)
 {
     static if (is(T == class) || is(T == interface) || is(T : Unqual!T) && is(Unqual!T : T))

@@ -1726,8 +1726,6 @@ unittest
     assert(bits[100] == false);
 }
 
-version(none):
-
 /++
 Implements the homonym function (also known as `transform`) present
 in many languages of functional flavor. The call `map!(fun)(tensor)`
@@ -1751,55 +1749,58 @@ See_Also:
 template map(fun...)
     if (fun.length)
 {
-    ///
-    @fmb auto map(size_t N, Iterator)
-        (Slice!(N, Iterator) tensor)
+    import mir.functional: adjoin, naryFun, pipe;
+    static if (fun.length == 1)
     {
-        // this static if-else block
-        // may be unified with std.algorithms.iteration.map
-        // after ndslice be removed from the Mir library.
-            import mir.functional : nary;
-
-            alias _fun = nary!fun;
-            alias _funs = AliasSeq!(_fun);
-
-            // Do the validation separately for single parameters due to DMD issue #15777.
-            static assert(!is(typeof(_fun(RE.init)) == void),
-                "Mapping function(s) must not return void: " ~ _funs.stringof);
-
-        // Specialization for packed tensors (tensors composed of tensors).
-        static if (is(Iterator : Slice!(NI, IteratorI), size_t NI, IteratorI))
+        static if (__traits(isSame, naryFun!fun, fun))
         {
-            alias Ptr = Pack!(NI - 1, IteratorI);
-            alias M = Map!(Ptr, _fun);
-            alias R = Slice!(N, M);
-            return R(tensor._lengths[0 .. N], tensor._strides[0 .. N],
-                M(Ptr(tensor._lengths[N .. $], tensor._strides[N .. $], tensor._iterator)));
+            alias f = fun[0];
+
+            ///
+            auto map(SliceKind kind, size_t[] packs, Iterator)
+                (Slice!(kind, packs, Iterator) slice)
+            {
+                // Specialization for packed tensors (tensors composed of tensors).
+                static if (packs.length == 1)
+                {
+                    import mir.ndslice.iterator: mapIterator;
+                    auto iterator = slice._iterator.mapIterator!f;
+                    return Slice!(kind, packs, typeof(iterator))(slice._lengths, slice._strides, iterator);
+                }
+                else
+                {
+                    alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
+                    auto sl = slice.universal;
+                    return .map!f(Slice!(SliceKind.universal, packs[0 .. 1], It)(
+                        sl._lengths[0 .. packs[0]], 
+                        sl._strides[0 .. packs[0]],
+                        It(
+                            sl._lengths[packs[0] .. packs[0] + It._lengths.length],
+                            sl._strides[packs[0] .. packs[0] + It._strides.length],
+                            sl._iterator,
+                        )));
+                }
+            }
         }
-        else
-        {
-            alias M = Map!(SlicePtr!Iterator, _fun);
-            alias R = Slice!(N, M);
-            return R(tensor._lengths, tensor._strides, M(tensor._iterator));
-        }
+        else alias map = .map!(naryFun!fun);
     }
+    else alias map = .map!(adjoin!fun);
 }
 
 ///
 pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
-
     auto s = iota(2, 3).map!(a => a * 3);
     assert(s == [[ 0,  3,  6],
                  [ 9, 12, 15]]);
 }
 
+/// String lambdas
 pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
-
-    assert(iota(2, 3).slice.map!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
+    assert(iota(2, 3).map!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
 }
 
 /// Packed tensors.
@@ -1832,7 +1833,6 @@ pure nothrow unittest
     import mir.ndslice.topology : iota, windows;
 
     auto s = iota(2, 3)
-        .slice
         .windows(2, 2)
         .map!((a) {
             size_t s;
@@ -1848,8 +1848,7 @@ pure nothrow unittest
 /// Zipped tensors
 pure nothrow unittest
 {
-    import mir.ndslice.slice : assumeSameStructure;
-    import mir.ndslice.topology : iota;
+    import mir.ndslice.topology : iota, zip;
 
     // 0 1 2
     // 3 4 5
@@ -1858,15 +1857,13 @@ pure nothrow unittest
     // 4 5 6
     auto sl2 = iota([2, 3], 1);
 
-    // tensors must have the same strides
-    assert(sl1.structure == sl2.structure);
+    auto z = zip(sl1, sl2);
 
-    auto zip = assumeSameStructure!("a", "b")(sl1, sl2);
+    auto lazySum = z.map!"a + b";
 
-    auto lazySum = zip.map!(z => z.a + z.b);
-
-    assert(lazySum == [[ 1,  3,  5],
-                       [ 7,  9, 11]]);
+    assert(zip(sl1, sl2).map!"a + b" ==
+            [[ 1,  3,  5],
+             [ 7,  9, 11]]);
 }
 
 /++
@@ -1887,8 +1884,8 @@ pure nothrow unittest
     foreach (j; 0..s.length!1)
     {
         auto values = s[i, j];
-        assert(values[0] == sums[i][j]);
-        assert(values[1] == products[i][j]);
+        assert(values.a == sums[i][j]);
+        assert(values.b == products[i][j]);
     }
 }
 
@@ -1902,4 +1899,162 @@ pure nothrow unittest
 
     alias stringize = map!(to!string);
     assert(stringize(iota(2, 3)) == [["0", "1", "2"], ["3", "4", "5"]]);
+}
+
+/++
+Type normalization
++/
+unittest
+{
+    import mir.functional : pipe;
+    import mir.ndslice.topology : iota;
+    auto a = iota(2, 3).map!"a + 10".map!(pipe!("a * 2", "a + 1"));
+    auto b = iota(2, 3).map!(pipe!("a + 10", "a * 2", "a + 1"));
+    assert(a == b);
+    static assert(is(typeof(a) == typeof(b)));
+}
+
+private auto hideStride
+    (SliceKind kind, Iterator)
+    (Slice!(kind, [1], Iterator) slice)
+{
+    static if (kind == SliceKind.universal)
+    {
+        alias It = StrideIterator!Iterator;
+        return Slice!(SliceKind.continuous, [1], It)(
+            slice._lengths,
+            slice._strides[0 .. 0],
+            It(slice._stride[0], slice._iterator));
+    }
+    else
+        return slice;
+}
+
+private auto unhideStride
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
+{
+    static if (is(Iterator : StrideIterator!It, It))
+    {
+        static if (kind == SliceKind.universal)
+        {
+            alias Ret = SliceKind!(SliceKind.universal, packs, It);
+            mixin _DefineRet_;
+            foreach(i; Iota!(ret.N))
+                ret._lengths[i] = slice._lengths[i];
+            foreach(i; Iota!(ret.S))
+                ret._strides[i] = slice._strides[i] * slice._iterator._stride;
+        }
+        else
+            return slice.universal.unhideStride;
+    }
+    else
+        return slice;
+}
+
+/++
+Groups slices into a slice tuple. The slices must have identical structure.
+Slice tuple is a slice, which holds single set of lengths and strides
+for a number of ranges.
+Params:
+    Names = names of elements in a slice tuple
+Returns:
+    n-dimensional slice
+See_also: $(LREF .Slice.structure).
++/
+auto zip(bool sameStrides = false, Slices...)(Slices slices)
+    if (Slices.length > 1 && allSatisfy!(isSlice, Slices))
+{
+    enum packs = isSlice!(Slices[0]);
+    foreach(i, S; Slices[1 .. $])
+    {
+        static assert(isSlice!S == packs, "zip: all Slices must have the same shape packs");
+        assert(slices[i]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
+        assert(slices[i].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides");
+    }
+    static if (sameStrides == false && minElem(staticMap!(_kindOf, Slices)) != SliceKind.continuous)
+    {
+        static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
+        return .zip(_iotaArgs!(Slices.length, "slice[", "].hideStride"));
+    }
+    else
+    {
+        enum kind = maxElem(staticMap!(_kindOf, Slices));
+        alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
+        alias Ret = Slice!(kind, packs, Iterator);
+        mixin _DefineRet_;
+        foreach (i; Iota!(Ret.N))
+            ret._lengths[i] = slices[0]._lengths[i];
+        foreach (i; Iota!(Ret.S))
+            ret._strides[i] = slices[0]._strides[i];
+        ret._iterator = mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")");
+        return ret;
+    }
+}
+
+///
+pure nothrow unittest
+{
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : flattened, iota;
+
+    auto alpha = iota!int(4, 3);
+    auto beta = slice!int(4, 3);
+
+    auto m = zip(alpha, beta);
+    foreach (r; m)
+        foreach (e; r)
+            e.b = e.a;
+    assert(alpha == beta);
+
+    beta[] = 0;
+    foreach (e; m.flattened)
+        e.b = cast(int)e.a;
+    assert(alpha == beta);
+}
+
+///
+pure unittest
+{
+    import std.algorithm.iteration : sum, reduce;
+    import mir.utility : max;
+    import mir.ndslice.dynamic : transposed;
+    /// Returns maximal column average.
+    auto maxAvg(S)(S matrix) {
+        return reduce!max(matrix.universal.transposed.pack!1.map!sum)
+             / double(matrix.length);
+    }
+    // 1 2
+    // 3 4
+    auto matrix = iota([2, 2], 1);
+    assert(maxAvg(matrix) == 3);
+}
+
+/++
++/
+auto unzip(char c, SliceKind kind, size_t[] packs, Iterator : ZipIterator!Iterators, Iterators...)
+    (Slice!(kind, packs, Iterator) slice)
+
+{
+    enum size_t i = c - 'a';
+    static assert(i < Iterators.length, `unzip: constraint: size_t(c - 'a') < Iterators.length`);
+    return Slice!(kind, packs, Iterators[i])(slice._lengths, slice._strides, slice._iterator._iterators[i]).unhideStride;
+}
+
+///
+pure nothrow unittest
+{
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : iota;
+
+    auto alpha = iota!int(4, 3);
+    auto beta = iota!int([4, 3], 1).slice;
+
+    auto m = zip(alpha, beta);
+
+    static assert(is(typeof(unzip!'a'(m)) == typeof(alpha)));
+    static assert(is(typeof(unzip!'b'(m)) == typeof(beta)));
+
+    assert(m.unzip!'a' == alpha);
+    assert(m.unzip!'b' == beta);
 }

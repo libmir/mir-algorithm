@@ -5,6 +5,37 @@ import std.traits;
 import std.meta;
 import mir.ndslice.slice;
 import mir.internal.utility;
+template _iotaArgs(size_t length, string prefix, string suffix)
+{
+    static if (length)
+    {
+        enum i = length - 1;
+        enum _iotaArgs = _iotaArgs!(i, prefix, suffix) ~ prefix ~ i.stringof ~ suffix;
+    }
+    else
+        enum _iotaArgs = "";
+}
+
+enum _kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;
+alias _IteratorOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = Iterator;
+
+E maxElem(E)(E[] arr...)
+{
+    auto ret = Unqual!E.min;
+    foreach(e; arr)
+        if (e > ret)
+            ret = e;
+    return ret;
+}
+
+E minElem(E)(E[] arr...)
+{
+    auto ret = Unqual!E.max;
+    foreach(e; arr)
+        if (e < ret)
+            ret = e;
+    return ret;
+}
 
 size_t sum()(size_t[] packs)
 {
@@ -218,132 +249,6 @@ auto ptrShell(Range)(Range range, sizediff_t shift = 0)
         assert(ptr[0] == save0 + 11);
         assert(ptrCopy[0] == 2);
     }
-}
-
-private template PtrTupleFrontMembers(Names...)
-    if (Names.length <= 32)
-{
-    static if (Names.length)
-    {
-        alias Top = Names[0..$-1];
-        enum int m = Top.length;
-        /+
-        fastmath do nothing here,
-        but remove constraint for LDC that operations for pointer's computations
-        maybe mixed up with callers computations if both computations has fastmath attribute.
-        So, it is just a bridge between two fastmath functions.
-        +/
-        enum PtrTupleFrontMembers = PtrTupleFrontMembers!Top
-        ~ "
-        @fmb @property auto ref " ~ Names[$-1] ~ "() {
-            return _ptrs__[" ~ m.stringof ~ "][0];
-        }
-        static if (!__traits(compiles, &(_ptrs__[" ~ m.stringof ~ "][0])))
-        @fmb @property auto ref " ~ Names[$-1] ~ "(T)(auto ref T value) {
-            return _ptrs__[" ~ m.stringof ~ "][0] = value;
-        }
-        ";
-    }
-    else
-    {
-        enum PtrTupleFrontMembers = "";
-    }
-}
-
-@LikePtr struct Pack(size_t N, Range)
-{
-    @fmb:
-    alias Elem = Slice!(N, Range);
-    alias PureN = Elem.PureN;
-    alias PureRange = Elem.PureRange;
-
-    size_t[PureN] _lengths;
-    sizediff_t[PureN] _strides;
-
-    SlicePtr!PureRange _ptr;
-    mixin PropagatePtr;
-
-    Elem opIndex(size_t index)
-    {
-        return Elem(_lengths, _strides, _ptr + index);
-    }
-}
-
-@LikePtr struct Map(Range, alias fun)
-{
-    Range _ptr;
-    // can not use @fmb here because fun maybe an LLVM function.
-    auto ref opIndex(size_t index)
-    {
-        return fun(_ptr[index]);
-    }
-    mixin PropagatePtr;
-}
-
-private mixin template PropagatePtr()
-{
-    @fmb void opOpAssign(string op)(sizediff_t shift)
-        if (op == `+` || op == `-`)
-    {
-        mixin (`_ptr ` ~ op ~ `= shift;`);
-    }
-
-    @fmb auto opBinary(string op)(sizediff_t shift)
-        if (op == `+` || op == `-`)
-    {
-        auto ret = this;
-        ret.opOpAssign!op(shift);
-        return ret;
-    }
-
-    @fmb auto opUnary(string op)()
-        if (op == `++` || op == `--`)
-    {
-        mixin(op ~ `_ptr;`);
-        return this;
-    }
-}
-
-struct LikePtr {}
-
-template SlicePtr(Range)
-{
-    static if (hasPtrBehavior!Range)
-        alias SlicePtr = Range;
-    else
-        alias SlicePtr = PtrShell!Range;
-}
-
-enum isSlicePointer(T) = isPointer!T || is(T : PtrShell!R, R);
-
-template hasPtrBehavior(T)
-{
-    static if (isPointer!T)
-        enum hasPtrBehavior = true;
-    else
-    static if (!isAggregateType!T)
-        enum hasPtrBehavior = false;
-    else
-        enum hasPtrBehavior = hasUDA!(T, LikePtr);
-}
-
-alias RangeOf(T : Slice!(N, Range), size_t N, Range) = Range;
-
-template isMemory(T)
-{
-    static if (isPointer!T)
-        enum isMemory = true;
-    else
-    static if (is(T : Map!(Range, fun), Range, alias fun))
-        enum isMemory = .isMemory!Range;
-    else
-    static if (__traits(compiles, __traits(isSame, PtrTuple, TemplateOf!(TemplateOf!T))))
-        static if (__traits(isSame, PtrTuple, TemplateOf!(TemplateOf!T)))
-            enum isMemory = allSatisfy!(.isMemory, TemplateArgsOf!T);
-        else
-            enum isMemory = false;
-    else
-        enum isMemory = false;
 }
 
 //unittest

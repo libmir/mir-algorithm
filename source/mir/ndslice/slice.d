@@ -380,149 +380,6 @@ nothrow unittest
     //Mallocator.instance.dispose(tup2.array);
 }
 
-//private template _Iterator_Types(Names...)
-//{
-//    static if (Names.length)
-//        enum string _Iterator_Types = "Iterator_" ~ Names[0] ~ ", " ~ _Iterator_Types!(Names[1..$]);
-//    else
-//        enum string _Iterator_Types = "";
-//}
-
-//private template _Iterator_Values(Names...)
-//{
-//    static if (Names.length)
-//        enum string _Iterator_Values = "range_" ~ Names[0] ~ ", " ~ _Iterator_Values!(Names[1..$]);
-//    else
-//        enum string _Iterator_Values = "";
-//}
-
-//private template _Iterator_DeclarationList(Names...)
-//{
-//    static if (Names.length)
-//    {
-//        enum string _Iterator_DeclarationList = "Iterator_" ~ Names[0] ~ " range_"
-//             ~ Names[0] ~ ", " ~ _Iterator_DeclarationList!(Names[1..$]);
-//    }
-//    else
-//        enum string _Iterator_DeclarationList = "";
-//}
-
-//private template _Slice_DeclarationList(Names...)
-//{
-//    static if (Names.length)
-//    {
-//        enum string _Slice_DeclarationList = "Slice!(N, Iterator_" ~ Names[0] ~ ") slice_"
-//             ~ Names[0] ~ ", " ~ _Slice_DeclarationList!(Names[1..$]);
-//    }
-//    else
-//        enum string _Slice_DeclarationList = "";
-//}
-
-///++
-//Groups slices into a slice tuple. The slices must have identical structure.
-//Slice tuple is a slice, which holds single set of lengths and strides
-//for a number of ranges.
-//Params:
-//    Names = names of elements in a slice tuple
-//Returns:
-//    n-dimensional slice
-//See_also: $(LREF .Slice.structure).
-//+/
-//template assumeSameStructure(Names...)
-// if (Names.length && !anySatisfy!(isType, Names) && allSatisfy!(isStringValue, Names))
-//{
-//    mixin (
-//    "
-//    auto assumeSameStructure(
-//            size_t N, " ~ _Iterator_Types!Names ~ ")
-//            (" ~ _Slice_DeclarationList!Names ~ ")
-//    {
-//        alias RS = AliasSeq!("  ~_Iterator_Types!Names ~ ");"
-//        ~ q{
-//            import std.meta : staticMap;
-//            static assert(!anySatisfy!(_isSlice, RS),
-//                `Packed slices not allowed in slice tuples`
-//                ~ tailErrorMessage!());
-//            alias PT = PtrTuple!Names;
-//            alias SPT = PT!(staticMap!(PrepareIteratorType, RS));
-//            static if (hasElaborateAssign!SPT)
-//                Slice!(N, SPT) ret;
-//            else
-//                Slice!(N, SPT) ret = void;
-//            mixin (`alias slice0 = slice_` ~ Names[0] ~`;`);
-//            ret._lengths = slice0._lengths;
-//            ret._strides = slice0._strides;
-//            ret._iterator.iterators[0] = slice0._iterator;
-//            foreach (i, name; Names[1..$])
-//            {
-//                mixin (`alias slice = slice_` ~ name ~`;`);
-//                assert(ret._lengths == slice._lengths,
-//                    `Shapes must be identical`
-//                    ~ tailErrorMessage!());
-//                assert(ret._strides == slice._strides,
-//                    `Strides must be identical`
-//                    ~ tailErrorMessage!());
-//                ret._iterator.iterators[i+1] = slice._iterator;
-//            }
-//            return ret;
-//        }
-//    ~ "}");
-//}
-
-/////
-//pure nothrow unittest
-//{
-//    import std.algorithm.comparison : equal;
-//    import mir.ndslice.topology : flattened, iota;
-
-//    auto alpha = iota(4, 3);
-//    auto beta = slice!int(4, 3);
-
-//    auto m = assumeSameStructure!("a", "b")(alpha, beta);
-//    foreach (r; m)
-//        foreach (e; r)
-//            e.b = cast(int)e.a;
-//    assert(alpha == beta);
-
-//    beta[] = 0;
-//    foreach (e; m.flattened)
-//        e.b = cast(int)e.a;
-//    assert(alpha == beta);
-//}
-
-/////
-//@safe @nogc pure nothrow unittest
-//{
-//    import std.algorithm.iteration : map, sum, reduce;
-//    import std.algorithm.comparison : max;
-//    import mir.ndslice.dynamic : transposed;
-//    /// Returns maximal column average.
-//    auto maxAvg(S)(S matrix) {
-//        return matrix.universal.transposed.map!sum.reduce!max
-//             / matrix.length;
-//    }
-//    enum matrix = [1, 2,
-//                   3, 4].sliced!(No.replaceArrayWithPointer)(2, 2);
-//    ///Сompile time function evaluation
-//    static assert(maxAvg(matrix) == 3);
-//}
-
-/////
-//@safe @nogc pure nothrow unittest
-//{
-//    import std.algorithm.iteration : map, sum, reduce;
-//    import std.algorithm.comparison : max;
-//    import mir.ndslice.dynamic : transposed;
-//    /// Returns maximal column average.
-//    auto maxAvg(S)(S matrix) {
-//        return matrix.transposed.map!sum.reduce!max
-//             / matrix.length;
-//    }
-//    enum matrix = [1, 2,
-//                   3, 4].sliced!(No.replaceArrayWithPointer)(2, 2);
-//    ///Сompile time function evaluation
-//    static assert(maxAvg(matrix) == 3);
-//}
 
 /++
 Shape of a common n-dimensional array.
@@ -878,6 +735,9 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     static if (packs.length == 1)
         alias DeepElemType = typeof(Iterator.init[size_t.init]);
+    else
+    static if (packs.length == 2 && packs[1] == 1 && kind == SliceKind.canonical)
+        alias DeepElemType = Slice!(SliceKind.continuous, packs[1 .. $], Iterator);
     else
         alias DeepElemType = Slice!(kind, packs[1 .. $], Iterator);
 
@@ -2867,27 +2727,26 @@ unittest
     //    static assert(is(typeof(i.sliced(3, 4, 5)) == S));
 }
 
-//// Test for map #1
-//unittest
-//{
-//    import std.algorithm.iteration : map;
-//    import std.range.primitives;
-//    auto slice = [1, 2, 3, 4].sliced(2, 2);
+// Test for map #1
+unittest
+{
+    import std.algorithm.iteration : map;
+    import std.range.primitives;
+    auto slice = [1, 2, 3, 4].sliced(2, 2);
 
-//    auto r = slice.map!(a => a.map!(a => a * 6));
-//    assert(r.front.front == 6);
-//    assert(r.front.back == 12);
-//    assert(r.back.front == 18);
-//    assert(r.back.back == 24);
-//    assert(r[0][0] ==  6);
-//    assert(r[0][1] == 12);
-//    assert(r[1][0] == 18);
-//    assert(r[1][1] == 24);
-//    static assert(hasSlicing!(typeof(r)));
-//    static assert(isForwardRange!(typeof(r)));
-//    static assert(isRandomAccessRange!(typeof(r)));
-
-//}
+    auto r = slice.map!(a => a.map!(a => a * 6));
+    assert(r.front.front == 6);
+    assert(r.front.back == 12);
+    assert(r.back.front == 18);
+    assert(r.back.back == 24);
+    assert(r[0][0] ==  6);
+    assert(r[0][1] == 12);
+    assert(r[1][0] == 18);
+    assert(r[1][1] == 24);
+    static assert(hasSlicing!(typeof(r)));
+    static assert(isForwardRange!(typeof(r)));
+    static assert(isRandomAccessRange!(typeof(r)));
+}
 
 // Test for map #2
 unittest
@@ -2904,18 +2763,18 @@ unittest
     static assert(hasSlicing!(typeof(slice)));
     static assert(isForwardRange!(typeof(slice)));
     static assert(isRandomAccessRange!(typeof(slice)));
-    auto r = slice.map!(a => a.map!(a => a * 3));
+    auto r = slice.map!(a => a.map!(a => a * 6));
     static assert(hasSlicing!(typeof(r)));
     static assert(isForwardRange!(typeof(r)));
     static assert(isRandomAccessRange!(typeof(r)));
-    //assert(r.front.front == 6);
-    //assert(r.front.back == 12);
-    //assert(r.back.front == 18);
-    //assert(r.back.back == 24);
-    //assert(r[0][0] ==  6);
-    //assert(r[0][1] == 12);
-    //assert(r[1][0] == 18);
-    //assert(r[1][1] == 24);
+    assert(r.front.front == 6);
+    assert(r.front.back == 12);
+    assert(r.back.front == 18);
+    assert(r.back.back == 24);
+    assert(r[0][0] ==  6);
+    assert(r[0][1] == 12);
+    assert(r[1][0] == 18);
+    assert(r[1][1] == 24);
 }
 
 private bool opEqualsImpl
@@ -2940,21 +2799,6 @@ private bool opEqualsImpl
     while (ls._lengths[0]);
     return true;
 }
-
-
-//pure nothrow unittest
-//{
-//    import mir.ndslice.dynamic : dropExactly;
-//    import mir.ndslice.topology : flattened;
-//    auto sl1 = slice!double([2, 3], 2);
-//    auto sl2 = slice!double([2, 3], 3);
-//    sl1.dropExactly!0(2)[] = sl2.dropExactly!0(2);
-//    foreach (e; sl1.flattened)
-//        assert(e == 2);
-//    sl1.dropExactly!0(2)[] = sl2.dropExactly!0(2).ndarray;
-//    foreach (e; sl1.flattened)
-//        assert(e == 2);
-//}
 
 //pure nothrow unittest
 //{

@@ -3,6 +3,7 @@ module mir.ndslice.iterator;
 
 import mir.internal.utility;
 import mir.ndslice.slice: SliceKind, Slice;
+import mir.ndslice.internal;
 import std.traits;
 
 /++
@@ -105,6 +106,13 @@ struct RetroIterator(Iterator)
     ///
     Iterator _iterator;
 
+    ///
+    auto __map(alias fun)()
+    {
+        auto iterator = _iterator.mapIterator!fun;
+        return RetroIterator!(typeof(iterator))(iterator);
+    }
+
     auto ref opUnary(string op : "*")()
     { return *_iterator; }
 
@@ -189,6 +197,13 @@ struct StrideIterator(Iterator)
     ptrdiff_t _stride;
     ///
     Iterator _iterator;
+
+    ///
+    auto __map(alias fun)()
+    {
+        auto iterator = _iterator.mapIterator!fun;
+        return StrideIterator!(typeof(iterator))(_stride, iterator);
+    }
 
     auto ref opUnary(string op : "*")()
     { return *_iterator; }
@@ -402,21 +417,34 @@ pure nothrow @nogc unittest
 struct MapIterator(Iterator, alias fun)
 {
     ///
-    Iterators _iterator;
+    Iterator _iterator;
+
+    ///
+    auto __map(alias fun1)()
+    {
+        import mir.functional: pipe;
+        return MapIterator!(Iterator, pipe!(fun, fun1))(_iterator);
+    }
 
     auto ref opUnary(string op : "*")()
-    { return fun(*_iterator); }
+    {
+        static if (is(Iterator : ZipIterator!(Iterators), Iterators...))
+            with(_iterator) return mixin("fun(" ~ _iotaArgs!(Iterators.length, "*_iterators[", "], ") ~ ")");
+        else
+            return fun(*_iterator);
+    }
 
     void opUnary(string op)()
         if (op == "--" || op == "++")
     { mixin(op ~ "_iterator;"); }
 
     auto ref opIndex()(ptrdiff_t index)
-    { return fun(_iterator[index]); }
-
-    static if (!__traits(compiles, &fun(_iterator[ptrdiff_t.init])))
-    void opIndexAssign(T)(T value, ptrdiff_t index)
-    { return fun(_iterator[index]) = value; }
+    {
+        static if (is(Iterator : ZipIterator!(Iterators), Iterators...))
+            with(_iterator) return mixin("fun(" ~ _iotaArgs!(Iterators.length, "_iterators[", "][index], ") ~ ")");
+        else
+            return fun(_iterator[index]);
+    }
 
     void opOpAssign(string op)(ptrdiff_t index)
         if (op == "-" || op == "+")
@@ -447,13 +475,30 @@ struct MapIterator(Iterator, alias fun)
 
 /++
 +/
+auto mapIterator(alias fun, Iterator)(Iterator iterator)
+{
+    static if (__traits(hasMember, Iterator, "__map"))
+        return iterator.__map!fun;
+    else
+       return MapIterator!(Iterator, fun)(iterator);
+}
+
+/++
++/
 struct IndexIterator(Iterator, Field)
 {
     ///
-    Iterators _iterator;
+    Iterator _iterator;
     ///
     Field _field;
 
+    ///
+    auto __map(alias fun)()
+    {
+        import mir.ndslice.field: mapField;
+        auto field = _field.mapField!fun;
+        return IndexIterator!(Iterator, typeof(field))(_iterator, field);
+    }
 
     auto ref opUnary(string op : "*")()
     { return _field[*_iterator]; }
@@ -498,12 +543,70 @@ struct IndexIterator(Iterator, Field)
 
 /++
 +/
+struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
+{
+    ///
+    alias Elem = Slice!(kind, packs, Iterator);
+    ///
+    size_t[Elem.N] _lengths;
+    ///
+    ptrdiff_t[Elem.S] _strides;
+    ///
+    Iterator _iterator;
+
+    auto opUnary(string op : "*")()
+    { return Elem(_lengths, _strides, _iterator); }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    { mixin(op ~ "_iterator;"); }
+
+    auto opIndex()(ptrdiff_t index)
+    { return Elem(_lengths, _strides, _iterator + index); }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    { mixin("_iterator " ~ op ~ "= index;"); }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return this._iterator - right._iterator; }
+
+    bool opEquals()(auto ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(auto ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
+}
+
+/++
++/
 struct FieldIterator(Field)
 {
     ///
     ptrdiff_t _index;
     ///
     Field _field;
+
+    ///
+    auto __map(alias fun)()
+    {
+        import mir.ndslice.field: mapField;
+        auto field = _field.mapField!fun;
+        return FieldIterator!(typeof(field))(_index, field);
+    }
 
     auto ref opUnary(string op : "*")()
     { return _field[_index]; }
@@ -550,6 +653,14 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     ptrdiff_t[packs[0]] _indexes;
     ///
     Slice!(kind, packs, Iterator) _slice;
+
+    ///
+    auto __map(alias fun)()
+    {
+        import mir.ndslice.topology: map;
+        auto slice = _slice.map!fun;
+        return FlattenedIterator!(TemplateArgsOf!(typeof(slice)))(_indexes, slice);
+    }
 
     private ptrdiff_t getShift()(ptrdiff_t n)
     {

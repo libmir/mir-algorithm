@@ -38,6 +38,7 @@ import std.meta;
 import std.traits;
 
 private enum isRef(T) = is(T : Ref!T0, T0);
+private enum isLangRef(alias arg) = __traits(isRef, arg);
 
 ///
 struct Ref(T)
@@ -45,7 +46,7 @@ struct Ref(T)
 {
     @disable this();
     ///
-    this(ref T value)
+    this(ref T value) @trusted
     {
         __ptr = &value;
     }
@@ -75,9 +76,118 @@ private mixin template _RefTupleMixin(T...)
     }
 }
 
-auto tuple(T...)(auto ref T args)
+auto tuple(Args...)(auto ref Args args)
 {
-    return RefTuple!T(args);
+    return RefTuple!Args(args);
+}
+
+
+//auto autoRefTuple(Args...)(auto ref Args args)
+//{
+//    mixin("return RefTuple!(_adjoin_types!args)(" ~ _adjoin!args ~ ");");
+//}
+
+private string joinStrings()(string[] strs)
+{
+    if (strs.length)
+    {
+        auto ret = strs[0];
+        foreach(s; strs[1 .. $])
+            ret ~= s;
+        return ret;
+    }
+    return null;
+}
+
+/**
+Takes multiple functions and adjoins them together. The result is a
+$(REF Tuple, std,typecons) with one element per passed-in function. Upon
+invocation, the returned tuple is the adjoined results of all
+functions.
+Note: In the special case where only a single function is provided
+($(D F.length == 1)), adjoin simply aliases to the single passed function
+($(D F[0])).
+*/
+template adjoin(fun...) if (fun.length && fun.length <= 26)
+{
+    static if (fun.length != 1)
+    {
+        static if (Filter!(_needNary, fun).length == 0)
+        {
+            ///
+            auto adjoin(Args...)(auto ref Args args)
+            {
+                import std.functional: forward;
+                template _adjoin(size_t i)
+                {
+                    static if (__traits(compiles, &fun[i](forward!args)))
+                        enum _adjoin = "Ref!(typeof(fun[" ~ i.stringof ~ "](forward!args)))(fun[" ~ i.stringof ~ "](forward!args)), ";
+                    else
+                        enum _adjoin = "fun[" ~ i.stringof ~ "](forward!args), ";
+                }
+
+                import mir.internal.utility;
+                mixin("return tuple(" ~ [staticMap!(_adjoin, Iota!(fun.length))].joinStrings ~ ");");
+            }
+        }
+        else alias adjoin = .adjoin!(staticMap!(naryFun, fun));
+    }
+    else alias adjoin = naryFun!(fun[0]);
+}
+
+///
+@safe unittest
+{
+    static bool f1(int a) { return a != 0; }
+    static int f2(int a) { return a / 2; }
+    auto x = adjoin!(f1, f2)(5);
+    assert(is(typeof(x) == RefTuple!(bool, int)));
+    assert(x.a == true && x.b == 2);
+}
+
+@safe unittest
+{
+    static bool F1(int a) { return a != 0; }
+    auto x1 = adjoin!(F1)(5);
+    static int F2(int a) { return a / 2; }
+    auto x2 = adjoin!(F1, F2)(5);
+    assert(is(typeof(x2) == RefTuple!(bool, int)));
+    assert(x2.a && x2.b == 2);
+    auto x3 = adjoin!(F1, F2, F2)(5);
+    assert(is(typeof(x3) == RefTuple!(bool, int, int)));
+    assert(x3.a && x3.b == 2 && x3.c == 2);
+
+    bool F4(int a) { return a != x1; }
+    alias eff4 = adjoin!(F4);
+    static struct S
+    {
+        bool delegate(int) @safe store;
+        int fun() { return 42 + store(5); }
+    }
+    S s;
+    s.store = (int a) { return eff4(a); };
+    auto x4 = s.fun();
+    assert(x4 == 43);
+}
+
+//@safe
+unittest
+{
+    alias funs = staticMap!(naryFun, "a", "a * 2", "a * 3", "a * a", "-a");
+    alias afun = adjoin!funs;
+    int a = 5, b = 5;
+    assert(afun(a) == tuple(Ref!int(a), 10, 15, 25, -5));
+    assert(afun(a) == tuple(Ref!int(b), 10, 15, 25, -5));
+
+    static class C{}
+    alias IC = immutable(C);
+    IC foo(){return typeof(return).init;}
+    RefTuple!(IC, IC, IC, IC) ret1 = adjoin!(foo, foo, foo, foo)();
+
+    static struct S{int* p;}
+    alias IS = immutable(S);
+    IS bar(){return typeof(return).init;}
+    enum RefTuple!(IS, IS, IS, IS) ret2 = adjoin!(bar, bar, bar, bar)();
 }
 
 ///
