@@ -117,7 +117,6 @@ template adjoin(fun...) if (fun.length && fun.length <= 26)
             ///
             auto adjoin(Args...)(auto ref Args args)
             {
-                import std.functional: forward;
                 template _adjoin(size_t i)
                 {
                     static if (__traits(compiles, &fun[i](forward!args)))
@@ -542,3 +541,98 @@ unittest
     // convert each token into an integer
     assert(pipe!(split, map!(to!(int)))("1 2 3").equal([1, 2, 3]));
 }
+
+/**
+Forwards function arguments with saving ref-ness.
+*/
+template forward(args...)
+{
+    static if (args.length)
+    {
+        alias arg = args[0];
+        static if (__traits(isRef, arg))
+            alias fwd = arg;
+        else
+            @property fwd()(){ return arg; } //TODO: use move
+        alias forward = AliasSeq!(fwd, forward!(args[1..$]));
+    }
+    else
+        alias forward = AliasSeq!();
+}
+
+///
+@safe unittest
+{
+    class C
+    {
+        static int foo(int n) { return 1; }
+        static int foo(ref int n) { return 2; }
+    }
+    int bar()(auto ref int x) { return C.foo(forward!x); }
+
+    assert(bar(1) == 1);
+    int i;
+    assert(bar(i) == 2);
+}
+
+///
+@safe unittest
+{
+    void foo(int n, ref string s) { s = null; foreach (i; 0..n) s ~= "Hello"; }
+
+    // forwards all arguments which are bound to parameter tuple
+    void bar(Args...)(auto ref Args args) { return foo(forward!args); }
+
+    // forwards all arguments with swapping order
+    void baz(Args...)(auto ref Args args) { return foo(forward!args[$/2..$], forward!args[0..$/2]); }
+
+    string s;
+    bar(1, s);
+    assert(s == "Hello");
+    baz(s, 2);
+    assert(s == "HelloHello");
+}
+
+@safe unittest
+{
+    auto foo(TL...)(auto ref TL args)
+    {
+        string result = "";
+        foreach (i, _; args)
+        {
+            //pragma(msg, "[",i,"] ", __traits(isRef, args[i]) ? "L" : "R");
+            result ~= __traits(isRef, args[i]) ? "L" : "R";
+        }
+        return result;
+    }
+
+    string bar(TL...)(auto ref TL args)
+    {
+        return foo(forward!args);
+    }
+    string baz(TL...)(auto ref TL args)
+    {
+        int x;
+        return foo(forward!args[3], forward!args[2], 1, forward!args[1], forward!args[0], x);
+    }
+
+    struct S {}
+    S makeS(){ return S(); }
+    int n;
+    string s;
+    assert(bar(S(), makeS(), n, s) == "RRLL");
+    assert(baz(S(), makeS(), n, s) == "LLRRRL");
+}
+
+@safe unittest
+{
+    ref int foo(return ref int a) { return a; }
+    ref int bar(Args)(auto ref Args args)
+    {
+        return foo(forward!args);
+    }
+    static assert(!__traits(compiles, { auto x1 = bar(3); })); // case of NG
+    int value = 3;
+    auto x2 = bar(value); // case of OK
+}
+
