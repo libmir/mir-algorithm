@@ -1894,11 +1894,10 @@ You may alias `map` with some function(s) to a symbol and use it separately:
 +/
 pure nothrow unittest
 {
-    import std.conv : to;
     import mir.ndslice.topology : iota;
 
-    alias stringize = map!(to!string);
-    assert(stringize(iota(2, 3)) == [["0", "1", "2"], ["3", "4", "5"]]);
+    alias halfs = map!"double(a) / 2";
+    assert(halfs(iota(2, 3)) == [[0.0, 0.5, 1], [1.5, 2, 2.5]]);
 }
 
 /++
@@ -1952,6 +1951,63 @@ private auto unhideStride
         return slice;
 }
 
+/++
+Convenience function that creates a lazy view,
+where each element of the original slice is converted to the type `T`.
+It uses $(SUBREF topology, mapSlice) and $(REF_ALTTEXT $(TT to), to, mir,conv)$(NBSP)
+composition under the hood.
+Params:
+    slice = a slice to create a view on.
+Returns:
+    A lazy slice with elements converted to the type `T`.
++/
+template as(T)
+{
+    ///
+    auto as(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        static if (is(slice.DeepElemType == T))
+            return slice;
+        else
+        static if (isPointer!Iterator && is(const(Unqual!(typeof(Iterator.init[0]))) == T))
+            return slice.toConst;
+        else
+        {
+            import mir.conv: to;
+            return map!(to!T)(slice);
+        }
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : diagonal, as;
+
+    auto matrix = slice!double([2, 2], 0);
+    auto stringMatrixView = matrix.as!int;
+    assert(stringMatrixView ==
+            [[0, 0],
+             [0, 0]]);
+
+    matrix.diagonal[] = 1;
+    assert(stringMatrixView ==
+            [[1, 0],
+             [0, 1]]);
+
+    /// allocate new slice composed of strings
+    Slice!(SliceKind.continuous, [2], int*) stringMatrix = stringMatrixView.slice;
+}
+
+/// Special behavior for pointers to a constant data.
+unittest
+{
+    import mir.ndslice.allocation : slice;
+
+    Slice!(SliceKind.continuous, [2], double*)              matrix = slice!double([2, 2], 0);
+    Slice!(SliceKind.continuous, [2], const(double)*) const_matrix = matrix.as!(const double);
+}
 /++
 Groups slices into a slice tuple. The slices must have identical structure.
 Slice tuple is a slice, which holds single set of lengths and strides

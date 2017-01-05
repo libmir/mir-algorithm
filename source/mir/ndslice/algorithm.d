@@ -1,4 +1,4 @@
-/**
+/++
 $(SCRIPT inhibitQuickIndex = 1;)
 
 This is a submodule of $(MREF mir,ndslice).
@@ -37,13 +37,13 @@ can be used as they accept a set of tensors instead of single one.
 
 $(H3 Selection)
 $(LREF Select) allows to specify subset of elements to iterate.
-$(LREF Select) is useful in combination with $(SUBREF iteration, transposed) and $(SUBREF iteration, reversed).
+$(LREF Select) is useful in combination with $(SUBREF dynamic, transposed) and $(SUBREF dynamic, reversed).
 
 Note:
-    $(SUBREF iteration, transposed) and
-    $(SUBREF selection, pack) can be used to specify dimensions.
+    $(SUBREF dynamic, transposed) and
+    $(SUBREF topology, pack) can be used to specify dimensions.
 
-License:   BSD 3-Clause License
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
 Copyright: Copyright © 2016, Ilya Yaroshenko
 
@@ -54,121 +54,365 @@ SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T7=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4) $(TD $5) $(TD $6) $(TD $7))
 T8=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4) $(TD $5) $(TD $6) $(TD $7) $(TD $8))
-*/
++/
 module mir.ndslice.algorithm;
-
-version(none):
 
 import std.traits;
 import std.meta;
-import std.typecons : Flag, Yes, No;
 
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 
-private template TensorFronts(size_t length)
-{
-    static if (length)
-    {
-        enum i = length - 1;
-        enum TensorFronts = TensorFronts!(length - 1) ~ "tensors[" ~ i.stringof ~ "].front, ";
-    }
-    else
-    {
-        enum TensorFronts = "";
-    }
-}
+private auto ref frontOf(alias slice)() { return slice.front; };
 
-private void checkShapesMatch(bool seed, Select select, Args...)(Args tensors)
+/++
+Implements the homonym function (also known as `accumulate`,
+`compress`, `inject`, or `foldl`) present in various programming
+languages of functional flavor. The call `fold!(fun)(seed, tensors1, ..., tesnsorN)`
+first assigns `seed` to an internal variable `result`,
+also called the accumulator. Then, for each set of element `x1, ..., xN` in
+`tensors1, ..., tensorN`, `result = fun(result, x1, ..., xN)` gets evaluated. Finally,
+`result` is returned.
+
+`reduce` allows to iterate multiple tensors in the lockstep.
+
+Note:
+    $(SUBREF dynamic, transposed) and
+    $(SUBREF topology, pack) can be used to specify dimensions.
+Params:
+    fun = A function.
+    select = Selection type.
+    vec = Use vectorization friendly iteration without manual unrolling
+        in case of all tensors has the last (row) stride equal to 1.
+    fm = Allow a compiler to use unsafe floating-point mathematic transformations,
+        such as commutative transformation. `fm` is enabled by default if `vec` is enabled.
+    seed = An initial accumulation value.
+    tensors = One or more tensors.
+Returns:
+    the accumulated `result`
+See_Also:
+    $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
+
+    This is functionally similar to $(LREF reduce) with the argument order reversed.
+    $(LREF fold) allows to compute values for multiple functions.
+
+    $(REF reduce, std,algorithm,iteration)
+
+    $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
++/
+template reduce(alias fun)
 {
-    enum msg = seed ?
-        "all arguments except the first (seed) must be tensors" :
-        "all arguments must be tensors"
-        ~ tailErrorMessage!();
-    enum msgShape = "all tensors must have the same shape"  ~ tailErrorMessage!();
-    foreach (i, Arg; Args)
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    ///
+    auto reduce(S, Slices...)(S seed, Slices slices)
+        if (Slices.length)
     {
-        static assert (is(Arg == Slice!(N, Range), size_t N, Range), msg);
-        static if (select == Select.halfPacked || select == Select.triangularPacked)
-        {
-            static assert (tensors[i].NSeq.length > 1, "halfPacked and triangularPacked selections require packed slices");
-            static if (i)
-            {
-                static assert (tensors[i].NSeq[0 .. 2] == tensors[0].NSeq[0 .. 2], msgShape);
-                enum M = tensors[0].NSeq[0] + tensors[0].NSeq[1] - 1;
-                import mir.ndslice.selection: unpack;
-                assert(tensors[i].unpack.shape[0 .. M] == tensors[0].unpack.shape[0 .. M], msgShape);
-            }
-        }
+        //slices.checkShapesMatch;
+        if (slices[0].anyEmpty)
+            return cast(Unqual!S) seed;
+        static if (is(S : Unqual!S))
+            alias UT = Unqual!S;
         else
-        {
-            static if (i)
-            {
-                static assert (tensors[i].shape.length == tensors[0].shape.length, msgShape);
-                assert(tensors[i].shape == tensors[0].shape, msgShape);
-            }
-        }
-    }
-}
-
-private bool anyEmpty(Select select, size_t N, Range)(ref Slice!(N, Range) slice)
-{
-    static if (select == Select.halfPacked || select == Select.triangularPacked)
-        static if (is(Range : Slice!(M, IRange), size_t M, IRange))
-        {
-            import mir.ndslice.selection : unpack, IotaMap;
-            return Slice!(N + M - 1, IotaMap!())(slice.unpack.shape, slice.unpack.structure.strides, IotaMap!()()).anyEmpty;
-        }
-        else static assert(0);
-    else
-        return slice.anyEmpty;
-}
-
-private template naryFun(bool hasSeed, size_t argCount, alias fun)
-{
-    static if (argCount + hasSeed == 1)
-    {
-        import std.functional : unaryFun;
-        alias naryFun = unaryFun!fun;
+            alias UT = S;
+        import mir.functional: naryFun;
+        return reduceImpl!(naryFun!fun, UT, Slices)(seed, slices);
     }
     else
-    static if (argCount + hasSeed == 2)
-    {
-        import std.functional : binaryFun;
-        alias naryFun = binaryFun!fun;
-    }
-    else
-    {
-        alias naryFun = fun;
-    }
+        alias reduce = .reduce!(naryFun!fun);
+
 }
 
-private enum Iteration
+S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {
-    reduce,
-    each,
-    find,
-    all,
-}
-
-void prepareTensors(Select select, Args...)(ref Args tensors)
-{
-    static if (select == Select.triangular || select == Select.triangularPacked)
+    do
     {
-        static if (select == Select.triangularPacked)
-            enum I = Iota!(tensors[0].N, tensors[0].N + tensors[0].front.N - 1);
+        static if (slices[0].shape.length == 1)
+            seed = fun(seed, staticMap!(frontOf, slices));
         else
-            enum I = Iota!(0, tensors[0].N - 1);
-        import mir.ndslice.selection : unpack;
-        foreach_reverse (i; I)
-            if (tensors[0].unpack.shape[i] > tensors[0].unpack.shape[i + 1])
-                foreach (ref tensor; tensors)
-                    (cast(size_t*)&tensor)[i] = (cast(size_t*)&tensors[0])[i + 1];
+            seed = .reduceImpl!fun(seed, staticMap!(frontOf, slices));
+        foreach(ref slice; slices)
+            slice.popFront;
     }
+    while(!slices[0].empty);
+    return seed;
 }
+
+
+/// Single tensor
+unittest
+{
+    import mir.ndslice.topology : iota;
+
+    //| 0 1 2 | => 3  |
+    //| 3 4 5 | => 12 | => 15
+    auto sl = iota(2, 3);
+
+    // sum of all element in the tensor
+    auto res = size_t(0).reduce!"a + b"(sl);
+
+    assert(res == 15);
+}
+
+/// Multiple tensors, dot product
+//version(none)
+unittest
+{
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, iota;
+    import mir.ndslice.internal : fastmath;
+
+    static @fastmath T fmuladd(T)(const T a, const T b, const T c)
+    {
+        return a + b * c;
+    }
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto a = iota([2, 3], 0).as!double.slice;
+    //| 1 2 3 |
+    //| 4 5 6 |
+    auto b = iota([2, 3], 1).as!double.slice;
+
+    alias dot = reduce!fmuladd;
+    auto res = dot(0.0, a, b);
+
+    // check the result:
+    import mir.ndslice.topology : flattened;
+    import std.numeric : dotProduct;
+    assert(res == dotProduct(a.flattened, b.flattened));
+}
+
+/// Zipped tensors, dot product
+pure unittest
+{
+    import std.typecons : Yes;
+    import std.numeric : dotProduct;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, iota, zip, universal;
+    import mir.ndslice.internal : fastmath;
+
+    static @fastmath T fmuladd(T, Z)(const T a, Z z)
+    {
+        return a + z.a * z.b;
+    }
+
+    // 0 1 2
+    // 3 4 5
+    auto sl1 = iota(2, 3).as!double.slice.universal;
+    // 1 2 3
+    // 4 5 6
+    auto sl2 = iota([2, 3], 1).as!double.slice;
+
+    // tensors must have the same strides for `zip!true`.
+    assert(sl1.strides == sl2.strides);
+
+    auto z = zip!true(sl1, sl2);
+
+    auto dot = reduce!fmuladd(0.0, z);
+    pragma(msg, typeof(dot));
+
+    assert(dot == dotProduct(iota(6), iota([6], 1)));
+}
+
+/// Tensor mutation on-the-fly
+unittest
+{
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, iota;
+    import mir.ndslice.internal : fastmath;
+
+    static @fastmath T fun(T)(const T a, ref T b)
+    {
+        return a + b++;
+    }
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto sl = iota(2, 3).as!double.slice;
+
+    auto res = reduce!fun(double(0), sl);
+
+    assert(res == 15);
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    assert(sl == iota([2, 3], 1));
+}
+
+/++
+Packed tensors.
+
+Computes minimum value of maximum values for each row.
++/
+unittest
+{
+    // LDC is LLVM D Compiler
+    version(LDC)
+        import ldc.intrinsics : fmax = llvm_maxnum, fmin = llvm_minnum;
+    // std.math prevents vectorization for now
+    else
+        import std.math : fmax, fmin;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.dynamic : transposed;
+    import mir.ndslice.topology : as, iota, pack, map, universal;
+
+    alias maxVal = (a) => reduce!fmax(-double.infinity, a);
+    alias minVal = (a) => reduce!fmin(double.infinity, a);
+    alias minimaxVal = (a) => minVal(a.pack!1.map!maxVal);
+
+    auto sl = iota(2, 3).as!double.slice;
+
+    // Vectorized computation: row stride equals 1.
+    //| 0 1 2 | => | 2 |
+    //| 3 4 5 | => | 5 | => 2
+    auto res = minimaxVal(sl);
+    assert(res == 2);
+
+    // Common computation: row stride does not equal 1.
+    //| 0 1 2 |    | 0 3 | => | 3 |
+    //| 3 4 5 | => | 1 4 | => | 4 |
+    //             | 2 5 | => | 5 | => 3
+    auto resT = minimaxVal(sl.universal.transposed);
+    assert(resT == 3);
+}
+
+@safe pure nothrow @nogc unittest
+{
+    import mir.ndslice.topology : iota;
+    auto a = reduce!"a + b"(size_t(7), iota([0, 1], 1));
+    assert(a == 7);
+}
+
+
+/++
+The call `each!(fun)(tensors1, ..., tesnsorN)`
+evaluates `fun` for each set of elements `x1, ..., xN` in
+`tensors1, ..., tensorN` respectively.
+
+`each` allows to iterate multiple tensors in the lockstep.
+
+Note:
+    $(SUBREF dynamic, transposed) and
+    $(SUBREF topology, pack) can be used to specify dimensions.
+Params:
+    fun = A function.
+    select = Selection type.
+    vec = Use vectorization friendly iteration without manual unrolling
+        in case of all tensors has the last (row) stride equal to 1.
+    fm = Allow a compiler to use unsafe floating-point mathematic transformations,
+        such as commutative transformation. `fm` is enabled by default if `vec` is enabled.
+    tensors = One or more tensors.
+See_Also:
+    $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
+
+    This is functionally similar to $(LREF reduce) but has not seed.
+
+    $(REF each, std,algorithm,iteration)
++/
+template each(alias fun)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    ///
+    auto each(Slices...)(Slices slices)
+        if (Slices.length)
+    {
+        //slices.checkShapesMatch;
+        if (slices[0].anyEmpty)
+            return;
+        eachImpl!(naryFun!fun, Slices)(slices);
+    }
+    else
+        alias each = .each!(naryFun!fun);
+}
+
+void eachImpl(alias fun, Slices...)(Slices slices)
+{
+    do
+    {
+        static if (slices[0].shape.length == 1)
+            fun(staticMap!(frontOf, slices));
+        else
+            .eachImpl!fun(staticMap!(frontOf, slices));
+        foreach(ref slice; slices)
+            slice.popFront;
+    }
+    while(!slices[0].empty);
+}
+
+/// Single tensor, multiply-add
+unittest
+{
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto sl = iota(2, 3).as!double.slice;
+
+    sl.each!((ref a) { a = a * 10 + 5; });
+
+    import std.stdio;
+    assert(sl ==
+        [[ 5, 15, 25],
+         [35, 45, 55]]);
+}
+
+/// Swap two tensors
+unittest
+{
+    import mir.utility : swap;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto a = iota([2, 3], 0).as!double.slice;
+    //| 10 11 12 |
+    //| 13 14 15 |
+    auto b = iota([2, 3], 10).as!double.slice;
+
+    each!swap(a, b);
+
+    assert(a == iota([2, 3], 10));
+    assert(b == iota([2, 3], 0));
+}
+
+/// Swap two zipped tensors
+unittest
+{
+    import mir.utility : swap;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, zip, iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto a = iota([2, 3], 0).as!double.slice;
+    //| 10 11 12 |
+    //| 13 14 15 |
+    auto b = iota([2, 3], 10).as!double.slice;
+
+    auto z = zip(a, b);
+
+    z.each!(z => swap(z.a, z.b));
+
+    assert(a == iota([2, 3], 10));
+    assert(b == iota([2, 3], 0));
+}
+
+@safe pure nothrow unittest
+{
+    import mir.ndslice.topology : iota;
+    size_t i;
+    iota(0, 2).each!((a){i++;});
+    assert(i == 0);
+}
+
+version(none):
 
 // one ring to rule them all
-private template implement(Iteration iteration, alias fun, Flag!"vectorized" vec, Flag!"fastmath" fm)
+private template implement(Iteration iteration, alias fun)
 {
     static if (fm)
         alias attr = fastmath;
@@ -183,8 +427,7 @@ private template implement(Iteration iteration, alias fun, Flag!"vectorized" vec
     else
         enum argStr = "Tensors...)(Tensors tensors)";
 
-    mixin("@attr auto implement(size_t N, Select select, " ~ argStr ~ "{" ~ bodyStr ~ "}");
-    enum bodyStr = q{
+    auto implement(size_t N, Select select, Tensors...)(Tensors tensors) {
         static if (iteration == Iteration.find)
         {
             static if (select == Select.halfPacked || select == Select.triangularPacked)
@@ -201,18 +444,18 @@ private template implement(Iteration iteration, alias fun, Flag!"vectorized" vec
                 goto End;
         }
         static if (select == Select.halfPacked)
-            static if (N == 1)
+            static if (packs[0] == 1)
                 enum nextSelect = Select.half;
             else
                 enum nextSelect = Select.halfPacked;
         else
         static if (select == Select.triangularPacked)
-            static if (N == 1)
+            static if (packs[0] == 1)
                 enum nextSelect = Select.triangular;
             else
                 enum nextSelect = Select.triangularPacked;
         else
-        static if (N == 1)
+        static if (packs[0] == 1)
             enum nextSelect = -1;
         else
         static if (select == Select.half)
@@ -226,7 +469,7 @@ private template implement(Iteration iteration, alias fun, Flag!"vectorized" vec
         static if (N == 1 && (select == Select.halfPacked || select == Select.triangularPacked))
             enum M = tensors[0].front.shape.length;
         else
-            enum M = N - 1;
+            enum M = packs[0] - 1;
         static if (iteration == Iteration.reduce)
             static if (nextSelect == -1)
                 enum compute = `seed = naryFun!(true, Tensors.length, fun)(seed, ` ~ TensorFronts!(Tensors.length) ~ `);`;
@@ -298,16 +541,16 @@ private template implement(Iteration iteration, alias fun, Flag!"vectorized" vec
         static if (select == Select.half && N > 1)
         {
             static if (iteration == Iteration.reduce)
-                enum computeHalf = `seed = implement!(N - 1, Select.half)(seed, ` ~ TensorFronts!(Tensors.length) ~ `);`;
+                enum computeHalf = `seed = implement!(packs[0] - 1, Select.half)(seed, ` ~ TensorFronts!(Tensors.length) ~ `);`;
             else
             static if (iteration == Iteration.each)
-                enum computeHalf = `implement!(N - 1, Select.half)(` ~ TensorFronts!(Tensors.length) ~ `);`;
+                enum computeHalf = `implement!(packs[0] - 1, Select.half)(` ~ TensorFronts!(Tensors.length) ~ `);`;
             else
             static if (iteration == Iteration.find)
-                enum computeHalf = `implement!(N - 1, Select.half)(backwardIndex[1 .. $] , ` ~ TensorFronts!(Tensors.length) ~ `);`;
+                enum computeHalf = `implement!(packs[0] - 1, Select.half)(backwardIndex[1 .. $] , ` ~ TensorFronts!(Tensors.length) ~ `);`;
             else
             static if (iteration == Iteration.all)
-                enum computeHalf = `auto val = implement!(N - 1, Select.half)(` ~ TensorFronts!(Tensors.length) ~ `);`;
+                enum computeHalf = `auto val = implement!(packs[0] - 1, Select.half)(` ~ TensorFronts!(Tensors.length) ~ `);`;
             else
             static assert(0);
             if (lengthSave & 1)
@@ -323,722 +566,6 @@ private template implement(Iteration iteration, alias fun, Flag!"vectorized" vec
         static if (iteration == Iteration.all)
             return true;
     };
-}
-
-/++
-Selection type.
-`Select` can be used with
-$(LREF reduce),
-$(LREF each),
-$(LREF find),
-$(LREF any),
-$(LREF all),
-$(LREF equal),
-$(LREF cmp).
-
-Any dimension count is supported.
-Types has examples for 1D, 2D, and 3D cases.
-+/
-enum Select
-{
-    /++
-    `full` is the default selection type.
-
-    1D Example:
-    -----
-    1 2 3
-    -----
-    2D Example:
-    -----
-    | 1 2 3 |
-    | 4 5 6 |
-    | 7 8 9 |
-    -----
-    3D Example:
-    -----
-    | 1  2  3 | | 10 11 12 | | 19 20 21 |
-    | 4  5  6 | | 13 14 15 | | 22 23 24 |
-    | 7  8  9 | | 16 17 18 | | 25 26 27 |
-    -----
-    +/
-    full,
-    /++
-    `half` can be used to reverse elements in a tensor.
-
-    1D Example:
-    -----
-    1 x x
-    -----
-    2D Example:
-    -----
-    | 1 2 3 |
-    | 4 x x |
-    | x x x |
-    -----
-    3D Example:
-    -----
-    | 1  2  3 | | 10 11 12 | |  x  x  x |
-    | 4  5  6 | | 13  x  x | |  x  x  x |
-    | 7  8  9 | |  x  x  x | |  x  x  x |
-    -----
-    +/
-    half,
-    /++
-    `halfPacked` requires packed tensors.
-    For the first pack of dimensions elements are selected using `full` selection.
-    For the second pack of dimensions elements are selected using `half` selection.
-    +/
-    halfPacked,
-    /++
-    `upper` can be used to iterate on upper or lower triangular matrix.
-
-    1D Example:
-    -----
-    1 2 3
-    -----
-    2D Example #1:
-    -----
-    | 1 2 3 |
-    | x 4 5 |
-    | x x 6 |
-    -----
-    2D Example #2:
-    -----
-    | 1 2 3 4 |
-    | x 5 6 7 |
-    | x x 8 9 |
-    -----
-    2D Example #3:
-    -----
-    | 1 2 3 |
-    | x 4 5 |
-    | x x 6 |
-    | x x x |
-    -----
-    3D Example:
-    -----
-    |  1  2  3 | |  x  7  8 | |  x  x 10 |
-    |  x  4  5 | |  x  x  9 | |  x  x  x |
-    |  x  x  6 | |  x  x  x | |  x  x  x |
-    -----
-    +/
-    triangular,
-    /++
-    `triangularPacked` requires packed tensors.
-    For the first pack of dimensions elements are selected using `full` selection.
-    For the second pack of dimensions elements are selected using `triangular` selection.
-    +/
-    triangularPacked,
-}
-
-/++
-Implements the homonym function (also known as `accumulate`,
-`compress`, `inject`, or `foldl`) present in various programming
-languages of functional flavor. The call `fold!(fun)(tensor, seed)`
-first assigns `seed` to an internal variable `result`,
-also called the accumulator. Then, for each element `x` in
-`tensor`, `result = fun(result, x)` gets evaluated. Finally,
-`result` is returned.
-
-$(LREF fold) allows to compute values for multiple functions.
-
-Note:
-    $(SUBREF iteration, transposed) and
-    $(SUBREF selection, pack) can be used to specify dimensions.
-Params:
-    fun = One or more functions.
-    tensor = An input tensor.
-    seed = One or more initial accumulation values (seeds count equals to `fun` count).
-Returns:
-    the accumulated `result`
-See_Also:
-    This is functionally similar to $(LREF reduce) with the argument order reversed.
-    $(LREF reduce) allows to iterate multiple tensors in the lockstep.
-
-    $(REF fold, std,algorithm,iteration)
-
-    $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
-+/
-template fold(fun...)
-    if (fun.length)
-{
-    import std.functional : binaryFun;
-    private alias binfuns = staticMap!(binaryFun, fun);
-    static if (fun.length > 1)
-        import std.typecons : Tuple;
-
-    ///
-    auto fold(size_t N, Range, S...)(Slice!(N, Range) tensor, S seed)
-        if (S.length == fun.length)
-    {
-        alias US = staticMap!(Unqual, S);
-        if (tensor.anyEmpty)
-        {
-            static if (S.length == 1)
-                return cast(US[0]) seed[0];
-            else
-                return Tuple!US(seed);
-        }
-        return foldImpl!(N, Range, staticMap!(Unqual, S))(tensor, seed);
-    }
-
-    private auto foldImpl(size_t N, Range, S...)(Slice!(N, Range) tensor, S seed)
-    {
-        do
-        {
-            static if (N == 1)
-                static if (S.length == 1 || __traits(compiles, &(tensor.front)))
-                    foreach (i, f; binfuns)
-                        seed[i] = f(seed[i], tensor.front);
-                else
-                {
-                    auto elem = tensor.front;
-                    foreach (i, f; binfuns)
-                        seed[i] = f(seed[i], elem);
-                }
-            else
-            static if (S.length == 1)
-                seed[0] = foldImpl!(N - 1, Range, S)(tensor.front, seed);
-            else
-                seed = foldImpl!(N - 1, Range, S)(tensor.front, seed).expand;
-            tensor.popFront;
-        }
-        while (tensor.length);
-
-        static if (S.length == 1)
-            return seed[0];
-        else
-            return Tuple!S(seed);
-    }
-}
-
-/// Single seed
-unittest
-{
-    import mir.ndslice.selection : iotaSlice;
-
-    //| 0 1 2 | => 3  |
-    //| 3 4 5 | => 12 | => 15
-    auto sl = iotaSlice(2, 3);
-
-    // sum of all element in the tensor
-    auto res = sl.fold!"a + b"(size_t(0));
-
-    assert(res == 15);
-}
-
-/// Multiple seeds
-unittest
-{
-    import mir.ndslice.selection : iotaSlice;
-
-    //| 1 2 3 |
-    //| 4 5 6 |
-    auto sl = iotaSlice([2, 3], 1);
-
-    alias sumAndProduct = fold!("a + b", "a * b");
-    auto res = sumAndProduct(sl, size_t(0), size_t(1));
-
-    assert(res[0] == 21);
-    assert(res[1] == 720); // 6!
-}
-
-/// Zipped tensors, dot product
-pure unittest
-{
-    import std.conv : to;
-    import std.range : iota;
-    import std.numeric : dotProduct;
-    import mir.ndslice.slice : assumeSameStructure;
-    import mir.ndslice.selection : iotaSlice, mapSlice;
-
-    // 0 1 2
-    // 3 4 5
-    auto sl1 = iotaSlice(2, 3).as!double.slice;
-    // 1 2 3
-    // 4 5 6
-    auto sl2 = iotaSlice([2, 3], 1).as!double.slice;
-
-    // tensors must have the same strides
-    assert(sl1.structure == sl2.structure);
-
-    auto zip = assumeSameStructure!("a", "b")(sl1, sl2);
-
-    auto dot = zip.fold!((seed, z) => seed + z.a * z.b)(0.0);
-
-    assert(dot == dotProduct(iota(0, 6), iota(1, 7)));
-}
-
-/// Tensor mutation on-the-fly
-unittest
-{
-    import std.conv : to;
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.selection : iotaSlice, mapSlice;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto sl = iotaSlice(2, 3).as!double.slice;
-
-    alias fun = (seed, ref elem) => seed + elem++;
-
-    auto res = sl.fold!fun(0.0);
-
-    assert(res == 15);
-
-    //| 1 2 3 |
-    //| 4 5 6 |
-    assert(sl == iotaSlice([2, 3], 1));
-}
-
-/++
-Packed tensors.
-
-Computes minimum value for maximum values for each row.
-+/
-unittest
-{
-    import std.algorithm.comparison : min, max;
-    import mir.ndslice.iteration : transposed;
-    import mir.ndslice.selection : iotaSlice, pack, mapSlice;
-
-    alias maxVal = (a) => a.fold!max(size_t.min);
-    alias minVal = (a) => a.fold!min(size_t.max);
-    alias minimaxVal = (a) => minVal(a.pack!1.mapSlice!maxVal);
-
-    auto sl = iotaSlice(2, 3);
-
-    //| 0 1 2 | => | 2 |
-    //| 3 4 5 | => | 5 | => 2
-    auto res = minimaxVal(sl);
-    assert(res == 2);
-
-    //| 0 1 2 |    | 0 3 | => | 3 |
-    //| 3 4 5 | => | 1 4 | => | 4 |
-    //             | 2 5 | => | 5 | => 3
-    auto resT = minimaxVal(sl.transposed);
-    assert(resT == 3);
-}
-
-@safe pure nothrow @nogc unittest
-{
-    import mir.ndslice.iteration : dropOne;
-    import mir.ndslice.selection : iotaSlice;
-    auto a = iotaSlice(1, 1).dropOne!0.fold!"a + b"(size_t(7));
-    auto b = iotaSlice(1, 1).dropOne!1.fold!("a + b", "a * b")(size_t(7), size_t(8));
-    assert(a == 7);
-    assert(b[0] == 7);
-    assert(b[1] == 8);
-}
-
-/++
-Implements the homonym function (also known as `accumulate`,
-`compress`, `inject`, or `foldl`) present in various programming
-languages of functional flavor. The call `fold!(fun)(seed, tensors1, ..., tesnsorN)`
-first assigns `seed` to an internal variable `result`,
-also called the accumulator. Then, for each set of element `x1, ..., xN` in
-`tensors1, ..., tensorN`, `result = fun(result, x1, ..., xN)` gets evaluated. Finally,
-`result` is returned.
-
-`reduce` allows to iterate multiple tensors in the lockstep.
-
-Note:
-    $(SUBREF iteration, transposed) and
-    $(SUBREF selection, pack) can be used to specify dimensions.
-Params:
-    fun = A function.
-    select = Selection type.
-    vec = Use vectorization friendly iteration without manual unrolling
-        in case of all tensors has the last (row) stride equal to 1.
-    fm = Allow a compiler to use unsafe floating-point mathematic transformations,
-        such as commutative transformation. `fm` is enabled by default if `vec` is enabled.
-    seed = An initial accumulation value.
-    tensors = One or more tensors.
-Returns:
-    the accumulated `result`
-See_Also:
-    $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
-
-    This is functionally similar to $(LREF reduce) with the argument order reversed.
-    $(LREF fold) allows to compute values for multiple functions.
-
-    $(REF reduce, std,algorithm,iteration)
-
-    $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
-+/
-alias reduce(alias fun, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec) =
-    .reduce!(fun, Select.full, vec, fm);
-
-/// ditto
-template reduce(alias fun, Select select, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec)
-{
-    ///
-    auto reduce(S, Args...)(S seed, Args tensors)
-        if (Args.length)
-    {
-        tensors.checkShapesMatch!(true, select);
-        if (anyEmpty!select(tensors[0]))
-            return cast(Unqual!S) seed;
-        prepareTensors!select(tensors);
-        alias impl = implement!(Iteration.reduce, fun, No.vectorized, fm);
-        static if (vec && allSatisfy!(isMemory, staticMap!(RangeOf, Args)))
-        {
-            import mir.ndslice.selection: unpack;
-            foreach (ref tensor; tensors)
-                if (tensor.unpack.structure.strides[$-1] != 1)
-                    goto CommonL;
-            alias implVec = implement!(Iteration.reduce, fun, Yes.vectorized, fm);
-            return implVec!(tensors[0].shape.length, select, staticMap!(Unqual, S))(seed, tensors);
-            CommonL:
-        }
-        return impl!(tensors[0].shape.length, select, staticMap!(Unqual, S))(seed, tensors);
-    }
-}
-
-/// Single tensor
-unittest
-{
-    import mir.ndslice.selection : iotaSlice;
-
-    //| 0 1 2 | => 3  |
-    //| 3 4 5 | => 12 | => 15
-    auto sl = iotaSlice(2, 3);
-
-    // sum of all element in the tensor
-    auto res = size_t(0).reduce!"a + b"(sl);
-
-    assert(res == 15);
-}
-
-/// Multiple tensors, dot product
-unittest
-{
-    import std.typecons : Yes;
-    import std.conv : to;
-    import mir.ndslice.selection : iotaSlice;
-    import mir.ndslice.internal : fastmath;
-
-    static @fastmath T fmuladd(T)(const T a, const T b, const T c)
-    {
-        return a + b * c;
-    }
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto a = iotaSlice([2, 3], 0).as!double.slice;
-    //| 1 2 3 |
-    //| 4 5 6 |
-    auto b = iotaSlice([2, 3], 1).as!double.slice;
-
-    alias dot = reduce!(fmuladd, Yes.vectorized);
-    auto res = dot(0.0, a, b);
-
-    // check the result:
-    import mir.ndslice.selection : byElement;
-    import std.numeric : dotProduct;
-    assert(res == dotProduct(a.byElement, b.byElement));
-}
-
-/// Zipped tensors, dot product
-pure unittest
-{
-    import std.typecons : Yes;
-    import std.conv : to;
-    import std.range : iota;
-    import std.numeric : dotProduct;
-    import mir.ndslice.slice : assumeSameStructure;
-    import mir.ndslice.selection : iotaSlice;
-    import mir.ndslice.internal : fastmath;
-
-    static @fastmath T fmuladd(T, Z)(const T a, Z z)
-    {
-        return a + z.a * z.b;
-    }
-
-    // 0 1 2
-    // 3 4 5
-    auto sl1 = iotaSlice(2, 3).as!double.slice;
-    // 1 2 3
-    // 4 5 6
-    auto sl2 = iotaSlice([2, 3], 1).as!double.slice;
-
-    // tensors must have the same strides
-    assert(sl1.structure == sl2.structure);
-
-    auto zip = assumeSameStructure!("a", "b")(sl1, sl2);
-
-    auto dot = reduce!(fmuladd, Yes.vectorized)(0.0, zip);
-
-    assert(dot == dotProduct(iota(0, 6), iota(1, 7)));
-}
-
-/// Tensor mutation on-the-fly
-unittest
-{
-    import std.typecons : Yes;
-    import std.conv : to;
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.selection : iotaSlice;
-    import mir.ndslice.internal : fastmath;
-
-    static @fastmath T fun(T)(const T a, ref T b)
-    {
-        return a + b++;
-    }
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto sl = iotaSlice(2, 3).as!double.slice;
-
-    auto res = reduce!(fun, Yes.vectorized)(double(0), sl);
-
-    assert(res == 15);
-
-    //| 1 2 3 |
-    //| 4 5 6 |
-    assert(sl == iotaSlice([2, 3], 1));
-}
-
-/++
-Packed tensors.
-
-Computes minimum value of maximum values for each row.
-+/
-unittest
-{
-    // LDC is LLVM D Compiler
-    version(LDC)
-        import ldc.intrinsics : fmax = llvm_maxnum, fmin = llvm_minnum;
-    // std.math prevents vectorization for now
-    else
-        import std.math : fmax, fmin;
-    import std.typecons : Yes;
-    import std.conv : to;
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.iteration : transposed;
-    import mir.ndslice.selection : iotaSlice, pack, mapSlice;
-
-    alias maxVal = (a) => reduce!(fmax, Yes.vectorized)(-double.infinity, a);
-    alias minVal = (a) => reduce!fmin(double.infinity, a);
-    alias minimaxVal = (a) => minVal(a.pack!1.mapSlice!maxVal);
-
-    auto sl = iotaSlice(2, 3).as!double.slice;
-
-    // Vectorized execution path: row stride equals 1.
-    //| 0 1 2 | => | 2 |
-    //| 3 4 5 | => | 5 | => 2
-    auto res = minimaxVal(sl);
-    assert(res == 2);
-
-    // Common execution path: row stride does not equal 1.
-    //| 0 1 2 |    | 0 3 | => | 3 |
-    //| 3 4 5 | => | 1 4 | => | 4 |
-    //             | 2 5 | => | 5 | => 3
-    auto resT = minimaxVal(sl.transposed);
-    assert(resT == 3);
-}
-
-@safe pure nothrow @nogc unittest
-{
-    import mir.ndslice.iteration : dropOne;
-    import mir.ndslice.selection : iotaSlice;
-    auto a = reduce!"a + b"(size_t(7), iotaSlice(1, 1).dropOne!0);
-    assert(a == 7);
-}
-
-/++
-The call `each!(fun)(tensors1, ..., tesnsorN)`
-evaluates `fun` for each set of elements `x1, ..., xN` in
-`tensors1, ..., tensorN` respectively.
-
-`each` allows to iterate multiple tensors in the lockstep.
-
-Note:
-    $(SUBREF iteration, transposed) and
-    $(SUBREF selection, pack) can be used to specify dimensions.
-Params:
-    fun = A function.
-    select = Selection type.
-    vec = Use vectorization friendly iteration without manual unrolling
-        in case of all tensors has the last (row) stride equal to 1.
-    fm = Allow a compiler to use unsafe floating-point mathematic transformations,
-        such as commutative transformation. `fm` is enabled by default if `vec` is enabled.
-    tensors = One or more tensors.
-See_Also:
-    $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
-
-    This is functionally similar to $(LREF reduce) but has not seed.
-
-    $(REF each, std,algorithm,iteration)
-+/
-alias each(alias fun, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec) =
-    .each!(fun, Select.full, vec, fm);
-
-/// ditto
-template each(alias fun, Select select, Flag!"vectorized" vec = No.vectorized, Flag!"fastmath" fm = cast(Flag!"fastmath")vec)
-{
-    ///
-    void each(Args...)(Args tensors)
-        if (Args.length)
-    {
-        tensors.checkShapesMatch!(false, select);
-        if (anyEmpty!select(tensors[0]))
-            return;
-        prepareTensors!select(tensors);
-        alias impl = implement!(Iteration.each, fun, No.vectorized, fm);
-        static if (vec && allSatisfy!(isMemory, staticMap!(RangeOf, Args)))
-        {
-            import mir.ndslice.selection: unpack;
-            foreach (ref tensor; tensors)
-                if (tensor.unpack.structure.strides[$-1] != 1)
-                    goto CommonL;
-            alias implVec = implement!(Iteration.each, fun, Yes.vectorized, fm);
-            implVec!(tensors[0].shape.length, select)(tensors);
-            return;
-
-            CommonL:
-        }
-        impl!(tensors[0].shape.length, select)(tensors);
-    }
-}
-
-/// Single tensor, multiply-add
-unittest
-{
-    import std.typecons : Yes;
-    import std.conv : to;
-    import mir.ndslice.selection : iotaSlice;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto sl = iotaSlice(2, 3).as!double.slice;
-
-    sl.each!((ref a) { a = a * 10 + 5; }, Yes.vectorized);
-
-    import std.stdio;
-    assert(sl ==
-        [[ 5, 15, 25],
-         [35, 45, 55]]);
-}
-
-/// Swap two tensors
-unittest
-{
-    import std.typecons : Yes;
-    import std.conv : to;
-    import std.algorithm.mutation : swap;
-    import mir.ndslice.selection : iotaSlice;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto a = iotaSlice([2, 3], 0).as!double.slice;
-    //| 10 11 12 |
-    //| 13 14 15 |
-    auto b = iotaSlice([2, 3], 10).as!double.slice;
-
-    each!(swap, Yes.vectorized)(a, b);
-
-    assert(a == iotaSlice([2, 3], 10));
-    assert(b == iotaSlice([2, 3], 0));
-}
-
-/// Swap two zipped tensors
-unittest
-{
-    import std.typecons : Yes;
-    import std.conv : to;
-    import std.algorithm.mutation : swap;
-    import mir.ndslice.slice : assumeSameStructure;
-    import mir.ndslice.selection : iotaSlice;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto a = iotaSlice([2, 3], 0).as!double.slice;
-    //| 10 11 12 |
-    //| 13 14 15 |
-    auto b = iotaSlice([2, 3], 10).as!double.slice;
-
-    auto zip = assumeSameStructure!("a", "b")(a, b);
-
-    zip.each!(z => swap(z.a, z.b), Yes.vectorized);
-
-    assert(a == iotaSlice([2, 3], 10));
-    assert(b == iotaSlice([2, 3], 0));
-}
-
-/// Reverse rows and columns
-pure nothrow unittest
-{
-    import std.typecons : Yes;
-    import std.conv : to;
-    import std.algorithm.mutation : swap;
-    import mir.ndslice.slice : assumeSameStructure;
-    import mir.ndslice.selection : iotaSlice;
-    import mir.ndslice.iteration : allReversed;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto a = iotaSlice(2, 3).as!double.slice;
-
-    each!(swap, Select.half)(a, a.allReversed);
-
-    assert(a == iotaSlice(2, 3).allReversed);
-}
-
-/// Reverse rows or columns
-pure nothrow unittest
-{
-    import std.conv : to;
-    import std.algorithm.mutation : swap;
-    import mir.ndslice.selection : iotaSlice, pack;
-    import mir.ndslice.iteration : reversed, transposed;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto a = iotaSlice(2, 3).as!double.slice;
-    auto b = a.slice;
-
-    alias reverseRows = a => each!(swap, Select.halfPacked)(a.pack!1, a.reversed!1.pack!1);
-
-    // reverse rows
-    reverseRows(a);
-    assert(a == iotaSlice(2, 3).reversed!1);
-
-    // reverse columns
-    reverseRows(b.transposed);
-    assert(b == iotaSlice(2, 3).reversed!0);
-}
-
-/// Transpose matrix
-pure nothrow unittest
-{
-    import std.conv : to;
-    import std.algorithm.mutation : swap;
-    import mir.ndslice.selection : iotaSlice;
-    import mir.ndslice.iteration : dropOne, transposed;
-
-    // | 0 1 2 |
-    // | 3 4 5 |
-    // | 6 7 8 |
-    auto a = iotaSlice(3, 3).as!double.slice;
-
-    // matrix should be square
-    assert(a.length!0 == a.length!1);
-
-    if (a.length)
-        // dropOne is used because we do not need to transpose the diagonal
-        each!(swap, Select.triangular)(a.dropOne, a.transposed.dropOne);
-
-    assert(a == iotaSlice(3, 3).transposed);
-}
-
-@safe pure nothrow unittest
-{
-    import mir.ndslice.iteration : dropOne;
-    import mir.ndslice.selection : iotaSlice;
-    size_t i;
-    iotaSlice(1, 2).dropOne!0.each!((a){i++;});
-    assert(i == 0);
 }
 
 /++
@@ -1097,10 +624,10 @@ template find(alias pred, Select select = Select.full)
 ///
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3);
+    auto sl = iota(2, 3);
     size_t[2] bi;
 
     find!"a == 3"(bi, sl);
@@ -1114,14 +641,14 @@ template find(alias pred, Select select = Select.full)
 /// Multiple tensors
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto a = iotaSlice(2, 3);
+    auto a = iota(2, 3);
     // 10 11 12
     // 13 14 15
-    auto b = iotaSlice([2, 3], 10);
+    auto b = iota([2, 3], 10);
 
     size_t[2] bi;
 
@@ -1133,14 +660,14 @@ template find(alias pred, Select select = Select.full)
 /// Zipped tensors
 @safe pure nothrow unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto a = iotaSlice(2, 3);
+    auto a = iota(2, 3);
     // 10 11 12
     // 13 14 15
-    auto b = iotaSlice([2, 3], 10);
+    auto b = iota([2, 3], 10);
 
     // tensors must have the same strides
     auto zip = assumeSameStructure!("a", "b")(a, b);
@@ -1156,12 +683,12 @@ template find(alias pred, Select select = Select.full)
 pure nothrow unittest
 {
     import std.conv : to;
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3).as!double.slice;
+    auto sl = iota(2, 3).as!double.slice;
 
     static bool pred(T)(ref T a)
     {
@@ -1186,13 +713,13 @@ pure nothrow unittest
 pure nothrow unittest
 {
     import std.conv : to;
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : iota;
 
     // |_0 1 2
     // 3 |_4 5
     // 6 7 |_8
-    auto sl = iotaSlice(3, 3).as!double.slice;
+    auto sl = iota(3, 3).as!double.slice;
     size_t[2] bi;
     find!("a > 5", Select.triangular)(bi, sl);
     assert(sl.backward(bi) == 8);
@@ -1201,9 +728,9 @@ pure nothrow unittest
 /// Search of first non-palindrome row
 pure nothrow unittest
 {
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.iteration : reversed;
-    import mir.ndslice.selection : iotaSlice, pack;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.dynamic : reversed;
+    import mir.ndslice.topology : iota, pack;
 
     auto sl = slice!double(4, 5);
     sl[] =
@@ -1219,16 +746,121 @@ pure nothrow unittest
 
 @safe pure nothrow unittest
 {
-    import mir.ndslice.iteration : dropOne;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.dynamic : dropOne;
+    import mir.ndslice.topology : iota;
     size_t i;
     size_t[2] bi;
     find!((elem){i++; return true;})
-        (bi, iotaSlice(2, 1).dropOne!1);
+        (bi, iota(2, 1).dropOne!1);
     assert(i == 0);
     assert(bi == [0, 0]);
 }
 
+/++
+Selection type.
+`Select` can be used with
+$(LREF reduce),
+$(LREF each),
+$(LREF find),
+$(LREF any),
+$(LREF all),
+$(LREF equal),
+$(LREF cmp).
+
+Any dimension count is supported.
+Types has examples for 1D, 2D, and 3D cases.
++/
+enum Select
+{
+    /++
+    `full` is the default topology type.
+
+    1D Example:
+    -----
+    1 2 3
+    -----
+    2D Example:
+    -----
+    | 1 2 3 |
+    | 4 5 6 |
+    | 7 8 9 |
+    -----
+    3D Example:
+    -----
+    | 1  2  3 | | 10 11 12 | | 19 20 21 |
+    | 4  5  6 | | 13 14 15 | | 22 23 24 |
+    | 7  8  9 | | 16 17 18 | | 25 26 27 |
+    -----
+    +/
+    full,
+    /++
+    `half` can be used to reverse elements in a tensor.
+
+    1D Example:
+    -----
+    1 x x
+    -----
+    2D Example:
+    -----
+    | 1 2 3 |
+    | 4 x x |
+    | x x x |
+    -----
+    3D Example:
+    -----
+    | 1  2  3 | | 10 11 12 | |  x  x  x |
+    | 4  5  6 | | 13  x  x | |  x  x  x |
+    | 7  8  9 | |  x  x  x | |  x  x  x |
+    -----
+    +/
+    half,
+    /++
+    `halfPacked` requires packed tensors.
+    For the first pack of dimensions elements are selected using `full` topology.
+    For the second pack of dimensions elements are selected using `half` topology.
+    +/
+    halfPacked,
+    /++
+    `upper` can be used to iterate on upper or lower triangular matrix.
+
+    1D Example:
+    -----
+    1 2 3
+    -----
+    2D Example #1:
+    -----
+    | 1 2 3 |
+    | x 4 5 |
+    | x x 6 |
+    -----
+    2D Example #2:
+    -----
+    | 1 2 3 4 |
+    | x 5 6 7 |
+    | x x 8 9 |
+    -----
+    2D Example #3:
+    -----
+    | 1 2 3 |
+    | x 4 5 |
+    | x x 6 |
+    | x x x |
+    -----
+    3D Example:
+    -----
+    |  1  2  3 | |  x  7  8 | |  x  x 10 |
+    |  x  4  5 | |  x  x  9 | |  x  x  x |
+    |  x  x  6 | |  x  x  x | |  x  x  x |
+    -----
+    +/
+    triangular,
+    /++
+    `triangularPacked` requires packed tensors.
+    For the first pack of dimensions elements are selected using `full` topology.
+    For the second pack of dimensions elements are selected using `triangular` topology.
+    +/
+    triangularPacked,
+}
 
 /++
 Like $(LREF find), but only returns whether or not the search was successful.
@@ -1265,10 +897,10 @@ template any(alias pred, Select select = Select.full)
 ///
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3);
+    auto sl = iota(2, 3);
 
     assert(sl.any!"a == 3");
     assert(!sl.any!"a == 6");
@@ -1277,14 +909,14 @@ template any(alias pred, Select select = Select.full)
 /// Multiple tensors
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto a = iotaSlice(2, 3);
+    auto a = iota(2, 3);
     // 10 11 12
     // 13 14 15
-    auto b = iotaSlice([2, 3], 10);
+    auto b = iota([2, 3], 10);
 
     assert(any!((a, b) => a * b == 39)(a, b));
 }
@@ -1292,14 +924,14 @@ template any(alias pred, Select select = Select.full)
 /// Zipped tensors
 @safe pure nothrow unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto a = iotaSlice(2, 3);
+    auto a = iota(2, 3);
     // 10 11 12
     // 13 14 15
-    auto b = iotaSlice([2, 3], 10);
+    auto b = iota([2, 3], 10);
 
     // tensors must have the same strides
     auto zip = assumeSameStructure!("a", "b")(a, b);
@@ -1311,12 +943,12 @@ template any(alias pred, Select select = Select.full)
 pure nothrow unittest
 {
     import std.conv : to;
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3).as!double.slice;
+    auto sl = iota(2, 3).as!double.slice;
 
     static bool pred(T)(ref T a)
     {
@@ -1360,11 +992,11 @@ template all(alias pred, Select select = Select.full)
 ///
 @safe pure nothrow unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3);
+    auto sl = iota(2, 3);
 
     assert(sl.all!"a < 6");
     assert(!sl.all!"a < 5");
@@ -1373,11 +1005,11 @@ template all(alias pred, Select select = Select.full)
 /// Multiple tensors
 @safe pure nothrow unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3);
+    auto sl = iota(2, 3);
 
     assert(all!"a - b == 0"(sl, sl));
 }
@@ -1385,11 +1017,11 @@ template all(alias pred, Select select = Select.full)
 /// Zipped tensors
 @safe pure nothrow unittest
 {
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3);
+    auto sl = iota(2, 3);
 
     // tensors must have the same strides
     auto zip = assumeSameStructure!("a", "b")(sl, sl);
@@ -1401,12 +1033,12 @@ template all(alias pred, Select select = Select.full)
 pure nothrow unittest
 {
     import std.conv : to;
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl = iotaSlice(2, 3).as!double.slice;
+    auto sl = iota(2, 3).as!double.slice;
 
     static bool pred(T)(ref T a)
     {
@@ -1427,11 +1059,11 @@ pure nothrow unittest
 
 @safe pure nothrow unittest
 {
-    import mir.ndslice.iteration : dropOne;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.dynamic : dropOne;
+    import mir.ndslice.topology : iota;
     size_t i;
     assert(all!((elem){i++; return true;})
-        (iotaSlice(2, 1).dropOne!1));
+        (iota(2, 1).dropOne!1));
     assert(i == 0);
 }
 
@@ -1457,7 +1089,7 @@ template equal(alias pred, Select select = Select.full)
         prepareTensors!select(tensors);
         foreach (i, Arg; Args)
         {
-            static assert (is(Arg == Slice!(N, Range), size_t N, Range), msg);
+            static assert (is(Arg == Slice!(kind,packs, Iterator), size_t[] packs, Iterator), msg);
             static if (i)
             {
                 static assert (tensors[i].N == tensors[0].N, msgShape);
@@ -1474,16 +1106,16 @@ template equal(alias pred, Select select = Select.full)
 ///
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.iteration : dropBackOne;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.dynamic : dropBackOne;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl1 = iotaSlice(2, 3);
+    auto sl1 = iota(2, 3);
     // 1 2 3
     // 4 5 6
-    auto sl2 = iotaSlice([2, 3], 1);
+    auto sl2 = iota([2, 3], 1);
 
     assert(equal!"a == b"(sl1, sl1));
     assert(equal!"a < b"(sl1, sl2));
@@ -1495,8 +1127,8 @@ template equal(alias pred, Select select = Select.full)
 /// check if matrix is symmetric
 pure nothrow unittest
 {
-    import mir.ndslice.slice : slice;
-    import mir.ndslice.iteration : transposed;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.dynamic : transposed;
 
     auto a = slice!double(3, 3);
     a[] = [[1, 3, 4],
@@ -1542,7 +1174,7 @@ Returns:
 template cmp(alias pred = "a < b")
 {
     ///
-    int cmp(size_t N, RangeA, RangeB)(Slice!(N, RangeA) sl1, Slice!(N, RangeB) sl2)
+    int cmp(size_t[] packs, IteratorA, IteratorB)(Slice!(packs, IteratorA) sl1, Slice!(packs, IteratorB) sl2)
     {
         auto b = sl2.anyEmpty;
         if (sl1.anyEmpty)
@@ -1562,18 +1194,18 @@ template cmp(alias pred = "a < b")
         return cmpImpl(sl1, sl2);
     }
 
-    private int cmpImpl(size_t N, RangeA, RangeB)(Slice!(N, RangeA) sl1, Slice!(N, RangeB) sl2)
+    private int cmpImpl(size_t[] packs, IteratorA, IteratorB)(Slice!(packs, IteratorA) sl1, Slice!(packs, IteratorB) sl2)
     {
         for (;;)
         {
             auto a = sl1.front;
             auto b = sl2.front;
-            static if (N == 1)
+            static if (packs[0] == 1)
             {
-                import std.functional : binaryFun;
-                if (binaryFun!pred(a, b))
+                import mir.functional : naryFun;
+                if (naryFun!pred(a, b))
                     return -1;
-                if (binaryFun!pred(b, a))
+                if (naryFun!pred(b, a))
                     return 1;
             }
             else
@@ -1594,15 +1226,15 @@ template cmp(alias pred = "a < b")
 ///
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.iteration : dropBackOne;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.dynamic : dropBackOne;
+    import mir.ndslice.topology : iota;
 
     // 0 1 2
     // 3 4 5
-    auto sl1 = iotaSlice(2, 3);
+    auto sl1 = iota(2, 3);
     // 1 2 3
     // 4 5 6
-    auto sl2 = iotaSlice([2, 3], 1);
+    auto sl2 = iota([2, 3], 1);
 
     assert(cmp(sl1, sl1) == 0);
     assert(cmp(sl1, sl2) < 0);
@@ -1611,11 +1243,11 @@ template cmp(alias pred = "a < b")
 
 @safe pure nothrow @nogc unittest
 {
-    import mir.ndslice.iteration : dropBackOne, dropExactly;
-    import mir.ndslice.selection : iotaSlice;
+    import mir.ndslice.dynamic : dropBackOne, dropExactly;
+    import mir.ndslice.topology : iota;
 
-    auto sl1 = iotaSlice(2, 3);
-    auto sl2 = iotaSlice([2, 3], 1);
+    auto sl1 = iota(2, 3);
+    auto sl2 = iota([2, 3], 1);
 
     assert(cmp(sl1.dropBackOne!0, sl1) < 0);
     assert(cmp(sl1, sl1.dropBackOne!1) > 0);

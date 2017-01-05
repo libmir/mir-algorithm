@@ -600,7 +600,6 @@ template forward(args...)
         string result = "";
         foreach (i, _; args)
         {
-            //pragma(msg, "[",i,"] ", __traits(isRef, args[i]) ? "L" : "R");
             result ~= __traits(isRef, args[i]) ? "L" : "R";
         }
         return result;

@@ -340,3 +340,75 @@ auto makeNdarray(T, Allocator, SliceKind kind, size_t[] packs, Iterator)(auto re
         Mallocator.instance.dispose(row);
     Mallocator.instance.dispose(m);
 }
+
+/++
+Shape of a common n-dimensional array.
+Params:
+    array = common n-dimensional array
+Returns:
+    static array of dimensions type of `size_t[n]`
+Throws:
+    $(LREF SliceException) if the array is not an n-dimensional parallelotope.
++/
+auto shape(T)(T[] array, ref int err)
+{
+    static if (isDynamicArray!T)
+    {
+        size_t[1 + typeof(shape(T.init, err)).length] ret;
+
+        if (array.length)
+        {
+            ret[0] = array.length;
+            ret[1..$] = shape(array[0], err);
+            if (err)
+                goto L;
+            foreach (ar; array)
+            {
+                if (shape(ar, err) != ret[1..$])
+                    err = 1;
+                if (err)
+                    goto L;
+            }
+        }
+    }
+    else
+    {
+        size_t[1] ret = void;
+        ret[0] = array.length;
+    }
+    err = 0;
+L:
+    return ret;
+}
+
+///
+@safe pure unittest
+{
+    int err;
+    size_t[2] shape = [[1, 2, 3], [4, 5, 6]].shape(err);
+    assert(err == 0);
+    assert(shape == [2, 3]);
+
+    [[1, 2], [4, 5, 6]].shape(err);
+    assert(err == 1);
+}
+
+/// Slice from ndarray
+unittest
+{
+    import mir.ndslice.allocation: slice, shape;
+    int err;
+    auto array = [[1, 2, 3], [4, 5, 6]];
+    auto s = array.shape(err).slice!int;
+    s[] = [[1, 2, 3], [4, 5, 6]];
+    assert(s == array);
+}
+
+@safe pure unittest
+{
+    int err;
+    size_t[2] shape = (int[][]).init.shape(err);
+    assert(shape[0] == 0);
+    assert(shape[1] == 0);
+}
+

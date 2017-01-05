@@ -1,4 +1,5 @@
-
+/++
++/
 module mir.ndslice.iterator;
 
 import mir.internal.utility;

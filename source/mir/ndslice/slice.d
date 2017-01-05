@@ -17,11 +17,10 @@ module mir.ndslice.slice;
 
 import std.traits;
 import std.meta;
-import std.typecons; //: Flag, Yes, No;
-import std.range.primitives; //: hasLength;
 
 import mir.internal.utility;
 import mir.ndslice.internal;
+import mir.primitives;
 
 ///
 template isSlice(T)
@@ -91,8 +90,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-auto sliced(
-    size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
+auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
     if (!isStaticArray!Iterator && !isNarrowString!Iterator && N
         && !is(Iterator : Slice!(kind, packs, _Iterator), SliceKind kind, size_t[] packs, _Iterator))
 {
@@ -113,81 +111,6 @@ auto sliced(
         ret._lengths[i] = lengths[i];
     return ret;
 }
-
-//private enum bool _isSlice(T) = is(T : Slice!(N, Iterator), size_t N, Iterator);
-
-/////ditto
-//template sliced(Names...)
-// if (Names.length && !anySatisfy!(isType, Names) && allSatisfy!(isStringValue, Names))
-//{
-//    mixin (
-//    "
-//    auto sliced(
-//            Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-//            Flag!`allowDownsize` ad = No.allowDownsize,
-//            " ~ _Iterator_Types!Names ~ "
-//            size_t N)
-//            (" ~ _Iterator_DeclarationList!Names ~
-//            "size_t[N] lengths...)
-//    {
-//        alias sl = .sliced!Names;
-//        return sl!(ra, ad)(" ~ _Iterator_Values!Names ~ "lengths, 0);
-//    }
-
-//    auto sliced(
-//            Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-//            Flag!`allowDownsize` ad = No.allowDownsize,
-//            size_t N, " ~ _Iterator_Types!Names ~ ")
-//            (" ~ _Iterator_DeclarationList!Names ~"
-//            size_t[N] lengths,
-//            size_t shift = 0)
-//    {
-//        alias RS = AliasSeq!(" ~ _Iterator_Types!Names ~ ");"
-//        ~ q{
-//            import std.meta : staticMap;
-//            static assert(!anySatisfy!(_isSlice, RS),
-//                `Packed slices are not allowed in slice tuples`
-//                ~ tailErrorMessage!());
-//            alias PT = PtrTuple!Names;
-//            alias SPT = PT!(staticMap!(PrepareIteratorType, RS));
-//            static if (hasElaborateAssign!SPT)
-//                SPT range;
-//            else
-//                SPT range = void;
-//            version(assert) immutable minLength = lengthsProduct!N(lengths) + shift;
-//            foreach (i, name; Names)
-//            {
-//                alias T = typeof(range.iterators[i]);
-//                alias R = RS[i];
-//                static assert(!isStaticArray!R);
-//                static assert(!isNarrowString!R);
-//                mixin (`alias r = range_` ~ name ~`;`);
-//                static if (hasLength!R)
-//                {
-//                    static if (ad)
-//                    {
-//                        assert(minLength <= r.length,
-//                            `length of range '` ~ name ~`' must be greater than or equal `
-//                            ~ `to the sum of shift and the product of lengths.`
-//                            ~ tailErrorMessage!());
-//                    }
-//                    else
-//                    {
-//                        assert(minLength == r.length,
-//                            `length of range '` ~ name ~`' must be equal `
-//                            ~ `to the sum of shift and the product of lengths.`
-//                            ~ tailErrorMessage!());
-//                    }
-//                }
-//                static if (isDynamicArray!T && ra)
-//                    range.iterators[i] = r.iterator;
-//                else
-//                    range.iterators[i] = T(0, r);
-//            }
-//            return .sliced!(ra, ad, N, SPT)(range, lengths, shift);
-//        }
-//    ~ "}");
-//}
 
 /// ditto
 auto sliced(T)(T[] array)
@@ -235,66 +158,30 @@ pure nothrow unittest
          [  1.0,   5,  25, 125, 625]]);
 }
 
-///++
-//Creates a slice composed of named elements, each one of which corresponds
-//to a given argument. See also $(LREF assumeSameStructure).
-//+/
-//pure nothrow unittest
-//{
-//    import std.algorithm.comparison : equal;
-//    import mir.ndslice.topology : flattened;
-//    import std.range : iota;
+/// Random access range primitives for slices over user defined types
+pure nothrow @nogc unittest
+{
+    struct MyIota
+    {
+        //`[index]` operator overloading
+        auto opIndex(size_t index)
+        {
+            return index;
+        }
+    }
+    import mir.ndslice.iterator: FieldIterator;
+    alias Iterator = FieldIterator!MyIota;
+    alias S = Slice!(SliceKind.continuous, [2], Iterator);
+    import std.range.primitives;
+    static assert(hasLength!S);
+    static assert(hasSlicing!S);
+    static assert(isRandomAccessRange!S);
 
-//    auto alpha = 12.iota;
-//    auto beta = new int[12];
-
-//    auto m = sliced!("a", "b")(alpha, beta, 4, 3);
-//    foreach (r; m)
-//        foreach (e; r)
-//            e.b = e.a;
-//    assert(equal(alpha, beta));
-
-//    beta[] = 0;
-//    foreach (e; m.flattened)
-//        e.b = e.a;
-//    assert(equal(alpha, beta));
-//}
-
-///// Random access range primitives for slices over user defined types
-//pure nothrow @nogc unittest
-//{
-//    struct MyIota
-//    {
-//        //`[index]` operator overloading
-//        auto opIndex(size_t index)
-//        {
-//            return index;
-//        }
-//    }
-
-//    alias S = Slice!(3, MyIota);
-//    import std.range.primitives;
-//    static assert(hasLength!S);
-//    static assert(hasSlicing!S);
-//    static assert(isRandomAccessRange!S);
-
-//    auto slice = MyIota().sliced(20, 10);
-//    assert(slice[1, 2] == 12);
-//    auto sCopy = slice.save;
-//    assert(slice[1, 2] == 12);
-//}
-
-///// Slice tuple and flags
-//pure nothrow @nogc unittest
-//{
-//    import std.typecons : Yes, No;
-//    static immutable a = [1, 2, 3, 4, 5, 6];
-//    static immutable b = [1.0, 2, 3, 4, 5, 6];
-//    alias namedSliced = sliced!("a", "b");
-//    auto slice = namedSliced!(No.replaceArrayWithPointer, Yes.allowDownsize)
-//        (a, b, 2, 3);
-//    assert(slice[1, 2].a == slice[1, 2].b);
-//}
+    auto slice = Iterator().sliced(20, 10);
+    assert(slice[1, 2] == 12);
+    auto sCopy = slice.save;
+    assert(slice[1, 2] == 12);
+}
 
 /// ditto
 Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator)
@@ -336,7 +223,7 @@ unittest
     auto a = data[0..10].sliced(10)[0..6].sliced(2, 3);
     auto b = iota!int(10)[0..6].sliced(2, 3);
     assert(a == b);
-    a.opIndexOpAssign!"+"(b);
+    a[] += b;
     foreach (int i, e; data[0..6])
         assert(e == 2*i);
     foreach (int i, e; data[6..$])
@@ -380,129 +267,33 @@ nothrow unittest
     //Mallocator.instance.dispose(tup2.array);
 }
 
+auto slicedField(Field, size_t N)(Field field, size_t[N] lengths...)
+{
+    static if (hasLength!Field)
+        assert(lengths.lengthsProduct <= field.length, "Length product should be less or equal to the field length.");
+    import mir.ndslice.iterator: FieldIterator;
+    return FieldIterator!Field(0, field).sliced(lengths);
+}
 
-/++
-Shape of a common n-dimensional array.
-Params:
-    array = common n-dimensional array
-Returns:
-    static array of dimensions type of `size_t[n]`
-Throws:
-    $(LREF SliceException) if the array is not an n-dimensional parallelotope.
-+/
-//auto shape(T)(T[] array) @property
-//{
-//    static if (isDynamicArray!T)
-//    {
-//        size_t[1 + typeof(shape(T.init)).length] ret;
-//        if (array.length)
-//        {
-//            ret[0] = array.length;
-//            ret[1..$] = shape(array[0]);
-//            foreach (ar; array)
-//                if (shape(ar) != ret[1..$])
-//                    throw new SliceException("ndarray should be an n-dimensional parallelotope.");
-//        }
-//        return ret;
-//    }
-//    else
-//    {
-//        size_t[1] ret = void;
-//        ret[0] = array.length;
-//        return ret;
-//    }
-//}
-
-/////
-//@safe pure unittest
-//{
-//    size_t[2] shape = [[1, 2, 3], [4, 5, 6]].shape;
-//    assert(shape == [2, 3]);
-
-//    import std.exception : assertThrown;
-//    assertThrown([[1, 2], [4, 5, 6]].shape);
-//}
-
-///// Slice from ndarray
-//unittest
-//{
-//    auto array = [[1, 2, 3], [4, 5, 6]];
-//    auto slice = array.shape.slice!int;
-//    slice[] = [[1, 2, 3], [4, 5, 6]];
-//    assert(slice == array);
-//}
-
-//@safe pure unittest
-//{
-//    size_t[2] shape = (int[][]).init.shape;
-//    assert(shape[0] == 0);
-//    assert(shape[1] == 0);
-//}
-
-///++
-//Convenience function that creates a lazy view,
-//where each element of the original slice is converted to the type `T`.
-//It uses $(SUBREF topology, mapSlice) and $(REF_ALTTEXT $(TT to), to, std,conv)$(NBSP)
-//composition under the hood.
-//Params:
-//    slice = a slice to create a view on.
-//Returns:
-//    A lazy slice with elements converted to the type `T`.
-//+/
-//template as(T)
-//{
-//    ///
-//    auto as(size_t N, Iterator)(Slice!(N, Iterator) slice)
-//    {
-//        static if (is(slice.DeepElemType == T))
-//        {
-//            return slice;
-//        }
-//        else
-//        {
-//            import std.conv : to;
-//            import mir.ndslice.topology : mapSlice;
-//            return mapSlice!(to!T)(slice);
-//        }
-//    }
-//}
-
-/////
-//unittest
-//{
-//    import mir.ndslice.slice : as;
-//    import mir.ndslice.topology : diagonal;
-
-//    auto matrix = slice!double([2, 2], 0);
-//    auto stringMatrixView = matrix.as!string;
-//    assert(stringMatrixView ==
-//            [["0", "0"],
-//             ["0", "0"]]);
-
-//    matrix.diagonal[] = 1;
-//    assert(stringMatrixView ==
-//            [["1", "0"],
-//             ["0", "1"]]);
-
-//    /// allocate new slice composed of strings
-//    Slice!(2, string*) stringMatrix = stringMatrixView.slice;
-//}
+///ditto
+auto slicedField2(Field)(Field field)
+    if(hasLength!Field)
+{
+    return .slicedField(field, field.length);
+}
 
 /++
 Returns the element type of the `Slice` type.
 +/
 alias DeepElementType(S : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = S.DeepElemType;
 
-/////
-//unittest
-//{
-//    import std.range : iota;
-//    static assert(is(DeepElementType!(Slice!(SliceKind.universal, 4, const(int)[]))     == const(int)));
-//    static assert(is(DeepElementType!(Slice!(SliceKind.universal, 4, immutable(int)*))  == immutable(int)));
-//    static assert(is(DeepElementType!(Slice!(SliceKind.universal, 4, typeof(100.iota))) == int));
-//    //packed slice
-//    static assert(is(DeepElementType!(Slice!(SliceKind.universal, 2, Slice!(SliceKind.universal, 5, int*)))  == Slice!(SliceKind.universal, 4, int*)));
-//}
+///
+unittest
+{
+    import mir.ndslice.topology : iota;
+    static assert(is(DeepElementType!(Slice!(SliceKind.universal, [4], const(int)[]))     == const(int)));
+    static assert(is(DeepElementType!(Slice!(SliceKind.universal, [4], immutable(int)*))  == immutable(int)));
+}
 
 /++
 Presents an n-dimensional view over a range.
@@ -854,106 +645,108 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         _iterator = iterator;
     }
 
-    ///// Creates a 2-dimentional slice with custom strides.
-    //@nogc nothrow pure
-    //unittest
-    //{
-    //    import mir.ndslice.topology : flattened;
-    //    import std.algorithm.comparison : equal;
-    //    import std.range : only;
+    /// Creates a 2-dimentional slice with custom strides.
+    @nogc nothrow pure
+    unittest
+    {
+        import mir.ndslice.topology : flattened;
+        import std.algorithm.comparison : equal;
+        import std.range : only;
 
-    //    uint[8] array = [1, 2, 3, 4, 5, 6, 7, 8];
-    //    auto slice = Slice!(2, uint*)([2, 2], [4, 1], array.iterator);
+        uint[8] array = [1, 2, 3, 4, 5, 6, 7, 8];
+        auto slice = Slice!(SliceKind.universal, [2], uint*)([2, 2], [4, 1], array.ptr);
 
-    //    assert(&slice[0, 0] == &array[0]);
-    //    assert(&slice[0, 1] == &array[1]);
-    //    assert(&slice[1, 0] == &array[4]);
-    //    assert(&slice[1, 1] == &array[5]);
-    //    assert(slice.flattened.equal(only(1, 2, 5, 6)));
+        assert(&slice[0, 0] == &array[0]);
+        assert(&slice[0, 1] == &array[1]);
+        assert(&slice[1, 0] == &array[4]);
+        assert(&slice[1, 1] == &array[5]);
+        assert(slice.flattened.equal(only(1, 2, 5, 6)));
 
-    //    array[2] = 42;
-    //    assert(slice.flattened.equal(only(1, 2, 5, 6)));
+        array[2] = 42;
+        assert(slice.flattened.equal(only(1, 2, 5, 6)));
 
-    //    array[1] = 99;
-    //    assert(slice.flattened.equal(only(1, 99, 5, 6)));
-    //}
+        array[1] = 99;
+        assert(slice.flattened.equal(only(1, 99, 5, 6)));
+    }
 
-    //static if (isPointer!Iterator)
-    //{
-    //    static if (!is(ConstThis == This))
-    //    {
-    //        /++
-    //        Implicit cast to const slices in case of underlaying range is a pointer.
-    //        +/
-    //        ref ConstThis toConst() const @trusted pure nothrow @nogc
-    //        {
-    //            pragma(inline, true);
-    //            return *cast(ConstThis*) &this;
-    //        }
+    static if (isPointer!Iterator)
+    {
+        private alias ConstThis = Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*);
 
-    //        /// ditto
-    //        alias toConst this;
-    //    }
-    //}
+        static if (!is(ConstThis == This))
+        {
+            /++
+            Implicit cast to const slices in case of underlaying range is a pointer.
+            +/
+            ref ConstThis toConst() const @trusted pure nothrow @nogc
+            {
+                pragma(inline, true);
+                return *cast(ConstThis*) &this;
+            }
 
-    //static if (doUnittest)
-    /////
-    //unittest
-    //{
-    //    Slice!(2, double*) nn;
-    //    Slice!(2, immutable(double)*) ni;
-    //    Slice!(2, const(double)*) nc;
+            /// ditto
+            alias toConst this;
+        }
+    }
 
-    //    const Slice!(2, double*) cn;
-    //    const Slice!(2, immutable(double)*) ci;
-    //    const Slice!(2, const(double)*) cc;
+    static if (doUnittest)
+    ///
+    unittest
+    {
+        Slice!(SliceKind.universal, [2], double*) nn;
+        Slice!(SliceKind.universal, [2], immutable(double)*) ni;
+        Slice!(SliceKind.universal, [2], const(double)*) nc;
 
-    //    immutable Slice!(2, double*) in_;
-    //    immutable Slice!(2, immutable(double)*) ii;
-    //    immutable Slice!(2, const(double)*) ic;
+        const Slice!(SliceKind.universal, [2], double*) cn;
+        const Slice!(SliceKind.universal, [2], immutable(double)*) ci;
+        const Slice!(SliceKind.universal, [2], const(double)*) cc;
 
-    //    nc = nc; nc = cn; nc = in_;
-    //    nc = nc; nc = cc; nc = ic;
-    //    nc = ni; nc = ci; nc = ii;
+        immutable Slice!(SliceKind.universal, [2], double*) in_;
+        immutable Slice!(SliceKind.universal, [2], immutable(double)*) ii;
+        immutable Slice!(SliceKind.universal, [2], const(double)*) ic;
 
-    //    void fun(size_t N, T)(Slice!(N, const(T)*) sl)
-    //    {
-    //        //...
-    //    }
+        nc = nc; nc = cn; nc = in_;
+        nc = nc; nc = cc; nc = ic;
+        nc = ni; nc = ci; nc = ii;
 
-    //    fun(nn); fun(cn); fun(in_);
-    //    fun(nc); fun(cc); fun(ic);
-    //    fun(ni); fun(ci); fun(ii);
-    //}
+        void fun(size_t[] packs, T)(Slice!(SliceKind.universal, packs, const(T)*) sl)
+        {
+            //...
+        }
 
-    //static if (doUnittest)
-    //unittest
-    //{
-    //    Slice!(2, Slice!(2, double*)) nn;
-    //    Slice!(2, Slice!(2, immutable(double)*)) ni;
-    //    Slice!(2, Slice!(2, const(double)*)) nc;
+        fun(nn); fun(cn); fun(in_);
+        fun(nc); fun(cc); fun(ic);
+        fun(ni); fun(ci); fun(ii);
+    }
 
-    //    const Slice!(2, Slice!(2, double*)) cn;
-    //    const Slice!(2, Slice!(2, immutable(double)*)) ci;
-    //    const Slice!(2, Slice!(2, const(double)*)) cc;
+    static if (doUnittest)
+    unittest
+    {
+        Slice!(SliceKind.universal, [2, 2], double*) nn;
+        Slice!(SliceKind.universal, [2, 2], immutable(double)*) ni;
+        Slice!(SliceKind.universal, [2, 2], const(double)*) nc;
 
-    //    immutable Slice!(2, Slice!(2, double*) )in_;
-    //    immutable Slice!(2, Slice!(2, immutable(double)*)) ii;
-    //    immutable Slice!(2, Slice!(2, const(double)*)) ic;
+        const Slice!(SliceKind.universal, [2, 2], double*) cn;
+        const Slice!(SliceKind.universal, [2, 2], immutable(double)*) ci;
+        const Slice!(SliceKind.universal, [2, 2], const(double)*) cc;
 
-    //    nc = nn; nc = cn; nc = in_;
-    //    nc = nc; nc = cc; nc = ic;
-    //    nc = ni; nc = ci; nc = ii;
+        immutable Slice!(SliceKind.universal, [2, 2], double*) in_;
+        immutable Slice!(SliceKind.universal, [2, 2], immutable(double)*) ii;
+        immutable Slice!(SliceKind.universal, [2, 2], const(double)*) ic;
 
-    //    void fun(size_t N, size_t M, T)(Slice!(N, Slice!(M, const(T)*)) sl)
-    //    {
-    //        //...
-    //    }
+        nc = nc; nc = cn; nc = in_;
+        nc = nc; nc = cc; nc = ic;
+        nc = ni; nc = ci; nc = ii;
 
-    //    fun(nn); fun(cn); fun(in_);
-    //    fun(nc); fun(cc); fun(ic);
-    //    fun(ni); fun(ci); fun(ii);
-    //}
+        void fun(size_t[] packs, T)(Slice!(SliceKind.universal, packs, const(T)*) sl)
+        {
+            //...
+        }
+
+        fun(nn); fun(cn); fun(in_);
+        fun(nc); fun(cc); fun(ic);
+        fun(ni); fun(ci); fun(ii);
+    }
 
     /++
     Returns:
@@ -993,7 +786,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     static if (doUnittest)
     /// Packed slice
-    //@safe @nogc pure nothrow
+    @safe @nogc pure nothrow
     unittest
     {
         import mir.ndslice.topology : pack, iota;
@@ -1153,18 +946,19 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(slice._stride!2 == 1);
     }
 
-    //static if (doUnittest)
-    ///// Modified regular slice
-    //@safe @nogc pure nothrow unittest
-    //{
-    //    import mir.ndslice.dynamic : reversed, strided, swapped;
-    //    import mir.ndslice.topology : iota;
-    //    assert(iota(3, 4, 50)
-    //        .reversed!2      //makes stride negative
-    //        .strided!2(6)    //multiplies stride by 6 and changes the corresponding length
-    //        .swapped!(1, 2)  //swaps dimensions `1` and `2`
-    //        ._stride!1 == -6);
-    //}
+    static if (doUnittest)
+    /// Modified regular slice
+    @safe @nogc pure nothrow unittest
+    {
+        import mir.ndslice.dynamic : reversed, strided, swapped;
+        import mir.ndslice.topology : universal, iota;
+        assert(iota(3, 4, 50)
+            .universal
+            .reversed!2      //makes stride negative
+            .strided!2(6)    //multiplies stride by 6 and changes the corresponding length
+            .swapped!(1, 2)  //swaps dimensions `1` and `2`
+            ._stride!1 == -6);
+    }
 
     /++
     Multidimensional input range primitive.
@@ -1509,10 +1303,10 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             return false;
         if (arr.length) do
         {
-            if (slice.front != arr.front)
+            if (slice.front != arr[0])
                 return false;
             slice.popFront;
-            arr.popFront;
+            arr = arr[1 .. $];
         }
         while (arr.length);
         return true;
@@ -1544,15 +1338,16 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     _Slice opSlice(size_t dimension)(size_t i, size_t j)
-        //if (dimension < packs[0])
-    //in   {
-    //    assert(i <= j,
-    //        "Slice.opSlice!" ~ dimension.stringof ~ ": the left bound must be less than or equal to the right bound.");
-    //    enum errorMsg = ": difference between the right and the left bounds"
-    //                    ~ " must be less than or equal to the length of the given dimension.";
-    //    assert(j - i <= _lengths[dimension],
-    //          "Slice.opSlice!" ~ dimension.stringof ~ errorMsg);
-    //}
+        if (dimension < packs[0])
+    in
+    {
+        assert(i <= j,
+            "Slice.opSlice!" ~ dimension.stringof ~ ": the left bound must be less than or equal to the right bound.");
+        enum errorMsg = ": difference between the right and the left bounds"
+                        ~ " must be less than or equal to the length of the given dimension.";
+        assert(j - i <= _lengths[dimension],
+              "Slice.opSlice!" ~ dimension.stringof ~ errorMsg);
+    }
     body
     {
         return typeof(return)(i, j);
@@ -1747,20 +1542,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         auto col = slice[0..$, 1];
     }
 
-    //static if (doUnittest)
-    //pure nothrow unittest
-    //{
-    //    auto slice = slice!(int, No.replaceArrayWithPointer)(5, 3);
-
-    //    /// Fully defined slice
-    //    assert(slice[] == slice);
-    //    auto sublice = slice[0..$-2, 1..$];
-
-    //    /// Partially defined slice
-    //    auto row = slice[3];
-    //    auto col = slice[0..$, 1];
-    //}
-
     static if (isMutable!(PureThis.DeepElemType))
     {
         private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RIterator)(Slice!(rkind, rpacks, RIterator) value)
@@ -1783,6 +1564,9 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     {
                         static if (ls.N == 1)
                             mixin("ls.front " ~ op ~ "= value.front;");
+                        else
+                        static if (rpacks == [1])
+                            ls.front.opIndexOpAssignImplValue!op(value.front);
                         else
                             ls.front.opIndexOpAssignImplSlice!op(value.front);
                         value.popFront;
@@ -1831,56 +1615,39 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             assert(a[1] == [1, 2, 0]);
         }
 
-        //static if (doUnittest)
-        ///// Left slice is packed
-        //pure nothrow unittest
-        //{
-        //    import mir.ndslice.topology : blocks, iota;
-        //    auto a = slice!size_t(4, 4);
-        //    a.blocks(2, 2)[] = iota(2, 2);
+        static if (doUnittest)
+        /// Left slice is packed
+        pure nothrow unittest
+        {
+            import mir.ndslice.topology : blocks, iota;
+            import mir.ndslice.allocation : slice;
+            auto a = slice!int(4, 4);
+            a.blocks(2, 2)[] = iota!int(2, 2);
 
-        //    assert(a ==
-        //            [[0, 0, 1, 1],
-        //             [0, 0, 1, 1],
-        //             [2, 2, 3, 3],
-        //             [2, 2, 3, 3]]);
-        //}
+            assert(a ==
+                    [[0, 0, 1, 1],
+                     [0, 0, 1, 1],
+                     [2, 2, 3, 3],
+                     [2, 2, 3, 3]]);
+        }
 
-        //static if (doUnittest)
-        ///// Both slices are packed
-        //pure nothrow unittest
-        //{
-        //    import mir.ndslice.topology : blocks, iota, pack;
-        //    auto a = slice!size_t(4, 4);
-        //    a.blocks(2, 2)[] = iota(2, 2, 2).pack!1;
+        static if (doUnittest)
+        /// Both slices are packed
+        pure nothrow unittest
+        {
+            import mir.ndslice.topology : blocks, iota, pack;
+            import mir.ndslice.allocation : slice;
+            auto a = slice!int(4, 4);
+            a.blocks(2, 2)[] = iota!int(2, 2, 2).pack!1;
 
-        //    assert(a ==
-        //            [[0, 1, 2, 3],
-        //             [0, 1, 2, 3],
-        //             [4, 5, 6, 7],
-        //             [4, 5, 6, 7]]);
-        //}
+            assert(a ==
+                    [[0, 1, 2, 3],
+                     [0, 1, 2, 3],
+                     [4, 5, 6, 7],
+                     [4, 5, 6, 7]]);
+        }
 
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-        //    auto b = [1, 2, 3, 4].sliced(2, 2);
-
-        //    a[0..$, 0..$-1] = b;
-        //    assert(a == [[1, 2, 0], [3, 4, 0]]);
-
-        //    a[0..$, 0..$-1] = b[0];
-        //    assert(a == [[1, 2, 0], [1, 2, 0]]);
-
-        //    a[1, 0..$-1] = b[1];
-        //    assert(a[1] == [3, 4, 0]);
-
-        //    a[1, 0..$-1][] = b[0];
-        //    assert(a[1] == [1, 2, 0]);
-        //}
-
-        void opIndexOpAssignImplArray(string op, T, Slices...)(T[] value, Slices slices)
+        void opIndexOpAssignImplArray(string op, T, Slices...)(T[] value)
         {
             auto ls = this;
             assert(ls.length == value.length, __FUNCTION__ ~ ": argument must have the same length.");
@@ -1891,8 +1658,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     static if (ls.N == 1)
                         mixin("ls.front " ~ op ~ "= value[0];");
                     else
-                        opIndexOpAssignImplArray!op(ls.front, value[0]);
-                    value.popFront;
+                        mixin("ls.front[] " ~ op ~ "= value[0];");
+                    value = value[1 .. $];
                     ls.popFront;
                 }
                 while (ls.length);
@@ -1903,7 +1670,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 do
                 {
                     ls.front.opIndexOpAssignImplArray!op(value[0]);
-                    value.popFront;
+                    value = value[1 .. $];
                     ls.popFront;
                 }
                 while (ls.length);
@@ -1957,42 +1724,21 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             assert(a[1] == [3, 4, 6]);
         }
 
-        //static if (doUnittest)
-        ///// Packed slices
-        //pure nothrow unittest
-        //{
-        //    import mir.ndslice.topology : blocks;
-        //    auto a = slice!int(4, 4);
-        //    a.blocks(2, 2)[] = [[0, 1], [2, 3]];
+        static if (doUnittest)
+        /// Packed slices
+        pure nothrow unittest
+        {
+            import mir.ndslice.allocation : slice;
+            import mir.ndslice.topology : blocks;
+            auto a = slice!int(4, 4);
+            a.blocks(2, 2)[] = [[0, 1], [2, 3]];
 
-        //    assert(a ==
-        //            [[0, 0, 1, 1],
-        //             [0, 0, 1, 1],
-        //             [2, 2, 3, 3],
-        //             [2, 2, 3, 3]]);
-        //}
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-        //    auto b = [[1, 2], [3, 4]];
-
-        //    a[] = [[1, 2, 3], [4, 5, 6]];
-        //    assert(a == [[1, 2, 3], [4, 5, 6]]);
-
-        //    a[0..$, 0..$-1] = [[1, 2], [3, 4]];
-        //    assert(a == [[1, 2, 3], [3, 4, 6]]);
-
-        //    a[0..$, 0..$-1] = [1, 2];
-        //    assert(a == [[1, 2, 3], [1, 2, 6]]);
-
-        //    a[1, 0..$-1] = [3, 4];
-        //    assert(a[1] == [3, 4, 6]);
-
-        //    a[1, 0..$-1][] = [3, 4];
-        //    assert(a[1] == [3, 4, 6]);
-        //}
+            assert(a ==
+                    [[0, 0, 1, 1],
+                     [0, 0, 1, 1],
+                     [2, 2, 3, 3],
+                     [2, 2, 3, 3]]);
+        }
 
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined slice).
@@ -2051,30 +1797,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             //assert(a == [[9, 9, 9], [9, 9, 9]]);
         }
 
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-
-        //    a[] = 9;
-        //    //assert(a == [[9, 9, 9], [9, 9, 9]]);
-
-        //    a[0..$, 0..$-1] = 1;
-        //    //assert(a == [[1, 1, 9], [1, 1, 9]]);
-
-        //    a[0..$, 0..$-1] = 2;
-        //    //assert(a == [[2, 2, 9], [2, 2, 9]]);
-
-        //    a[1, 0..$-1] = 3;
-        //    //assert(a[1] == [3, 3, 9]);
-
-        //    a[1, 0..$-1] = 4;
-        //    //assert(a[1] == [4, 4, 9]);
-
-        //    a[1, 0..$-1][] = 5;
-        //    //assert(a[1] == [5, 5, 9]);
-        //}
-
         static if (packs.length == 1)
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined index).
@@ -2095,15 +1817,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             assert(a[1, 2] == 3);
         }
 
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-
-        //    a[1, 2] = 3;
-        //    assert(a[1, 2] == 3);
-        //}
-
         static if (doUnittest)
         pure nothrow unittest
         {
@@ -2112,15 +1825,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             a[[1, 2]] = 3;
             assert(a[[1, 2]] == 3);
         }
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = new int[6].sliced!(No.replaceArrayWithPointer)(2, 3);
-
-        //    a[[1, 2]] = 3;
-        //    assert(a[[1, 2]] == 3);
-        //}
 
         static if (packs.length == 1)
         /++
@@ -2150,24 +1854,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             a[[1, 2]] += 3;
             assert(a[[1, 2]] == 3);
         }
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-
-        //    a[1, 2] += 3;
-        //    assert(a[1, 2] == 3);
-        //}
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = new int[6].sliced!(No.replaceArrayWithPointer)(2, 3);
-
-        //    a[[1, 2]] += 3;
-        //    assert(a[[1, 2]] == 3);
-        //}
 
         /++
         Op Assignment `op=` of a value of `Slice` type to a $(B fully defined slice).
@@ -2207,54 +1893,37 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             assert(a[1] == [8, 12, 0]);
         }
 
-        //static if (doUnittest)
-        ///// Left slice is packed
-        //pure nothrow unittest
-        //{
-        //    import mir.ndslice.topology : blocks, iota;
-        //    auto a = slice!size_t(4, 4);
-        //    a.blocks(2, 2)[] += iota(2, 2);
+        static if (doUnittest)
+        /// Left slice is packed
+        pure nothrow unittest
+        {
+            import mir.ndslice.allocation : slice;
+            import mir.ndslice.topology : blocks, iota;
+            auto a = slice!size_t(4, 4);
+            a.blocks(2, 2)[] += iota(2, 2);
 
-        //    assert(a ==
-        //            [[0, 0, 1, 1],
-        //             [0, 0, 1, 1],
-        //             [2, 2, 3, 3],
-        //             [2, 2, 3, 3]]);
-        //}
+            assert(a ==
+                    [[0, 0, 1, 1],
+                     [0, 0, 1, 1],
+                     [2, 2, 3, 3],
+                     [2, 2, 3, 3]]);
+        }
 
-        //static if (doUnittest)
-        ///// Both slices are packed
-        //pure nothrow unittest
-        //{
-        //    import mir.ndslice.topology : blocks, iota, pack;
-        //    auto a = slice!size_t(4, 4);
-        //    a.blocks(2, 2)[] += iota(2, 2, 2).pack!1;
+        static if (doUnittest)
+        /// Both slices are packed
+        pure nothrow unittest
+        {
+            import mir.ndslice.allocation : slice;
+            import mir.ndslice.topology : blocks, iota, pack;
+            auto a = slice!size_t(4, 4);
+            a.blocks(2, 2)[] += iota(2, 2, 2).pack!1;
 
-        //    assert(a ==
-        //            [[0, 1, 2, 3],
-        //             [0, 1, 2, 3],
-        //             [4, 5, 6, 7],
-        //             [4, 5, 6, 7]]);
-        //}
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-        //    auto b = [1, 2, 3, 4].sliced(2, 2);
-
-        //    a[0..$, 0..$-1] += b;
-        //    assert(a == [[1, 2, 0], [3, 4, 0]]);
-
-        //    a[0..$, 0..$-1] += b[0];
-        //    assert(a == [[2, 4, 0], [4, 6, 0]]);
-
-        //    a[1, 0..$-1] += b[1];
-        //    assert(a[1] == [7, 10, 0]);
-
-        //    a[1, 0..$-1][] += b[0];
-        //    assert(a[1] == [8, 12, 0]);
-        //}
+            assert(a ==
+                    [[0, 1, 2, 3],
+                     [0, 1, 2, 3],
+                     [4, 5, 6, 7],
+                     [4, 5, 6, 7]]);
+        }
 
         /++
         Op Assignment `op=` of a regular multidimensional array to a $(B fully defined slice).
@@ -2267,15 +1936,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 && !isDynamicArray!DeepElemType
                 && DynamicArrayDimensionsCount!(T[]) <= ReturnType!(opIndex!Slices).N)
         {
-            import mir.ndslice.topology: unpack;
-            this[slices].unpack.opIndexOpAssignImplArray!op(value);
+            this[slices].opIndexOpAssignImplArray!op(value);
         }
 
         static if (doUnittest)
         ///
         pure nothrow unittest
         {
-            import mir.ndslice.allocation;
+            import mir.ndslice.allocation : slice;
             auto a = slice!int(2, 3);
 
             a[0..$, 0..$-1] += [[1, 2], [3, 4]];
@@ -2291,38 +1959,22 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             assert(a[1] == [8, 12, 0]);
         }
 
-        //static if (doUnittest)
-        ///// Packed slices
-        //pure nothrow unittest
-        //{
-        //    import mir.ndslice.topology : blocks;
-        //    auto a = slice!int(4, 4);
-        //    a.blocks(2, 2)[] += [[0, 1], [2, 3]];
+        static if (doUnittest)
+        /// Packed slices
+        pure nothrow 
+        unittest
+        {
+            import mir.ndslice.allocation : slice;
+            import mir.ndslice.topology : blocks;
+            auto a = slice!int(4, 4);
+            a.blocks(2, 2)[].opIndexOpAssign!"+"([[0, 1], [2, 3]]);
 
-        //    assert(a ==
-        //            [[0, 0, 1, 1],
-        //             [0, 0, 1, 1],
-        //             [2, 2, 3, 3],
-        //             [2, 2, 3, 3]]);
-        //}
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-
-        //    a[0..$, 0..$-1] += [[1, 2], [3, 4]];
-        //    assert(a == [[1, 2, 0], [3, 4, 0]]);
-
-        //    a[0..$, 0..$-1] += [1, 2];
-        //    assert(a == [[2, 4, 0], [4, 6, 0]]);
-
-        //    a[1, 0..$-1] += [3, 4];
-        //    assert(a[1] == [7, 10, 0]);
-
-        //    a[1, 0..$-1][] += [1, 2];
-        //    assert(a[1] == [8, 12, 0]);
-        //}
+            assert(a ==
+                    [[0, 0, 1, 1],
+                     [0, 0, 1, 1],
+                     [2, 2, 3, 3],
+                     [2, 2, 3, 3]]);
+        }
 
         private void opIndexOpAssignImplValue(string op, T)(T value)
         {
@@ -2392,22 +2044,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             assert(a == [[9, 9, 9], [9, 9, 9]]);
         }
 
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-
-        //    a[] += 1;
-        //    assert(a == [[1, 1, 1], [1, 1, 1]]);
-
-        //    a[0..$, 0..$-1] += 2;
-        //    assert(a == [[3, 3, 1], [3, 3, 1]]);
-
-        //    a[1, 0..$-1] += 3;
-        //    assert(a[1] == [6, 6, 1]);
-        //}
-
         static if (packs.length == 1)
         /++
         Increment `++` and Decrement `--` operators for a $(B fully defined index).
@@ -2439,15 +2075,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             auto d = -sl[0, 1];
         }
 
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-
-        //    ++a[1, 2];
-        //    assert(a[1, 2] == 1);
-        //}
-
         static if (doUnittest)
         pure nothrow unittest
         {
@@ -2456,15 +2083,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             ++a[[1, 2]];
             assert(a[[1, 2]] == 1);
         }
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = new int[6].sliced!(No.replaceArrayWithPointer)(2, 3);
-
-        //    ++a[[1, 2]];
-        //    assert(a[[1, 2]] == 1);
-        //}
 
         private void opIndexUnaryImpl(string op, Slices...)(Slices slices)
         {
@@ -2508,18 +2126,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
             assert(a[1] == [0, 0, 1]);
         }
-
-        //static if (doUnittest)
-        //pure nothrow unittest
-        //{
-        //    auto a = slice!(int, No.replaceArrayWithPointer)(2, 3);
-
-        //    ++a[];
-        //    assert(a == [[1, 1, 1], [1, 1, 1]]);
-
-        //    --a[1, 0..$-1];
-        //    assert(a[1] == [0, 0, 1]);
-        //}
     }
 }
 
@@ -2716,15 +2322,6 @@ unittest
     Array!int ar;
     ar.length = 12;
     Slice!(SliceKind.continuous, [2], typeof(ar[])) arSl = ar[].sliced(3, 4);
-
-    // Implicit conversion of a range to its unqualified type.
-    //import std.range : iota;
-    //auto      i0 = 60.iota;
-    //const     i1 = 60.iota;
-    //immutable i2 = 60.iota;
-    //alias S = Slice!(3, typeof(iota(0)));
-    //foreach (i; AliasSeq!(i0, i1, i2))
-    //    static assert(is(typeof(i.sliced(3, 4, 5)) == S));
 }
 
 // Test for map #1
@@ -2800,25 +2397,6 @@ private bool opEqualsImpl
     return true;
 }
 
-//pure nothrow unittest
-//{
-//    import std.internal.test.dummyrange;
-//    foreach (RB; AliasSeq!(ReturnBy.Reference, ReturnBy.Value))
-//    {
-//        DummyIterator!(RB, Length.Yes, IteratorType.Random) range;
-//        range.reinit;
-//        assert(range.length >= 10);
-//        auto slice = range.sliced(10);
-//        assert(slice[0] == range[0]);
-//        auto save0 = range[0];
-//        slice[0] += 10;
-//        ++slice[0];
-//        assert(slice[0] == save0 + 11);
-//        slice[5 .. $][2] = 333;
-//        assert(range[7] == 333);
-//    }
-//}
-
 private template PrepareIteratorType(Iterator)
 {
     static if (isPointer!Iterator)
@@ -2868,4 +2446,187 @@ private bool _checkAssignLengths(
     assert(!_checkAssignLengths(iota(2, 2), iota(2, 3)));
     assert(!_checkAssignLengths(iota(2, 2), iota(3, 2)));
     assert(!_checkAssignLengths(iota(2, 2), iota(3, 3)));
+}
+
+pure nothrow unittest
+{
+    auto slice = new int[15].slicedField(5, 3);
+
+    /// Fully defined slice
+    assert(slice[] == slice);
+    auto sublice = slice[0..$-2, 1..$];
+
+    /// Partially defined slice
+    auto row = slice[3];
+    auto col = slice[0..$, 1];
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+    auto b = [1, 2, 3, 4].sliced(2, 2);
+
+    a[0..$, 0..$-1] = b;
+    assert(a == [[1, 2, 0], [3, 4, 0]]);
+
+    a[0..$, 0..$-1] = b[0];
+    assert(a == [[1, 2, 0], [1, 2, 0]]);
+
+    a[1, 0..$-1] = b[1];
+    assert(a[1] == [3, 4, 0]);
+
+    a[1, 0..$-1][] = b[0];
+    assert(a[1] == [1, 2, 0]);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+    auto b = [[1, 2], [3, 4]];
+
+    a[] = [[1, 2, 3], [4, 5, 6]];
+    assert(a == [[1, 2, 3], [4, 5, 6]]);
+
+    a[0..$, 0..$-1] = [[1, 2], [3, 4]];
+    assert(a == [[1, 2, 3], [3, 4, 6]]);
+
+    a[0..$, 0..$-1] = [1, 2];
+    assert(a == [[1, 2, 3], [1, 2, 6]]);
+
+    a[1, 0..$-1] = [3, 4];
+    assert(a[1] == [3, 4, 6]);
+
+    a[1, 0..$-1][] = [3, 4];
+    assert(a[1] == [3, 4, 6]);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    a[] = 9;
+    //assert(a == [[9, 9, 9], [9, 9, 9]]);
+
+    a[0..$, 0..$-1] = 1;
+    //assert(a == [[1, 1, 9], [1, 1, 9]]);
+
+    a[0..$, 0..$-1] = 2;
+    //assert(a == [[2, 2, 9], [2, 2, 9]]);
+
+    a[1, 0..$-1] = 3;
+    //assert(a[1] == [3, 3, 9]);
+
+    a[1, 0..$-1] = 4;
+    //assert(a[1] == [4, 4, 9]);
+
+    a[1, 0..$-1][] = 5;
+    //assert(a[1] == [5, 5, 9]);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    a[1, 2] = 3;
+    assert(a[1, 2] == 3);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    a[[1, 2]] = 3;
+    assert(a[[1, 2]] == 3);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    a[1, 2] += 3;
+    assert(a[1, 2] == 3);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    a[[1, 2]] += 3;
+    assert(a[[1, 2]] == 3);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+    auto b = [1, 2, 3, 4].sliced(2, 2);
+
+    a[0..$, 0..$-1] += b;
+    assert(a == [[1, 2, 0], [3, 4, 0]]);
+
+    a[0..$, 0..$-1] += b[0];
+    assert(a == [[2, 4, 0], [4, 6, 0]]);
+
+    a[1, 0..$-1] += b[1];
+    assert(a[1] == [7, 10, 0]);
+
+    a[1, 0..$-1][] += b[0];
+    assert(a[1] == [8, 12, 0]);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    a[0..$, 0..$-1] += [[1, 2], [3, 4]];
+    assert(a == [[1, 2, 0], [3, 4, 0]]);
+
+    a[0..$, 0..$-1] += [1, 2];
+    assert(a == [[2, 4, 0], [4, 6, 0]]);
+
+    a[1, 0..$-1] += [3, 4];
+    assert(a[1] == [7, 10, 0]);
+
+    a[1, 0..$-1][] += [1, 2];
+    assert(a[1] == [8, 12, 0]);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    a[] += 1;
+    assert(a == [[1, 1, 1], [1, 1, 1]]);
+
+    a[0..$, 0..$-1] += 2;
+    assert(a == [[3, 3, 1], [3, 3, 1]]);
+
+    a[1, 0..$-1] += 3;
+    assert(a[1] == [6, 6, 1]);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    ++a[1, 2];
+    assert(a[1, 2] == 1);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    ++a[[1, 2]];
+    assert(a[[1, 2]] == 1);
+}
+
+pure nothrow unittest
+{
+    auto a = new int[6].slicedField(2, 3);
+
+    ++a[];
+    assert(a == [[1, 1, 1], [1, 1, 1]]);
+
+    --a[1, 0..$-1];
+    assert(a[1] == [0, 0, 1]);
 }
