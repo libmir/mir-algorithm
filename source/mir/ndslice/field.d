@@ -9,10 +9,10 @@ struct MapField(Field, alias fun)
     ///
     Field _field;
 
-    auto __map(alias fun1)()
+    static auto __map(alias fun1)(ref typeof(this) f)
     {
         import mir.funcitonal: pipe;
-        return MapField!(Field, pipe!(fun, fun1))(_field);
+        return MapField!(Field, pipe!(fun, fun1))(f._field);
     }
 
     auto ref opIndex()(ptrdiff_t index)
@@ -26,7 +26,7 @@ struct MapField(Field, alias fun)
 auto mapField(alias fun, Field)(Field field)
 {
     static if (__traits(hasMember, Field, "__map"))
-        return field.__map!fun;
+        return Field.__map!fun(field);
     else
        return MapField!(Field, fun)(field);
 }
