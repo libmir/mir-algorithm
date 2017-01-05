@@ -23,12 +23,12 @@ struct MapField(Field, alias fun)
 
 /++
 +/
-auto mapField(alias fun, Field)(Field field)
+static auto mapField(alias fun, Field)(Field field)
 {
     static if (__traits(hasMember, Field, "__map"))
         return Field.__map!fun(field);
     else
-       return MapField!(Field, fun)(field);
+        return MapField!(Field, fun)(field);
 }
 
 ///
