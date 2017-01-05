@@ -605,8 +605,8 @@ struct FieldIterator(Field)
     static auto __map(alias fun)(ref typeof(this) it)
     {
         import mir.ndslice.field: mapField;
-        auto field = _field.mapField!fun;
-        return FieldIterator!(typeof(field))(_index, field);
+        auto field = it._field.mapField!fun;
+        return FieldIterator!(typeof(field))(it._index, field);
     }
 
     auto ref opUnary(string op : "*")()
