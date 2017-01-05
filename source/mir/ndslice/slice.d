@@ -548,11 +548,11 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         && allSatisfy!(templateOr!(isIndex, is_Slice), Slices);
 
     ///
-    size_t[N] _lengths;
+    public size_t[N] _lengths;
     ///
-    ptrdiff_t[S] _strides;
+    public ptrdiff_t[S] _strides;
     ///
-    Iterator _iterator;
+    public Iterator _iterator;
 
     sizediff_t backIndex(size_t dimension = 0)() @property const
         if (dimension < packs[0])
