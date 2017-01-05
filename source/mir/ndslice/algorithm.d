@@ -210,7 +210,6 @@ pure unittest
     auto z = zip!true(sl1, sl2);
 
     auto dot = reduce!fmuladd(0.0, z);
-    pragma(msg, typeof(dot));
 
     assert(dot == dotProduct(iota(6), iota([6], 1)));
 }

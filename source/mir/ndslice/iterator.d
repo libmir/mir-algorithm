@@ -108,9 +108,9 @@ struct RetroIterator(Iterator)
     Iterator _iterator;
 
     ///
-    auto __map(alias fun)()
+    static auto __map(alias fun)(ref typeof(this) it)
     {
-        auto iterator = _iterator.mapIterator!fun;
+        auto iterator = it._iterator.mapIterator!fun;
         return RetroIterator!(typeof(iterator))(iterator);
     }
 
@@ -200,10 +200,10 @@ struct StrideIterator(Iterator)
     Iterator _iterator;
 
     ///
-    auto __map(alias fun)()
+    static auto __map(alias fun)(ref typeof(this) it)
     {
-        auto iterator = _iterator.mapIterator!fun;
-        return StrideIterator!(typeof(iterator))(_stride, iterator);
+        auto iterator = it._iterator.mapIterator!fun;
+        return StrideIterator!(typeof(iterator))(it._stride, iterator);
     }
 
     auto ref opUnary(string op : "*")()
@@ -421,10 +421,10 @@ struct MapIterator(Iterator, alias fun)
     Iterator _iterator;
 
     ///
-    auto __map(alias fun1)()
+    static auto __map(alias fun1)(ref typeof(this) it)
     {
         import mir.functional: pipe;
-        return MapIterator!(Iterator, pipe!(fun, fun1))(_iterator);
+        return MapIterator!(Iterator, pipe!(fun, fun1))(it._iterator);
     }
 
     auto ref opUnary(string op : "*")()
@@ -479,7 +479,7 @@ struct MapIterator(Iterator, alias fun)
 auto mapIterator(alias fun, Iterator)(Iterator iterator)
 {
     static if (__traits(hasMember, Iterator, "__map"))
-        return iterator.__map!fun;
+        return Iterator.__map!fun(iterator);
     else
        return MapIterator!(Iterator, fun)(iterator);
 }
@@ -494,11 +494,11 @@ struct IndexIterator(Iterator, Field)
     Field _field;
 
     ///
-    auto __map(alias fun)()
+    static auto __map(alias fun)(ref typeof(this) it)
     {
         import mir.ndslice.field: mapField;
-        auto field = _field.mapField!fun;
-        return IndexIterator!(Iterator, typeof(field))(_iterator, field);
+        auto field = it._field.mapField!fun;
+        return IndexIterator!(Iterator, typeof(field))(it._iterator, field);
     }
 
     auto ref opUnary(string op : "*")()
@@ -602,7 +602,7 @@ struct FieldIterator(Field)
     Field _field;
 
     ///
-    auto __map(alias fun)()
+    static auto __map(alias fun)(ref typeof(this) it)
     {
         import mir.ndslice.field: mapField;
         auto field = _field.mapField!fun;
@@ -656,7 +656,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     Slice!(kind, packs, Iterator) _slice;
 
     ///
-    auto __map(alias fun)()
+    static auto __map(alias fun)(ref typeof(this) it)
     {
         import mir.ndslice.topology: map;
         auto slice = _slice.map!fun;
