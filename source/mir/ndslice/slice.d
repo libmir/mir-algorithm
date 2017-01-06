@@ -1433,7 +1433,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     {
         static if (Slices.length)
         {
-            enum size_t j(size_t n) = n - Filter!(isIndex, Slices[0 .. n+1]).length;
+            enum size_t j(size_t n) = n - Filter!(isIndex, Slices[0 .. n]).length;
             enum size_t F = PureIndexLength!Slices;
             enum size_t S = Slices.length;
             static assert(N - F > 0);
@@ -1483,8 +1483,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     {
                         stride += _strides[i] * slice.i;
                         ret._lengths[j!i] = slice.j - slice.i;
+                        ret._strides[j!i] = _strides[i];
                     }
-                    ret._strides[j!i] = _strides[i];
                 }
             }
             else
