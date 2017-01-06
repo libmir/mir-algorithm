@@ -62,6 +62,7 @@ import mir.ndslice.slice; //: Slice;
 import mir.ndslice.iterator;
 import mir.ndslice.field;
 
+@fastmath:
 
 auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
@@ -1757,7 +1758,7 @@ template map(fun...)
             alias f = fun[0];
 
             ///
-            auto map(SliceKind kind, size_t[] packs, Iterator)
+            @fastmath auto map(SliceKind kind, size_t[] packs, Iterator)
                 (Slice!(kind, packs, Iterator) slice)
             {
                 // Specialization for packed tensors (tensors composed of tensors).
@@ -1964,7 +1965,7 @@ Returns:
 template as(T)
 {
     ///
-    auto as(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @fastmath auto as(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         static if (is(slice.DeepElemType == T))
             return slice;

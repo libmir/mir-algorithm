@@ -87,7 +87,6 @@ import mir.ndslice.slice;
 
 @fastmath:
 
-
 private enum _swappedCode = q{
     with (slice)
     {

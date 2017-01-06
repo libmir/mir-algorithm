@@ -3,6 +3,10 @@ module mir.ndslice.stack;
 
 import std.traits;
 
+import mir.ndslice.internal;
+
+@fastmath:
+
 struct Stack(Tensors...)
     if (Tensors.lengths > 1)
 {

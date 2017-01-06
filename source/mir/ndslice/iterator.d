@@ -2,16 +2,19 @@
 +/
 module mir.ndslice.iterator;
 
+import std.traits;
 import mir.internal.utility;
 import mir.ndslice.slice: SliceKind, Slice;
 import mir.ndslice.internal;
-import std.traits;
+
+@fastmath:
 
 /++
 +/
 struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {
+@fastmath:
     ///
     I _index;
 
@@ -104,6 +107,7 @@ pure nothrow @nogc unittest
 +/
 struct RetroIterator(Iterator)
 {
+@fastmath:
     ///
     Iterator _iterator;
 
@@ -194,6 +198,7 @@ struct RetroIterator(Iterator)
 +/
 struct StrideIterator(Iterator)
 {
+@fastmath:
     ///
     ptrdiff_t _stride;
     ///
@@ -331,6 +336,7 @@ private template _zip_index(Iterators...)
 struct ZipIterator(Iterators...)
     if (Iterators.length > 1)
 {
+@fastmath:
     import mir.functional: RefTuple, Ref;
     ///
     Iterators _iterators;
@@ -417,6 +423,7 @@ pure nothrow @nogc unittest
 +/
 struct MapIterator(Iterator, alias fun)
 {
+@fastmath:
     ///
     Iterator _iterator;
 
@@ -488,6 +495,7 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
 +/
 struct IndexIterator(Iterator, Field)
 {
+@fastmath:
     ///
     Iterator _iterator;
     ///
@@ -546,6 +554,7 @@ struct IndexIterator(Iterator, Field)
 +/
 struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
 {
+@fastmath:
     ///
     alias Elem = Slice!(kind, packs, Iterator);
     ///
@@ -596,6 +605,7 @@ struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
 +/
 struct FieldIterator(Field)
 {
+@fastmath:
     ///
     ptrdiff_t _index;
     ///
@@ -650,6 +660,7 @@ struct FieldIterator(Field)
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
 {
+@fastmath:
     ///
     ptrdiff_t[packs[0]] _indexes;
     ///

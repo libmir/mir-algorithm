@@ -22,6 +22,8 @@ import mir.internal.utility;
 import mir.ndslice.internal;
 import mir.primitives;
 
+@fastmath:
+
 ///
 template isSlice(T)
 {
@@ -488,7 +490,7 @@ r______________reversed!1
 struct Slice(SliceKind kind, size_t[] packs, Iterator)
     if (packs.sum < 255)
 {
-    //@fastmath:
+    @fastmath:
 
     package:
 

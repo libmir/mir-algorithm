@@ -5,6 +5,9 @@ import std.traits;
 import std.meta;
 import mir.ndslice.slice;
 import mir.internal.utility;
+
+@fastmath:
+
 template _iotaArgs(size_t length, string prefix, string suffix)
 {
     static if (length)

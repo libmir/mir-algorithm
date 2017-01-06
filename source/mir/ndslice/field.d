@@ -1,11 +1,15 @@
 module mir.ndslice.field;
 
-import mir.internal.utility;
 import std.traits;
+import mir.internal.utility;
+import mir.ndslice.internal;
+
+@fastmath:
 
 ///
 struct MapField(Field, alias fun)
 {
+@fastmath:
     ///
     Field _field;
 
@@ -34,6 +38,7 @@ static auto mapField(alias fun, Field)(Field field)
 ///
 struct RepeatField(T)
 {
+@fastmath:
     static if (is(T == class) || is(T == interface) || is(T : Unqual!T) && is(Unqual!T : T))
         ///
         alias UT = Unqual!T;
@@ -52,6 +57,7 @@ struct RepeatField(T)
 struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     if (isIntegral!I)
 {
+@fastmath:
     import core.bitop: bsr;
     private enum shift = bsr(I.sizeof) + 3;
     private enum mask = (1 << shift) - 1;
@@ -95,6 +101,7 @@ See_also: $(LREF ndiota)
 struct ndIotaField(size_t N)
     if (N)
 {
+@fastmath:
     ///
     size_t[N - 1] _lengths;
 

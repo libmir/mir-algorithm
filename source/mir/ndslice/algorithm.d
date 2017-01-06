@@ -63,6 +63,8 @@ import std.meta;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 
+@fastmath:
+
 private auto ref frontOf(alias slice)() { return slice.front; };
 
 /++
@@ -105,7 +107,7 @@ template reduce(alias fun)
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
     ///
-    auto reduce(S, Slices...)(S seed, Slices slices)
+    @fastmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
         //slices.checkShapesMatch;
@@ -314,7 +316,7 @@ template each(alias fun)
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
     ///
-    auto each(Slices...)(Slices slices)
+    @fastmath auto each(Slices...)(Slices slices)
         if (Slices.length)
     {
         //slices.checkShapesMatch;

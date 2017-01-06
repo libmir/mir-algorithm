@@ -2,9 +2,10 @@
 module mir.ndslice.allocation;
 
 import std.traits;
-import std.typecons: Flag, Yes, No;
 import mir.ndslice.slice;
 import mir.ndslice.internal;
+
+@fastmath:
 
 /++
 Creates an array and an n-dimensional slice over it.
@@ -22,12 +23,10 @@ slice(T, size_t N)(size_t[N] lengths...)
 }
 
 /// ditto
-auto slice(T,
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    size_t N)(size_t[N] lengths, T init)
+auto slice(T, size_t N)(size_t[N] lengths, T init)
 {
     immutable len = lengthsProduct(lengths);
-    static if (ra && !hasElaborateAssign!T)
+    static if (!hasElaborateAssign!T)
     {
         import std.array : uninitializedArray;
         auto arr = uninitializedArray!(Unqual!T[])(len);
@@ -42,10 +41,7 @@ auto slice(T,
 }
 
 /// ditto
-auto slice(
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    SliceKind kind,
-    size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     auto ret = .slice!(Unqual!(slice.DeepElemType))(slice.shape);
     ret[] = slice;
@@ -88,9 +84,7 @@ Params:
 Returns:
     uninitialized n-dimensional slice
 +/
-auto uninitializedSlice(T,
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    size_t N)(size_t[N] lengths...)
+auto uninitializedSlice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
     import std.array : uninitializedArray;
@@ -120,35 +114,26 @@ Returns:
 Note:
     `makeSlice` always returns slice with mutable elements
 +/
-auto makeSlice(
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    Allocator,
-    size_t N, Iterator)(auto ref Allocator alloc, Slice!(N, Iterator) slice)
+auto makeSlice(Allocator, size_t N, Iterator)(auto ref Allocator alloc, Slice!(N, Iterator) slice)
 {
     alias T = Unqual!(slice.DeepElemType);
-    return makeSlice!(T, ra)(alloc, slice);
+    return makeSlice!(T)(alloc, slice);
 }
 
 /// ditto
-SliceAllocationResult!(N, T, ra)
-makeSlice(T,
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    Allocator,
-    size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
+SliceAllocationResult!(N, T)
+makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     import std.experimental.allocator : makeArray;
     immutable len = lengthsProduct(lengths);
     auto array = alloc.makeArray!T(len);
-    auto slice = array.sliced!ra(lengths);
+    auto slice = array.sliced(lengths);
     return typeof(return)(array, slice);
 }
 
 /// ditto
-SliceAllocationResult!(N, T, ra)
-makeSlice(T,
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    Allocator,
-    size_t N)(auto ref Allocator alloc, size_t[N] lengths, T init)
+SliceAllocationResult!(N, T)
+makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T init)
 {
     import std.experimental.allocator : makeArray;
     immutable len = lengthsProduct(lengths);
@@ -158,7 +143,7 @@ makeSlice(T,
 }
 
 ///// ditto
-//SliceAllocationResult!(N, T, ra)
+//SliceAllocationResult!(N, T)
 //makeSlice(T,
 //    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
 //    Allocator,
@@ -227,11 +212,8 @@ Params:
 Returns:
     a structure with fields `array` and `slice`
 +/
-SliceAllocationResult!(N, T, ra)
-makeUninitializedSlice(T,
-    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-    Allocator,
-    size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
+SliceAllocationResult!(N, T)
+makeUninitializedSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
     auto array = cast(T[]) alloc.allocate(len * T.sizeof);
@@ -257,12 +239,12 @@ makeUninitializedSlice(T,
 /++
 Structure used by $(LREF makeSlice) and $(LREF makeUninitializedSlice).
 +/
-struct SliceAllocationResult(size_t N, T, Flag!`replaceArrayWithPointer` ra)
+struct SliceAllocationResult(size_t N, T)
 {
     ///
     T[] array;
     ///
-    Slice!(SliceKind.continuous, [N], Select!(ra, T*, T[])) slice;
+    Slice!(SliceKind.continuous, [N], T*) slice;
 }
 
 /++

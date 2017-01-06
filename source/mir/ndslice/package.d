@@ -132,15 +132,15 @@ $(TR $(TDNW $(SUBMODULE selection)
 $(TR $(TDNW $(SUBMODULE algorithm)
         $(BR) $(SMALL Computation algorithms $(BR) Operators for loop free programming))
      $(TD
-        $(SUBREF algorithm, ndMap)
-        $(SUBREF algorithm, ndFold)
-        $(SUBREF algorithm, ndReduce)
-        $(SUBREF algorithm, ndEach)
-        $(SUBREF algorithm, ndFind)
-        $(SUBREF algorithm, ndAny)
-        $(SUBREF algorithm, ndAll)
-        $(SUBREF algorithm, ndEqual)
-        $(SUBREF algorithm, ndCmp)
+        $(SUBREF algorithm, map)
+        $(SUBREF algorithm, fold)
+        $(SUBREF algorithm, reduce)
+        $(SUBREF algorithm, each)
+        $(SUBREF algorithm, find)
+        $(SUBREF algorithm, any)
+        $(SUBREF algorithm, all)
+        $(SUBREF algorithm, equal)
+        $(SUBREF algorithm, cmp)
     )
 )
 
@@ -180,9 +180,9 @@ Returns:
         where с is the number of channels in the image.
         Dense data layout is guaranteed.
 +/
-
-Slice!(3, C*) movingWindowByChannel(alias filter, C)
-(Slice!(3, C*) image, size_t nr, size_t nc)
+(SliceKind!
+SliceKind.universal, [3] C*) movingWindowByChannel(alias filter, C)
+(SliceKind!(SliceKind.universal, [3] C*) image, size_t nr, size_t nc)
 {
         // 0. 3D
         // The last dimension represents the color channel.
@@ -319,12 +319,12 @@ TDNW2 = <td class="donthyphenate nobr" rowspan="2">$0</td>
 */
 module mir.ndslice;
 
-version(none):
-
-public import mir.ndslice.slice;
-public import mir.ndslice.iteration;
-public import mir.ndslice.selection;
 public import mir.ndslice.algorithm;
+public import mir.ndslice.allocation;
+public import mir.ndslice.dynamic;
+public import mir.ndslice.slice;
+public import mir.ndslice.topology;
+
 
 unittest
 {
@@ -335,14 +335,14 @@ unittest
     auto row = matrix[2];
     row[3] = 6;
     assert(matrix[2, 3] == 6); // D & C index order
-    assert(matrix(3, 2) == 6); // Math & Fortran index order
+    //assert(matrix(3, 2) == 6); // Math & Fortran index order
 }
 
 // relaxed example
 unittest
 {
-    static Slice!(3, ubyte*) movingWindowByChannel
-    (Slice!(3, ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(2, ubyte*)) filter)
+    static Slice!(SliceKind.continuous, [3], ubyte*) movingWindowByChannel
+    (Slice!(SliceKind.universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(SliceKind.universal, [2], ubyte*)) filter)
     {
         return image
             .pack!1
@@ -350,20 +350,19 @@ unittest
             .unpack
             .transposed!(0, 1, 4)
             .pack!2
-            .mapSlice!filter
+            .map!filter
             .slice;
     }
 
-    static T median(Range, T)(Slice!(2, Range) sl, T[] buf)
+    static T median(Range, T)(Slice!(SliceKind.universal, [2], Range) sl, T[] buf)
     {
         import std.algorithm.sorting : topN;
-        import mir.ndslice.algorithm : ndFold;
         // copy sl to the buffer
-        auto retPtr = sl.ndFold!(
+        auto retPtr = reduce!(
             (ptr, elem) {
                 *ptr = elem;
                 return ptr + 1;
-            } )(buf.ptr);
+            } )(buf.ptr, sl);
         auto n = retPtr - buf.ptr;
         buf[0 .. n].topN(n / 2);
         return buf[n / 2];
@@ -394,14 +393,12 @@ unittest
     {
         auto ret =
             movingWindowByChannel
-                 (new ubyte[300].sliced(10, 10, 3), nr, nc, window => median(window, buf));
+                 (new ubyte[300].sliced(10, 10, 3).universal, nr, nc, window => median(window, buf));
     }
 }
 
 @safe @nogc pure nothrow unittest
 {
-    import std.algorithm.comparison : equal;
-    import std.range : iota;
     immutable r = 1000.iota;
 
     auto t0 = r.sliced(1000);
@@ -424,7 +421,7 @@ unittest
     t1.popBack();
     assert(t1.back == 17);
 
-    assert(t1.equal(iota(12, 18)));
+    assert(t1 == iota([6], 12));
 }
 
 pure nothrow unittest
@@ -534,30 +531,6 @@ pure nothrow unittest
 
 pure nothrow unittest
 {
-    import mir.ndslice.internal : Iota;
-    import std.meta : AliasSeq;
-    import std.range;
-    import std.typecons : Tuple;
-    foreach (R; AliasSeq!(
-        int*, int[], typeof(1.iota),
-        const(int)*, const(int)[],
-        immutable(int)*, immutable(int)[],
-        double*, double[], typeof(10.0.iota),
-        Tuple!(double, int[string])*, Tuple!(double, int[string])[]))
-    foreach (n; Iota!(1, 4))
-    {
-        alias S = Slice!(n, R);
-        static assert(isRandomAccessRange!S);
-        static assert(hasSlicing!S);
-        static assert(hasLength!S);
-    }
-
-    immutable int[] im = [1,2,3,4,5,6];
-    auto slice = im.sliced(2, 3);
-}
-
-pure nothrow unittest
-{
     auto tensor = new int[3 * 4 * 8].sliced(3, 4, 8);
     assert(&(tensor.back.back.back()) is &tensor[2, 3, 7]);
     assert(&(tensor.front.front.front()) is &tensor[0, 0, 0]);
@@ -565,7 +538,6 @@ pure nothrow unittest
 
 pure nothrow unittest
 {
-    import mir.ndslice.selection : pack;
     auto slice = new int[24].sliced(2, 3, 4);
     auto r0 = slice.pack!1[1, 2];
     slice.pack!1[1, 2][] = 4;
