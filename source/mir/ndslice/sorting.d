@@ -27,7 +27,7 @@ template isSorted(alias less = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
     ///
-    bool isSorted(SliceKind kind, size_t[] packs, Iterator)
+    @fastmath bool isSorted(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
@@ -66,7 +66,7 @@ template isStrictlyMonotonic(alias less = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
     ///
-    bool isStrictlyMonotonic(SliceKind kind, size_t[] packs, Iterator)
+    @fastmath bool isStrictlyMonotonic(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
@@ -86,7 +86,7 @@ template sort(alias less = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
     ///
-    Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
+    @fastmath Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
