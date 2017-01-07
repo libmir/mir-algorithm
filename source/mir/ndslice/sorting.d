@@ -98,7 +98,7 @@ template sort(alias less = "a < b")
         alias sort = .sort!(naryFun!less);
 }
 
-void quickSortImpl(alias less, Iterator)(Slice!(SliceKind.continuous, [1], Iterator) slice)
+void quickSortImpl(alias less, Iterator)(Slice!(SliceKind.contiguous, [1], Iterator) slice)
 {
     import mir.utility : swap;
 

@@ -15,7 +15,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(SliceKind.continuous, [N], T*)
+Slice!(SliceKind.contiguous, [N], T*)
 slice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
@@ -54,7 +54,7 @@ pure nothrow unittest
     auto tensor = slice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(SliceKind.continuous, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(SliceKind.contiguous, [3], int*)));
 
     // creates duplicate using `slice`
     auto dup = tensor.slice;
@@ -98,7 +98,7 @@ pure nothrow unittest
     auto tensor = uninitializedSlice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(SliceKind.continuous, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(SliceKind.contiguous, [3], int*)));
 }
 
 /++
@@ -244,7 +244,7 @@ struct SliceAllocationResult(size_t N, T)
     ///
     T[] array;
     ///
-    Slice!(SliceKind.continuous, [N], T*) slice;
+    Slice!(SliceKind.contiguous, [N], T*) slice;
 }
 
 /++

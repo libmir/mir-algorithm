@@ -32,7 +32,7 @@ $(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping block
 $(T2 flattened, flat, random access range of all elements with `index` property)
 $(T2 diagonal, 1-dimensional slice composed of diagonal elements)
 $(T2 ndiota, lazy slice with initial multidimensional index)
-$(T2 iota, lazy slice with initial flattened (continuous) index)
+$(T2 iota, lazy slice with initial flattened (contiguous) index)
 $(T2 map, lazy multidimensional functional map)
 $(T2 repeat, slice with identical values)
 $(T2 reshape, new slice with changed dimensions for the same data)
@@ -102,11 +102,11 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     }
 }
 
-Slice!(packs.sum == 1 ? SliceKind.continuous : SliceKind.canonical, packs, Iterator)
+Slice!(packs.sum == 1 ? SliceKind.contiguous : SliceKind.canonical, packs, Iterator)
     canonical
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
-    if (kind == SliceKind.continuous || kind == SliceKind.canonical)
+    if (kind == SliceKind.contiguous || kind == SliceKind.canonical)
 {
     static if (kind == SliceKind.canonical || packs.sum == 1)
         return slice;
@@ -131,7 +131,7 @@ Slice!(SliceKind.canonical, packs, Iterator)
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
 {
-    static if (kind == SliceKind.continuous)
+    static if (kind == SliceKind.contiguous)
         return slice.canonical;
     static if (kind == SliceKind.canonical)
         return slice;
@@ -147,12 +147,12 @@ Slice!(SliceKind.canonical, packs, Iterator)
     }
 }
 
-Slice!(SliceKind.continuous, packs, Iterator)
-    assumeContinuous
+Slice!(SliceKind.contiguous, packs, Iterator)
+    assumeContiguous
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
 {
-    static if (kind == SliceKind.continuous)
+    static if (kind == SliceKind.contiguous)
         return slice;
     else
     {
@@ -209,7 +209,7 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     assert(b[0, 0].shape == res2);
     assert(a == b);
     static assert(is(typeof(b) == typeof(a.pack!2)));
-    static assert(is(typeof(b) == Slice!(SliceKind.continuous, [2, 2], IotaIterator!size_t)));
+    static assert(is(typeof(b) == Slice!(SliceKind.contiguous, [2, 2], IotaIterator!size_t)));
 }
 
 @safe @nogc pure nothrow unittest
@@ -225,9 +225,9 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     assert(a == b);
     assert(c == a[1, 2, 3, 4]);
     static assert(is(typeof(b) == typeof(a.pack!2.pack!3)));
-    static assert(is(typeof(b) == Slice!(SliceKind.continuous, [4, 3, 2], IotaIterator!size_t)));
-    static assert(is(typeof(c) == Slice!(SliceKind.continuous, [3, 2], IotaIterator!size_t)));
-    static assert(is(typeof(d) == Slice!(SliceKind.continuous, [2], IotaIterator!size_t)));
+    static assert(is(typeof(b) == Slice!(SliceKind.contiguous, [4, 3, 2], IotaIterator!size_t)));
+    static assert(is(typeof(c) == Slice!(SliceKind.contiguous, [3, 2], IotaIterator!size_t)));
+    static assert(is(typeof(d) == Slice!(SliceKind.contiguous, [2], IotaIterator!size_t)));
     static assert(is(typeof(e) == size_t));
 }
 
@@ -365,11 +365,11 @@ unittest
     import mir.ndslice.allocation;
     static assert(is(typeof(slice!int(20)
         .evertPack)
-         == Slice!(SliceKind.continuous, [1], int*)));
+         == Slice!(SliceKind.contiguous, [1], int*)));
     static assert(is(typeof(slice!int(20)
         .sliced(20)
         .evertPack())
-         == Slice!(SliceKind.continuous, [1], int*)));
+         == Slice!(SliceKind.contiguous, [1], int*)));
     static assert(is(typeof(slice!int(6)
         .sliced(1,2,3)
         .sliced(3)
@@ -407,7 +407,7 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF IotaSlice), $(LREF ndiota)
 +/
-Slice!(SliceKind.continuous, [N], IotaIterator!I)
+Slice!(SliceKind.contiguous, [N], IotaIterator!I)
 iota(I = size_t, size_t N)(size_t[N] lengths...)
     if (isIntegral!I)
 {
@@ -416,7 +416,7 @@ iota(I = size_t, size_t N)(size_t[N] lengths...)
 }
 
 ///ditto
-Slice!(SliceKind.continuous, [N], IotaIterator!I)
+Slice!(SliceKind.contiguous, [N], IotaIterator!I)
 iota(I = size_t, size_t N)(size_t[N] lengths, I start)
     if (isIntegral!I || isPointer!I)
 {
@@ -425,7 +425,7 @@ iota(I = size_t, size_t N)(size_t[N] lengths, I start)
 }
 
 ///ditto
-Slice!(SliceKind.continuous, [N], StrideIterator!(IotaIterator!I))
+Slice!(SliceKind.contiguous, [N], StrideIterator!(IotaIterator!I))
 iota(I = size_t, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (isIntegral!I || isPointer!I)
 {
@@ -675,7 +675,7 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
+Slice!(kind == SliceKind.contiguous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
     blocks
     (SliceKind kind, size_t[] packs, Iterator, size_t N)
     (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
@@ -811,7 +811,7 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
+Slice!(kind == SliceKind.contiguous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
     windows
     (SliceKind kind, size_t[] packs, Iterator, size_t N)
     (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
@@ -1202,7 +1202,7 @@ Params:
 Returns:
     random access range composed of elements of the `slice`
 +/
-Slice!(SliceKind.continuous, [1], FlattenedIterator!(kind, packs, Iterator))
+Slice!(SliceKind.contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
     flattened
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
@@ -1217,10 +1217,10 @@ Slice!(SliceKind.continuous, [1], FlattenedIterator!(kind, packs, Iterator))
 }
 
 /// ditto
-Slice!(SliceKind.continuous, 1 ~ packs[1 .. $], Iterator) 
+Slice!(SliceKind.contiguous, 1 ~ packs[1 .. $], Iterator) 
     flattened
     (size_t[] packs, Iterator)
-    (Slice!(SliceKind.continuous, packs, Iterator) slice)
+    (Slice!(SliceKind.contiguous, packs, Iterator) slice)
 {
     static if (packs[0] == 1)
     {
@@ -1441,7 +1441,7 @@ unittest
 /++
 Returns a slice, the elements of which are equal to the initial multidimensional index value.
 This is multidimensional analog of $(REF iota, std, range).
-For a flattened (continuous) index, see $(LREF iota).
+For a flattened (contiguous) index, see $(LREF iota).
 
 Params:
     N = dimension count
@@ -1450,7 +1450,7 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF ndIotaField), $(LREF iota)
 +/
-Slice!(SliceKind.continuous, [N], FieldIterator!(ndIotaField!N))
+Slice!(SliceKind.contiguous, [N], FieldIterator!(ndIotaField!N))
     ndiota
     (size_t N)
     (size_t[N] lengths...)
@@ -1500,7 +1500,7 @@ Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 See_also: $(REF repeat, std,range)
 +/
-Slice!(SliceKind.continuous, [M], FieldIterator!(RepeatField!T))
+Slice!(SliceKind.contiguous, [M], FieldIterator!(RepeatField!T))
     repeat(T, size_t M)(T value, size_t[M] lengths...)
     if (M && !is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
 {
@@ -1512,7 +1512,7 @@ Slice!(SliceKind.continuous, [M], FieldIterator!(RepeatField!T))
 }
 
 /// ditto
-Slice!(kind == SliceKind.continuous ? SliceKind.canonical : kind, M ~ packs, Iterator)
+Slice!(kind == SliceKind.contiguous ? SliceKind.canonical : kind, M ~ packs, Iterator)
     repeat
     (SliceKind kind, size_t[] packs, Iterator, size_t M)
     (Slice!(kind, packs, Iterator) slice, size_t[M] lengths...)
@@ -1601,7 +1601,7 @@ in
 }
 body
 {
-    static if (kind == SliceKind.continuous)
+    static if (kind == SliceKind.contiguous)
         return slice.universal.stride(factor);
     else
     {
@@ -1617,10 +1617,10 @@ auto retro
     (Slice!(kind, packs, Iterator) slice)
     if (packs.length == 1)
 {
-    static if (kind == SliceKind.continuous || kind == SliceKind.canonical)
+    static if (kind == SliceKind.contiguous || kind == SliceKind.canonical)
     {
         import mir.ndslice.dynamic: allReversed;
-        static if (kind == SliceKind.continuous)
+        static if (kind == SliceKind.contiguous)
         {
             ptrdiff_t shift = 1;
             foreach(i; Iota!(packs[0]))
@@ -1664,7 +1664,7 @@ auto retro
 auto bitwise
     (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
     (Slice!(kind, packs, Iterator) slice)
-    if (isIntegral!I && (kind == SliceKind.continuous || kind == SliceKind.canonical))
+    if (isIntegral!I && (kind == SliceKind.contiguous || kind == SliceKind.canonical))
 {
     static if (is(Iterator : FieldIterator!Field, Field))
     {
@@ -1921,7 +1921,7 @@ private auto hideStride
     static if (kind == SliceKind.universal)
     {
         alias It = StrideIterator!Iterator;
-        return Slice!(SliceKind.continuous, [1], It)(
+        return Slice!(SliceKind.contiguous, [1], It)(
             slice._lengths,
             slice._strides[0 .. 0],
             It(slice._stride[0], slice._iterator));
@@ -1998,7 +1998,7 @@ unittest
              [0, 1]]);
 
     /// allocate new slice composed of strings
-    Slice!(SliceKind.continuous, [2], int*) stringMatrix = stringMatrixView.slice;
+    Slice!(SliceKind.contiguous, [2], int*) stringMatrix = stringMatrixView.slice;
 }
 
 /// Special behavior for pointers to a constant data.
@@ -2006,8 +2006,8 @@ unittest
 {
     import mir.ndslice.allocation : slice;
 
-    Slice!(SliceKind.continuous, [2], double*)              matrix = slice!double([2, 2], 0);
-    Slice!(SliceKind.continuous, [2], const(double)*) const_matrix = matrix.as!(const double);
+    Slice!(SliceKind.contiguous, [2], double*)              matrix = slice!double([2, 2], 0);
+    Slice!(SliceKind.contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
 }
 /++
 Groups slices into a slice tuple. The slices must have identical structure.
@@ -2029,7 +2029,7 @@ auto zip(bool sameStrides = false, Slices...)(Slices slices)
         assert(slices[i]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
         assert(slices[i].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides");
     }
-    static if (sameStrides == false && minElem(staticMap!(_kindOf, Slices)) != SliceKind.continuous)
+    static if (sameStrides == false && minElem(staticMap!(_kindOf, Slices)) != SliceKind.contiguous)
     {
         static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
         return .zip(_iotaArgs!(Slices.length, "slice[", "].hideStride"));

@@ -341,7 +341,7 @@ unittest
 // relaxed example
 unittest
 {
-    static Slice!(SliceKind.continuous, [3], ubyte*) movingWindowByChannel
+    static Slice!(SliceKind.contiguous, [3], ubyte*) movingWindowByChannel
     (Slice!(SliceKind.universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(SliceKind.universal, [2], ubyte*)) filter)
     {
         return image

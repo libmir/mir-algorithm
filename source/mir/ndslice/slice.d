@@ -51,10 +51,10 @@ enum SliceKind
 {
     /// tensors with strides for all dimensions
     universal,
-    /// has >=2 dimensions and row dimension is continuous
+    /// has >=2 dimensions and row dimension is contiguous
     canonical,
-    /// flat continuous data
-    continuous,
+    /// flat contiguous data
+    contiguous,
 }
 
 template SkipDimension(size_t dimension, size_t index)
@@ -98,9 +98,9 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
 {
     alias C = ImplicitlyUnqual!(typeof(iterator));
     static if (isDynamicArray!Iterator)
-        alias S = Slice!(SliceKind.continuous, [N], typeof(C.init[0])*);
+        alias S = Slice!(SliceKind.contiguous, [N], typeof(C.init[0])*);
     else
-        alias S = Slice!(SliceKind.continuous, [N], C);
+        alias S = Slice!(SliceKind.contiguous, [N], C);
     static if (hasElaborateAssign!Iterator)
         S ret;
     else
@@ -125,7 +125,7 @@ pure nothrow unittest
 {
     auto slice = new int[10].sliced;
     assert(slice.length == 10);
-    static assert(is(typeof(slice) == Slice!(SliceKind.continuous, [1], int*)));
+    static assert(is(typeof(slice) == Slice!(SliceKind.contiguous, [1], int*)));
 }
 
 ///// Creates an 1-dimensional slice over a range.
@@ -173,7 +173,7 @@ pure nothrow @nogc unittest
     }
     import mir.ndslice.iterator: FieldIterator;
     alias Iterator = FieldIterator!MyIota;
-    alias S = Slice!(SliceKind.continuous, [2], Iterator);
+    alias S = Slice!(SliceKind.contiguous, [2], Iterator);
     import std.range.primitives;
     static assert(hasLength!S);
     static assert(hasSlicing!S);
@@ -198,7 +198,7 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator
         ret._lengths[i] = lengths[i];
     foreach (i; Iota!(slice.N - 1))
         ret._lengths[N + i] = slice._lengths[i + 1];
-    static if (kind != SliceKind.continuous)
+    static if (kind != SliceKind.contiguous)
     {
         foreach (i; Iota!(slice.S - 1))
             ret._strides[N + i] = slice._strides[i + 1];
@@ -519,7 +519,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 alias ElemType = Slice!(SliceKind.universal, packs.decDim, Iterator);
             else
             static if (N == 2)
-                alias ElemType = Slice!(SliceKind.continuous, packs.decDim, Iterator);
+                alias ElemType = Slice!(SliceKind.contiguous, packs.decDim, Iterator);
             else
                 alias ElemType = Slice!(SliceKind.canonical, packs.decDim, Iterator);
         else
@@ -530,7 +530,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         alias DeepElemType = typeof(Iterator.init[size_t.init]);
     else
     static if (packs.length == 2 && packs[1] == 1 && kind == SliceKind.canonical)
-        alias DeepElemType = Slice!(SliceKind.continuous, packs[1 .. $], Iterator);
+        alias DeepElemType = Slice!(SliceKind.contiguous, packs[1 .. $], Iterator);
     else
         alias DeepElemType = Slice!(kind, packs[1 .. $], Iterator);
 
@@ -566,7 +566,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     {
         static if (_indexes.length)
         {
-            static if (kind == SliceKind.continuous)
+            static if (kind == SliceKind.contiguous)
             {
                 enum E = I - 1;
                 assert(_indexes[E] < _lengths[E], indexError!(E, N));
@@ -1054,11 +1054,11 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     ///ditto
     void popFront(size_t dimension = 0)()
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
         _lengths[dimension]--;
-        static if ((kind == SliceKind.continuous || kind == SliceKind.canonical) && dimension + 1 == N)
+        static if ((kind == SliceKind.contiguous || kind == SliceKind.canonical) && dimension + 1 == N)
             ++_iterator;
         else
         static if (kind == SliceKind.canonical || kind == SliceKind.universal)
@@ -1069,7 +1069,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     ///ditto
     void popBack(size_t dimension = 0)()
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
         --_lengths[dimension];
@@ -1077,7 +1077,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     ///ditto
     void popFrontExactly(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.contiguous))
     {
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
@@ -1087,7 +1087,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     ///ditto
     void popBackExactly(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.contiguous))
     {
         assert(n <= _lengths[dimension],
             __FUNCTION__ ~ ": n should be less than or equal to length!" ~ dimension.stringof);
@@ -1096,7 +1096,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     ///ditto
     void popFrontN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.contiguous))
     {
         import std.algorithm.comparison : min;
         popFrontExactly!dimension(min(n, _lengths[dimension]));
@@ -1104,7 +1104,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     ///ditto
     void popBackN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.continuous))
+        if (dimension < packs[0] && (dimension == 0 || kind != SliceKind.contiguous))
     {
         import std.algorithm.comparison : min;
         popBackExactly!dimension(min(n, _lengths[dimension]));
@@ -1288,7 +1288,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         import mir.ndslice.topology : unpack;
         if (this.unpack.anyEmpty)
                 return true;
-        static if (N > 1 && kind == SliceKind.continuous && rkind == SliceKind.continuous)
+        static if (N > 1 && kind == SliceKind.contiguous && rkind == SliceKind.contiguous)
         {
             import mir.ndslice.topology : flattened;
             return opEqualsImpl(this.unpack.flattened, rslice.unpack.flattened);
@@ -1447,7 +1447,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 enum K = SliceKind.universal;
             else
             static if (Filter!(isIndex, Slices[0 .. $-1]).length == Slices.length - 1 || N - F == 1)
-                enum K = SliceKind.continuous;
+                enum K = SliceKind.contiguous;
             else
                 enum K = SliceKind.canonical;
             static if (hasElaborateAssign!Iterator)
@@ -1548,7 +1548,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     {
         private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RIterator)(Slice!(rkind, rpacks, RIterator) value)
         {
-            static if (N > 1 && rpacks == packs && kind == SliceKind.continuous && rkind == SliceKind.continuous)
+            static if (N > 1 && rpacks == packs && kind == SliceKind.contiguous && rkind == SliceKind.contiguous)
             {
                 import mir.ndslice.topology : flattened;
                 this.flattened.opIndexOpAssignImplSlice!op(value.flattened);
@@ -1980,7 +1980,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         private void opIndexOpAssignImplValue(string op, T)(T value)
         {
-            static if (N > 1 && kind == SliceKind.continuous)
+            static if (N > 1 && kind == SliceKind.contiguous)
             {
                 import mir.ndslice.topology : flattened;
                 this.flattened.opIndexOpAssignImplValue!op(value);
@@ -2209,7 +2209,7 @@ unittest
     import std.algorithm,  std.conv, std.exception, std.format,
         std.functional, std.string, std.range;
 
-    Slice!(SliceKind.continuous, [2], int*) toMatrix(string str)
+    Slice!(SliceKind.contiguous, [2], int*) toMatrix(string str)
     {
         string[][] data = str.lineSplitter.filter!(not!empty).map!split.array;
 
@@ -2317,13 +2317,13 @@ unittest
 {
     // Arrays
     foreach (T; AliasSeq!(int, const int, immutable int))
-        static assert(is(typeof((T[]).init.sliced(3, 4)) == Slice!(SliceKind.continuous, [2], T*)));
+        static assert(is(typeof((T[]).init.sliced(3, 4)) == Slice!(SliceKind.contiguous, [2], T*)));
 
     // Container Array
     import std.container.array;
     Array!int ar;
     ar.length = 12;
-    Slice!(SliceKind.continuous, [2], typeof(ar[])) arSl = ar[].sliced(3, 4);
+    Slice!(SliceKind.contiguous, [2], typeof(ar[])) arSl = ar[].sliced(3, 4);
 }
 
 // Test for map #1
