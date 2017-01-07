@@ -7,10 +7,10 @@ import mir.ndslice.internal;
 
 @fastmath:
 
-struct Stack(Tensors...)
-    if (Tensors.lengths > 1)
+struct Stack(Slices...)
+    if (Slices.lengths > 1)
 {
-    private Tensors tensor;
+    private Slices slices;
 
     private bool empty(size_t dimension)() @property
         if (dimension)
@@ -19,32 +19,32 @@ struct Stack(Tensors...)
     }
 
     ///
-    void each(alias fun, size_t dim = 0)()
+    void each(alias fun, size_t dimension = 0)()
     {
-        static if (dim == 0)
-            foreach (i, ref tensor; tensors)
-                tensor.each!fun;
-        else
-            foreach(i, ref tensor; tensors)
-                for (auto t = tensor; !t.empty!dimension; t.popFront!dimension)
+        static if (dimension)
+            foreach(i, ref slice; slices)
+                for (auto t = slice; !t.empty!dimension; t.popFront!dimension)
                     t.front!dimension.each!fun;
+        else
+            foreach (i, ref slice; slices)
+                slice.each!fun;
     }
 }
 
-struct Transposition(Tensor, size_t dimension)
+struct Transposition(Slice, size_t dimension)
     if (dimension)
 {
-    private Tensor tensor;
+    private Slice slice;
 
     ///
     void each(alias fun)()
     {
-        static if (is(Tensor : Stack!(Tensors), Tensors...))
-            alias tensors = tensor.tensors;
+        static if (is(Slice : Stack!(Slices), Slices...))
+            alias slices = slice.slices;
         else
-            alias tensors = AliasSeq!tensor;
-        foreach(i, ref tensor; tensors)
-            for (auto t = tensor; !tensor.empty!dimension; tensor.popFront!dimension )
+            alias slices = AliasSeq!slice;
+        foreach(i, ref slice; slices)
+            for (auto t = slice; !slice.empty!dimension; slice.popFront!dimension )
             {}
     }
 }
