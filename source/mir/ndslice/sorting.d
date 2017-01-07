@@ -22,61 +22,80 @@ Returns:
     `true` if the range is sorted, false otherwise. `isSorted` allows
     duplicates, $(LREF isStrictlyMonotonic) not.
 */
-bool isSorted
-    (alias less = "a < b", SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
-    if (packs.length == 1)
+template isSorted(alias less = "a < b")
 {
     import mir.functional: naryFun;
-
-    if (slice.anyEmpty)
-        return true;
-
-    auto ahead = slice;
-    ahead.popFront();
-
-    static if (packs[0] == 1)
+    static if (__traits(isSame, naryFun!less, less))
+    ///
+    bool isSorted(SliceKind kind, size_t[] packs, Iterator)
+        (Slice!(kind, packs, Iterator) slice)
+        if (packs.length == 1)
     {
-        for (; !ahead.empty; ahead.popFront(), slice.popFront())
+        if (slice.anyEmpty)
+            return true;
+
+        auto ahead = slice;
+        ahead.popFront();
+
+        static if (packs[0] == 1)
         {
-            if (!naryFun!less(ahead.front, slice.front)) continue;
-            // Check for antisymmetric predicate
-            assert(
-                !naryFun!less(slice.front, ahead.front),
-                "Predicate for isSorted is not antisymmetric. Both" ~
-                        " pred(a, b) and pred(b, a) are true for certain values.");
-            return false;
+            for (; !ahead.empty; ahead.popFront(), slice.popFront())
+            {
+                if (!less(ahead.front, slice.front)) continue;
+                // Check for antisymmetric predicate
+                assert(
+                    !less(slice.front, ahead.front),
+                    "Predicate for isSorted is not antisymmetric. Both" ~
+                            " pred(a, b) and pred(b, a) are true for certain values.");
+                return false;
+            }
+            return true;
         }
-        return true;
+        else
+        {
+            static assert("isSorted does not implemented for multidimensional slices.");
+        }
     }
     else
-    {
-        static assert("isSorted does not implemented for multidimensional slices.");
-    }
+        alias isSorted = .isSorted!(naryFun!less);
 }
 
 /// ditto
-bool isStrictlyMonotonic
-    (alias less = "a < b", SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
-    if (packs.length == 1)
-{
-    import std.algorithm.searching : findAdjacent;
-    return findAdjacent!((a,b) => !binaryFun!less(a,b))(r).empty;
-}
-
-
-///
-Slice!(SliceKind.continuous, [1], Iterator)
-    sort
-    (alias less = "a < b", SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
-    if (packs.length == 1)
+template isStrictlyMonotonic(alias less = "a < b")
 {
     import mir.functional: naryFun;
-    import mir.ndslice.topology: flattened;
-    slice.flattened.quickSortImpl!(naryFun!less, Iterator);
-    return slice;
+    static if (__traits(isSame, naryFun!less, less))
+    ///
+    bool isStrictlyMonotonic(SliceKind kind, size_t[] packs, Iterator)
+        (Slice!(kind, packs, Iterator) slice)
+        if (packs.length == 1)
+    {
+        static if (__traits(isSame, less, less))
+        ///
+        import std.algorithm.searching : findAdjacent;
+        import mir.functional: not;
+        return findAdjacent!(not!less)(r).empty;
+    }
+    else
+        alias isStrictlyMonotonic = .isStrictlyMonotonic!(naryFun!less);
+}
+
+///
+template sort(alias less = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!less, less))
+    ///
+    Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
+        (Slice!(kind, packs, Iterator) slice)
+        if (packs.length == 1)
+    {
+        import mir.ndslice.topology: flattened;
+        slice.flattened.quickSortImpl!less;
+        return slice;
+    }
+    else
+        alias sort = .sort!(naryFun!less);
 }
 
 void quickSortImpl(alias less, Iterator)(Slice!(SliceKind.continuous, [1], Iterator) slice)
