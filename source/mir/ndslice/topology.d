@@ -148,7 +148,7 @@ Slice!(SliceKind.canonical, packs, Iterator)
 }
 
 Slice!(SliceKind.continuous, packs, Iterator)
-    assumeContinious
+    assumeContinuous
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
 {
