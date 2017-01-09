@@ -417,7 +417,7 @@ iota(I = size_t, size_t N)(size_t[N] lengths...)
 
 ///ditto
 Slice!(SliceKind.contiguous, [N], IotaIterator!I)
-iota(I = size_t, size_t N)(size_t[N] lengths, I start)
+iota(I, size_t N)(size_t[N] lengths, I start)
     if (isIntegral!I || isPointer!I)
 {
     import mir.ndslice.slice : sliced;
@@ -426,7 +426,7 @@ iota(I = size_t, size_t N)(size_t[N] lengths, I start)
 
 ///ditto
 Slice!(SliceKind.contiguous, [N], StrideIterator!(IotaIterator!I))
-iota(I = size_t, size_t N)(size_t[N] lengths, I start, size_t stride)
+iota(I, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (isIntegral!I || isPointer!I)
 {
     import mir.ndslice.slice : sliced;
