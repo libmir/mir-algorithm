@@ -1364,24 +1364,27 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     auto ref opIndex(size_t I)(size_t[I] _indexes...)
         if (I && I <= packs[0])
     {
-        Iterator c = _iterator;
-        c += indexStride(_indexes);
         static if (I == N)
-            return *c;
-        else
-        static if (I == packs[0])
-            static if (S)
-                return DeepElemType(_lengths[packs[0] .. $], _strides[packs[0] .. $], c);
-            else
-                return DeepElemType(_lengths[packs[0] .. $], _strides, c);
+            return _iterator[indexStride(_indexes)];
         else
         {
-            alias Ret = Slice!(kind, (packs[0] - I) ~ packs[1 .. $], Iterator);
-            static if (S)
-                return Ret(_lengths[I .. N], _strides[I .. S], c);
+            auto c = _iterator;
+            c += indexStride(_indexes);
+            static if (I == packs[0])
+                static if (S)
+                    return DeepElemType(_lengths[packs[0] .. $], _strides[packs[0] .. $], c);
+                else
+                    return DeepElemType(_lengths[packs[0] .. $], _strides, c);
             else
-                return Ret(_lengths[I .. N], _strides, c);
+            {
+                alias Ret = Slice!(kind, (packs[0] - I) ~ packs[1 .. $], Iterator);
+                static if (S)
+                    return Ret(_lengths[I .. N], _strides[I .. S], c);
+                else
+                    return Ret(_lengths[I .. N], _strides, c);
+            }
         }
+
     }
 
     /////ditto

@@ -437,7 +437,7 @@ struct MapIterator(Iterator, alias fun)
     auto ref opUnary(string op : "*")()
     {
         static if (is(Iterator : ZipIterator!(Iterators), Iterators...))
-            with(_iterator) return mixin("fun(" ~ _iotaArgs!(Iterators.length, "*_iterators[", "], ") ~ ")");
+            return mixin("fun(" ~ _iotaArgs!(Iterators.length, "*_iterator._iterators[", "], ") ~ ")");
         else
             return fun(*_iterator);
     }
@@ -449,7 +449,7 @@ struct MapIterator(Iterator, alias fun)
     auto ref opIndex()(ptrdiff_t index)
     {
         static if (is(Iterator : ZipIterator!(Iterators), Iterators...))
-            with(_iterator) return mixin("fun(" ~ _iotaArgs!(Iterators.length, "_iterators[", "][index], ") ~ ")");
+            return mixin("fun(" ~ _iotaArgs!(Iterators.length, "_iterator._iterators[", "][index], ") ~ ")");
         else
             return fun(_iterator[index]);
     }
@@ -678,18 +678,17 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     {
         ptrdiff_t _shift;
         n += _indexes[$ - 1];
-        with (_slice) foreach_reverse (i; Iota!(1, packs[0]))
+        foreach_reverse (i; Iota!(1, packs[0]))
         {
-            immutable v = n / ptrdiff_t(_lengths[i]);
-            n %= ptrdiff_t(_lengths[i]);
+            immutable v = n / ptrdiff_t(_slice._lengths[i]);
+            n %= ptrdiff_t(_slice._lengths[i]);
             static if (i == _slice.S)
                 _shift += (n - _indexes[i]);
             else
-                _shift += (n - _indexes[i]) * _strides[i];
+                _shift += (n - _indexes[i]) * _slice._strides[i];
             n = _indexes[i - 1] + v;
         }
-        with (_slice)
-            _shift += (n - _indexes[0]) * _strides[0];
+        _shift += (n - _indexes[0]) * _slice._strides[0];
         return _shift;
     }
 
@@ -699,33 +698,33 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         {
             return *_slice._iterator;
         }
-        else with (_slice)
+        else
         {
-            alias M = DeepElemType.N;
-            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _iterator);
+            alias M = _slice.DeepElemType.N;
+            return _slice.DeepElemType(_slice._lengths[$ - M .. $], _slice._strides[$ - M .. $], _slice._iterator);
         }
     }
 
     void opUnary(string op)()
         if (op == "--" || op == "++")
     {
-        with(_slice) foreach_reverse (i; Iota!(packs[0]))
+        foreach_reverse (i; Iota!(packs[0]))
         {
             static if (i == _slice.S)
-                mixin(op ~ `_iterator;`);
+                mixin(op ~ `_slice._iterator;`);
             else
-                mixin(`_iterator ` ~ op[0] ~ `= _strides[i];`);
+                mixin(`_slice._iterator ` ~ op[0] ~ `= _slice._strides[i];`);
             mixin (op ~ `_indexes[i];`);
             static if (i)
             {
                 static if (op == "++")
                 {
-                    if (_indexes[i] < _lengths[i])
+                    if (_indexes[i] < _slice._lengths[i])
                         return;
                     static if (i == _slice.S)
-                        _iterator -= _lengths[i];
+                        _slice._iterator -= _slice._lengths[i];
                     else
-                        _iterator -= _lengths[i] * _strides[i];
+                        _slice._iterator -= _slice._lengths[i] * _slice._strides[i];
                     _indexes[i] = 0;
                 }
                 else
@@ -733,10 +732,10 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
                     if (_indexes[i] >= 0)
                         return;
                     static if (i == _slice.S)
-                        _iterator += _lengths[i];
+                        _slice._iterator += _slice._lengths[i];
                     else
-                        _iterator += _lengths[i] * _strides[i];
-                    _indexes[i] = _lengths[i] - 1;
+                        _slice._iterator += _slice._lengths[i] * _slice._strides[i];
+                    _indexes[i] = _slice._lengths[i] - 1;
                 }
             }
         }
@@ -748,10 +747,10 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         {
             return _slice._iterator[getShift(index)];
         }
-        else with (_slice)
+        else
         {
-            alias M = DeepElemType.N;
-            return DeepElemType(_lengths[$ - M .. $], _strides[$ - M .. $], _iterator + getShift(index));
+            alias M = _slice.DeepElemType.N;
+            return _slice.DeepElemType(_slice._lengths[$ - M .. $], _slice._strides[$ - M .. $], _slice._iterator + getShift(index));
         }
     }
 
@@ -775,29 +774,26 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     void opOpAssign(string op : "+")(ptrdiff_t n)
     {
         ptrdiff_t _shift;
-        with (_slice)
+        n += _indexes[$ - 1];
+        foreach_reverse (i; Iota!(1, packs[0]))
         {
-            n += _indexes[$ - 1];
-            foreach_reverse (i; Iota!(1, packs[0]))
-            {
-                immutable v = n / ptrdiff_t(_lengths[i]);
-                n %= ptrdiff_t(_lengths[i]);
-                static if (i == _slice.S)
-                    _shift += (n - _indexes[i]);
-                else
-                    _shift += (n - _indexes[i]) * _strides[i];
-                _indexes[i] = n;
-                n = _indexes[i - 1] + v;
-            }
-            _shift += (n - _indexes[0]) * _strides[0];
-            _indexes[0] = n;
-            foreach_reverse (i; Iota!(1, packs[0]))
-            {
-                if (_indexes[i] >= 0)
-                    break;
-                _indexes[i] += _lengths[i];
-                _indexes[i - 1]--;
-            }
+            immutable v = n / ptrdiff_t(_slice._lengths[i]);
+            n %= ptrdiff_t(_slice._lengths[i]);
+            static if (i == _slice.S)
+                _shift += (n - _indexes[i]);
+            else
+                _shift += (n - _indexes[i]) * _slice._strides[i];
+            _indexes[i] = n;
+            n = _indexes[i - 1] + v;
+        }
+        _shift += (n - _indexes[0]) * _slice._strides[0];
+        _indexes[0] = n;
+        foreach_reverse (i; Iota!(1, packs[0]))
+        {
+            if (_indexes[i] >= 0)
+                break;
+            _indexes[i] += _slice._lengths[i];
+            _indexes[i - 1]--;
         }
         _slice._iterator += _shift;
     }
