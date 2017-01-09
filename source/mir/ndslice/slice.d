@@ -584,7 +584,10 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             {
                 enum E = I - 1;
                 assert(_indexes[E] < _lengths[E], indexError!(E, N));
-                size_t stride = _indexes[E];
+                static if (I == N)
+                    size_t stride = _indexes[E];
+                else
+                    size_t stride = _strides[E] * _indexes[E];
                 foreach_reverse (i; Iota!E) //static
                 {
                     assert(_indexes[i] < _lengths[i], indexError!(i, N));
