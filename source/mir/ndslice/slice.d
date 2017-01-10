@@ -57,7 +57,16 @@ enum SliceKind
     contiguous,
 }
 
-template SkipDimension(size_t dimension, size_t index)
+///
+enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;
+
+///
+unittest
+{
+    static assert(kindOf!(Slice!(SliceKind.canonical, [1], int*)) == SliceKind.canonical);
+}
+
+private template SkipDimension(size_t dimension, size_t index)
 {
     static if (index < dimension)
          enum SkipDimension = index;
