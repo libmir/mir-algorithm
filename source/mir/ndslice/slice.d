@@ -650,7 +650,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         strides = strides
         range = range or pointer to iterate on
     +/
-    this(in size_t[N] lengths, in sizediff_t[S] strides, Iterator iterator)
+    this()(in size_t[N] lengths, in sizediff_t[S] strides, Iterator iterator)
     {
         foreach (i; Iota!N)
             _lengths[i] = lengths[i];
@@ -776,7 +776,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         if and only if all strides are positive.
     +/
     static if (is(Iterator == Iterator))
-    auto iterator() @property
+    auto iterator()() @property
     {
         return _iterator;
     }
