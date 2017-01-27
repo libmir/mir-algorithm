@@ -59,8 +59,9 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
 {
 @fastmath:
     import core.bitop: bsr;
-    private enum shift = bsr(I.sizeof) + 3;
-    private enum mask = (1 << shift) - 1;
+    package alias E = I;
+    package enum shift = bsr(I.sizeof) + 3;
+    package enum mask = (1 << shift) - 1;
 
     ///
     Field _field;

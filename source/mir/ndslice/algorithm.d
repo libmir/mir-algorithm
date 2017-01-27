@@ -127,7 +127,6 @@ template reduce(alias fun)
             alias UT = Unqual!S;
         else
             alias UT = S;
-        import mir.functional: naryFun;
         return reduceImpl!(fun, UT, Slices)(seed, slices);
     }
     else
@@ -975,4 +974,117 @@ template cmp(alias pred = "a < b")
     assert(cmp(sl1[0 .. $, 0 .. $ - 3], sl1[0 .. $, 0 .. $ - 3]) == 0);
     assert(cmp(sl1[0 .. $, 0 .. $ - 3], sl1[0 .. $ - 1, 0 .. $ - 3]) > 0);
     assert(cmp(sl1[0 .. $ - 1, 0 .. $ - 3], sl1[0 .. $, 0 .. $ - 3]) < 0);
+}
+
+/++
++/
+size_t countImpl(alias fun, Slices...)(Slices slices)
+{
+    size_t ret;
+    alias S = Slices[0];
+    import mir.functional: naryFun;
+    import mir.ndslice.iterator: FieldIterator;
+    import mir.ndslice.field: BitwiseField;
+    static if (__traits(isSame, fun, naryFun!"a") && 
+        is(S : Slice!(SliceKind.contiguous, [1], Iterator),
+            Iterator : FieldIterator!BWF,
+            BWF : BitwiseField!Field, Field))
+    {
+        version(LDC)
+            import ldc.intrinsics: ctpop = llvm_ctpop;
+        else
+            import core.bitop: ctpop = popcnt;
+        auto index = slices[0]._iterator._index;
+        auto field = slices[0]._iterator._field;
+        auto length = slices[0]._lengths[0];
+        while (length && (index & field.mask))
+        {
+            if (field[index])
+                ret++;
+            index++;
+            length--;
+        }
+        auto j = index >> field.shift;
+        foreach(i; size_t(j) .. (length >> field.shift) + j)
+            ret += cast(typeof(ret)) ctpop(field._field[i]);
+        index += length;
+        length &= field.mask;
+        index -= length;
+        assert(length == 0);
+        while(length)
+        {
+            if (field[index])
+                ret++;
+            index++;
+            length--;
+        }
+    }
+    else
+    do
+    {
+        static if (slices[0].shape.length == 1)
+        {
+            if(fun(staticMap!(frontOf, slices)))
+                ret++;
+        }
+        else
+            ret += .countImpl!fun(staticMap!(frontOf, slices));
+        foreach(ref slice; slices)
+            slice.popFront;
+    }
+    while(!slices[0].empty);
+    return ret;
+}
+
+/++
++/
+template count(alias fun)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    ///
+    @fastmath size_t count(Slices...)(Slices slices)
+        if (Slices.length)
+    {
+        static if (__traits(isSame, fun, naryFun!"true"))
+            return slices[0].elementsCount;
+        else
+        {
+            //slices.checkShapesMatch;
+            if (slices[0].anyEmpty)
+                return 0;
+            return countImpl!(fun, Slices)(slices);
+        }
+    }
+    else
+        alias count = .count!(naryFun!fun);
+
+}
+
+/// Single slice
+unittest
+{
+    import mir.ndslice.topology : iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto sl = iota(2, 3);
+
+    assert(sl.count!"true" == 6);
+    assert(sl.count!"a" == 5);
+    assert(sl.count!"a % 2" == 3);
+}
+
+unittest
+{
+    import mir.ndslice.topology : iota, bitwise;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto sl = iota(2, 3).bitwise;
+
+    assert(sl.count!"true" == 6 * size_t.sizeof * 8);
+    import std.stdio;
+    writeln(sl.count!"a");
+    assert(sl.count!"a" == 7);
 }
