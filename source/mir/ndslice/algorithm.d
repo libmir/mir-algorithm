@@ -1084,7 +1084,5 @@ unittest
     auto sl = iota(2, 3).bitwise;
 
     assert(sl.count!"true" == 6 * size_t.sizeof * 8);
-    import std.stdio;
-    writeln(sl.count!"a");
     assert(sl.count!"a" == 7);
 }
