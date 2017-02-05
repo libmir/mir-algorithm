@@ -1527,11 +1527,9 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             }
             foreach (i; Iota!(Slices.length, N))
                 ret._lengths[i - F] = _lengths[i];
-            static if (S)
-                foreach (i; Iota!(Slices.length, S))
-                    ret._strides[i - F] = _strides[i];
-            else
-                foreach (i; Iota!(Slices.length, S))
+            
+            foreach (i; Iota!(Slices.length, N))
+                static if (ret.S > i - F)
                     ret._strides[i - F] = _strides[i];
             ret._iterator = _iterator;
             ret._iterator += stride;
@@ -2646,4 +2644,12 @@ pure nothrow unittest
 
     --a[1, 0..$-1];
     assert(a[1] == [0, 0, 1]);
+}
+
+unittest
+{
+    import mir.ndslice.topology: iota, universal;
+
+    auto sl = iota(3, 4).universal;
+    assert(sl[0 .. $] == sl);
 }
