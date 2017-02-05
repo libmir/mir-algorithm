@@ -307,6 +307,18 @@ unittest
 }
 
 /++
+Presents $(LREF .Slice.structure).
++/
+struct Structure(size_t N)
+{
+    ///
+    size_t[N] lengths;
+    ///
+    sizediff_t[N] strides;
+}
+
+
+/++
 Presents an n-dimensional view over a range.
 
 $(H3 Definitions)
@@ -868,6 +880,48 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(iota(3, 4, 5, 6, 7)
             .pack!2
             .strides == s);
+    }
+
+    /++
+    Returns: static array of lengths and static array of strides
+    See_also: $(LREF .Slice.shape)
+   +/
+    Structure!(packs[0]) structure()() @property const
+    {
+        return typeof(return)(_lengths[0 .. packs[0]], strides);
+    }
+
+    static if (doUnittest)
+    /// Regular slice
+    @safe @nogc pure nothrow unittest
+    {
+        import mir.ndslice.topology : iota;
+        assert(iota(3, 4, 5)
+            .structure == Structure!3([3, 4, 5], [20, 5, 1]));
+    }
+
+    static if (doUnittest)
+    /// Modified regular slice
+    @safe @nogc pure nothrow unittest
+    {
+        import mir.ndslice.topology : pack, iota, universal;
+        import mir.ndslice.dynamic : reversed, strided, transposed;
+        assert(iota(3, 4, 50)
+            .universal
+            .reversed!2      //makes stride negative
+            .strided!2(6)    //multiplies stride by 6 and changes corresponding length
+            .transposed!2    //brings dimension `2` to the first position
+            .structure == Structure!3([9, 3, 4], [-6, 200, 50]));
+    }
+
+    static if (doUnittest)
+    /// Packed slice
+    @safe @nogc pure nothrow unittest
+    {
+        import mir.ndslice.topology : pack, iota;
+        assert(iota(3, 4, 5, 6, 7)
+            .pack!2
+            .structure == Structure!3([3, 4, 5], [20 * 42, 5 * 42, 1 * 42]));
     }
 
     /++
