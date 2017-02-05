@@ -1207,7 +1207,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     Returns: `true` if for any dimension the length equals to `0`, and `false` otherwise.
     +/
-    bool anyEmpty() const
+    bool anyEmpty()() const
     {
         foreach (i; Iota!(packs[0]))
             if (_lengths[i] == 0)
