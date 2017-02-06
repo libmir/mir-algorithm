@@ -78,24 +78,10 @@ private template SkipDimension(size_t dimension, size_t index)
 /++
 Creates an n-dimensional slice-shell over a `range`.
 Params:
-    range = a random access range or an array; only index operator
-        `auto opIndex(size_t index)` is required for ranges. The length of the
-        range should be equal to the sum of shift and the product of
-        lengths. If `ad`, the length of the
-        range should be greater than or equal to the sum of shift and the product of
-        lengths.
+    array = An array. The length of the
+        array should be equal to tthe product of
+        lengths. .
     lengths = list of lengths for each dimension
-    shift = index of the first element of a `range`.
-        The first `shift` elements of range are ignored.
-    Names = names of elements in a slice tuple.
-        Slice tuple is a slice, which holds single set of lengths and strides
-        for a number of ranges.
-    ra = If `yes`, the array will be replaced with
-        its pointer to improve performance.
-        Use `no` for compile time function evaluation.
-    ad = If `yes`, no assert error will be thrown for iterator, which
-        has a length and its length is greater then the sum of shift and the product of
-        lengths.
 Returns:
     n-dimensional slice
 +/
@@ -658,7 +644,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Params:
         lengths = lengths
         strides = strides
-        range = range or pointer to iterate on
+        iterator = an iterator or a pointer to iterate on
     +/
     this()(in size_t[N] lengths, in sizediff_t[S] strides, Iterator iterator)
     {

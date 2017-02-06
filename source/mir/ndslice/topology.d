@@ -168,7 +168,8 @@ The function does not carry out any calculations, it simply returns the same
 binary data presented differently.
 
 Params:
-    K = sizes of dimension packs
+    p = size of dimension pack
+    slice = a slice to pack
 Returns:
     `pack!K` returns `Slice!(N-K, Slice!(K+1, Iterator))`;
     `slice.pack!(K1, K2, ..., Kn)` is the same as `slice.pack!K1.pack!K2. ... pack!Kn`.
@@ -481,7 +482,6 @@ Returns a 1-dimensional slice over the main diagonal of an n-dimensional slice.
 $(LREF blocks) (diagonal blocks) and $(LREF windows) (multi-diagonal slice).
 
 Params:
-    N = dimension count
     slice = input slice
 Returns:
     1-dimensional slice composed of diagonal elements
@@ -1195,7 +1195,6 @@ The order of elements is preserved.
 `flattened` can be generalized with other selectors.
 
 Params:
-    N = dimension count
     slice = slice to be iterated
 Returns:
     random access range composed of elements of the `slice`
@@ -1727,9 +1726,9 @@ unittest
 
 /++
 Implements the homonym function (also known as `transform`) present
-in many languages of functional flavor. The call `map!(fun)(tensor)`
-returns a tensor of which elements are obtained by applying `fun`
-for all elements in `tensor`. The original tensors are
+in many languages of functional flavor. The call `map!(fun)(slice)`
+returns a slice of which elements are obtained by applying `fun`
+for all elements in `slice`. The original slices are
 not changed. Evaluation is done lazily.
 
 Note:
@@ -1737,10 +1736,6 @@ Note:
     $(SUBREF topology, pack) can be used to specify dimensions.
 Params:
     fun = One or more functions.
-    tensor = An input tensor.
-Returns:
-    a tensor with each fun applied to all the elements. If there is more than one
-    fun, the element type will be `Tuple` containing one element for each fun.
 See_Also:
     $(REF map, std,algorithm,iteration)
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
@@ -1754,8 +1749,13 @@ template map(fun...)
         static if (__traits(isSame, naryFun!fun, fun))
         {
             alias f = fun[0];
-
-            ///
+            /++
+            Params:
+                slice = An input slice.
+            Returns:
+                a slice with each fun applied to all the elements. If there is more than one
+                fun, the element type will be `Tuple` containing one element for each fun.
+            +/
             @fastmath auto map(SliceKind kind, size_t[] packs, Iterator)
                 (Slice!(kind, packs, Iterator) slice)
             {
@@ -2011,8 +2011,6 @@ unittest
 Groups slices into a slice tuple. The slices must have identical structure.
 Slice tuple is a slice, which holds single set of lengths and strides
 for a number of ranges.
-Params:
-    Names = names of elements in a slice tuple
 Returns:
     n-dimensional slice
 See_also: $(LREF .Slice.structure).

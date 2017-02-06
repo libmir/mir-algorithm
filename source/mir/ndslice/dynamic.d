@@ -387,7 +387,6 @@ Params:
     slice = input slice
     Dimensions = indexes of dimensions to be brought to the first position
     dimensions = indexes of dimensions to be brought to the first position
-    dimension = index of dimension to be brought to the first position
 Returns:
     n-dimensional slice of the same type
 See_also: $(LREF swapped), $(LREF everted)
@@ -521,7 +520,6 @@ Params:
     slice = input slice
     Dimensions = indexes of dimensions to reverse order of iteration
     dimensions = indexes of dimensions to reverse order of iteration
-    dimension = index of dimension to reverse order of iteration
 Returns:
     n-dimensional slice of the same type
 +/
@@ -625,10 +623,8 @@ private enum _stridedCode = q{
 Multiplies the stride of the selected dimension by a factor.
 
 Params:
-    slice = input slice
     Dimensions = indexes of dimensions to be strided
-    dimensions = indexes of dimensions to be strided
-    factors = list of step extension factors
+    dimension = indexe of a dimension to be strided
     factor = step extension factors
 Returns:
     n-dimensional slice of the same type
@@ -639,6 +635,11 @@ template strided(Dimensions...)
     static if (!allSatisfy!(isSize_t, Dimensions))
         alias strided = .strided!(staticMap!(toSize_t, Dimensions));
     else
+    /++
+    Params:
+        slice = input slice
+        factors = list of step extension factors
+    +/
     @fastmath auto strided(size_t[] packs, Iterator)(Slice!(SliceKind.universal, packs, Iterator) slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
     body
     {
