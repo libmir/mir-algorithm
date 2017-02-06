@@ -1,6 +1,25 @@
 /++
 This is a submodule of $(MREF mir,ndslice).
 
+Field is a type with `opIndex(ptrdiff_t index)` primitive.
+An iterator can be created on top of a field using $(REF FieldIterator, mir,ndslice,iterator).
+
+$(BOOKTABLE $(H2 Fields),
+$(TR $(TH Field Name) $(TH Used By))
+$(T2 MapField, $(REF map, mir,ndslice,topology))
+$(T2 RepeatField, $(REF repeat, mir,ndslice,topology))
+$(T2 BitwiseField, $(REF bitwise, mir,ndslice,topology))
+$(T2 ndIotaField, $(REF ndiota, mir,ndslice,topology))
+)
+
+
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright © 2016-, Ilya Yaroshenko
+Authors:   Ilya Yaroshenko
+
+Macros:
+SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
+T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.field;
 
@@ -10,13 +29,18 @@ import mir.ndslice.internal;
 
 @fastmath:
 
-///
+/++
+`MapField` is used by $(REF map, mir,ndslice,topology).
++/
 struct MapField(Field, alias fun)
 {
 @fastmath:
     ///
     Field _field;
 
+    /++
+    User defined constructor used by $(LREF mapField).
+    +/
     static auto __map(alias fun1)(ref typeof(this) f)
     {
         import mir.funcitonal: pipe;
@@ -30,6 +54,7 @@ struct MapField(Field, alias fun)
 }
 
 /++
+Creates a mapped field. Uses `__map` if possible.
 +/
 static auto mapField(alias fun, Field)(Field field)
 {
@@ -39,7 +64,9 @@ static auto mapField(alias fun, Field)(Field field)
         return MapField!(Field, fun)(field);
 }
 
-///
+/++
+`RepeatField` is used by $(REF repeat, mir,ndslice,topology).
++/
 struct RepeatField(T)
 {
 @fastmath:
@@ -57,7 +84,9 @@ struct RepeatField(T)
     { return cast(T) _value; }
 }
 
-///
+/++
+`BitwiseField` is used by $(REF bitwise, mir,ndslice,topology).
++/
 struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     if (isIntegral!I)
 {
@@ -100,8 +129,7 @@ unittest
 }
 
 /++
-Iterator composed of indexes.
-See_also: $(LREF ndiota)
+`ndIotaField` is used by $(REF ndiota, mir,ndslice,topology).
 +/
 struct ndIotaField(size_t N)
     if (N)

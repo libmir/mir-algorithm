@@ -1,5 +1,29 @@
 /++
 This is a submodule of $(MREF mir,ndslice).
+
+Iterator is a type with a pointer like behavior.
+An ndslice can be created on top of a field using $(REF sliced, mir,ndslice,slice).
+
+$(BOOKTABLE $(H2 Iterators),
+$(TR $(TH Iterator Name) $(TH Used By))
+$(T2 IotaIterator, $(REF iota, mir,ndslice,topology))
+$(T2 RetroIterator, $(REF retro, mir,ndslice,topology))
+$(T2 StrideIterator, $(REF stride, mir,ndslice,topology))
+$(T2 ZipIterator, $(REF zip, mir,ndslice,topology))
+$(T2 MapIterator, $(REF map, mir,ndslice,topology))
+$(T2 IndexIterator, TODO)
+$(T2 SliceIterator, $(REF map, mir,ndslice,topology) in composition with $(LREF MapIterator) for packed slices.)
+$(T2 FieldIterator, $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.)
+$(T2 FlattenedIterator, $(REF flattened, mir,ndslice,topology))
+)
+
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright © 2016-, Ilya Yaroshenko
+Authors:   Ilya Yaroshenko
+
+Macros:
+SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
+T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.iterator;
 
@@ -11,6 +35,9 @@ import mir.ndslice.internal;
 @fastmath:
 
 /++
+Step counter.
+
+`IotaIterator` is used by $(REF iota, mir,ndslice,topology).
 +/
 struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
@@ -105,6 +132,9 @@ pure nothrow @nogc unittest
 }
 
 /++
+Reverse directions for an iterator.
+
+`RetroIterator` is used by $(REF retro, mir,ndslice,topology).
 +/
 struct RetroIterator(Iterator)
 {
@@ -196,6 +226,9 @@ struct RetroIterator(Iterator)
 }
 
 /++
+Iterates an iterator with a fixed strides.
+
+`StrideIterator` is used by $(REF stride, mir,ndslice,topology).
 +/
 struct StrideIterator(Iterator)
 {
@@ -333,6 +366,9 @@ private template _zip_index(Iterators...)
 }
 
 /++
+Iterates multiple iterators in lockstep.
+
+`ZipIterator` is used by $(REF zip, mir,ndslice,topology).
 +/
 struct ZipIterator(Iterators...)
     if (Iterators.length > 1)
@@ -421,6 +457,7 @@ pure nothrow @nogc unittest
 }
 
 /++
+`MapIterator` is used by $(REF map, mir,ndslice,topology).
 +/
 struct MapIterator(Iterator, alias fun)
 {
@@ -483,6 +520,7 @@ struct MapIterator(Iterator, alias fun)
 }
 
 /++
+Creates a mapped iterator. Uses `__map` if possible.
 +/
 auto mapIterator(alias fun, Iterator)(Iterator iterator)
 {
@@ -493,6 +531,9 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
 }
 
 /++
+Iterates a field using an iterator.
+
+`IndexIterator` is used by TODO.
 +/
 struct IndexIterator(Iterator, Field)
 {
@@ -552,6 +593,10 @@ struct IndexIterator(Iterator, Field)
 }
 
 /++
+Iterates on top of another iterator and returns a slice
+as a multidimensional window at the current position.
+
+`SliceIterator` is used by $(REF map, mir,ndslice,topology) for packed slices.
 +/
 struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
 {
@@ -603,6 +648,9 @@ struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
 }
 
 /++
+Creates an iterator on top of a field.
+
+`FieldIterator` is used by $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.
 +/
 struct FieldIterator(Field)
 {
@@ -657,6 +705,9 @@ struct FieldIterator(Field)
 }
 
 /++
+Creates an iterator on top of all elements in a slice.
+
+`FieldIterator` is used by $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.
 +/
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
