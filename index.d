@@ -10,13 +10,10 @@ $(BOOKTABLE ,
         $(TH Modules)
         $(TH Description)
     )
-    $(LEADINGROW Basic API)
+    $(LEADINGROW Multidimensional arrays, ranges, and algorithms)
     $(TR
-        $(TDNW $(MREF mir,algorithm))
-        $(TD Basic API to generate algorithm numbers. Contains generic
-            $(REF_ALTTEXT $(TT rand), rand, mir, algorithm)
-            function that generates real, integral, boolean, and enumerated uniformly distributed values.
-            Publicly includes $(MREF mir,algorithm,engine).)
+        $(TDNW $(MREF mir,ndslice))
+        $(TD .)
     )
 )
 
