@@ -1,46 +1,9 @@
 /++
-$(SCRIPT inhibitQuickIndex = 1;)
-
 This is a submodule of $(MREF mir,ndslice).
 It contains basic multidimensional iteration algorithms.
 
-$(BOOKTABLE Iteration operators,
-$(TR $(TH Operator Name) $(TH Type) $(TH Functions / Seeds #)  $(TH Vectorization) $(TH Tensors #) $(TH Returns) $(TH First Argument)  $(TH Triangular and Half Selection))
-$(T8 reduce, Eagerly, `1`, Optional, `>=1`, Scalar, Seed, Yes)
-$(T8 each, Eagerly, `1`/`0`, Optional, `>=1`, `void`, Tensor, Yes)
-)
-
-$(BOOKTABLE Eagerly iteration operators with stop condition,
-$(TR $(TH Operator Name) $(TH Has Needle) $(TH Finds Index) $(TH Tensors #) $(TH Returns) $(TH Requires Equal Shapes) $(TH Triangular and Half Selection))
-$(T7 find, No, Yes, `>=1`, `void`, Yes, Yes)
-$(T7 any, No, No, `>=1`, `bool`, Yes, Yes)
-$(T7 all, No, No, `>=1`, `bool`, Yes, Yes)
-$(T7 equal, No, No, `>=2`, `bool`, No, Yes)
-$(T7 cmp, No, No, `2`, `int`, No, No)
-)
-
 All operators are suitable to change slices using `ref` argument qualification in a function declaration.
-
-$(H3 Lockstep Iteration)
-
-$(REF_ALTTEXT assumeSameStructure, assumeSameStructure, mir,ndslice,slice)
-can be used as multidimensional `zip` analog if slices have the same structure (shape and strides).
-`assumeSameStructure` allows to mutate elements of zipped slices, which is not possible with common
-$(REF zip, std,range).
-
-Also slices zipped with `assumeSameStructure` uses single set of lengths and strides.
-Thus, `assumeSameStructure` may significantly optimize iteration.
-
-If slices have different strides, then most of existing operators in this module still
-can be used as they accept a set of slices instead of single one.
-
-$(H3 Selection)
-$(LREF Select) allows to specify subset of elements to iterate.
-$(LREF Select) is useful in combination with $(SUBREF dynamic, transposed) and $(SUBREF dynamic, reversed).
-
-Note:
-    $(SUBREF dynamic, transposed) and
-    $(SUBREF topology, pack) can be used to specify dimensions.
+Note, that string lambdas in Mir are `auto ref` functions.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
@@ -99,17 +62,16 @@ S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 
 /++
 Implements the homonym function (also known as `accumulate`,
-`compress`, `inject`, or `foldl`) present in various programming
-languages of functional flavor. The call `fold!(fun)(seed, slices1, ..., tesnsorN)`
+`compress`, `inject`, or `fold`) present in various programming
+languages of functional flavor. The call `reduce!(fun)(seed, slice1, ..., sliceN)`
 first assigns `seed` to an internal variable `result`,
 also called the accumulator. Then, for each set of element `x1, ..., xN` in
-`slices1, ..., sliceN`, `result = fun(result, x1, ..., xN)` gets evaluated. Finally,
+`slice1, ..., sliceN`, `result = fun(result, x1, ..., xN)` gets evaluated. Finally,
 `result` is returned.
 
 `reduce` allows to iterate multiple slices in the lockstep.
 
 Note:
-    $(SUBREF dynamic, transposed) and
     $(SUBREF topology, pack) can be used to specify dimensions.
 Params:
     fun = A function.
@@ -119,11 +81,6 @@ Returns:
     the accumulated `result`
 See_Also:
     $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
-
-    This is functionally similar to $(LREF reduce) with the argument order reversed.
-    $(LREF fold) allows to compute values for multiple functions.
-
-    $(REF reduce, std,algorithm,iteration)
 
     $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
 +/
@@ -308,9 +265,9 @@ void eachImpl(alias fun, Slices...)(Slices slices)
 }
 
 /++
-The call `each!(fun)(slices1, ..., tesnsorN)`
+The call `each!(fun)(slice1, ..., sliceN)`
 evaluates `fun` for each set of elements `x1, ..., xN` in
-`slices1, ..., sliceN` respectively.
+`slice1, ..., sliceN` respectively.
 
 `each` allows to iterate multiple slices in the lockstep.
 
@@ -321,11 +278,7 @@ Params:
     fun = A function.
     slices = One or more slices.
 See_Also:
-    $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
-
     This is functionally similar to $(LREF reduce) but has not seed.
-
-    $(REF each, std,algorithm,iteration)
 +/
 template each(alias fun)
 {
@@ -446,14 +399,15 @@ Finds a backward index for which
 
 Params:
     pred = The predicate.
-    backwardIndex = The variable passing by reference to be filled with the multidimensional backward index for which the predicate is true.
-        `backwardIndex` equals zeros, if the predicate evaluates `false` for all indexes.
     slices = One or more slices.
+Returns:
+    The variable passing by reference to be filled with the multidimensional backward index for which the predicate is true.
+    Backward index equals zeros, if the predicate evaluates `false` for all indexes.
 
 Optimization:
-To check if any element was found
-use the last dimension (row index).
-This will slightly optimize the code.
+    To check if any element was found
+    use the last dimension (row index).
+    This will slightly optimize the code.
 --------
 // $-1 instead of 0
 if (backwardIndex[$-1])
@@ -604,7 +558,7 @@ size_t anyImpl(alias fun, Slices...)(Slices slices)
 }
 
 /++
-Like $(LREF any), but only returns whether or not the search was successful.
+Like $(LREF find), but only returns whether or not the search was successful.
 
 Params:
     pred = The predicate.
@@ -991,8 +945,6 @@ template cmp(alias pred = "a < b")
     assert(cmp(sl1[0 .. $ - 1, 0 .. $ - 3], sl1[0 .. $, 0 .. $ - 3]) < 0);
 }
 
-/++
-+/
 size_t countImpl(alias fun, Slices...)(Slices slices)
 {
     size_t ret;
@@ -1050,6 +1002,13 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
 }
 
 /++
+Counts elements in slices according to the `fun`.
+Params:
+    fun = A predicate.
+    slices = One or more slices.
+
+Optimization:
+    `count!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology).
 +/
 template count(alias fun)
 {

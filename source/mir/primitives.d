@@ -1,10 +1,11 @@
 /++
+Templates used to check primitives.
 +/
 module mir.primitives;
 
 /++
-Returns `true` if `R` has a `length` member that returns an
-integral type. `R` does not have to be a range.
+Returns: `true` if `R` has a `length` member that returns an
+integral type implicitly convertible to `size_t`. `R` does not have to be a range.
 +/
 template hasLength(R)
 {

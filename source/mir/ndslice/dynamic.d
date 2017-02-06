@@ -1,4 +1,4 @@
-/**
+/++
 $(SCRIPT inhibitQuickIndex = 1;)
 
 This is a submodule of $(MREF mir, ndslice).
@@ -74,7 +74,7 @@ Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
-*/
++/
 module mir.ndslice.dynamic;
 
 

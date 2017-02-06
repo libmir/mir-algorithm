@@ -1,24 +1,26 @@
-/**
+/++
 Generic utilities.
 
 $(BOOKTABLE Cheat Sheet,
 $(TR $(TH Function Name) $(TH Description))
-$(T2 swap,
-        Swaps two values.)
+$(T2 swap, Swaps two values.)
+$(T2 min, Minimum value.)
+$(T2 max, Maximum value.)
+)
 
 Copyright: Andrei Alexandrescu 2008-2016, Ilya Yaroshenko 2016-.
 License: $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original std.* modules), Ilya Yaroshenko
 Macros:
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
-*/
++/
 module mir.utility;
 
 import std.traits;
 
 /++
 Swaps `lhs` and `rhs`. The instances `lhs` and `rhs` are moved in
-memory, without ever calling $(D opAssign), nor any other function. `T`
+memory, without ever calling `opAssign`, nor any other function. `T`
 need not be assignable at all to be swapped.
 If `lhs` and `rhs` reference the same instance, then nothing is done.
 `lhs` and `rhs` must be mutable. If `T` is a struct or union, then

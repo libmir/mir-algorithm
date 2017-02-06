@@ -18,6 +18,7 @@ it does not check for overflow.
 +/
 template to(T)
 {
+    ///
     auto ref T to(A...)(auto ref A args)
         if (A.length > 0)
     {

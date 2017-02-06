@@ -3,8 +3,12 @@ Functions that manipulate other functions.
 This module provides functions for compile time function composition. These
 functions are helpful when constructing predicates for the algorithms in
 $(MREF mir, ndslice).
-$(BOOKTABLE ,
+$(BOOKTABLE $(H2 Functions),
 $(TR $(TH Function Name) $(TH Description))
+    $(TR $(TD $(LREF naryFun))
+        $(TD Create a unary, binary or N-nary function from a string. Most often
+        used when defining algorithms on ranges and slices.
+    ))
     $(TR $(TD $(LREF pipe))
         $(TD Join a couple of functions into one that executes the original
         functions one after the other, using one function's result for the next
@@ -16,9 +20,14 @@ $(TR $(TH Function Name) $(TH Description))
     $(TR $(TD $(LREF reverseArgs), $(LREF binaryReverseArgs))
         $(TD Predicate that reverses the order of its arguments.
     ))
-    $(TR $(TD $(LREF naryFun)
-        $(TD Create a unary, binary or N-nary function from a string. Most often
-        used when defining algorithms on ranges and slices.
+    $(TR $(TD $(LREF forward))
+        $(TD Forwards function arguments with saving ref-ness.
+    ))
+    $(TR $(TD $(LREF tuple))
+        $(TD Creates a $(LREF RefTuple) structure.
+    ))
+    $(TR $(TD $(LREF _ref))
+        $(TD Creates a $(LREF Ref) structure.
     ))
 )
 Copyright: Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
@@ -234,7 +243,7 @@ private template _naryAliases(size_t n)
 /++
 Transforms a string representing an expression into a binary function. The
 string must use symbol names `a`, `b`, ..., `z`  as the parameters.
-If `fun` is not a string, $(D naryFun) aliases itself away to `fun`.
+If `fun` is not a string, `naryFun` aliases itself away to `fun`.
 +/
 template naryFun(alias fun)
 {
