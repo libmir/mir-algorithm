@@ -1,4 +1,10 @@
+/++
+This is a submodule of $(MREF mir, ndslice).
 
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright © 2016-, Ilya Yaroshenko
+Authors:   Ilya Yaroshenko
++/
 module mir.ndslice.stack;
 
 import std.traits;

@@ -1,21 +1,31 @@
 /++
 This is a submodule of $(MREF mir,ndslice).
+
 It contains basic multidimensional iteration algorithms.
+
+$(BOOKTABLE $(H2 Function),
+$(TR $(TH Function Name) $(TH Description))
+$(T2 reduce, Accumulates all elements.)
+$(T2 each, Iterates all elements.)
+$(T2 find, Finds backward index.)
+$(T2 any, Checks if at least one element satisfy to a predicate.)
+$(T2 all, Checks if all elements satisfy to a predicate.)
+$(T2 count, Counts elements in a slices according to a predicate.)
+$(T2 cmp, Compares two slices.)
+$(T2 equal, Compares two slices for equality.)
+)
+
 
 All operators are suitable to change slices using `ref` argument qualification in a function declaration.
 Note, that string lambdas in Mir are `auto ref` functions.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-
-Copyright: Copyright © 2016, Ilya Yaroshenko
-
+Copyright: Copyright © 2016-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
-T7=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4) $(TD $5) $(TD $6) $(TD $7))
-T8=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4) $(TD $5) $(TD $6) $(TD $7) $(TD $8))
 +/
 module mir.ndslice.algorithm;
 
@@ -75,10 +85,6 @@ Note:
     $(SUBREF topology, pack) can be used to specify dimensions.
 Params:
     fun = A function.
-    seed = An initial accumulation value.
-    slices = One or more slices.
-Returns:
-    the accumulated `result`
 See_Also:
     $(HTTP llvm.org/docs/LangRef.html#fast-math-flags, LLVM IR: Fast Math Flags)
 
@@ -88,7 +94,13 @@ template reduce(alias fun)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
-    ///
+    /++
+    Params:
+        seed = An initial accumulation value.
+        slices = One or more slices.
+    Returns:
+        the accumulated `result`
+    +/
     @fastmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length && allSatisfy!(isSlice, Slices))
     {
@@ -270,13 +282,11 @@ evaluates `fun` for each set of elements `x1, ..., xN` in
 `slice1, ..., sliceN` respectively.
 
 `each` allows to iterate multiple slices in the lockstep.
-
+Params:
+    fun = A function.
 Note:
     $(SUBREF dynamic, transposed) and
     $(SUBREF topology, pack) can be used to specify dimensions.
-Params:
-    fun = A function.
-    slices = One or more slices.
 See_Also:
     This is functionally similar to $(LREF reduce) but has not seed.
 +/
@@ -284,7 +294,10 @@ template each(alias fun)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
-    ///
+    /++
+    Params:
+        slices = One or more slices.
+    +/
     @fastmath auto each(Slices...)(Slices slices)
         if (Slices.length && allSatisfy!(isSlice, Slices))
     {
@@ -398,11 +411,7 @@ Finds a backward index for which
 `pred(slices[0].backward(index), ..., slices[$-1].backward(index))` equals `true`.
 
 Params:
-    pred = The predicate.
-    slices = One or more slices.
-Returns:
-    The variable passing by reference to be filled with the multidimensional backward index for which the predicate is true.
-    Backward index equals zeros, if the predicate evaluates `false` for all indexes.
+    pred = A predicate.
 
 Optimization:
     To check if any element was found
@@ -422,9 +431,6 @@ else
 }
 --------
 
-Constraints:
-    All slices must have the same shape.
-
 See_also:
     $(LREF any)
 
@@ -434,7 +440,15 @@ template find(alias pred)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
-    ///
+    /++
+    Params:
+        slices = One or more slices.
+    Returns:
+        The variable passing by reference to be filled with the multidimensional backward index for which the predicate is true.
+        Backward index equals zeros, if the predicate evaluates `false` for all indexes.
+    Constraints:
+        All slices must have the same shape.
+    +/
     @fastmath size_t[isSlice!(Slices[0])[0]] find(Slices...)(Slices slices)
         if (Slices.length && allSatisfy!(isSlice, Slices))
     {
@@ -562,19 +576,19 @@ Like $(LREF find), but only returns whether or not the search was successful.
 
 Params:
     pred = The predicate.
-    slices = One or more slices.
-
-Returns:
-    `true` if the search was successful and `false` otherwise.
-
-Constraints:
-    All slices must have the same shape.
 +/
 template any(alias pred)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
-    ///
+    /++
+    Params:
+        slices = One or more slices.
+    Returns:
+        `true` if the search was successful and `false` otherwise.
+    Constraints:
+        All slices must have the same shape.
+    +/
     @fastmath bool any(Slices...)(Slices slices)
         if (Slices.length && allSatisfy!(isSlice, Slices))
     {
@@ -679,19 +693,23 @@ size_t allImpl(alias fun, Slices...)(Slices slices)
 
 /++
 Checks if all of the elements verify `pred`.
+
 Params:
     pred = The predicate.
-    slices = One or more slices.
-Returns:
-    `true` all of the elements verify `pred` and `false` otherwise.
-Constraints:
-    All slices must have the same shape.
+
 +/
 template all(alias pred)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
-    ///
+    /++
+    Params:
+        slices = One or more slices.
+    Returns:
+        `true` all of the elements verify `pred` and `false` otherwise.
+    Constraints:
+        All slices must have the same shape.
+    +/
     @fastmath bool all(Slices...)(Slices slices)
         if (Slices.length && allSatisfy!(isSlice, Slices))
     {
@@ -777,20 +795,107 @@ pure nothrow unittest
 }
 
 /++
+Counts elements in slices according to the `fun`.
+Params:
+    fun = A predicate.
+
+Optimization:
+    `count!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology).
++/
+template count(alias fun)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    /++
+    Params:
+        slices = One or more slices.
+
+    Returns: The number elements according to the `fun`.
+
+    Constraints:
+        All slices must have the same shape.
+    +/
+    @fastmath size_t count(Slices...)(Slices slices)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
+    {
+        static if (__traits(isSame, fun, naryFun!"true"))
+        {
+            return slices[0].elementsCount;
+        }
+        else
+        static if (Slices.length == 1 && kindOf!(Slices[0]) == SliceKind.contiguous && isSlice!(Slices[0]) != [1])
+        {
+            import mir.ndslice.topology: flattened;
+            return .count!(naryFun!fun)(slices[0].flattened);
+        }
+        else
+        {
+            slices.checkShapesMatch;
+            if (slices[0].anyEmpty)
+                return 0;
+            return countImpl!(fun, Slices)(slices);
+        }
+    }
+    else
+        alias count = .count!(naryFun!fun);
+
+}
+
+/// Single slice
+unittest
+{
+    import mir.ndslice.topology : iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto sl = iota(2, 3);
+
+    assert(sl.count!"true" == 6);
+    assert(sl.count!"a" == 5);
+    assert(sl.count!"a % 2" == 3);
+}
+
+/// Accelerated set bit count
+unittest
+{
+    import mir.ndslice.topology: iota, bitwise;
+    import mir.ndslice.allocation: slice;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    auto sl = iota(2, 3).bitwise;
+
+    assert(sl.count!"true" == 6 * size_t.sizeof * 8);
+
+    // accelerated
+    assert(sl.count!"a" == 7);
+    assert(sl.slice.count!"a" == 7);
+
+    auto sl2 = iota!ubyte([6], 128).bitwise;
+    assert(sl2.count!"a" == 13);
+    assert(sl2[4 .. $].count!"a" == 13);
+    assert(sl2[4 .. $ - 1].count!"a" == 12);
+    assert(sl2[4 .. $ - 1].count!"a" == 12);
+    assert(sl2[41 .. $ - 1].count!"a" == 1);
+}
+
+/++
 Compares two or more slices for equality, as defined by predicate `pred`.
 
 Params:
     pred = The predicate.
-    slices = Two or more slices.
-
-Returns:
-    `true` any of the elements verify `pred` and `false` otherwise.
 +/
 template equal(alias pred)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
-    ///
+    /++
+    Params:
+        slices = Two or more slices.
+
+    Returns:
+        `true` any of the elements verify `pred` and `false` otherwise.
+    +/
     bool equal(Slices...)(Slices slices)
         if (Slices.length >= 2)
     {
@@ -873,21 +978,23 @@ and `0` if the ranges have the same number of elements.
 
 Params:
     pred = The predicate.
-    sl1 = First slice.
-    sl2 = Second slice.
-
-Returns:
-    `0` if both ranges compare equal.
-    Negative value if the first differing element of `sl1` is less than the corresponding
-    element of `sl2` according to `pred`.
-    Positive value if the first differing element of `sl2` is less than the corresponding
-    element of `sl1` according to `pred`.
 +/
 template cmp(alias pred = "a < b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
-    ///
+    /++
+    Params:
+        sl1 = First slice.
+        sl2 = Second slice.
+
+    Returns:
+        `0` if both ranges compare equal.
+        Negative value if the first differing element of `sl1` is less than the corresponding
+        element of `sl2` according to `pred`.
+        Positive value if the first differing element of `sl2` is less than the corresponding
+        element of `sl1` according to `pred`.
+    +/
     ptrdiff_t cmp(SliceKind kindA, SliceKind kindB, size_t[] packsA, size_t[] packsB, IteratorA, IteratorB)
         (Slice!(kindA, packsA, IteratorA) sl1, Slice!(kindB, packsB, IteratorB) sl2)
         if (packsA[0] == packsB[0])
@@ -999,82 +1106,4 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     }
     while(!slices[0].empty);
     return ret;
-}
-
-/++
-Counts elements in slices according to the `fun`.
-Params:
-    fun = A predicate.
-    slices = One or more slices.
-
-Optimization:
-    `count!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology).
-+/
-template count(alias fun)
-{
-    import mir.functional: naryFun;
-    static if (__traits(isSame, naryFun!fun, fun))
-    ///
-    @fastmath size_t count(Slices...)(Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
-    {
-        static if (__traits(isSame, fun, naryFun!"true"))
-        {
-            return slices[0].elementsCount;
-        }
-        else
-        static if (Slices.length == 1 && kindOf!(Slices[0]) == SliceKind.contiguous && isSlice!(Slices[0]) != [1])
-        {
-            import mir.ndslice.topology: flattened;
-            return .count!(naryFun!fun)(slices[0].flattened);
-        }
-        else
-        {
-            slices.checkShapesMatch;
-            if (slices[0].anyEmpty)
-                return 0;
-            return countImpl!(fun, Slices)(slices);
-        }
-    }
-    else
-        alias count = .count!(naryFun!fun);
-
-}
-
-/// Single slice
-unittest
-{
-    import mir.ndslice.topology : iota;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto sl = iota(2, 3);
-
-    assert(sl.count!"true" == 6);
-    assert(sl.count!"a" == 5);
-    assert(sl.count!"a % 2" == 3);
-}
-
-/// Accelerated set bit count
-unittest
-{
-    import mir.ndslice.topology: iota, bitwise;
-    import mir.ndslice.allocation: slice;
-
-    //| 0 1 2 |
-    //| 3 4 5 |
-    auto sl = iota(2, 3).bitwise;
-
-    assert(sl.count!"true" == 6 * size_t.sizeof * 8);
-
-    // accelerated
-    assert(sl.count!"a" == 7);
-    assert(sl.slice.count!"a" == 7);
-
-    auto sl2 = iota!ubyte([6], 128).bitwise;
-    assert(sl2.count!"a" == 13);
-    assert(sl2[4 .. $].count!"a" == 13);
-    assert(sl2[4 .. $ - 1].count!"a" == 12);
-    assert(sl2[4 .. $ - 1].count!"a" == 12);
-    assert(sl2[41 .. $ - 1].count!"a" == 1);
 }

@@ -1,4 +1,4 @@
-/**
+/++
 $(SCRIPT inhibitQuickIndex = 1;)
 
 This is a submodule of $(MREF mir, ndslice).
@@ -41,16 +41,14 @@ $(T2 windows, n-dimensional slice of n-dimensional overlapping windows.
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-
-Copyright: Copyright © 2016, Ilya Yaroshenko
-
+Copyright: Copyright © 2016-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, std,experimental, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
-*/
++/
 module mir.ndslice.topology;
 
 import std.traits;

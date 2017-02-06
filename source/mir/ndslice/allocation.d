@@ -1,4 +1,28 @@
+/++
+This is a submodule of $(MREF mir,ndslice).
 
+It contains allocation utilities.
+
+$(BOOKTABLE $(H2 Transpose operators),
+$(TR $(TH Function Name) $(TH Description))
+$(T2 slice, Allocates a slice using GC.)
+$(T2 uninitializedSlice, Allocates an uninitialized slice using GC. )
+$(T2 makeSlice, Allocates a slice using an allocator. )
+$(T2 makeUninitializedSlice, Allocates an uninitialized slice using an allocator. )
+$(T2 ndarray, Allocates a common n-dimensional array from a slice. )
+$(T2 makeNdarray, Allocates a common n-dimensional array from a slice using an allocator. )
+$(T2 shape, Returns a shape of a common n-dimensional array. )
+)
+
+
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright © 2016-, Ilya Yaroshenko
+Authors:   Ilya Yaroshenko
+
+Macros:
+SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
+T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
++/
 module mir.ndslice.allocation;
 
 import std.traits;
@@ -80,7 +104,6 @@ pure nothrow unittest
 Creates an uninitialized array and an n-dimensional slice over it.
 Params:
     lengths = list of lengths for each dimension
-    slice = slice to copy shape and data from
 Returns:
     uninitialized n-dimensional slice
 +/
@@ -207,8 +230,6 @@ See also $(MREF std, experimental, allocator).
 Params:
     alloc = allocator
     lengths = list of lengths for each dimension
-    init = default value for array initialization
-    slice = slice to copy shape and data from
 Returns:
     a structure with fields `array` and `slice`
 +/
@@ -327,6 +348,7 @@ auto makeNdarray(T, Allocator, SliceKind kind, size_t[] packs, Iterator)(auto re
 Shape of a common n-dimensional array.
 Params:
     array = common n-dimensional array
+    err = error flag passed by reference
 Returns:
     static array of dimensions type of `size_t[n]`
 Throws:

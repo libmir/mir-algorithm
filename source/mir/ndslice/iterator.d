@@ -1,4 +1,5 @@
 /++
+This is a submodule of $(MREF mir,ndslice).
 +/
 module mir.ndslice.iterator;
 

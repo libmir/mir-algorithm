@@ -1,10 +1,8 @@
-/**
+/++
 This is a submodule of $(MREF mir, ndslice).
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-
-Copyright: Copyright © 2016, Ilya Yaroshenko
-
+Copyright: Copyright © 2016-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 
 Macros:
@@ -12,7 +10,7 @@ SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 STD = $(TD $(SMALL $0))
-*/
++/
 module mir.ndslice.slice;
 
 import std.traits;

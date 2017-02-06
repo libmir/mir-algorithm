@@ -1,3 +1,7 @@
+/++
+This is a submodule of $(MREF mir,ndslice).
+
++/
 module mir.ndslice.field;
 
 import std.traits;
