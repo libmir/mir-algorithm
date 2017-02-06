@@ -7,7 +7,7 @@ The `to` template converts a value from one type _to another.
 The source type is deduced and the target type must be specified, for example the
 expression `to!int(42.0)` converts the number 42 from
 `double` _to `int`. The conversion is "unsafe", i.e.,
-it does check for overflow.
+it does not check for overflow.
  */
 template to(T)
 {

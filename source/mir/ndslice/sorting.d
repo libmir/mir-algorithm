@@ -98,6 +98,18 @@ template sort(alias less = "a < b")
         alias sort = .sort!(naryFun!less);
 }
 
+///
+unittest
+{
+    import mir.ndslice.slice;
+
+    int[10] arr = [7,1,3,2,9,0,5,4,8,6];
+
+    auto data = arr[].ptr.sliced(arr.length);
+    data.sort();
+    assert(data.isSorted);
+}
+
 void quickSortImpl(alias less, Iterator)(Slice!(SliceKind.contiguous, [1], Iterator) slice)
 {
     import mir.utility : swap;
@@ -205,17 +217,6 @@ void quickSortImpl(alias less, Iterator)(Slice!(SliceKind.contiguous, [1], Itera
             swap(slice, tail);
         quickSortImpl!less(tail);
     }
-}
-
-unittest
-{
-    import mir.ndslice.slice;
-
-    int[10] arr = [7,1,3,2,9,0,5,4,8,6];
-
-    auto data = arr[].ptr.sliced(arr.length);
-    data.sort();
-    assert(data.isSorted);
 }
 
 package void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator mid, ref Iterator r)
