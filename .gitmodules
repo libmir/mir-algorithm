@@ -1,0 +1,6 @@
+[submodule "doc/artwork"]
+	path = doc/artwork
+	url = https://github.com/libmir/mir-artwork
+[submodule "doc/dlang.org"]
+	path = doc/dlang.org
+	url = https://github.com/dlang/dlang.org

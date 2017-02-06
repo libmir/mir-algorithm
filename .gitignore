@@ -10,3 +10,5 @@ __*
 *.lst
 
 dub.selections.json
+web
+.generated
