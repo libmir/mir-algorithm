@@ -62,6 +62,21 @@ import std.meta;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 
+private void checkShapesMatch(
+    string fun = __FUNCTION__,
+    string pfun = __PRETTY_FUNCTION__,
+    Slices...)
+    (Slices slices)
+{
+    enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);
+    enum msgShape = "all slices must have the same shape"  ~ tailErrorMessage!(fun, pfun);
+    foreach (i, Slice; Slices)
+    {
+        static assert (slices[i].shape.length == slices[0].shape.length, msgShape);
+        assert(slices[i].shape == slices[0].shape, msgShape);
+    }
+}
+
 @fastmath:
 
 private auto ref frontOf(alias slice)() { return slice.front; };
@@ -118,9 +133,9 @@ template reduce(alias fun)
     static if (__traits(isSame, naryFun!fun, fun))
     ///
     @fastmath auto reduce(S, Slices...)(S seed, Slices slices)
-        if (Slices.length)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
     {
-        //slices.checkShapesMatch;
+        slices.checkShapesMatch;
         if (slices[0].anyEmpty)
             return cast(Unqual!S) seed;
         static if (is(S : Unqual!S))
@@ -318,9 +333,9 @@ template each(alias fun)
     static if (__traits(isSame, naryFun!fun, fun))
     ///
     @fastmath auto each(Slices...)(Slices slices)
-        if (Slices.length)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
     {
-        //slices.checkShapesMatch;
+        slices.checkShapesMatch;
         if (slices[0].anyEmpty)
             return;
         eachImpl!fun(slices);
@@ -398,7 +413,7 @@ unittest
 }
 
 size_t findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slices slices)
-    if (Slices.length)
+    if (Slices.length && allSatisfy!(isSlice, Slices))
 {
     do
     {
@@ -467,9 +482,9 @@ template find(alias pred)
     static if (__traits(isSame, naryFun!pred, pred))
     ///
     @fastmath size_t[isSlice!(Slices[0])[0]] find(Slices...)(Slices slices)
-        if (Slices.length)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
     {
-        //slices.checkShapesMatch;
+        slices.checkShapesMatch;
         typeof(return) ret;
         if (!slices[0].anyEmpty)
             findImpl!pred(ret, slices);
@@ -567,7 +582,7 @@ pure nothrow unittest
 }
 
 size_t anyImpl(alias fun, Slices...)(Slices slices)
-    if (Slices.length)
+    if (Slices.length && allSatisfy!(isSlice, Slices))
 {
     do
     {
@@ -607,9 +622,9 @@ template any(alias pred)
     static if (__traits(isSame, naryFun!pred, pred))
     ///
     @fastmath bool any(Slices...)(Slices slices)
-        if (Slices.length)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
     {
-        //slices.checkShapesMatch;
+        slices.checkShapesMatch;
         return !slices[0].anyEmpty && anyImpl!pred(slices);
     }
     else
@@ -687,7 +702,7 @@ pure nothrow unittest
 }
 
 size_t allImpl(alias fun, Slices...)(Slices slices)
-    if (Slices.length)
+    if (Slices.length && allSatisfy!(isSlice, Slices))
 {
     do
     {
@@ -724,9 +739,9 @@ template all(alias pred)
     static if (__traits(isSame, naryFun!pred, pred))
     ///
     @fastmath bool all(Slices...)(Slices slices)
-        if (Slices.length)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
     {
-        //slices.checkShapesMatch;
+        slices.checkShapesMatch;
         return slices[0].anyEmpty || allImpl!pred(slices);
     }
     else
@@ -1007,10 +1022,8 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
         auto j = index >> field.shift;
         foreach(i; size_t(j) .. (length >> field.shift) + j)
             ret += cast(typeof(ret)) ctpop(field._field[i]);
-        index += length;
+        index += length & ~field.mask;
         length &= field.mask;
-        index -= length;
-        assert(length == 0);
         while(length)
         {
             if (field[index])
@@ -1044,13 +1057,21 @@ template count(alias fun)
     static if (__traits(isSame, naryFun!fun, fun))
     ///
     @fastmath size_t count(Slices...)(Slices slices)
-        if (Slices.length)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
     {
         static if (__traits(isSame, fun, naryFun!"true"))
+        {
             return slices[0].elementsCount;
+        }
+        else
+        static if (Slices.length == 1 && kindOf!(Slices[0]) == SliceKind.contiguous && isSlice!(Slices[0]) != [1])
+        {
+            import mir.ndslice.topology: flattened;
+            return .count!(naryFun!fun)(slices[0].flattened);
+        }
         else
         {
-            //slices.checkShapesMatch;
+            slices.checkShapesMatch;
             if (slices[0].anyEmpty)
                 return 0;
             return countImpl!(fun, Slices)(slices);
@@ -1075,14 +1096,26 @@ unittest
     assert(sl.count!"a % 2" == 3);
 }
 
+/// Accelerated set bit count
 unittest
 {
-    import mir.ndslice.topology : iota, bitwise;
+    import mir.ndslice.topology: iota, bitwise;
+    import mir.ndslice.allocation: slice;
 
     //| 0 1 2 |
     //| 3 4 5 |
     auto sl = iota(2, 3).bitwise;
 
     assert(sl.count!"true" == 6 * size_t.sizeof * 8);
+
+    // accelerated
     assert(sl.count!"a" == 7);
+    assert(sl.slice.count!"a" == 7);
+
+    auto sl2 = iota!ubyte([6], 128).bitwise;
+    assert(sl2.count!"a" == 13);
+    assert(sl2[4 .. $].count!"a" == 13);
+    assert(sl2[4 .. $ - 1].count!"a" == 12);
+    assert(sl2[4 .. $ - 1].count!"a" == 12);
+    assert(sl2[41 .. $ - 1].count!"a" == 1);
 }
