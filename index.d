@@ -1,6 +1,6 @@
 Ddoc
 
-$(P Professional Random Number Generators.)
+$(P Generic Algorithm Collection.)
 
 $(P The following table is a quick reference guide for which Mir Random modules to
 use for a given category of functionality.)
