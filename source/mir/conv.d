@@ -1,14 +1,21 @@
+/++
+Conversion utilities.
+
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright © 2016-, Ilya Yaroshenko
+Authors:   Ilya Yaroshenko
++/
 module mir.conv;
 
 import std.traits;
 
-/**
+/++
 The `to` template converts a value from one type _to another.
 The source type is deduced and the target type must be specified, for example the
 expression `to!int(42.0)` converts the number 42 from
 `double` _to `int`. The conversion is "unsafe", i.e.,
 it does not check for overflow.
- */
++/
 template to(T)
 {
     auto ref T to(A...)(auto ref A args)

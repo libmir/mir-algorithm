@@ -1,11 +1,10 @@
-/**
+/++
 Functions that manipulate other functions.
 This module provides functions for compile time function composition. These
 functions are helpful when constructing predicates for the algorithms in
-$(MREF mir, algorithm) or $(MREF mir, ndslice).
+$(MREF mir, ndslice).
 $(BOOKTABLE ,
-$(TR $(TH Function Name) $(TH Description)
-)
+$(TR $(TH Function Name) $(TH Description))
     $(TR $(TD $(LREF pipe))
         $(TD Join a couple of functions into one that executes the original
         functions one after the other, using one function's result for the next
@@ -18,20 +17,14 @@ $(TR $(TH Function Name) $(TH Description)
         $(TD Predicate that reverses the order of its arguments.
     ))
     $(TR $(TD $(LREF naryFun)
-        $(TD Create a unary or binary function from a string. Most often
-        used when defining algorithms on ranges.
+        $(TD Create a unary, binary or N-nary function from a string. Most often
+        used when defining algorithms on ranges and slices.
     ))
 )
 Copyright: Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   Ilya Yaroshenko, $(HTTP erdani.org, Andrei Alexandrescu (some original code from std.functional))
-*/
-/*
-         Copyright Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
-Distributed under the Boost Software License, Version 1.0.
-   (See accompanying file LICENSE_1_0.txt or copy at
-         http://www.boost.org/LICENSE_1_0.txt)
-*/
++/
 module mir.functional;
 
 import std.meta;
@@ -40,7 +33,10 @@ import std.traits;
 private enum isRef(T) = is(T : Ref!T0, T0);
 private enum isLangRef(alias arg) = __traits(isRef, arg);
 
-///
+/++
+Simple wrapper that holds a pointer.
+It is used for as workaround to return multiple auto ref values.
++/
 struct Ref(T)
     if (!isRef!T)
 {
@@ -57,6 +53,7 @@ struct Ref(T)
     alias __value this;
 }
 
+/// Creates $(LREF Ref) wrapper.
 Ref!T _ref(T)(ref T value)
 {
     return Ref!T(value);
@@ -76,16 +73,22 @@ private mixin template _RefTupleMixin(T...)
     }
 }
 
-auto tuple(Args...)(auto ref Args args)
+/++
+Simplified tuple structure. Some fields may be type of $(LREF Ref).
++/
+struct RefTuple(T...)
+{
+    T expand;
+    mixin _RefTupleMixin!T;
+}
+
+/++
+Returns: a $(LREF RefTuple) structure.
++/
+RefTuple!Args tuple(Args...)(auto ref Args args)
 {
     return RefTuple!Args(args);
 }
-
-
-//auto autoRefTuple(Args...)(auto ref Args args)
-//{
-//    mixin("return RefTuple!(_adjoin_types!args)(" ~ _adjoin!args ~ ");");
-//}
 
 private string joinStrings()(string[] strs)
 {
@@ -99,15 +102,15 @@ private string joinStrings()(string[] strs)
     return null;
 }
 
-/**
+/++
 Takes multiple functions and adjoins them together. The result is a
-$(REF Tuple, std,typecons) with one element per passed-in function. Upon
+$(LREF RefTuple) with one element per passed-in function. Upon
 invocation, the returned tuple is the adjoined results of all
 functions.
 Note: In the special case where only a single function is provided
-($(D F.length == 1)), adjoin simply aliases to the single passed function
-($(D F[0])).
-*/
+(`F.length == 1`), adjoin simply aliases to the single passed function
+(`F[0]`).
++/
 template adjoin(fun...) if (fun.length && fun.length <= 26)
 {
     static if (fun.length != 1)
@@ -189,13 +192,6 @@ unittest
     enum RefTuple!(IS, IS, IS, IS) ret2 = adjoin!(bar, bar, bar, bar)();
 }
 
-///
-struct RefTuple(T...)
-{
-    T expand;
-    mixin _RefTupleMixin!T;
-}
-
 private template needOpCallAlias(alias fun)
 {
     /* Determine whether or not naryFun need to alias to fun or
@@ -235,14 +231,11 @@ private template _naryAliases(size_t n)
     }
 }
 
-/**
+/++
 Transforms a string representing an expression into a binary function. The
-string must either use symbol names $(D a) and $(D b) as the parameters or
-provide the symbols via the $(D parm1Name) and $(D parm2Name) arguments.
-If $(D fun) is not a string, $(D naryFun) aliases itself away to
-$(D fun).
-*/
-
+string must use symbol names `a`, `b`, ..., `z`  as the parameters.
+If `fun` is not a string, $(D naryFun) aliases itself away to `fun`.
++/
 template naryFun(alias fun)
 {
     static if (is(typeof(fun) : string))
@@ -372,10 +365,10 @@ unittest
     static assert(!is(typeof(naryFun!FuncObj)));
 }
 
-/**
-   N-ary predicate that reverses the order of arguments, e.g., given
-   $(D pred(a, b, c)), returns $(D pred(c, b, a)).
-*/
+/++
+N-ary predicate that reverses the order of arguments, e.g., given
+`pred(a, b, c)`, returns `pred(c, b, a)`.
++/
 template reverseArgs(alias fun)
 {
     ///
@@ -421,9 +414,9 @@ template reverseArgs(alias fun)
     assert(zyx(5, 4) == foo(4, 5));
 }
 
-/**
+/++
 Negates predicate `pred`.
- */
++/
 template not(alias pred)
 {
     static if (!is(typeof(pred) : string) && !needOpCallAlias!pred)
@@ -481,12 +474,12 @@ private template _unpipe(alias fun)
 
 private enum _needNary(alias fun) = is(typeof(fun) : string) || needOpCallAlias!fun;
 
-/**
-   Composes passed-in functions `fun[0], fun[1], ...` returning a
-   function `f(x)` that in turn returns
-   `...(fun[1](fun[0](x)))...`. Each function can be a regular
-   functions, a delegate, a lambda, or a string.
-*/
+/++
+Composes passed-in functions `fun[0], fun[1], ...` returning a
+function `f(x)` that in turn returns
+`...(fun[1](fun[0](x)))...`. Each function can be a regular
+functions, a delegate, a lambda, or a string.
++/
 template pipe(fun...)
 {
     static if (fun.length != 1)
@@ -542,9 +535,9 @@ unittest
     assert(pipe!(split, map!(to!(int)))("1 2 3").equal([1, 2, 3]));
 }
 
-/**
+/++
 Forwards function arguments with saving ref-ness.
-*/
++/
 template forward(args...)
 {
     static if (args.length)
