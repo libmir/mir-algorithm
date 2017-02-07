@@ -75,7 +75,7 @@ possible to carry out tests without memory allocation.
 $(SCRIPT inhibitQuickIndex = 1;)
 
 $(DIVC quickindex,
-$(BOOKTABLE ,
+$(BOOKTABLE,
 
 $(TR $(TH Submodule) $(TH Declarations))
 
@@ -167,6 +167,40 @@ $(TR $(TDNW $(SUBMODULE dynamic)
         $(SUBREF dynamic, strided)
         $(SUBREF dynamic, swapped)
         $(SUBREF dynamic, transposed)
+    )
+)
+
+$(TR $(TDNW $(SUBMODULE sorting)
+        $(BR) $(SMALL Sorting utilities))
+     $(TD
+        $(SUBREF sorting, isSorted)
+        $(SUBREF sorting, isStrictlyMonotonic)
+        $(SUBREF sorting, sort)
+    )
+)
+
+$(TR $(TDNW $(SUBMODULE Iterators)
+        $(BR) $(SMALL Declarations))
+     $(TD
+        $(SUBREF iterator, FieldIterator)
+        $(SUBREF iterator, FlattenedIterator)
+        $(SUBREF iterator, IndexIterator)
+        $(SUBREF iterator, IotaIterator)
+        $(SUBREF iterator, MapIterator)
+        $(SUBREF iterator, RetroIterator)
+        $(SUBREF iterator, SliceIterator)
+        $(SUBREF iterator, StrideIterator)
+        $(SUBREF iterator, ZipIterator)
+    )
+)
+
+$(TR $(TDNW $(SUBMODULE Fields)
+        $(BR) $(SMALL Declarations))
+     $(TD
+        $(SUBREF fields, BitwiseField)
+        $(SUBREF fields, MapField)
+        $(SUBREF fields, ndIotaField)
+        $(SUBREF fields, RepeatField)
     )
 )
 
