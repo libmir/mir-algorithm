@@ -197,6 +197,23 @@ pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     return typeof(return)(slice._lengths, slice._strides, slice._iterator);
 }
 
+///
+@safe @nogc pure nothrow unittest
+{
+    import mir.ndslice.slice : sliced, Slice;
+
+    auto a = iota(3, 4, 5, 6);
+    auto b = a.pack!2;
+
+    static immutable res1 = [3, 4];
+    static immutable res2 = [5, 6];
+    assert(b.shape == res1);
+    assert(b[0, 0].shape == res2);
+    assert(a == b);
+    static assert(is(typeof(b) == typeof(a.pack!2)));
+    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!size_t)));
+}
+
 /++
 Creates a packed slice, i.e. slice of slices.
 Packs the first `p` dimensions of the first pack.
@@ -226,14 +243,14 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     import mir.ndslice.slice : sliced, Slice;
 
     auto a = iota(3, 4, 5, 6);
-    auto b = a.pack!2;
+    auto b = a.ipack!2;
 
     static immutable res1 = [3, 4];
     static immutable res2 = [5, 6];
     assert(b.shape == res1);
     assert(b[0, 0].shape == res2);
     assert(a == b);
-    static assert(is(typeof(b) == typeof(a.pack!2)));
+    static assert(is(typeof(b) == typeof(a.ipack!2)));
     static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!size_t)));
 }
 
