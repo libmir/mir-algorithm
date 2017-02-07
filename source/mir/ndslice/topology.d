@@ -1353,7 +1353,7 @@ Slice!(Contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
     flattened
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
-    if (packs != [1] && kind != Contiguous)
+    if (packs[0] != 1 && kind != Contiguous)
 {
     mixin _DefineRet;
     ret._lengths[0] = slice.elementsCount;
@@ -1376,7 +1376,7 @@ Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator)
     else
     {
         mixin _DefineRet;
-        ret._lengths[0] = slice._lengths[0 .. packs[0]].lengthsProduct;
+        ret._lengths[0] = slice.elementsCount;
         foreach(i; Iota!(1, ret.N))
             ret._lengths[i] = slice._lengths[i - 1 + packs[0]];
         ret._iterator = slice._iterator;
@@ -1391,6 +1391,32 @@ Slice!(Contiguous, [1], StrideIterator!Iterator)
     (Slice!(Universal, [1], Iterator) slice)
 {
     return slice.hideStride;
+}
+
+/// ditto
+Slice!(Contiguous, [1], StrideIterator!(SliceIterator!(packs[1 .. $].sum == 1 && kind == Canonical ? Contiguous : kind, packs[1 .. $], Iterator)))
+    flattened
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
+    if (packs[0] == 1 && kind != Contiguous && packs.length > 1)
+{
+    mixin _DefineRet;
+    ret._lengths[0] = slice._lengths[0];
+    ret._iterator._stride = slice._strides[0];
+    foreach(i; Iota!(ret._iterator._iterator.Elem.N))
+        ret._iterator._iterator._lengths[i] = slice._lengths[i + 1];
+    foreach(i; Iota!(ret._iterator._iterator.Elem.S))
+        ret._iterator._iterator._strides[i] = slice._strides[i + 1];
+    ret._iterator._iterator._iterator = slice._iterator;
+    return ret;
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    auto sl1 = iota(2, 3).slice.universal.pack!1.flattened;
+    auto sl2 = iota(2, 3).slice.canonical.pack!1.flattened;
+    auto sl3 = iota(2, 3).slice.pack!1.flattened;
 }
 
 /// Regular slice

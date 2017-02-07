@@ -226,7 +226,7 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
     }
 }
 
-package void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator mid, ref Iterator r)
+void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator mid, ref Iterator r)
 {
     if (length < 512)
     {
@@ -240,7 +240,7 @@ package void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref I
     medianOf!less(l, e, mid, b, r);
 }
 
-package void medianOf(alias less, Iterator)
+void medianOf(alias less, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c)
 {
     import mir.utility : swap;
@@ -273,7 +273,7 @@ package void medianOf(alias less, Iterator)
     assert(!less(*c, *b));
 }
 
-package void medianOf(alias less, Iterator)
+void medianOf(alias less, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d, ref Iterator e)
 {
     import mir.utility : swap;

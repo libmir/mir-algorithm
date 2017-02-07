@@ -679,8 +679,17 @@ struct FieldIterator(Field)
     { return _field[_index + index]; }
 
     static if (!__traits(compiles, &_field[_index]) && isMutable!(typeof(_field[_index])))
-    auto opIndexAssign(T)(T value, ptrdiff_t index)
-    { return _field[_index + index] = value; }
+    {
+        auto opIndexAssign(T)(T value, ptrdiff_t index)
+        { return _field[_index + index] = value; }
+
+        auto opIndexUnary(string op)(ptrdiff_t index)
+        { mixin (`return ` ~ op ~ `_field[_index + index];`); }
+
+        auto opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
+        { mixin (`return _field[_index + index] ` ~ op ~ `= value;`); }
+
+    }
 
     void opOpAssign(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")
