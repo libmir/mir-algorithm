@@ -135,6 +135,24 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     }
 }
 
+///
+unittest
+{
+    auto slice = iota(2, 3).universal;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == [3, 1]);
+}
+
+unittest
+{
+    auto slice = iota(2, 3).canonical.universal;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == [3, 1]);
+}
+
+
 /++
 Converts a slice to canonical kind.
 
@@ -172,6 +190,15 @@ Slice!(packs == [1] ? Contiguous : Canonical, packs, Iterator)
     }
 }
 
+///
+unittest
+{
+    auto slice = iota(2, 3).canonical;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == [3]);
+}
+
 /++
 Converts a slice to canonical kind (unsafe).
 
@@ -192,6 +219,7 @@ Slice!(Canonical, packs, Iterator)
 {
     static if (kind == Contiguous)
         return slice.canonical;
+    else
     static if (kind == Canonical)
         return slice;
     else
@@ -205,6 +233,16 @@ Slice!(Canonical, packs, Iterator)
         return ret;
     }
 }
+
+///
+unittest
+{
+    auto slice = iota(2, 3).universal.assumeCanonical;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == [3]);
+}
+
 
 /++
 Converts a slice to contiguous kind (unsafe).
@@ -234,6 +272,15 @@ Slice!(Contiguous, packs, Iterator)
         ret._iterator = slice._iterator;
         return ret;
     }
+}
+
+///
+unittest
+{
+    auto slice = iota(2, 3).universal.assumeContiguous;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == []);
 }
 
 /++
