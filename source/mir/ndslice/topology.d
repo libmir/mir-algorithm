@@ -92,7 +92,6 @@ Params:
 Returns:
     universal slice
 See_also:
-    $(SUBREF slice, SliceKind),
     $(LREF canonical),
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
@@ -161,7 +160,6 @@ Params:
 Returns:
     canonical slice
 See_also:
-    $(SUBREF slice, SliceKind),
     $(LREF universal),
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
@@ -207,7 +205,6 @@ Params:
 Returns:
     canonical slice
 See_also:
-    $(SUBREF slice, SliceKind),
     $(LREF universal),
     $(LREF canonical),
     $(LREF assumeContiguous).
@@ -252,7 +249,6 @@ Params:
 Returns:
     canonical slice
 See_also:
-    $(SUBREF slice, SliceKind),
     $(LREF universal),
     $(LREF canonical),
     $(LREF assumeCanonical).
