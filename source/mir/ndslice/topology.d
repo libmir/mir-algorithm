@@ -64,7 +64,7 @@ import mir.ndslice.field;
 
 auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
-    static if (kind == SliceKind.universal)
+    static if (kind == Universal)
     {
         return slice;
     }
@@ -75,11 +75,11 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     }
     else
     {
-        alias Ret = Slice!(SliceKind.universal, packs, Iterator);
+        alias Ret = Slice!(Universal, packs, Iterator);
         mixin _DefineRet_;
         foreach (i; Iota!(slice.N))
             ret._lengths[i] = slice._lengths[i];
-        static if (kind == SliceKind.canonical)
+        static if (kind == Canonical)
         {
             foreach (i; Iota!(slice.S))
                 ret._strides[i] = slice._strides[i];
@@ -100,13 +100,13 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     }
 }
 
-Slice!(packs.sum == 1 ? SliceKind.contiguous : SliceKind.canonical, packs, Iterator)
+Slice!(packs.sum == 1 ? Contiguous : Canonical, packs, Iterator)
     canonical
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
-    if (kind == SliceKind.contiguous || kind == SliceKind.canonical)
+    if (kind == Contiguous || kind == Canonical)
 {
-    static if (kind == SliceKind.canonical || packs.sum == 1)
+    static if (kind == Canonical || packs.sum == 1)
         return slice;
     else
     {
@@ -124,14 +124,14 @@ Slice!(packs.sum == 1 ? SliceKind.contiguous : SliceKind.canonical, packs, Itera
     }
 }
 
-Slice!(SliceKind.canonical, packs, Iterator)
+Slice!(Canonical, packs, Iterator)
     assumeCanonical
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
 {
-    static if (kind == SliceKind.contiguous)
+    static if (kind == Contiguous)
         return slice.canonical;
-    static if (kind == SliceKind.canonical)
+    static if (kind == Canonical)
         return slice;
     else
     {
@@ -145,12 +145,12 @@ Slice!(SliceKind.canonical, packs, Iterator)
     }
 }
 
-Slice!(SliceKind.contiguous, packs, Iterator)
+Slice!(Contiguous, packs, Iterator)
     assumeContiguous
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
 {
-    static if (kind == SliceKind.contiguous)
+    static if (kind == Contiguous)
         return slice;
     else
     {
@@ -208,7 +208,7 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     assert(b[0, 0].shape == res2);
     assert(a == b);
     static assert(is(typeof(b) == typeof(a.pack!2)));
-    static assert(is(typeof(b) == Slice!(SliceKind.contiguous, [2, 2], IotaIterator!size_t)));
+    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!size_t)));
 }
 
 @safe @nogc pure nothrow unittest
@@ -224,9 +224,9 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     assert(a == b);
     assert(c == a[1, 2, 3, 4]);
     static assert(is(typeof(b) == typeof(a.pack!2.pack!3)));
-    static assert(is(typeof(b) == Slice!(SliceKind.contiguous, [4, 3, 2], IotaIterator!size_t)));
-    static assert(is(typeof(c) == Slice!(SliceKind.contiguous, [3, 2], IotaIterator!size_t)));
-    static assert(is(typeof(d) == Slice!(SliceKind.contiguous, [2], IotaIterator!size_t)));
+    static assert(is(typeof(b) == Slice!(Contiguous, [4, 3, 2], IotaIterator!size_t)));
+    static assert(is(typeof(c) == Slice!(Contiguous, [3, 2], IotaIterator!size_t)));
+    static assert(is(typeof(d) == Slice!(Contiguous, [2], IotaIterator!size_t)));
     static assert(is(typeof(e) == size_t));
 }
 
@@ -282,12 +282,12 @@ Returns:
 
 See_also: $(LREF pack), $(LREF unpack)
 +/
-Slice!(SliceKind.universal, reverse(packs), Iterator)
+Slice!(Universal, reverse(packs), Iterator)
 //auto
 evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (packs.length > 1)
 {
-    static if (kind != SliceKind.universal)
+    static if (kind != Universal)
     {
         return slice.universal.evertPack;
     }
@@ -352,9 +352,9 @@ pure nothrow unittest
     assert(e == g);
     assert(a == b.evertPack);
     assert(c == a.transposed!(7, 8, 4, 5, 6)[8, 9]);
-    static assert(is(typeof(b) == Slice!(SliceKind.universal, [2, 3, 4], IotaIterator!size_t)));
-    static assert(is(typeof(c) == Slice!(SliceKind.universal, [3, 4], IotaIterator!size_t)));
-    static assert(is(typeof(d) == Slice!(SliceKind.universal, [4], IotaIterator!size_t)));
+    static assert(is(typeof(b) == Slice!(Universal, [2, 3, 4], IotaIterator!size_t)));
+    static assert(is(typeof(c) == Slice!(Universal, [3, 4], IotaIterator!size_t)));
+    static assert(is(typeof(d) == Slice!(Universal, [4], IotaIterator!size_t)));
     static assert(is(typeof(e) == size_t));
 }
 
@@ -364,23 +364,23 @@ unittest
     import mir.ndslice.allocation;
     static assert(is(typeof(slice!int(20)
         .evertPack)
-         == Slice!(SliceKind.contiguous, [1], int*)));
+         == Slice!(Contiguous, [1], int*)));
     static assert(is(typeof(slice!int(20)
         .sliced(20)
         .evertPack())
-         == Slice!(SliceKind.contiguous, [1], int*)));
+         == Slice!(Contiguous, [1], int*)));
     static assert(is(typeof(slice!int(6)
         .sliced(1,2,3)
         .sliced(3)
         .evertPack()
         )
-         == Slice!(SliceKind.universal, [2, 1], int*)));
+         == Slice!(Universal, [2, 1], int*)));
     static assert(is(typeof(
         slice!int(6)
         .universal
         .sliced(1,2,3)
         .evertPack)
-         == Slice!(SliceKind.universal, [3], int*)));
+         == Slice!(Universal, [3], int*)));
 }
 
 
@@ -406,7 +406,7 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF IotaSlice), $(LREF ndiota)
 +/
-Slice!(SliceKind.contiguous, [N], IotaIterator!I)
+Slice!(Contiguous, [N], IotaIterator!I)
 iota(I = size_t, size_t N)(size_t[N] lengths...)
     if (isIntegral!I)
 {
@@ -415,7 +415,7 @@ iota(I = size_t, size_t N)(size_t[N] lengths...)
 }
 
 ///ditto
-Slice!(SliceKind.contiguous, [N], IotaIterator!I)
+Slice!(Contiguous, [N], IotaIterator!I)
 iota(I, size_t N)(size_t[N] lengths, I start)
     if (isIntegral!I || isPointer!I)
 {
@@ -424,7 +424,7 @@ iota(I, size_t N)(size_t[N] lengths, I start)
 }
 
 ///ditto
-Slice!(SliceKind.contiguous, [N], StrideIterator!(IotaIterator!I))
+Slice!(Contiguous, [N], StrideIterator!(IotaIterator!I))
 iota(I, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (isIntegral!I || isPointer!I)
 {
@@ -486,7 +486,7 @@ Params:
 Returns:
     1-dimensional slice composed of diagonal elements
 +/
-Slice!(packs[0] == 1 ? kind : SliceKind.universal, 1 ~ packs[1 .. $], Iterator) 
+Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator) 
     diagonal
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
@@ -673,7 +673,7 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.contiguous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
+Slice!(kind == Contiguous ? Canonical : kind, packs[0] ~ packs, Iterator) 
     blocks
     (SliceKind kind, size_t[] packs, Iterator, size_t N)
     (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
@@ -809,7 +809,7 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == SliceKind.contiguous ? SliceKind.canonical : kind, packs[0] ~ packs, Iterator) 
+Slice!(kind == Contiguous ? Canonical : kind, packs[0] ~ packs, Iterator) 
     windows
     (SliceKind kind, size_t[] packs, Iterator, size_t N)
     (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
@@ -1007,7 +1007,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
         (SliceKind kind, size_t[] packs, Iterator, size_t M)
         (Slice!(kind, packs, Iterator) slice, ptrdiff_t[M] lengths, ref int err)
 {
-    static if (kind == SliceKind.canonical)
+    static if (kind == Canonical)
     {
         auto r = slice.universal.reshape(err);
         assert(err || r._strides[$-1] == 1);
@@ -1044,7 +1044,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
             err = ReshapeError.total;
             goto R;
         }
-        static if (kind == SliceKind.universal)
+        static if (kind == Universal)
         {
             for (size_t oi, ni, oj, nj; oi < packs[0] && ni < M; oi = oj, ni = nj)
             {
@@ -1199,11 +1199,11 @@ Params:
 Returns:
     random access range composed of elements of the `slice`
 +/
-Slice!(SliceKind.contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
+Slice!(Contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
     flattened
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
-    if (kind == SliceKind.canonical || kind == SliceKind.universal)
+    if (kind == Canonical || kind == Universal)
 {
     mixin _DefineRet;
     ret._lengths[0] = slice.elementsCount;
@@ -1214,10 +1214,10 @@ Slice!(SliceKind.contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
 }
 
 /// ditto
-Slice!(SliceKind.contiguous, 1 ~ packs[1 .. $], Iterator) 
+Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator) 
     flattened
     (size_t[] packs, Iterator)
-    (Slice!(SliceKind.contiguous, packs, Iterator) slice)
+    (Slice!(Contiguous, packs, Iterator) slice)
 {
     static if (packs[0] == 1)
     {
@@ -1447,7 +1447,7 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF ndIotaField), $(LREF iota)
 +/
-Slice!(SliceKind.contiguous, [N], FieldIterator!(ndIotaField!N))
+Slice!(Contiguous, [N], FieldIterator!(ndIotaField!N))
     ndiota
     (size_t N)
     (size_t[N] lengths...)
@@ -1497,7 +1497,7 @@ Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 See_also: $(REF repeat, std,range)
 +/
-Slice!(SliceKind.contiguous, [M], FieldIterator!(RepeatField!T))
+Slice!(Contiguous, [M], FieldIterator!(RepeatField!T))
     repeat(T, size_t M)(T value, size_t[M] lengths...)
     if (M && !is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
 {
@@ -1509,7 +1509,7 @@ Slice!(SliceKind.contiguous, [M], FieldIterator!(RepeatField!T))
 }
 
 /// ditto
-Slice!(kind == SliceKind.contiguous ? SliceKind.canonical : kind, M ~ packs, Iterator)
+Slice!(kind == Contiguous ? Canonical : kind, M ~ packs, Iterator)
     repeat
     (SliceKind kind, size_t[] packs, Iterator, size_t M)
     (Slice!(kind, packs, Iterator) slice, size_t[M] lengths...)
@@ -1598,7 +1598,7 @@ in
 }
 body
 {
-    static if (kind == SliceKind.contiguous)
+    static if (kind == Contiguous)
         return slice.universal.stride(factor);
     else
     {
@@ -1614,10 +1614,10 @@ auto retro
     (Slice!(kind, packs, Iterator) slice)
     if (packs.length == 1)
 {
-    static if (kind == SliceKind.contiguous || kind == SliceKind.canonical)
+    static if (kind == Contiguous || kind == Canonical)
     {
         import mir.ndslice.dynamic: allReversed;
-        static if (kind == SliceKind.contiguous)
+        static if (kind == Contiguous)
         {
             ptrdiff_t shift = 1;
             foreach(i; Iota!(packs[0]))
@@ -1661,7 +1661,7 @@ auto retro
 auto bitwise
     (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
     (Slice!(kind, packs, Iterator) slice)
-    if (isIntegral!I && (kind == SliceKind.contiguous || kind == SliceKind.canonical))
+    if (isIntegral!I && (kind == Contiguous || kind == Canonical))
 {
     static if (is(Iterator : FieldIterator!Field, Field))
     {
@@ -1770,7 +1770,7 @@ template map(fun...)
                 {
                     alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
                     auto sl = slice.universal;
-                    return .map!f(Slice!(SliceKind.universal, packs[0 .. 1], It)(
+                    return .map!f(Slice!(Universal, packs[0 .. 1], It)(
                         sl._lengths[0 .. packs[0]], 
                         sl._strides[0 .. packs[0]],
                         It(
@@ -1916,10 +1916,10 @@ private auto hideStride
     (SliceKind kind, Iterator)
     (Slice!(kind, [1], Iterator) slice)
 {
-    static if (kind == SliceKind.universal)
+    static if (kind == Universal)
     {
         alias It = StrideIterator!Iterator;
-        return Slice!(SliceKind.contiguous, [1], It)(
+        return Slice!(Contiguous, [1], It)(
             slice._lengths,
             slice._strides[0 .. 0],
             It(slice._stride[0], slice._iterator));
@@ -1934,9 +1934,9 @@ private auto unhideStride
 {
     static if (is(Iterator : StrideIterator!It, It))
     {
-        static if (kind == SliceKind.universal)
+        static if (kind == Universal)
         {
-            alias Ret = SliceKind!(SliceKind.universal, packs, It);
+            alias Ret = SliceKind!(Universal, packs, It);
             mixin _DefineRet_;
             foreach(i; Iota!(ret.N))
                 ret._lengths[i] = slice._lengths[i];
@@ -1996,7 +1996,7 @@ unittest
              [0, 1]]);
 
     /// allocate new slice composed of strings
-    Slice!(SliceKind.contiguous, [2], int*) stringMatrix = stringMatrixView.slice;
+    Slice!(Contiguous, [2], int*) stringMatrix = stringMatrixView.slice;
 }
 
 /// Special behavior for pointers to a constant data.
@@ -2004,8 +2004,8 @@ unittest
 {
     import mir.ndslice.allocation : slice;
 
-    Slice!(SliceKind.contiguous, [2], double*)              matrix = slice!double([2, 2], 0);
-    Slice!(SliceKind.contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
+    Slice!(Contiguous, [2], double*)              matrix = slice!double([2, 2], 0);
+    Slice!(Contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
 }
 /++
 Groups slices into a slice tuple. The slices must have identical structure.
@@ -2025,7 +2025,7 @@ auto zip(bool sameStrides = false, Slices...)(Slices slices)
         assert(slices[i]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
         assert(slices[i].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides");
     }
-    static if (sameStrides == false && minElem(staticMap!(_kindOf, Slices)) != SliceKind.contiguous)
+    static if (sameStrides == false && minElem(staticMap!(_kindOf, Slices)) != Contiguous)
     {
         static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
         return .zip(_iotaArgs!(Slices.length, "slice[", "].hideStride"));

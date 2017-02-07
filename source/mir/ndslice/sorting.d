@@ -117,7 +117,7 @@ unittest
     assert(data.isSorted);
 }
 
-void quickSortImpl(alias less, Iterator)(Slice!(SliceKind.contiguous, [1], Iterator) slice)
+void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice)
 {
     import mir.utility : swap;
 

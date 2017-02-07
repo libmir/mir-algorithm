@@ -823,7 +823,7 @@ template count(alias fun)
             return slices[0].elementsCount;
         }
         else
-        static if (Slices.length == 1 && kindOf!(Slices[0]) == SliceKind.contiguous && isSlice!(Slices[0]) != [1])
+        static if (Slices.length == 1 && kindOf!(Slices[0]) == Contiguous && isSlice!(Slices[0]) != [1])
         {
             import mir.ndslice.topology: flattened;
             return .count!(naryFun!fun)(slices[0].flattened);
@@ -1060,7 +1060,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     import mir.ndslice.iterator: FieldIterator;
     import mir.ndslice.field: BitwiseField;
     static if (__traits(isSame, fun, naryFun!"a") && 
-        is(S : Slice!(SliceKind.contiguous, [1], Iterator),
+        is(S : Slice!(Contiguous, [1], Iterator),
             Iterator : FieldIterator!BWF,
             BWF : BitwiseField!Field, Field))
     {

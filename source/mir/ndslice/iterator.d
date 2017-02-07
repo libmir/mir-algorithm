@@ -29,7 +29,7 @@ module mir.ndslice.iterator;
 
 import std.traits;
 import mir.internal.utility;
-import mir.ndslice.slice: SliceKind, Slice;
+import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous;
 import mir.ndslice.internal;
 
 @fastmath:
@@ -710,7 +710,7 @@ Creates an iterator on top of all elements in a slice.
 `FieldIterator` is used by $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.
 +/
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
-    if (packs[0] > 1 && (kind == SliceKind.universal || kind == SliceKind.canonical))
+    if (packs[0] > 1 && (kind == Universal || kind == Canonical))
 {
 @fastmath:
     ///

@@ -181,8 +181,8 @@ Returns:
         Dense data layout is guaranteed.
 +/
 (SliceKind!
-SliceKind.universal, [3] C*) movingWindowByChannel(alias filter, C)
-(SliceKind!(SliceKind.universal, [3] C*) image, size_t nr, size_t nc)
+Universal, [3] C*) movingWindowByChannel(alias filter, C)
+(SliceKind!(Universal, [3] C*) image, size_t nr, size_t nc)
 {
         // 0. 3D
         // The last dimension represents the color channel.
@@ -341,8 +341,8 @@ unittest
 // relaxed example
 unittest
 {
-    static Slice!(SliceKind.contiguous, [3], ubyte*) movingWindowByChannel
-    (Slice!(SliceKind.universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(SliceKind.universal, [2], ubyte*)) filter)
+    static Slice!(Contiguous, [3], ubyte*) movingWindowByChannel
+    (Slice!(Universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(Universal, [2], ubyte*)) filter)
     {
         return image
             .pack!1
@@ -354,7 +354,7 @@ unittest
             .slice;
     }
 
-    static T median(Range, T)(Slice!(SliceKind.universal, [2], Range) sl, T[] buf)
+    static T median(Range, T)(Slice!(Universal, [2], Range) sl, T[] buf)
     {
         import std.algorithm.sorting : topN;
         // copy sl to the buffer

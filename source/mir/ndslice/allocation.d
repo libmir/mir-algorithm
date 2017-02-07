@@ -34,12 +34,13 @@ import mir.ndslice.internal;
 /++
 Creates an array and an n-dimensional slice over it.
 Params:
-    lengths = list of lengths for each dimension
-    slice = slice to copy shape and data from
+    lengths = List of lengths for each dimension.
+    init = Value to initialize with.
+    slice = Slice to copy shape and data from.
 Returns:
     n-dimensional slice
 +/
-Slice!(SliceKind.contiguous, [N], T*)
+Slice!(Contiguous, [N], T*)
 slice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
@@ -78,7 +79,7 @@ pure nothrow unittest
     auto tensor = slice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(SliceKind.contiguous, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], int*)));
 
     // creates duplicate using `slice`
     auto dup = tensor.slice;
@@ -121,7 +122,7 @@ pure nothrow unittest
     auto tensor = uninitializedSlice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(SliceKind.contiguous, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], int*)));
 }
 
 /++
@@ -265,7 +266,7 @@ struct SliceAllocationResult(size_t N, T)
     ///
     T[] array;
     ///
-    Slice!(SliceKind.contiguous, [N], T*) slice;
+    Slice!(Contiguous, [N], T*) slice;
 }
 
 /++
