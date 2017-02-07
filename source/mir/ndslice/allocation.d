@@ -416,3 +416,23 @@ unittest
     assert(shape[1] == 0);
 }
 
+nothrow unittest
+{
+    import mir.ndslice.allocation;
+    import mir.ndslice.topology : iota;
+
+    auto sl = iota([0, 0], 1);
+
+    assert(sl.empty!0);
+    assert(sl.empty!1);
+
+    auto gcsl1 = sl.slice;
+    auto gcsl2 = slice!double(0, 0);
+
+    import std.experimental.allocator;
+    import std.experimental.allocator.mallocator;
+
+    auto tup1 = makeSlice!double(Mallocator.instance, 0, 0);
+
+    Mallocator.instance.dispose(tup1.array);
+}

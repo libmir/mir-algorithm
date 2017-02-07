@@ -76,12 +76,10 @@ private template SkipDimension(size_t dimension, size_t index)
 }
 
 /++
-Creates an n-dimensional slice-shell over a `range`.
+Creates an n-dimensional slice-shell over an iterator.
 Params:
-    array = An array. The length of the
-        array should be equal to tthe product of
-        lengths. .
-    lengths = list of lengths for each dimension
+    iterator = An iterator, a pointer, or an array.
+    lengths = A list of lengths for each dimension
 Returns:
     n-dimensional slice
 +/
@@ -106,28 +104,6 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
         ret._lengths[i] = lengths[i];
     return ret;
 }
-
-/// ditto
-auto sliced(T)(T[] array)
-{
-    return .sliced(array, [array.length]);
-}
-
-/// Creates a slice from an array.
-pure nothrow unittest
-{
-    auto slice = new int[10].sliced;
-    assert(slice.length == 10);
-    static assert(is(typeof(slice) == Slice!(SliceKind.contiguous, [1], int*)));
-}
-
-///// Creates an 1-dimensional slice over a range.
-//@safe @nogc pure nothrow unittest
-//{
-//    import std.range : iota;
-//    auto slice = 10.iota.sliced;
-//    assert(slice.length == 10);
-//}
 
 /// $(LINK2 https://en.wikipedia.org/wiki/Vandermonde_matrix, Vandermonde matrix)
 pure nothrow unittest
@@ -178,7 +154,34 @@ pure nothrow @nogc unittest
     assert(slice[1, 2] == 12);
 }
 
-/// ditto
+/++
+Creates an 1-dimensional slice-shell over an array.
+Params:
+    array = An array.
+Returns:
+    1-dimensional slice
++/
+auto sliced(T)(T[] array)
+{
+    return .sliced(array, [array.length]);
+}
+
+/// Creates a slice from an array.
+pure nothrow unittest
+{
+    auto slice = new int[10].sliced;
+    assert(slice.length == 10);
+    static assert(is(typeof(slice) == Slice!(SliceKind.contiguous, [1], int*)));
+}
+
+/++
+Creates an n-dimensional slice-shell over an iterator.
+Params:
+    slice = A slice, a pointer, or an array.
+    lengths = A list of lengths for each dimension.
+Returns:
+    n-dimensional slice
++/
 Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator)
     sliced
     (SliceKind kind, size_t[] packs, Iterator, size_t N)
@@ -207,9 +210,8 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator
     return ret;
 }
 
-// sliced slice
-//pure nothrow
-unittest
+///
+pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
     auto data = new int[24];
@@ -239,29 +241,16 @@ unittest
     assert(f == iota(5, 3));
 }
 
-nothrow unittest
-{
-    import mir.ndslice.allocation;
-    import mir.ndslice.topology : iota;
-
-    auto sl = iota([0, 0], 1);
-
-    assert(sl.empty!0);
-    assert(sl.empty!1);
-
-    auto gcsl1 = sl.slice;
-    auto gcsl2 = slice!double(0, 0);
-
-    //import std.experimental.allocator;
-    //import std.experimental.allocator.mallocator;
-
-    //auto tup2 = makeSlice!size_t(Mallocator.instance, sl);
-    //auto tup1 = makeSlice!double(Mallocator.instance, 0, 0);
-
-    //Mallocator.instance.dispose(tup1.array);
-    //Mallocator.instance.dispose(tup2.array);
-}
-
+/++
+Creates an n-dimensional slice-shell over a field.
+Params:
+    field = A field. The length of the
+        array should be equal to the product of
+        lengths. .
+    lengths = A list of lengths for each dimension.
+Returns:
+    n-dimensional slice
++/
 auto slicedField(Field, size_t N)(Field field, size_t[N] lengths...)
 {
     static if (hasLength!Field)
@@ -271,10 +260,18 @@ auto slicedField(Field, size_t N)(Field field, size_t[N] lengths...)
 }
 
 ///ditto
-auto slicedField2(Field)(Field field)
+auto slicedField(Field)(Field field)
     if(hasLength!Field)
 {
     return .slicedField(field, field.length);
+}
+
+/// Creates an 1-dimensional slice over a field, array, or random access range.
+@safe @nogc pure nothrow unittest
+{
+    import std.range : iota;
+    auto slice = 10.iota.slicedField;
+    assert(slice.length == 10);
 }
 
 /++

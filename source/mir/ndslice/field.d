@@ -3,6 +3,7 @@ This is a submodule of $(MREF mir,ndslice).
 
 Field is a type with `opIndex(ptrdiff_t index)` primitive.
 An iterator can be created on top of a field using $(REF FieldIterator, mir,ndslice,iterator).
+An ndslice can be created on top of a field using $(REF slicedField, mir,ndslice,slice).
 
 $(BOOKTABLE $(H2 Fields),
 $(TR $(TH Field Name) $(TH Used By))
