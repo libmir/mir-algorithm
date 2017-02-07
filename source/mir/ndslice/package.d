@@ -80,7 +80,7 @@ $(BOOKTABLE ,
 $(TR $(TH Submodule) $(TH Declarations))
 
 $(TR $(TDNW $(SUBMODULE slice) $(BR)
-        $(SMALL $(SUBREF slice, Slice) structure.
+        $(SMALL $(SUBREF slice, Slice) structure
             $(BR) Basic constructors))
      $(TD
         $(SUBREF slice, Canonical)
@@ -98,8 +98,7 @@ $(TR $(TDNW $(SUBMODULE slice) $(BR)
 )
 
 $(TR $(TDNW $(SUBMODULE allocation) $(BR)
-        $(SMALL $(SUBREF allocation, Slice) structure.
-            $(BR) Basic constructors))
+        $(SMALL Allocation utilities))
      $(TD
         $(SUBREF allocation, makeNdarray)
         $(SUBREF allocation, makeSlice)
@@ -144,7 +143,7 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
 )
 
 $(TR $(TDNW $(SUBMODULE algorithm)
-        $(BR) $(SMALL Computation algorithms $(BR) Operators for loop free programming))
+        $(BR) $(SMALL Loop free programming))
      $(TD
         $(SUBREF algorithm, all)
         $(SUBREF algorithm, any)
@@ -158,7 +157,7 @@ $(TR $(TDNW $(SUBMODULE algorithm)
 )
 
 $(TR $(TDNW $(SUBMODULE dynamic)
-        $(BR) $(SMALL Dynamic dimension manipulators.))
+        $(BR) $(SMALL Dynamic dimension manipulators))
      $(TD
         $(SUBREF dynamic, allReversed)
         $(SUBREF dynamic, dropToHypercube)
