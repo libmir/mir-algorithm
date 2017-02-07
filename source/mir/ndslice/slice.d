@@ -62,7 +62,7 @@ unittest
 /// Kind of $(LREF Slice).
 enum SliceKind
 {
-    /// A slice with strides for all dimensions.
+    /// A slice has strides for all dimensions.
     universal,
     /// A slice has >=2 dimensions and row dimension is contiguous.
     canonical,
