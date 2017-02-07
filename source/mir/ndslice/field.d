@@ -7,10 +7,10 @@ An ndslice can be created on top of a field using $(REF slicedField, mir,ndslice
 
 $(BOOKTABLE $(H2 Fields),
 $(TR $(TH Field Name) $(TH Used By))
-$(T2 MapField, $(REF map, mir,ndslice,topology))
-$(T2 RepeatField, $(REF repeat, mir,ndslice,topology))
 $(T2 BitwiseField, $(REF bitwise, mir,ndslice,topology))
+$(T2 MapField, $(REF map, mir,ndslice,topology))
 $(T2 ndIotaField, $(REF ndiota, mir,ndslice,topology))
+$(T2 RepeatField, $(REF repeat, mir,ndslice,topology))
 )
 
 

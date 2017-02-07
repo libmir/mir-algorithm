@@ -1,6 +1,4 @@
 /++
-$(SCRIPT inhibitQuickIndex = 1;)
-
 This is a submodule of $(MREF mir, ndslice).
 
 Selectors create new views and iteration patterns over the same data, without copying.
@@ -8,36 +6,49 @@ Selectors create new views and iteration patterns over the same data, without co
 $(H2 Subspace selectors)
 
 Subspace selectors serve to generalize and combine other selectors easily.
-For a slice of `Slice!(N, Iterator)` type `slice.pack!K` creates a slice of
-slices of `Slice!(N-K, Slice!(K+1, Iterator))` type by packing
+For a slice of `Slice!(kind, [N], Iterator)` type `slice.pack!K` creates a slice of
+slices of `Slice!(kind, [N - K, K], Iterator)` type by packing
 the last `K` dimensions of the top dimension pack,
-and the type of element of `slice.flattened` is `Slice!(K, Iterator)`.
+and the type of element of $(LREF flattened) is `Slice!(Contiguous, [K], IteratorX)`.
 Another way to use $(LREF pack) is transposition of dimension packs using
 $(LREF evertPack). Examples of use of subspace selectors are available for selectors,
 $(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementsCount).
 
 $(BOOKTABLE ,
-
 $(TR $(TH Function Name) $(TH Description))
+
 $(T2 pack     , returns slice of slices)
+$(T2 ipack    , returns slice of slices)
 $(T2 unpack   , merges all dimension packs)
 $(T2 evertPack, reverses dimension packs)
+
 )
 
-$(BOOKTABLE $(H2 Selectors),
-
+$(BOOKTABLE $(H2 Representation Selectors),
 $(TR $(TH Function Name) $(TH Description))
-$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks.
-    If the slice has two dimensions, it is a block matrix.)
-$(T2 flattened, flat, random access range of all elements with `index` property)
+
+$(T2 as, Convenience function that creates a lazy view,
+where each element of the original slice is converted to a type `T`.)
+$(T2 bitwise, Bitwise slice over an integral slice.)
+$(T2 flattened, A lazy contiguous 1-dimensional slice of all elements of a slice.)
+$(T2 iota, Lazy slice with initial flattened (contiguous) index.)
+$(T2 map, Lazy multidimensional functional map)
+$(T2 ndiota, Lazy slice with initial multidimensional index)
+$(T2 retro, )
+$(T2 stride, )
+$(T2 unzip, )
+$(T2 zip, )
+)
+
+$(BOOKTABLE $(H2 Shape Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
 $(T2 diagonal, 1-dimensional slice composed of diagonal elements)
-$(T2 ndiota, lazy slice with initial multidimensional index)
-$(T2 iota, lazy slice with initial flattened (contiguous) index)
-$(T2 map, lazy multidimensional functional map)
 $(T2 repeat, slice with identical values)
 $(T2 reshape, new slice with changed dimensions for the same data)
-$(T2 windows, n-dimensional slice of n-dimensional overlapping windows.
-    If the slice has two dimensions, it is a sliding window.)
+$(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
+
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
@@ -395,7 +406,6 @@ pure nothrow unittest
 
 /++
 Returns a slice, the elements of which are equal to the initial flattened index value.
-For a multidimensional index, see $(LREF ndiota).
 
 Params:
     N = dimension count
@@ -403,11 +413,12 @@ Params:
     start = value of the first element in a slice (optional for integer `I`)
     stride = value of the stride between elements (optional)
 Returns:
-    `N`-dimensional slice composed of indexes
-See_also: $(LREF IotaSlice), $(LREF ndiota)
+    n-dimensional slice composed of indexes
+See_also: $(LREF ndiota)
 +/
 Slice!(Contiguous, [N], IotaIterator!I)
-iota(I = size_t, size_t N)(size_t[N] lengths...)
+iota
+    (I = size_t, size_t N)(size_t[N] lengths...)
     if (isIntegral!I)
 {
     import mir.ndslice.slice : sliced;
@@ -416,7 +427,8 @@ iota(I = size_t, size_t N)(size_t[N] lengths...)
 
 ///ditto
 Slice!(Contiguous, [N], IotaIterator!I)
-iota(I, size_t N)(size_t[N] lengths, I start)
+iota
+    (I, size_t N)(size_t[N] lengths, I start)
     if (isIntegral!I || isPointer!I)
 {
     import mir.ndslice.slice : sliced;
@@ -425,7 +437,8 @@ iota(I, size_t N)(size_t[N] lengths, I start)
 
 ///ditto
 Slice!(Contiguous, [N], StrideIterator!(IotaIterator!I))
-iota(I, size_t N)(size_t[N] lengths, I start, size_t stride)
+iota
+    (I, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (isIntegral!I || isPointer!I)
 {
     import mir.ndslice.slice : sliced;
@@ -1190,20 +1203,22 @@ unittest
 }
 
 /++
-Returns a random access range of all elements of a slice.
+A contiguous 1-dimensional slice of all elements of a slice.
+`flattened` iterates existing data.
 The order of elements is preserved.
+
 `flattened` can be generalized with other selectors.
 
 Params:
     slice = slice to be iterated
 Returns:
-    random access range composed of elements of the `slice`
+    contiguous 1-dimensional slice of elements of the `slice`
 +/
 Slice!(Contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
     flattened
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
-    if (kind == Canonical || kind == Universal)
+    if (packs != [1] && kind != Contiguous)
 {
     mixin _DefineRet;
     ret._lengths[0] = slice.elementsCount;
@@ -1219,7 +1234,7 @@ Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator)
     (size_t[] packs, Iterator)
     (Slice!(Contiguous, packs, Iterator) slice)
 {
-    static if (packs[0] == 1)
+    static if (packs == [1])
     {
         return slice;
     }
@@ -1234,12 +1249,32 @@ Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator)
     }
 }
 
+/// ditto
+Slice!(Contiguous, [1], StrideIterator!Iterator) 
+    flattened
+    (Iterator)
+    (Slice!(Universal, [1], Iterator) slice)
+{
+    mixin _DefineRet;
+    ret._lengths[0] = slice._lengths[0];
+    ret._iterator._stride = slice._stride;
+    ret._iterator._iterator = slice._iterator;
+    return ret;
+}
+
 /// Regular slice
 @safe @nogc pure nothrow unittest
 {
     assert(iota(4, 5).flattened == iota(20));
     assert(iota(4, 5).canonical.flattened == iota(20));
     assert(iota(4, 5).universal.flattened == iota(20));
+}
+
+@safe @nogc pure nothrow unittest
+{
+    assert(iota(4).flattened == iota(4));
+    assert(iota(4).canonical.flattened == iota(4));
+    assert(iota(4).universal.flattened == iota(4));
 }
 
 /// Packed slice
@@ -1445,7 +1480,7 @@ Params:
     lengths = list of dimension lengths
 Returns:
     `N`-dimensional slice composed of indexes
-See_also: $(LREF ndIotaField), $(LREF iota)
+See_also: $(LREF iota)
 +/
 Slice!(Contiguous, [N], FieldIterator!(ndIotaField!N))
     ndiota
@@ -1657,6 +1692,10 @@ auto retro
 }
 
 /++
+Bitwise slice over an integral slice.
+Params:
+    slice = a contiguous or canonical slice on top of integral iterator.
+Returns: A bitwise slice.
 +/
 auto bitwise
     (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))

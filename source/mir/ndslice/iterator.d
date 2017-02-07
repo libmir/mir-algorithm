@@ -6,15 +6,15 @@ An ndslice can be created on top of a field using $(REF sliced, mir,ndslice,slic
 
 $(BOOKTABLE $(H2 Iterators),
 $(TR $(TH Iterator Name) $(TH Used By))
-$(T2 IotaIterator, $(REF iota, mir,ndslice,topology))
-$(T2 RetroIterator, $(REF retro, mir,ndslice,topology))
-$(T2 StrideIterator, $(REF stride, mir,ndslice,topology))
-$(T2 ZipIterator, $(REF zip, mir,ndslice,topology))
-$(T2 MapIterator, $(REF map, mir,ndslice,topology))
-$(T2 IndexIterator, TODO)
-$(T2 SliceIterator, $(REF map, mir,ndslice,topology) in composition with $(LREF MapIterator) for packed slices.)
 $(T2 FieldIterator, $(REF slicedField, mir,ndslice,slice), $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.)
 $(T2 FlattenedIterator, $(REF flattened, mir,ndslice,topology))
+$(T2 IndexIterator, TODO)
+$(T2 IotaIterator, $(REF iota, mir,ndslice,topology))
+$(T2 MapIterator, $(REF map, mir,ndslice,topology))
+$(T2 RetroIterator, $(REF retro, mir,ndslice,topology))
+$(T2 SliceIterator, $(REF map, mir,ndslice,topology) in composition with $(LREF MapIterator) for packed slices.)
+$(T2 StrideIterator, $(REF stride, mir,ndslice,topology))
+$(T2 ZipIterator, $(REF zip, mir,ndslice,topology))
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).

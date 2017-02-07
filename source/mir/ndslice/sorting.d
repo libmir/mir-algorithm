@@ -2,8 +2,8 @@
 This is a submodule of $(MREF mir,ndslice).
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2016-, Ilya Yaroshenko
-Authors:   Ilya Yaroshenko
+Copyright: Andrei Alexandrescu 2008-2016, Ilya Yaroshenko 2016-, 
+Authors:   Ilya Yaroshenko, Andrei Alexandrescu
 +/
 module mir.ndslice.sorting;
 

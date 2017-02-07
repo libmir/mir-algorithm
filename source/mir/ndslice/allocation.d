@@ -5,13 +5,13 @@ It contains allocation utilities.
 
 $(BOOKTABLE $(H2 Transpose operators),
 $(TR $(TH Function Name) $(TH Description))
-$(T2 slice, Allocates a slice using GC.)
-$(T2 uninitializedSlice, Allocates an uninitialized slice using GC. )
+$(T2 makeNdarray, Allocates a common n-dimensional array from a slice using an allocator. )
 $(T2 makeSlice, Allocates a slice using an allocator. )
 $(T2 makeUninitializedSlice, Allocates an uninitialized slice using an allocator. )
 $(T2 ndarray, Allocates a common n-dimensional array from a slice. )
-$(T2 makeNdarray, Allocates a common n-dimensional array from a slice using an allocator. )
 $(T2 shape, Returns a shape of a common n-dimensional array. )
+$(T2 slice, Allocates a slice using GC.)
+$(T2 uninitializedSlice, Allocates an uninitialized slice using GC. )
 )
 
 

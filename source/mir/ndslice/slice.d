@@ -16,6 +16,7 @@ $(T2 sliced, Creates a slice on top of an iterator, a pointer, or an array's poi
 $(T2 slicedField, Creates a slice on top of a field, a random access range, or an array.)
 $(T2 kindOf, Extracts $(LREF SliceKind).)
 $(T2 isSlice, Extracts dimension packs from a type. Extracts `null` if the template argument is not a `Slice`.)
+$(T2 DeepElementType, Extracts the element type of a $(LREF Slice).)
 $(T2 Structure, A tuple of lengths and strides.)
 )
 
@@ -296,7 +297,7 @@ auto slicedField(Field)(Field field)
 }
 
 /++
-Returns the element type of the `Slice` type.
+Returns the element type of a $(LREF Slice).
 +/
 alias DeepElementType(S : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = S.DeepElemType;
 
