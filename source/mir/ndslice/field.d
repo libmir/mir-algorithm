@@ -2,15 +2,15 @@
 This is a submodule of $(MREF mir,ndslice).
 
 Field is a type with `opIndex(ptrdiff_t index)` primitive.
-An iterator can be created on top of a field using $(REF FieldIterator, mir,ndslice,iterator).
-An ndslice can be created on top of a field using $(REF slicedField, mir,ndslice,slice).
+An iterator can be created on top of a field using $(SUBREF iterator, FieldIterator).
+An ndslice can be created on top of a field using $(SUBREF slice, slicedField).
 
 $(BOOKTABLE $(H2 Fields),
 $(TR $(TH Field Name) $(TH Used By))
-$(T2 BitwiseField, $(REF bitwise, mir,ndslice,topology))
-$(T2 MapField, $(REF map, mir,ndslice,topology))
-$(T2 ndIotaField, $(REF ndiota, mir,ndslice,topology))
-$(T2 RepeatField, $(REF repeat, mir,ndslice,topology))
+$(T2 BitwiseField, $(SUBREF topology, bitwise))
+$(T2 MapField, $(SUBREF topology, map))
+$(T2 ndIotaField, $(SUBREF topology, ndiota))
+$(T2 RepeatField, $(SUBREF topology, repeat))
 )
 
 
@@ -31,7 +31,7 @@ import mir.ndslice.internal;
 @fastmath:
 
 /++
-`MapField` is used by $(REF map, mir,ndslice,topology).
+`MapField` is used by $(SUBREF topology, map).
 +/
 struct MapField(Field, alias fun)
 {
@@ -66,7 +66,7 @@ static auto mapField(alias fun, Field)(Field field)
 }
 
 /++
-`RepeatField` is used by $(REF repeat, mir,ndslice,topology).
+`RepeatField` is used by $(SUBREF topology, repeat).
 +/
 struct RepeatField(T)
 {
@@ -86,7 +86,7 @@ struct RepeatField(T)
 }
 
 /++
-`BitwiseField` is used by $(REF bitwise, mir,ndslice,topology).
+`BitwiseField` is used by $(SUBREF topology, bitwise).
 +/
 struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     if (isIntegral!I)
@@ -130,7 +130,7 @@ unittest
 }
 
 /++
-`ndIotaField` is used by $(REF ndiota, mir,ndslice,topology).
+`ndIotaField` is used by $(SUBREF topology, ndiota).
 +/
 struct ndIotaField(size_t N)
     if (N)

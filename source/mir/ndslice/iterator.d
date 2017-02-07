@@ -2,19 +2,19 @@
 This is a submodule of $(MREF mir,ndslice).
 
 Iterator is a type with a pointer like behavior.
-An ndslice can be created on top of a field using $(REF sliced, mir,ndslice,slice).
+An ndslice can be created on top of a field using $(SUBREF slice, sliced).
 
 $(BOOKTABLE $(H2 Iterators),
 $(TR $(TH Iterator Name) $(TH Used By))
-$(T2 FieldIterator, $(REF slicedField, mir,ndslice,slice), $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.)
-$(T2 FlattenedIterator, $(REF flattened, mir,ndslice,topology))
+$(T2 FieldIterator, $(SUBREF slice, slicedField), $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.)
+$(T2 FlattenedIterator, $(SUBREF topology, flattened))
 $(T2 IndexIterator, TODO)
-$(T2 IotaIterator, $(REF iota, mir,ndslice,topology))
-$(T2 MapIterator, $(REF map, mir,ndslice,topology))
-$(T2 RetroIterator, $(REF retro, mir,ndslice,topology))
-$(T2 SliceIterator, $(REF map, mir,ndslice,topology) in composition with $(LREF MapIterator) for packed slices.)
-$(T2 StrideIterator, $(REF stride, mir,ndslice,topology))
-$(T2 ZipIterator, $(REF zip, mir,ndslice,topology))
+$(T2 IotaIterator, $(SUBREF topology, iota))
+$(T2 MapIterator, $(SUBREF topology, map))
+$(T2 RetroIterator, $(SUBREF topology, retro))
+$(T2 SliceIterator, $(SUBREF topology, map) in composition with $(LREF MapIterator) for packed slices.)
+$(T2 StrideIterator, $(SUBREF topology, stride))
+$(T2 ZipIterator, $(SUBREF topology, zip))
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
@@ -37,7 +37,7 @@ import mir.ndslice.internal;
 /++
 Step counter.
 
-`IotaIterator` is used by $(REF iota, mir,ndslice,topology).
+`IotaIterator` is used by $(SUBREF topology, iota).
 +/
 struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
@@ -134,7 +134,7 @@ pure nothrow @nogc unittest
 /++
 Reverse directions for an iterator.
 
-`RetroIterator` is used by $(REF retro, mir,ndslice,topology).
+`RetroIterator` is used by $(SUBREF topology, retro).
 +/
 struct RetroIterator(Iterator)
 {
@@ -228,7 +228,7 @@ struct RetroIterator(Iterator)
 /++
 Iterates an iterator with a fixed strides.
 
-`StrideIterator` is used by $(REF stride, mir,ndslice,topology).
+`StrideIterator` is used by $(SUBREF topology, stride).
 +/
 struct StrideIterator(Iterator)
 {
@@ -368,7 +368,7 @@ private template _zip_index(Iterators...)
 /++
 Iterates multiple iterators in lockstep.
 
-`ZipIterator` is used by $(REF zip, mir,ndslice,topology).
+`ZipIterator` is used by $(SUBREF topology, zip).
 +/
 struct ZipIterator(Iterators...)
     if (Iterators.length > 1)
@@ -457,7 +457,7 @@ pure nothrow @nogc unittest
 }
 
 /++
-`MapIterator` is used by $(REF map, mir,ndslice,topology).
+`MapIterator` is used by $(SUBREF topology, map).
 +/
 struct MapIterator(Iterator, alias fun)
 {
@@ -596,7 +596,7 @@ struct IndexIterator(Iterator, Field)
 Iterates on top of another iterator and returns a slice
 as a multidimensional window at the current position.
 
-`SliceIterator` is used by $(REF map, mir,ndslice,topology) for packed slices.
+`SliceIterator` is used by $(SUBREF topology, map) for packed slices.
 +/
 struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
 {
@@ -650,7 +650,7 @@ struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
 /++
 Creates an iterator on top of a field.
 
-`FieldIterator` is used by $(REF slicedField, mir,ndslice,slice), $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.
+`FieldIterator` is used by $(SUBREF slice, slicedField), $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.
 +/
 struct FieldIterator(Field)
 {
@@ -707,7 +707,7 @@ struct FieldIterator(Field)
 /++
 Creates an iterator on top of all elements in a slice.
 
-`FieldIterator` is used by $(REF bitwise, mir,ndslice,topology), $(REF ndiota, mir,ndslice,topology), and others.
+`FieldIterator` is used by $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.
 +/
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == Universal || kind == Canonical))
