@@ -2,7 +2,7 @@ Ddoc
 
 $(P Generic Algorithm Collection.)
 
-$(P The following table is a quick reference guide for which Mir Random modules to
+$(P The following table is a quick reference guide for which Mir Algorithm modules to
 use for a given category of functionality.)
 
 $(BOOKTABLE ,
@@ -10,17 +10,66 @@ $(BOOKTABLE ,
         $(TH Modules)
         $(TH Description)
     )
-    $(LEADINGROW Multidimensional arrays, ranges, and algorithms)
+    $(LEADINGROW Multidimensional ndslices, iterators, and algorithms)
     $(TR
         $(TDNW $(MREF mir,ndslice))
-        $(TD .)
+        $(TD Package)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,slice))
+        $(TD Slice structure, basic constructors)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,allocation))
+        $(TD Allocation utilities)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,topology))
+        $(TD Advanced constructors, SliceKind conversion utilities)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,algorithm))
+        $(TD Loop free programming)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,dynamic))
+        $(TD Dynamic dimension manipulators)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,sorting))
+        $(TD Sorting utilities)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,iterator))
+        $(TD Iterator Declarations)
+    )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,field))
+        $(TD Fild Declarations)
+    )
+    $(LEADINGROW Accessories)
+    $(TR
+        $(TDNW $(MREF mir,conv))
+        $(TD Conversion utilities)
+    )
+    $(TR
+        $(TDNW $(MREF mir,functional))
+        $(TD Functions that manipulate other functions)
+    )
+    $(TR
+        $(TDNW $(MREF mir,primitives))
+        $(TD Templates used to check primitives)
+    )
+    $(TR
+        $(TDNW $(MREF mir,utility))
+        $(TD Everyday utilities)
     )
 )
 
 Copyright: Copyright © 2016-, Ilya Yaroshenko.
 
 Macros:
-        TITLE=Mir Random
-        WIKI=Mir Random
+        TITLE=Mir Algorithm
+        WIKI=Mir Algorithm
         DDOC_BLANKLINE=
         _=
