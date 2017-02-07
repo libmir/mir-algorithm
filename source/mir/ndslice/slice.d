@@ -5,7 +5,7 @@ License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 
-$(BOOKTABLE $(H2 Definition),
+$(BOOKTABLE $(H2 Definitions),
 $(TR $(TH Name) $(TH Description))
 $(T2 Slice, N-dimensional slice.)
 $(T2 SliceKind, Kind of $(LREF Slice) enumeration.)

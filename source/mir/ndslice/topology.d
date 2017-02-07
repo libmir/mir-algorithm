@@ -3,41 +3,21 @@ This is a submodule of $(MREF mir, ndslice).
 
 Selectors create new views and iteration patterns over the same data, without copying.
 
-$(H2 Subspace selectors)
-
-Subspace selectors serve to generalize and combine other selectors easily.
-For a slice of `Slice!(kind, [N], Iterator)` type `slice.pack!K` creates a slice of
-slices of `Slice!(kind, [N - K, K], Iterator)` type by packing
-the last `K` dimensions of the top dimension pack,
-and the type of element of $(LREF flattened) is `Slice!(Contiguous, [K], IteratorX)`.
-Another way to use $(LREF pack) is transposition of dimension packs using
-$(LREF evertPack). Examples of use of subspace selectors are available for selectors,
-$(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementsCount).
-
-$(BOOKTABLE ,
-$(TR $(TH Function Name) $(TH Description))
-
-$(T2 pack     , returns slice of slices)
-$(T2 ipack    , returns slice of slices)
-$(T2 unpack   , merges all dimension packs)
-$(T2 evertPack, reverses dimension packs)
-
-)
-
 $(BOOKTABLE $(H2 Representation Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
 $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitwise, Bitwise slice over an integral slice.)
-$(T2 flattened, A lazy contiguous 1-dimensional slice of all elements of a slice.)
-$(T2 iota, Lazy slice with initial flattened (contiguous) index.)
-$(T2 map, Lazy multidimensional functional map)
-$(T2 ndiota, Lazy slice with initial multidimensional index)
+$(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
+$(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
+$(T2 map, Multidimensional functional map)
+$(T2 ndiota, Contiguous Slice with initial multidimensional index)
 $(T2 retro, )
 $(T2 stride, )
 $(T2 unzip, )
 $(T2 zip, )
+
 )
 
 $(BOOKTABLE $(H2 Shape Selectors),
@@ -50,6 +30,27 @@ $(T2 reshape, new slice with changed dimensions for the same data)
 $(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
 
 )
+
+
+$(BOOKTABLE Subspace Selectors,
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 pack     , returns slice of slices)
+$(T2 ipack    , returns slice of slices)
+$(T2 unpack   , merges all dimension packs)
+$(T2 evertPack, reverses dimension packs)
+
+)
+
+Subspace selectors serve to generalize and combine other selectors easily.
+For a slice of `Slice!(kind, [N], Iterator)` type `slice.pack!K` creates a slice of
+slices of `Slice!(kind, [N - K, K], Iterator)` type by packing
+the last `K` dimensions of the top dimension pack,
+and the type of element of $(LREF flattened) is `Slice!(Contiguous, [K], IteratorX)`.
+Another way to use $(LREF pack) is transposition of dimension packs using
+$(LREF evertPack). Examples of use of subspace selectors are available for selectors,
+$(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementsCount).
+
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-, Ilya Yaroshenko
