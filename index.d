@@ -41,11 +41,11 @@ $(BOOKTABLE ,
     )
     $(TR
         $(TDNW $(MREF mir,ndslice,iterator))
-        $(TD Iterator Declarations)
+        $(TD Iterator declarations)
     )
     $(TR
         $(TDNW $(MREF mir,ndslice,field))
-        $(TD Field Declarations)
+        $(TD Field declarations)
     )
     $(LEADINGROW Accessories)
     $(TR
