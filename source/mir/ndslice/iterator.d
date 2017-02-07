@@ -178,10 +178,10 @@ struct RetroIterator(Iterator)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return right._iterator - this._iterator; }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     { return right._iterator == this._iterator; }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
         static if (isPointer!Iterator)
             return right._iterator - this._iterator;
@@ -270,10 +270,10 @@ struct StrideIterator(Iterator)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return (this._iterator - right._iterator) / _stride; }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     { return this._iterator == right._iterator; }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
         static if (isPointer!Iterator)
             ptrdiff_t ret = this._iterator - right._iterator;
@@ -409,10 +409,10 @@ struct ZipIterator(Iterators...)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return this._iterators[0] - right._iterators[0]; }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     { return this._iterators[0] == right._iterators[0]; }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
         static if (isPointer!(Iterators[0]))
             return this._iterators[0] - right._iterators[0];
@@ -507,10 +507,10 @@ struct MapIterator(Iterator, alias fun)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return this._iterator - right._iterator; }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     { return this._iterator == right._iterator; }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
         static if (isPointer!Iterator)
             return this._iterator - right._iterator;
@@ -580,10 +580,10 @@ struct IndexIterator(Iterator, Field)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return this._iterator - right._iterator; }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     { return this._iterator == right._iterator; }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
         static if (isPointer!Iterator)
             return this._iterator - right._iterator;
@@ -635,10 +635,10 @@ struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return this._iterator - right._iterator; }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     { return this._iterator == right._iterator; }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
         static if (isPointer!Iterator)
             return this._iterator - right._iterator;
@@ -697,10 +697,10 @@ struct FieldIterator(Field)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     { return this._index - right._index; }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     { return this._index == right._index; }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     { return this._index - right._index; }
 }
 
@@ -872,7 +872,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         return ret;
     }
 
-    bool opEquals(ref const typeof(this) right) const
+    bool opEquals()(ref const typeof(this) right) const
     {
         foreach_reverse (i; Iota!(packs[0]))
             if (this._indexes[i] != right._indexes[i])
@@ -880,7 +880,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         return true;
     }
 
-    ptrdiff_t opCmp(ref const typeof(this) right) const
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
         foreach (i; Iota!(packs[0] - 1))
             if (auto ret = this._indexes[i] - right._indexes[i])

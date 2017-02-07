@@ -81,7 +81,7 @@ struct RepeatField(T)
     ///
     UT _value;
 
-    auto ref T opIndex(ptrdiff_t)
+    auto ref T opIndex()(ptrdiff_t)
     { return cast(T) _value; }
 }
 
@@ -100,7 +100,7 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     ///
     Field _field;
 
-    bool opIndex(size_t index)
+    bool opIndex()(size_t index)
     {
         return ((_field[index >> shift] & (I(1) << (index & mask)))) != 0;
     }
@@ -139,7 +139,7 @@ struct ndIotaField(size_t N)
     ///
     size_t[N - 1] _lengths;
 
-    size_t[N] opIndex(size_t index) const
+    size_t[N] opIndex()(size_t index) const
     {
         size_t[N] indexes = void;
         foreach_reverse (i; Iota!(N - 1))
