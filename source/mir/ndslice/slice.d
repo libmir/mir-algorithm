@@ -59,7 +59,14 @@ unittest
     static assert(isSlice!A == null);
 }
 
-/// Kind of $(LREF Slice).
+/++
+Kind of $(LREF Slice).
+See_also:
+    $(SUBREF topology, universal),
+    $(SUBREF topology, canonical),
+    $(SUBREF topology, assumeCanonical),
+    $(SUBREF topology, assumeContiguous).
++/
 enum SliceKind
 {
     /// A slice has strides for all dimensions.

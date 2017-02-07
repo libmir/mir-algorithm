@@ -3,6 +3,16 @@ This is a submodule of $(MREF mir, ndslice).
 
 Selectors create new views and iteration patterns over the same data, without copying.
 
+$(BOOKTABLE $(H2 Kind Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 universal, Converts a slice to universal kind.)
+$(T2 canonical, Converts a slice to canonical kind.)
+$(T2 assumeCanonical, Converts a slice to canonical kind (unsafe).)
+$(T2 assumeContiguous, Converts a slice to contiguous kind (unsafe).)
+
+)
+
 $(BOOKTABLE $(H2 Representation Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
@@ -13,10 +23,10 @@ $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
 $(T2 map, Multidimensional functional map.)
 $(T2 ndiota, Contiguous Slice with initial multidimensional index.)
-$(T2 retro, )
-$(T2 stride, )
-$(T2 unzip, )
-$(T2 zip, )
+$(T2 retro, Reverses order of iteration for all dimensions)
+$(T2 stride, Strides 1-dimensional slice)
+$(T2 zip, Zips slices into a slice of tuples.)
+$(T2 unzip, Selects a slice from a zipped slice.)
 
 )
 
@@ -74,6 +84,19 @@ import mir.ndslice.field;
 
 @fastmath:
 
+/++
+Converts a slice to universal kind.
+
+Params:
+    slice = a slice
+Returns:
+    universal slice
+See_also:
+    $(SUBREF slice, SliceKind),
+    $(LREF canonical),
+    $(LREF assumeCanonical),
+    $(LREF assumeContiguous).
++/
 auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     static if (kind == Universal)
@@ -83,7 +106,7 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     else
     static if (is(Iterator : RetroIterator!It, It))
     {
-        return slice.retro.universal;
+        return slice.retro.universal.retro;
     }
     else
     {
@@ -112,13 +135,26 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     }
 }
 
-Slice!(packs.sum == 1 ? Contiguous : Canonical, packs, Iterator)
+/++
+Converts a slice to canonical kind.
+
+Params:
+    slice = contiguous or canonical slice
+Returns:
+    canonical slice
+See_also:
+    $(SUBREF slice, SliceKind),
+    $(LREF universal),
+    $(LREF assumeCanonical),
+    $(LREF assumeContiguous).
++/
+Slice!(packs == [1] ? Contiguous : Canonical, packs, Iterator)
     canonical
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
     if (kind == Contiguous || kind == Canonical)
 {
-    static if (kind == Canonical || packs.sum == 1)
+    static if (kind == Canonical || packs == [1])
         return slice;
     else
     {
@@ -136,6 +172,19 @@ Slice!(packs.sum == 1 ? Contiguous : Canonical, packs, Iterator)
     }
 }
 
+/++
+Converts a slice to canonical kind (unsafe).
+
+Params:
+    slice = a slice
+Returns:
+    canonical slice
+See_also:
+    $(SUBREF slice, SliceKind),
+    $(LREF universal),
+    $(LREF canonical),
+    $(LREF assumeContiguous).
++/
 Slice!(Canonical, packs, Iterator)
     assumeCanonical
     (SliceKind kind, size_t[] packs, Iterator)
@@ -157,6 +206,19 @@ Slice!(Canonical, packs, Iterator)
     }
 }
 
+/++
+Converts a slice to contiguous kind (unsafe).
+
+Params:
+    slice = a slice
+Returns:
+    canonical slice
+See_also:
+    $(SUBREF slice, SliceKind),
+    $(LREF universal),
+    $(LREF canonical),
+    $(LREF assumeCanonical).
++/
 Slice!(Contiguous, packs, Iterator)
     assumeContiguous
     (SliceKind kind, size_t[] packs, Iterator)
@@ -1650,11 +1712,18 @@ pure nothrow unittest
 }
 
 /++
+Strides 1-dimensional slice.
+Params:
+    slice = 1-dimensional unpacked slice.
+    factor = positive stride size.
+Returns:
+    Contiguous slice with strided iterator.
+See_also: $(SUBREF dynamic, strided)
 +/
 auto stride
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice, ptrdiff_t factor)
-    if (packs.sum == 1)
+    if (packs == [1])
 in
 {
     assert (factor > 0, "factor must be positive.");
@@ -1666,11 +1735,26 @@ body
     else
     {
         import mir.ndslice.dynamic: strided;
-        return slice.strided!0(factor);
+        return slice.strided!0(factor).hideStride;
     }
 }
 
+///
+@safe pure nothrow @nogc unittest
+{
+    auto slice = iota(6);
+    static immutable str = [0, 2, 4];
+    assert(slice.stride(2) == str);
+    assert(slice.universal.stride(2) == str);
+}
+
 /++
+Reverses order of iteration for all dimensions.
+Params:
+    slice = Unpacked slice.
+Returns:
+    Slice with reversed order of iteration for all dimensions.
+See_also: $(SUBREF dynamic, reversed), $(SUBREF dynamic, allReversed).
 +/
 auto retro
     (SliceKind kind, size_t[] packs, Iterator)
@@ -1679,7 +1763,6 @@ auto retro
 {
     static if (kind == Contiguous || kind == Canonical)
     {
-        import mir.ndslice.dynamic: allReversed;
         static if (kind == Contiguous)
         {
             ptrdiff_t shift = 1;
@@ -1709,7 +1792,7 @@ auto retro
         foreach (i; Iota!(ret.N))
             ret._lengths[i] = slice._lengths[i];
         foreach (i; Iota!(ret.S))
-            ret._strdies[i] = slice._strdies[i];
+            ret._strides[i] = slice._strides[i];
         return ret;
     }
     else
@@ -1717,6 +1800,20 @@ auto retro
         import mir.ndslice.dynamic: allReversed;
         return slice.allReversed;
     }
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    auto slice = iota(2, 3);
+    static immutable reversed = [[5, 4, 3], [2, 1, 0]];
+    assert(slice.retro == reversed);
+    assert(slice.canonical.retro == reversed);
+    assert(slice.universal.retro == reversed);
+
+    static assert(is(typeof(slice.retro.retro) == typeof(slice)));
+    static assert(is(typeof(slice.canonical.retro.retro) == typeof(slice.canonical)));
+    static assert(is(typeof(slice.universal.retro) == typeof(slice.universal)));
 }
 
 /++
@@ -2088,14 +2185,16 @@ unittest
     Slice!(Contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
 }
 /++
-Groups slices into a slice tuple. The slices must have identical strides or be 1-dimensional.
+Groups slices into a slice of tuples. The slices must have identical strides or be 1-dimensional.
 Params:
+    sameStrides = if `true` assumes that all slices has the same strides.
     slices = list of slices
 Returns:
     n-dimensional slice of elements tuple
 See_also: $(SUBREF slice, Slice.strides).
 +/
-auto zip(bool sameStrides = false, Slices...)(Slices slices)
+auto zip
+    (bool sameStrides = false, Slices...)(Slices slices)
     if (Slices.length > 1 && allSatisfy!(isSlice, Slices))
 {
     enum packs = isSlice!(Slices[0]);
@@ -2103,16 +2202,17 @@ auto zip(bool sameStrides = false, Slices...)(Slices slices)
     {
         static assert(isSlice!S == packs, "zip: all Slices must have the same shape packs");
         assert(slices[i]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
-        assert(slices[i].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides");
+        static if (sameStrides)
+            assert(slices[i].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides");
     }
-    static if (sameStrides == false && minElem(staticMap!(_kindOf, Slices)) != Contiguous)
+    static if (!sameStrides && minElem(staticMap!(kindOf, Slices)) != Contiguous)
     {
         static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
         mixin(`return .zip(` ~ _iotaArgs!(Slices.length, "slices[", "].hideStride, ") ~`);`);
     }
     else
     {
-        enum kind = maxElem(staticMap!(_kindOf, Slices));
+        enum kind = maxElem(staticMap!(kindOf, Slices));
         alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
         alias Ret = Slice!(kind, packs, Iterator);
         mixin _DefineRet_;
@@ -2132,9 +2232,9 @@ pure nothrow unittest
     import mir.ndslice.topology : flattened, iota;
 
     auto alpha = iota!int(4, 3);
-    auto beta = slice!int(4, 3);
+    auto beta = slice!int(4, 3).universal;
 
-    auto m = zip(alpha, beta);
+    auto m = zip!true(alpha, beta);
     foreach (r; m)
         foreach (e; r)
             e.b = e.a;
@@ -2161,12 +2261,19 @@ pure nothrow unittest
 }
 
 /++
+Selects a slice from a zipped slice.
+Params:
+    name = name of a slice to unzip.
+    slice = zipped slice
+Returns:
+    unzipped slice
 +/
-auto unzip(char c, SliceKind kind, size_t[] packs, Iterator : ZipIterator!Iterators, Iterators...)
+auto unzip
+    (char name, SliceKind kind, size_t[] packs, Iterator : ZipIterator!Iterators, Iterators...)
     (Slice!(kind, packs, Iterator) slice)
 {
-    enum size_t i = c - 'a';
-    static assert(i < Iterators.length, `unzip: constraint: size_t(c - 'a') < Iterators.length`);
+    enum size_t i = name - 'a';
+    static assert(i < Iterators.length, `unzip: constraint: size_t(name - 'a') < Iterators.length`);
     return Slice!(kind, packs, Iterators[i])(slice._lengths, slice._strides, slice._iterator._iterators[i]).unhideStride;
 }
 

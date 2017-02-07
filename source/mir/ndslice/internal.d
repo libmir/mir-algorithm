@@ -19,7 +19,6 @@ template _iotaArgs(size_t length, string prefix, string suffix)
         enum _iotaArgs = "";
 }
 
-enum _kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;
 alias _IteratorOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = Iterator;
 
 E maxElem(E)(E[] arr...)
