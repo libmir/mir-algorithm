@@ -42,7 +42,7 @@ $(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the s
 )
 
 
-$(BOOKTABLE Subspace Selectors,
+$(BOOKTABLE $(H2 Subspace Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
 $(T2 pack     , Returns slice of slices.)
