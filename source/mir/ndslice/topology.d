@@ -1287,11 +1287,7 @@ Slice!(Contiguous, [1], StrideIterator!Iterator)
     (Iterator)
     (Slice!(Universal, [1], Iterator) slice)
 {
-    mixin _DefineRet;
-    ret._lengths[0] = slice._lengths[0];
-    ret._iterator._stride = slice._stride;
-    ret._iterator._iterator = slice._iterator;
-    return ret;
+    return slice.hideStride;
 }
 
 /// Regular slice
@@ -1982,18 +1978,32 @@ unittest
     static assert(is(typeof(a) == typeof(b)));
 }
 
+///
+pure unittest
+{
+    import std.algorithm.iteration : sum, reduce;
+    import mir.utility : max;
+    import mir.ndslice.dynamic : transposed;
+    /// Returns maximal column average.
+    auto maxAvg(S)(S matrix) {
+        return reduce!max(matrix.universal.transposed.pack!1.map!sum)
+             / double(matrix.length);
+    }
+    // 1 2
+    // 3 4
+    auto matrix = iota([2, 2], 1);
+    assert(maxAvg(matrix) == 3);
+}
+
 private auto hideStride
     (SliceKind kind, Iterator)
     (Slice!(kind, [1], Iterator) slice)
 {
     static if (kind == Universal)
-    {
-        alias It = StrideIterator!Iterator;
-        return Slice!(Contiguous, [1], It)(
+        return Slice!(Contiguous, [1], StrideIterator!Iterator)(
             slice._lengths,
             slice._strides[0 .. 0],
-            It(slice._stride[0], slice._iterator));
-    }
+            StrideIterator!Iterator(slice._strides[0], slice._iterator));
     else
         return slice;
 }
@@ -2078,12 +2088,12 @@ unittest
     Slice!(Contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
 }
 /++
-Groups slices into a slice tuple. The slices must have identical structure.
-Slice tuple is a slice, which holds single set of lengths and strides
-for a number of ranges.
+Groups slices into a slice tuple. The slices must have identical strides or be 1-dimensional.
+Params:
+    slices = list of slices
 Returns:
-    n-dimensional slice
-See_also: $(SUBREF slice, Slice.structure).
+    n-dimensional slice of elements tuple
+See_also: $(SUBREF slice, Slice.strides).
 +/
 auto zip(bool sameStrides = false, Slices...)(Slices slices)
     if (Slices.length > 1 && allSatisfy!(isSlice, Slices))
@@ -2098,7 +2108,7 @@ auto zip(bool sameStrides = false, Slices...)(Slices slices)
     static if (sameStrides == false && minElem(staticMap!(_kindOf, Slices)) != Contiguous)
     {
         static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
-        return .zip(_iotaArgs!(Slices.length, "slice[", "].hideStride"));
+        mixin(`return .zip(` ~ _iotaArgs!(Slices.length, "slices[", "].hideStride, ") ~`);`);
     }
     else
     {
@@ -2136,28 +2146,24 @@ pure nothrow unittest
     assert(alpha == beta);
 }
 
-///
-pure unittest
+pure nothrow unittest
 {
-    import std.algorithm.iteration : sum, reduce;
-    import mir.utility : max;
-    import mir.ndslice.dynamic : transposed;
-    /// Returns maximal column average.
-    auto maxAvg(S)(S matrix) {
-        return reduce!max(matrix.universal.transposed.pack!1.map!sum)
-             / double(matrix.length);
-    }
-    // 1 2
-    // 3 4
-    auto matrix = iota([2, 2], 1);
-    assert(maxAvg(matrix) == 3);
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : flattened, iota;
+
+    auto alpha = iota!int(4).universal;
+    auto beta = slice!int(4);
+
+    auto m = zip(alpha, beta);
+    foreach (e; m)
+        e.b = e.a;
+    assert(alpha == beta);
 }
 
 /++
 +/
 auto unzip(char c, SliceKind kind, size_t[] packs, Iterator : ZipIterator!Iterators, Iterators...)
     (Slice!(kind, packs, Iterator) slice)
-
 {
     enum size_t i = c - 'a';
     static assert(i < Iterators.length, `unzip: constraint: size_t(c - 'a') < Iterators.length`);
