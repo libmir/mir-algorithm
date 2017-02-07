@@ -35,6 +35,8 @@ import std.meta;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 
+@fastmath:
+
 private void checkShapesMatch(
     string fun = __FUNCTION__,
     string pfun = __PRETTY_FUNCTION__,
@@ -50,10 +52,8 @@ private void checkShapesMatch(
     }
 }
 
-@fastmath:
 
 private auto ref frontOf(alias slice)() { return slice.front; };
-
 
 S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {

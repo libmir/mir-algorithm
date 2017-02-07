@@ -42,6 +42,10 @@ import std.traits;
 private enum isRef(T) = is(T : Ref!T0, T0);
 private enum isLangRef(alias arg) = __traits(isRef, arg);
 
+import mir.ndslice.internal;
+
+@fastmath:
+
 /++
 Simple wrapper that holds a pointer.
 It is used for as workaround to return multiple auto ref values.
@@ -49,6 +53,8 @@ It is used for as workaround to return multiple auto ref values.
 struct Ref(T)
     if (!isRef!T)
 {
+    @fastmath:
+
     @disable this();
     ///
     this(ref T value) @trusted
@@ -75,7 +81,7 @@ private mixin template _RefTupleMixin(T...)
     {
         enum i = T.length - 1;
         static if (isRef!(T[i]))
-            mixin(` @property ref ` ~ cast(char)('a' + i) ~ `() { return *expand[` ~ i.stringof ~ `].__ptr; }` );
+            mixin(`@fastmath @property ref ` ~ cast(char)('a' + i) ~ `() { return *expand[` ~ i.stringof ~ `].__ptr; }` );
         else
             mixin(`alias ` ~ cast(char)('a' + i) ~ ` = expand[` ~ i.stringof ~ `];`);
         mixin ._RefTupleMixin!(T[0 .. $-1]);
@@ -87,6 +93,7 @@ Simplified tuple structure. Some fields may be type of $(LREF Ref).
 +/
 struct RefTuple(T...)
 {
+    @fastmath:
     T expand;
     mixin _RefTupleMixin!T;
 }
@@ -127,7 +134,7 @@ template adjoin(fun...) if (fun.length && fun.length <= 26)
         static if (Filter!(_needNary, fun).length == 0)
         {
             ///
-            auto adjoin(Args...)(auto ref Args args)
+            @fastmath auto adjoin(Args...)(auto ref Args args)
             {
                 template _adjoin(size_t i)
                 {
@@ -250,7 +257,7 @@ template naryFun(alias fun)
     static if (is(typeof(fun) : string))
     {
         /// Specialization for string lambdas
-        auto ref naryFun(Args...)(auto ref Args args)
+        @fastmath auto ref naryFun(Args...)(auto ref Args args)
             if (args.length <= 26)
         {
             mixin(_naryAliases!(Args.length));
@@ -381,7 +388,7 @@ N-ary predicate that reverses the order of arguments, e.g., given
 template reverseArgs(alias fun)
 {
     ///
-    auto ref reverseArgs(Args...)(auto ref Args args)
+    @fastmath auto ref reverseArgs(Args...)(auto ref Args args)
         if (is(typeof(fun(Reverse!args))))
     {
         return fun(Reverse!args);
@@ -430,7 +437,7 @@ template not(alias pred)
 {
     static if (!is(typeof(pred) : string) && !needOpCallAlias!pred)
     ///
-    bool not(T...)(auto ref T args)
+    @fastmath bool not(T...)(auto ref T args)
     {
         return !pred(args);
     }
@@ -497,7 +504,7 @@ template pipe(fun...)
         static if (f.length == fun.length && Filter!(_needNary, f).length == 0)
         {
             ///
-            auto ref pipe(Args...)(auto ref Args args)
+            @fastmath auto ref pipe(Args...)(auto ref Args args)
             {
                 return mixin (_pipe!(fun.length));
             }
@@ -555,7 +562,7 @@ template forward(args...)
         static if (__traits(isRef, arg))
             alias fwd = arg;
         else
-            @property fwd()(){ return arg; } //TODO: use move
+            @fastmath @property fwd()(){ return arg; } //TODO: use move
         alias forward = AliasSeq!(fwd, forward!(args[1..$]));
     }
     else
