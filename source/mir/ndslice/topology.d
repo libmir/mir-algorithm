@@ -6,10 +6,10 @@ Selectors create new views and iteration patterns over the same data, without co
 $(BOOKTABLE $(H2 Kind Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
-$(T2 universal, Converts a slice to universal kind.)
-$(T2 canonical, Converts a slice to canonical kind.)
-$(T2 assumeCanonical, Converts a slice to canonical kind (unsafe).)
-$(T2 assumeContiguous, Converts a slice to contiguous kind (unsafe).)
+$(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
+$(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
+$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind) (unsafe).)
+$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind) (unsafe).)
 
 )
 
