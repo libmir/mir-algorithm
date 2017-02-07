@@ -11,8 +11,8 @@ where each element of the original slice is converted to a type `T`.)
 $(T2 bitwise, Bitwise slice over an integral slice.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
-$(T2 map, Multidimensional functional map)
-$(T2 ndiota, Contiguous Slice with initial multidimensional index)
+$(T2 map, Multidimensional functional map.)
+$(T2 ndiota, Contiguous Slice with initial multidimensional index.)
 $(T2 retro, )
 $(T2 stride, )
 $(T2 unzip, )
@@ -25,8 +25,8 @@ $(TR $(TH Function Name) $(TH Description))
 
 $(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
 $(T2 diagonal, 1-dimensional slice composed of diagonal elements)
-$(T2 repeat, slice with identical values)
-$(T2 reshape, new slice with changed dimensions for the same data)
+$(T2 repeat, Slice with identical values)
+$(T2 reshape, New slice with changed dimensions for the same data)
 $(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
 
 )
@@ -35,10 +35,10 @@ $(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the s
 $(BOOKTABLE Subspace Selectors,
 $(TR $(TH Function Name) $(TH Description))
 
-$(T2 pack     , returns slice of slices)
-$(T2 ipack    , returns slice of slices)
-$(T2 unpack   , merges all dimension packs)
-$(T2 evertPack, reverses dimension packs)
+$(T2 pack     , Returns slice of slices.)
+$(T2 ipack    , Returns slice of slices.)
+$(T2 unpack   , Merges all dimension packs.)
+$(T2 evertPack, Reverses dimension packs.)
 
 )
 
@@ -57,7 +57,7 @@ Copyright: Copyright © 2016-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 
 Macros:
-SUBREF = $(REF_ALTTEXT $(TT $2), $2, std,experimental, ndslice, $1)$(NBSP)
+SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 +/
@@ -692,7 +692,7 @@ unittest
 Returns an n-dimensional slice of n-dimensional non-overlapping blocks.
 `blocks` can be generalized with other selectors.
 For example, `blocks` in combination with $(LREF diagonal) can be used to get a slice of diagonal blocks.
-For overlapped blocks, combine $(LREF windows) with $(SUBREF iteration, strided).
+For overlapped blocks, combine $(LREF windows) with $(SUBREF dynamic, strided).
 
 Params:
     N = dimension count
@@ -1786,7 +1786,7 @@ for all elements in `slice`. The original slices are
 not changed. Evaluation is done lazily.
 
 Note:
-    $(SUBREF iteration, transposed) and
+    $(SUBREF dynamic, transposed) and
     $(SUBREF topology, pack) can be used to specify dimensions.
 Params:
     fun = One or more functions.
