@@ -32,13 +32,12 @@ $(T2 allReversed, Reverses the direction of iteration for all dimensions. $(BR)
 
 $(BOOKTABLE $(H2 Other operators),
 $(TR $(TH Function Name) $(TH Description))
+
 $(T2 rotated, Rotates two selected dimensions by `k*90` degrees. $(BR)
     `iota(2, 3).rotated` equals to `[[2, 5], [1, 4], [0, 3]]`.)
+$(T2 dropToHypercube, Returns maximal multidimensional cube of a slice.)
+
 )
-
-$(H4 Drop operators)
-
-$(LREF dropToHypercube)
 
 $(H2 Bifacial operators)
 
