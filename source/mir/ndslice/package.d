@@ -56,6 +56,8 @@ a multidimensional view over a range.
 Multidimensional view is presented by $(SUBREF slice, Slice) type.
 
 ------
+import mir.ndslice;
+
 auto matrix = slice!double(3, 4);
 matrix[] = 0;
 matrix.diagonal[] = 1;
@@ -63,11 +65,10 @@ matrix.diagonal[] = 1;
 auto row = matrix[2];
 row[3] = 6;
 assert(matrix[2, 3] == 6); // D & C index order
-assert(matrix(3, 2) == 6); // Math & Fortran index order
 ------
 
 Note:
-In many examples $(LINK2 mir_ndslice_selection.html#iotaSlice, iotaSlice) is used
+In many examples $(REF iota, mir,topology,iota) is used
 instead of a regular array, which makes it
 possible to carry out tests without memory allocation.
 
@@ -78,69 +79,95 @@ $(BOOKTABLE ,
 
 $(TR $(TH Submodule) $(TH Declarations))
 
-$(TR $(TDNW $(SUBMODULE slice)
-        $(BR) $(SMALL $(SUBREF slice, Slice), its properties, operator overloading))
+$(TR $(TDNW $(SUBMODULE slice) $(BR)
+        $(SMALL $(SUBREF slice, Slice) structure.
+            $(BR) Basic constructors))
      $(TD
-        $(SUBREF slice, as)
-        $(SUBREF slice, sliced)
-        $(SUBREF slice, Slice)
-        $(SUBREF slice, slice)
-        $(SUBREF slice, makeSlice)
-        $(SUBREF slice, ndarray)
-        $(SUBREF slice, makeNdarray)
-        $(SUBREF slice, shape)
-        $(SUBREF slice, Slice)
-        $(SUBREF slice, assumeSameStructure)
-        $(SUBREF slice, ReplaceArrayWithPointer)
+        $(SUBREF slice, Canonical)
+        $(SUBREF slice, Contiguous)
         $(SUBREF slice, DeepElementType)
-        $(SUBREF slice, SliceException)
-    )
-)
-$(TR $(TDNW $(SUBMODULE dynamic)
-        $(BR) $(SMALL Basic dynamic operators))
-     $(TD
-        $(SUBREF dynamic, transposed)
-        $(SUBREF dynamic, strided)
-        $(SUBREF dynamic, reversed)
-        $(SUBREF dynamic, rotated)
-        $(SUBREF dynamic, everted)
-        $(SUBREF dynamic, swapped)
-        $(SUBREF dynamic, allReversed)
-        $(SUBREF dynamic, dropToHypercube) and other `drop` primitives
+        $(SUBREF slice, isSlice)
+        $(SUBREF slice, kindOf)
+        $(SUBREF slice, Slice)
+        $(SUBREF slice, sliced)
+        $(SUBREF slice, slicedField)
+        $(SUBREF slice, SliceKind)
+        $(SUBREF slice, Structure)
+        $(SUBREF slice, Universal)
     )
 )
 
-$(TR $(TDNW $(SUBMODULE topology)
-        $(BR) $(SMALL Subspace manipulations $(BR) Operators for loop free programming))
+$(TR $(TDNW $(SUBMODULE allocation) $(BR)
+        $(SMALL $(SUBREF allocation, Slice) structure.
+            $(BR) Basic constructors))
      $(TD
+        $(SUBREF allocation, makeNdarray)
+        $(SUBREF allocation, makeSlice)
+        $(SUBREF allocation, makeUninitializedSlice)
+        $(SUBREF allocation, ndarray)
+        $(SUBREF allocation, shape)
+        $(SUBREF allocation, slice)
+        $(SUBREF allocation, uninitializedSlice)
+    )
+)
+
+$(TR $(TDNW $(SUBMODULE topology) $(BR)
+        $(SMALL Subspace manipulations
+            $(BR) Advanced constructors
+            $(BR) Kind conversion utilities))
+     $(TD
+        $(SUBREF topology, as)
+        $(SUBREF topology, assumeCanonical)
+        $(SUBREF topology, assumeContiguous)
+        $(SUBREF topology, bitwise)
         $(SUBREF topology, blocks)
-        $(SUBREF topology, windows)
+        $(SUBREF topology, canonical)
         $(SUBREF topology, diagonal)
-        $(SUBREF topology, reshape)
-        $(SUBREF topology, byElement)
-        $(SUBREF topology, byElementInStandardSimplex)
-        $(SUBREF topology, indexSlice)
-        $(SUBREF topology, iotaSlice)
-        $(SUBREF topology, repeatSlice)
-        $(SUBREF topology, pack)
         $(SUBREF topology, evertPack)
+        $(SUBREF topology, flattened)
+        $(SUBREF topology, iota)
+        $(SUBREF topology, ipack)
+        $(SUBREF topology, map)
+        $(SUBREF topology, ndiota)
+        $(SUBREF topology, pack)
+        $(SUBREF topology, repeat)
+        $(SUBREF topology, reshape)
+        $(SUBREF topology, ReshapeError)
+        $(SUBREF topology, retro)
+        $(SUBREF topology, stride)
+        $(SUBREF topology, universal)
         $(SUBREF topology, unpack)
-        $(SUBREF topology, ReshapeException)
+        $(SUBREF topology, unzip)
+        $(SUBREF topology, windows)
+        $(SUBREF topology, zip)
     )
 )
 
 $(TR $(TDNW $(SUBMODULE algorithm)
         $(BR) $(SMALL Computation algorithms $(BR) Operators for loop free programming))
      $(TD
-        $(SUBREF algorithm, map)
-        $(SUBREF algorithm, fold)
-        $(SUBREF algorithm, reduce)
-        $(SUBREF algorithm, each)
-        $(SUBREF algorithm, find)
-        $(SUBREF algorithm, any)
         $(SUBREF algorithm, all)
-        $(SUBREF algorithm, equal)
+        $(SUBREF algorithm, any)
         $(SUBREF algorithm, cmp)
+        $(SUBREF algorithm, count)
+        $(SUBREF algorithm, each)
+        $(SUBREF algorithm, equal)
+        $(SUBREF algorithm, find)
+        $(SUBREF algorithm, reduce)
+    )
+)
+
+$(TR $(TDNW $(SUBMODULE dynamic)
+        $(BR) $(SMALL Dynamic dimension manipulators.))
+     $(TD
+        $(SUBREF dynamic, allReversed)
+        $(SUBREF dynamic, dropToHypercube)
+        $(SUBREF dynamic, everted)
+        $(SUBREF dynamic, reversed)
+        $(SUBREF dynamic, rotated)
+        $(SUBREF dynamic, strided)
+        $(SUBREF dynamic, swapped)
+        $(SUBREF dynamic, transposed)
     )
 )
 

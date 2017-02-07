@@ -1,6 +1,4 @@
 /++
-This is a submodule of $(MREF mir, ndslice).
-
 Selectors create new views and iteration patterns over the same data, without copying.
 
 $(BOOKTABLE $(H2 Kind Selectors),
