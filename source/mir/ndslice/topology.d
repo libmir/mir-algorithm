@@ -176,6 +176,7 @@ Slice!(Contiguous, packs, Iterator)
 
 /++
 Creates a packed slice, i.e. slice of slices.
+Packs the last `p` dimensions of the first pack.
 The function does not carry out any calculations, it simply returns the same
 binary data presented differently.
 
@@ -183,8 +184,8 @@ Params:
     p = size of dimension pack
     slice = a slice to pack
 Returns:
-    `pack!K` returns `Slice!(N-K, Slice!(K+1, Iterator))`;
-    `slice.pack!(K1, K2, ..., Kn)` is the same as `slice.pack!K1.pack!K2. ... pack!Kn`.
+    `slice.pack!p` returns `Slice!(kind, [packs[0] - p, p] ~ packs[1 .. $], Iterator)`
+See_also: $(LREF ipack)
 +/
 Slice!(kind, [packs[0] - p, p] ~ packs[1 .. $], Iterator)
 pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
@@ -196,6 +197,19 @@ pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     return typeof(return)(slice._lengths, slice._strides, slice._iterator);
 }
 
+/++
+Creates a packed slice, i.e. slice of slices.
+Packs the first `p` dimensions of the first pack.
+The function does not carry out any calculations, it simply returns the same
+binary data presented differently.
+
+Params:
+    p = size of dimension pack
+    slice = a slice to pack
+Returns:
+    `slice.ipack!p` returns `Slice!(kind, [p, packs[0] - p] ~ packs[1 .. $], Iterator)`
+See_also: $(LREF pack)
++/
 Slice!(kind, [p, packs[0] - p] ~ packs[1 .. $], Iterator)
 ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (p)
