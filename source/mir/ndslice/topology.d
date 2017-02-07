@@ -2083,7 +2083,7 @@ Slice tuple is a slice, which holds single set of lengths and strides
 for a number of ranges.
 Returns:
     n-dimensional slice
-See_also: $(SUBREF slice, .Slice.structure).
+See_also: $(SUBREF slice, Slice.structure).
 +/
 auto zip(bool sameStrides = false, Slices...)(Slices slices)
     if (Slices.length > 1 && allSatisfy!(isSlice, Slices))
