@@ -1737,7 +1737,6 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
-    $(REF map, std,algorithm,iteration)
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 template map(fun...)

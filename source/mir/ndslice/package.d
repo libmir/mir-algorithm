@@ -180,9 +180,8 @@ Returns:
         where с is the number of channels in the image.
         Dense data layout is guaranteed.
 +/
-(SliceKind!
-Universal, [3] C*) movingWindowByChannel(alias filter, C)
-(SliceKind!(Universal, [3] C*) image, size_t nr, size_t nc)
+Slice!(Contiguous, [3], ubyte*) movingWindowByChannel
+(Slice!(Universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(Universal, [2], ubyte*)) filter)
 {
         // 0. 3D
         // The last dimension represents the color channel.
@@ -196,14 +195,12 @@ Universal, [3] C*) movingWindowByChannel(alias filter, C)
         // 3. 5D
         // Unpacks the windows.
         .unpack
+        .transposed!(0, 1, 4)
         // 4. 5D
         // Brings the color channel dimension to the third position.
-        .transposed!(0, 1, 4)
-        // 5. 3D Composed of 2D
-        // Packs the last two dimensions.
         .pack!2
         // 2D to pixel lazy conversion.
-        .ndMap!filter
+        .map!filter
         // Creates the new image. The only memory allocation in this function.
         .slice;
 }
@@ -220,13 +217,12 @@ Params:
 Returns:
     median value over the range `r`
 +/
-T median(Range, T)(Slice!(2, Range) sl, T[] buf)
+T median(Range, T)(Slice!(Universal, [2], Range) sl, T[] buf)
 {
     import std.algorithm.sorting : topN;
-    import mir.ndslice.algorithm : ndFold;
     // copy sl to the buffer
-    auto retPtr = sl.ndFold!((ptr, elem)
-        { *ptr = elem; return ptr + 1; })(buf.ptr);
+    auto retPtr = reduce!(
+        (ptr, elem) { *ptr = elem; return ptr + 1;} )(buf.ptr, sl);
     auto n = retPtr - buf.ptr;
     buf[0 .. n].topN(n / 2);
     return buf[n / 2];
@@ -306,9 +302,7 @@ whole set of standard D library, so the functions he creates will be as
 efficient as if they were written in C.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-
 Copyright: Copyright © 2016, Ilya Yaroshenko
-
 Authors:   Ilya Yaroshenko
 
 Macros:

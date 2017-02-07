@@ -12,14 +12,11 @@ $(T2 SliceKind, Kind of $(LREF Slice) enumeration.)
 $(T2 Universal, Alias for $(LREF .SliceKind.universal).)
 $(T2 Canonical, Alias for $(LREF .SliceKind.canonical).)
 $(T2 Contiguous, Alias for $(LREF .SliceKind.contiguous).)
-$(T2 kindOf, Extracts $(LREF SliceKind).)
-$(T2 SliceKind, Kind of slice enumeration.)
-$(T2 isSlice, Extracts dimension packs from a type. Extracts `null` if template argument is not a `Slice`.)
 $(T2 sliced, Creates a slice on top of an iterator, a pointer, or an array's pointer.)
 $(T2 slicedField, Creates a slice on top of a field, a random access range, or an array.)
-$(T2 , )
-$(T2 , )
-$(T2 , )
+$(T2 kindOf, Extracts $(LREF SliceKind).)
+$(T2 isSlice, Extracts dimension packs from a type. Extracts `null` if the template argument is not a `Slice`.)
+$(T2 Structure, A tuple of lengths and strides.)
 )
 
 Macros:
@@ -373,21 +370,21 @@ package change or copy data. The operations are only carried out on lengths, str
 and pointers. If a slice is defined over a range, only the shift of the initial element
 changes instead of the pointer.
 
-$(H4 Internal Representation for Pointers)
+$(H4 Internal Representation for Universal Slices)
 
 Type definition
 
 -------
-Slice!(N, T*)
+Slice!(Universal, [N], Iterator)
 -------
 
 Schema
 
 -------
-Slice!(N, T*)
-    size_t[N]     lengths
-    sizediff_t[N] strides
-    T*            iterator
+Slice!(Universal, [N], Iterator)
+    size_t[N]     _lengths
+    sizediff_t[N] _strides
+    Iterator      _iterator
 -------
 
 Example:
@@ -397,9 +394,9 @@ Definitions
 -------
 import mir.ndslice;
 auto a = new double[24];
-Slice!(3, double*) s = a.sliced(2, 3, 4);
-Slice!(3, double*) t = s.transposed!(1, 2, 0);
-Slice!(3, double*) r = t.reversed!1;
+Slice!(Universal, [3], double*) s = a.sliced(2, 3, 4).universal;
+Slice!(Universal, [3], double*) t = s.transposed!(1, 2, 0);
+Slice!(Universal, [3], double*) r = t.reversed!1;
 -------
 
 Representation
@@ -439,78 +436,38 @@ r______________reversed!1
     iterator        ::= &a[8] // (old_strides[1] * (lengths[1] - 1)) = 8
 -------
 
-$(H4 Internal Representation for Iterators)
+$(H4 Internal Representation for Canonical Slices)
 
 Type definition
 
 -------
-Slice!(N, Iterator)
+Slice!(Canonical, [N], Iterator)
 -------
 
-Representation
+Schema
 
 -------
-Slice!(N, Iterator)
-    size_t[N]     lengths
-    sizediff_t[N] strides
-    PtrShell!T    iterator
-        sizediff_t shift
-        Iterator      range
+Slice!(Universal, [N], Iterator)
+    size_t[N]       _lengths
+    sizediff_t[N-1] _strides
+    Iterator        _iterator
 -------
 
+$(H4 Internal Representation for Contiguous Slices)
 
-Example:
-
-Definitions
-
--------
-import mir.ndslice;
-import std.range : iota;
-auto a = iota(24);
-alias A = typeof(a);
-Slice!(3, A) s = a.sliced(2, 3, 4);
-Slice!(3, A) t = s.transposed!(1, 2, 0);
-Slice!(3, A) r = t.reversed!1;
--------
-
-Representation
+Type definition
 
 -------
-s________________________
-    lengths[0] ::=  2
-    lengths[1] ::=  3
-    lengths[2] ::=  4
+Slice!(Contiguous, [N], Iterator)
+-------
 
-    strides[0] ::= 12
-    strides[1] ::=  4
-    strides[2] ::=  1
+Schema
 
-        shift  ::=  0
-        range  ::=  a
-
-t____transposed!(1, 2, 0)
-    lengths[0] ::=  3
-    lengths[1] ::=  4
-    lengths[2] ::=  2
-
-    strides[0] ::=  4
-    strides[1] ::=  1
-    strides[2] ::= 12
-
-        shift  ::=  0
-        range  ::=  a
-
-r______________reversed!1
-    lengths[0] ::=  2
-    lengths[1] ::=  3
-    lengths[2] ::=  4
-
-    strides[0] ::= 12
-    strides[1] ::= -4
-    strides[2] ::=  1
-
-        shift  ::=  8 // (old_strides[1] * (lengths[1] - 1)) = 8
-        range  ::=  a
+-------
+Slice!(Universal, [N], Iterator)
+    size_t[N]     _lengths
+    sizediff_t[0] _strides
+    Iterator      _iterator
 -------
 +/
 struct Slice(SliceKind kind, size_t[] packs, Iterator)
