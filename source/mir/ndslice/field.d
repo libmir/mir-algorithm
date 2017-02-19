@@ -150,9 +150,12 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
         size_t start = index % bits;
         index /= bits;
         auto ret = (_field[index] >>> start) & mask;
-        sizediff_t end = start - (bits - pack);
-        if (end > 0)
-            ret ^= cast(I)(_field[index + 1] << (bits - end)) >>> (bits - pack);
+        static if (bits % pack)
+        {
+            sizediff_t end = start - (bits - pack);
+            if (end > 0)
+                ret ^= cast(I)(_field[index + 1] << (bits - end)) >>> (bits - pack);
+        }
         return cast(I) ret;
     }
 
@@ -163,9 +166,12 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
         size_t start = index % bits;
         index /= bits;
         _field[index] = cast(I)((_field[index] & ~(mask << start)) ^ (value << start));
-        sizediff_t end = start - (bits - pack);
-        if (end > 0)
-            _field[index + 1] = cast(I)((_field[index + 1] & ~((I(1) << end) - 1)) ^ (value >>> (pack - end)));
+        static if (bits % pack)
+        {
+            sizediff_t end = start - (bits - pack);
+            if (end > 0)
+                _field[index + 1] = cast(I)((_field[index + 1] & ~((I(1) << end) - 1)) ^ (value >>> (pack - end)));
+        }
         return value;
     }
 }
