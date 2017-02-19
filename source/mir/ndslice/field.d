@@ -7,6 +7,7 @@ An ndslice can be created on top of a field using $(SUBREF slice, slicedField).
 
 $(BOOKTABLE $(H2 Fields),
 $(TR $(TH Field Name) $(TH Used By))
+$(T2 BitpackField, $(SUBREF topology, bitpack))
 $(T2 BitwiseField, $(SUBREF topology, bitwise))
 $(T2 MapField, $(SUBREF topology, map))
 $(T2 ndIotaField, $(SUBREF topology, ndiota))
@@ -89,7 +90,7 @@ struct RepeatField(T)
 `BitwiseField` is used by $(SUBREF topology, bitwise).
 +/
 struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
-    if (isIntegral!I)
+    if (isUnsigned!I)
 {
 @fastmath:
     import core.bitop: bsr;
@@ -102,10 +103,9 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
 
     bool opIndex()(size_t index)
     {
-        return ((_field[index >> shift] & (I(1) << (index & mask)))) != 0;
+        return ((_field[index >>> shift] & (I(1) << (index & mask)))) != 0;
     }
 
-    static if (__traits(compiles, Field.init[size_t.init] |= I.init))
     bool opIndexAssign()(bool value, size_t index)
     {
         auto m = I(1) << (index & mask);
@@ -122,11 +122,82 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
 unittest
 {
 	import mir.ndslice.iterator: FieldIterator;
-    short[10] data;
-    auto f = FieldIterator!(BitwiseField!(short*))(0, BitwiseField!(short*)(data.ptr));
+    ushort[10] data;
+    auto f = FieldIterator!(BitwiseField!(ushort*))(0, BitwiseField!(ushort*)(data.ptr));
     f[123] = true;
     f++;
     assert(f[122]);
+}
+
+/++
+`BitpackField` is used by $(SUBREF topology, bitpack).
++/
+struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
+    if (isUnsigned!I)
+{
+    //static assert();
+@fastmath:
+    package alias E = I;
+    package enum mask = (I(1) << pack) - 1;
+    package enum bits = I.sizeof * 8;
+
+    ///
+    Field _field;
+
+    I opIndex()(size_t index)
+    {
+        index *= pack;
+        size_t start = index % bits;
+        index /= bits;
+        auto ret = (_field[index] >>> start) & mask;
+        sizediff_t end = start - (bits - pack);
+        if (end > 0)
+            ret ^= cast(I)(_field[index + 1] << (bits - end)) >>> (bits - pack);
+        return cast(I) ret;
+    }
+
+    I opIndexAssign()(I value, size_t index)
+    {
+        assert(cast(Unsigned!I)value <= mask);
+        index *= pack;
+        size_t start = index % bits;
+        index /= bits;
+        _field[index] = cast(I)((_field[index] & ~(mask << start)) ^ (value << start));
+        sizediff_t end = start - (bits - pack);
+        if (end > 0)
+            _field[index + 1] = cast(I)((_field[index + 1] & ~((I(1) << end) - 1)) ^ (value >>> (pack - end)));
+        return value;
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.iterator: FieldIterator;
+    ushort[10] data;
+    auto f = FieldIterator!(BitpackField!(ushort*, 6))(0, BitpackField!(ushort*, 6)(data.ptr));
+    f[0] = cast(ushort) 31;
+    f[1] = cast(ushort) 13;
+    f[2] = cast(ushort)  8;
+    f[3] = cast(ushort) 43;
+    f[4] = cast(ushort) 28;
+    f[5] = cast(ushort) 63;
+    f[6] = cast(ushort) 39;
+    f[7] = cast(ushort) 23;
+    f[8] = cast(ushort) 44;
+
+    assert(f[0] == 31);
+    assert(f[1] == 13);
+    assert(f[2] ==  8);
+    assert(f[3] == 43);
+    assert(f[4] == 28);
+    assert(f[5] == 63);
+    assert(f[6] == 39);
+    assert(f[7] == 23);
+    assert(f[8] == 44);
+    assert(f[9] == 0);
+    assert(f[10] == 0);
+    assert(f[11] == 0);
 }
 
 /++

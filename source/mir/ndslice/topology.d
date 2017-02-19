@@ -16,7 +16,8 @@ $(TR $(TH Function Name) $(TH Description))
 
 $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
-$(T2 bitwise, Bitwise slice over an integral slice.)
+$(T2 bitpack, Bitpack slice over an unsigned integral slice.)
+$(T2 bitwise, Bitwise slice over an unsigned integral slice.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
 $(T2 map, Multidimensional functional map.)
@@ -1922,7 +1923,7 @@ auto bitwise
 unittest
 {
     size_t[10] data;
-    auto bits = data[].ptr.sliced(10).bitwise;
+    auto bits = data[].sliced.bitwise;
     assert(bits.length == data.length * size_t.sizeof * 8);
     bits[111] = true;
     assert(bits[111]);
@@ -1940,7 +1941,7 @@ unittest
     size_t[10] data;
     auto slice = FieldIterator!(size_t[])(0, data[]).sliced(10);
     slice.popFrontExactly(2);
-    auto bits_normal = data[].ptr.sliced(10).bitwise;
+    auto bits_normal = data[].sliced.bitwise;
     auto bits = slice.bitwise;
     assert(bits.length == (data.length - 2) * size_t.sizeof * 8);
     bits[111] = true;
@@ -1953,6 +1954,60 @@ unittest
     bits[110] = false;
     bits = bits[10 .. $];
     assert(bits[100] == false);
+}
+
+/++
+Bitpack slice over an integral slice.
+
+Bitpack is used to represent unsigned integer slice with fewer number of bits in integer binary representation.
+
+Params:
+    pack = counts of bits in the integer.
+    slice = a contiguous or canonical slice on top of integral iterator.
+Returns: A bitpack slice.
++/
+auto bitpack
+    (size_t pack, SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
+    (Slice!(kind, packs, Iterator) slice)
+    if (isIntegral!I && (kind == Contiguous || kind == Canonical) && pack > 1)
+{
+    static if (is(Iterator : FieldIterator!Field, Field))
+    {
+        enum simplified = true;
+        alias It = FieldIterator!(BitpackField!(Field, pack));
+    }
+    else
+    {
+        enum simplified = false;
+        alias It = FieldIterator!(BitpackField!(Iterator, pack));
+    }
+    alias Ret = Slice!(kind, packs, It);
+    mixin _DefineRet_;
+    foreach(i; Iota!(ret.N))
+        ret._lengths[i] = slice._lengths[i];
+    ret._lengths[$ - 1] *= I.sizeof * 8;
+    ret._lengths[$ - 1] /= pack;
+    foreach(i; Iota!(ret.S))
+        ret._strides[i] = slice._strides[i];
+    static if (simplified)
+        ret._iterator = It(slice._iterator._index * I.sizeof * 8, BitpackField!(Field, pack)(slice._iterator._field));
+    else
+        ret._iterator = It(0, BitpackField!(Iterator, pack)(slice._iterator));
+    return ret;
+}
+
+///
+unittest
+{
+    size_t[10] data;
+    // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
+    auto packs = data[].sliced.bitpack!6;
+    assert(packs.length == data.length * size_t.sizeof * 8 / 6);
+    packs[$ - 1] = 24;
+    assert(packs[$ - 1] == 24);
+
+    packs.popFront;
+    assert(packs[$ - 1] == 24);
 }
 
 /++
