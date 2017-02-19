@@ -642,13 +642,9 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     /// Creates a 2-dimentional slice with custom strides.
-    @nogc nothrow pure
+    nothrow pure
     unittest
     {
-        import mir.ndslice.topology : flattened;
-        import std.algorithm.comparison : equal;
-        import std.range : only;
-
         uint[8] array = [1, 2, 3, 4, 5, 6, 7, 8];
         auto slice = Slice!(Universal, [2], uint*)([2, 2], [4, 1], array.ptr);
 
@@ -656,13 +652,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(&slice[0, 1] == &array[1]);
         assert(&slice[1, 0] == &array[4]);
         assert(&slice[1, 1] == &array[5]);
-        assert(slice.flattened.equal(only(1, 2, 5, 6)));
+        assert(slice == [[1, 2], [5, 6]]);
 
         array[2] = 42;
-        assert(slice.flattened.equal(only(1, 2, 5, 6)));
+        assert(slice == [[1, 2], [5, 6]]);
 
         array[1] = 99;
-        assert(slice.flattened.equal(only(1, 99, 5, 6)));
+        assert(slice == [[1, 99], [5, 6]]);
     }
 
     static if (isPointer!Iterator)
