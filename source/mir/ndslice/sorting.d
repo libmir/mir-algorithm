@@ -142,11 +142,11 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
                 while(p != l)
                 {
                     --p;
-                    static if (is(typeof(() nothrow
-                        {
-                            auto t = slice[0]; if (less(t, slice[0])) slice[0] = slice[0];
-                        })))
-                    {
+                    //static if (is(typeof(() nothrow
+                    //    {
+                    //        auto t = slice[0]; if (less(t, slice[0])) slice[0] = slice[0];
+                    //    })))
+                    //{
                         auto d = p;
                         auto temp = *d;
                         auto c = d;
@@ -162,20 +162,20 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
                             while (c != r && less(*c, temp));
                             *d = temp;
                         }
-                    }
-                    else
-                    {
-                        auto d = p;
-                        auto c = d;
-                        ++c;
-                        while (less(*c, *d))
-                        {
-                            swap(*d, *c);
-                            d = c;
-                            ++c;
-                            if (c == maxJ) break;
-                        }
-                    }
+                    //}
+                    //else
+                    //{
+                    //    auto d = p;
+                    //    auto c = d;
+                    //    ++c;
+                    //    while (less(*c, *d))
+                    //    {
+                    //        swap(*d, *c);
+                    //        d = c;
+                    //        ++c;
+                    //        if (c == maxJ) break;
+                    //    }
+                    //}
                 }
                 return;
             }
