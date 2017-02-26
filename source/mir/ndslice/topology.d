@@ -73,13 +73,13 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 module mir.ndslice.topology;
 
 import std.traits;
-import std.meta; //: allSatisfy;
+import std.meta;
 
-import mir.ndslice.internal;
 import mir.internal.utility;
-import mir.ndslice.slice; //: Slice;
-import mir.ndslice.iterator;
 import mir.ndslice.field;
+import mir.ndslice.internal;
+import mir.ndslice.iterator;
+import mir.ndslice.slice;
 
 @fastmath:
 
