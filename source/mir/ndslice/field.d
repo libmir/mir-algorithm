@@ -31,6 +31,13 @@ import mir.ndslice.internal;
 
 @fastmath:
 
+auto MapField__map(Field, alias fun, alias fun1)(ref MapField!(Field, fun) f)
+{
+    import mir.functional: pipe;
+    return MapField!(Field, pipe!(fun, fun1))(f._field);
+}
+
+
 /++
 `MapField` is used by $(SUBREF topology, map).
 +/
@@ -43,11 +50,7 @@ struct MapField(Field, alias fun)
     /++
     User defined constructor used by $(LREF mapField).
     +/
-    static auto __map(alias fun1)(ref typeof(this) f)
-    {
-        import mir.funcitonal: pipe;
-        return MapField!(Field, pipe!(fun, fun1))(f._field);
-    }
+    static alias __map(alias fun1) = MapField__map!(Field, fun, fun1);
 
     auto ref opIndex()(ptrdiff_t index)
     {
@@ -58,7 +61,7 @@ struct MapField(Field, alias fun)
 /++
 Creates a mapped field. Uses `__map` if possible.
 +/
-static auto mapField(alias fun, Field)(Field field)
+auto mapField(alias fun, Field)(Field field)
 {
     static if (__traits(hasMember, Field, "__map"))
         return Field.__map!fun(field);

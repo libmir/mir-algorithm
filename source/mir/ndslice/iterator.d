@@ -131,6 +131,21 @@ pure nothrow @nogc unittest
     assert(iota - 1 < iota);
 }
 
+auto RetroIterator__map(Iterator, alias fun)(ref RetroIterator!Iterator it)
+{
+    auto iterator = it._iterator.mapIterator!fun;
+    return RetroIterator!(typeof(iterator))(iterator);
+}
+
+unittest
+{
+    import mir.ndslice.topology;
+    import mir.ndslice.allocation;
+    auto v = iota(9).retro.map!(a => a).slice;
+    uint r;
+    auto w = iota(9).retro.map!(a => a).map!(a => a * r).slice;
+}
+
 /++
 Reverse directions for an iterator.
 
@@ -143,11 +158,7 @@ struct RetroIterator(Iterator)
     Iterator _iterator;
 
     ///
-    static auto __map(alias fun)(ref typeof(this) it)
-    {
-        auto iterator = it._iterator.mapIterator!fun;
-        return RetroIterator!(typeof(iterator))(iterator);
-    }
+    static alias __map(alias fun) = RetroIterator__map!(Iterator, fun);
 
     auto ref opUnary(string op : "*")()
     { return *_iterator; }
@@ -225,6 +236,21 @@ struct RetroIterator(Iterator)
     assert(*retro == *iota);
 }
 
+auto StrideIterator__map(Iterator, alias fun)(ref StrideIterator!Iterator it)
+{
+    auto iterator = it._iterator.mapIterator!fun;
+    return StrideIterator!(typeof(iterator))(it._stride, iterator);
+}
+
+unittest
+{
+    import mir.ndslice.topology;
+    import mir.ndslice.allocation;
+    auto v = iota([3], 0, 3).map!(a => a).slice;
+    uint r;
+    auto w = iota([3], 0, 3).map!(a => a).map!(a => a * r).slice;
+}
+
 /++
 Iterates an iterator with a fixed strides.
 
@@ -239,11 +265,7 @@ struct StrideIterator(Iterator)
     Iterator _iterator;
 
     ///
-    static auto __map(alias fun)(ref typeof(this) it)
-    {
-        auto iterator = it._iterator.mapIterator!fun;
-        return StrideIterator!(typeof(iterator))(it._stride, iterator);
-    }
+    static alias __map(alias fun) = StrideIterator__map!(Iterator, fun);
 
     auto ref opUnary(string op : "*")()
     { return *_iterator; }
@@ -456,6 +478,11 @@ pure nothrow @nogc unittest
     assert(zip - 1 < zip);
 }
 
+auto MapIterator__map(Iterator, alias fun0, alias fun)(ref MapIterator!(Iterator, fun0) it)
+{
+    return MapIterator!(Iterator, fun)(it._iterator);
+}
+
 /++
 `MapIterator` is used by $(SUBREF topology, map).
 +/
@@ -465,12 +492,9 @@ struct MapIterator(Iterator, alias fun)
     ///
     Iterator _iterator;
 
+    import mir.functional: pipe;
     ///
-    static auto __map(alias fun1)(ref typeof(this) it)
-    {
-        import mir.functional: pipe;
-        return MapIterator!(Iterator, pipe!(fun, fun1))(it._iterator);
-    }
+    static alias __map(alias fun1) = MapIterator__map!(Iterator, fun, pipe!(fun, fun1));
 
     auto ref opUnary(string op : "*")()
     {
@@ -530,6 +554,24 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
        return MapIterator!(Iterator, fun)(iterator);
 }
 
+auto IndexIterator__map(Iterator, Field, alias fun)(ref IndexIterator!(Iterator, Field) it)
+{
+    import mir.ndslice.field: mapField;
+    auto field = it._field.mapField!fun;
+    return IndexIterator!(Iterator, typeof(field))(it._iterator, field);
+}
+
+unittest
+{
+    import mir.ndslice.topology;
+    import mir.ndslice.allocation;
+    // @@@TODO@@@
+    //pragma(msg, typeof(iota([3], 0, 3)));
+    //auto v = iota([3], 0, 3).map!(a => a).slice;
+    //uint r;
+    //auto w = iota([3], 0, 3).map!(a => a).map!(a => a * r).slice;
+}
+
 /++
 Iterates a field using an iterator.
 
@@ -544,12 +586,7 @@ struct IndexIterator(Iterator, Field)
     Field _field;
 
     ///
-    static auto __map(alias fun)(ref typeof(this) it)
-    {
-        import mir.ndslice.field: mapField;
-        auto field = it._field.mapField!fun;
-        return IndexIterator!(Iterator, typeof(field))(it._iterator, field);
-    }
+    static alias __map(alias fun) = IndexIterator__map!(Iterator, Field, fun);
 
     auto ref opUnary(string op : "*")()
     { return _field[*_iterator]; }
@@ -647,6 +684,22 @@ struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
     }
 }
 
+public auto FieldIterator__map(Field, alias fun)(ref FieldIterator!(Field) it)
+{
+    import mir.ndslice.field: mapField;
+    auto field = it._field.mapField!fun;
+    return FieldIterator!(typeof(field))(it._index, field);
+}
+
+unittest
+{
+    import mir.ndslice.topology;
+    import mir.ndslice.allocation;
+    auto v = ndiota(3, 3).map!(a => a).slice;
+    uint r;
+    auto w = ndiota(3, 3).map!(a => a).map!(a => a[0] * r).slice;
+}
+
 /++
 Creates an iterator on top of a field.
 
@@ -661,12 +714,7 @@ struct FieldIterator(Field)
     Field _field;
 
     ///
-    static auto __map(alias fun)(ref typeof(this) it)
-    {
-        import mir.ndslice.field: mapField;
-        auto field = it._field.mapField!fun;
-        return FieldIterator!(typeof(field))(it._index, field);
-    }
+    static alias __map(alias fun) = FieldIterator__map!(Field, fun);
 
     auto ref opUnary(string op : "*")()
     { return _field[_index]; }
@@ -713,6 +761,22 @@ struct FieldIterator(Field)
     { return this._index - right._index; }
 }
 
+auto FlattenedIterator__map(SliceKind kind, size_t[] packs, Iterator, alias fun)(ref FlattenedIterator!(kind, packs, Iterator) it)
+{
+    import mir.ndslice.topology: map;
+    auto slice = it._slice.map!fun;
+    return FlattenedIterator!(TemplateArgsOf!(typeof(slice)))(it._indexes, slice);
+}
+
+unittest
+{
+    import mir.ndslice.topology;
+    import mir.ndslice.allocation;
+    auto v = iota(3, 3).universal.flattened.map!(a => a).slice;
+    uint r;
+    auto w = iota(3, 3).universal.flattened.map!(a => a).map!(a => a * r).slice;
+}
+
 /++
 Creates an iterator on top of all elements in a slice.
 
@@ -728,12 +792,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     Slice!(kind, packs, Iterator) _slice;
 
     ///
-    static auto __map(alias fun)(ref typeof(this) it)
-    {
-        import mir.ndslice.topology: map;
-        auto slice = _slice.map!fun;
-        return FlattenedIterator!(TemplateArgsOf!(typeof(slice)))(_indexes, slice);
-    }
+    static alias __map(alias fun) = FlattenedIterator__map!(kind, packs, Iterator, fun);
 
     private ptrdiff_t getShift()(ptrdiff_t n)
     {
