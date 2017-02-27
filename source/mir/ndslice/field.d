@@ -113,10 +113,12 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     {
         auto m = I(1) << (index & mask);
         index >>= shift;
+        Unqual!I e = _field[index];
         if (value)
-            _field[index] |= m;
+            e |= m;
         else
-            _field[index] &= ~m;
+            e &= ~m;
+        _field[index] = e;
         return value;
     }
 }
@@ -207,6 +209,23 @@ unittest
     assert(f[9] == 0);
     assert(f[10] == 0);
     assert(f[11] == 0);
+}
+
+unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.topology;
+    import mir.ndslice.sorting;
+    uint[2] data;
+    auto packed = data[].sliced.bitpack!18;
+    assert(packed.length == 3);
+    packed[0] = 5;
+    packed[1] = 3;
+    packed[2] = 2;
+    packed.sort;
+    assert(packed[0] == 2);
+    assert(packed[1] == 3);
+    assert(packed[2] == 5);
 }
 
 /++
