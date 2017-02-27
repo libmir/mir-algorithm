@@ -119,7 +119,7 @@ unittest
 
 void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice)
 {
-    import mir.utility : swap;
+    import mir.utility : swap, swapStars;
 
     enum  max_depth = 64;
     enum naive_est = 1024 / slice.ElemType!0.sizeof;
@@ -155,12 +155,12 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
                         {
                             do
                             {
-                                *d = *c;
+                                d[0] = *c;
                                 ++d;
                                 ++c;
                             }
                             while (c != r && less(*c, temp));
-                            *d = temp;
+                            d[0] = temp;
                         }
                     //}
                     //else
@@ -194,7 +194,7 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
         auto pivot = *pivotIdx;
         --lessI;
         auto greaterI = r;
-        swap(*pivotIdx, *greaterI);
+        swapStars(pivotIdx, greaterI);
 
         outer: for (;;)
         {
@@ -212,10 +212,10 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
             assert(lessI <= greaterI, "sort: invalid comparison function.");
             if (lessI == greaterI)
                 break;
-            swap(*lessI, *greaterI);
+            swapStars(lessI, greaterI);
         }
 
-        swap(*r, *lessI);
+        swapStars(r, lessI);
 
         ptrdiff_t len = lessI - l;
         auto tail = slice[len + 1 .. $];
@@ -243,30 +243,29 @@ void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator 
 void medianOf(alias less, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c)
 {
-    import mir.utility : swap;
-
-    if (less(*c, *a)) // c < a
+    import mir.utility : swapStars;
+   if (less(*c, *a)) // c < a
     {
         if (less(*a, *b)) // c < a < b
         {
-            swap(*a, *b);
-            swap(*a, *c);
+            swapStars(a, b);
+            swapStars(a, c);
         }
         else // c < a, b <= a
         {
-            swap(*a, *c);
-            if (less(*b, *a)) swap(*a, *b);
+            swapStars(a, c);
+            if (less(*b, *a)) swapStars(a, b);
         }
     }
     else // a <= c
     {
         if (less(*b, *a)) // b < a <= c
         {
-            swap(*a, *b);
+            swapStars(a, b);
         }
         else // a <= c, a <= b
         {
-            if (less(*c, *b)) swap(*b, *c);
+            if (less(*c, *b)) swapStars(b, c);
         }
     }
     assert(!less(*b, *a));
@@ -276,8 +275,7 @@ void medianOf(alias less, Iterator)
 void medianOf(alias less, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d, ref Iterator e)
 {
-    import mir.utility : swap;
-    // Credit: Teppo Niinimäki
+    import mir.utility : swapStars;   // Credit: Teppo Niinimäki
     version(unittest) scope(success)
     {
         assert(!less(*c, *a));
@@ -286,21 +284,21 @@ void medianOf(alias less, Iterator)
         assert(!less(*e, *c));
     }
 
-    if (less(*c, *a)) swap(*a, *c);
-    if (less(*d, *b)) swap(*b, *d);
+    if (less(*c, *a)) swapStars(a, c);
+    if (less(*d, *b)) swapStars(b, d);
     if (less(*d, *c))
     {
-        swap(*c, *d);
-        swap(*a, *b);
+        swapStars(c, d);
+        swapStars(a, b);
     }
-    if (less(*e, *b)) swap(*b, *e);
+    if (less(*e, *b)) swapStars(b, e);
     if (less(*e, *c))
     {
-        swap(*c, *e);
-        if (less(*c, *a)) swap(*a, *c);
+        swapStars(c, e);
+        if (less(*c, *a)) swapStars(a, c);
     }
     else
     {
-        if (less(*c, *b)) swap(*b, *c);
+        if (less(*c, *b)) swapStars(b, c);
     }
 }

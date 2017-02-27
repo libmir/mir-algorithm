@@ -18,6 +18,24 @@ module mir.utility;
 
 import std.traits;
 
+import mir.ndslice.internal;
+
+@fastmath:
+
+void swapStars(I1, I2)(auto ref I1 i1, auto ref I2 i2)
+{
+    static if (__traits(compiles, swap(*i1, *i2)))
+    {
+        swap(*i1, *i2);
+    }
+    else
+    {
+        auto e = *i1;
+        i1[0] = *i2;
+        i2[0] = e;
+    }
+}
+
 /++
 Swaps `lhs` and `rhs`. The instances `lhs` and `rhs` are moved in
 memory, without ever calling `opAssign`, nor any other function. `T`
