@@ -2306,6 +2306,46 @@ unittest
     Slice!(Contiguous, [2], double*)              matrix = slice!double([2, 2], 0);
     Slice!(Contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
 }
+
+/++
+Takes a field `source` and a slice `indices`, and creates a view of source as if its elements were reordered according to indices.
+`indices` may include only a subset of the elements of `source` and may also repeat elements.
+
+Params:
+    source = a filed, source of data. `source` must be an array or a pointer, or have `opIndex` primiteve. Full random access range API is not required.
+    indeces = a slice, source of indexes.
+Returns:
+    n-dimensional slice with the same kind, shape and strides.
+
+See_also: `indexed` is similar to $(LREF, map), but a field is used instead of a function.
++/
+Slice!(kind, packs, IndexIterator!(Iterator, Field))
+    indexed(Field, SliceKind kind, size_t[] packs, Iterator)
+    (Field source, Slice!(kind, packs, Iterator) indices)
+{
+    return typeof(return)(
+            indices._lengths,
+            indices._strides,
+            IndexIterator!(Iterator, Field)(
+                indices._iterator,
+                source));
+}
+
+///
+unittest
+{
+    auto source = [1, 2, 3, 4, 5];
+    auto indices = [4, 3, 1, 2, 0, 4].sliced;
+    auto ind = source.indexed(indices);
+    assert(ind == [5, 4, 2, 3, 1, 5]);
+    
+    assert(ind.retro == source.indexed(indices.retro));
+
+    ind[3] += 10; // for index 2
+    //                0  1   2  3  4
+    assert(source == [1, 2, 13, 4, 5]);
+}
+
 /++
 Groups slices into a slice of tuples. The slices must have identical strides or be 1-dimensional.
 Params:
