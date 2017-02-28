@@ -565,11 +565,11 @@ unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
-    // @@@TODO@@@
-    //pragma(msg, typeof(iota([3], 0, 3)));
-    //auto v = iota([3], 0, 3).map!(a => a).slice;
-    //uint r;
-    //auto w = iota([3], 0, 3).map!(a => a).map!(a => a * r).slice;
+    import mir.ndslice.slice;
+    auto indices = [4, 3, 1, 2, 0, 4].sliced;
+    auto v = iota(5).indexed(indices).map!(a => a).slice;
+    uint r;
+    auto w = iota(5).indexed(indices).map!(a => a).map!(a => a * r).slice;
 }
 
 /++
@@ -599,8 +599,16 @@ struct IndexIterator(Iterator, Field)
     { return _field[_iterator[index]]; }
 
     static if (!__traits(compiles, &_field[_iterator[ptrdiff_t.init]]))
-    void opIndexAssign(T)(T value, ptrdiff_t index)
-    { return _field[_iterator[index]] = value; }
+    {
+        auto ref opIndexAssign(T)(T value, ptrdiff_t index)
+        { return _field[_iterator[index]] = value; }
+
+        auto ref opIndexUnary(string op)(ptrdiff_t index)
+        { mixin (`return ` ~ op ~ `_field[_iterator[_index]];`); }
+
+        auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
+        { mixin (`return _field[_iterator[_index]] ` ~ op ~ `= value;`); }
+    }
 
     void opOpAssign(string op)(ptrdiff_t index)
         if (op == "-" || op == "+")
@@ -726,17 +734,16 @@ struct FieldIterator(Field)
     auto ref opIndex()(ptrdiff_t index)
     { return _field[_index + index]; }
 
-    static if (!__traits(compiles, &_field[_index]) && isMutable!(typeof(_field[_index])))
+    static if (!__traits(compiles, &_field[_index]))
     {
-        auto opIndexAssign(T)(T value, ptrdiff_t index)
+        auto ref opIndexAssign(T)(T value, ptrdiff_t index)
         { return _field[_index + index] = value; }
 
-        auto opIndexUnary(string op)(ptrdiff_t index)
+        auto ref opIndexUnary(string op)(ptrdiff_t index)
         { mixin (`return ` ~ op ~ `_field[_index + index];`); }
 
-        auto opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
+        auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
         { mixin (`return _field[_index + index] ` ~ op ~ `= value;`); }
-
     }
 
     void opOpAssign(string op)(ptrdiff_t index)
