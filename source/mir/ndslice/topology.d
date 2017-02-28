@@ -1971,7 +1971,7 @@ auto bitpack
     (Slice!(kind, packs, Iterator) slice)
     if (isIntegral!I && (kind == Contiguous || kind == Canonical) && pack > 1)
 {
-    static if (is(Iterator : FieldIterator!Field, Field))
+    static if (is(Iterator : FieldIterator!Field, Field) && I.sizeof * 8 % pack == 0)
     {
         enum simplified = true;
         alias It = FieldIterator!(BitpackField!(Field, pack));
@@ -1990,7 +1990,7 @@ auto bitpack
     foreach(i; Iota!(ret.S))
         ret._strides[i] = slice._strides[i];
     static if (simplified)
-        ret._iterator = It(slice._iterator._index * I.sizeof * 8, BitpackField!(Field, pack)(slice._iterator._field));
+        ret._iterator = It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field));
     else
         ret._iterator = It(0, BitpackField!(Iterator, pack)(slice._iterator));
     return ret;
