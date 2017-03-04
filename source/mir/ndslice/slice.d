@@ -1302,7 +1302,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     Overloading `==` and `!=`
     +/
-    bool opEquals(SliceKind rkind, size_t[] rpacks, IteratorR)(Slice!(rkind, rpacks, IteratorR) rslice)
+    bool opEquals(SliceKind rkind, size_t[] rpacks, IteratorR)(const Slice!(rkind, rpacks, IteratorR) rslice) const
         if (rpacks.sum == N)
     {
         foreach (i; Iota!N)
@@ -1318,21 +1318,21 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 return true;
         }
         import mir.ndslice.topology : unpack;
-        if (this.unpack.anyEmpty)
+        if ((cast(This)this).unpack.anyEmpty)
                 return true;
         static if (N > 1 && kind == Contiguous && rkind == Contiguous)
         {
             import mir.ndslice.topology : flattened;
-            return opEqualsImpl(this.unpack.flattened, rslice.unpack.flattened);
+            return opEqualsImpl((cast(This)this).unpack.flattened, rslice.unpack.flattened);
         }
         else
-            return opEqualsImpl(this.unpack, rslice.unpack);
+            return opEqualsImpl((cast(This)this).unpack, (cast(rslice.This)rslice).unpack);
     }
 
     ///ditto
-    bool opEquals(T)(T[] arr)
+    bool opEquals(T)(T[] arr) const
     {
-        auto slice = this;
+        auto slice = cast(This)this;
         if (slice.length != arr.length)
             return false;
         if (arr.length) do
@@ -1371,7 +1371,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(iota(2, 3).slice[0 .. $ - 2] == iota([4, 3], 2)[0 .. $ - 4]);
     }
 
-    _Slice opSlice(size_t dimension)(size_t i, size_t j)
+    _Slice opSlice(size_t dimension)(size_t i, size_t j) const
         if (dimension < packs[0])
     in
     {
@@ -2417,7 +2417,7 @@ private bool opEqualsImpl
     {
         static if (packs[0] == 1)
         {
-            if (ls.front != rs.front)
+            if (*ls._iterator != *rs._iterator)
                 return false;
         }
         else
