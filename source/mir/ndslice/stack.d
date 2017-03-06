@@ -203,7 +203,7 @@ template until(alias pred)
         {
             static if (packs[0] == 1)
             {
-                //pragma(inline, false);
+                pragma(inline, false);
                 alias f = pred;
             }
             else
