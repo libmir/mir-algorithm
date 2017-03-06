@@ -157,6 +157,17 @@ $(TR $(TDNW $(SUBMODULE algorithm)
     )
 )
 
+$(TR $(TDNW $(SUBMODULE stack)
+        $(BR) $(SMALL Concatenation and algorithms))
+     $(TD
+        $(SUBREF stack, isStack)
+        $(SUBREF stack, stack)
+        $(SUBREF stack, Stack)
+        $(SUBREF stack, stackDimension)
+        $(SUBREF stack, until)
+    )
+)
+
 $(TR $(TDNW $(SUBMODULE dynamic)
         $(BR) $(SMALL Dynamic dimension manipulators))
      $(TD
@@ -378,6 +389,7 @@ public import mir.ndslice.algorithm;
 public import mir.ndslice.allocation;
 public import mir.ndslice.dynamic;
 public import mir.ndslice.slice;
+public import mir.ndslice.stack;
 public import mir.ndslice.topology;
 
 

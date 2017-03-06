@@ -28,6 +28,7 @@ module mir.ndslice.allocation;
 import std.traits;
 import mir.ndslice.slice;
 import mir.ndslice.internal;
+import mir.ndslice.stack;
 
 @fastmath:
 
@@ -92,6 +93,14 @@ pure nothrow unittest
     auto tensor = slice([2, 3], 5);
     assert(tensor.elementsCount == 2 * 3);
     assert(tensor[1, 1] == 5);
+}
+
+/// ditto
+auto slice(size_t dim, Slices...)(Stack!(dim, Slices) stack)
+{
+    auto ret = .slice!(Unqual!(stack.DeepElemType))(stack.shape);
+    ret[] = stack;
+    return ret;
 }
 
 pure nothrow unittest
