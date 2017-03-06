@@ -34,9 +34,9 @@ Params:
 
 Returns: $(LREF Stack).
 +/
-auto stack(size_t dim = 0, Slices...)(Slices slices)
+Stack!(dim, Slices) stack(size_t dim = 0, Slices...)(Slices slices)
 {
-    return Stack!(dim, Slices)(slices);
+    return typeof(return)(slices);
 }
 
 /// Multidimensional
