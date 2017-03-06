@@ -32,6 +32,10 @@ $(BOOKTABLE ,
         $(TD Loop free programming)
     )
     $(TR
+        $(TDNW $(MREF mir,ndslice,stack))
+        $(TD Concatenation)
+    )
+    $(TR
         $(TDNW $(MREF mir,ndslice,dynamic))
         $(TD Dynamic dimension manipulators)
     )

@@ -191,7 +191,7 @@ $(TR $(TDNW $(SUBMODULE sorting)
     )
 )
 
-$(TR $(TDNW $(SUBMODULE Iterators)
+$(TR $(TDNW $(SUBMODULE iterator)
         $(BR) $(SMALL Declarations))
      $(TD
         $(SUBREF iterator, FieldIterator)
@@ -206,7 +206,7 @@ $(TR $(TDNW $(SUBMODULE Iterators)
     )
 )
 
-$(TR $(TDNW $(SUBMODULE Fields)
+$(TR $(TDNW $(SUBMODULE field)
         $(BR) $(SMALL Declarations))
      $(TD
         $(SUBREF field, BitwiseField)

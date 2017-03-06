@@ -39,29 +39,6 @@ auto stack(size_t dim = 0, Slices...)(Slices slices)
     return Stack!(dim, Slices)(slices);
 }
 
-/// 1D
-unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota;
-
-    size_t i;
-    auto a = 3.iota;
-    auto b = iota([6], a.length);
-    auto s = stack(a, b);
-    assert(s.length == a.length + b.length);
-    // iteration with until
-    s.until!((elem){ assert(elem == i++); return false; });
-    // allocation with slice
-    assert(s.slice == s.length.iota);
-    // assignment
-    auto d = slice!double(s.length);
-    d[] = s;
-    assert(d == s.length.iota);
-    d[] += s;
-    assert(d == iota([s.length], 0, 2));
-}
-
 /// Multidimensional
 unittest
 {
@@ -81,14 +58,39 @@ unittest
     // 3, 4, 5, | 2, 3
     // ---------------
     // 0, 1, 2,   3, 4
+    // construction phase
     auto s = stack(stack!1(a, b), c);
-    // allocation
+
+    // allocation phase
     auto d = s.slice;
     assert(d == [
         [0, 1, 2, 0, 1],
         [3, 4, 5, 2, 3],
         [0, 1, 2, 3, 4],
         ]);
+}
+
+/// 1D
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    size_t i;
+    auto a = 3.iota;
+    auto b = iota([6], a.length);
+    auto s = stack(a, b);
+    assert(s.length == a.length + b.length);
+    // iteration with until
+    s.until!((elem){ assert(elem == i++); return false; });
+    // allocation with slice
+    assert(s.slice == s.length.iota);
+    // 1D or multidimensional assignment
+    auto d = slice!double(s.length);
+    d[] = s;
+    assert(d == s.length.iota);
+    d[] += s;
+    assert(d == iota([s.length], 0, 2));
 }
 
 template frontOf(size_t N)
