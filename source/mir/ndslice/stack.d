@@ -43,7 +43,7 @@ auto stack(size_t dim = 0, Slices...)(Slices slices)
 unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota;
+    import mir.ndslice.topology: iota, indexed, ndiota;
 
     // 0, 1, 2
     // 3, 4, 5
@@ -68,13 +68,18 @@ unittest
         [3, 4, 5, 2, 3],
         [0, 1, 2, 3, 4],
         ]);
+
+    // lazy ndslice view
+    auto l = s.indexed(s.shape.ndiota);
+    static assert(isSlice!(typeof(l)));
+    assert(l == d);
 }
 
 /// 1D
 unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota;
+    import mir.ndslice.topology: iota, indexed, ndiota;
 
     size_t i;
     auto a = 3.iota;
@@ -91,6 +96,11 @@ unittest
     assert(d == s.length.iota);
     d[] += s;
     assert(d == iota([s.length], 0, 2));
+
+    // lazy ndslice view
+    auto l = s.indexed(s.shape.ndiota);
+    static assert(isSlice!(typeof(l)));
+    assert(l == s.length.iota);
 }
 
 template frontOf(size_t N)
@@ -117,10 +127,10 @@ struct Stack(size_t dim, Slices...)
     Slices _slices;
 
     static if (isSlice!(Slices[0]))
-    /// Dimension count
-        enum N = isSlice!(Slices[0])[0];
+    // Dimension count
+        package enum N = isSlice!(Slices[0])[0];
     else
-        enum N = Slices[0].N;
+        package enum N = Slices[0].N;
 
     static assert(dim < N);
 
@@ -162,26 +172,74 @@ struct Stack(size_t dim, Slices...)
 
     /// Multidimensional input range primitives
     bool empty(size_t d = 0)() const @property
-        if (d != dim)
     {
-        return _slices[0].empty!d;
+        static if (d == dim)
+        {
+            foreach(ref slice; _slices)
+                if (slice.empty!d)
+                    return true;
+            return false;
+        }
+        else
+        {
+            return _slices[0].empty!d;
+        }
     }
 
     /// ditto
     void popFront(size_t d = 0)()
         if (d != dim)
     {
-        foreach_reverse (i, ref slice; _slices)
-            _slices[i].popFront!d;
+        static if (d == dim)
+        {
+            foreach(i, ref slice; _slices)
+            {
+                static if (i != Slices.length - 1)
+                    if (slice.empty!d)
+                        continue;
+                return slice.popFront!d;
+            }
+        }
+        else
+        {
+            foreach_reverse (ref slice; _slices)
+                slice.popFront!d;
+        }
     }
 
     /// ditto
     auto front(size_t d = 0)()
-        if (d != dim)
     {
-        enum elemDim = d < dim ? dim - 1 : dim;
-        alias slices = _slices;
-        return mixin(`stack!elemDim(` ~ frontOf!(Slices.length) ~ `)`);
+        static if (d == dim)
+        {
+            foreach(i, ref slice; _slices)
+            {
+                static if (i != Slices.length - 1)
+                    if (slice.empty!d)
+                        continue;
+                return slice.front!d;
+            }
+        }
+        else
+        {
+            enum elemDim = d < dim ? dim - 1 : dim;
+            alias slices = _slices;
+            return mixin(`stack!elemDim(` ~ frontOf!(Slices.length) ~ `)`);
+        }
+    }
+
+    /// Simplest multidimensional random access primitive
+    auto ref opIndex()(size_t[N] indexes...)
+    {
+        foreach(i, ref slice; _slices[0 .. $-1])
+        {
+            ptrdiff_t diff = indexes[dim] - slice.length!dim;
+            if (diff < 0)
+                return slice[indexes];
+            indexes[dim] = diff;
+        }
+        assert(indexes[dim] < _slices[$-1].length!dim);
+        return _slices[$-1][indexes];
     }
 }
 
