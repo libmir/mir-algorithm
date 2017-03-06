@@ -361,8 +361,6 @@ Params:
     err = error flag passed by reference
 Returns:
     static array of dimensions type of `size_t[n]`
-Throws:
-    $(LREF SliceException) if the array is not an n-dimensional parallelotope.
 +/
 auto shape(T)(T[] array, ref int err)
 {
