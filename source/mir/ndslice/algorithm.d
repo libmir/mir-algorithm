@@ -52,17 +52,25 @@ private void checkShapesMatch(
     }
 }
 
-
-private auto ref frontOf(alias slice)() { return slice.front; };
+template frontOf(size_t N)
+{
+    static if (N == 0)
+        enum frontOf = "";
+    else
+    {
+        enum i = N - 1;
+        enum frontOf = frontOf!i ~ "slices[" ~ i.stringof ~ "].front, ";
+    }
+}
 
 S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {
     do
     {
         static if (slices[0].shape.length == 1)
-            seed = fun(seed, staticMap!(frontOf, slices));
+            seed = mixin("fun(seed, " ~ frontOf!(Slices.length) ~ ")");
         else
-            seed = .reduceImpl!fun(seed, staticMap!(frontOf, slices));
+            seed = mixin(".reduceImpl!fun(seed," ~ frontOf!(Slices.length) ~ ")");
         foreach(ref slice; slices)
             slice.popFront;
     }
@@ -267,9 +275,9 @@ void eachImpl(alias fun, Slices...)(Slices slices)
     do
     {
         static if (slices[0].shape.length == 1)
-            fun(staticMap!(frontOf, slices));
+            mixin("fun(" ~ frontOf!(Slices.length) ~ ");");
         else
-            .eachImpl!fun(staticMap!(frontOf, slices));
+            mixin(".eachImpl!fun(" ~ frontOf!(Slices.length) ~ ");");
         foreach(ref slice; slices)
             slice.popFront;
     }
@@ -385,7 +393,7 @@ size_t findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Sli
     {
         static if (slices[0].shape.length == 1)
         {
-            if (fun(staticMap!(frontOf, slices)))
+            if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
             {
                 backwardIndex[0] = slices[0].length;
                 return 1;
@@ -393,7 +401,7 @@ size_t findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Sli
         }
         else
         {
-            if (findImpl!fun(backwardIndex[1 .. $], staticMap!(frontOf, slices)))
+            if (mixin("findImpl!fun(backwardIndex[1 .. $], " ~ frontOf!(Slices.length) ~ ")"))
             {
                 backwardIndex[0] = slices[0].length;
                 return 1;
@@ -556,12 +564,12 @@ size_t anyImpl(alias fun, Slices...)(Slices slices)
     {
         static if (slices[0].shape.length == 1)
         {
-            if (fun(staticMap!(frontOf, slices)))
+            if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                 return true;
         }
         else
         {
-            if (anyImpl!fun(staticMap!(frontOf, slices)))
+            if (mixin("anyImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
                 return true;
         }
         foreach(ref slice; slices)
@@ -676,12 +684,12 @@ size_t allImpl(alias fun, Slices...)(Slices slices)
     {
         static if (slices[0].shape.length == 1)
         {
-            if (!fun(staticMap!(frontOf, slices)))
+            if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                 return false;
         }
         else
         {
-            if (!allImpl!fun(staticMap!(frontOf, slices)))
+            if (!mixin("allImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
                 return false;
         }
         foreach(ref slice; slices)
@@ -1096,11 +1104,11 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     {
         static if (slices[0].shape.length == 1)
         {
-            if(fun(staticMap!(frontOf, slices)))
+            if(mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                 ret++;
         }
         else
-            ret += .countImpl!fun(staticMap!(frontOf, slices));
+            ret += mixin(".countImpl!fun(" ~ frontOf!(Slices.length) ~ ")");
         foreach(ref slice; slices)
             slice.popFront;
     }

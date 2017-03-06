@@ -33,6 +33,7 @@ import std.meta;
 
 import mir.internal.utility;
 import mir.ndslice.internal;
+import mir.ndslice.stack;
 import mir.primitives;
 
 @fastmath:
@@ -307,6 +308,8 @@ auto slicedField(Field)(Field field)
 Returns the element type of a $(LREF Slice).
 +/
 alias DeepElementType(S : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = S.DeepElemType;
+/// ditto
+alias DeepElementType(S : Stack!(dim, Slices), size_t dim, Slices...) = S.DeepElemType;
 
 ///
 unittest
@@ -1775,6 +1778,41 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                      [2, 2, 3, 3]]);
         }
 
+
+        private void opIndexOpAssignImplStack(string op, T)(T value)
+        {
+            auto sl = this;
+            static if (stackDimension!T)
+            {
+                if (!sl.empty) do
+                {
+                    mixin(`sl.front[] ` ~ op ~ `= value.front;`);
+                    value.popFront;
+                    sl.popFront;
+                }
+                while(!sl.empty);
+            }
+            else
+            {
+                foreach (ref slice; value._slices)
+                {
+                    mixin("sl[0 .. slice.length][] " ~ op ~ "= slice;");
+                    sl = sl[slice.length .. $];
+                }
+                assert(sl.empty);
+            }
+        }
+
+        ///
+        void opIndexAssign(T, Slices...)(T stack, Slices slices)
+            if (isFullPureSlice!Slices && isStack!T)
+        {
+            import mir.ndslice.topology : unpack;
+            auto sl = this[slices].unpack;
+            static assert(isSlice!(typeof(sl))[0] == stack.N);
+            sl.opIndexOpAssignImplStack!""(stack);
+        }
+
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined slice).
 
@@ -1784,7 +1822,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         void opIndexAssign(T, Slices...)(T value, Slices slices)
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
-                && !isSlice!T)
+                && !isSlice!T
+                && !isStack!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
@@ -2042,7 +2081,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices)
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
-                && !isSlice!T)
+                && !isSlice!T
+                && !isStack!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
@@ -2065,6 +2105,16 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
             a[1, 0..$-1] += 3;
             assert(a[1] == [6, 6, 1]);
+        }
+
+        ///
+        void opIndexOpAssign(string op,T, Slices...)(T stack, Slices slices)
+            if (isFullPureSlice!Slices && isStack!T)
+        {
+            import mir.ndslice.topology : unpack;
+            auto sl = this[slices].unpack;
+            static assert(isSlice!(typeof(sl))[0] == stack.N);
+            sl.opIndexOpAssignImplStack!op(stack);
         }
 
         static if (doUnittest)
