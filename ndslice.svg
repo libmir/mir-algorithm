@@ -4265,5 +4265,6 @@
   <use xlink:href="#glyph2-26" x="1322.91537" y="981.01105"/>
 </g>
 <path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:10;" d="M 385.511719 1380.667969 C 385.511719 1380.667969 389.96875 1428.011719 419.527344 1434.332031 C 449.085938 1440.652344 489.847656 1402.980469 489.847656 1402.980469 " transform="matrix(1,0,0,1,-230,-37)"/>
+<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-dasharray:20,5,4,5;stroke-miterlimit:10;" d="M 748.773438 674.800781 C 754.6875 688.457031 766.425781 704.636719 788.03125 722.835938 C 857.140625 781.042969 905.703125 758.191406 994.960938 831.96875 " transform="matrix(1,0,0,1,-230,-37)"/>
 </g>
 </svg>

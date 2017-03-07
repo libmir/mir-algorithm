@@ -14,3 +14,5 @@ web
 .generated
 mir-internal
 mir-algorithm-test-library
+
+*.pdf
