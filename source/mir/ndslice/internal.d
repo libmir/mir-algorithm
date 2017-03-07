@@ -320,6 +320,11 @@ mixin template DimensionCTError()
         "dimension = " ~ dimension.stringof ~ " at position "
         ~ i.stringof ~ " should be less than packs[0] = " ~ packs[0].stringof
         ~ tailErrorMessage!());
+    static assert(dimension < slice.S,
+        "dimension = " ~ dimension.stringof ~ " at position "
+        ~ i.stringof ~ " should be less than " ~ slice.S.stringof ~ ". "
+        ~ "`universal` and `canonical` from `mir.ndslice.topology` can be used to relax slice kind."
+        ~ tailErrorMessage!());
 }
 
 enum DimensionRTError = q{
@@ -327,6 +332,10 @@ enum DimensionRTError = q{
     assert(dimension >= 0, "dimension should be greater than or equal to 0"
         ~ tailErrorMessage!());
     assert(dimension < packs[0], "dimension should be less than packs[0] = " ~ packs[0].stringof
+        ~ tailErrorMessage!());
+    assert(dimension < slice.S,
+        "dimension should be less than " ~ slice.S.stringof ~ ". "
+        ~ "`universal` and `canonical` from `mir.ndslice.topology` can be used to relax slice kind."
         ~ tailErrorMessage!());
 };
 
