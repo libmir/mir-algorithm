@@ -8,7 +8,7 @@ $(BOOKTABLE $(H2 Iterators),
 $(TR $(TH Iterator Name) $(TH Used By))
 $(T2 FieldIterator, $(SUBREF slice, slicedField), $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.)
 $(T2 FlattenedIterator, $(SUBREF topology, flattened))
-$(T2 IndexIterator, TODO)
+$(T2 IndexIterator, $(SUBREF topology, indexed))
 $(T2 IotaIterator, $(SUBREF topology, iota))
 $(T2 MapIterator, $(SUBREF topology, map))
 $(T2 RetroIterator, $(SUBREF topology, retro))

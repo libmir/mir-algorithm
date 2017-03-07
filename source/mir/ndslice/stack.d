@@ -43,7 +43,7 @@ Stack!(dim, Slices) stack(size_t dim = 0, Slices...)(Slices slices)
 unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota, indexed, ndiota;
+    import mir.ndslice.topology: iota;
 
     // 0, 1, 2
     // 3, 4, 5
@@ -83,16 +83,14 @@ unittest
     assert(i == testData.length);
 
     // lazy ndslice view
-    auto l = s.indexed(s.shape.ndiota);
-    static assert(isSlice!(typeof(l)));
-    assert(l == d);
+    assert(s.slicedNdField == d);
 }
 
 /// 1D
 unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota, indexed, ndiota;
+    import mir.ndslice.topology: iota;
 
     size_t i;
     auto a = 3.iota;
@@ -111,9 +109,7 @@ unittest
     assert(d == iota([s.length], 0, 2));
 
     // lazy ndslice view
-    auto l = s.indexed(s.shape.ndiota);
-    static assert(isSlice!(typeof(l)));
-    assert(l == s.length.iota);
+    assert(s.slicedNdField == s.length.iota);
 }
 
 template frontOf(size_t N)
@@ -155,8 +151,8 @@ struct Stack(size_t dim, Slices...)
         static if (d == dim)
         {
             size_t length;
-            foreach(i; Iota!(Slices.length))
-                length += _slices[i].length!d;
+            foreach(ref slice; _slices)
+                length += slice.length!d;
             return length;
         }
         else

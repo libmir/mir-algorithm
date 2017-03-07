@@ -14,6 +14,7 @@ $(T2 Canonical, Alias for $(LREF .SliceKind.canonical).)
 $(T2 Contiguous, Alias for $(LREF .SliceKind.contiguous).)
 $(T2 sliced, Creates a slice on top of an iterator, a pointer, or an array's pointer.)
 $(T2 slicedField, Creates a slice on top of a field, a random access range, or an array.)
+$(T2 slicedNdField, Creates a slice on top of an ndField.)
 $(T2 kindOf, Extracts $(LREF SliceKind).)
 $(T2 isSlice, Extracts dimension packs from a type. Extracts `null` if the template argument is not a `Slice`.)
 $(T2 DeepElementType, Extracts the element type of a $(LREF Slice).)
@@ -35,6 +36,8 @@ import mir.internal.utility;
 import mir.ndslice.internal;
 import mir.ndslice.stack;
 import mir.primitives;
+import mir.ndslice.iterator;
+import mir.ndslice.field;
 
 @fastmath:
 
@@ -275,17 +278,18 @@ pure nothrow unittest
 Creates an n-dimensional slice-shell over a field.
 Params:
     field = A field. The length of the
-        array should be equal to the product of
-        lengths. .
+        array should be equal to or less then the product of
+        lengths. 
     lengths = A list of lengths for each dimension.
 Returns:
     n-dimensional slice
 +/
-auto slicedField(Field, size_t N)(Field field, size_t[N] lengths...)
+Slice!(Contiguous, [N], FieldIterator!Field)
+slicedField(Field, size_t N)(Field field, size_t[N] lengths...)
+    if (N)
 {
     static if (hasLength!Field)
         assert(lengths.lengthsProduct <= field.length, "Length product should be less or equal to the field length.");
-    import mir.ndslice.iterator: FieldIterator;
     return FieldIterator!Field(0, field).sliced(lengths);
 }
 
@@ -299,10 +303,41 @@ auto slicedField(Field)(Field field)
 /// Creates an 1-dimensional slice over a field, array, or random access range.
 @safe @nogc pure nothrow unittest
 {
-    import std.range : iota;
+    import mir.ndslice.topology : iota;
     auto slice = 10.iota.slicedField;
     assert(slice.length == 10);
 }
+
+/++
+Creates an n-dimensional slice-shell over an ndField.
+Params:
+    field = A ndField. Lengths should fit into field's shape.
+    lengths = A list of lengths for each dimension.
+Returns:
+    n-dimensional slice
+See_also: $(SUBREF stack, stack) examples.
++/
+Slice!(Contiguous, [N], IndexIterator!(FieldIterator!(ndIotaField!N), ndField))
+slicedNdField(ndField, size_t N)(ndField field, size_t[N] lengths...)
+    if (N)
+{
+    static if(hasShape!ndField)
+    {
+        auto shape = field.shape;
+        foreach (i; 0 .. N)
+            assert(lengths[i] <= shape[i], "Lengths should fit into ndfield's shape.");
+    }
+    import mir.ndslice.topology: indexed, ndiota;
+    return indexed(field, ndiota(lengths));
+}
+
+///ditto
+auto slicedNdField(ndField)(ndField field)
+    if(hasShape!ndField)
+{
+    return .slicedNdField(field, field.shape);
+}
+
 
 /++
 Returns the element type of a $(LREF Slice).
