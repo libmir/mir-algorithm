@@ -3,6 +3,7 @@
 	"authors": [
 		"Ilya Yaroshenko"
 	],
+	"targetType": "sourceLibrary",
 	"description": "Standard algorithms, ranges and tensors for Dlang",
 	"copyright": "Copyright © 2016, Ilya Yaroshenko",
 	"license": "BSL-1.0",
