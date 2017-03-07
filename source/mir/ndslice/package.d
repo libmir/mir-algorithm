@@ -160,6 +160,7 @@ $(TR $(TDNW $(SUBMODULE algorithm)
 $(TR $(TDNW $(SUBMODULE stack)
         $(BR) $(SMALL Concatenation and algorithms))
      $(TD
+        $(SUBREF stack, forEachFragment)
         $(SUBREF stack, isStack)
         $(SUBREF stack, stack)
         $(SUBREF stack, Stack)
