@@ -57,7 +57,7 @@ unittest
 
     // 0, 1, 2, | 0, 1
     // 3, 4, 5, | 2, 3
-    // ---------------
+    // - - - - - - - -
     // 0, 1, 2,   3, 4
     // construction phase
     auto s = stack(stack!1(a, b), c);
@@ -260,7 +260,10 @@ Params:
         direction can be one of the following values: `"both"`, `"pre", and `"post".`
     s = slice or ndField
     value = initial value for padding
+    lengths = list of lengths
+
 Returns: $(LREF Stack)
+
 See_also: $(LREF stack) examples.
 +/
 auto pad(string direction = "both", S, T, size_t N)(S s, T value, size_t[N] lengths...)
@@ -304,8 +307,11 @@ Params:
     directions = dimensions to pad.
     directions = padding directions.
         Direction can be one of the following values: `"both"`, `"pre", and `"post".`
+
 Returns: $(LREF Stack)
+
 See_also: $(LREF stack) examples.
+
 +/
 template pad(size_t[] dimensions, string[] directions)
     //if (dimensions.length && dimensions.length == directions.length)
@@ -316,6 +322,7 @@ template pad(size_t[] dimensions, string[] directions)
     Params:
         s = slice or ndField
         value = initial value for padding
+        lengths = list of lengths
     Returns: $(LREF Stack)
     See_also: $(LREF stack) examples.
     +/
