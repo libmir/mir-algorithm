@@ -262,7 +262,6 @@ struct Stack(size_t dim, Slices...)
     }
 }
 
-/// ditto
 auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Stack!(dim, Slices) st)
 {
     static if (d == dim)
