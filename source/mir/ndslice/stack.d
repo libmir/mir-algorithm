@@ -124,6 +124,17 @@ template frontOf(size_t N)
     }
 }
 
+template frontOfSt(size_t N)
+{
+    static if (N == 0)
+        enum frontOfSt = "";
+    else
+    {
+        enum i = N - 1;
+        enum frontOfSt = frontOfSt!i ~ "st._slices[" ~ i.stringof ~ "].front!d, ";
+    }
+}
+
 ///
 enum bool isStack(T) = is(T : Stack!(dim, Slices), size_t dim, Slices...);
 ///
@@ -248,6 +259,26 @@ struct Stack(size_t dim, Slices...)
         }
         assert(indexes[dim] < _slices[$-1].length!dim);
         return _slices[$-1][indexes];
+    }
+}
+
+/// ditto
+auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Stack!(dim, Slices) st)
+{
+    static if (d == dim)
+    {
+        foreach(i, ref slice; st._slices)
+        {
+            static if (i != Slices.length - 1)
+                if (slice.empty!d)
+                    continue;
+            return fun(slice.front!d);
+        }
+    }
+    else
+    {
+        enum elemDim = d < dim ? dim - 1 : dim;
+        return fun(mixin(`stack!elemDim(` ~ frontOfSt!(Slices.length) ~ `)`));
     }
 }
 
@@ -882,9 +913,9 @@ template padEdge(size_t[] dimensions, string[] directions)
         }
 
         static if (dimensions.length == 1)
-            alias r = _s;
+            alias r = s;
         else
-            auto r = next(_s, lengths[0 .. $ - 1]);
+            auto r = next( s, lengths[0 .. $ - 1]);
 
         static if (q == "both")
             return stack!d(pre, r, post);
@@ -994,7 +1025,7 @@ template forEachFragment(alias pred)
             {
                 if (!st.empty) do
                 {
-                    .forEachFragment!pred(st.front);
+                    st.applyFront!(0, .forEachFragment!pred);
                     st.popFront;
                 }
                 while(!st.empty);
@@ -1054,14 +1085,16 @@ template until(alias pred)
             static if (dim == 0)
             {
                foreach (i, ref slice; st._slices)
+               {
                     if (.until!pred(slice))
                         return true;
+               }
             }
             else
             {
                 if (!st.empty) do
                 {
-                    if (.until!pred(st.front))
+                    if (st.applyFront!(0, .until!pred))
                         return true;
                     st.popFront;
                 }
