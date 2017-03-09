@@ -98,8 +98,13 @@ pure nothrow unittest
 /// ditto
 auto slice(size_t dim, Slices...)(Stack!(dim, Slices) stack)
 {
-    auto ret = .slice!(Unqual!(stack.DeepElemType))(stack.shape);
-    ret[] = stack;
+    alias T = Unqual!(stack.DeepElemType);
+    static if (hasElaborateAssign!T)
+        alias fun = .slice;
+    else
+        alias fun = .uninitializedSlice;
+    auto ret = fun!(Unqual!(stack.DeepElemType))(stack.shape);
+    ret.opIndexAssign(stack);
     return ret;
 }
 
