@@ -17,6 +17,7 @@ import std.meta;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.internal.utility;
+import mir.primitives;
 
 @fastmath:
 
@@ -132,14 +133,12 @@ enum size_t stackDimension(T : Stack!(dim, Slices), size_t dim, Slices...) = dim
 struct Stack(size_t dim, Slices...)
     if (Slices.length > 1)
 {
+    @fastmath:
+
     /// Slices and sub-stacks
     Slices _slices;
 
-    static if (isSlice!(Slices[0]))
-    // Dimension count
-        package enum N = isSlice!(Slices[0])[0];
-    else
-        package enum N = Slices[0].N;
+    package enum N = typeof(Slices[0].shape).length;
 
     static assert(dim < N);
 
@@ -238,7 +237,8 @@ struct Stack(size_t dim, Slices...)
     }
 
     /// Simplest multidimensional random access primitive
-    auto ref opIndex()(size_t[N] indexes...)
+    // auto ref
+    auto opIndex(size_t[N] indexes...)
     {
         foreach(i, ref slice; _slices[0 .. $-1])
         {
@@ -253,12 +253,146 @@ struct Stack(size_t dim, Slices...)
 }
 
 /++
+Multidimensional padding view.
+
+Params:
+    direction = padding direction.
+        direction can be one of the following values: `"both"`, `"pre", and `"post".`
+    s = slice or ndField
+    value = initial value for padding
+Returns: $(LREF Stack)
+See_also: $(LREF stack) examples.
++/
+auto pad(string direction = "both", S, T, size_t N)(S s, T value, size_t[N] lengths...)
+    if (hasShape!S && N == typeof(S.shape).length)
+{
+    return .pad!([Iota!N], [Repeat!(N, direction)])(s, value, lengths);
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([3], 1).pad(0, [2]);
+
+    assert(pad.slicedNdField == [0, 0,  1, 2, 3,  0, 0]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1).pad(0, [2, 1]);
+
+    assert(pad.slicedNdField == [
+        [0,  0, 0,  0],
+        [0,  0, 0,  0],
+
+        [0,  1, 2,  0],
+        [0,  3, 4,  0],
+        
+        [0,  0, 0,  0],
+        [0,  0, 0,  0]]);
+}
+
+/++
+Multidimensional padding view for selected dimensions.
+
+Params:
+    directions = dimensions to pad.
+    directions = padding directions.
+        Direction can be one of the following values: `"both"`, `"pre", and `"post".`
+Returns: $(LREF Stack)
+See_also: $(LREF stack) examples.
++/
+template pad(size_t[] dimensions, string[] directions)
+    //if (dimensions.length && dimensions.length == directions.length)
+{
+    @fastmath:
+
+    /++
+    Params:
+        s = slice or ndField
+        value = initial value for padding
+    Returns: $(LREF Stack)
+    See_also: $(LREF stack) examples.
+    +/
+    auto pad(S, T)(S s, T value, size_t[dimensions.length] lengths...)
+    {
+        import mir.ndslice.topology: repeat;
+
+        enum d = dimensions[$ - 1];
+        enum q = directions[$ - 1];
+        enum N = typeof(S.shape).length;
+
+        size_t[N] len = void;
+        auto _len = s.shape;
+        foreach(i; Iota!(len.length))
+            static if (i != d)
+                len[i] = _len[i];
+            else
+                len[i] = lengths[$ - 1];
+
+        auto p = repeat(value, len);
+        static if (q == "both")
+            auto r = stack!d(p, s, p);
+        else
+        static if (q == "pre")
+            auto r = stack!d(p, s);
+        else
+        static if (q == "post")
+            auto r = stack!d(s, p);
+        else
+        static assert(0, `allowed directions are "both", "pre", and "post"`);
+
+        static if (dimensions.length == 1)
+            return r;
+        else
+            return .pad!(dimensions[0 .. $ - 1], directions[0 .. $ - 1])(r, value, lengths[0 .. $ -1]);
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1).pad!([1], ["pre"])(0, [2]);
+
+    assert(pad.slicedNdField == [
+        [0, 0,  1, 2],
+        [0, 0,  3, 4]]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1).pad!([0, 1], ["both", "post"])(0, [2, 1]);
+
+    assert(pad.slicedNdField == [
+        [0, 0,  0],
+        [0, 0,  0],
+
+        [1, 2,  0],
+        [3, 4,  0],
+        
+        [0, 0,  0],
+        [0, 0,  0]]);
+}
+
+/++
 Iterates 1D fragments in $(SUBREF slice, Slice) or $(LREF Stack) in optimal for buffering way.
 
 See_also: $(LREF stack) examples.
 +/
 template forEachFragment(alias pred)
 {
+    @fastmath:
+
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
     {
@@ -327,6 +461,8 @@ See_also: $(LREF stack) examples.
 +/
 template until(alias pred)
 {
+    @fastmath:
+
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
     {
