@@ -1,6 +1,14 @@
 /++
 This is a submodule of $(MREF mir, ndslice).
 
+The module contains lazy concatenation routnies.
+They construct $(LREF Concatenation) structure that can be
+assigned to an ndslice of the same shape with `[] = ` or `[] op= `.
+
+$(SUBREF slice, slicedNdField) can be used to construct ndslice lazy view on top of $(LREF Concatenation).
+
+$(SUBREF allocation, slice) has special overload for $(LREF Concatenation) that can be used to allocate new ndslice.
+
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2017-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
