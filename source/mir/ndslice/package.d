@@ -163,6 +163,7 @@ $(TR $(TDNW $(SUBMODULE stack)
      $(TD
         $(SUBREF stack, forEachFragment)
         $(SUBREF stack, isStack)
+        $(SUBREF stack, pad)
         $(SUBREF stack, stack)
         $(SUBREF stack, Stack)
         $(SUBREF stack, stackDimension)
@@ -390,6 +391,8 @@ module mir.ndslice;
 public import mir.ndslice.algorithm;
 public import mir.ndslice.allocation;
 public import mir.ndslice.dynamic;
+public import mir.ndslice.field;
+public import mir.ndslice.iterator;
 public import mir.ndslice.slice;
 public import mir.ndslice.stack;
 public import mir.ndslice.topology;
