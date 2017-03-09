@@ -33,7 +33,7 @@ import mir.ndslice.concatenation;
 @fastmath:
 
 /++
-Creates an array and an n-dimensional slice over it.
+Allocates an array and an n-dimensional slice over it.
 Params:
     lengths = List of lengths for each dimension.
     init = Value to initialize with.
@@ -116,7 +116,7 @@ pure nothrow unittest
 }
 
 /++
-Creates an uninitialized array and an n-dimensional slice over it.
+Allocates an uninitialized array and an n-dimensional slice over it.
 Params:
     lengths = list of lengths for each dimension
 Returns:
@@ -284,7 +284,7 @@ struct SliceAllocationResult(size_t N, T)
 }
 
 /++
-Creates a common n-dimensional array from a slice.
+Allocates a common n-dimensional array from a slice.
 Params:
     slice = slice
 Returns:

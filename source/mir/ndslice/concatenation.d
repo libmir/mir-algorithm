@@ -270,6 +270,14 @@ struct Concatenation(size_t dim, Slices...)
     }
 }
 
+
+/++
+Performs `fun(st.front!d)`.
+
+This functions is useful when `st.front!d` has not a common type and fails to compile.
+
+Can be used instead of $(LREF .Concatenation.front)
++/
 auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Concatenation!(dim, Slices) st)
 {
     static if (d == dim)
