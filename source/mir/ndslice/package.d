@@ -158,19 +158,19 @@ $(TR $(TDNW $(SUBMODULE algorithm)
     )
 )
 
-$(TR $(TDNW $(SUBMODULE stack)
-        $(BR) $(SMALL Concatenation and algorithms))
+$(TR $(TDNW $(SUBMODULE concatenation)
+        $(BR) $(SMALL Concatenation, padding, and algorithms))
      $(TD
-        $(SUBREF stack, forEachFragment)
-        $(SUBREF stack, isStack)
-        $(SUBREF stack, pad)
-        $(SUBREF stack, padEdge)
-        $(SUBREF stack, padWrap)
-        $(SUBREF stack, padSymmetric)
-        $(SUBREF stack, stack)
-        $(SUBREF stack, Stack)
-        $(SUBREF stack, stackDimension)
-        $(SUBREF stack, until)
+        $(SUBREF concatenation, forEachFragment)
+        $(SUBREF concatenation, isStack)
+        $(SUBREF concatenation, pad)
+        $(SUBREF concatenation, padEdge)
+        $(SUBREF concatenation, padWrap)
+        $(SUBREF concatenation, padSymmetric)
+        $(SUBREF concatenation, concatenation)
+        $(SUBREF concatenation, Stack)
+        $(SUBREF concatenation, concatenationDimension)
+        $(SUBREF concatenation, until)
     )
 )
 
@@ -397,7 +397,7 @@ public import mir.ndslice.dynamic;
 public import mir.ndslice.field;
 public import mir.ndslice.iterator;
 public import mir.ndslice.slice;
-public import mir.ndslice.stack;
+public import mir.ndslice.concatenation;
 public import mir.ndslice.topology;
 
 

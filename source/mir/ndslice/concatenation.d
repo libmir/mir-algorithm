@@ -9,7 +9,7 @@ Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
-module mir.ndslice.stack;
+module mir.ndslice.concatenation;
 
 import std.traits;
 import std.meta;
@@ -22,7 +22,7 @@ import mir.primitives;
 @fastmath:
 
 /++
-Creates a $(LREF Stack) view of multiple slices.
+Creates a $(LREF Concatenation) view of multiple slices.
 
 Can be used in combination with itself, $(LREF until), $(SUBREF, allocation, slice),
 and $(SUBREF slice, Slice) assignment.
@@ -31,11 +31,11 @@ until pred returns true.
 Returns: true if an element was 
 
 Params:
-    slices = tuple of slices and stacks. All slices and stacks must have the same dimension count.
+    slices = tuple of slices and concatenations. All slices and concatenations must have the same dimension count.
 
-Returns: $(LREF Stack).
+Returns: $(LREF Concatenation).
 +/
-Stack!(dim, Slices) stack(size_t dim = 0, Slices...)(Slices slices)
+Concatenation!(dim, Slices) concatenation(size_t dim = 0, Slices...)(Slices slices)
 {
     return typeof(return)(slices);
 }
@@ -60,7 +60,7 @@ unittest
     // 
     // 0, 1, 2, 3, 4
     // construction phase
-    auto s = stack(stack!1(a, b), c);
+    auto s = concatenation(concatenation!1(a, b), c);
 
     // allocation phase
     auto d = s.slice;
@@ -96,7 +96,7 @@ unittest
     size_t i;
     auto a = 3.iota;
     auto b = iota([6], a.length);
-    auto s = stack(a, b);
+    auto s = concatenation(a, b);
     assert(s.length == a.length + b.length);
     // fast iteration with until
     s.until!((elem){ assert(elem == i++); return false; });
@@ -136,17 +136,17 @@ template frontOfSt(size_t N)
 }
 
 ///
-enum bool isStack(T) = is(T : Stack!(dim, Slices), size_t dim, Slices...);
+enum bool isConcatenation(T) = is(T : Concatenation!(dim, Slices), size_t dim, Slices...);
 ///
-enum size_t stackDimension(T : Stack!(dim, Slices), size_t dim, Slices...) = dim; 
+enum size_t concatenationDimension(T : Concatenation!(dim, Slices), size_t dim, Slices...) = dim; 
 
 ///
-struct Stack(size_t dim, Slices...)
+struct Concatenation(size_t dim, Slices...)
     if (Slices.length > 1)
 {
     @fastmath:
 
-    /// Slices and sub-stacks
+    /// Slices and sub-concatenations
     Slices _slices;
 
     package enum N = typeof(Slices[0].shape).length;
@@ -171,7 +171,7 @@ struct Stack(size_t dim, Slices...)
         }
     }
 
-    /// Total elements count in the stack.
+    /// Total elements count in the concatenation.
     size_t elementsCount()() const @property
     {
         size_t count = 1;
@@ -180,7 +180,7 @@ struct Stack(size_t dim, Slices...)
         return count;
     }
 
-    /// Shape of the stack.
+    /// Shape of the concatenation.
     size_t[N] shape()() const @property
     {
         typeof(return) ret = void;
@@ -242,7 +242,7 @@ struct Stack(size_t dim, Slices...)
         {
             enum elemDim = d < dim ? dim - 1 : dim;
             alias slices = _slices;
-            return mixin(`stack!elemDim(` ~ frontOf!(Slices.length) ~ `)`);
+            return mixin(`concatenation!elemDim(` ~ frontOf!(Slices.length) ~ `)`);
         }
     }
 
@@ -262,7 +262,7 @@ struct Stack(size_t dim, Slices...)
     }
 }
 
-auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Stack!(dim, Slices) st)
+auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Concatenation!(dim, Slices) st)
 {
     static if (d == dim)
     {
@@ -277,7 +277,7 @@ auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Stack!(dim, Slic
     else
     {
         enum elemDim = d < dim ? dim - 1 : dim;
-        return fun(mixin(`stack!elemDim(` ~ frontOfSt!(Slices.length) ~ `)`));
+        return fun(mixin(`concatenation!elemDim(` ~ frontOfSt!(Slices.length) ~ `)`));
     }
 }
 
@@ -291,9 +291,9 @@ Params:
     value = initial value for padding
     lengths = list of lengths
 
-Returns: $(LREF Stack)
+Returns: $(LREF Concatenation)
 
-See_also: $(LREF stack) examples.
+See_also: $(LREF concatenation) examples.
 +/
 auto pad(string direction = "both", S, T, size_t N)(S s, T value, size_t[N] lengths...)
     if (hasShape!S && N == typeof(S.shape).length)
@@ -343,9 +343,9 @@ Params:
     directions = padding directions.
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
 
-Returns: $(LREF Stack)
+Returns: $(LREF Concatenation)
 
-See_also: $(LREF stack) examples.
+See_also: $(LREF concatenation) examples.
 +/
 template pad(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -357,8 +357,8 @@ template pad(size_t[] dimensions, string[] directions)
         s = $(SUBREF slice, Slice) or ndField
         value = initial value for padding
         lengths = list of lengths
-    Returns: $(LREF Stack)
-    See_also: $(LREF stack) examples.
+    Returns: $(LREF Concatenation)
+    See_also: $(LREF concatenation) examples.
     +/
     auto pad(S, T)(S s, T value, size_t[dimensions.length] lengths...)
     {
@@ -378,13 +378,13 @@ template pad(size_t[] dimensions, string[] directions)
 
         auto p = repeat(value, len);
         static if (q == "both")
-            auto r = stack!d(p, s, p);
+            auto r = concatenation!d(p, s, p);
         else
         static if (q == "pre")
-            auto r = stack!d(p, s);
+            auto r = concatenation!d(p, s);
         else
         static if (q == "post")
-            auto r = stack!d(s, p);
+            auto r = concatenation!d(s, p);
         else
         static assert(0, `allowed directions are "both", "pre", and "post"`);
 
@@ -439,8 +439,8 @@ Params:
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
     s = $(SUBREF slice, Slice)
     lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
-Returns: $(LREF Stack)
-See_also: $(LREF stack) examples.
+Returns: $(LREF Concatenation)
+See_also: $(LREF concatenation) examples.
 +/
 auto padWrap(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
     if (N == packs[0])
@@ -490,9 +490,9 @@ Params:
     directions = padding directions.
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
 
-Returns: $(LREF Stack)
+Returns: $(LREF Concatenation)
 
-See_also: $(LREF stack) examples.
+See_also: $(LREF concatenation) examples.
 +/
 template padWrap(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -503,8 +503,8 @@ template padWrap(size_t[] dimensions, string[] directions)
     Params:
         s = $(SUBREF slice, Slice)
         lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
-    Returns: $(LREF Stack)
-    See_also: $(LREF stack) examples.
+    Returns: $(LREF Concatenation)
+    See_also: $(LREF concatenation) examples.
     +/
     auto padWrap(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
     {
@@ -552,13 +552,13 @@ template padWrap(size_t[] dimensions, string[] directions)
             auto r = next(s, lengths[0 .. $ - 1]);
 
         static if (q == "both")
-            return stack!d(pre, r, post);
+            return concatenation!d(pre, r, post);
         else
         static if (q == "pre")
-            return stack!d(pre, r);
+            return concatenation!d(pre, r);
         else
         static if (q == "post")
-            return stack!d(r, post);
+            return concatenation!d(r, post);
         else
         static assert(0, `allowed directions are "both", "pre", and "post"`);
     }
@@ -608,8 +608,8 @@ Params:
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
     s = $(SUBREF slice, Slice)
     lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
-Returns: $(LREF Stack)
-See_also: $(LREF stack) examples.
+Returns: $(LREF Concatenation)
+See_also: $(LREF concatenation) examples.
 +/
 auto padSymmetric(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
     if (N == packs[0])
@@ -659,9 +659,9 @@ Params:
     directions = padding directions.
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
 
-Returns: $(LREF Stack)
+Returns: $(LREF Concatenation)
 
-See_also: $(LREF stack) examples.
+See_also: $(LREF concatenation) examples.
 +/
 template padSymmetric(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -672,8 +672,8 @@ template padSymmetric(size_t[] dimensions, string[] directions)
     Params:
         s = $(SUBREF slice, Slice)
         lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
-    Returns: $(LREF Stack)
-    See_also: $(LREF stack) examples.
+    Returns: $(LREF Concatenation)
+    See_also: $(LREF concatenation) examples.
     +/
     auto padSymmetric(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
         if (packs.length == 1)
@@ -740,13 +740,13 @@ template padSymmetric(size_t[] dimensions, string[] directions)
             auto r = next(s, lengths[0 .. $ - 1]);
 
         static if (q == "both")
-            return stack!d(pre, r, post);
+            return concatenation!d(pre, r, post);
         else
         static if (q == "pre")
-            return stack!d(pre, r);
+            return concatenation!d(pre, r);
         else
         static if (q == "post")
-            return stack!d(r, post);
+            return concatenation!d(r, post);
         else
         static assert(0, `allowed directions are "both", "pre", and "post"`);
     }
@@ -796,8 +796,8 @@ Params:
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
     s = $(SUBREF slice, Slice)
     lengths = list of lengths for each dimension.
-Returns: $(LREF Stack)
-See_also: $(LREF stack) examples.
+Returns: $(LREF Concatenation)
+See_also: $(LREF concatenation) examples.
 +/
 auto padEdge(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
     if (N == packs[0])
@@ -847,9 +847,9 @@ Params:
     directions = padding directions.
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
 
-Returns: $(LREF Stack)
+Returns: $(LREF Concatenation)
 
-See_also: $(LREF stack) examples.
+See_also: $(LREF concatenation) examples.
 +/
 template padEdge(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -860,8 +860,8 @@ template padEdge(size_t[] dimensions, string[] directions)
     Params:
         s = $(SUBREF slice, Slice)
         lengths = list of lengths for each dimension.
-    Returns: $(LREF Stack)
-    See_also: $(LREF stack) examples.
+    Returns: $(LREF Concatenation)
+    See_also: $(LREF concatenation) examples.
     +/
     auto padEdge(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
     {
@@ -917,13 +917,13 @@ template padEdge(size_t[] dimensions, string[] directions)
             auto r = next( s, lengths[0 .. $ - 1]);
 
         static if (q == "both")
-            return stack!d(pre, r, post);
+            return concatenation!d(pre, r, post);
         else
         static if (q == "pre")
-            return stack!d(pre, r);
+            return concatenation!d(pre, r);
         else
         static if (q == "post")
-            return stack!d(r, post);
+            return concatenation!d(r, post);
         else
         static assert(0, `allowed directions are "both", "pre", and "post"`);
     }
@@ -969,9 +969,9 @@ unittest
 }
 
 /++
-Iterates 1D fragments in $(SUBREF slice, Slice) or $(LREF Stack) in optimal for buffering way.
+Iterates 1D fragments in $(SUBREF slice, Slice) or $(LREF Concatenation) in optimal for buffering way.
 
-See_also: $(LREF stack) examples.
+See_also: $(LREF concatenation) examples.
 +/
 template forEachFragment(alias pred)
 {
@@ -1009,11 +1009,11 @@ template forEachFragment(alias pred)
         }
 
         /++
-        Specialization for stacks
+        Specialization for concatenations
         Params:
-            st = $(LREF Stack)
+            st = $(LREF Concatenation)
         +/
-        void forEachFragment(size_t dim, Slices...)(Stack!(dim, Slices) st)
+        void forEachFragment(size_t dim, Slices...)(Concatenation!(dim, Slices) st)
         {
             static if (dim == 0)
             {
@@ -1036,12 +1036,12 @@ template forEachFragment(alias pred)
 }
 
 /++
-Iterates elements in $(SUBREF slice, Slice) or $(LREF Stack)
+Iterates elements in $(SUBREF slice, Slice) or $(LREF Concatenation)
 until pred returns true.
 
 Returns: false if pred returned false for all elements and true otherwise.
 
-See_also: $(LREF stack) examples.
+See_also: $(LREF concatenation) examples.
 +/
 template until(alias pred)
 {
@@ -1075,11 +1075,11 @@ template until(alias pred)
         }
 
         /++
-        Specialization for stacks
+        Specialization for concatenations
         Params:
-            st = $(LREF Stack)
+            st = $(LREF Concatenation)
         +/
-        bool until(size_t dim, Slices...)(Stack!(dim, Slices) st)
+        bool until(size_t dim, Slices...)(Concatenation!(dim, Slices) st)
         {
             static if (dim == 0)
             {

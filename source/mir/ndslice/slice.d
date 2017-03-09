@@ -34,7 +34,7 @@ import std.meta;
 
 import mir.internal.utility;
 import mir.ndslice.internal;
-import mir.ndslice.stack;
+import mir.ndslice.concatenation;
 import mir.primitives;
 import mir.ndslice.iterator;
 import mir.ndslice.field;
@@ -315,7 +315,7 @@ Params:
     lengths = A list of lengths for each dimension.
 Returns:
     n-dimensional slice
-See_also: $(SUBREF stack, stack) examples.
+See_also: $(SUBREF concatenation, concatenation) examples.
 +/
 Slice!(Contiguous, [N], IndexIterator!(FieldIterator!(ndIotaField!N), ndField))
 slicedNdField(ndField, size_t N)(ndField field, size_t[N] lengths...)
@@ -344,7 +344,7 @@ Returns the element type of a $(LREF Slice).
 +/
 alias DeepElementType(S : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = S.DeepElemType;
 /// ditto
-alias DeepElementType(S : Stack!(dim, Slices), size_t dim, Slices...) = S.DeepElemType;
+alias DeepElementType(S : Concatenation!(dim, Slices), size_t dim, Slices...) = S.DeepElemType;
 
 ///
 unittest
@@ -1814,10 +1814,10 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
 
-        private void opIndexOpAssignImplStack(string op, T)(T value)
+        private void opIndexOpAssignImplConcatenation(string op, T)(T value)
         {
             auto sl = this;
-            static if (stackDimension!T)
+            static if (concatenationDimension!T)
             {
                 if (!sl.empty) do
                 {
@@ -1839,13 +1839,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         ///
-        void opIndexAssign(T, Slices...)(T stack, Slices slices)
-            if (isFullPureSlice!Slices && isStack!T)
+        void opIndexAssign(T, Slices...)(T concatenation, Slices slices)
+            if (isFullPureSlice!Slices && isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
-            static assert(isSlice!(typeof(sl))[0] == stack.N);
-            sl.opIndexOpAssignImplStack!""(stack);
+            static assert(isSlice!(typeof(sl))[0] == concatenation.N);
+            sl.opIndexOpAssignImplConcatenation!""(concatenation);
         }
 
         /++
@@ -1858,7 +1858,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !isSlice!T
-                && !isStack!T)
+                && !isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
@@ -2117,7 +2117,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !isSlice!T
-                && !isStack!T)
+                && !isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
@@ -2143,13 +2143,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         ///
-        void opIndexOpAssign(string op,T, Slices...)(T stack, Slices slices)
-            if (isFullPureSlice!Slices && isStack!T)
+        void opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices)
+            if (isFullPureSlice!Slices && isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
-            static assert(isSlice!(typeof(sl))[0] == stack.N);
-            sl.opIndexOpAssignImplStack!op(stack);
+            static assert(isSlice!(typeof(sl))[0] == concatenation.N);
+            sl.opIndexOpAssignImplConcatenation!op(concatenation);
         }
 
         static if (doUnittest)

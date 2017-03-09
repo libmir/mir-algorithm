@@ -28,7 +28,7 @@ module mir.ndslice.allocation;
 import std.traits;
 import mir.ndslice.slice;
 import mir.ndslice.internal;
-import mir.ndslice.stack;
+import mir.ndslice.concatenation;
 
 @fastmath:
 
@@ -96,15 +96,15 @@ pure nothrow unittest
 }
 
 /// ditto
-auto slice(size_t dim, Slices...)(Stack!(dim, Slices) stack)
+auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 {
-    alias T = Unqual!(stack.DeepElemType);
+    alias T = Unqual!(concatenation.DeepElemType);
     static if (hasElaborateAssign!T)
         alias fun = .slice;
     else
         alias fun = .uninitializedSlice;
-    auto ret = fun!(Unqual!(stack.DeepElemType))(stack.shape);
-    ret.opIndexAssign(stack);
+    auto ret = fun!(Unqual!(concatenation.DeepElemType))(concatenation.shape);
+    ret.opIndexAssign(concatenation);
     return ret;
 }
 
