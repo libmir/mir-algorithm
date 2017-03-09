@@ -29,7 +29,7 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 MIR_PACKAGES = mir mir/ndslice
 
 PACKAGE_mir = conv functional primitives utility
-PACKAGE_mir_ndslice = package algorithm allocation dynamic field iterator package slice sorting stack topology
+PACKAGE_mir_ndslice = package algorithm allocation dynamic field iterator package slice sorting concatenation topology
 
 MOD_EXCLUDES=$(addprefix --ex=, mir.ndslice.internal)
 

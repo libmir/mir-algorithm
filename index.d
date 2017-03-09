@@ -32,8 +32,8 @@ $(BOOKTABLE ,
         $(TD Loop free programming)
     )
     $(TR
-        $(TDNW $(MREF mir,ndslice,stack))
-        $(TD Concatenation)
+        $(TDNW $(MREF mir,ndslice,concatenation))
+        $(TD Concatenation and padding)
     )
     $(TR
         $(TDNW $(MREF mir,ndslice,dynamic))
