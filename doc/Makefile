@@ -8,7 +8,7 @@ LATEST:=$(git describe --abbrev=0 --tags | tr -d v)
 # binaries
 DMD=dmd
 RDMD=rdmd
-DDOC=$(DMD) -w -c -o- -version=StdDdoc -version=Have_mir_algorithm
+DDOC=$(DMD) -w -c -o- -version=StdDdoc -version=Have_mir
 
 # folders
 DOC_OUTPUT_DIR=web

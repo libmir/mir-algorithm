@@ -257,7 +257,7 @@ Multidimensional padding view.
 
 Params:
     direction = padding direction.
-        direction can be one of the following values: `"both"`, `"pre", and `"post"`.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
     s = slice or ndField
     value = initial value for padding
     lengths = list of lengths
@@ -306,7 +306,7 @@ Multidimensional padding view for selected dimensions.
 Params:
     dimensions = dimensions to pad.
     directions = padding directions.
-        Direction can be one of the following values: `"both"`, `"pre", and `"post"`.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
 
 Returns: $(LREF Stack)
 

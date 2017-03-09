@@ -2308,12 +2308,12 @@ unittest
 }
 
 /++
-Takes a field `source` and a slice `indices`, and creates a view of source as if its elements were reordered according to indices.
-`indices` may include only a subset of the elements of `source` and may also repeat elements.
+Takes a field `source` and a slice `indexes`, and creates a view of source as if its elements were reordered according to indexes.
+`indexes` may include only a subset of the elements of `source` and may also repeat elements.
 
 Params:
-    source = a filed, source of data. `source` must be an array or a pointer, or have `opIndex` primiteve. Full random access range API is not required.
-    indeces = a slice, source of indexes.
+    source = a filed, source of data. `source` must be an array or a pointer, or have `opIndex` primitive. Full random access range API is not required.
+    indexes = a slice, source of indexes.
 Returns:
     n-dimensional slice with the same kind, shape and strides.
 
@@ -2321,13 +2321,13 @@ See_also: `indexed` is similar to $(LREF, map), but a field is used instead of a
 +/
 Slice!(kind, packs, IndexIterator!(Iterator, Field))
     indexed(Field, SliceKind kind, size_t[] packs, Iterator)
-    (Field source, Slice!(kind, packs, Iterator) indices)
+    (Field source, Slice!(kind, packs, Iterator) indexes)
 {
     return typeof(return)(
-            indices._lengths,
-            indices._strides,
+            indexes._lengths,
+            indexes._strides,
             IndexIterator!(Iterator, Field)(
-                indices._iterator,
+                indexes._iterator,
                 source));
 }
 
@@ -2335,11 +2335,11 @@ Slice!(kind, packs, IndexIterator!(Iterator, Field))
 unittest
 {
     auto source = [1, 2, 3, 4, 5];
-    auto indices = [4, 3, 1, 2, 0, 4].sliced;
-    auto ind = source.indexed(indices);
+    auto indexes = [4, 3, 1, 2, 0, 4].sliced;
+    auto ind = source.indexed(indexes);
     assert(ind == [5, 4, 2, 3, 1, 5]);
     
-    assert(ind.retro == source.indexed(indices.retro));
+    assert(ind.retro == source.indexed(indexes.retro));
 
     ind[3] += 10; // for index 2
     //                0  1   2  3  4
