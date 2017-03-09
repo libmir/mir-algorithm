@@ -55,10 +55,10 @@ unittest
     // 0, 1, 2, 3, 4
     auto c = iota(1, 5);
 
-    // 0, 1, 2, | 0, 1
-    // 3, 4, 5, | 2, 3
-    // - - - - - - - -
-    // 0, 1, 2,   3, 4
+    // 0, 1, 2,   0, 1
+    // 3, 4, 5,   2, 3
+    // 
+    // 0, 1, 2, 3, 4
     // construction phase
     auto s = stack(stack!1(a, b), c);
 
@@ -314,7 +314,7 @@ See_also: $(LREF stack) examples.
 
 +/
 template pad(size_t[] dimensions, string[] directions)
-    //if (dimensions.length && dimensions.length == directions.length)
+    if (dimensions.length && dimensions.length == directions.length)
 {
     @fastmath:
 
