@@ -9,6 +9,16 @@ $(SUBREF slice, slicedNdField) can be used to construct ndslice lazy view on top
 
 $(SUBREF allocation, slice) has special overload for $(LREF Concatenation) that can be used to allocate new ndslice.
 
+$(BOOKTABLE $(H2 Concatenation constructors),
+$(TR $(TH Function Name) $(TH Description))
+$(T2 ._concatenation, Creates a $(LREF Concatenation) view of multiple slices.)
+$(T2 pad, Pads with a constant value.)
+$(T2 padEdge, Pads with the edge values of slice.)
+$(T2 padSymmetric, Pads with the reflection of the slice mirrored along the edge of the slice.)
+$(T2 padWrap, Pads with the wrap of the slice along the axis. The first values are used to pad the end and the end values are used to pad the beginning.)
+)
+
+
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2017-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
@@ -298,7 +308,7 @@ auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Concatenation!(d
 }
 
 /++
-Multidimensional padding view.
+Pads with a constant value.
 
 Params:
     direction = padding direction.
@@ -309,7 +319,7 @@ Params:
 
 Returns: $(LREF Concatenation)
 
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 auto pad(string direction = "both", S, T, size_t N)(S s, T value, size_t[N] lengths...)
     if (hasShape!S && N == typeof(S.shape).length)
@@ -361,7 +371,7 @@ Params:
 
 Returns: $(LREF Concatenation)
 
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 template pad(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -374,7 +384,7 @@ template pad(size_t[] dimensions, string[] directions)
         value = initial value for padding
         lengths = list of lengths
     Returns: $(LREF Concatenation)
-    See_also: $(LREF concatenation) examples.
+    See_also: $(LREF ._concatenation) examples.
     +/
     auto pad(S, T)(S s, T value, size_t[dimensions.length] lengths...)
     {
@@ -456,7 +466,7 @@ Params:
     s = $(SUBREF slice, Slice)
     lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
 Returns: $(LREF Concatenation)
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 auto padWrap(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
     if (N == packs[0])
@@ -508,7 +518,7 @@ Params:
 
 Returns: $(LREF Concatenation)
 
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 template padWrap(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -520,7 +530,7 @@ template padWrap(size_t[] dimensions, string[] directions)
         s = $(SUBREF slice, Slice)
         lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
     Returns: $(LREF Concatenation)
-    See_also: $(LREF concatenation) examples.
+    See_also: $(LREF ._concatenation) examples.
     +/
     auto padWrap(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
     {
@@ -625,7 +635,7 @@ Params:
     s = $(SUBREF slice, Slice)
     lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
 Returns: $(LREF Concatenation)
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 auto padSymmetric(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
     if (N == packs[0])
@@ -677,7 +687,7 @@ Params:
 
 Returns: $(LREF Concatenation)
 
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 template padSymmetric(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -689,7 +699,7 @@ template padSymmetric(size_t[] dimensions, string[] directions)
         s = $(SUBREF slice, Slice)
         lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
     Returns: $(LREF Concatenation)
-    See_also: $(LREF concatenation) examples.
+    See_also: $(LREF ._concatenation) examples.
     +/
     auto padSymmetric(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
         if (packs.length == 1)
@@ -813,7 +823,7 @@ Params:
     s = $(SUBREF slice, Slice)
     lengths = list of lengths for each dimension.
 Returns: $(LREF Concatenation)
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 auto padEdge(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
     if (N == packs[0])
@@ -865,7 +875,7 @@ Params:
 
 Returns: $(LREF Concatenation)
 
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 template padEdge(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -877,7 +887,7 @@ template padEdge(size_t[] dimensions, string[] directions)
         s = $(SUBREF slice, Slice)
         lengths = list of lengths for each dimension.
     Returns: $(LREF Concatenation)
-    See_also: $(LREF concatenation) examples.
+    See_also: $(LREF ._concatenation) examples.
     +/
     auto padEdge(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
     {
@@ -987,7 +997,7 @@ unittest
 /++
 Iterates 1D fragments in $(SUBREF slice, Slice) or $(LREF Concatenation) in optimal for buffering way.
 
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 template forEachFragment(alias pred)
 {
@@ -1057,7 +1067,7 @@ until pred returns true.
 
 Returns: false if pred returned false for all elements and true otherwise.
 
-See_also: $(LREF concatenation) examples.
+See_also: $(LREF ._concatenation) examples.
 +/
 template until(alias pred)
 {

@@ -15,7 +15,7 @@ import mir.ndslice.internal;
 /++
 Checks whether a slice is sorted according to the comparison
 operation $(D less). Performs $(BIGOH ndslice.elementsCount) evaluations of `less`.
-Unlike `isSorted`, $(LREF isStrictlyMonotonic) does not allow for equal values,
+Unlike `isSorted`, $(LREF _isStrictlyMonotonic) does not allow for equal values,
 i.e. values for which both `less(a, b)` and `less(b, a)` are false.
 With either function, the predicate must be a strict ordering just like with
 `isSorted`. For example, using `"a <= b"` instead of `"a < b"` is
@@ -32,7 +32,7 @@ template isSorted(alias less = "a < b")
     slice = A slice to check for sortedness.
     Returns:
         `true` if the range is sorted, false otherwise. `isSorted` allows
-        duplicates, $(LREF isStrictlyMonotonic) not.
+        duplicates, $(LREF _isStrictlyMonotonic) not.
     +/
     @fastmath bool isSorted(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
