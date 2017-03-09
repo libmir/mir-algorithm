@@ -196,7 +196,6 @@ struct Stack(size_t dim, Slices...)
 
     /// ditto
     void popFront(size_t d = 0)()
-        if (d != dim)
     {
         static if (d == dim)
         {
@@ -258,7 +257,7 @@ Multidimensional padding view.
 Params:
     direction = padding direction.
         Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
-    s = slice or ndField
+    s = $(SUBREF slice, Slice) or ndField
     value = initial value for padding
     lengths = list of lengths
 
@@ -275,21 +274,27 @@ auto pad(string direction = "both", S, T, size_t N)(S s, T value, size_t[N] leng
 ///
 unittest
 {
+    import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
 
-    auto pad = iota([3], 1).pad(0, [2]);
+    auto pad = iota([3], 1)
+        .pad(0, [2])
+        .slice;
 
-    assert(pad.slicedNdField == [0, 0,  1, 2, 3,  0, 0]);
+    assert(pad == [0, 0,  1, 2, 3,  0, 0]);
 }
 
 ///
 unittest
 {
+    import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
 
-    auto pad = iota([2, 2], 1).pad(0, [2, 1]);
+    auto pad = iota([2, 2], 1)
+        .pad(0, [2, 1])
+        .slice;
 
-    assert(pad.slicedNdField == [
+    assert(pad == [
         [0,  0, 0,  0],
         [0,  0, 0,  0],
 
@@ -301,7 +306,7 @@ unittest
 }
 
 /++
-Multidimensional padding view for selected dimensions.
+Pads with a constant value.
 
 Params:
     dimensions = dimensions to pad.
@@ -311,7 +316,6 @@ Params:
 Returns: $(LREF Stack)
 
 See_also: $(LREF stack) examples.
-
 +/
 template pad(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
@@ -320,7 +324,7 @@ template pad(size_t[] dimensions, string[] directions)
 
     /++
     Params:
-        s = slice or ndField
+        s = $(SUBREF slice, Slice) or ndField
         value = initial value for padding
         lengths = list of lengths
     Returns: $(LREF Stack)
@@ -364,11 +368,14 @@ template pad(size_t[] dimensions, string[] directions)
 ///
 unittest
 {
+    import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
 
-    auto pad = iota([2, 2], 1).pad!([1], ["pre"])(0, [2]);
+    auto pad = iota([2, 2], 1)
+        .pad!([1], ["pre"])(0, [2])
+        .slice;
 
-    assert(pad.slicedNdField == [
+    assert(pad == [
         [0, 0,  1, 2],
         [0, 0,  3, 4]]);
 }
@@ -376,11 +383,14 @@ unittest
 ///
 unittest
 {
+    import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
 
-    auto pad = iota([2, 2], 1).pad!([0, 1], ["both", "post"])(0, [2, 1]);
+    auto pad = iota([2, 2], 1)
+        .pad!([0, 1], ["both", "post"])(0, [2, 1])
+        .slice;
 
-    assert(pad.slicedNdField == [
+    assert(pad == [
         [0, 0,  0],
         [0, 0,  0],
 
@@ -389,6 +399,543 @@ unittest
         
         [0, 0,  0],
         [0, 0,  0]]);
+}
+
+/++
+Pads with the wrap of the slice along the axis. The first values are used to pad the end and the end values are used to pad the beginning.
+
+Params:
+    direction = padding direction.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
+    s = $(SUBREF slice, Slice)
+    lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
+Returns: $(LREF Stack)
+See_also: $(LREF stack) examples.
++/
+auto padWrap(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
+    if (N == packs[0])
+{
+    return .padWrap!([Iota!N], [Repeat!(N, direction)])(s, lengths);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([3], 1)
+        .padWrap([2])
+        .slice;
+
+    assert(pad == [2, 3,  1, 2, 3,  1, 2]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1)
+        .padWrap([2, 1])
+        .slice;
+
+    assert(pad == [
+        [2,  1, 2,  1],
+        [4,  3, 4,  3],
+
+        [2,  1, 2,  1],
+        [4,  3, 4,  3],
+
+        [2,  1, 2,  1],
+        [4,  3, 4,  3]]);
+}
+
+/++
+Pads with the wrap of the slice along the axis. The first values are used to pad the end and the end values are used to pad the beginning.
+
+Params:
+    dimensions = dimensions to pad.
+    directions = padding directions.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
+
+Returns: $(LREF Stack)
+
+See_also: $(LREF stack) examples.
++/
+template padWrap(size_t[] dimensions, string[] directions)
+    if (dimensions.length && dimensions.length == directions.length)
+{
+    @fastmath:
+
+    /++
+    Params:
+        s = $(SUBREF slice, Slice)
+        lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
+    Returns: $(LREF Stack)
+    See_also: $(LREF stack) examples.
+    +/
+    auto padWrap(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
+    {
+        enum d = dimensions[$ - 1];
+        enum q = directions[$ - 1];
+
+        static if (d == 0 || kind != Contiguous)
+        {
+            alias _s = s;
+        }
+        else
+        {
+            import mir.ndslice.topology: canonical;
+            auto _s = s.canonical;
+        }
+
+        assert(lengths[$ - 1] <= s.length!d);
+
+        static if (dimensions.length != 1)
+            alias next = .padWrap!(dimensions[0 .. $ - 1], directions[0 .. $ - 1]);
+
+        static if (q == "pre" || q == "both")
+        {
+            auto _pre = _s;
+            _pre.popFrontExactly!d(s.length!d - lengths[$ - 1]);
+            static if (dimensions.length == 1)
+                alias pre = _pre;
+            else
+                auto pre = next(_pre, lengths[0 .. $ - 1]);
+        }
+
+        static if (q == "post" || q == "both")
+        {
+            auto _post = _s;
+            _post.popBackExactly!d(s.length!d - lengths[$ - 1]);
+            static if (dimensions.length == 1)
+                alias post = _post;
+            else
+                auto post = next(_post, lengths[0 .. $ - 1]);
+        }
+
+        static if (dimensions.length == 1)
+            alias r = s;
+        else
+            auto r = next(s, lengths[0 .. $ - 1]);
+
+        static if (q == "both")
+            return stack!d(pre, r, post);
+        else
+        static if (q == "pre")
+            return stack!d(pre, r);
+        else
+        static if (q == "post")
+            return stack!d(r, post);
+        else
+        static assert(0, `allowed directions are "both", "pre", and "post"`);
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 3], 1)
+        .padWrap!([1], ["pre"])([1])
+        .slice;
+
+    assert(pad == [
+        [3,  1, 2, 3],
+        [6,  4, 5, 6]]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1)
+        .padWrap!([0, 1], ["both", "post"])([2, 1])
+        .slice;
+
+    assert(pad == [
+        [1, 2,  1],
+        [3, 4,  3],
+
+        [1, 2,  1],
+        [3, 4,  3],
+        
+        [1, 2,  1],
+        [3, 4,  3]]);
+}
+
+/++
+Pads with the reflection of the slice mirrored along the edge of the slice.
+
+Params:
+    direction = padding direction.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
+    s = $(SUBREF slice, Slice)
+    lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
+Returns: $(LREF Stack)
+See_also: $(LREF stack) examples.
++/
+auto padSymmetric(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
+    if (N == packs[0])
+{
+    return .padSymmetric!([Iota!N], [Repeat!(N, direction)])(s, lengths);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([3], 1)
+        .padSymmetric([2])
+        .slice;
+
+    assert(pad == [2, 1,  1, 2, 3,  3, 2]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1)
+        .padSymmetric([2, 1])
+        .slice;
+
+    assert(pad == [
+        [3,  3, 4,  4],
+        [1,  1, 2,  2],
+
+        [1,  1, 2,  2],
+        [3,  3, 4,  4],
+
+        [3,  3, 4,  4],
+        [1,  1, 2,  2]]);
+}
+
+/++
+Pads with the reflection of the slice mirrored along the edge of the slice.
+
+Params:
+    dimensions = dimensions to pad.
+    directions = padding directions.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
+
+Returns: $(LREF Stack)
+
+See_also: $(LREF stack) examples.
++/
+template padSymmetric(size_t[] dimensions, string[] directions)
+    if (dimensions.length && dimensions.length == directions.length)
+{
+    @fastmath:
+
+    /++
+    Params:
+        s = $(SUBREF slice, Slice)
+        lengths = list of lengths for each dimension. Each length must be less or equal to the corresponding slice length.
+    Returns: $(LREF Stack)
+    See_also: $(LREF stack) examples.
+    +/
+    auto padSymmetric(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
+        if (packs.length == 1)
+    {
+        enum d = dimensions[$ - 1];
+        enum q = directions[$ - 1];
+        import mir.ndslice.dynamic: reversed;
+
+
+        static if (kind == Contiguous)
+        {
+            import mir.ndslice.topology: canonical;
+            auto __s = s.canonical;
+        }
+        else
+        {
+            alias __s = s;
+        }
+
+        static if (kind == Universal || d != packs[0] - 1 || packs.length > 1)
+        {
+            auto _s = __s.reversed!d;
+        }
+        else
+        static if (packs[0] == 1)
+        {
+            import mir.ndslice.topology: retro;
+            auto _s = s.retro;
+        }
+        else
+        {
+            import mir.ndslice.topology: retro;
+            auto _s = __s.retro.reversed!(Iota!d, Iota!(d + 1, packs[0]));
+        }
+
+        assert(lengths[$ - 1] <= s.length!d);
+
+        static if (dimensions.length != 1)
+            alias next = .padSymmetric!(dimensions[0 .. $ - 1], directions[0 .. $ - 1]);
+
+        static if (q == "pre" || q == "both")
+        {
+            auto _pre = _s;
+            _pre.popFrontExactly!d(s.length!d - lengths[$ - 1]);
+            static if (dimensions.length == 1)
+                alias pre = _pre;
+            else
+                auto pre = next(_pre, lengths[0 .. $ - 1]);
+        }
+
+        static if (q == "post" || q == "both")
+        {
+            auto _post = _s;
+            _post.popBackExactly!d(s.length!d - lengths[$ - 1]);
+            static if (dimensions.length == 1)
+                alias post = _post;
+            else
+                auto post = next(_post, lengths[0 .. $ - 1]);
+        }
+
+        static if (dimensions.length == 1)
+            alias r = s;
+        else
+            auto r = next(s, lengths[0 .. $ - 1]);
+
+        static if (q == "both")
+            return stack!d(pre, r, post);
+        else
+        static if (q == "pre")
+            return stack!d(pre, r);
+        else
+        static if (q == "post")
+            return stack!d(r, post);
+        else
+        static assert(0, `allowed directions are "both", "pre", and "post"`);
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 3], 1)
+        .padSymmetric!([1], ["pre"])([1])
+        .slice;
+
+    assert(pad == [
+        [1,  1, 2, 3],
+        [4,  4, 5, 6]]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1)
+        .padSymmetric!([0, 1], ["both", "post"])([2, 1])
+        .slice;
+
+    assert(pad == [
+        [3, 4,  4],
+        [1, 2,  2],
+
+        [1, 2,  2],
+        [3, 4,  4],
+        
+        [3, 4,  4],
+        [1, 2,  2]]);
+}
+
+/++
+Pads with the edge values of slice.
+
+Params:
+    direction = padding direction.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
+    s = $(SUBREF slice, Slice)
+    lengths = list of lengths for each dimension.
+Returns: $(LREF Stack)
+See_also: $(LREF stack) examples.
++/
+auto padEdge(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
+    if (N == packs[0])
+{
+    return .padEdge!([Iota!N], [Repeat!(N, direction)])(s, lengths);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([3], 1)
+        .padEdge([2])
+        .slice;
+
+    assert(pad == [1, 1,  1, 2, 3,  3, 3]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1)
+        .padEdge([2, 1])
+        .slice;
+
+    assert(pad == [
+        [1,  1, 2,  2],
+        [1,  1, 2,  2],
+
+        [1,  1, 2,  2],
+        [3,  3, 4,  4],
+
+        [3,  3, 4,  4],
+        [3,  3, 4,  4]]);
+}
+
+/++
+Pads with the edge values of slice.
+
+Params:
+    dimensions = dimensions to pad.
+    directions = padding directions.
+        Direction can be one of the following values: `"both"`, `"pre"`, and `"post"`.
+
+Returns: $(LREF Stack)
+
+See_also: $(LREF stack) examples.
++/
+template padEdge(size_t[] dimensions, string[] directions)
+    if (dimensions.length && dimensions.length == directions.length)
+{
+    @fastmath:
+
+    /++
+    Params:
+        s = $(SUBREF slice, Slice)
+        lengths = list of lengths for each dimension.
+    Returns: $(LREF Stack)
+    See_also: $(LREF stack) examples.
+    +/
+    auto padEdge(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
+    {
+        enum d = dimensions[$ - 1];
+        enum q = directions[$ - 1];
+
+        static if (kind == Universal || kind == Canonical && packs.length > 1)
+        {
+            alias _s = s;
+        }
+        else
+        static if (packs.length > 1 || d != packs[0] - 1)
+        {
+            import mir.ndslice.topology: canonical;
+            auto _s = s.canonical;
+        }
+        else
+        {
+            import mir.ndslice.topology: universal;
+            auto _s = s.universal;
+        }
+
+        static if (dimensions.length != 1)
+            alias next = .padEdge!(dimensions[0 .. $ - 1], directions[0 .. $ - 1]);
+
+        static if (q == "pre" || q == "both")
+        {
+            auto _pre = _s;
+            _pre._strides[d] = 0;
+            _pre._lengths[d] = lengths[$ - 1];
+            static if (dimensions.length == 1)
+                alias pre = _pre;
+            else
+                auto pre = next(_pre, lengths[0 .. $ - 1]);
+
+        }
+
+        static if (q == "post" || q == "both")
+        {
+            auto _post = _s;
+            _post._iterator += _post.backIndex!d;
+            _post._strides[d] = 0;
+            _post._lengths[d] = lengths[$ - 1];
+            static if (dimensions.length == 1)
+                alias post = _post;
+            else
+                auto post = next(_post, lengths[0 .. $ - 1]);
+        }
+
+        static if (dimensions.length == 1)
+            alias r = _s;
+        else
+            auto r = next(_s, lengths[0 .. $ - 1]);
+
+        static if (q == "both")
+            return stack!d(pre, r, post);
+        else
+        static if (q == "pre")
+            return stack!d(pre, r);
+        else
+        static if (q == "post")
+            return stack!d(r, post);
+        else
+        static assert(0, `allowed directions are "both", "pre", and "post"`);
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 3], 1)
+        .padEdge!([0], ["pre"])([2])
+        .slice;
+
+    assert(pad == [
+        [1, 2, 3],
+        [1, 2, 3],
+        
+        [1, 2, 3],
+        [4, 5, 6]]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto pad = iota([2, 2], 1)
+        .padEdge!([0, 1], ["both", "post"])([2, 1])
+        .slice;
+
+    assert(pad == [
+        [1, 2,  2],
+        [1, 2,  2],
+
+        [1, 2,  2],
+        [3, 4,  4],
+
+        [3, 4,  4],
+        [3, 4,  4]]);
 }
 
 /++
