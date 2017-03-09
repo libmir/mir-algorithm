@@ -266,7 +266,7 @@ struct Concatenation(size_t dim, Slices...)
 
     /// Simplest multidimensional random access primitive
     // auto ref
-    auto opIndex(size_t[N] indexes...)
+    auto opIndex()(size_t[N] indexes...)
     {
         foreach(i, ref slice; _slices[0 .. $-1])
         {
