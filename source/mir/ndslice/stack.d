@@ -759,12 +759,12 @@ unittest
     import mir.ndslice.topology: iota;
 
     auto pad = iota([2, 3], 1)
-        .padSymmetric!([1], ["pre"])([1])
+        .padSymmetric!([1], ["pre"])([2])
         .slice;
 
     assert(pad == [
-        [1,  1, 2, 3],
-        [4,  4, 5, 6]]);
+        [2, 1,  1, 2, 3],
+        [5, 4,  4, 5, 6]]);
 }
 
 ///
