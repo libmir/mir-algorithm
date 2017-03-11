@@ -57,9 +57,9 @@ E minElem(E)(E[] arr...)
     return ret;
 }
 
-T sum(T)(T[] packs)
+size_t sum()(size_t[] packs)
 {
-    T s = 0;
+    size_t s;
     foreach(pack; packs)
         s += pack;
     return s;
