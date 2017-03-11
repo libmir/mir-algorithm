@@ -51,6 +51,10 @@ $(BOOKTABLE ,
         $(TDNW $(MREF mir,ndslice,field))
         $(TD Field declarations)
     )
+    $(TR
+        $(TDNW $(MREF mir,ndslice,ndfield))
+        $(TD NdField declarations)
+    )
     $(LEADINGROW Accessories)
     $(TR
         $(TDNW $(MREF mir,conv))

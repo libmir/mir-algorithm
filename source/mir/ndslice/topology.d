@@ -11,6 +11,24 @@ $(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind)
 
 )
 
+$(BOOKTABLE $(H2 Sequence Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 repeat, Slice with identical values)
+$(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
+$(T2 ndiota, Contiguous Slice with initial multidimensional index.)
+$(T2 linspace, Evenly spaced numbers over a specified interval.)
+
+)
+
+$(BOOKTABLE $(H2 Products),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 cartesian, Cartesian product.)
+$(T2 kronecker, Kronecker product.)
+
+)
+
 $(BOOKTABLE $(H2 Representation Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
@@ -19,9 +37,7 @@ where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
-$(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
 $(T2 map, Multidimensional functional map.)
-$(T2 ndiota, Contiguous Slice with initial multidimensional index.)
 $(T2 retro, Reverses order of iteration for all dimensions)
 $(T2 stride, Strides 1-dimensional slice)
 $(T2 zip, Zips slices into a slice of tuples.)
@@ -29,17 +45,16 @@ $(T2 unzip, Selects a slice from a zipped slice.)
 
 )
 
+
 $(BOOKTABLE $(H2 Shape Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
 $(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
 $(T2 diagonal, 1-dimensional slice composed of diagonal elements)
-$(T2 repeat, Slice with identical values)
 $(T2 reshape, New slice with changed dimensions for the same data)
 $(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
 
 )
-
 
 $(BOOKTABLE $(H2 Subspace Selectors),
 $(TR $(TH Function Name) $(TH Description))
@@ -77,9 +92,11 @@ import std.meta;
 
 import mir.internal.utility;
 import mir.ndslice.field;
+import mir.ndslice.ndfield;
 import mir.ndslice.internal;
 import mir.ndslice.iterator;
 import mir.ndslice.slice;
+import mir.primitives;
 
 @fastmath:
 
@@ -1630,7 +1647,6 @@ unittest
 
 /++
 Returns a slice, the elements of which are equal to the initial multidimensional index value.
-This is multidimensional analog of $(REF iota, std, range).
 For a flattened (contiguous) index, see $(LREF iota).
 
 Params:
@@ -1682,13 +1698,80 @@ unittest
 }
 
 /++
+Evenly spaced numbers over a specified interval.
+
+Params:
+    T = floating point or complex numbers type
+    lengths = list of dimension lengths. Each length must be greater then 1.
+    internvals = list of [start, end] pairs.
+Returns:
+    `n`-dimensional grid of evenly spaced numbers over specified intervals.
+See_also: $(LREF)
++/
+auto linspace(T, size_t N)(size_t[N] lengths, T[2][N] intervals...)
+    if (N && (isFloatingPoint!T || isComplex!T))
+{
+    Repeat!(N, LinspaceField!T) fields = void;
+    foreach(i; Iota!N)
+    {
+        assert(lengths[i] > 1, "linspace: all lengths must be greater then 1.");
+        fields[i] = LinspaceField!T(lengths[i], intervals[i][0], intervals[i][1]);
+    }
+    static if (N == 1)
+        return slicedField(fields);
+    else
+        return cartesian(fields);
+}
+
+/// 1D
+unittest
+{
+    auto s = linspace!double([5], [1.0, 2.0]);
+    assert(s == [1.0, 1.25, 1.5, 1.75, 2.0]);
+
+    // remove endpoint
+    s.popBack;
+    assert(s == [1.0, 1.25, 1.5, 1.75]);
+}
+
+/// 2D
+unittest
+{
+    import mir.functional: tuple;
+
+    auto s = linspace!double([5, 3], [1.0, 2.0], [0.0, 1.0]);
+
+    assert(s == [
+        [tuple(1.00, 0.00), tuple(1.00, 0.5), tuple(1.00, 1.0)],
+        [tuple(1.25, 0.00), tuple(1.25, 0.5), tuple(1.25, 1.0)],
+        [tuple(1.50, 0.00), tuple(1.50, 0.5), tuple(1.50, 1.0)],
+        [tuple(1.75, 0.00), tuple(1.75, 0.5), tuple(1.75, 1.0)],
+        [tuple(2.00, 0.00), tuple(2.00, 0.5), tuple(2.00, 1.0)],
+        ]);
+
+    assert(s.map!"a.a * a.b" == [
+        [0.0, 0.500, 1.00],
+        [0.0, 0.625, 1.25],
+        [0.0, 0.750, 1.50],
+        [0.0, 0.875, 1.75],
+        [0.0, 1.000, 2.00],
+        ]);
+}
+
+/// Complex numbers
+unittest
+{
+    auto s = linspace!cdouble([3], [1.0 + 0i, 2.0 + 4i]);
+    assert(s == [1.0 + 0i, 1.5 + 2i, 2.0 + 4i]);
+}
+
+/++
 Returns a slice with identical elements.
 `RepeatSlice` stores only single value.
 Params:
     lengths = list of dimension lengths
 Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
-See_also: $(REF repeat, std,range)
 +/
 Slice!(Contiguous, [M], FieldIterator!(RepeatField!T))
     repeat(T, size_t M)(T value, size_t[M] lengths...)
@@ -2455,4 +2538,179 @@ pure nothrow unittest
 
     assert(m.unzip!'a' == alpha);
     assert(m.unzip!'b' == beta);
+}
+
+private enum TotalDim(NdFields...) = [staticMap!(DimensionCount, NdFields)].sum;
+
+/++
+Cartesian product.
+
+Constructs lazy cartesian product $(SUBREF slice, Slice) without memory allocation.
+
+Params:
+    fields = list of fields with lengths or ndFields with shapes
+Returns: $(SUBREF ndfield, Cartesian)`!NdFields(fields).`$(SUBREF slice, slicedNdField)`;`
++/
+auto cartesian(NdFields...)(NdFields fields)
+    if (NdFields.length > 1 && allSatisfy!(templateOr!(hasShape, hasLength), NdFields))
+{
+    return Cartesian!NdFields(fields).slicedNdField;
+}
+
+/// 1D x 1D
+unittest
+{
+    auto a = [10, 20, 30];
+    auto b = [ 1,  2,  3];
+
+    auto c = cartesian(a, b)
+        .map!"a.a + a.b";
+
+    assert(c == [
+        [11, 12, 13],
+        [21, 22, 23],
+        [31, 32, 33]]);
+}
+
+/// 1D x 2D
+unittest
+{
+    auto a = [10, 20, 30];
+    auto b = iota([2, 3], 1);
+
+    auto c = cartesian(a, b)
+        .map!"a.a + a.b";
+
+    assert(c.shape == [3, 2, 3]);
+
+    assert(c == [
+        [
+            [11, 12, 13],
+            [14, 15, 16],
+        ],
+        [
+            [21, 22, 23],
+            [24, 25, 26],
+        ],
+        [
+            [31, 32, 33],
+            [34, 35, 36],
+        ]]);
+}
+
+/// 1D x 1D x 1D
+unittest
+{
+    auto u = [100, 200];
+    auto v = [10, 20, 30];
+    auto w = [1, 2];
+
+    auto c = cartesian(u, v, w)
+        .map!"a.a + a.b + a.c";
+
+    assert(c.shape == [2, 3, 2]);
+
+    assert(c == [
+        [
+            [111, 112],
+            [121, 122],
+            [131, 132],
+        ],
+        [
+            [211, 212],
+            [221, 222],
+            [231, 232],
+        ]]);
+}
+
+
+
+/++
+$(LINK2 https://en.wikipedia.org/wiki/Kronecker_product,  Kronecker product).
+
+Constructs lazy kronecker product $(SUBREF slice, Slice) without memory allocation.
++/
+template kronecker(alias fun = product)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+
+    /++
+    Params:
+        fields = list of either fields with lengths or ndFields with shapes.
+            All ndFields must have the same dimension count.
+    Returns:
+        $(SUBREF ndfield, Kronecker)`!(fun, NdFields)(fields).`$(SUBREF slice, slicedNdField)
+    +/
+    @fastmath auto kronecker(NdFields...)(NdFields fields)
+        if (allSatisfy!(hasShape, NdFields) || allSatisfy!(hasLength, NdFields))
+    {
+        return Kronecker!(fun, NdFields)(fields).slicedNdField;
+    }
+    else
+        alias kronecker = .kronecker!(naryFun!fun);
+}
+
+/// 2D
+unittest
+{
+    import mir.ndslice.allocation: slice;
+
+    // eye
+    auto a = slice!double([4, 4], 0);
+    a.diagonal[] = 1;
+
+    auto b = [ 1, -1,
+              -1,  1].sliced(2, 2);
+
+    auto c = kronecker(a, b);
+
+    assert(c == [
+        [ 1, -1,  0,  0,  0,  0,  0,  0],
+        [-1,  1,  0,  0,  0,  0,  0,  0],
+        [ 0,  0,  1, -1,  0,  0,  0,  0],
+        [ 0,  0, -1,  1,  0,  0,  0,  0],
+        [ 0,  0,  0,  0,  1, -1,  0,  0],
+        [ 0,  0,  0,  0, -1,  1,  0,  0],
+        [ 0,  0,  0,  0,  0,  0,  1, -1],
+        [ 0,  0,  0,  0,  0,  0, -1,  1]]);
+}
+
+/// 1D
+unittest
+{
+    auto a = iota([3], 1);
+
+    auto b = [ 1, -1];
+
+    auto c = kronecker(a, b);
+
+    assert(c == [1, -1, 2, -2, 3, -3]);
+}
+
+/// 2D with 3 arguments
+unittest
+{
+    import mir.ndslice.allocation: slice;
+
+    auto a = [ 1,  2,
+               3,  4].sliced(2, 2);
+
+    auto b = [ 1,  0,
+               0,  1].sliced(2, 2);
+
+    auto c = [ 1, -1,
+              -1,  1].sliced(2, 2);
+
+    auto d = kronecker(a, b, c);
+
+    assert(d == [
+        [ 1, -1,  0,  0,  2, -2,  0,  0],
+        [-1,  1,  0,  0, -2,  2,  0,  0],
+        [ 0,  0,  1, -1,  0,  0,  2, -2],
+        [ 0,  0, -1,  1,  0,  0, -2,  2],
+        [ 3, -3,  0,  0,  4, -4,  0,  0],
+        [-3,  3,  0,  0, -4,  4,  0,  0],
+        [ 0,  0,  3, -3,  0,  0,  4, -4],
+        [ 0,  0, -3,  3,  0,  0, -4,  4]]);
 }

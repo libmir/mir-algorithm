@@ -8,6 +8,24 @@ import mir.internal.utility;
 
 @fastmath:
 
+private template _prod(size_t len)
+    if (len)
+{
+    static if (len == 1)
+        enum _prod = "elems[0]";
+    else
+    {
+        enum i = len - 1;
+        enum _prod = ._prod!i ~ " * elems[" ~ i.stringof ~ "]";
+    }
+}
+
+auto product(Elems...)(auto ref Elems elems)
+{   
+    return mixin(_prod!(Elems.length));
+}
+
+
 template _iotaArgs(size_t length, string prefix, string suffix)
 {
     static if (length)
