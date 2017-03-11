@@ -92,9 +92,9 @@ import std.meta;
 
 import mir.internal.utility;
 import mir.ndslice.field;
-import mir.ndslice.ndfield;
 import mir.ndslice.internal;
 import mir.ndslice.iterator;
+import mir.ndslice.ndfield;
 import mir.ndslice.slice;
 import mir.primitives;
 
