@@ -181,7 +181,7 @@ struct Kronecker(alias fun, NdFields...)
     }
 
     ///
-    auto opIndex()(size_t[N] indexes...)
+    auto ref opIndex()(size_t[N] indexes...)
     {   
         static if (N > 1)
             size_t[N][NdFields.length] ind = void;
