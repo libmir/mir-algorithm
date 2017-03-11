@@ -73,7 +73,7 @@ size_t[] decDim()(size_t[] packs)
     return packs;
 }
 
-size_t[] reverse(size_t[] packs)
+size_t[] reverse()(size_t[] packs)
 {
     foreach(i, e; packs[0..$/2])
     {
