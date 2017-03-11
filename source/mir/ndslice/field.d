@@ -12,6 +12,7 @@ $(T2 BitwiseField, $(SUBREF topology, bitwise))
 $(T2 MapField, $(SUBREF topology, map))
 $(T2 ndIotaField, $(SUBREF topology, ndiota))
 $(T2 RepeatField, $(SUBREF topology, repeat))
+$(T2 LinspaceField, $(SUBREF topology, linspace))
 )
 
 
@@ -52,9 +53,24 @@ struct MapField(Field, alias fun)
     +/
     static alias __map(alias fun1) = MapField__map!(Field, fun, fun1);
 
-    auto ref opIndex()(ptrdiff_t index)
+    auto ref opIndex(T...)(T index)
     {
         return fun(_field[index]);
+    }
+
+    auto length()() @property
+    {
+        return _field.length;
+    }
+
+    auto shape()() @property
+    {
+        return _field.shape;
+    }
+
+    auto elemenstCount()() @property
+    {
+        return _field.elemenstCount;
     }
 }
 
@@ -248,5 +264,45 @@ struct ndIotaField(size_t N)
         }
         indexes[0] = index;
         return indexes;
+    }
+}
+
+/++
+`LinspaceField` is used by $(SUBREF topology, linspace).
++/
+struct LinspaceField(T)
+{
+    ///
+    size_t _length;
+
+    ///
+    T start, stop;
+
+    // no fastmath
+    ///
+    T opIndex()(size_t index)
+    {
+        auto d = _length - 1;
+        auto v = typeof(T.init.re)(d - index);
+        auto w = typeof(T.init.re)(index);
+        v /= d;
+        w /= d;
+        auto a = v * start;
+        auto b = w * stop;
+        return a + b;
+    }
+
+@fastmath:
+
+    size_t length()() @property
+    {
+        return _length;
+    }
+
+    size_t[1] shape()() @property
+    {
+        size_t[1] ret = void;
+        ret[0] = _length;
+        return ret;
     }
 }

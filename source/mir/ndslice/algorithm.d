@@ -123,7 +123,6 @@ template reduce(alias fun)
     }
     else
         alias reduce = .reduce!(naryFun!fun);
-
 }
 
 /// Single slice
