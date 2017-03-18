@@ -4,7 +4,7 @@ os:
  - osx
 language: d
 d:
- - ldc-1.1.0
+ - ldc-1.2.0-beta1
  - dmd-nightly
  - dmd-beta
  - dmd
