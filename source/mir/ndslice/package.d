@@ -68,7 +68,7 @@ assert(matrix[2, 3] == 6); // D & C index order
 ------
 
 Note:
-In many examples $(REF iota, mir,ndslice,topology) is used
+In many examples $(REF iota, mir,_ndslice,topology) is used
 instead of a regular array, which makes it
 possible to carry out tests without memory allocation.
 
