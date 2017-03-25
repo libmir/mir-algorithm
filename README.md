@@ -10,13 +10,20 @@
 
 # mir-algorithm
 
+1. Generic Multidimensional arrays of three kinds
+  a. BLAS like - `Canononical`
+  b. Numpy like - `Universal`
+  c. `Contiguous` in memory (without strides).
+2.  `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast executaion and multidimensnioal algorithms.
+3. Iterators like random access iterators in C++, Fields, and ndFields.
+
 ### API Documentation
 
 http://docs.algorithm.dlang.io
 
 ### Scheme of basic elements
 
-![ndslice schema](https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg)
+https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
 
 ### Old ndslice
 If you are looking for old `ndslice`, please use [the main repo](https://github.com/libmir/mir) with old tag `v0.22.1`.
