@@ -11,10 +11,10 @@
 # mir-algorithm
 
 1. Generic Multidimensional arrays of three kinds
-   - BLAS like - `Canononical`
+   - BLAS like - `Canonical`
    - Numpy like - `Universal`
    - `Contiguous` in memory (without strides).
-2.  `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast executaion and multidimensnioal algorithms.
+2.  `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast executaion and multidimensional algorithms.
 3. Iterators like random access iterators in C++, Fields, and ndFields.
 
 ### API Documentation
