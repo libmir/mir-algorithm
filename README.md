@@ -12,10 +12,10 @@
 
 New ndslice comes with a lot of new features
 
-  - [mir.ndslice.topology](http://docs.algorithm.dlang.io/latest/mir_ndslice_topology.html) - Multidimensional `std.range` analog. Includes `bitwise`, `bitpack`, `zip`, `unzip`, `map`, `indexed` and many other features.)
-  - [mir.ndslice.concatenation](http://docs.algorithm.dlang.io/latest/mir_ndslice_concatenation.html) - Concatenation and padding)
-  - [mir.ndslice.algorithm](http://docs.algorithm.dlang.io/latest/mir_ndslice_algorithm.html) - Slim multidimensional `std.algorithm` analog)
-  - [mir.ndslice.sorting](http://docs.algorithm.dlang.io/latest/mir_ndslice_sorting.html) - Multidimensional sorting utilities)
+  - [mir.ndslice.topology](http://docs.algorithm.dlang.io/latest/mir_ndslice_topology.html) - Multidimensional `std.range` analog. Includes `bitwise`, `bitpack`, `zip`, `unzip`, `map`, `indexed` and many other features.
+  - [mir.ndslice.concatenation](http://docs.algorithm.dlang.io/latest/mir_ndslice_concatenation.html) - Concatenation and padding
+  - [mir.ndslice.algorithm](http://docs.algorithm.dlang.io/latest/mir_ndslice_algorithm.html) - Slim multidimensional `std.algorithm` analog
+  - [mir.ndslice.sorting](http://docs.algorithm.dlang.io/latest/mir_ndslice_sorting.html) - Multidimensional sorting utilities
 
 `ndslice` design was changed. New ndslices can be created on top of random access iterators including pointers. There are three kinds of ndslice:
 
