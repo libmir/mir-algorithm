@@ -19,7 +19,7 @@
 
 ### Known bugs
 - With LDC <=1.1.0 `mir.ndslice.topology.map` may not work because LDC has deprecated DMD FE.
-- With LDC ==1.2.0-beta1 compiled with LLVM 4.0 some code `mir.algorihms` may not work because https://github.com/ldc-developers/ldc/issues/2037.
+- With LDC ==1.2.0-beta1 compiled with LLVM 4.0 some code from `mir.algorithm` may not work because https://github.com/ldc-developers/ldc/issues/2037.
 
 ### API Documentation
 
