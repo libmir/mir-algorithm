@@ -10,7 +10,20 @@
 
 # mir-algorithm
 
-New ndslice comes with a lot of new features
+1. Generic Multidimensional arrays of three kinds
+2. `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast executaion and multidimensional algorithms.
+3. Iterators like random access iterators in C++, Fields, and ndFields.
+
+
+### API Documentation
+
+http://docs.algorithm.dlang.io
+
+### Scheme of basic elements
+
+https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
+
+### New ndslice
 
   - [mir.ndslice.topology](http://docs.algorithm.dlang.io/latest/mir_ndslice_topology.html) - Multidimensional `std.range` analog. Includes `bitwise`, `bitpack`, `zip`, `unzip`, `map`, `indexed` and many other features.
   - [mir.ndslice.concatenation](http://docs.algorithm.dlang.io/latest/mir_ndslice_concatenation.html) - Concatenation and padding
@@ -23,24 +36,9 @@ New ndslice comes with a lot of new features
  - `Canonical` - BLAS like. Stride for row dimension assumed to be equal to 1.
  - `Universal` - Numpy like. Each dimension has strides. All dimensions can be exchanged without reallocation. The old ndslice ABI corresponds to to the `Universal` ndslice.
 
-1. Generic Multidimensional arrays of three kinds
-   - BLAS like - `Canonical`
-   - Numpy like - `Universal`
-   - `Contiguous` in memory (without strides).
-2.  `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast executaion and multidimensional algorithms.
-3. Iterators like random access iterators in C++, Fields, and ndFields.
-
 ### Known bugs
 - With LDC <=1.1.0 `mir.ndslice.topology.map` may not work because LDC has deprecated DMD FE.
 - With LDC ==1.2.0-beta1 compiled with LLVM 4.0 some code from `mir.algorithm` may not work because https://github.com/ldc-developers/ldc/issues/2037.
-
-### API Documentation
-
-http://docs.algorithm.dlang.io
-
-### Scheme of basic elements
-
-https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
 
 ### Old ndslice
 If you are looking for old `ndslice`, please use [the main repo](https://github.com/libmir/mir) with old tag `v0.22.1`.
