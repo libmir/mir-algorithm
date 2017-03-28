@@ -10,6 +10,26 @@
 
 # mir-algorithm
 
+New ndslice comes with a lot of new features
+$(UL
+ $(LI $(LINK2 `mir.ndslice.topology`, http://docs.algorithm.dlang.io/latest/mir_ndslice_topology.html)
+ 	- Multidimensional `std.range` analog. Includes `bitwise`, `bitpack`, `zip`, `unzip`, `map`, `indexed` and many other features.)
+ $(LI $(LINK2 `mir.ndslice.concatenation`, http://docs.algorithm.dlang.io/latest/mir_ndslice_concatenation.html)
+ 	- Concatenation and padding)
+ $(LI $(LINK2 `mir.ndslice.algorithm`, http://docs.algorithm.dlang.io/latest/mir_ndslice_algorithm.html)
+ 	- Slim multidimensional `std.algorithm` analog)
+ $(LI $(LINK2 `mir.ndslice.sorting`, http://docs.algorithm.dlang.io/latest/mir_ndslice_sorting.html)
+ 	- Multidimensional sorting utilities)
+)
+
+`ndslice` design was changed. New ndslices can be created on top of random access iterators including pointers. There are three kinds of ndslice:
+
+$(UL
+ $(LI `Contiguous` - Contiguous in memory representation. It does not store strides and can be always flattened to 1 dimensional ndslice on top of the same iterator type. )
+ $(LI `Canonical` - BLAS like. Stride for row dimension assumed to be equal to 1.)
+ $(LI `Universal` - Numpy like. Each dimension has strides. All dimensions can be exchanged without reallocation. The old ndslice ABI corresponds to to the `Universal` ndslice.)
+)
+
 1. Generic Multidimensional arrays of three kinds
    - BLAS like - `Canonical`
    - Numpy like - `Universal`
