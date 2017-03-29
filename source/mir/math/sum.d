@@ -16,9 +16,9 @@ unittest
     import mir.ndslice.topology: map;
     auto ar = [1, 1e100, 1, -1e100].sliced.map!"a * 10_000";
     const r = 20_000;
-    assert(r == ar.sum!(Summation.kbn));
-    assert(r == ar.sum!(Summation.kb2));
-    assert(r == ar.sum!(Summation.precise));
+    assert(r == ar.sum!"kbn");
+    assert(r == ar.sum!"kb2");
+    assert(r == ar.sum!"precise");
 }
 
 ///
@@ -33,8 +33,8 @@ unittest
         .map!(n => 1.7L.pow(n+1) - 1.7L.pow(n))
         ;
     real d = 1.7L.pow(1000);
-    assert(sum!(Summation.precise)(concatenation(ar, [-d].sliced).slicedField) == -1);
-    assert(sum!(Summation.precise)(ar.retro, -d) == -1);
+    assert(sum!"precise"(concatenation(ar, [-d].sliced).slicedField) == -1);
+    assert(sum!"precise"(ar.retro, -d) == -1);
 }
 
 /++
@@ -84,9 +84,9 @@ unittest
     p.rijk = [3, 4, 5, 9];
     r.rijk = [3, 5, 7, 13];
 
-    assert(r == [p, q].sum!(Summation.naive));
-    assert(r == [p, q].sum!(Summation.pairwise));
-    assert(r == [p, q].sum!(Summation.kahan));
+    assert(r == [p, q].sum!"naive");
+    assert(r == [p, q].sum!"pairwise");
+    assert(r == [p, q].sum!"kahan");
 }
 
 /++
@@ -96,16 +96,16 @@ unittest
 {
     cdouble[] ar = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i];
     cdouble r = 10 + 14i;
-    assert(r == ar.sum!(Summation.fast));
-    assert(r == ar.sum!(Summation.naive));
-    assert(r == ar.sum!(Summation.pairwise));
-    assert(r == ar.sum!(Summation.kahan));
+    assert(r == ar.sum!"fast");
+    assert(r == ar.sum!"naive");
+    assert(r == ar.sum!"pairwise");
+    assert(r == ar.sum!"kahan");
     version(LDC) // DMD Internal error: backend/cgxmm.c 628
     {
-        assert(r == ar.sum!(Summation.kbn));
-        assert(r == ar.sum!(Summation.kb2));
+        assert(r == ar.sum!"kbn");
+        assert(r == ar.sum!"kb2");
     }
-    assert(r == ar.sum!(Summation.precise));
+    assert(r == ar.sum!"precise");
 }
 
 ///
@@ -149,7 +149,7 @@ nothrow @nogc unittest
     import mir.ndslice.topology: iota, map;
     import core.stdc.tgmath: pow;
     assert(iota(1000).map!(n => 1.7L.pow(real(n)+1) - 1.7L.pow(real(n)))
-                     .sum!(Summation.precise) == -1 + 1.7L.pow(1000.0L));
+                     .sum!"precise" == -1 + 1.7L.pow(1000.0L));
 }
 
 /// Precise summation with output range
@@ -909,78 +909,87 @@ public:
     void put(Range)(Range r)
         if (isIterable!Range)
     {
-        static if (summation == Summation.pairwise)
+        static if (summation == Summation.pairwise && fastPairwise && isDynamicArray!Range)
         {
-            import mir.ndslice.slice: isSlice;
-            static if (fastPairwise && isDynamicArray!Range && isSlice!Range)
+            F[registersCount] v = void;
+            foreach (i, n; chainSeq!registersCount)
             {
-                F[registersCount] v = void;
-                foreach (i, n; chainSeq!registersCount)
+                if (r.length >= n * 2) do
                 {
-                    if (r.length >= n * 2) do
-                    {
-                        foreach (j; Iota!n)
-                            v[j] = cast(F) r[j];
-                        foreach (j; Iota!n)
-                            v[j] += cast(F) r[n + j];
-                        foreach (m; chainSeq!(n / 2))
-                            foreach (j; Iota!m)
-                                v[j] += v[m + j];
-                        put(v[0]);
-                        r.popFrontExactly(n * 2);
-                    }
-                    while (!i && r.length >= n * 2);
+                    foreach (j; Iota!n)
+                        v[j] = cast(F) r[j];
+                    foreach (j; Iota!n)
+                        v[j] += cast(F) r[n + j];
+                    foreach (m; chainSeq!(n / 2))
+                        foreach (j; Iota!m)
+                            v[j] += v[m + j];
+                    put(v[0]);
+                    r = r[n * 2 .. $];
                 }
-                if (r.length)
-                {
-                    put(cast(F) r[0]);
-                    r.popFront;
-                }
-                assert(r.empty);
+                while (!i && r.length >= n * 2);
             }
-            else
+            if (r.length)
             {
-                foreach (elem; r)
-                    put(elem);
+                put(cast(F) r[0]);
+                r = r[1 .. $];
             }
-        }
-        else
-        static if (summation == Summation.precise)
-        {
-            foreach (elem; r)
-                put(elem);
-        }
-        else
-        static if (summation == Summation.kb2)
-        {
-            foreach (elem; r)
-                put(elem);
-        }
-        else
-        static if (summation == Summation.kbn)
-        {
-            foreach (elem; r)
-                put(elem);
-        }
-        else
-        static if (summation == Summation.kahan)
-        {
-            foreach (elem; r)
-                put(elem);
-        }
-        else        static if (summation == Summation.naive)
-        {
-            foreach (elem; r)
-                s += elem;
+            assert(r.length == 0);
         }
         else
         static if (summation == Summation.fast)
         {
-            foreach (elem; r)
-                s += elem;
+            static if (isComplex!T)
+                F s0 = 0 + 0fi;
+            else
+                F s0 = 0;
+            foreach (ref elem; r)
+                s0 += elem;
+            s += s0;
         }
         else
-        static assert(0);
+        {
+            foreach (ref elem; r)
+                put(elem);
+        }
+    }
+
+    import mir.ndslice.slice;
+
+    /// ditto
+    void put(Range: Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator)(Range r)
+    {
+        static if (packs.length > 1)
+        {
+            import mir.ndslice.topology: unpack;
+            this.put(r.unpack);
+        }
+        else
+        static if (packs[0] > 1 && kind == Contiguous)
+        {
+            import mir.ndslice.topology: flattened;
+            this.put(r.flattened);
+        }
+        else
+        static if (isPointer!Iterator && kind == Contiguous)
+        {
+            this.put(r.iterator[0 .. r.length]);
+        }
+        else
+        static if (summation == Summation.fast && packs[0] == 1)
+        {
+            static if (isComplex!T)
+                F s0 = 0 + 0fi;
+            else
+                F s0 = 0;
+            import mir.ndslice.algorithm: reduce;
+            s0 = s0.reduce!"a + b"(r);
+            s += s0;
+        }
+        else
+        {
+            foreach(elem; r)
+                this.put(elem);
+        }
     }
 
     /+
@@ -1694,6 +1703,19 @@ template sum(Summation summation = Summation.appropriate)
     }
 }
 
+///ditto
+template sum(F, string summation)
+    if (isFloatingPoint!F && isMutable!F)
+{
+    mixin("alias sum = .sum!(F, Summation." ~ summation ~ ");");
+}
+
+///ditto
+template sum(string summation)
+{
+    mixin("alias sum = .sum!(Summation." ~ summation ~ ");");
+}
+
 
 @safe pure nothrow unittest
 {
@@ -1837,10 +1859,7 @@ private F sumPrecise(Range, F)(Range r, F seed = summationInitValue!F)
     static if (isFloatingPoint!F)
     {
         auto sum = Summator!(F, Summation.precise)(seed);
-        for (; !r.empty; r.popFront)
-        {
-            sum.put(r.front);
-        }
+        sum.put(r);
         return sum.sum;
     }
     else
@@ -1848,11 +1867,23 @@ private F sumPrecise(Range, F)(Range r, F seed = summationInitValue!F)
         alias T = typeof(F.init.re);
         auto sumRe = Summator!(T, Summation.precise)(seed.re);
         auto sumIm = Summator!(T, Summation.precise)(seed.im);
-        foreach (elem; r)
+        import mir.ndslice.slice: isSlice;
+        static if (isSlice!Range)
         {
-            auto e = elem;
-            sumRe.put(e.re);
-            sumIm.put(e.im);
+            import mir.ndslice.algorithm: each;
+            r.each!((auto ref elem)
+            {
+                sumRe.put(elem.re);
+                sumIm.put(elem.im);
+            });
+        }
+        else
+        {
+            foreach (ref elem; r)
+            {
+                sumRe.put(elem.re);
+                sumIm.put(elem.im);
+            }
         }
         return sumRe.sum + sumIm.sum * 1fi;
     }
@@ -1921,7 +1952,11 @@ private T summationInitValue(T)()
 
 private template sumType(Range)
 {
-    alias T = Unqual!(ForeachType!Range);
+    import mir.ndslice.slice: isSlice, DeepElementType;
+    static if (isSlice!Range)
+        alias T = Unqual!(DeepElementType!(Range.PureThis));
+    else
+        alias T = Unqual!(ForeachType!Range);
     alias sumType = typeof(T.init + T.init);
 }
 
@@ -1945,7 +1980,7 @@ template isSummable(Range, F)
 {
     enum bool isSummable =
         isIterable!Range &&
-        isImplicitlyConvertible!(Unqual!(ForeachType!Range), F) &&
+        isImplicitlyConvertible!(sumType!Range, F) &&
         isSummable!F;
 }
 
@@ -1960,3 +1995,52 @@ private enum bool isCompesatorAlgorithm(Summation summation) =
  || summation == Summation.kb2
  || summation == Summation.kbn
  || summation == Summation.kahan;
+
+
+unittest
+{
+    import mir.ndslice;
+
+    auto p = iota([2, 3, 4, 5]);
+    auto a = p.as!double;
+    auto b = a.flattened;
+    auto c = a.slice;
+    auto d = c.flattened;
+    auto s = p.flattened.sum;
+
+    assert(a.sum == s);
+    assert(b.sum == s);
+    assert(c.sum == s);
+    assert(d.sum == s);
+
+    assert(a.canonical.sum == s);
+    assert(b.canonical.sum == s);
+    assert(c.canonical.sum == s);
+    assert(d.canonical.sum == s);
+
+    assert(a.universal.transposed!3.sum == s);
+    assert(b.universal.sum == s);
+    assert(c.universal.transposed!3.sum == s);
+    assert(d.universal.sum == s);
+
+    assert(a.pack!2.sum!"fast" == s);
+    assert(c.pack!2.sum!"fast" == s);
+
+    assert(a.sum!"fast" == s);
+    assert(b.sum!"fast" == s);
+    assert(c.sum!(float, "fast") == s);
+    assert(d.sum!"fast" == s);
+
+    assert(a.canonical.sum!"fast" == s);
+    assert(b.canonical.sum!"fast" == s);
+    assert(c.canonical.sum!"fast" == s);
+    assert(d.canonical.sum!"fast" == s);
+
+    assert(a.universal.transposed!3.sum!"fast" == s);
+    assert(b.universal.sum!"fast" == s);
+    assert(c.universal.transposed!3.sum!"fast" == s);
+    assert(d.universal.sum!"fast" == s);
+
+    assert(a.pack!2.sum!"fast" == s);
+    assert(c.pack!2.sum!"fast" == s);
+}

@@ -521,7 +521,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 {
     @fastmath:
 
-    package:
+    package(mir):
 
     ///
     enum N = packs.sum;
