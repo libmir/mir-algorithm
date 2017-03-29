@@ -1703,7 +1703,7 @@ Evenly spaced numbers over a specified interval.
 Params:
     T = floating point or complex numbers type
     lengths = list of dimension lengths. Each length must be greater then 1.
-    internvals = list of [start, end] pairs.
+    intervals = list of [start, end] pairs.
 Returns:
     `n`-dimensional grid of evenly spaced numbers over specified intervals.
 See_also: $(LREF)
