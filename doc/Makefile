@@ -26,12 +26,15 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # Packages in mir. Just mention the package name here. The contents of package
 # xy/zz is in variable PACKAGE_xy_zz. This allows automation in iterating
 # packages and their modules.
-MIR_PACKAGES = mir mir/ndslice
+MIR_PACKAGES = mir mir/ndslice mir/internal mir/math mir/math/func
 
-PACKAGE_mir = conv functional primitives utility
+PACKAGE_mir = conv functional primitives utility math internal
 PACKAGE_mir_ndslice = package algorithm allocation dynamic field ndfield iterator package slice sorting concatenation topology
+PACKAGE_mir_math = constant internal sum func
+PACKAGE_mir_math_func = expdigamma
+PACKAGE_mir_internal = utility
 
-MOD_EXCLUDES=$(addprefix --ex=, mir.ndslice.internal)
+MOD_EXCLUDES=$(addprefix --ex=, )
 
 ###########################################################
 # Setup macros + generate dynamic info needed

@@ -1,10 +1,13 @@
+///
 module mir.internal.utility;
 
 import std.traits;
 import std.meta;
 
+///
 alias Iota(size_t j) = Iota!(0, j);
 
+///
 template Iota(size_t i, size_t j)
 {
     static assert(i <= j, "Iota: i should be less than or equal to j");
@@ -14,7 +17,9 @@ template Iota(size_t i, size_t j)
         alias Iota = AliasSeq!(i, Iota!(i + 1, j));
 }
 
+///
 template realType(C)
+    if (isFloatingPoint!C || isComplex!C)
 {
     static if (isComplex!C)
         alias realType = typeof(Unqual!C.init.re);
@@ -22,6 +27,7 @@ template realType(C)
         alias realType = Unqual!C;
 }
 
+///
 template isComplex(C)
 {
     enum bool isComplex
@@ -33,6 +39,7 @@ template isComplex(C)
 version(LDC)
 {
     static import ldc.attributes;
+    ///
     alias fastmath = ldc.attributes.fastmath;
 }
 else
