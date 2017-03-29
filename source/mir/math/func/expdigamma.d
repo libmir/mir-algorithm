@@ -13,7 +13,7 @@ Returns:
 +/
 F expDigamma(F)(in F x)
 {
-    import mir.math.internal;
+    import mir.math.common;
 
     static immutable F[7] c = [
         F(1.0 / 24),
