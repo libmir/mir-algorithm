@@ -12,8 +12,9 @@ module mir.math.sum;
 ///
 unittest
 {
-    import std.algorithm.iteration: map;
-    auto ar = [1, 1e100, 1, -1e100].map!(a => a*10_000);
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: map;
+    auto ar = [1, 1e100, 1, -1e100].sliced.map!"a * 10_000";
     const r = 20_000;
     assert(r == ar.sum!(Summation.kbn));
     assert(r == ar.sum!(Summation.kb2));
@@ -23,20 +24,21 @@ unittest
 ///
 unittest
 {
-    import std.algorithm.iteration: map;
-    import std.math, std.range;
+    import mir.ndslice.slice: sliced, slicedField;
+    import mir.ndslice.topology: map, iota, retro;
+    import mir.ndslice.concatenation: concatenation;
+    import mir.math.common;
     auto ar = 1000
         .iota
         .map!(n => 1.7L.pow(n+1) - 1.7L.pow(n))
-        .array
         ;
     real d = 1.7L.pow(1000);
-    assert(sum!(Summation.precise)(ar.chain([-d])) == -1);
+    assert(sum!(Summation.precise)(concatenation(ar, [-d].sliced).slicedField) == -1);
     assert(sum!(Summation.precise)(ar.retro, -d) == -1);
 }
 
 /++
-$(D Naive), $(D Pairwise) and $(D Kahan) algorithms can be used for user defined types.
+`Naive`, `Pairwise` and `Kahan` algorithms can be used for user defined types.
 +/
 unittest
 {
@@ -109,7 +111,7 @@ unittest
 ///
 @safe pure nothrow unittest
 {
-    import std.range: repeat, iota;
+    import mir.ndslice.topology: repeat, iota;
 
     //simple integral summation
     assert(sum([ 1, 2, 3, 4]) == 10);
@@ -137,15 +139,14 @@ unittest
 
     //Force pair-wise floating point summation on large integers
     import std.math : approxEqual;
-    assert(iota(uint.max / 2, uint.max / 2 + 4096).sum(0.0)
+    assert(iota([4096], uint.max / 2).sum(0.0)
                .approxEqual((uint.max / 2) * 4096.0 + 4096^^2 / 2));
 }
 
 /// Precise summation
 nothrow @nogc unittest
 {
-    import std.range: iota;
-    import std.algorithm.iteration: map;
+    import mir.ndslice.topology: iota, map;
     import core.stdc.tgmath: pow;
     assert(iota(1000).map!(n => 1.7L.pow(real(n)+1) - 1.7L.pow(real(n)))
                      .sum!(Summation.precise) == -1 + 1.7L.pow(1000.0L));
@@ -154,9 +155,8 @@ nothrow @nogc unittest
 /// Precise summation with output range
 nothrow @nogc unittest
 {
-    import std.range: iota;
-    import std.algorithm.iteration: map;
-    import std.math;
+    import mir.ndslice.topology: iota, map;
+    import mir.math.common;
     auto r = iota(1000).map!(n => 1.7L.pow(n+1) - 1.7L.pow(n));
     Summator!(real, Summation.precise) s = 0.0;
     s.put(r);
@@ -167,7 +167,8 @@ nothrow @nogc unittest
 /// Precise summation with output range
 nothrow @nogc unittest
 {
-    import std.math;
+    import std.math: isFinite;
+    import mir.math.common;
     float  M = 2.0f ^^ (float.max_exp-1);
     double N = 2.0  ^^ (float.max_exp-1);
     auto s = Summator!(float, Summation.precise)(0);
@@ -182,8 +183,9 @@ nothrow @nogc unittest
 /// Moving mean
 unittest
 {
-    import std.range;
+    import mir.ndslice.topology: linspace;
     import mir.math.sum;
+    import std.array: array;
 
     class MovingAverage
     {
@@ -198,7 +200,7 @@ unittest
 
         this(double[] buffer)
         {
-            assert(!buffer.empty);
+            assert(buffer.length);
             circularBuffer = buffer;
             summator = 0;
             summator.put(buffer);
@@ -207,7 +209,7 @@ unittest
         ///operation without rounding
         void put(double x)
         {
-            import std.algorithm.mutation : swap;
+            import mir.utility: swap;
             summator += x;
             swap(circularBuffer[frontIndex++], x);
             summator -= x;
@@ -216,10 +218,11 @@ unittest
     }
 
     /// ma always keeps precise average of last 1000 elements
-    auto ma = new MovingAverage(iota(0.0, 1000.0).array);
+    auto ma = new MovingAverage(linspace!double([1000], [0.0, 999]).array);
     assert(ma.avg == (1000 * 999 / 2) / 1000.0);
     /// move by 10 elements
-    put(ma, iota(1000.0, 1010.0));
+    foreach(x; linspace!double([10], [1000.0, 1009.0]))
+        ma.put(x);
     assert(ma.avg == (1010 * 1009 / 2 - 10 * 9 / 2) / 1000.0);
 }
 
@@ -249,10 +252,7 @@ unittest
 }
 
 import std.traits;
-import std.typecons;
-import std.range.primitives;
 import std.meta: AliasSeq;
-import std.math: isInfinity, isFinite, isNaN, signbit;
 
 private template isComplex(C)
 {
@@ -287,7 +287,7 @@ Summation algorithms.
 enum Summation
 {
     /++
-    Performs $(D pairwise) summation for floating point based types and $(D fast) summation for integral based types.
+    Performs `pairwise` summation for floating point based types and `fast` summation for integral based types.
     +/
     appropriate,
 
@@ -300,8 +300,8 @@ enum Summation
     Precise summation algorithm.
     The value of the sum is rounded to the nearest representable
     floating-point number using the $(LUCKY round-half-to-even rule).
-    The result can differ from the exact value on $(D X86), $(D nextDown(proir) <= result &&  result <= nextUp(proir)).
-    The current implementation re-establish special value semantics across iterations (i.e. handling -inf + inf).
+    The result can differ from the exact value on `X86`, `nextDown(proir) <= result &&  result <= nextUp(proir)`.
+    The current implementation re-establish special value semantics across iterations (i.e. handling ±inf).
 
     References: $(LINK2 http://www.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps,
         "Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates", Jonathan Richard Shewchuk),
@@ -336,7 +336,7 @@ enum Summation
     kahan,
 
     /++
-    $(LUCKY Kahan-Babuška-Neumaier summation algorithm). $(D KBN) gives more accurate results then $(D Kahan).
+    $(LUCKY Kahan-Babuška-Neumaier summation algorithm). `KBN` gives more accurate results then `Kahan`.
     +/
     /+
     ---------------------
@@ -357,7 +357,7 @@ enum Summation
     kbn,
 
     /++
-    $(LUCKY Generalized Kahan-Babuška summation algorithm), order 2. $(D KB2) gives more accurate results then $(D Kahan) and $(D KBN).
+    $(LUCKY Generalized Kahan-Babuška summation algorithm), order 2. `KB2` gives more accurate results then `Kahan` and `KBN`.
     +/
     /+
     ---------------------
@@ -401,10 +401,7 @@ Output range for summation.
 struct Summator(T, Summation summation)
     if (isMutable!T)
 {
-    version (LDC)
-        import ldc.intrinsics: fabs = llvm_fabs;
-    else
-        import std.math: fabs;
+    import mir.math.common: fabs;
     static if (is(T == class) || is(T == interface) || hasElaborateAssign!T)
         static assert (summation == Summation.naive,
             "Classes, interfaces, and structures with "
@@ -446,7 +443,7 @@ struct Summator(T, Summation summation)
     static if (summation == Summation.precise)
     {
         import std.internal.scopebuffer;
-
+        import std.math: isInfinity, isFinite, isNaN, signbit;
     private:
         enum F M = (cast(F)(2)) ^^ (T.max_exp - 1);
         F[16] scopeBufferArray = void;
@@ -541,12 +538,12 @@ struct Summator(T, Summation summation)
                 F t = d - h;
                 version(X86)
                 {
-                    if (!.isInfinity(cast(T)y) || !.isInfinity(sum()))
+                    if (!std.math.isInfinity(cast(T)y) || !std.math.isInfinity(sum()))
                         return 0;
                 }
                 else
                 {
-                    if (!.isInfinity(cast(T)y) ||
+                    if (!std.math.isInfinity(cast(T)y) ||
                         ((partials.length > 1 && !signbit(l * partials[$-2])) && t == l))
                         return 0;
                 }
@@ -688,7 +685,7 @@ public:
         }
     }
 
-    ///Adds $(D n) to the internal partial sums.
+    ///Adds `n` to the internal partial sums.
     void put(N)(N n)
         if (__traits(compiles, {T a = n; a = n; a += n;}))
     {
@@ -696,13 +693,13 @@ public:
             F x = n;
         static if (summation == Summation.precise)
         {
-            if (.isFinite(x))
+            if (std.math.isFinite(x))
             {
                 size_t i;
                 foreach (y; partials[])
                 {
                     F h = x + y;
-                    if (.isInfinity(cast(T)h))
+                    if (std.math.isInfinity(cast(T)h))
                     {
                         if (fabs(x) < fabs(y))
                         {
@@ -909,11 +906,12 @@ public:
 
     ///ditto
     void put(Range)(Range r)
-        if (isInputRange!Range)
+        if (isIterable!Range)
     {
         static if (summation == Summation.pairwise)
         {
-            static if (fastPairwise && isRandomAccessRange!Range && hasLength!Range && hasSlicing!Range)
+            import mir.ndslice.slice: isSlice;
+            static if (fastPairwise && isDynamicArray!Range && isSlice!Range)
             {
                 F[registersCount] v = void;
                 foreach (i, n; chainSeq!registersCount)
@@ -941,67 +939,67 @@ public:
             }
             else
             {
-                for (; !r.empty; r.popFront)
-                    put(r.front);
+                foreach (elem; r)
+                    put(elem);
             }
         }
         else
         static if (summation == Summation.precise)
         {
-            for (; !r.empty; r.popFront)
-                put(r.front);
+            foreach (elem; r)
+                put(elem);
         }
         else
         static if (summation == Summation.kb2)
         {
-            for (; !r.empty; r.popFront)
-                put(r.front);
+            foreach (elem; r)
+                put(elem);
         }
         else
         static if (summation == Summation.kbn)
         {
-            for (; !r.empty; r.popFront)
-                put(r.front);
+            foreach (elem; r)
+                put(elem);
         }
         else
         static if (summation == Summation.kahan)
         {
-            for (; !r.empty; r.popFront)
-                put(r.front);
+            foreach (elem; r)
+                put(elem);
         }
         else        static if (summation == Summation.naive)
         {
-            for (; !r.empty; r.popFront)
-                s += r.front;
+            foreach (elem; r)
+                s += elem;
         }
         else
         static if (summation == Summation.fast)
         {
-            for (; !r.empty; r.popFront)
-                s += r.front;
+            foreach (elem; r)
+                s += elem;
         }
         else
         static assert(0);
     }
 
-    /++
-    Adds $(D x) to the internal partial sums.
+    /+
+    Adds `x` to the internal partial sums.
     This operation doesn't re-establish special
-    value semantics across iterations (i.e. handling -inf + inf).
-    Preconditions: $(D isFinite(x)).
+    value semantics across iterations (i.e. handling ±inf).
+    Preconditions: `isFinite(x)`.
     +/
     version(none)
     static if (summation == Summation.precise)
     package void unsafePut(F x)
     in {
-        assert(.isFinite(x));
+        assert(std.math.isFinite(x));
     }
     body {
         size_t i;
         foreach (y; partials[])
         {
             F h = x + y;
-            debug(numeric) assert(.isFinite(h));
+            debug(numeric) assert(std.math.isFinite(h));
             F l;
             if (fabs(x) < fabs(y))
             {
@@ -1013,7 +1011,7 @@ public:
                 F t = h - x;
                 l = y - t;
             }
-            debug(numeric) assert(.isFinite(l));
+            debug(numeric) assert(std.math.isFinite(l));
             if (l)
             {
                 partials[i++] = l;
@@ -1033,11 +1031,11 @@ public:
         /++
         Returns the value of the sum, rounded to the nearest representable
         floating-point number using the round-half-to-even rule.
-        The result can differ from the exact value on $(D X86), $(D nextDown(proir) <= result &&  result <= nextUp(proir)).
+        The result can differ from the exact value on `X86`, `nextDown`proir) <= result &&  result <= nextUp(proir)).
         +/
         static if (summation == Summation.precise)
         {
-            debug(sum)
+            debug(mir_sum)
             {
                 foreach (y; partials[])
                 {
@@ -1045,9 +1043,10 @@ public:
                     assert(y.isFinite);
                 }
                 //TODO: Add Non-Overlapping check to std.math
-                import std.algorithm.sorting: isSorted;
-                import std.algorithm.iteration: map;
-                assert(partials[].map!(a => fabs(a)).isSorted);
+                import mir.ndslice.slice: sliced;
+                import mir.ndslice.sorting: isSorted;
+                import mir.ndslice.topology: map;
+                assert(partials[].sliced.map!fabs.isSorted);
             }
 
             if (s)
@@ -1072,7 +1071,7 @@ public:
                     F t = h - x;
                     F l = (y - t) * 2;
                     y = h * 2;
-                    if (.isInfinity(cast(T)y))
+                    if (std.math.isInfinity(cast(T)y))
                     {
                         // overflow, except in edge case...
                         x = h + l;
@@ -1101,20 +1100,17 @@ public:
         else
         static if (summation == Summation.kb2)
         {
-            import std.conv: to;
-            return to!T(s + (cs + ccs));
+            return s + (cs + ccs);
         }
         else
         static if (summation == Summation.kbn)
         {
-            import std.conv: to;
-            return to!T(s + c);
+            return s + c;
         }
         else
         static if (summation == Summation.kahan)
         {
-            import std.conv: to;
-            return to!T(s);
+            return s;
         }
         else
         static if (summation == Summation.pairwise)
@@ -1160,7 +1156,7 @@ public:
         return partialsReduce(y, parts);
     }
 
-    ///Returns $(D Summator) with extended internal partial sums.
+    ///Returns `Summator` with extended internal partial sums.
     C opCast(C : Summator!(P, _summation), P, Summation _summation)() const
         if (
             _summation == summation &&
@@ -1249,8 +1245,8 @@ public:
     }
 
     /++
-    $(D cast(C)) operator overloading. Returns $(D cast(C)sum()).
-    See also: $(D cast)
+    `cast(C)` operator overloading. Returns `cast(C)sum()`.
+    See also: `cast`
     +/
     C opCast(C)() const if (is(Unqual!C == T))
     {
@@ -1479,10 +1475,10 @@ public:
     ///
     @nogc nothrow unittest
     {
-        import std.math, std.range;
-        import std.algorithm.iteration: map;
+        import mir.math.common;
+        import mir.ndslice.topology: iota, map;
         auto r1 = iota(500).map!(a => 1.7L.pow(a+1) - 1.7L.pow(a));
-        auto r2 = iota(500, 1000).map!(a => 1.7L.pow(a+1) - 1.7L.pow(a));
+        auto r2 = iota([500], 500).map!(a => 1.7L.pow(a+1) - 1.7L.pow(a));
         Summator!(real, Summation.precise) s1 = 0, s2 = 0.0;
         foreach (e; r1) s1 += e;
         foreach (e; r2) s2 -= e;
@@ -1493,10 +1489,9 @@ public:
 
     @nogc nothrow unittest
     {
-        import std.typetuple;
         with(Summation)
-        foreach (summation; TypeTuple!(kahan, kbn, kb2, precise, pairwise))
-        foreach (T; TypeTuple!(float, double, real))
+        foreach (summation; AliasSeq!(kahan, kbn, kb2, precise, pairwise))
+        foreach (T; AliasSeq!(float, double, real))
         {
             Summator!(T, summation) sum = 1;
             sum += 3;
@@ -1517,11 +1512,10 @@ public:
 
     @nogc nothrow unittest
     {
-        import std.typetuple;
         import std.math: approxEqual;
         with(Summation)
-        foreach (summation; TypeTuple!(naive, fast))
-        foreach (T; TypeTuple!(float, double, real))
+        foreach (summation; AliasSeq!(naive, fast))
+        foreach (T; AliasSeq!(float, double, real))
         {
             Summator!(T, summation) sum = 1;
             sum += 3.5;
@@ -1535,13 +1529,13 @@ public:
 
     static if (summation == Summation.precise)
     {
-        ///Returns $(D true) if current sum is a NaN.
+        ///Returns `true` if current sum is a NaN.
         bool isNaN() const
         {
-            return .isNaN(s);
+            return std.math.isNaN(s);
         }
 
-        ///Returns $(D true) if current sum is finite (not infinite or NaN).
+        ///Returns `true` if current sum is finite (not infinite or NaN).
         bool isFinite() const
         {
             if (s)
@@ -1549,30 +1543,33 @@ public:
             return !overflow;
         }
 
-        ///Returns $(D true) if current sum is ±∞.
+        ///Returns `true` if current sum is ±∞.
         bool isInfinity() const
         {
-            return .isInfinity(s) || overflow();
+            return std.math.isInfinity(s) || overflow();
         }
     }
     else static if (isFloatingPoint!F)
     {
-        ///Returns $(D true) if current sum is a NaN.
+        ///Returns `true` if current sum is a NaN.
         bool isNaN() const
         {
-            return .isNaN(sum());
+            import std.math: isNaN;
+            return std.math.isNaN(sum());
         }
 
-        ///Returns $(D true) if current sum is finite (not infinite or NaN).
+        ///Returns `true` if current sum is finite (not infinite or NaN).
         bool isFinite() const
         {
-            return cast(bool).isFinite(sum());
+            import std.math: isFinite;
+            return std.math.isFinite(sum());
         }
 
-        ///Returns $(D true) if current sum is ±∞.
+        ///Returns `true` if current sum is ±∞.
         bool isInfinity() const
         {
-            return .isInfinity(sum());
+            import std.math: isInfinity;
+            return std.math.isInfinity(sum());
         }
     }
     else
@@ -1583,14 +1580,15 @@ public:
 
 unittest
 {
-    import std.algorithm.iteration: map;
-    import std.range: iota, retro;
+    import mir.functional: RefTuple, tuple;
+    import mir.ndslice.topology: map, iota, retro;
     import std.array: array;
+    import std.math: isInfinity, isFinite, isNaN;
 
     Summator!(double, Summation.precise) summator = 0.0;
 
     enum double M = (cast(double)2) ^^ (double.max_exp - 1);
-    Tuple!(double[], double)[] tests = [
+    RefTuple!(double[], double)[] tests = [
         tuple(new double[0], 0.0),
         tuple([0.0], 0.0),
         tuple([1e100, 1.0, -1e100, 1e-100, 1e50, -1, -1e50], 1e-100),
@@ -1606,10 +1604,10 @@ unittest
         tuple([M-2.0^^970, -1, M], 1.7976931348623157e+308),
         tuple([double.max, double.max*2.^^-54], double.max),
         tuple([double.max, double.max*2.^^-53], double.infinity),
-        tuple(iota(1, 1001).map!(a => 1.0/a).array , 7.4854708605503451),
-        tuple(iota(1, 1001).map!(a => (-1.0)^^a/a).array, -0.69264743055982025), //0.693147180559945309417232121458176568075500134360255254120680...
-        tuple(iota(1, 1001).map!(a => 1.0/a).retro.array , 7.4854708605503451),
-        tuple(iota(1, 1001).map!(a => (-1.0)^^a/a).retro.array, -0.69264743055982025),
+        tuple(iota([1000], 1).map!(a => 1.0/a).array , 7.4854708605503451),
+        tuple(iota([1000], 1).map!(a => (-1.0)^^a/a).array, -0.69264743055982025), //0.693147180559945309417232121458176568075500134360255254120680...
+        tuple(iota([1000], 1).map!(a => 1.0/a).retro.array , 7.4854708605503451),
+        tuple(iota([1000], 1).map!(a => (-1.0)^^a/a).retro.array, -0.69264743055982025),
         tuple([double.infinity, -double.infinity, double.nan], double.nan),
         tuple([double.nan, double.infinity, -double.infinity], double.nan),
         tuple([double.infinity, double.nan, double.infinity], double.nan),
@@ -1638,8 +1636,8 @@ unittest
     foreach (i, test; tests)
     {
         summator = 0.0;
-        foreach (t; test[0]) summator.put(t);
-        auto r = test[1];
+        foreach (t; test.a) summator.put(t);
+        auto r = test.b;
         auto s = summator.sum;
         assert(summator.isNaN() == r.isNaN());
         assert(summator.isFinite() == r.isFinite());
@@ -1649,12 +1647,10 @@ unittest
 }
 
 /**
-Sums elements of $(D r), which must be a finite
-$(XREF_PACK_NAMED range,primitives,isInputRange,input range). Although
-conceptually $(D sum(r)) is equivalent to $(LREF reduce)!((a, b) => a +
-b)(0, r), $(D sum) uses specialized algorithms to maximize accuracy.
+Sums elements of `r`, which must be a finite
+iterable.
 
-A seed may be passed to $(D sum). Not only will this seed be used as an initial
+A seed may be passed to `sum`. Not only will this seed be used as an initial
 value, but its type will be used if it is not specified.
 
 Note that these specialized summing algorithms execute more primitive operations
@@ -1746,21 +1742,23 @@ template sum(Summation summation = Summation.appropriate)
     assert(sum(SList!double(1, 2, 3, 4)[]) == 10);
 }
 
-@safe pure nothrow unittest // 12434
+pure nothrow unittest // 12434
 {
-    import std.algorithm.iteration: map;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: map;
     immutable a = [10, 20];
+    auto s = a.sliced;
     auto s1 = sum(a);             // Error
-    auto s2 = a.map!(x => x).sum; // Error
+    auto s2 = s.map!(x => x).sum; // Error
 }
 
 unittest
 {
     import std.bigint;
-    import std.range;
+    import mir.ndslice.topology: repeat;
 
-    immutable BigInt[] a = BigInt("1_000_000_000_000_000_000").repeat(10).array();
-    immutable ulong[]  b = (ulong.max/2).repeat(10).array();
+    auto a = BigInt("1_000_000_000_000_000_000").repeat(10);
+    auto b = (ulong.max/2).repeat(10);
     auto sa = a.sum();
     auto sb = b.sum(BigInt(0)); //reduce ulongs into bigint
     assert(sa == BigInt("10_000_000_000_000_000_000"));
@@ -1769,9 +1767,8 @@ unittest
 
 unittest
 {
-    import std.typetuple;
     with(Summation)
-    foreach (F; TypeTuple!(float, double, real))
+    foreach (F; AliasSeq!(float, double, real))
     {
         F[] ar = [1, 2, 3, 4];
         F r = 10;
@@ -1810,9 +1807,7 @@ version(X86_Any)
 unittest
 {
     import core.simd;
-    import std.range: iota;
-    import std.array: array;
-
+    import mir.ndslice.topology: iota;
 
     alias S = Summation;
     alias sums = AliasSeq!(S.kahan, S.pairwise, S.naive, S.fast, S.precise,
@@ -1824,7 +1819,7 @@ unittest
     {
         foreach (sumType; sums)
         {
-            double[] ar = iota(n).array;
+            auto ar = iota(n);
             double c = n * (n - 1) / 2; // gauss for n=100
             double s = ar.sum!(sumType);
             assert(s == c);
@@ -1852,9 +1847,9 @@ private F sumPrecise(Range, F)(Range r, F seed = summationInitValue!F)
         alias T = typeof(F.init.re);
         auto sumRe = Summator!(T, Summation.precise)(seed.re);
         auto sumIm = Summator!(T, Summation.precise)(seed.im);
-        for (; !r.empty; r.popFront)
+        foreach (elem; r)
         {
-            auto e = r.front;
+            auto e = elem;
             sumRe.put(e.re);
             sumIm.put(e.im);
         }
@@ -1925,7 +1920,7 @@ private T summationInitValue(T)()
 
 private template sumType(Range)
 {
-    alias T = Unqual!(ElementType!Range);
+    alias T = Unqual!(ForeachType!Range);
     alias sumType = typeof(T.init + T.init);
 }
 
@@ -1948,16 +1943,15 @@ template isSummable(F)
 template isSummable(Range, F)
 {
     enum bool isSummable =
-        isInputRange!Range &&
-        isImplicitlyConvertible!(Unqual!(ElementType!Range), F) &&
-        !isInfinite!Range &&
+        isIterable!Range &&
+        isImplicitlyConvertible!(Unqual!(ForeachType!Range), F) &&
         isSummable!F;
 }
 
 unittest
 {
-    import std.range: iota;
-    static assert(isSummable!(typeof(iota(ulong.init, ulong.init, ulong.init)), double));
+    import mir.ndslice.topology: iota;
+    static assert(isSummable!(typeof(iota([ulong.init])), double));
 }
 
 private enum bool isCompesatorAlgorithm(Summation summation) =
