@@ -33,6 +33,7 @@ import std.traits;
 import std.meta;
 
 import mir.ndslice.internal;
+import mir.internal.utility;
 import mir.ndslice.slice;
 
 @fastmath:

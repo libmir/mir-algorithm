@@ -3,7 +3,7 @@ Templates used to check primitives.
 +/
 module mir.primitives;
 
-import mir.ndslice.internal;
+import mir.internal.utility;
 
 @fastmath:
 

@@ -18,7 +18,7 @@ module mir.utility;
 
 import std.traits;
 
-import mir.ndslice.internal;
+import mir.internal.utility;
 
 @fastmath:
 

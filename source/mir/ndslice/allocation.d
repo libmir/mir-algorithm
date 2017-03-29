@@ -29,6 +29,7 @@ import std.traits;
 import mir.ndslice.slice;
 import mir.ndslice.internal;
 import mir.ndslice.concatenation;
+import mir.internal.utility;
 
 @fastmath:
 

@@ -8,7 +8,7 @@ Authors:   Ilya Yaroshenko, Andrei Alexandrescu
 module mir.ndslice.sorting;
 
 import mir.ndslice.slice;
-import mir.ndslice.internal;
+import mir.internal.utility;
 
 @fastmath:
 

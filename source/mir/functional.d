@@ -42,7 +42,7 @@ import std.traits;
 private enum isRef(T) = is(T : Ref!T0, T0);
 private enum isLangRef(alias arg) = __traits(isRef, arg);
 
-import mir.ndslice.internal;
+import mir.internal.utility;
 
 @fastmath:
 

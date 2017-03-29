@@ -4,8 +4,7 @@
 		"Ilya Yaroshenko"
 	],
 	"targetType": "sourceLibrary",
-	"description": "Standard algorithms, ranges and tensors for Dlang",
+	"description": "Standard algorithms, ranges and ndslices (tensors) for Dlang",
 	"copyright": "Copyright © 2016, Ilya Yaroshenko",
-	"license": "BSL-1.0",
-	"dependencies": {"mir-internal": "~>0.0.2"}
+	"license": "BSL-1.0"
 }

@@ -2517,14 +2517,6 @@ private bool opEqualsImpl
     return true;
 }
 
-private template PrepareIteratorType(Iterator)
-{
-    static if (isPointer!Iterator)
-        alias PrepareIteratorType = Iterator;
-    else
-        alias PrepareIteratorType = PtrShell!Iterator;
-}
-
 private enum bool isType(alias T) = false;
 
 private enum bool isType(T) = true;
