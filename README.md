@@ -13,17 +13,20 @@
 1. Generic Multidimensional arrays of three kinds
 2. `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast executaion and multidimensional algorithms.
 3. Iterators like random access iterators in C++, Fields, and ndFields.
+4. LLVM oriented math functions.
 
 
 ### API Documentation
 
 http://docs.algorithm.dlang.io
 
-### Scheme of basic elements
+### New ndslice
+
+#### Scheme
 
 https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
 
-### New ndslice
+#### Features
 
   - [mir.ndslice.topology](http://docs.algorithm.dlang.io/latest/mir_ndslice_topology.html) - Multidimensional `std.range` analog. Includes `bitwise`, `bitpack`, `zip`, `unzip`, `map`, `indexed` and many other features.
   - [mir.ndslice.concatenation](http://docs.algorithm.dlang.io/latest/mir_ndslice_concatenation.html) - Concatenation and padding
