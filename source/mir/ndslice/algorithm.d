@@ -233,12 +233,7 @@ Computes minimum value of maximum values for each row.
 +/
 unittest
 {
-    // LDC is LLVM D Compiler
-    version(LDC)
-        import ldc.intrinsics : fmax = llvm_maxnum, fmin = llvm_minnum;
-    // std.math prevents vectorization for now
-    else
-        import std.math : fmax, fmin;
+    import mir.math.common;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.dynamic : transposed;
     import mir.ndslice.topology : as, iota, pack, map, universal;
