@@ -40,8 +40,7 @@ https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
  - `Universal` - Numpy like. Each dimension has strides. All dimensions can be exchanged without reallocation. The old ndslice ABI corresponds to to the `Universal` ndslice.
 
 ### Known bugs
-- With LDC <=1.1.0 `mir.ndslice.topology.map` may not work because LDC has deprecated DMD FE.
-- With LDC ==1.2.0-beta1 compiled with LLVM 4.0 some code from `mir.algorithm` may not work because https://github.com/ldc-developers/ldc/issues/2037.
+- With LDC <=1.1.1 `mir.ndslice.topology.map` may not work because LDC has deprecated DMD FE
 
 ### Old ndslice
 If you are looking for old `ndslice`, please use [the main repo](https://github.com/libmir/mir) with old tag `v0.22.1`.
