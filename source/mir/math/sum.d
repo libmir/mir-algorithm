@@ -1830,19 +1830,19 @@ version(X86_Any)
 unittest
 {
     import core.simd;
-    import mir.ndslice.topology: iota;
+    import mir.ndslice.topology: iota, as;
 
     alias S = Summation;
     alias sums = AliasSeq!(S.kahan, S.pairwise, S.naive, S.fast, S.precise,
                            S.kbn, S.kb2);
 
-    double[] ns = [9.0, 101.0];
+    int[2] ns = [9, 101];
 
     foreach (n; ns)
     {
         foreach (sumType; sums)
         {
-            auto ar = iota(n);
+            auto ar = iota(n).as!double;
             double c = n * (n - 1) / 2; // gauss for n=100
             double s = ar.sum!(sumType);
             assert(s == c);
