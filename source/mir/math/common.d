@@ -11,76 +11,97 @@ module mir.math.common;
 
 public import mir.internal.utility: fastmath;
 
-version(D_Ddoc)
-{
-    ///
-    T sqrt(T)(in T x);
-    ///
-    T sin(T)(in T x);
-    ///
-    T cos(T)(in T x);
-    ///
-    T pow(T)(in T x, in T power);
-    ///
-    T powi(T)(in T x, int power);
-    ///
-    T exp(T)(in T x);
-    ///
-    T log(T)(in T x);
-    ///
-    T fabs(T)(in T x);
-    ///
-    T floor(T)(in T x);
-    ///
-    T exp2(T)(in T x);
-    ///
-    T log10(T)(in T x);
-    ///
-    T log2(T)(in T x);
-    ///
-    T ceil(T)(in T x);
-    ///
-    T trunc(T)(in T x);
-    ///
-    T rint(T)(in T x);
-    ///
-    T nearbyint(T)(in T x);
-    ///
-    T copysign(T)(in T mag, in T sgn);
-    ///
-    T round(T)(in T x);
-    ///
-    T fmuladd(T)(in T a, in T b, in T c);
-    ///
-    T fmin(T)(in T x, in T y);
-    ///
-    T fmax(T)(in T x, in T y);
-}
-else
 version(LDC)
 {
-    import ldc.intrinsics;
-    alias sqrt = llvm_sqrt;
-    alias sin = llvm_sin;
-    alias cos = llvm_cos;
-    alias pow = llvm_pow;
-    alias powi = llvm_powi;
-    alias exp = llvm_exp;
-    alias log = llvm_log;
-    alias fabs = llvm_fabs;
-    alias floor = llvm_floor;
-    alias exp2 = llvm_exp2;
-    alias log10 = llvm_log10;
-    alias log2 = llvm_log2;
-    alias ceil = llvm_ceil;
-    alias trunc = llvm_trunc;
-    alias rint = llvm_rint;
-    alias nearbyint = llvm_nearbyint;
-    alias copysign = llvm_copysign;
-    alias round = llvm_round;
-    alias fmuladd = llvm_fmuladd;
-    alias fmin = llvm_minnum;
-    alias fmax = llvm_maxnum;
+    nothrow @nogc pure @safe:
+
+    pragma(LDC_intrinsic, "llvm.sqrt.f#")
+    ///
+    T sqrt(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.sin.f#")
+    ///
+    T sin(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.cos.f#")
+    ///
+    T cos(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.powi.f#")
+    ///
+    T powi(T)(in T val, int power);
+
+    pragma(LDC_intrinsic, "llvm.pow.f#")
+    ///
+    T pow(T)(in T val, in T power);
+
+    pragma(LDC_intrinsic, "llvm.exp.f#")
+    ///
+    T exp(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.log.f#")
+    ///
+    T log(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.fma.f#")
+    ///
+    T fma(T)(T vala, T valb, T valc);
+
+    pragma(LDC_intrinsic, "llvm.fabs.f#")
+    ///
+    T fabs(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.floor.f#")
+    ///
+    T floor(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.exp2.f#")
+    ///
+    T exp2(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.log10.f#")
+    ///
+    T log10(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.log2.f#")
+    ///
+    T log2(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.ceil.f#")
+    ///
+    T ceil(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.trunc.f#")
+    ///
+    T trunc(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.rint.f#")
+    ///
+    T rint(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.nearbyint.f#")
+    ///
+    T nearbyint(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.copysign.f#")
+    ///
+    T copysign(T)(in T mag, in T sgn);
+
+    pragma(LDC_intrinsic, "llvm.round.f#")
+    ///
+    T round(T)(in T val);
+
+    pragma(LDC_intrinsic, "llvm.fmuladd.f#")
+    ///
+    T fmuladd(T)(in T vala, in T valb, in T valc);
+
+    pragma(LDC_intrinsic, "llvm.minnum.f#")
+    ///
+    T fmin(T)(in T vala, in T valb);
+
+    pragma(LDC_intrinsic, "llvm.maxnum.f#")
+    ///
+    T fmax(T)(in T vala, in T valb);
 }
 else
 {
