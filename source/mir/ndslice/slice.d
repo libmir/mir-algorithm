@@ -663,22 +663,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     public:
 
-    /++
-    This constructor should be used only for integration with other languages or libraries such as Julia and numpy.
-    Params:
-        lengths = lengths
-        strides = strides
-        iterator = an iterator or a pointer to iterate on
-    +/
-    this()(in size_t[N] lengths, in sizediff_t[S] strides, Iterator iterator)
-    {
-        foreach (i; Iota!N)
-            _lengths[i] = lengths[i];
-        foreach (i; Iota!S)
-            _strides[i] = strides[i];
-        _iterator = iterator;
-    }
-
     /// Creates a 2-dimentional slice with custom strides.
     nothrow pure
     unittest
