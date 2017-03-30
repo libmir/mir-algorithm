@@ -1987,7 +1987,7 @@ template isSummable(Range, F)
 unittest
 {
     import mir.ndslice.topology: iota;
-    static assert(isSummable!(typeof(iota([ulong.init])), double));
+    static assert(isSummable!(typeof(iota([size_t.init])), double));
 }
 
 private enum bool isCompesatorAlgorithm(Summation summation) =
