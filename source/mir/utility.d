@@ -364,16 +364,8 @@ auto min(T...)(T args)
 
     static if ((isFloatingPoint!T0 && isNumeric!T1) || (isFloatingPoint!T1 && isNumeric!T0))
     {
-        version (LDC)
-        {
-            import ldc.intrinsics: llvm_minnum;
-            return llvm_minnum(a, b);
-        }
-        else
-        {
-            import std.math: fmin;
-            return cast(CommonType!(T0, T1))fmin(a, b);
-        }
+        import mir.math.common: fmin;
+        return fmin(a, b);
     }
     else
     {
@@ -438,16 +430,8 @@ auto max(T...)(T args)
 
     static if ((isFloatingPoint!T0 && isNumeric!T1) || (isFloatingPoint!T1 && isNumeric!T0))
     {
-        version (LDC)
-        {
-            import ldc.intrinsics: llvm_maxnum;
-            return llvm_maxnum(a, b);
-        }
-        else
-        {
-            import std.math: fmax;
-            return cast(CommonType!(T0, T1))fmax(a, b);
-        }
+        import mir.math.common: fmax;
+        return fmax(a, b);
     }
     else
     {
