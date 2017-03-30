@@ -2304,7 +2304,7 @@ private auto hideStride
     static if (kind == Universal)
         return Slice!(Contiguous, [1], StrideIterator!Iterator)(
             slice._lengths,
-            slice._strides[0 .. 0],
+            sizediff_t[0].init,
             StrideIterator!Iterator(slice._strides[0], slice._iterator));
     else
         return slice;
