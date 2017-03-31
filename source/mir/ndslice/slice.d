@@ -692,7 +692,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             /++
             Implicit cast to const slices in case of underlaying range is a pointer.
             +/
-            ref ConstThis toConst() const @trusted pure nothrow @nogc
+            ref ConstThis toConst()() const @trusted pure nothrow @nogc
             {
                 pragma(inline, true);
                 return *cast(ConstThis*) &this;
