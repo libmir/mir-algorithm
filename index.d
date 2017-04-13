@@ -75,11 +75,11 @@ $(BOOKTABLE ,
 
     $(LEADINGROW Accessories)
     $(TR
-        $(TDNW $(MREF mir,functional,bitmanip))
+        $(TDNW $(MREF mir,bitmanip))
         $(TD Bit fields manipulations)
     )
     $(TR
-        $(TDNW $(MREF mir,functional,conv))
+        $(TDNW $(MREF mir,conv))
         $(TD Conversion utilities)
     )
     $(TR
