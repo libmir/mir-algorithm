@@ -27,12 +27,12 @@ private string myToString()(ulong n)
 {
     UnsignedStringBuf buf;
     auto s = unsignedToTempString(n, buf);
-    return cast(string) s ~ (n > uint.max ? "UL" : "U");
+    return s ~ (n > uint.max ? "UL" : "U");
 }
 
 private alias UnsignedStringBuf = char[20];
 
-private char[] unsignedToTempString()(ulong value, return char[] buf, uint radix = 10) @safe
+private string unsignedToTempString()(ulong value, char[] buf, uint radix = 10) @safe
 {
     size_t i = buf.length;
     do
@@ -41,7 +41,7 @@ private char[] unsignedToTempString()(ulong value, return char[] buf, uint radix
         value = value / radix;
         buf[--i] = cast(char)((x < 10) ? x + '0' : x - 10 + 'a');
     } while (value);
-    return buf[i .. $];
+    return buf[i .. $].idup;
 }
 
 private template createAccessors(
@@ -174,18 +174,18 @@ private ulong getBitsForAlign(ulong a)
 private template createReferenceAccessor(string store, T, ulong bits, string name)
 {
     enum storage = "private void* " ~ store ~ "_ptr;\n";
-    enum storage_accessor = "@property ref size_t " ~ store ~ "() return @trusted pure nothrow @nogc const { "
+    enum storage_accessor = "@property ref size_t " ~ store ~ "()() return @trusted pure nothrow @nogc const { "
         ~ "return *cast(size_t*) &" ~ store ~ "_ptr;}\n"
-        ~ "@property void " ~ store ~ "(size_t v) @trusted pure nothrow @nogc { "
+        ~ "@property void " ~ store ~ "()(size_t v) @trusted pure nothrow @nogc { "
         ~ "" ~ store ~ "_ptr = cast(void*) v;}\n";
 
     enum mask = (1UL << bits) - 1;
     // getter
-    enum ref_accessor = "@property "~T.stringof~" "~name~"() @trusted pure nothrow @nogc const { auto result = "
+    enum ref_accessor = "@property "~T.stringof~" "~name~"()() @trusted pure nothrow @nogc const { auto result = "
         ~ "("~store~" & "~myToString(~mask)~"); "
         ~ "return cast("~T.stringof~") cast(void*) result;}\n"
     // setter
-        ~"@property void "~name~"("~T.stringof~" v) @trusted pure nothrow @nogc { "
+        ~"@property void "~name~"()("~T.stringof~" v) @trusted pure nothrow @nogc { "
         ~"assert(((cast(typeof("~store~")) cast(void*) v) & "~myToString(mask)
         ~`) == 0, "Value not properly aligned for '`~name~`'"); `
         ~store~" = cast(typeof("~store~"))"
