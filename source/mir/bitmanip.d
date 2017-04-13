@@ -23,13 +23,25 @@ module mir.bitmanip;
 
 import std.traits;
 
-
-private string myToString(ulong n)
+private string myToString()(ulong n)
 {
-    import core.internal.string : UnsignedStringBuf, unsignedToTempString;
     UnsignedStringBuf buf;
     auto s = unsignedToTempString(n, buf);
     return cast(string) s ~ (n > uint.max ? "UL" : "U");
+}
+
+private alias UnsignedStringBuf = char[20];
+
+private char[] unsignedToTempString()(ulong value, return char[] buf, uint radix = 10) @safe
+{
+    size_t i = buf.length;
+    do
+    {
+        ubyte x = cast(ubyte)(value % radix);
+        value = value / radix;
+        buf[--i] = cast(char)((x < 10) ? x + '0' : x - 10 + 'a');
+    } while (value);
+    return buf[i .. $];
 }
 
 private template createAccessors(
