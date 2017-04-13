@@ -55,9 +55,34 @@ $(BOOKTABLE ,
         $(TDNW $(MREF mir,ndslice,ndfield))
         $(TD NdField declarations)
     )
-    $(LEADINGROW Accessories)
+    $(LEADINGROW Math)
+    $(TR
+        $(TDNW $(MREF mir,math,common))
+        $(TD Common math functions)
+    )
+    $(TR
+        $(TDNW $(MREF mir,math,constant))
+        $(TD Constants)
+    )
+    $(TR
+        $(TDNW $(MREF mir,math,sum))
+        $(TD Various precise summation algorithms)
+    )
+    $(TR
+        $(TDNW $(MREF mir,math,func))
+        $(TD Special math functions)
+    )
     $(TR
         $(TDNW $(MREF mir,conv))
+        $(TD Conversion utilities)
+    )
+    $(LEADINGROW Accessories)
+    $(TR
+        $(TDNW $(MREF mir,functional,bitmanip))
+        $(TD Bit fields manipulations)
+    )
+    $(TR
+        $(TDNW $(MREF mir,functional,conv))
         $(TD Conversion utilities)
     )
     $(TR

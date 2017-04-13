@@ -16,3 +16,5 @@ mir-internal
 mir-algorithm-test-library
 
 *.pdf
+
+*.sublime-workspace

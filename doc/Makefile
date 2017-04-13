@@ -27,7 +27,7 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # packages and their modules.
 MIR_PACKAGES = mir mir/ndslice mir/internal mir/math mir/math/func
 
-PACKAGE_mir = conv functional primitives
+PACKAGE_mir = bitmanip conv functional primitives
 PACKAGE_mir_ndslice = package algorithm allocation dynamic field ndfield iterator package slice sorting concatenation topology
 PACKAGE_mir_math = constant common sum
 PACKAGE_mir_math_func = expdigamma
