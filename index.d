@@ -72,10 +72,7 @@ $(BOOKTABLE ,
         $(TDNW $(MREF mir,math,func))
         $(TD Special math functions)
     )
-    $(TR
-        $(TDNW $(MREF mir,conv))
-        $(TD Conversion utilities)
-    )
+
     $(LEADINGROW Accessories)
     $(TR
         $(TDNW $(MREF mir,functional,bitmanip))
