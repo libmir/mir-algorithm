@@ -158,7 +158,7 @@ private template createFields(string store, size_t offset, Ts...)
         enum result = "";
 }
 
-private ulong getBitsForAlign(ulong a)
+private ulong getBitsForAlign()(ulong a)
 {
     ulong bits = 0;
     while ((a & 0x01) == 0)
@@ -166,7 +166,6 @@ private ulong getBitsForAlign(ulong a)
         bits++;
         a >>= 1;
     }
-
     assert(a == 1, "alignment is not a power of 2");
     return bits;
 }

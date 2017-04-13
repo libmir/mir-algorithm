@@ -1393,7 +1393,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(iota(2, 3).slice[0 .. $ - 2] == iota([4, 3], 2)[0 .. $ - 4]);
     }
 
-    _Slice opSlice(size_t dimension)(size_t i, size_t j) const
+    _Slice!() opSlice(size_t dimension)(size_t i, size_t j) const
         if (dimension < packs[0])
     in
     {

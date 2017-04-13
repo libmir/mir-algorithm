@@ -249,7 +249,7 @@ private bool isValidPartialPermutationImpl(size_t N)(in size_t[] perm, ref int[N
 enum toSize_t(size_t i) = i;
 enum isSize_t(alias i) = is(typeof(i) == size_t);
 enum isIndex(I) = is(I : size_t);
-enum is_Slice(S) = is(S : _Slice);
+enum is_Slice(S) = is(S : _Slice!());
 
 alias Repeat(size_t N : 0, T...) = AliasSeq!();
 
@@ -277,4 +277,4 @@ pure nothrow unittest
     assert(lengthsProduct([3, 4, 5]) == 60);
 }
 
-struct _Slice { size_t i, j; }
+struct _Slice() { size_t i = void, j = void; }
