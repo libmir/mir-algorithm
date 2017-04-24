@@ -1,9 +1,16 @@
 /++
 Templates used to check primitives.
+
+Publicly imports $(MREF mir,array,_primitives).
+
+License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright © 2017-, Ilya Yaroshenko
+Authors:   Ilya Yaroshenko
 +/
 module mir.primitives;
 
 import mir.internal.utility;
+public import mir.array.primitives;
 
 @fastmath:
 
