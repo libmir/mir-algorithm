@@ -1,10 +1,10 @@
 module mir.ndslice.internal;
 
-import std.range.primitives;
 import std.traits;
 import std.meta;
 import mir.ndslice.slice;
 import mir.internal.utility;
+import mir.array.primitives;
 
 @fastmath:
 
