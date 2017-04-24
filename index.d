@@ -87,6 +87,10 @@ $(BOOKTABLE ,
         $(TD Functions that manipulate other functions)
     )
     $(TR
+        $(TDNW $(MREF mir,array,primitives))
+        $(TD Array range primitives with ndslice-like API)
+    )
+    $(TR
         $(TDNW $(MREF mir,primitives))
         $(TD Templates used to check primitives)
     )
