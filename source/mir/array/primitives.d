@@ -172,3 +172,16 @@ unittest
     ar.popBackExactly!0(1);  // Slice-like API
     assert(ar == []);
 }
+
+///
+size_t length(size_t d : 0, T)(T[] array)
+{
+    pragma(inline, true);
+    return array.length;
+}
+
+///
+unittest
+{
+    assert([1, 2].length!0 == 2);
+}

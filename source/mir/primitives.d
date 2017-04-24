@@ -76,11 +76,4 @@ template DimensionCount(T)
 }
 
 ///
-size_t length(size_t d : 0, T)(T[] array)
-{
-    pragma(inline, true);
-    return array.length;
-}
-
-///
 alias elementsCount = length;
