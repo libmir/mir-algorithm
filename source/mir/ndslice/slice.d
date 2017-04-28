@@ -1428,7 +1428,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     return DeepElemType(_lengths[packs[0] .. $], _strides, c);
             else
             {
-                alias Ret = Slice!(kind, (packs[0] - I) ~ packs[1 .. $], Iterator);
+                enum size_t diff = packs[0] - I;
+                alias Ret = Slice!(
+                    diff == 1 && kind == Canonical ?
+                        Contiguous:
+                        kind,
+                    diff ~ packs[1 .. $],
+                    Iterator);
                 static if (S)
                     return Ret(_lengths[I .. N], _strides[I .. S], c);
                 else
@@ -2733,4 +2739,10 @@ unittest
 
     auto sl = iota(3, 4).universal;
     assert(sl[0 .. $] == sl);
+}
+
+unittest
+{
+    import mir.ndslice.topology: canonical, iota;
+    static assert(kindOf!(typeof(iota([1, 2]).canonical.opIndex(1))) == Contiguous);
 }
