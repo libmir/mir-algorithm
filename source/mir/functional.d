@@ -98,6 +98,14 @@ struct RefTuple(T...)
     mixin _RefTupleMixin!T;
 }
 
+/// Removes $(LREF Ref) shell.
+alias Unref(V : Ref!T, T) = T;
+/// ditto
+alias Unref(V : RefTuple!T, T...) = RefTuple!(staticMap!(.Unref, T));
+/// ditto
+alias Unref(V) = V;
+
+
 /++
 Returns: a $(LREF RefTuple) structure.
 +/
@@ -105,6 +113,28 @@ RefTuple!Args tuple(Args...)(auto ref Args args)
 {
     return RefTuple!Args(args);
 }
+
+/// Removes $(LREF Ref) shell.
+T unref(V : Ref!T, T)(V value)
+{
+    return *value.__ptr;
+}
+
+/// ditto
+Unref!(RefTuple!T) unref(V : RefTuple!T, T...)(V value)
+{
+    typeof(return) ret;
+    foreach(i, ref elem; ret.expand)
+        elem = value.expand[i].unref;
+    return ret;
+}
+
+/// ditto
+V unref(V)(V value)
+{
+    return value;
+}
+
 
 private string joinStrings()(string[] strs)
 {

@@ -30,7 +30,8 @@ void swapStars(I1, I2)(auto ref I1 i1, auto ref I2 i2)
     }
     else
     {
-        auto e = *i1;
+        import mir.functional: unref;
+        auto e = unref(*i1);
         i1[0] = *i2;
         i2[0] = e;
     }

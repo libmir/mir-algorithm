@@ -410,8 +410,18 @@ struct ZipIterator(Iterators...)
             mixin(op ~ `_iterator;`);
     }
 
-    auto ref opIndex()(ptrdiff_t index)
+    auto opIndex()(ptrdiff_t index)
     { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_index!Iterators ~ ")"); }
+
+    auto opIndexAssign(Types...)(RefTuple!(Types) value, ptrdiff_t index)
+        if (Types.length == Iterators.length)
+    {
+        foreach(i, val; value.expand)
+        {
+            _iterators[i][index] = val;
+        }
+        return opIndex(index);
+    }
 
     void opOpAssign(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")

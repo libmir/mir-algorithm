@@ -148,7 +148,8 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
                     //    })))
                     //{
                         auto d = p;
-                        auto temp = *d;
+                        import mir.functional: unref;
+                        auto temp = unref(*d);
                         auto c = d;
                         ++c;
                         if (less(*c, temp))
@@ -191,7 +192,8 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
         --r;
         auto pivotIdx = l + slice.length / 2;
         setPivot!less(slice.length, l, pivotIdx, r);
-        auto pivot = *pivotIdx;
+        import mir.functional: unref;
+        auto pivot = unref(*pivotIdx);
         --lessI;
         auto greaterI = r;
         swapStars(pivotIdx, greaterI);
