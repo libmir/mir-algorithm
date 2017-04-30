@@ -107,26 +107,47 @@ else
 {
     static import std.math;
     import std.traits: isFloatingPoint;
+    ///
     T sqrt(T)(in T x) if (isFloatingPoint!T) { return std.math.sqrt(x); }
+    ///
     T sin(T)(in T x) if (isFloatingPoint!T) { return std.math.sin(x); }
+    ///
     T cos(T)(in T x) if (isFloatingPoint!T) { return std.math.cos(x); }
+    ///
     T pow(T)(in T x, in T power) if (isFloatingPoint!T) { return std.math.pow(x, power); }
+    ///
     T powi(T)(in T x, int power) if (isFloatingPoint!T) { return std.math.pow(x, power); }
+    ///
     T exp(T)(in T x) if (isFloatingPoint!T) { return std.math.exp(x); }
+    ///
     T log(T)(in T x) if (isFloatingPoint!T) { return std.math.log(x); }
+    ///
     T fabs(T)(in T x) if (isFloatingPoint!T) { return std.math.fabs(x); }
+    ///
     T floor(T)(in T x) if (isFloatingPoint!T) { return std.math.floor(x); }
+    ///
     T exp2(T)(in T x) if (isFloatingPoint!T) { return std.math.exp2(x); }
+    ///
     T log10(T)(in T x) if (isFloatingPoint!T) { return std.math.log10(x); }
+    ///
     T log2(T)(in T x) if (isFloatingPoint!T) { return std.math.log2(x); }
+    ///
     T ceil(T)(in T x) if (isFloatingPoint!T) { return std.math.ceil(x); }
+    ///
     T trunc(T)(in T x) if (isFloatingPoint!T) { return std.math.trunc(x); }
+    ///
     T rint(T)(in T x) if (isFloatingPoint!T) { return std.math.rint(x); }
+    ///
     T nearbyint(T)(in T x) if (isFloatingPoint!T) { return std.math.nearbyint(x); }
+    ///
     T copysign(T)(in T mag, in T sgn) if (isFloatingPoint!T) { return std.math.copysign(mag, sgn); }
+    ///
     T round(T)(in T x) if (isFloatingPoint!T) { return std.math.round(x); }
+    ///
     T fmuladd(T)(in T a, in T b, in T c) if (isFloatingPoint!T) { return a * b + c; }
     unittest { assert(fmuladd!double(2, 3, 4) == 2 * 3 + 4); }
+    ///
     T fmin(T)(in T x, in T y) if (isFloatingPoint!T) { return std.math.fmin(x, y); }
+    ///
     T fmax(T)(in T x, in T y) if (isFloatingPoint!T) { return std.math.fmax(x, y); }
 }
