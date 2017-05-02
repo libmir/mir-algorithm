@@ -7,7 +7,7 @@
 		"Phobos developers (see information per file)"
 	],
 	"targetType": "sourceLibrary",
-	"description": "Standard algorithms, ranges, iterators, and ndslices (tensors) for Dlang",
+	"description": "Multidimensional arrays (ndslice), ranges, iterators, and algorithms for Dlang",
 	"copyright": "Copyright © 2016 - 2017, Ilya Yaroshenko, Digital Mars (see information per file)",
 	"license": "BSL-1.0"
 }
