@@ -115,7 +115,7 @@ RefTuple!Args tuple(Args...)(auto ref Args args)
 }
 
 /// Removes $(LREF Ref) shell.
-T unref(V : Ref!T, T)(V value)
+ref T unref(V : Ref!T, T)(V value)
 {
     return *value.__ptr;
 }

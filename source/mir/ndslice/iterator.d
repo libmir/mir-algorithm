@@ -508,8 +508,15 @@ struct MapIterator(Iterator, alias fun)
 
     auto ref opUnary(string op : "*")()
     {
+        import mir.functional: RefTuple, unref;
         static if (is(Iterator : ZipIterator!(Iterators), Iterators...))
             return mixin("fun(" ~ _iotaArgs!(Iterators.length, "*_iterator._iterators[", "], ") ~ ")");
+        else
+        static if (is(typeof(*_iterator) : RefTuple!T, T...))
+        {
+            auto t = *_iterator;
+            return mixin("fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+        }
         else
             return fun(*_iterator);
     }
@@ -520,8 +527,15 @@ struct MapIterator(Iterator, alias fun)
 
     auto ref opIndex()(ptrdiff_t index)
     {
+        import mir.functional: RefTuple, unref;
         static if (is(Iterator : ZipIterator!(Iterators), Iterators...))
             return mixin("fun(" ~ _iotaArgs!(Iterators.length, "_iterator._iterators[", "][index], ") ~ ")");
+        else
+        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        {
+            auto t = _iterator[index];
+            return mixin("fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+        }
         else
             return fun(_iterator[index]);
     }

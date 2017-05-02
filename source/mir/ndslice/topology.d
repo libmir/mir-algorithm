@@ -1749,7 +1749,7 @@ unittest
         [tuple(2.00, 0.00), tuple(2.00, 0.5), tuple(2.00, 1.0)],
         ]);
 
-    assert(s.map!"a.a * a.b" == [
+    assert(s.map!"a * b" == [
         [0.0, 0.500, 1.00],
         [0.0, 0.625, 1.25],
         [0.0, 0.750, 1.50],
@@ -2564,7 +2564,7 @@ unittest
     auto b = [ 1,  2,  3];
 
     auto c = cartesian(a, b)
-        .map!"a.a + a.b";
+        .map!"a + b";
 
     assert(c == [
         [11, 12, 13],
@@ -2579,7 +2579,7 @@ unittest
     auto b = iota([2, 3], 1);
 
     auto c = cartesian(a, b)
-        .map!"a.a + a.b";
+        .map!"a + b";
 
     assert(c.shape == [3, 2, 3]);
 
@@ -2606,7 +2606,7 @@ unittest
     auto w = [1, 2];
 
     auto c = cartesian(u, v, w)
-        .map!"a.a + a.b + a.c";
+        .map!"a + b + c";
 
     assert(c.shape == [2, 3, 2]);
 

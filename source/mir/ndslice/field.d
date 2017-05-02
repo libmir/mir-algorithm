@@ -53,9 +53,17 @@ struct MapField(Field, alias fun)
     +/
     static alias __map(alias fun1) = MapField__map!(Field, fun, fun1);
 
-    auto ref opIndex(T...)(T index)
+    auto ref opIndex(T...)(auto ref T index)
     {
-        return fun(_field[index]);
+        import mir.functional: RefTuple, unref;
+        static if (is(typeof(_field[index]) : RefTuple!K, K...))
+        {
+            import mir.ndslice.field: _iotaArgs; 
+            auto t = _field[index];
+            return mixin("fun(" ~ _iotaArgs!(K.length, "t.expand[", "].unref, ") ~ ")");
+        }
+        else
+            return fun(_field[index]);
     }
 
     auto length()() @property
