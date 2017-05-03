@@ -75,6 +75,10 @@ $(BOOKTABLE ,
 
     $(LEADINGROW Accessories)
     $(TR
+        $(TDNW $(MREF mir,utility))
+        $(TD Everyday utilities)
+    )
+    $(TR
         $(TDNW $(MREF mir,bitmanip))
         $(TD Bit fields manipulations)
     )
@@ -93,10 +97,6 @@ $(BOOKTABLE ,
     $(TR
         $(TDNW $(MREF mir,primitives))
         $(TD Templates used to check primitives)
-    )
-    $(TR
-        $(TDNW $(MREF mir,utility))
-        $(TD Everyday utilities)
     )
 )
 
