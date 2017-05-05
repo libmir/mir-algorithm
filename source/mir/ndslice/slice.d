@@ -1152,7 +1152,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     void popFrontN(size_t dimension = 0)(size_t n)
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
-        import std.algorithm.comparison : min;
+        import mir.utility : min;
         popFrontExactly!dimension(min(n, _lengths[dimension]));
     }
 
@@ -1160,7 +1160,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     void popBackN(size_t dimension = 0)(size_t n)
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
-        import std.algorithm.comparison : min;
+        import mir.utility : min;
         popBackExactly!dimension(min(n, _lengths[dimension]));
     }
 
