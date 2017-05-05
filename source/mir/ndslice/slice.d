@@ -94,7 +94,7 @@ enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, I
 ///
 unittest
 {
-    static assert(kindOf!(Slice!(Canonical, [1], int*)) == Canonical);
+    static assert(kindOf!(Slice!(Universal, [1], int*)) == Universal);
 }
 
 private template SkipDimension(size_t dimension, size_t index)
@@ -519,7 +519,7 @@ Slice!(Universal, [N], Iterator)
 -------
 +/
 struct Slice(SliceKind kind, size_t[] packs, Iterator)
-    if (packs.sum < 255)
+    if (packs.sum < 255 && !(kind == Canonical && packs == [1]))
 {
     @fastmath:
 
