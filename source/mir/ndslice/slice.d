@@ -642,25 +642,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
-    //size_t mathIndexStride(size_t I)(size_t[I] _indexes...) const
-    //{
-    //    static if (_indexes.length)
-    //    {
-    //        size_t stride = _strides[0] * _indexes[N - 1];
-    //        assert(_indexes[N - 1] < _lengths[0], indexError!(N - 1, N));
-    //        foreach_reverse (i; Iota!(0, I - 1)) //static
-    //        {
-    //            assert(_indexes[i] < _lengths[N - 1 - i], indexError!(i, N));
-    //            stride += _strides[N - 1 - i] * _indexes[i];
-    //        }
-    //        return stride;
-    //    }
-    //    else
-    //    {
-    //        return 0;
-    //    }
-    //}
-
     public:
 
     /// Creates a 2-dimentional slice with custom strides.
