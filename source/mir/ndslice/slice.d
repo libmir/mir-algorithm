@@ -404,7 +404,7 @@ $(TR $(TD A $(B fully defined slice) is an empty sequence
     or a sequence composed of $(B indexes) and at least one
     $(B interval) with an overall length equal to `N`.)
     $(STD `[]`, `[3..$,0..3,0..$-1]`, `[2,0..$,1]`))
-$(TR $(TD An $(B indexed slice) is syntax sugar for $(SUBREF indexed, topology) and $(SUBREF cartesian, topology).
+$(TR $(TD An $(B indexed slice) is syntax sugar for $(SUBREF topology, indexed) and $(SUBREF topology, cartesian).)
     $(STD `[anNdslice]`, `[anNdsliceForCartesian0, anNdsliceForCartesian1]`))
 )
 
