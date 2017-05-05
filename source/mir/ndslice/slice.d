@@ -1201,51 +1201,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(slice.shape == cast(size_t[3])[0, 0, 0]);
     }
 
-    //package void popFront(size_t dimension)
-    //{
-    //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
-    //    assert(_lengths[dimension], ": length!dim should be greater than 0.");
-    //    _lengths[dimension]--;
-    //    _iterator += _strides[dimension];
-    //}
-
-
-    //package void popBack(size_t dimension)
-    //{
-    //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
-    //    assert(_lengths[dimension], ": length!dim should be greater than 0.");
-    //    _lengths[dimension]--;
-    //}
-
-    //package void popFrontExactly(size_t dimension, size_t n)
-    //{
-    //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
-    //    assert(n <= _lengths[dimension], __FUNCTION__ ~ ": n should be less than or equal to length!dim");
-    //    _lengths[dimension] -= n;
-    //    _iterator += _strides[dimension] * n;
-    //}
-
-    //package void popBackExactly(size_t dimension, size_t n)
-    //{
-    //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
-    //    assert(n <= _lengths[dimension], __FUNCTION__ ~ ": n should be less than or equal to length!dim");
-    //    _lengths[dimension] -= n;
-    //}
-
-    //package void popFrontN(size_t dimension, size_t n)
-    //{
-    //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
-    //    import std.algorithm.comparison : min;
-    //    popFrontExactly(dimension, min(n, _lengths[dimension]));
-    //}
-
-    //package void popBackN(size_t dimension, size_t n)
-    //{
-    //    assert(dimension < N, __FUNCTION__ ~ ": dimension should be less than N = " ~ N.stringof);
-    //    import std.algorithm.comparison : min;
-    //    popBackExactly(dimension, min(n, _lengths[dimension]));
-    //}
-
     /++
     Returns: `true` if for any dimension the length equals to `0`, and `false` otherwise.
     +/
@@ -1443,52 +1398,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
     }
-
-    /////ditto
-    //auto ref opCall()(size_t[N] _indexes...)
-    //{
-    //    static if (packs.length == 1)
-    //        return _iterator[mathIndexStride(_indexes)];
-    //    else
-    //        return DeepElemType(_lengths[N .. $], _strides[N .. $], _iterator + mathIndexStride(_indexes));
-    //}
-
-    //static if (doUnittest)
-    /////
-    //pure nothrow unittest
-    //{
-    //    auto slice = slice!int(5, 2);
-
-    //    auto q = &slice[3, 1];      // D & C order
-    //    auto p = &slice(1, 3);      // Math & Fortran order
-    //    assert(p is q);
-    //    *q = 4;
-    //    assert(slice[3, 1] == 4);   // D & C order
-    //    assert(slice(1, 3) == 4);   // Math & Fortran order
-
-    //    size_t[2] indexP = [1, 3];
-    //    size_t[2] indexQ = [3, 1];
-    //    assert(slice[indexQ] == 4);  // D & C order
-    //    assert(slice(indexP) == 4);  // Math & Fortran order
-    //}
-
-    //static if (doUnittest)
-    //pure nothrow unittest
-    //{
-    //    // check with different N
-    //    import mir.ndslice.topology : pack, iota;
-    //    auto pElements = iota(2, 3, 4, 5).pack!2;
-    //    import std.range : iota;
-    //    import std.algorithm.comparison : equal;
-
-    //    // D & C order
-    //    assert(pElements[$-1, $-1][$-1].equal([5].iota(115)));
-    //    assert(pElements[[1, 2]][$-1].equal([5].iota(115)));
-
-    //    // Math & Fortran
-    //    assert(pElements(2, 1)[$-1].equal([5].iota(115)));
-    //    assert(pElements([2, 1])[$-1].equal([5].iota(115)));
-    //}
 
     /++
     $(BOLD Partially or fully defined slice.)
