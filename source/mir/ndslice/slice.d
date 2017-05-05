@@ -2698,5 +2698,5 @@ unittest
 unittest
 {
     import mir.ndslice.topology: canonical, iota;
-    static assert(kindOf!(typeof(iota([1, 2]).canonical.opIndex(1))) == Contiguous);
+    static assert(kindOf!(typeof(iota([1, 2]).canonical[1])) == Contiguous);
 }
