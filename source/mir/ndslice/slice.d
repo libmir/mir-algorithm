@@ -404,6 +404,8 @@ $(TR $(TD A $(B fully defined slice) is an empty sequence
     or a sequence composed of $(B indexes) and at least one
     $(B interval) with an overall length equal to `N`.)
     $(STD `[]`, `[3..$,0..3,0..$-1]`, `[2,0..$,1]`))
+$(TR $(TD An $(B indexed slice) is syntax sugar for $(SUBREF indexed, topology) and $(SUBREF cartesian, topology).
+    $(STD `[anNdslice]`, `[anNdsliceForCartesian0, anNdsliceForCartesian1]`))
 )
 
 $(H3 Internal Binary Representation)
@@ -577,6 +579,11 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         || Slices.length == packs[0]
         && PureIndexLength!Slices < packs[0]
         && allSatisfy!(templateOr!(isIndex, is_Slice), Slices);
+
+    enum isIndexedSlice(Slices...) =
+           Slices.length
+        && Slices.length <= packs[0]
+        && allSatisfy!(templateOr!isSlice, Slices);
 
     ///
     public size_t[N] _lengths;
@@ -1493,6 +1500,81 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// Partially defined slice
         auto row = slice[3];
         auto col = slice[0..$, 1];
+    }
+
+    /++
+    $(BOLD Indexed slice.)
+    +/
+    auto opIndex(Slices...)(Slices slices)
+        if (isIndexedSlice!Slices)
+    {
+        import mir.ndslice.topology: indexed, cartesian, map;
+        static if (Slices.length == 1)
+            alias index = slices[0];
+        else
+            auto index = slices.cartesian;
+        return this.indexed(index);
+    }
+
+    ///
+    pure nothrow unittest
+    {
+        import mir.ndslice.allocation: slice;
+        auto sli = slice!int(4, 3);
+        auto idx = slice!(size_t[2])(3);
+        idx[] = [
+            cast(size_t[2])[0, 2],
+            cast(size_t[2])[3, 1],
+            cast(size_t[2])[2, 0]];
+
+        // equivalent to:
+        // import mir.ndslice.topology: indexed;
+        // sli.indexed(indx)[] = 1;
+        sli[idx][] = 1;
+
+        assert(sli == [
+            [0, 0, 1],
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 1, 0],
+            ]);
+
+        foreach (row; sli[[1, 3].sliced])
+            row[] += 2;
+
+        assert(sli == [
+            [0, 0, 1],
+            [2, 2, 2], // <--  += 2
+            [1, 0, 0],
+            [2, 3, 2], // <--  += 2
+            ]);
+    }
+
+    ///
+    pure nothrow unittest
+    {
+        import mir.ndslice.topology: iota;
+        import mir.ndslice.allocation: slice;
+        auto sli = slice!int(5, 6);
+
+        // equivalent to
+        // import mir.ndslice.topology: indexed, cartesian;
+        // auto a = [0, sli.length!0 / 2, sli.length!0 - 1].sliced;
+        // auto b = [0, sli.length!1 / 2, sli.length!1 - 1].sliced;
+        // auto c = cartesian(a, b);
+        // auto minor = sli.indexed(c);
+        auto minor = sli[[0, $ / 2, $ - 1].sliced, [0, $ / 2, $ - 1].sliced];
+
+        minor[] = iota([3, 3], 1);
+
+        assert(sli == [
+        //   ↓     ↓        ↓︎
+            [1, 0, 0, 2, 0, 3], // <---
+            [0, 0, 0, 0, 0, 0],
+            [4, 0, 0, 5, 0, 6], // <---
+            [0, 0, 0, 0, 0, 0],
+            [7, 0, 0, 8, 0, 9], // <---
+            ]);
     }
 
     static if (isMutable!(PureThis.DeepElemType))
