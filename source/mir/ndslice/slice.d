@@ -1532,9 +1532,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         /++
         Assignment of a value of `Slice` type to a $(B fully defined slice).
-
-        Optimization:
-            SIMD instructions may be used if both slices have the last stride equals to 1.
         +/
         void opIndexAssign(SliceKind rkind, size_t[] rpacks, RIterator, Slices...)(Slice!(rkind, rpacks, RIterator) value, Slices slices)
             if (isFullPureSlice!Slices)
@@ -1641,9 +1638,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         /++
         Assignment of a regular multidimensional array to a $(B fully defined slice).
-
-        Optimization:
-            SIMD instructions may be used if the slice has the last stride equals to 1.
         +/
         void opIndexAssign(T, Slices...)(T[] value, Slices slices)
             if (isFullPureSlice!Slices
@@ -1730,9 +1724,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined slice).
-
-        Optimization:
-            SIMD instructions may be used if the slice has the last stride equals to 1.
         +/
         void opIndexAssign(T, Slices...)(T value, Slices slices)
             if (isFullPureSlice!Slices
@@ -1846,9 +1837,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         /++
         Op Assignment `op=` of a value of `Slice` type to a $(B fully defined slice).
-
-        Optimization:
-            SIMD instructions may be used if both slices have the last stride equals to 1.
         +/
         void opIndexOpAssign(string op, SliceKind kind, size_t[] rpacks, RIterator, Slices...)
             (Slice!(kind, rpacks, RIterator) value, Slices slices)
@@ -1916,9 +1904,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         /++
         Op Assignment `op=` of a regular multidimensional array to a $(B fully defined slice).
-
-        Optimization:
-            SIMD instructions may be used if the slice has the last stride equals to 1.
         +/
         void opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices)
             if (isFullPureSlice!Slices
@@ -1989,9 +1974,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined slice).
-
-        Optimization:
-            SIMD instructions may be used if the slice has the last stride equals to 1.
        +/
         void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices)
             if (isFullPureSlice!Slices
