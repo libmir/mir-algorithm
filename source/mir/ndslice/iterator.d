@@ -34,6 +34,38 @@ import mir.ndslice.internal;
 
 @fastmath:
 
+enum std_ops = q{
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    { mixin(op ~ "_iterator;"); }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    { mixin("_iterator " ~ op ~ "= index;"); }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return this._iterator - right._iterator; }
+
+    bool opEquals()(ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
+};
+
 /++
 Step counter.
 
@@ -519,10 +551,6 @@ struct MapIterator(Iterator, alias fun)
             return fun(*_iterator);
     }
 
-    void opUnary(string op)()
-        if (op == "--" || op == "++")
-    { mixin(op ~ "_iterator;"); }
-
     auto ref opIndex()(ptrdiff_t index)
     {
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
@@ -570,31 +598,7 @@ struct MapIterator(Iterator, alias fun)
         }
     }
 
-    void opOpAssign(string op)(ptrdiff_t index)
-        if (op == "-" || op == "+")
-    { mixin("_iterator " ~ op ~ "= index;"); }
-
-    auto opBinary(string op)(ptrdiff_t index)
-        if (op == "+" || op == "-")
-    {
-        auto ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
-    { return this._iterator - right._iterator; }
-
-    bool opEquals()(ref const typeof(this) right) const
-    { return this._iterator == right._iterator; }
-
-    ptrdiff_t opCmp()(ref const typeof(this) right) const
-    {
-        static if (isPointer!Iterator)
-            return this._iterator - right._iterator;
-        else
-            return this._iterator.opCmp(right._iterator);
-    }
+    mixin(std_ops);
 }
 
 /++
@@ -632,41 +636,12 @@ struct ConvolutionIterator(Iterator, size_t params, alias fun)
         return mixin("fun(" ~ _iotaArgs!(params, "_iterator[", "], ") ~ ")");
     }
 
-    void opUnary(string op)()
-        if (op == "--" || op == "++")
-    { mixin(op ~ "_iterator;"); }
-
     auto ref opIndex()(ptrdiff_t index)
     {
-        auto s = this + index;
-        return *s;
+        return mixin("fun(" ~ _iotaArgs!(params, "_iterator[index + ", "], ") ~ ")");
     }
 
-    void opOpAssign(string op)(ptrdiff_t index)
-        if (op == "-" || op == "+")
-    { mixin("_iterator " ~ op ~ "= index;"); }
-
-    auto opBinary(string op)(ptrdiff_t index)
-        if (op == "+" || op == "-")
-    {
-        auto ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
-    { return this._iterator - right._iterator; }
-
-    bool opEquals()(ref const typeof(this) right) const
-    { return this._iterator == right._iterator; }
-
-    ptrdiff_t opCmp()(ref const typeof(this) right) const
-    {
-        static if (isPointer!Iterator)
-            return this._iterator - right._iterator;
-        else
-            return this._iterator.opCmp(right._iterator);
-    }
+    mixin(std_ops);
 }
 
 ///
@@ -727,10 +702,6 @@ struct IndexIterator(Iterator, Field)
             return _field[*_iterator];
     }
 
-    void opUnary(string op)()
-        if (op == "--" || op == "++")
-    { mixin(op ~ "_iterator;"); }
-
     auto ref opIndex(ptrdiff_t index)
     {
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
@@ -778,31 +749,7 @@ struct IndexIterator(Iterator, Field)
         }
     }
 
-    void opOpAssign(string op)(ptrdiff_t index)
-        if (op == "-" || op == "+")
-    { mixin("_iterator " ~ op ~ "= index;"); }
-
-    auto opBinary(string op)(ptrdiff_t index)
-        if (op == "+" || op == "-")
-    {
-        auto ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
-    { return this._iterator - right._iterator; }
-
-    bool opEquals()(ref const typeof(this) right) const
-    { return this._iterator == right._iterator; }
-
-    ptrdiff_t opCmp()(ref const typeof(this) right) const
-    {
-        static if (isPointer!Iterator)
-            return this._iterator - right._iterator;
-        else
-            return this._iterator.opCmp(right._iterator);
-    }
+    mixin(std_ops);
 }
 
 /++
@@ -826,38 +773,10 @@ struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
     auto opUnary(string op : "*")()
     { return Elem(_lengths, _strides, _iterator); }
 
-    void opUnary(string op)()
-        if (op == "--" || op == "++")
-    { mixin(op ~ "_iterator;"); }
-
     auto opIndex()(ptrdiff_t index)
     { return Elem(_lengths, _strides, _iterator + index); }
 
-    void opOpAssign(string op)(ptrdiff_t index)
-        if (op == "-" || op == "+")
-    { mixin("_iterator " ~ op ~ "= index;"); }
-
-    auto opBinary(string op)(ptrdiff_t index)
-        if (op == "+" || op == "-")
-    {
-        auto ret = this;
-        mixin(`ret ` ~ op ~ `= index;`);
-        return ret;
-    }
-
-    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
-    { return this._iterator - right._iterator; }
-
-    bool opEquals()(ref const typeof(this) right) const
-    { return this._iterator == right._iterator; }
-
-    ptrdiff_t opCmp()(ref const typeof(this) right) const
-    {
-        static if (isPointer!Iterator)
-            return this._iterator - right._iterator;
-        else
-            return this._iterator.opCmp(right._iterator);
-    }
+    mixin(std_ops);
 }
 
 public auto FieldIterator__map(Field, alias fun)(ref FieldIterator!(Field) it)
