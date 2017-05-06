@@ -608,6 +608,78 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
        return MapIterator!(Iterator, fun)(iterator);
 }
 
+auto ConvolutionIterator__map(Iterator, size_t params, alias fun0, alias fun)(ref ConvolutionIterator!(Iterator, params, fun0) it)
+{
+    return ConvolutionIterator!(Iterator, params, fun)(it._iterator);
+}
+
+/++
+`ConvolutionIterator` is used by $(SUBREF topology, map).
++/
+struct ConvolutionIterator(Iterator, size_t params, alias fun)
+    if (params > 1)
+{
+@fastmath:
+    ///
+    Iterator _iterator;
+
+    import mir.functional: pipe;
+    ///
+    static alias __map(alias fun1) = ConvolutionIterator__map!(Iterator, params, fun, pipe!(fun, fun1));
+
+    auto ref opUnary(string op : "*")()
+    {
+        return mixin("fun(" ~ _iotaArgs!(params, "_iterator[", "], ") ~ ")");
+    }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    { mixin(op ~ "_iterator;"); }
+
+    auto ref opIndex()(ptrdiff_t index)
+    {
+        auto s = this + index;
+        return *s;
+    }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    { mixin("_iterator " ~ op ~ "= index;"); }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return this._iterator - right._iterator; }
+
+    bool opEquals()(ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
+}
+
+///
+unittest
+{
+    import mir.functional: naryFun;
+    auto data = [1, 3, 8, 18];
+    auto diff = ConvolutionIterator!(int*, 2, naryFun!"b - a")(data.ptr);
+    assert(*diff == 2);
+    assert(diff[1] == 5);
+    assert(diff[2] == 10);
+}
+
 auto IndexIterator__map(Iterator, Field, alias fun)(ref IndexIterator!(Iterator, Field) it)
 {
     import mir.ndslice.field: mapField;
