@@ -12,6 +12,13 @@ $(T2 count, Counts elements in a slices according to a predicate.)
 $(T2 each, Iterates all elements.)
 $(T2 equal, Compares two slices for equality.)
 $(T2 find, Finds backward index.)
+$(T2 findIndex, Finds index.)
+$(T2 minmaxIndex, Finds indexes of the minimum and the maximum.)
+$(T2 minmaxPos, Finds backward indexes of the minimum and the maximum.)
+$(T2 minIndex, Finds index of the minimum.)
+$(T2 maxIndex, Finds index of the maximum.)
+$(T2 minPos, Finds backward index of the minimum.)
+$(T2 maxPos, Finds backward index of the maximum.)
 $(T2 reduce, Accumulates all elements.)
 )
 
@@ -381,7 +388,345 @@ unittest
     assert(i == 0);
 }
 
-size_t findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slices slices)
+bool minPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[packs[0]] backwardIndex, ref Iterator iterator, Slice!(kind, packs, Iterator) slice)
+    if (packs.length == 1)
+{
+    auto bis = backwardIndex[0];
+    do
+    {
+        static if (slice.shape.length == 1)
+        {
+            if (fun(*slice._iterator, *iterator))
+            {
+                backwardIndex[0] = slice.length;
+                iterator = slice._iterator;
+            }
+        }
+        else
+        {
+            if (minPosImpl!(fun, kind, [packs[0] - 1], Iterator)(backwardIndex[1 .. $], iterator, slice.front))
+            {
+                backwardIndex[0] = slice.length;
+            }
+        }
+        slice.popFront;
+    }
+    while(!slice.empty);
+    return bis != backwardIndex[0];
+}
+
+bool[2] minmaxPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[2][packs[0]] backwardIndex, ref Iterator[2] iterator, Slice!(kind, packs, Iterator) slice)
+    if (packs.length == 1)
+{
+    size_t[2] bis = backwardIndex[0];
+    do
+    {
+        static if (slice.shape.length == 1)
+        {
+            if (fun(*slice._iterator, *iterator[0]))
+            {
+                backwardIndex[0][0] = slice.length;
+                iterator[0] = slice._iterator;
+            }
+            else
+            if (fun(*iterator[1], *slice._iterator))
+            {
+                backwardIndex[0][1] = slice.length;
+                iterator[1] = slice._iterator;
+            }
+        }
+        else
+        {
+            auto r = minmaxPosImpl!(fun, kind, [packs[0] - 1], Iterator)(backwardIndex[1 .. $], iterator, slice.front);
+            if (r[0])
+            {
+                backwardIndex[0][0] = slice.length;
+            }
+            if (r[1])
+            {
+                backwardIndex[0][1] = slice.length;
+            }
+        }
+        slice.popFront;
+    }
+    while(!slice.empty);
+    return [bis[0] != backwardIndex[0][0], bis[1] != backwardIndex[0][1]];
+}
+
+/++
+Finds a backward indexes such that
+`slice.backward(indexes[0])` is minimal and `slice.backward(indexes[1])` is maximal elements in the slice.
+
+Params:
+    pred = A predicate.
+
+See_also:
+    $(LREF minmaxIndex),
+    $(LREF minPos),
+    $(LREF maxPos),
+    $(REF Slice.backward, mir,ndslice,slice).
++/
+template minmaxPos(alias pred = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!pred, pred))
+    /++
+    Params:
+        slice = ndslice.
+    Returns:
+        Multidimensional backward index such that element is minimal(maximal).
+        Backward index equals zeros, if slice is empty.
+    +/
+    @fastmath size_t[packs[0]][2] minmaxPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        import mir.ndslice.topology: map;
+        typeof(return) pret;
+        if (!slice.anyEmpty)
+        {
+            size_t[2][packs[0]] ret;
+            auto it = slice.map!"a"._iterator;
+            Iterator[2] iterator = [it, it];
+            minmaxPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
+            foreach (i; Iota!(packs[0]))
+            {
+                pret[0][i] = ret[i][0];
+                pret[1][i] = ret[i][1];
+            }
+        }
+        return pret;
+    }
+    else
+        alias minmaxPos = .minmaxPos!(naryFun!pred);
+}
+
+///
+unittest
+{
+    auto s = [
+        2, 6, 4, -3,
+        0, -4, -3, 3,
+        -3, -2, 7, 2,
+        ].sliced(3, 4);
+
+    auto backwardIndex = s.minmaxPos;
+
+    assert(backwardIndex == [[2, 3], [1, 2]]);
+    assert(s.backward(backwardIndex[0]) == -4);
+    assert(s.backward(backwardIndex[1]) ==  7);
+}
+
+/++
+Finds a backward indexes such that
+`slice[indexes[0]]` is minimal and `slice[indexes[1]]` is maximal elements in the slice.
+
+Params:
+    pred = A predicate.
+
+See_also:
+    $(LREF minmaxIndex),
+    $(LREF minPos),
+    $(LREF maxPos),
+    $(REF Slice.backward, mir,ndslice,slice).
++/
+template minmaxIndex(alias pred = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!pred, pred))
+    /++
+    Params:
+        slice = ndslice.
+    Returns:
+        Multidimensional backward indexes such that elements are minimal and maximal.
+        Backward index equals zeros, if slice is empty.
+    +/
+    @fastmath size_t[packs[0]][2] minmaxIndex(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        import mir.ndslice.topology: map;
+        typeof(return) pret = size_t.max;
+        if (!slice.anyEmpty)
+        {
+            size_t[2][packs[0]] ret = [slice.shape, slice.shape];
+            auto it = slice.map!"a"._iterator;
+            Iterator[2] iterator = [it, it];
+            minmaxPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
+            foreach (i; Iota!(packs[0]))
+            {
+                pret[0][i] = slice._lengths[i] - ret[i][0];
+                pret[1][i] = slice._lengths[i] - ret[i][1];
+            }
+        }
+        return pret;
+    }
+    else
+        alias minmaxIndex = .minmaxIndex!(naryFun!pred);
+}
+
+///
+unittest
+{
+    auto s = [
+        2, 6, 4, -3,
+        0, -4, -3, 3,
+        -3, -2, 7, 8,
+        ].sliced(3, 4);
+
+    auto indexes = s.minmaxIndex;
+
+    assert(indexes == [[1, 1], [2, 3]]);
+    assert(s[indexes[0]] == -4);
+    assert(s[indexes[1]] ==  8);
+}
+
+/++
+Finds a backward index such that
+`slice.backward(index)` is minimal(maximal).
+
+Params:
+    pred = A predicate.
+
+See_also:
+    $(LREF minIndex),
+    $(LREF maxPos),
+    $(LREF maxIndex),
+    $(REF Slice.backward, mir,ndslice,slice).
++/
+template minPos(alias pred = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!pred, pred))
+    /++
+    Params:
+        slice = ndslice.
+    Returns:
+        Multidimensional backward index such that element is minimal(maximal).
+        Backward index equals zeros, if slice is empty.
+    +/
+    @fastmath size_t[packs[0]] minPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        typeof(return) ret;
+        import mir.ndslice.topology: map;
+        if (!slice.anyEmpty)
+        {
+            auto iterator = slice.map!"a"._iterator;
+            minPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
+        }
+        return ret;
+    }
+    else
+        alias minPos = .minPos!(naryFun!pred);
+}
+
+/// ditto
+template maxPos(alias pred = "a < b")
+{
+    import mir.functional: naryFun, reverseArgs;
+    alias maxPos = minPos!(reverseArgs!(naryFun!pred));
+}
+
+///
+unittest
+{
+    auto s = [
+        2, 6, 4, -3,
+        0, -4, -3, 3,
+        -3, -2, 7, 2,
+        ].sliced(3, 4);
+
+    auto backwardIndex = s.minPos;
+
+    assert(backwardIndex == [2, 3]);
+    assert(s.backward(backwardIndex) == -4);
+
+    backwardIndex = s.maxPos;
+
+    assert(backwardIndex == [1, 2]);
+    assert(s.backward(backwardIndex) == 7);
+}
+
+/++
+Finds an index such that
+`slice[index]` is minimal(maximal).
+
+Params:
+    pred = A predicate.
+
+See_also:
+    $(LREF minIndex),
+    $(LREF maxPos),
+    $(LREF maxIndex).
++/
+template minIndex(alias pred = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!pred, pred))
+    /++
+    Params:
+        slice = ndslice.
+    Returns:
+        Multidimensional index such that element is minimal(maximal).
+        Index elements equal to `size_t.max`, if slice is empty.
+    +/
+    @fastmath size_t[packs[0]] minIndex(SliceKind kind, ptrdiff_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        size_t[packs[0]] ret = size_t.max;
+        import mir.ndslice.topology: map;
+        if (!slice.anyEmpty)
+        {
+            ret = slice.shape;
+            auto iterator = slice.map!"a"._iterator;
+            minPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
+            foreach (i; Iota!(packs[0]))
+                ret[i] = slice._lengths[i] - ret[i];
+        }
+        return ret;
+    }
+    else
+        alias minIndex = .minIndex!(naryFun!pred);
+}
+
+/// ditto
+template maxIndex(alias pred = "a < b")
+{
+    import mir.functional: naryFun, reverseArgs;
+    alias maxIndex = minIndex!(reverseArgs!(naryFun!pred));
+}
+
+///
+unittest
+{
+    auto s = [
+        2, 6, 4, -3,
+        0, -4, -3, 3,
+        -3, -2, 7, 8,
+        ].sliced(3, 4);
+
+    auto index = s.minIndex;
+
+    assert(index == [1, 1]);
+    assert(s[index] == -4);
+
+    index = s.maxIndex;
+
+    assert(index == [2, 3]);
+    assert(s[index] == 8);
+}
+
+///
+unittest
+{
+    auto s = [
+        -8, 6, 4, -3,
+        0, -4, -3, 3,
+        -3, -2, 7, 8,
+        ].sliced(3, 4);
+
+    auto index = s.minIndex;
+
+    assert(index == [0, 0]);
+    assert(s[index] == -8);
+}
+
+bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slices slices)
     if (Slices.length && allSatisfy!(isSlice, Slices))
 {
     do
@@ -391,7 +736,7 @@ size_t findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Sli
             if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
             {
                 backwardIndex[0] = slices[0].length;
-                return 1;
+                return true;
             }
         }
         else
@@ -399,19 +744,73 @@ size_t findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Sli
             if (mixin("findImpl!fun(backwardIndex[1 .. $], " ~ frontOf!(Slices.length) ~ ")"))
             {
                 backwardIndex[0] = slices[0].length;
-                return 1;
+                return true;
             }
         }
         foreach(ref slice; slices)
             slice.popFront;
     }
     while(!slices[0].empty);
-    return 0;
+    return false;
 }
 
 /++
-Finds a backward index for which
-`pred(slices[0].backward(index), ..., slices[$-1].backward(index))` equals `true`.
+Finds an index such that
+`pred(slices[0][index], ..., slices[$-1][index])` is `true`.
+
+Params:
+    pred = A predicate.
+
+See_also:
+    $(LREF find),
+    $(LREF any).
++/
+template findIndex(alias pred)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!pred, pred))
+    /++
+    Params:
+        slices = One or more slices.
+    Returns:
+        Multidimensional index such that the predicate is true.
+        Index equals `size_t.max`, if the predicate evaluates `false` for all indexes.
+    Constraints:
+        All slices must have the same shape.
+    +/
+    @fastmath size_t[isSlice!(Slices[0])[0]] findIndex(Slices...)(Slices slices)
+        if (Slices.length && allSatisfy!(isSlice, Slices))
+    {
+        slices.checkShapesMatch;
+        typeof(return) ret = -1;
+        if (!slices[0].anyEmpty && findImpl!pred(ret, slices))
+            foreach (i; Iota!((isSlice!(Slices[0])[0])))
+                ret[i] = slices[0]._lengths[i] - ret[i];
+        return ret;
+    }
+    else
+        alias findIndex = .findIndex!(naryFun!pred);
+}
+
+///
+@safe pure nothrow @nogc unittest
+{
+    import mir.ndslice.topology : iota;
+    // 0 1 2
+    // 3 4 5
+    auto sl = iota(2, 3);
+    size_t[2] index = sl.findIndex!"a == 3";
+
+    assert(sl[index] == 3);
+
+    index = sl.findIndex!"a == 6";
+    assert(index[0] == size_t.max);
+    assert(index[1] == size_t.max);
+}
+
+/++
+Finds a backward index such that
+`pred(slices[0].backward(index), ..., slices[$-1].backward(index))` is `true`.
 
 Params:
     pred = A predicate.
@@ -435,9 +834,9 @@ else
 --------
 
 See_also:
-    $(LREF any)
-
-    $(REF Slice.backward, mir,ndslice,slice)
+    $(LREF findIndex),
+    $(LREF any),
+    $(REF Slice.backward, mir,ndslice,slice).
 +/
 template find(alias pred)
 {
@@ -447,7 +846,7 @@ template find(alias pred)
     Params:
         slices = One or more slices.
     Returns:
-        The variable passing by reference to be filled with the multidimensional backward index for which the predicate is true.
+        Multidimensional backward index such that the predicate is true.
         Backward index equals zeros, if the predicate evaluates `false` for all indexes.
     Constraints:
         All slices must have the same shape.
