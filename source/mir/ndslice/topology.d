@@ -1712,7 +1712,7 @@ See_also: $(LREF)
 auto linspace(T, size_t N)(size_t[N] lengths, T[2][N] intervals...)
     if (N && (isFloatingPoint!T || isComplex!T))
 {
-    Repeat!(N, LinspaceField!T) fields = void;
+    Repeat!(N, LinspaceField!T) fields;
     foreach(i; Iota!N)
     {
         assert(lengths[i] > 1, "linspace: all lengths must be greater then 1.");

@@ -201,7 +201,7 @@ struct Concatenation(size_t dim, Slices...)
     /// Shape of the concatenation.
     size_t[N] shape()() const @property
     {
-        typeof(return) ret = void;
+        typeof(return) ret;
         foreach(i; Iota!N)
             ret[i] = length!i;
         return ret;
@@ -394,7 +394,7 @@ template pad(size_t[] dimensions, string[] directions)
         enum q = directions[$ - 1];
         enum N = typeof(S.shape).length;
 
-        size_t[N] len = void;
+        size_t[N] len;
         auto _len = s.shape;
         foreach(i; Iota!(len.length))
             static if (i != d)

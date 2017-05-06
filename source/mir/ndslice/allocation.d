@@ -391,7 +391,7 @@ auto shape(T)(T[] array, ref int err)
     }
     else
     {
-        size_t[1] ret = void;
+        size_t[1] ret;
         ret[0] = array.length;
     }
     err = 0;

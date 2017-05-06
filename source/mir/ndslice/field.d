@@ -264,7 +264,7 @@ struct ndIotaField(size_t N)
 
     size_t[N] opIndex()(size_t index) const
     {
-        size_t[N] indexes = void;
+        size_t[N] indexes;
         foreach_reverse (i; Iota!(N - 1))
         {
             indexes[i + 1] = index % _lengths[i];
@@ -309,7 +309,7 @@ struct LinspaceField(T)
 
     size_t[1] shape()() @property
     {
-        size_t[1] ret = void;
+        size_t[1] ret;
         ret[0] = _length;
         return ret;
     }

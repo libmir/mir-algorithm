@@ -51,7 +51,7 @@ unittest
         Quaternion opBinary(string op)(auto ref const Quaternion rhs) const
             if (op == "+" || op == "-")
         {
-            Quaternion ret = void;
+            Quaternion ret ;
             foreach (i, ref e; ret.rijk)
                 mixin("e = rijk[i] "~op~" rhs.rijk[i];");
             return ret;
@@ -446,7 +446,7 @@ struct Summator(T, Summation summation)
         static import std.math;
     private:
         enum F M = (cast(F)(2)) ^^ (T.max_exp - 1);
-        F[16] scopeBufferArray = void;
+        F[16] scopeBufferArray = 0;
         ScopeBuffer!F partials;
         //sum for NaN and infinity.
         F s;
@@ -472,7 +472,7 @@ struct Summator(T, Summation summation)
         }
         body
         {
-            bool _break = void;
+            bool _break;
             foreach_reverse (i, y; partials)
             {
                 s = partialsReducePred(s, y, i ? partials[i-1] : 0, _break);
@@ -554,23 +554,23 @@ struct Summator(T, Summation summation)
     else
     static if (summation == Summation.kb2)
     {
-        F s = void;
-        F cs = void;
-        F ccs = void;
+        F s = 0;
+        F cs = 0;
+        F ccs = 0;
     }
     else
     static if (summation == Summation.kbn)
     {
-        F s = void;
-        F c = void;
+        F s = 0;
+        F c = 0;
     }
     else
     static if (summation == Summation.kahan)
     {
-        F s = void;
-        F c = void;
-        F y = void; // do not declare in the loop/put (algo can be used for matrixes and etc)
-        F t = void; // ditto
+        F s = F.init;
+        F c = F.init;
+        F y = F.init; // do not declare in the loop/put (algo can be used for matrixes and etc)
+        F t = F.init; // ditto
     }
     else
     static if (summation == Summation.pairwise)
@@ -580,22 +580,22 @@ struct Summator(T, Summation summation)
         static if (fastPairwise)
         {
             enum registersCount= 16;
-            F[size_t.sizeof * 8] partials = void;
+            F[size_t.sizeof * 8] partials = F.init;
         }
         else
         {
-            F[size_t.sizeof * 8] partials = void;
+            F[size_t.sizeof * 8] partials = F.init;
         }
     }
     else
     static if (summation == Summation.naive)
     {
-        F s = void;
+        F s = F.init;
     }
     else
     static if (summation == Summation.fast)
     {
-        F s = void;
+        F s = F.init;
     }
     else
     static assert(0, "Unsupported summation type for std.numeric.Summator.");
@@ -759,7 +759,7 @@ public:
             static if (isFloatingPoint!F)
             {
                 F t = s + x;
-                F c = void;
+                F c = 0;
                 if (fabs(s) >= fabs(x))
                 {
                     F d = s - t;
@@ -911,7 +911,7 @@ public:
     {
         static if (summation == Summation.pairwise && fastPairwise && isDynamicArray!Range)
         {
-            F[registersCount] v = void;
+            F[registersCount] v;
             foreach (i, n; chainSeq!registersCount)
             {
                 if (r.length >= n * 2) do
@@ -1180,7 +1180,7 @@ public:
         else
         static if (summation == Summation.precise)
         {
-            typeof(return) ret = void;
+            auto ret = typeof(return).init;
             ret.s = s;
             ret.o = o;
             ret.partials = scopeBuffer(ret.scopeBufferArray);
@@ -1204,7 +1204,7 @@ public:
         else
         static if (summation == Summation.kb2)
         {
-            typeof(return) ret = void;
+            auto ret = typeof(return).init;
             ret.s = s;
             ret.cs = cs;
             ret.ccs = ccs;
@@ -1213,7 +1213,7 @@ public:
         else
         static if (summation == Summation.kbn)
         {
-            typeof(return) ret = void;
+            auto ret = typeof(return).init;
             ret.s = s;
             ret.c = c;
             return ret;
@@ -1221,7 +1221,7 @@ public:
         else
         static if (summation == Summation.kahan)
         {
-            typeof(return) ret = void;
+            auto ret = typeof(return).init;
             ret.s = s;
             ret.c = c;
             return ret;
@@ -1229,7 +1229,7 @@ public:
         else
         static if (summation == Summation.pairwise)
         {
-            typeof(return) ret = void;
+            auto ret = typeof(return).init;
             ret.counter = counter;
             ret.index = index;
             foreach (i; 0 .. index)
@@ -1239,14 +1239,14 @@ public:
         else
         static if (summation == Summation.naive)
         {
-            typeof(return) ret = void;
+            auto ret = typeof(return).init;
             ret.s = s;
             return ret;
         }
         else
         static if (summation == Summation.fast)
         {
-            typeof(return) ret = void;
+            auto ret = typeof(return).init;
             ret.s = s;
             return ret;
         }

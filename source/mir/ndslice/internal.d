@@ -111,7 +111,7 @@ mixin template _DefineRet_()
     static if (hasElaborateAssign!(typeof(Ret._iterator)))
         Ret ret;
     else
-        Ret ret = void;
+        Ret ret = Ret.init;
 }
 
 
@@ -277,4 +277,4 @@ pure nothrow unittest
     assert(lengthsProduct([3, 4, 5]) == 60);
 }
 
-struct _Slice() { size_t i = void, j = void; }
+struct _Slice() { size_t i, j; }

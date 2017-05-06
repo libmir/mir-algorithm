@@ -74,7 +74,7 @@ struct Cartesian(NdFields...)
     ///
     size_t[N] shape()() @property
     {
-        typeof(return) ret = void;
+        typeof(return) ret;
         foreach(f, ref field; _fields)
         {
             static if (hasShape!(NdFields[f]))
@@ -163,7 +163,7 @@ struct Kronecker(alias fun, NdFields...)
         }
         else
         {
-            size_t[1] ret = void;
+            size_t[1] ret;
             ret[0] = _fields[0].length;
             foreach(ref field; _fields[1 .. $])
                 ret[0] *= field.length;
@@ -184,9 +184,9 @@ struct Kronecker(alias fun, NdFields...)
     auto ref opIndex()(size_t[N] indexes...)
     {   
         static if (N > 1)
-            size_t[N][NdFields.length] ind = void;
+            size_t[N][NdFields.length] ind;
         else
-            size_t[NdFields.length] ind = void;
+            size_t[NdFields.length] ind;
         foreach_reverse (f, ref field; _fields)
         {
             static if (f)
@@ -197,7 +197,7 @@ struct Kronecker(alias fun, NdFields...)
                 }
                 else
                 {
-                    size_t[1] s = void;
+                    size_t[1] s;
                     s[0] = field.length;
                 }
                 static if (N > 1)
