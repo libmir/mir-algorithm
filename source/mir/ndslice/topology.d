@@ -2602,7 +2602,7 @@ unittest
 Differences between vector elements.
 Params:
     lag = an integer indicating which lag to use
-Returns: lazy difference 1d-slice.
+Returns: lazy differences.
 
 See_also: $(LREF slide).
 +/
