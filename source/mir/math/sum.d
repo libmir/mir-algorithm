@@ -554,15 +554,15 @@ struct Summator(T, Summation summation)
     else
     static if (summation == Summation.kb2)
     {
-        F s = 0;
-        F cs = 0;
-        F ccs = 0;
+        F s = F.init;
+        F cs = F.init;
+        F ccs = F.init;
     }
     else
     static if (summation == Summation.kbn)
     {
-        F s = 0;
-        F c = 0;
+        F s = F.init;
+        F c = F.init;
     }
     else
     static if (summation == Summation.kahan)
