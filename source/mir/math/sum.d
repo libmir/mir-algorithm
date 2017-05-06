@@ -554,23 +554,23 @@ struct Summator(T, Summation summation)
     else
     static if (summation == Summation.kb2)
     {
-        F s = F.init;
-        F cs = F.init;
-        F ccs = F.init;
+        F s;
+        F cs;
+        F ccs;
     }
     else
     static if (summation == Summation.kbn)
     {
-        F s = F.init;
-        F c = F.init;
+        F s;
+        F c;
     }
     else
     static if (summation == Summation.kahan)
     {
-        F s = F.init;
-        F c = F.init;
-        F y = F.init; // do not declare in the loop/put (algo can be used for matrixes and etc)
-        F t = F.init; // ditto
+        F s;
+        F c;
+        F y; // do not declare in the loop/put (algo can be used for matrixes and etc)
+        F t; // ditto
     }
     else
     static if (summation == Summation.pairwise)
@@ -580,22 +580,22 @@ struct Summator(T, Summation summation)
         static if (fastPairwise)
         {
             enum registersCount= 16;
-            F[size_t.sizeof * 8] partials = F.init;
+            F[size_t.sizeof * 8] partials;
         }
         else
         {
-            F[size_t.sizeof * 8] partials = F.init;
+            F[size_t.sizeof * 8] partials;
         }
     }
     else
     static if (summation == Summation.naive)
     {
-        F s = F.init;
+        F s;
     }
     else
     static if (summation == Summation.fast)
     {
-        F s = F.init;
+        F s;
     }
     else
     static assert(0, "Unsupported summation type for std.numeric.Summator.");
