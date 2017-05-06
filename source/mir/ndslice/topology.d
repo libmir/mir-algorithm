@@ -1915,32 +1915,18 @@ auto retro
 {
     static if (kind == Contiguous || kind == Canonical)
     {
-        static if (kind == Contiguous)
-        {
-            ptrdiff_t shift = 1;
-            foreach(i; Iota!(packs[0]))
-                shift *= slice._lengths[i];
-            --shift;
-        }
-        else
-        {
-            ptrdiff_t shift = 0;
-            foreach(i; Iota!(packs[0]))
-                shift += slice.backIndex!i;
-        }
         static if (is(Iterator : RetroIterator!It, It))
         {
             alias Ret = Slice!(kind, packs, It);
             mixin _DefineRet_;
-            ret._iterator = slice._iterator._iterator;
+            ret._iterator = slice._iterator._iterator - ret.lastIndex;
         }
         else
         {
             alias Ret = Slice!(kind, packs, RetroIterator!Iterator);
             mixin _DefineRet_;
-            ret._iterator = RetroIterator!Iterator(slice._iterator);
+            ret._iterator = RetroIterator!Iterator(slice._iterator + slice.lastIndex);
         }
-        ret._iterator -= shift;
         foreach (i; Iota!(ret.N))
             ret._lengths[i] = slice._lengths[i];
         foreach (i; Iota!(ret.S))
@@ -2115,9 +2101,8 @@ template map(fun...)
     import mir.functional: adjoin, naryFun, pipe;
     static if (fun.length == 1)
     {
-        static if (__traits(isSame, naryFun!fun, fun))
+        static if (__traits(isSame, naryFun!"a", fun[0]))
         {
-            alias f = fun[0];
             /++
             Params:
                 slice = An input slice.
@@ -2125,6 +2110,32 @@ template map(fun...)
                 a slice with each fun applied to all the elements. If there is more than one
                 fun, the element type will be `Tuple` containing one element for each fun.
             +/
+            @fastmath auto map(SliceKind kind, size_t[] packs, Iterator)
+                (Slice!(kind, packs, Iterator) slice)
+            {
+                static if (packs.length == 1)
+                {
+                    return slice;
+                }
+                else
+                {
+                    alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
+                    auto sl = slice.universal;
+                    return Slice!(Universal, packs[0 .. 1], It)(
+                        sl._lengths[0 .. packs[0]], 
+                        sl._strides[0 .. packs[0]],
+                        It(
+                            sl._lengths[packs[0] .. packs[0] + It._lengths.length],
+                            sl._strides[packs[0] .. packs[0] + It._strides.length],
+                            sl._iterator,
+                        ));
+                }
+            }
+        }
+        else
+        static if (__traits(isSame, naryFun!(fun[0]), fun[0]))
+        {
+            alias f = fun[0];
             @fastmath auto map(SliceKind kind, size_t[] packs, Iterator)
                 (Slice!(kind, packs, Iterator) slice)
             {
@@ -2138,15 +2149,7 @@ template map(fun...)
                 else
                 {
                     alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
-                    auto sl = slice.universal;
-                    return .map!f(Slice!(Universal, packs[0 .. 1], It)(
-                        sl._lengths[0 .. packs[0]], 
-                        sl._strides[0 .. packs[0]],
-                        It(
-                            sl._lengths[packs[0] .. packs[0] + It._lengths.length],
-                            sl._strides[packs[0] .. packs[0] + It._strides.length],
-                            sl._iterator,
-                        )));
+                    return .map!f(.map!(naryFun!"a")(slice));
                 }
             }
         }
