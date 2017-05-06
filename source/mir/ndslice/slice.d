@@ -125,10 +125,7 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
         alias S = Slice!(Contiguous, [N], typeof(C.init[0])*);
     else
         alias S = Slice!(Contiguous, [N], C);
-    static if (hasElaborateAssign!Iterator)
-        S ret;
-    else
-        S ret = void;
+    S ret = S.init;
     static if (isDynamicArray!Iterator)
         ret._iterator = iterator.ptr;
     else
@@ -545,16 +542,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         static if (N == 1)
             alias ElemType = typeof(Iterator.init[size_t.init]);
         else
-        static if (kind == Canonical)
-            static if (dimension == N - 1)
-                alias ElemType = Slice!(Universal, packs.decDim, Iterator);
-            else
-            static if (N == 2)
-                alias ElemType = Slice!(Contiguous, packs.decDim, Iterator);
-            else
-                alias ElemType = Slice!(Canonical, packs.decDim, Iterator);
+        static if (kind == Universal || dimension == N - 1)
+            alias ElemType = Slice!(Universal, packs.decDim, Iterator);
         else
-            alias ElemType = Slice!(kind, packs.decDim, Iterator);
+        static if (N == 2 || kind == Contiguous && dimension == 0)
+            alias ElemType = Slice!(Contiguous, packs.decDim, Iterator);
+        else
+            alias ElemType = Slice!(Canonical, packs.decDim, Iterator);
     }
 
     static if (packs.length == 1)
@@ -806,7 +800,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             return _strides[0 .. packs[0]];
         else
         {
-            typeof(return) ret = void;
+            typeof(return) ret;
             static if (kind == Canonical)
             {
                 foreach (i; Iota!S)
@@ -1028,13 +1022,24 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             static if (hasElaborateAssign!Iterator)
                 ElemType!dimension ret;
             else
-                ElemType!dimension ret = void;
+                ElemType!dimension ret = ElemType!dimension.init;
 
-            foreach (i; Erase!(dimension, Iota!N))
-                ret._lengths[SkipDimension!(dimension, i)] = _lengths[i];
+            foreach (i; Iota!(ret.N))
+            {
+                enum j = i >= dimension ? i + 1 : i;
+                ret._lengths[i] = _lengths[j];
+            }
 
-            foreach (i; Erase!(dimension, Iota!S))
-                ret._strides[SkipDimension!(dimension, i)] = _strides[i];
+            static if (!ret.S || ret.S + 1 == S)
+                alias s =_strides;
+            else
+                auto s = strides;
+
+            foreach (i; Iota!(ret.S))
+            {
+                enum j = i >= dimension ? i + 1 : i;
+                ret._strides[i] = s[j];
+            }
 
             ret._iterator = _iterator;
             return ret;
@@ -1069,13 +1074,24 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             static if (hasElaborateAssign!Iterator)
                 ElemType!dimension ret;
             else
-                ElemType!dimension ret = void;
+                ElemType!dimension ret = ElemType!dimension.init;
 
-            foreach (i; Erase!(dimension, Iota!N))
-                ret._lengths[SkipDimension!(dimension, i)] = _lengths[i];
+            foreach (i; Iota!(ret.N))
+            {
+                enum j = i >= dimension ? i + 1 : i;
+                ret._lengths[i] = _lengths[j];
+            }
 
-            foreach (i; Erase!(dimension, Iota!S))
-                ret._strides[SkipDimension!(dimension, i)] = _strides[i];
+            static if (!ret.S || ret.S + 1 == S)
+                alias s =_strides;
+            else
+                auto s = strides;
+
+            foreach (i; Iota!(ret.S))
+            {
+                enum j = i >= dimension ? i + 1 : i;
+                ret._strides[i] = s[j];
+            }
 
             ret._iterator = _iterator;
             ret._iterator += backIndex!dimension;
@@ -1410,10 +1426,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 enum K = Contiguous;
             else
                 enum K = Canonical;
-            static if (hasElaborateAssign!Iterator)
-                Slice!(K, (packs[0] - F) ~ packs[1 .. $], Iterator) ret;
-            else
-                Slice!(K, (packs[0] - F) ~ packs[1 .. $], Iterator) ret = void;
+            alias Ret = Slice!(K, (packs[0] - F) ~ packs[1 .. $], Iterator);
+            mixin _DefineRet_;
             enum bool shrink = kind == Canonical && slices.length == N;
             static if (shrink)
             {
@@ -2699,4 +2713,12 @@ unittest
 {
     import mir.ndslice.topology: canonical, iota;
     static assert(kindOf!(typeof(iota([1, 2]).canonical[1])) == Contiguous);
+}
+
+unittest
+{
+    import mir.ndslice.topology: iota;
+    auto s = iota(2, 3);
+    assert(s.front!1 == [0, 3]);
+    assert(s.back!1 == [2, 5]);
 }
