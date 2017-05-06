@@ -1049,14 +1049,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     static if (N == 1 && isMutable!DeepElemType && !hasAccessByRef)
     {
         ///ditto
-        auto front(size_t dimension = 0, T)(T value) @property
+        auto ref front(size_t dimension = 0, T)(auto ref T value) @property
             if (dimension == 0)
         {
             assert(!empty!dimension);
             static if (__traits(compiles, *_iterator = value))
                 return *_iterator = value;
             else
-                _iterator[0] = value;
+                return _iterator[0] = value;
         }
     }
 
@@ -1102,7 +1102,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     static if (N == 1 && isMutable!DeepElemType && !hasAccessByRef)
     {
         ///ditto
-        auto back(size_t dimension = 0, T)(T value) @property
+        auto ref back(size_t dimension = 0, T)(auto ref T value) @property
             if (dimension == 0)
         {
             assert(!empty!dimension);
@@ -1203,6 +1203,92 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         slice.popFrontN!0(40);
         slice.popFrontN!2(40);
         assert(slice.shape == cast(size_t[3])[0, 0, 0]);
+    }
+
+    package(mir) ptrdiff_t lastIndex()() const @property
+    {
+        static if (kind == Contiguous)
+        {
+            return elementsCount - 1;
+        }
+        else
+        {
+            auto strides = strides;
+            ptrdiff_t shift = 0;
+            foreach(i; Iota!(packs[0]))
+                shift += strides[i] * (_lengths[i] - 1);
+            return shift;
+        }
+    }
+
+    static if (packs[0] > 1)
+    {
+        /// Accesses the first deep element of the slice.
+        auto ref first()() @property
+        {
+            assert(!anyEmpty);
+            static if (packs.length == 1)
+                return *_iterator;
+            else
+                static if (S)
+                    return DeepElemType(_lengths[packs[0] .. $], _strides[packs[0] .. $], _iterator);
+                else
+                    return DeepElemType(_lengths[packs[0] .. $], _strides, _iterator);
+        }
+
+        static if (isMutable!DeepElemType && !hasAccessByRef)
+        ///ditto
+        auto ref first(T)(auto ref T value) @property
+        {
+            assert(!anyEmpty);
+            static if (__traits(compiles, *_iterator = value))
+                return *_iterator = value;
+            else
+                return _iterator[0] = value;
+        }
+
+        ///
+        unittest
+        {
+            import mir.ndslice.topology: iota, universal, canonical;
+            auto f = 5;
+            assert([2, 3].iota(f).first == f);
+        }
+
+        /// Accesses the last deep element of the slice.
+        auto ref last()() @property
+        {
+            assert(!anyEmpty);
+            import mir.ndslice.topology: retro;
+            static if (packs.length == 1)
+                return _iterator[lastIndex];
+            else
+                static if (S)
+                    return DeepElemType(_lengths[packs[0] .. $], _strides[packs[0] .. $], _iterator + lastIndex);
+                else
+                    return DeepElemType(_lengths[packs[0] .. $], _strides, _iterator + lastIndex);
+        }
+
+        static if (isMutable!DeepElemType && !hasAccessByRef)
+        ///ditto
+        auto ref last(T)(auto ref T value) @property
+        {
+            assert(!anyEmpty);
+            return _iterator[lastIndex] = value;
+        }
+
+        ///
+        unittest
+        {
+            import mir.ndslice.topology: iota;
+            auto f = 5;
+            assert([2, 3].iota(f).last == f + 2 * 3 - 1);
+        }
+    }
+    else
+    {
+        alias first = front;
+        alias last = back;
     }
 
     /++
@@ -1378,13 +1464,11 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             return _iterator[indexStride(_indexes)];
         else
         {
-            auto c = _iterator;
-            c += indexStride(_indexes);
             static if (I == packs[0])
                 static if (S)
-                    return DeepElemType(_lengths[packs[0] .. $], _strides[packs[0] .. $], c);
+                    return DeepElemType(_lengths[packs[0] .. $], _strides[packs[0] .. $], _iterator + indexStride(_indexes));
                 else
-                    return DeepElemType(_lengths[packs[0] .. $], _strides, c);
+                    return DeepElemType(_lengths[packs[0] .. $], _strides, _iterator + indexStride(_indexes));
             else
             {
                 enum size_t diff = packs[0] - I;
@@ -1395,9 +1479,9 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     diff ~ packs[1 .. $],
                     Iterator);
                 static if (S)
-                    return Ret(_lengths[I .. N], _strides[I .. S], c);
+                    return Ret(_lengths[I .. N], _strides[I .. S], _iterator + indexStride(_indexes));
                 else
-                    return Ret(_lengths[I .. N], _strides, c);
+                    return Ret(_lengths[I .. N], _strides, _iterator + indexStride(_indexes));
             }
         }
 
