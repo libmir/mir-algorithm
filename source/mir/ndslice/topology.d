@@ -2126,7 +2126,7 @@ template map(fun...)
                         sl._strides[0 .. packs[0]],
                         It(
                             sl._lengths[packs[0] .. packs[0] + It._lengths.length],
-                            sl._strides[packs[0] .. packs[0] + It._strides.length],
+                            cast(ptrdiff_t[It._strides.length]) sl._strides[packs[0] .. packs[0] + It._strides.length],
                             sl._iterator,
                         ));
                 }
