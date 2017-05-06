@@ -13,6 +13,7 @@ $(T2 IotaIterator, $(SUBREF topology, iota))
 $(T2 MapIterator, $(SUBREF topology, map))
 $(T2 RetroIterator, $(SUBREF topology, retro))
 $(T2 SliceIterator, $(SUBREF topology, map) in composition with $(LREF MapIterator) for packed slices.)
+$(T2 SlideIterator, $(SUBREF topology, diff) and $(SUBREF topology, slide).)
 $(T2 StrideIterator, $(SUBREF topology, stride))
 $(T2 ZipIterator, $(SUBREF topology, zip))
 )
@@ -612,15 +613,15 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
        return MapIterator!(Iterator, fun)(iterator);
 }
 
-auto ConvolutionIterator__map(Iterator, size_t params, alias fun0, alias fun)(ref ConvolutionIterator!(Iterator, params, fun0) it)
+auto SlideIterator__map(Iterator, size_t params, alias fun0, alias fun)(ref SlideIterator!(Iterator, params, fun0) it)
 {
-    return ConvolutionIterator!(Iterator, params, fun)(it._iterator);
+    return SlideIterator!(Iterator, params, fun)(it._iterator);
 }
 
 /++
-`ConvolutionIterator` is used by $(SUBREF topology, map).
+`SlideIterator` is used by $(SUBREF topology, diff) and $(SUBREF topology, slide).
 +/
-struct ConvolutionIterator(Iterator, size_t params, alias fun)
+struct SlideIterator(Iterator, size_t params, alias fun)
     if (params > 1)
 {
 @fastmath:
@@ -629,7 +630,7 @@ struct ConvolutionIterator(Iterator, size_t params, alias fun)
 
     import mir.functional: pipe;
     ///
-    static alias __map(alias fun1) = ConvolutionIterator__map!(Iterator, params, fun, pipe!(fun, fun1));
+    static alias __map(alias fun1) = SlideIterator__map!(Iterator, params, fun, pipe!(fun, fun1));
 
     auto ref opUnary(string op : "*")()
     {
@@ -649,7 +650,7 @@ unittest
 {
     import mir.functional: naryFun;
     auto data = [1, 3, 8, 18];
-    auto diff = ConvolutionIterator!(int*, 2, naryFun!"b - a")(data.ptr);
+    auto diff = SlideIterator!(int*, 2, naryFun!"b - a")(data.ptr);
     assert(*diff == 2);
     assert(diff[1] == 5);
     assert(diff[2] == 10);

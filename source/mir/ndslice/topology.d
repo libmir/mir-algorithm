@@ -18,7 +18,6 @@ $(T2 repeat, Slice with identical values)
 $(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
 $(T2 ndiota, Contiguous Slice with initial multidimensional index.)
 $(T2 linspace, Evenly spaced numbers over a specified interval.)
-
 )
 
 $(BOOKTABLE $(H2 Products),
@@ -36,12 +35,14 @@ $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
+$(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
 $(T2 retro, Reverses order of iteration for all dimensions)
+$(T2 slide, Sliding map for vectors.)
 $(T2 stride, Strides 1-dimensional slice)
-$(T2 zip, Zips slices into a slice of tuples.)
 $(T2 unzip, Selects a slice from a zipped slice.)
+$(T2 zip, Zips slices into a slice of tuples.)
 
 )
 
@@ -2541,6 +2542,77 @@ pure nothrow unittest
 }
 
 private enum TotalDim(NdFields...) = [staticMap!(DimensionCount, NdFields)].sum;
+
+/++
+Sliding map for vectors.
+
+Suitable for simple convolution algorithms.
+
+Params:
+    params = windows length.
+    fun = map functions with `params` arity.
+See_also: $(LREF diff).
++/
+template slide(size_t params, alias fun)
+    if (params <= 'z' - 'a' + 1)
+{
+    import mir.functional: naryFun;
+    static if (params == 1)
+    {
+        alias slide = .map!(naryFun!fun);
+    }
+    else
+    static if (__traits(isSame, naryFun!fun, fun))
+    {
+        /++
+        Params:
+            slice = An 1-dimensional input slice.
+        Returns:
+            1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
+        +/
+        @fastmath auto slide(SliceKind kind, Iterator)
+            (Slice!(kind, [1], Iterator) slice)
+        {
+            auto s = slice.flattened;
+            s._lengths[0] -= params - 1;
+            if (cast(sizediff_t)s._lengths[0] < 0)
+                s._lengths[0] = 0;
+            alias I = SlideIterator!(_IteratorOf!(typeof(s)), params, fun);
+            return Slice!(Contiguous, [1], I)(
+                s._lengths,
+                s._strides,
+                I(s._iterator));
+        }
+    }
+    else alias slide = .slide!(params, naryFun!fun);
+}
+
+///
+unittest
+{
+    auto data = 10.iota;
+    auto sw = data.slide!(3, "a + 2 * b + c");
+    
+    import mir.utility: max;
+    assert(sw.length == max(0, cast(ptrdiff_t)data.length - 3 + 1));
+    assert(sw == sw.length.iota.map!"(a + 1) * 4");
+}
+
+/++
+Differences between vector elements.
+Params:
+    lag = an integer indicating which lag to use
+Returns: lazy difference 1d-slice.
+
+See_also: $(LREF slide).
++/
+alias diff(size_t lag = 1) = slide!(lag + 1, ('a' + lag) ~ " - a");
+
+///
+unittest
+{
+    assert([2, 4, 3, -1].sliced.diff == [2, -1, -4]);
+}
 
 /++
 Cartesian product.
