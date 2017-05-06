@@ -2121,12 +2121,13 @@ template map(fun...)
                 {
                     alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
                     auto sl = slice.universal;
+                    auto strides = cast(ptrdiff_t[It._strides.length]) sl._strides[packs[0] .. packs[0] + It._strides.length];
                     return Slice!(Universal, packs[0 .. 1], It)(
                         sl._lengths[0 .. packs[0]], 
                         sl._strides[0 .. packs[0]],
                         It(
                             sl._lengths[packs[0] .. packs[0] + It._lengths.length],
-                            cast(ptrdiff_t[It._strides.length]) sl._strides[packs[0] .. packs[0] + It._strides.length],
+                            strides,
                             sl._iterator,
                         ));
                 }
