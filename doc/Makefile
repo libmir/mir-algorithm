@@ -29,7 +29,7 @@ MIR_PACKAGES = mir mir/ndslice mir/internal mir/math mir/math/func mir/array
 
 PACKAGE_mir = bitmanip conv functional primitives utility
 PACKAGE_mir_array = primitives
-PACKAGE_mir_ndslice = package algorithm allocation dynamic field ndfield iterator package slice sorting concatenation topology
+PACKAGE_mir_ndslice = package algorithm allocation dynamic field ndfield mutation iterator package slice sorting concatenation topology
 PACKAGE_mir_math = constant common sum
 PACKAGE_mir_math_func = expdigamma
 PACKAGE_mir_internal = utility

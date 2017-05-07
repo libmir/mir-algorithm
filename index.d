@@ -28,6 +28,10 @@ $(BOOKTABLE ,
         $(TD Advanced constructors, SliceKind conversion utilities)
     )
     $(TR
+        $(TDNW $(MREF mir,ndslice,mutation))
+        $(TD Mutation algorithms)
+    )
+    $(TR
         $(TDNW $(MREF mir,ndslice,algorithm))
         $(TD Loop free programming)
     )

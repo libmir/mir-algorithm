@@ -1,7 +1,7 @@
 /++
-This is a submodule of $(MREF mir,ndslice).
+$(H2 Multidimensional iteration algorithms)
 
-It contains basic multidimensional iteration algorithms.
+This is a submodule of $(MREF mir,ndslice).
 
 $(BOOKTABLE $(H2 Function),
 $(TR $(TH Function Name) $(TH Description))

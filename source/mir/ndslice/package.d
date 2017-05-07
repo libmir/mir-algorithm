@@ -150,6 +150,13 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
     )
 )
 
+$(TR $(TDNW $(SUBMODULE mutation)
+        $(BR) $(SMALL mutation algorithms))
+     $(TD
+        $(SUBREF mutation, transposeInPlace)
+    )
+)
+
 $(TR $(TDNW $(SUBMODULE algorithm)
         $(BR) $(SMALL Loop free programming))
      $(TD
@@ -419,6 +426,7 @@ public import mir.ndslice.concatenation;
 public import mir.ndslice.dynamic;
 public import mir.ndslice.field;
 public import mir.ndslice.iterator;
+public import mir.ndslice.mutation;
 public import mir.ndslice.ndfield;
 public import mir.ndslice.slice;
 public import mir.ndslice.topology;
