@@ -2,7 +2,7 @@
 This is a submodule of $(MREF mir,ndslice).
 
 Iterator is a type with a pointer like behavior.
-An ndslice can be created on top of a field using $(SUBREF slice, sliced).
+An ndslice can be created on top of an iterator using $(SUBREF slice, sliced).
 
 $(BOOKTABLE $(H2 Iterators),
 $(TR $(TH Iterator Name) $(TH Used By))
