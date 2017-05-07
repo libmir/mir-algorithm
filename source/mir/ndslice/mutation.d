@@ -5,21 +5,7 @@ This is a submodule of $(MREF mir,ndslice).
 
 $(BOOKTABLE $(H2 Function),
 $(TR $(TH Function Name) $(TH Description))
-$(T2 all, Checks if all elements satisfy to a predicate.)
-$(T2 any, Checks if at least one element satisfy to a predicate.)
-$(T2 cmp, Compares two slices.)
-$(T2 count, Counts elements in a slices according to a predicate.)
-$(T2 each, Iterates all elements.)
-$(T2 equal, Compares two slices for equality.)
-$(T2 find, Finds backward index.)
-$(T2 findIndex, Finds index.)
-$(T2 minmaxIndex, Finds indexes of the minimum and the maximum.)
-$(T2 minmaxPos, Finds backward indexes of the minimum and the maximum.)
-$(T2 minIndex, Finds index of the minimum.)
-$(T2 maxIndex, Finds index of the maximum.)
-$(T2 minPos, Finds backward index of the minimum.)
-$(T2 maxPos, Finds backward index of the maximum.)
-$(T2 reduce, Accumulates all elements.)
+$(T2 transposeInPlace, Transposes square matrix in place.)
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
