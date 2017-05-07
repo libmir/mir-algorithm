@@ -1919,7 +1919,7 @@ auto retro
         {
             alias Ret = Slice!(kind, packs, It);
             mixin _DefineRet_;
-            ret._iterator = slice._iterator._iterator - ret.lastIndex;
+            ret._iterator = slice._iterator._iterator - slice.lastIndex;
         }
         else
         {
