@@ -156,11 +156,6 @@ unittest
     import mir.ndslice.topology : as, iota;
     import mir.ndslice.internal : fastmath;
 
-    static @fastmath T fmuladd(T)(const T a, const T b, const T c)
-    {
-        return a + b * c;
-    }
-
     //| 0 1 2 |
     //| 3 4 5 |
     auto a = iota([2, 3], 0).as!double.slice;
@@ -168,7 +163,7 @@ unittest
     //| 4 5 6 |
     auto b = iota([2, 3], 1).as!double.slice;
 
-    alias dot = reduce!fmuladd;
+    alias dot = reduce!"a + b * c";
     auto res = dot(0.0, a, b);
 
     // check the result:
