@@ -23,58 +23,65 @@ import mir.primitives;
 Lazy interpolation shell with linear complexity.
 
 Params:
-	range = sorted range
-	interpolation = interpolation structure with `._grid` and `.opCall(x, interval)` methods.
+    range = sorted range
+    interpolation = interpolation structure with `._grid` and `.opCall(x, interval)` methods.
 Complexity:
-	`O(range.length + interpolation._grid.length)` to evaluate all elements.
+    `O(range.length + interpolation._grid.length)` to evaluate all elements.
 Returns:
-	Lazy input range.
+    Lazy input range.
 See_also:
-	$(SUBREF linear, linearInterpolation),
-	$(SUBREF pchip, pchip).
+    $(SUBREF linear, linearInterpolation),
+    $(SUBREF pchip, pchip).
 +/
 auto interp1(Range, Interpolation)(Range range, Interpolation interpolation, size_t interval = 0)
 {
-	return Interp1!(Range, Interpolation)(range, interpolation, interval);
+    return Interp1!(Range, Interpolation)(range, interpolation, interval);
 }
 
 /// ditto
 struct Interp1(Range, Interpolation)
 {
-	/// Sorted range (descending)
-	Range _range;
-	///  Interpolation structure
-	Interpolation _interpolation;
-	/// Current interpolation interval
-	size_t _interval;
+    /// Sorted range (descending)
+    Range _range;
+    ///  Interpolation structure
+    Interpolation _interpolation;
+    /// Current interpolation interval
+    size_t _interval;
 
-	static if (hasLength!Range)
-	/// Length (optional)
-	size_t length() @property  { return _range.length; }
-	/// Input range primitives
-	bool   empty ()  @property  { return _range.empty;  }
-	/// ditto
-	void popFront()  { _range.popFront; }
-	/// ditto
-	auto front() @property
-		
-	{
-		assert(!empty);
-		auto x = _range.front;
-		while (x > _interpolation._grid[_interval + 1] && _interpolation._grid.length > _interval + 2)
-			_interval++;
-		return _interpolation(x, _interval);
-	}
+    static if (hasLength!Range)
+    /// Length (optional)
+    size_t length()() @property  { return _range.length; }
+    /// Save primitive (optional)
+    auto save()() @property
+    {
+        auto ret = this;
+        ret._range = _range.save;
+        return ret;
+    }
+    /// Input range primitives
+    bool   empty ()() @property  { return _range.empty;  }
+    /// ditto
+    void popFront()() { _range.popFront; }
+    /// ditto
+    auto front()() @property
+        
+    {
+        assert(!empty);
+        auto x = _range.front;
+        while (x > _interpolation._grid[_interval + 1] && _interpolation._grid.length > _interval + 2)
+            _interval++;
+        return _interpolation(x, _interval);
+    }
 }
 
 /++
 PCHIP interpolation.
 
 Complexity:
-	`O(x.length + xs.length)`
+    `O(x.length + xs.length)`
 
 See_also:
-	$(MREF mir,_interpolation,pchip)
+    $(MREF mir,_interpolation,pchip)
 +/
 unittest
 {
@@ -90,9 +97,6 @@ unittest
     xs[] += 0.5;
 
     auto ys = xs.interp1(interpolation);
-
-    import std.stdio;
-    writeln(ys);
 
     assert(ys.approxEqual([
         5.333333333333334,

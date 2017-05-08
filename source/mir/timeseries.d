@@ -348,6 +348,12 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
             return time[slices[0]].moment(data[slices]);
         }
     }
+
+    /// ditto
+    auto save()() @property
+    {
+        return this;
+    }
 }
 
 /// 1-dimensional data
