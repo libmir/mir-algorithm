@@ -146,6 +146,8 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         (Series!(TimeIterator_, kind_, packs_, Iterator_) r)
     {
         auto l = this;
+        assert(r.data.length == r.time.length);
+        assert(l.data.length == l.time.length);
         if (r.empty)
             return;
         if (l.empty)
