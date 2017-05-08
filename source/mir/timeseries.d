@@ -441,7 +441,6 @@ enum isSeries(U) = (size_t[]).init;
 Sorts time-series according to the `less` predicate applied to time moments.
 
 The function works only for 1-dimensional time-series data.
-For n-dimensional time-series use $(LREF sortTo).
 +/
 template sort(alias less = "a < b")
 {
