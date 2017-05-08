@@ -136,11 +136,6 @@ LinearInterpolation!(RangeG, RangeV) linearInterpolation(RangeG, RangeV)(RangeG 
 ///
 unittest
 {
-
-}
-
-unittest
-{
     import mir.ndslice;
     import std.math: approxEqual;
 

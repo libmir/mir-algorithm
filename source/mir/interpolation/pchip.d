@@ -219,7 +219,8 @@ unittest
     auto ys = xs.map!interpolation;
     
     auto ys2 = interpolation.indexed(xs); // alternative to map
-    assert(ys == ys2);
+    version(X86_64)
+        assert(ys == ys2);
 
     assert(ys.approxEqual([
         5.333333333333334,
@@ -262,6 +263,7 @@ unittest
     auto valuesR = values.sliced.retro;
     auto interpolationR = gridR.pchip(valuesR);
 
+    version(X86_64)
     assert(grid[0 .. $ - 1].map!"a + 0.5".map!interpolation ==
         gridR.retro[0 .. $ - 1].map!"a - 0.5".map!interpolationR);
 }
