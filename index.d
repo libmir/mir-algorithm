@@ -69,14 +69,23 @@ $(BOOKTABLE ,
         $(TD Constants)
     )
     $(TR
-        $(TDNW $(MREF mir,math,sum))
-        $(TD Various precise summation algorithms)
-    )
-    $(TR
         $(TDNW $(MREF mir,math,func))
         $(TD Special math functions)
     )
-
+    $(LEADINGROW Numeric)
+    $(TR
+        $(TDNW $(MREF mir,interpolation))
+        $(TD Interpolation algorithms)
+    )
+    $(TR
+        $(TDNW $(MREF mir,math,sum))
+        $(TD Various precise summation algorithms)
+    )
+    $(LEADINGROW Finance)
+    $(TR
+        $(TDNW $(MREF mir,timeseries))
+        $(TD Time-series)
+    )
     $(LEADINGROW Accessories)
     $(TR
         $(TDNW $(MREF mir,utility))
