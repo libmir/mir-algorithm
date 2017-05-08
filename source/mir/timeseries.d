@@ -22,6 +22,7 @@ unittest
 {
     import std.datetime: Date;
     import std.algorithm.setops: nWayUnion;
+    import std.algorithm.iteration: uniq;
     import std.array: array;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
@@ -42,7 +43,7 @@ unittest
     auto data1 = [10.0, 20, 50].sliced;
     auto series1 = time1.series(data1);
 
-    auto time = [time0, time1].nWayUnion.array.sliced;
+    auto time = [time0, time1].nWayUnion.uniq.array.sliced;
     auto data = slice!double([time.length, 2], 0); // initialized to 0 value
     auto series = time.series(data);
 
@@ -51,7 +52,6 @@ unittest
 
     assert(data == [
         [1, 10],
-        [0,  0],
         [0, 20],
         [3,  0],
         [4,  0],
