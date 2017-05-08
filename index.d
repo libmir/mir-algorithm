@@ -59,6 +59,11 @@ $(BOOKTABLE ,
         $(TDNW $(MREF mir,ndslice,ndfield))
         $(TD NdField declarations)
     )
+    $(LEADINGROW Finance)
+    $(TR
+        $(TDNW $(MREF mir,timeseries))
+        $(TD Time-series)
+    )
     $(LEADINGROW Math)
     $(TR
         $(TDNW $(MREF mir,math,common))
@@ -80,11 +85,6 @@ $(BOOKTABLE ,
     $(TR
         $(TDNW $(MREF mir,math,sum))
         $(TD Various precise summation algorithms)
-    )
-    $(LEADINGROW Finance)
-    $(TR
-        $(TDNW $(MREF mir,timeseries))
-        $(TD Time-series)
     )
     $(LEADINGROW Accessories)
     $(TR
