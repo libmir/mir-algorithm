@@ -452,7 +452,7 @@ bool[2] minmaxPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref s
 Finds a positions (ndslices) such that
 `position[0].first` is minimal and `position[1].first` is maximal elements in the slice.
 
-Each position is sub-ndslice of the same dimension in the right-(down-(etc)) corner.
+Position is sub-ndslice of the same dimension in the right-(down-(etc)) corner.
 
 Params:
     pred = A predicate.
@@ -471,8 +471,7 @@ template minmaxPos(alias pred = "a < b")
     Params:
         slice = ndslice.
     Returns:
-        Multidimensional backward index such that element is minimal(maximal).
-        Backward index equals zeros, if slice is empty.
+        2 subslices with minimal and maximal `first` elements.
     +/
     @fastmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)[2]
         minmaxPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
@@ -562,8 +561,7 @@ template minmaxIndex(alias pred = "a < b")
     Params:
         slice = ndslice.
     Returns:
-        Multidimensional backward indexes such that elements are minimal and maximal.
-        Backward index equals zeros, if slice is empty.
+        Subslice with minimal (maximal) `first` element.
     +/
     @fastmath size_t[packs[0]][2] minmaxIndex(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
