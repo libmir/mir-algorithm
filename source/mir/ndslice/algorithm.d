@@ -449,8 +449,10 @@ bool[2] minmaxPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref s
 }
 
 /++
-Finds a backward indexes such that
-`slice.backward(indexes[0])` is minimal and `slice.backward(indexes[1])` is maximal elements in the slice.
+Finds a positions (ndslices) such that
+`position[0].first` is minimal and `position[1].first` is maximal elements in the slice.
+
+Each position is sub-ndslice of the same dimension in the right-(down-(etc)) corner.
 
 Params:
     pred = A predicate.
@@ -472,7 +474,8 @@ template minmaxPos(alias pred = "a < b")
         Multidimensional backward index such that element is minimal(maximal).
         Backward index equals zeros, if slice is empty.
     +/
-    @fastmath size_t[packs[0]][2] minmaxPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @fastmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)[2]
+        minmaxPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         import mir.ndslice.topology: map;
         typeof(return) pret;
@@ -484,9 +487,33 @@ template minmaxPos(alias pred = "a < b")
             minmaxPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
             foreach (i; Iota!(packs[0]))
             {
-                pret[0][i] = ret[i][0];
-                pret[1][i] = ret[i][1];
+                pret[0]._lengths[i] = ret[i][0];
+                pret[1]._lengths[i] = ret[i][1];
             }
+            static if (packs.length > 1)
+            {
+                pret[0]._iterator = iterator[0]._iterator;
+                pret[1]._iterator = iterator[1]._iterator;
+            }
+            else
+            {
+                pret[0]._iterator = iterator[0];
+                pret[1]._iterator = iterator[1];
+            }
+        }
+        static if (packs.length > 1)
+        {
+            foreach (i; Iota!(packs[0], slice.N))
+            {
+                pret[0]._lengths[i] = slice._lengths[i];
+                pret[1]._lengths[i] = slice._lengths[i];
+            }
+        }
+        auto strides = slice.strides;
+        foreach(i; Iota!(0, pret[0].S))
+        {
+            pret[0]._strides[i] = strides[i];
+            pret[1]._strides[i] = strides[i];
         }
         return pret;
     }
@@ -503,11 +530,15 @@ unittest
         -3, -2, 7, 2,
         ].sliced(3, 4);
 
-    auto backwardIndex = s.minmaxPos;
+    auto pos = s.minmaxPos;
 
-    assert(backwardIndex == [[2, 3], [1, 2]]);
-    assert(s.backward(backwardIndex[0]) == -4);
-    assert(s.backward(backwardIndex[1]) ==  7);
+    assert(pos[0] == s[$ - 2 .. $, $ - 3 .. $]);
+    assert(pos[1] == s[$ - 1 .. $, $ - 2 .. $]);
+
+    assert(pos[0].first == -4);
+    assert(s.backward(pos[0].shape) == -4);
+    assert(pos[1].first ==  7);
+    assert(s.backward(pos[1].shape) ==  7);
 }
 
 /++
@@ -596,14 +627,35 @@ template minPos(alias pred = "a < b")
         Multidimensional backward index such that element is minimal(maximal).
         Backward index equals zeros, if slice is empty.
     +/
-    @fastmath size_t[packs[0]] minPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @fastmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)
+        minPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         typeof(return) ret;
         import mir.ndslice.topology: map;
         if (!slice.anyEmpty)
         {
             auto iterator = slice.map!"a"._iterator;
-            minPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
+            minPosImpl!(pred, kind, packs, Iterator)(ret._lengths, iterator, slice);
+            static if (packs.length > 1)
+            {
+                ret._iterator = iterator._iterator;
+            }
+            else
+            {
+                ret._iterator = iterator;
+            }
+        }
+        static if (packs.length > 1)
+        {
+            foreach (i; Iota!(packs[0], slice.N))
+            {
+                ret._lengths[i] = slice._lengths[i];
+            }
+        }
+        auto strides = slice.strides;
+        foreach(i; Iota!(0, ret.S))
+        {
+            ret._strides[i] = strides[i];
         }
         return ret;
     }
@@ -627,15 +679,17 @@ unittest
         -3, -2, 7, 2,
         ].sliced(3, 4);
 
-    auto backwardIndex = s.minPos;
+    auto pos = s.minPos;
 
-    assert(backwardIndex == [2, 3]);
-    assert(s.backward(backwardIndex) == -4);
+    assert(pos == s[$ - 2 .. $, $ - 3 .. $]);
+    assert(pos.first == -4);
+    assert(s.backward(pos.shape) == -4);
 
-    backwardIndex = s.maxPos;
+    pos = s.maxPos;
 
-    assert(backwardIndex == [1, 2]);
-    assert(s.backward(backwardIndex) == 7);
+    assert(pos == s[$ - 1 .. $, $ - 2 .. $]);
+    assert(pos.first == 7);
+    assert(s.backward(pos.shape) == 7);
 }
 
 /++
