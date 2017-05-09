@@ -87,19 +87,11 @@ struct Pchip(RangeG, RangeV, RangeS)
         auto s0 = _slopes[interval + 0];
         auto s1 = _slopes[interval + 1];
 
-        return eval(x0, x1, y0, y1, s0, s1, x);
+        return opCall!T(x0, x1, y0, y1, s0, s1, x);
     }
 
-    /// ditto
-    alias opIndex = opCall;
-
-    package static alias eval = .evalImpl!(G, V, S);
-}
-
-package template evalImpl(G, V, S)
-{
-    @fastmath
-    auto evalImpl(T)(G x0, G x1, V y0, V y1, S s0, S s1, in T x)
+    ///
+    auto opCall(T)(G x0, G x1, V y0, V y1, S s0, S s1, in T x)
     {
         auto step = x1 - x0;
         auto diff = y1 - y0;
@@ -127,6 +119,9 @@ package template evalImpl(G, V, S)
 
         return y0 + y1;
     }
+
+    /// ditto
+    alias opIndex = opCall;
 }
 
 /++

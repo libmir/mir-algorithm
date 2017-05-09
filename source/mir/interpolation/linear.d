@@ -78,31 +78,11 @@ struct LinearInterpolation(RangeG, RangeV)
         auto y0 = _values[interval + 0];
         auto y1 = _values[interval + 1];
 
-        return eval(x0, x1, y0, y1, x);
+        return opCall!T(x0, x1, y0, y1, x);
     }
 
-    /// ditto
-    alias opIndex = opCall;
-
-package:
-    static alias eval = .evalImpl!(G, V);
-
-    size_t length ()() @property { return grid.length - 1; }
-    bool empty    ()() @property { return length == 0; }
-    auto ref front()() @property { return grid.front; }
-
-    void popFront()()
-    {
-        assert(grid.length > 1);
-        grid.popFront;
-        values.popFront;
-    }
-}
-
-private template evalImpl(G, V)
-{
-    @fastmath
-    auto evalImpl(T)(G x0, G x1, V y0, V y1, in T x)
+    ///
+    static auto opCall(T)(G x0, G x1, V y0, V y1, in T x)
     {
         auto step = x1 - x0;
         auto w0 = x - x0;
@@ -113,8 +93,10 @@ private template evalImpl(G, V)
         y1 *= w0;
         return y0 + y1;
     }
-}
 
+    /// ditto
+    alias opIndex = opCall;
+}
 
 /++
 Linear interpolation.
