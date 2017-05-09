@@ -2597,6 +2597,7 @@ unittest
     import mir.utility: max;
     assert(sw.length == max(0, cast(ptrdiff_t)data.length - 3 + 1));
     assert(sw == sw.length.iota.map!"(a + 1) * 4");
+    assert(sw == [4, 8, 12, 16, 20, 24, 28, 32]);
 }
 
 /++
