@@ -68,9 +68,9 @@ import std.meta;
 
 /++
 Plain time moment data structure.
-Moment are used as return tuple for for indexing $(LREF Series).
+Observation are used as return tuple for for indexing $(LREF Series).
 +/
-struct Moment(Time, Data)
+struct Observation(Time, Data)
 {
     /// Date, date-time, time, or integer.
     Time time;
@@ -78,10 +78,10 @@ struct Moment(Time, Data)
     Data data;
 }
 
-/// Convenient function for $(LREF Moment) construction.
+/// Convenient function for $(LREF Observation) construction.
 auto moment(Time, Data)(Time time, Data data)
 {
-    return Moment!(Time, Data)(time, data);
+    return Observation!(Time, Data)(time, data);
 }
 
 /++
