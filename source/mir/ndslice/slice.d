@@ -417,8 +417,11 @@ $(TR $(TD A $(B fully defined slice) is an empty sequence
     $(B interval) with an overall length equal to `N`.)
     $(STD `[]`, `[3..$,0..3,0..$-1]`, `[2,0..$,1]`))
 $(TR $(TD An $(B indexed slice) is syntax sugar for $(SUBREF topology, indexed) and $(SUBREF topology, cartesian).)
-    $(STD `[anNdslice]`, `[anNdsliceForCartesian0, anNdsliceForCartesian1]`))
+    $(STD `[anNdslice]`, `[$.iota, anNdsliceForCartesian1, $.iota]`))
 )
+
+See_also:
+    $(SUBREF topology, iota).
 
 $(H3 Internal Binary Representation)
 
