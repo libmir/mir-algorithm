@@ -83,7 +83,7 @@ unittest
     import mir.interpolation: interp1;
     import mir.interpolation.pchip;
 
-    auto x   = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
+    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
     auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
     auto interpolation = x.pchip(y);
 
