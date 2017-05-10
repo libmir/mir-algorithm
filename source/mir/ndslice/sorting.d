@@ -22,46 +22,29 @@ With either function, the predicate must be a strict ordering just like with
 incorrect and will cause failed assertions.
 
 Params:
-    less = Predicate the range should be sorted by.
+    less = Predicate the ndslice should be sorted by.
+Note:
+    isSorted requires predicates for floating point types looks like `!(cmp_condition)`
+    to return false if the ndslice contains NaNs.
 +/
-template isSorted(alias less = "a < b")
+template isSorted(alias less = "!(a >= b)")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
     /++
     slice = A slice to check for sortedness.
     Returns:
-        `true` if the range is sorted, false otherwise. `isSorted` allows
+        `true` if the ndslice is sorted, false otherwise. `isSorted` allows
         duplicates, $(LREF _isStrictlyMonotonic) not.
     +/
     @fastmath bool isSorted(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
-        if (slice.anyEmpty)
-            return true;
-
-        auto ahead = slice;
-        ahead.popFront();
-
-        static if (packs[0] == 1)
-        {
-            for (; !ahead.empty; ahead.popFront(), slice.popFront())
-            {
-                if (!less(ahead.front, slice.front)) continue;
-                // Check for antisymmetric predicate
-                assert(
-                    !less(slice.front, ahead.front),
-                    "Predicate for isSorted is not antisymmetric. Both" ~
-                            " pred(a, b) and pred(b, a) are true for certain values.");
-                return false;
-            }
-            return true;
-        }
-        else
-        {
-            static assert("isSorted does not implemented for multidimensional slices.");
-        }
+        import mir.functional: reverseArgs;
+        import mir.ndslice.algorithm: all;
+        import mir.ndslice.topology: flattened, slide;
+        return slice.flattened.slide!(2, reverseArgs!less).all!"!a";
     }
     else
         alias isSorted = .isSorted!(naryFun!less);
@@ -77,15 +60,54 @@ template isStrictlyMonotonic(alias less = "a < b")
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
-        static if (__traits(isSame, less, less))
-        ///
-        import std.algorithm.searching : findAdjacent;
-        import mir.functional: not;
-        return findAdjacent!(not!less)(r).empty;
+        import mir.ndslice.algorithm: all;
+        import mir.ndslice.topology: flattened, slide;
+        return slice.flattened.slide!(2, less).all!"a";
     }
     else
         alias isStrictlyMonotonic = .isStrictlyMonotonic!(naryFun!less);
 }
+
+
+///
+unittest
+{
+    assert([1, 1, 2].sliced.isSorted);
+    // strictly monotonic doesn't allow duplicates
+    assert(![1, 1, 2].sliced.isStrictlyMonotonic);
+
+    auto arr = [4, 3, 2, 1].sliced;
+    assert(!isSorted(arr));
+    assert(!isStrictlyMonotonic(arr));
+
+    sort(arr);
+    assert(isSorted(arr));
+    assert(isStrictlyMonotonic(arr));
+}
+
+unittest
+{
+    auto a = [1, 2, 3].sliced;
+    assert(isSorted(a[0 .. 0]));
+    assert(isSorted(a[0 .. 1]));
+    assert(isSorted(a));
+    auto b = [1, 3, 2].sliced;
+    assert(!isSorted(b));
+
+    // ignores duplicates
+    auto c = [1, 1, 2].sliced;
+    assert(isSorted(c));
+}
+
+unittest
+{
+    assert([1, 2, 3][0 .. 0].sliced.isStrictlyMonotonic);
+    assert([1, 2, 3][0 .. 1].sliced.isStrictlyMonotonic);
+    assert([1, 2, 3].sliced.isStrictlyMonotonic);
+    assert(![1, 3, 2].sliced.isStrictlyMonotonic);
+    assert(![1, 1, 2].sliced.isStrictlyMonotonic);
+}
+
 
 ///
 template sort(alias less = "a < b")
