@@ -81,11 +81,23 @@ enum SliceKind
     contiguous,
 }
 
-/// Alias for $(LREF .SliceKind.universal).
+/++
+Alias for $(LREF .SliceKind.universal).
+
+See_also:
+    Internal Binary Representation section in $(LREF Slice).
 alias Universal = SliceKind.universal;
-/// Alias for $(LREF .SliceKind.canonical).
+/++
+Alias for $(LREF .SliceKind.canonical).
+
+See_also:
+    Internal Binary Representation section in $(LREF Slice).
 alias Canonical = SliceKind.canonical;
-/// Alias for $(LREF .SliceKind.contiguous).
+/++
+Alias for $(LREF .SliceKind.contiguous).
+
+See_also:
+    Internal Binary Representation section in $(LREF Slice).
 alias Contiguous = SliceKind.contiguous;
 
 /// Extracts $(LREF SliceKind).
@@ -386,7 +398,7 @@ In the following table you will find the definitions you might come across
 in comments on operator overloading.
 
 $(BOOKTABLE
-$(TR $(TH Definition) $(TH Examples at `N == 3`))
+$(TR $(TH Operator Overloading) $(TH Examples at `N == 3`))
 $(TR $(TD An $(B interval) is a part of a sequence of type `i .. j`.)
     $(STD `2..$-3`, `0..4`))
 $(TR $(TD An $(B index) is a part of a sequence of type `i`.)
@@ -407,13 +419,16 @@ $(TR $(TD An $(B indexed slice) is syntax sugar for $(SUBREF topology, indexed) 
 
 $(H3 Internal Binary Representation)
 
-Multidimensional Slice is a structure that consists of lengths, strides, and a pointer.
-For ranges, a shell is used instead of a pointer.
-This shell contains a shift of the current initial element of a multidimensional slice
-and the range itself. With the exception of overloaded operators, no functions in this
-package change or copy data. The operations are only carried out on lengths, strides,
+Multidimensional Slice is a structure that consists of lengths, strides, and a iterator (pointer).
+
+$(SUBREF topology, FieldIterator) shell is used to wrap fields and random access ranges.
+FieldIterator contains a shift of the current initial element of a multidimensional slice
+and the field itself.
+
+With the exception of $(MREF mir,ndslice,allocation) module, no functions in this
+package move or copy data. The operations are only carried out on lengths, strides,
 and pointers. If a slice is defined over a range, only the shift of the initial element
-changes instead of the pointer.
+changes instead of the range.
 
 $(H4 Internal Representation for Universal Slices)
 
@@ -432,7 +447,7 @@ Slice!(Universal, [N], Iterator)
     Iterator      _iterator
 -------
 
-Example:
+$(H5 Example)
 
 Definitions
 

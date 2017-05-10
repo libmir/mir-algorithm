@@ -76,12 +76,6 @@ struct Interp1(Range, Interpolation)
 
 /++
 PCHIP interpolation.
-
-Complexity:
-    `O(x.length + xs.length)`
-
-See_also:
-    $(MREF mir,_interpolation,pchip)
 +/
 unittest
 {

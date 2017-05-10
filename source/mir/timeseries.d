@@ -108,9 +108,11 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
 @fastmath:
 
     /++
-    Special `[] = ` index-assign operator for time-series.
-    Assigns data from `r` for time intersection.
-    This and `r` series are assumed to be sorted.
+    Special `[] =` index-assign operator for time-series.
+    Assigns data from `r` with time intersection.
+    If a time index in `r` is not in the time index for this series, then no op-assign will take place.
+    This and r series are assumed to be sorted.
+
     Params:
         r = rvalue time-series
     +/
@@ -136,9 +138,11 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     /++
-    Special `[] op= ` index-op-assign operator for time-series.
-    Op-assigns data from `r` for time intersection.
-    This and `r` series are assumed to be sorted.
+    Special `[] op=` index-op-assign operator for time-series.
+    Op-assigns data from `r` with time intersection.
+    If a time index in `r` is not in the time index for this series, then no op-assign will take place.
+    This and r series are assumed to be sorted.
+
     Params:
         r = rvalue time-series
     +/
