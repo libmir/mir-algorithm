@@ -91,7 +91,7 @@ struct Pchip(RangeG, RangeV, RangeS)
     }
 
     ///
-    auto opCall(T)(G x0, G x1, V y0, V y1, S s0, S s1, in T x)
+    static auto opCall(T)(G x0, G x1, V y0, V y1, S s0, S s1, in T x)
     {
         auto step = x1 - x0;
         auto diff = y1 - y0;
