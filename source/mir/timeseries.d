@@ -6,7 +6,7 @@ It is aimed to construct time-series using Mir and Phobos algorithms.
 
 Public_imports: $(MREF mir,ndslice,slice).
 
-Copyright: Copyright © 2017-, Ilya Yaroshenko
+Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
 
 Macros:
