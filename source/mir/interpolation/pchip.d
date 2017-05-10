@@ -4,7 +4,7 @@ $(H2 Piecewise Cubic Hermite Interpolating Polynomial)
 See_also: $(REF_ALTTEXT $(TT interp1), interp1, mir, interpolation)
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2017-, Ilya Yaroshenko
+Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
 
 Macros:

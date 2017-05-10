@@ -175,6 +175,7 @@ unittest
 
 ///
 size_t length(size_t d : 0, T)(T[] array)
+    if (d == 0)
 {
     pragma(inline, true);
     return array.length;
@@ -185,3 +186,6 @@ unittest
 {
     assert([1, 2].length!0 == 2);
 }
+
+///
+alias elementsCount = length;

@@ -7,7 +7,7 @@ $(T2M linear, Linear Interpolation)
 $(T2M pchip, Cubic Hermite Interpolation)
 )
 
-Copyright: Copyright © 2017-, Ilya Yaroshenko
+Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
 
 Macros:
