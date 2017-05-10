@@ -812,6 +812,21 @@ struct FieldIterator(Field)
     ///
     static alias __map(alias fun) = FieldIterator__map!(Field, fun);
 
+    ///
+    _Slice!() opSlice()(size_t a, size_t b)
+    {
+        return typeof(return)(a, b);
+    }
+
+    /++
+    Returns:
+        `_field[slice.i .. slice.j]`.
+    +/
+    auto opIndex()(_Slice!() slice)
+    {
+        return _field[_index + slice.i .. _index + slice.j];
+    }
+
     auto ref opUnary(string op : "*")()
     { return _field[_index]; }
 

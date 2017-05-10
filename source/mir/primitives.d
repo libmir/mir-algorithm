@@ -74,6 +74,3 @@ template DimensionCount(T)
     else
         enum size_t DimensionCount = 1;
 }
-
-///
-alias elementsCount = length;

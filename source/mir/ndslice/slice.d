@@ -766,22 +766,34 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     /++
+    Iterator
     Returns:
-        Pointer to the first element of a slice if slice is defined as `Slice!(N, T*)`
-        or plain structure with two fields `shift` and `range` otherwise.
-        In second case the expression `range[shift]` refers to the first element.
-        For slices with named elements the type of a return value
-        has the same behavior like a pointer.
-    Note:
-        `iterator` is defined only for non-packed slices.
-    Attention:
-        `iterator` refers to the first element in the memory representation
-        if and only if all strides are positive.
+        Iterator (pointer) to the $(LREF Slice.first) element.
     +/
-    static if (is(Iterator == Iterator))
     auto iterator()() @property
     {
         return _iterator;
+    }
+
+    /++
+    Field (array) data.
+    Returns:
+        Raw data slice.
+    Constraints:
+        Field is defined only for contiguous slices.
+    +/
+    auto field()() @property
+    {
+        static assert(kind == Contiguous, "Slice.field is defined only for contiguous slices. Slice kind is " ~ kind.stringof);
+        static if (is(typeof(_iterator[size_t(0) .. elementsCount])))
+        {
+            return _iterator[size_t(0) .. elementsCount];
+        }
+        else
+        {
+            import mir.ndslice.topology: flattened;
+            return this.flattened;
+        }
     }
 
     /++
