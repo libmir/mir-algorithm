@@ -86,18 +86,21 @@ Alias for $(LREF .SliceKind.universal).
 
 See_also:
     Internal Binary Representation section in $(LREF Slice).
++/
 alias Universal = SliceKind.universal;
 /++
 Alias for $(LREF .SliceKind.canonical).
 
 See_also:
     Internal Binary Representation section in $(LREF Slice).
++/
 alias Canonical = SliceKind.canonical;
 /++
 Alias for $(LREF .SliceKind.contiguous).
 
 See_also:
     Internal Binary Representation section in $(LREF Slice).
++/
 alias Contiguous = SliceKind.contiguous;
 
 /// Extracts $(LREF SliceKind).
