@@ -67,7 +67,7 @@ import std.meta;
 @fastmath:
 
 /++
-Plain time moment data structure.
+Plain time observation data structure.
 Observation are used as return tuple for for indexing $(LREF Series).
 +/
 struct Observation(Time, Data)
@@ -79,7 +79,7 @@ struct Observation(Time, Data)
 }
 
 /// Convenient function for $(LREF Observation) construction.
-auto moment(Time, Data)(Time time, Data data)
+auto observation(Time, Data)(Time time, Data data)
 {
     return Observation!(Time, Data)(time, data);
 }
@@ -239,7 +239,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         }
         else
         {
-            return time.front.moment(data.front);
+            return time.front.observation(data.front);
         }
     }
 
@@ -254,7 +254,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         }
         else
         {
-            return time.back.moment(data.back);
+            return time.back.observation(data.back);
         }
     }
 
@@ -347,7 +347,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         }
         else
         {
-            return time[slices[0]].moment(data[slices]);
+            return time[slices[0]].observation(data[slices]);
         }
     }
 
@@ -372,14 +372,14 @@ unittest
     static assert(is(typeof(series) == typeof(seriesSlice)));
 
     /// indexing
-    assert(series[1] == moment(2, 3.4));
+    assert(series[1] == observation(2, 3.4));
 
     /// range primitives
     assert(series.length == 4);
-    assert(series.front == moment(1, 2.1));
+    assert(series.front == observation(1, 2.1));
 
     series.popFront;
-    assert(series.front == moment(2, 3.4));
+    assert(series.front == observation(2, 3.4));
 
     series.popBackN(10);
     assert(series.empty);
@@ -417,8 +417,8 @@ unittest
         static assert(is(typeof(series) == typeof(seriesSlice)));
 
     /// indexing
-    assert(series[1, 4] == moment(Date(2017, 02, 01), 10));
-    assert(series[2] == moment(Date(2017, 03, 01), iota([row_length], 11)));
+    assert(series[1, 4] == observation(Date(2017, 02, 01), 10));
+    assert(series[2] == observation(Date(2017, 03, 01), iota([row_length], 11)));
 
     /// range primitives
     assert(series.length == 4);
@@ -446,7 +446,7 @@ enum isSeries(U : Series!(TimeIterator, kind, packs, Iterator), TimeIterator, Sl
 enum isSeries(U) = (size_t[]).init;
 
 /++
-Sorts time-series according to the `less` predicate applied to time moments.
+Sorts time-series according to the `less` predicate applied to time observations.
 
 The function works only for 1-dimensional time-series data.
 +/
