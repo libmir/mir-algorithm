@@ -1,7 +1,7 @@
 /++
 This is a submodule of $(MREF mir, ndslice).
 
-The module contains lazy concatenation routnies.
+The module contains lazy concatenation routines.
 They construct $(LREF Concatenation) structure that can be
 assigned to an ndslice of the same shape with `[] = ` or `[] op= `.
 
