@@ -38,12 +38,12 @@ $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
-$(T2 retro, Reverses order of iteration for all dimensions)
+$(T2 pairwise, Pairwise map for vectors.)
+$(T2 retro, Reverses order of iteration for all dimensions.)
 $(T2 slide, Sliding map for vectors.)
-$(T2 stride, Strides 1-dimensional slice)
+$(T2 stride, Strides 1-dimensional slice.)
 $(T2 unzip, Selects a slice from a zipped slice.)
 $(T2 zip, Zips slices into a slice of refTuples.)
-
 )
 
 
@@ -2093,6 +2093,7 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
+    $(LREF pairwise), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 template map(fun...)
@@ -2552,7 +2553,7 @@ Suitable for simple convolution algorithms.
 Params:
     params = windows length.
     fun = map functions with `params` arity.
-See_also: $(LREF diff).
+See_also: $(LREF pairwise), $(LREF diff).
 +/
 template slide(size_t params, alias fun)
     if (params <= 'z' - 'a' + 1)
@@ -2601,14 +2602,33 @@ unittest
 }
 
 /++
+Pairwise map for vectors.
+
+Params:
+    fun = function to accomulate
+    lag = an integer indicating which lag to use
+Returns: lazy ndslice composed of `fun(a_n, a_n+1)` values.
+
+See_also: $(LREF slide).
++/
+alias pairwise(alias fun, size_t lag = 1) = slide!(lag + 1, fun);
+
+///
+unittest
+{
+    assert([2, 4, 3, -1].sliced.pairwise!"a + b" == [6, 7, 2]);
+}
+
+/++
 Differences between vector elements.
+
 Params:
     lag = an integer indicating which lag to use
 Returns: lazy differences.
 
 See_also: $(LREF slide).
 +/
-alias diff(size_t lag = 1) = slide!(lag + 1, ('a' + lag) ~ " - a");
+alias diff(size_t lag = 1) = pairwise!(('a' + lag) ~ " - a", lag);
 
 ///
 unittest

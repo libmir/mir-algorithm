@@ -1,111 +1,121 @@
 /++
 This is a submodule of $(MREF mir,ndslice).
 
+Note:
+    The combination of
+    $(SUBREF topology, pairwise) with lambda `"a <= b"` (`"a < b"`) and $(SUBREF algorithm, all) can be used
+    to check if an ndslice is sorted (strictly monotonic). See also the examples in the module.
+
+See_also: $(SUBREF topology, flattened)
+
+`isSorted` and `isStrictlyMonotonic`
+
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Andrei Alexandrescu 2008-2016, Ilya Yaroshenko 2016-, 
 Authors:   Ilya Yaroshenko, Andrei Alexandrescu
+
+Macros:
+    SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 +/
 module mir.ndslice.sorting;
+
+///
+unittest
+{
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.slice;
+    import mir.ndslice.sorting: sort;
+    import mir.ndslice.topology: pairwise;
+
+    auto arr = [1, 1, 2].sliced;
+
+    assert(arr.pairwise!"a <= b".all);
+    assert(!arr.pairwise!"a < b".all);
+
+    arr = [4, 3, 2, 1].sliced;
+
+    assert(!arr.pairwise!"a <= b".all);
+    assert(!arr.pairwise!"a < b".all);
+
+    sort(arr);
+
+    assert(arr.pairwise!"a <= b".all);
+    assert(arr.pairwise!"a < b".all);
+}
 
 import mir.ndslice.slice;
 import mir.internal.utility;
 
 @fastmath:
 
-/++
-Checks whether a slice is sorted according to the comparison
-operation $(D less). Performs $(BIGOH ndslice.elementsCount) evaluations of `less`.
-Unlike `isSorted`, $(LREF _isStrictlyMonotonic) does not allow for equal values,
-i.e. values for which both `less(a, b)` and `less(b, a)` are false.
-With either function, the predicate must be a strict ordering just like with
-`isSorted`. For example, using `"a <= b"` instead of `"a < b"` is
-incorrect and will cause failed assertions.
-
-Params:
-    less = Predicate the ndslice should be sorted by.
-Note:
-    isSorted requires predicates for floating point types looks like `!(cmp_condition)`
-    to return false if the ndslice contains NaNs.
-+/
+deprecated(`Use 'yourSlice.pairwise!"a <= b".all' instead. Imports:
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.topology: pairwise;
+`)
 template isSorted(alias less = "!(a >= b)")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
-    /++
-    slice = A slice to check for sortedness.
-    Returns:
-        `true` if the ndslice is sorted, false otherwise. `isSorted` allows
-        duplicates, $(LREF _isStrictlyMonotonic) not.
-    +/
     @fastmath bool isSorted(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
-        import mir.functional: reverseArgs;
+        import mir.functional: reverseArgs, not;
         import mir.ndslice.algorithm: all;
-        import mir.ndslice.topology: flattened, slide;
-        return slice.flattened.slide!(2, reverseArgs!less).all!"!a";
+        import mir.ndslice.topology: flattened, pairwise;
+        return slice.flattened.pairwise!(not!(reverseArgs!less)).all;
     }
     else
         alias isSorted = .isSorted!(naryFun!less);
 }
 
-/// ditto
+deprecated(`Use 'yourSlice.pairwise!"a < b".all' instead. Imports:
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.topology: pairwise;
+`)
 template isStrictlyMonotonic(alias less = "a < b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
-    ///
     @fastmath bool isStrictlyMonotonic(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
         import mir.ndslice.algorithm: all;
-        import mir.ndslice.topology: flattened, slide;
-        return slice.flattened.slide!(2, less).all!"a";
+        import mir.ndslice.topology: flattened, pairwise;
+        return slice.flattened.pairwise!less.all;
     }
     else
         alias isStrictlyMonotonic = .isStrictlyMonotonic!(naryFun!less);
 }
 
-
-///
 unittest
 {
-    assert([1, 1, 2].sliced.isSorted);
-    // strictly monotonic doesn't allow duplicates
-    assert(![1, 1, 2].sliced.isStrictlyMonotonic);
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.topology: pairwise;
 
-    auto arr = [4, 3, 2, 1].sliced;
-    assert(!isSorted(arr));
-    assert(!isStrictlyMonotonic(arr));
-
-    sort(arr);
-    assert(isSorted(arr));
-    assert(isStrictlyMonotonic(arr));
-}
-
-unittest
-{
     auto a = [1, 2, 3].sliced;
-    assert(isSorted(a[0 .. 0]));
-    assert(isSorted(a[0 .. 1]));
-    assert(isSorted(a));
+    assert(a[0 .. 0].pairwise!"a <= b".all);
+    assert(a[0 .. 1].pairwise!"a <= b".all);
+    assert(a.pairwise!"a <= b".all);
     auto b = [1, 3, 2].sliced;
-    assert(!isSorted(b));
+    assert(!b.pairwise!"a <= b".all);
 
     // ignores duplicates
     auto c = [1, 1, 2].sliced;
-    assert(isSorted(c));
+    assert(c.pairwise!"a <= b".all);
 }
 
 unittest
 {
-    assert([1, 2, 3][0 .. 0].sliced.isStrictlyMonotonic);
-    assert([1, 2, 3][0 .. 1].sliced.isStrictlyMonotonic);
-    assert([1, 2, 3].sliced.isStrictlyMonotonic);
-    assert(![1, 3, 2].sliced.isStrictlyMonotonic);
-    assert(![1, 1, 2].sliced.isStrictlyMonotonic);
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.topology: pairwise;
+
+    assert([1, 2, 3][0 .. 0].sliced.pairwise!"a < b".all);
+    assert([1, 2, 3][0 .. 1].sliced.pairwise!"a < b".all);
+    assert([1, 2, 3].sliced.pairwise!"a < b".all);
+    assert(![1, 3, 2].sliced.pairwise!"a < b".all);
+    assert(![1, 1, 2].sliced.pairwise!"a < b".all);
 }
 
 
@@ -130,13 +140,16 @@ template sort(alias less = "a < b")
 ///
 unittest
 {
+    import mir.ndslice.algorithm: all;
     import mir.ndslice.slice;
+    import mir.ndslice.sorting: sort;
+    import mir.ndslice.topology: pairwise;
 
     int[10] arr = [7,1,3,2,9,0,5,4,8,6];
 
     auto data = arr[].ptr.sliced(arr.length);
     data.sort();
-    assert(data.isSorted);
+    assert(data.pairwise!"a <= b".all);
 }
 
 void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice)

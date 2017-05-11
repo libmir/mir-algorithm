@@ -452,7 +452,7 @@ bool[2] minmaxPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref s
 Finds a positions (ndslices) such that
 `position[0].first` is minimal and `position[1].first` is maximal elements in the slice.
 
-Position is sub-ndslice of the same dimension in the right-(down-(etc)) corner.
+Position is sub-ndslice of the same dimension in the right-$(RPAREN)down-$(RPAREN)etc$(LPAREN)$(LPAREN) corner.
 
 Params:
     pred = A predicate.
@@ -461,7 +461,7 @@ See_also:
     $(LREF minmaxIndex),
     $(LREF minPos),
     $(LREF maxPos),
-    $(REF Slice.backward, mir,ndslice,slice).
+    $(SUBREF slice, Slice.backward).
 +/
 template minmaxPos(alias pred = "a < b")
 {
@@ -1026,7 +1026,7 @@ Like $(LREF find), but only returns whether or not the search was successful.
 Params:
     pred = The predicate.
 +/
-template any(alias pred)
+template any(alias pred = "a")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
@@ -1039,7 +1039,7 @@ template any(alias pred)
         All slices must have the same shape.
     +/
     @fastmath bool any(Slices...)(Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
+        if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length && allSatisfy!(isSlice, Slices))
     {
         slices.checkShapesMatch;
         return !slices[0].anyEmpty && anyImpl!pred(slices);
@@ -1147,7 +1147,7 @@ Params:
     pred = The predicate.
 
 +/
-template all(alias pred)
+template all(alias pred = "a")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
@@ -1160,7 +1160,7 @@ template all(alias pred)
         All slices must have the same shape.
     +/
     @fastmath bool all(Slices...)(Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
+        if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length && allSatisfy!(isSlice, Slices))
     {
         slices.checkShapesMatch;
         return slices[0].anyEmpty || allImpl!pred(slices);
