@@ -813,18 +813,18 @@ struct FieldIterator(Field)
     static alias __map(alias fun) = FieldIterator__map!(Field, fun);
 
     ///
-    _Slice!() opSlice()(size_t a, size_t b)
+    _Slice!() opSlice(size_t dimension)(size_t i, size_t j) const
     {
-        return typeof(return)(a, b);
+        return typeof(return)(i, j);
     }
 
     /++
     Returns:
-        `_field[slice.i .. slice.j]`.
+        `_field[_index + sl.i .. _index + sl.j]`.
     +/
-    auto opIndex()(_Slice!() slice)
+    auto opIndex()(_Slice!() sl)
     {
-        return _field[_index + slice.i .. _index + slice.j];
+        return _field[_index + sl.i .. _index + sl.j];
     }
 
     auto ref opUnary(string op : "*")()

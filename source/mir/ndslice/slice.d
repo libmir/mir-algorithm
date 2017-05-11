@@ -796,6 +796,24 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
+    ///
+    unittest
+    {
+        auto arr = [1, 2, 3, 4];
+        auto sl0 = arr.sliced;
+        auto sl1 = arr.slicedField;
+
+        assert(sl0.field is arr);
+        assert(sl1.field is arr);
+
+        arr = arr[1 .. $];
+        sl0 = sl0[1 .. $];
+        sl1 = sl1[1 .. $];
+
+        assert(sl0.field is arr);
+        assert(sl1.field is arr);
+    }
+
     /++
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
