@@ -407,9 +407,11 @@ At the same time, while working with `ndslice`, an engineer has access to the
 whole set of standard D library, so the functions he creates will be as
 efficient as if they were written in C.
 
+
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
+Acknowledgements: John Loughran Colvin
 
 Macros:
 SUBMODULE = $(MREF_ALTTEXT $1, mir, ndslice, $1)
