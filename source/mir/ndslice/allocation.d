@@ -42,15 +42,16 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(Contiguous, [N], T*)
-slice(T, size_t N)(size_t[N] lengths...)
+ContiguousTensor!(N, T)
+    slice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
     return new T[len].sliced(lengths);
 }
 
 /// ditto
-auto slice(T, size_t N)(size_t[N] lengths, T init)
+ContiguousTensor!(N, T)
+    slice(T, size_t N)(size_t[N] lengths, T init)
 {
     immutable len = lengthsProduct(lengths);
     static if (!hasElaborateAssign!T)
@@ -70,7 +71,12 @@ auto slice(T, size_t N)(size_t[N] lengths, T init)
 /// ditto
 auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
-    auto ret = .slice!(Unqual!(slice.DeepElemType))(slice.shape);
+    alias T = Unqual!(slice.DeepElemType);
+    static if (hasElaborateAssign!T)
+        alias fun = .slice;
+    else
+        alias fun = .uninitializedSlice;
+    auto ret = fun!T(slice.shape);
     ret[] = slice;
     return ret;
 }
@@ -104,8 +110,8 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
         alias fun = .slice;
     else
         alias fun = .uninitializedSlice;
-    auto ret = fun!(Unqual!(concatenation.DeepElemType))(concatenation.shape);
-    ret.opIndexAssign(concatenation);
+    auto ret = fun!T(concatenation.shape);
+    ret[] = concatenation;
     return ret;
 }
 
