@@ -76,7 +76,7 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     auto tensor = slice!int(5, 6, 7);
     assert(tensor.length == 5);
@@ -89,7 +89,7 @@ pure nothrow unittest
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     auto tensor = slice([2, 3], 5);
     assert(tensor.elementsCount == 2 * 3);
@@ -109,7 +109,7 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
     return ret;
 }
 
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
     auto tensor = iota(2, 3).slice;
@@ -132,7 +132,7 @@ auto uninitializedSlice(T, size_t N)(size_t[N] lengths...)
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     auto tensor = uninitializedSlice!int(5, 6, 7);
     assert(tensor.length == 5);
@@ -259,7 +259,7 @@ makeUninitializedSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[
 }
 
 ///
-@nogc unittest
+@system @nogc unittest
 {
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
@@ -306,7 +306,7 @@ auto ndarray(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Itera
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
     auto slice = iota(3, 4);

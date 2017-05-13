@@ -1,6 +1,10 @@
 /++
 This is a submodule of $(MREF mir, ndslice).
 
+Safety_note:
+    User-defined iterators $(RED must) care about its safety except bounds checks.
+    Bounds are checked in ndslice code.
+
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
@@ -38,6 +42,7 @@ import mir.ndslice.concatenation;
 import mir.primitives;
 import mir.ndslice.iterator;
 import mir.ndslice.field;
+import mir.utility;
 
 @fastmath:
 
@@ -51,6 +56,7 @@ template isSlice(T)
 }
 
 ///
+@safe pure nothrow @nogc
 unittest
 {
     alias A = uint[];
@@ -107,6 +113,7 @@ alias Contiguous = SliceKind.contiguous;
 enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;
 
 ///
+@safe pure nothrow @nogc
 unittest
 {
     static assert(kindOf!(Slice!(Universal, [1], int*)) == Universal);
@@ -136,24 +143,36 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
         && !is(Iterator : Slice!(kind, packs, _Iterator), SliceKind kind, size_t[] packs, _Iterator))
 {
     alias C = ImplicitlyUnqual!(typeof(iterator));
+    size_t[N] _lengths;
+    foreach (i; Iota!N)
+        _lengths[i] = lengths[i];
+    ptrdiff_t[1] _strides = 0;
     static if (isDynamicArray!Iterator)
-        alias S = Slice!(Contiguous, [N], typeof(C.init[0])*);
+    {
+        assert(lengthsProduct(_lengths) <= iterator.length,
+            "array length should be greater or equal to the product of constructed ndslice lengths");
+        auto ptr = iterator.length ? &iterator[0] : null;
+        return Slice!(Contiguous, [N], typeof(C.init[0])*)(_lengths, _strides[0 .. 0], ptr);
+    }
     else
-        alias S = Slice!(Contiguous, [N], C);
-    S ret = S.init;
-    static if (isDynamicArray!Iterator)
-        ret._iterator = iterator.ptr;
-    else
-        ret._iterator = iterator;
-    foreach(i; Iota!N)
-        ret._lengths[i] = lengths[i];
-    return ret;
+    {
+        // break safety
+        if (false)
+        {
+            ++iterator;
+            --iterator;
+            iterator = iterator + 34;
+            iterator -= 34;
+        }
+        return Slice!(Contiguous, [N], C)(_lengths, _strides[0 .. 0], iterator);
+    }
 }
 
 /// $(LINK2 https://en.wikipedia.org/wiki/Vandermonde_matrix, Vandermonde matrix)
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     auto vandermondeMatrix(Slice!(Universal, [1], double*) x)
+        @safe nothrow pure
     {
         import mir.ndslice.allocation: slice;
         auto ret = slice!double(x.length, x.length);
@@ -175,12 +194,12 @@ pure nothrow unittest
 }
 
 /// Random access range primitives for slices over user defined types
-pure nothrow @nogc unittest
+@safe pure nothrow @nogc unittest
 {
     struct MyIota
     {
         //`[index]` operator overloading
-        auto opIndex(size_t index)
+        auto opIndex(size_t index) @safe nothrow
         {
             return index;
         }
@@ -206,13 +225,13 @@ Params:
 Returns:
     1-dimensional slice
 +/
-auto sliced(T)(T[] array)
+auto sliced(T)(T[] array) @safe
 {
     return .sliced(array, [array.length]);
 }
 
 /// Creates a slice from an array.
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     auto slice = new int[10].sliced;
     assert(slice.length == 10);
@@ -233,30 +252,30 @@ Slice!(kind, N ~ (packs[0] == 1 ? [] : [packs[0] - 1]) ~ packs[1 .. $], Iterator
     (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
     if (N)
 {
-    mixin _DefineRet;
     assert(lengths.lengthsProduct == slice.length, "elements count mismatch");
+    size_t[typeof(return).N] _lengths;
     foreach (i; Iota!N)
-        ret._lengths[i] = lengths[i];
+        _lengths[i] = lengths[i];
     foreach (i; Iota!(slice.N - 1))
-        ret._lengths[N + i] = slice._lengths[i + 1];
+        _lengths[N + i] = slice._lengths[i + 1];
+    ptrdiff_t[max(typeof(return).S, size_t(1))] _strides;
     static if (kind != Contiguous)
     {
         foreach (i; Iota!(slice.S - 1))
-            ret._strides[N + i] = slice._strides[i + 1];
+            _strides[N + i] = slice._strides[i + 1];
         auto stride = slice._strides[0];
         foreach_reverse (i; Iota!N)
         {
-            ret._strides[i] = stride;
+            _strides[i] = stride;
             static if(i)
                 stride *= lengths[i];
         }
     }
-    ret._iterator = slice._iterator;
-    return ret;
+    return typeof(return)(_lengths, _strides[0 .. typeof(return).S], slice._iterator);
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
     auto data = new int[24];
@@ -607,13 +626,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     ///
     public Iterator _iterator;
 
-    sizediff_t backIndex(size_t dimension = 0)() @property const
+    sizediff_t backIndex(size_t dimension = 0)() @safe @property const
         if (dimension < packs[0])
     {
         return _stride!dimension * (_lengths[dimension] - 1);
     }
 
-    size_t indexStride(size_t I)(size_t[I] _indexes...) const
+    size_t indexStride(size_t I)(size_t[I] _indexes...) @safe const
     {
         static if (_indexes.length)
         {
@@ -782,7 +801,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Constraints:
         Field is defined only for contiguous slices.
     +/
-    auto field()() @property
+    auto field()() @trusted @property
     {
         static assert(kind == Contiguous, "Slice.field is defined only for contiguous slices. Slice kind is " ~ kind.stringof);
         static if (is(typeof(_iterator[size_t(0) .. elementsCount])))
@@ -797,7 +816,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    unittest
+    @safe unittest
     {
         auto arr = [1, 2, 3, 4];
         auto sl0 = arr.sliced;
@@ -818,7 +837,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    size_t[packs[0]] shape()() @property const
+    size_t[packs[0]] shape()() @safe @property const
     {
         return _lengths[0 .. packs[0]];
     }
@@ -845,7 +864,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    ptrdiff_t[packs[0]] strides()() @property const
+    ptrdiff_t[packs[0]] strides()() @safe @property const
     {
         static if (packs[0] <= S)
             return _strides[0 .. packs[0]];
@@ -907,7 +926,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Returns: static array of lengths and static array of strides
     See_also: $(LREF .Slice.shape)
    +/
-    Structure!(packs[0]) structure()() @property const
+    Structure!(packs[0]) structure()() @safe @property const
     {
         return typeof(return)(_lengths[0 .. packs[0]], strides);
     }
@@ -948,7 +967,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     Save primitive.
     +/
-    auto save()() @property
+    auto save()() @safe @property
     {
         return this;
     }
@@ -963,7 +982,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     static if (doUnittest)
     /// Pointer type.
-    pure nothrow unittest
+    @safe pure nothrow unittest
     {
         import mir.ndslice.allocation;
         //sl type is `Slice!(2, int*)`
@@ -976,7 +995,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Returns: length of the corresponding dimension
     See_also: $(LREF .Slice.shape), $(LREF .Slice.structure)
     +/
-    size_t length(size_t dimension = 0)() @property const
+    size_t length(size_t dimension = 0)() @safe @property const
         if (dimension < packs[0])
     {
         return _lengths[dimension];
@@ -1001,7 +1020,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         Returns: stride of the corresponding dimension
         See_also: $(LREF .Slice.structure)
     +/
-    sizediff_t _stride(size_t dimension = 0)() @property const
+    sizediff_t _stride(size_t dimension = 0)() @safe @property const
         if (dimension < packs[0])
     {
         static if (dimension < S)
@@ -1052,57 +1071,58 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     Multidimensional input range primitive.
     +/
-    bool empty(size_t dimension = 0)()
-    @property const
+    bool empty(size_t dimension = 0)() @safe @property const
         if (dimension < packs[0])
     {
         return _lengths[dimension] == 0;
     }
 
     ///ditto
-    auto ref front(size_t dimension = 0)() @property
+    static if (N == 1)
+    auto ref ElemType!dimension front(size_t dimension = 0)() @trusted @property
         if (dimension < packs[0])
     {
         assert(!empty!dimension);
-        static if (N == 1)
+        return *_iterator;
+    }
+    else
+    auto ref ElemType!dimension front(size_t dimension = 0)() @property
+        if (dimension < packs[0])
+    {
+        size_t[typeof(return).N] lengths_;
+        ptrdiff_t[max(typeof(return).S, size_t(1))] strides_;
+
+        foreach (i; Iota!(typeof(return).N))
         {
-            return *_iterator;
+            enum j = i >= dimension ? i + 1 : i;
+            lengths_[i] = _lengths[j];
         }
+
+        static if (!typeof(return).S || typeof(return).S + 1 == S)
+            alias s =_strides;
         else
+            auto s = strides;
+
+        foreach (i; Iota!(typeof(return).S))
         {
-            static if (hasElaborateAssign!Iterator)
-                ElemType!dimension ret;
-            else
-                ElemType!dimension ret = ElemType!dimension.init;
-
-            foreach (i; Iota!(ret.N))
-            {
-                enum j = i >= dimension ? i + 1 : i;
-                ret._lengths[i] = _lengths[j];
-            }
-
-            static if (!ret.S || ret.S + 1 == S)
-                alias s =_strides;
-            else
-                auto s = strides;
-
-            foreach (i; Iota!(ret.S))
-            {
-                enum j = i >= dimension ? i + 1 : i;
-                ret._strides[i] = s[j];
-            }
-
-            ret._iterator = _iterator;
-            return ret;
+            enum j = i >= dimension ? i + 1 : i;
+            strides_[i] = s[j];
         }
+
+        return typeof(return)(lengths_, strides_[0 .. typeof(return).S], _iterator);
     }
 
     static if (N == 1 && isMutable!DeepElemType && !hasAccessByRef)
     {
         ///ditto
-        auto ref front(size_t dimension = 0, T)(auto ref T value) @property
+        auto ref front(size_t dimension = 0, T)(auto ref T value) @trusted @property
             if (dimension == 0)
         {
+            // check assign safety 
+            static auto ref fun(ref DeepElemType t, ref T v) @safe
+            {
+                return t = v;
+            }
             assert(!empty!dimension);
             static if (__traits(compiles, *_iterator = value))
                 return *_iterator = value;
@@ -1112,57 +1132,60 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///ditto
-    auto ref back(size_t dimension = 0)() @property
+    static if (N == 1)
+    auto ref ElemType!dimension
+    back(size_t dimension = 0)() @trusted @property
         if (dimension < packs[0])
     {
         assert(!empty!dimension);
-        static if (N == 1)
+        return _iterator[backIndex];
+    }
+    else
+    auto ref ElemType!dimension
+    back(size_t dimension = 0)() @trusted @property
+        if (dimension < packs[0])
+    {
+        assert(!empty!dimension);
+        size_t[typeof(return).N] lengths_;
+        ptrdiff_t[max(typeof(return).S, size_t(1))] strides_;
+        foreach (i; Iota!(typeof(return).N))
         {
-            return _iterator[backIndex];
+            enum j = i >= dimension ? i + 1 : i;
+            lengths_[i] = _lengths[j];
         }
+
+        static if (!typeof(return).S || typeof(return).S + 1 == S)
+            alias s =_strides;
         else
+            auto s = strides;
+
+        foreach (i; Iota!(typeof(return).S))
         {
-            static if (hasElaborateAssign!Iterator)
-                ElemType!dimension ret;
-            else
-                ElemType!dimension ret = ElemType!dimension.init;
-
-            foreach (i; Iota!(ret.N))
-            {
-                enum j = i >= dimension ? i + 1 : i;
-                ret._lengths[i] = _lengths[j];
-            }
-
-            static if (!ret.S || ret.S + 1 == S)
-                alias s =_strides;
-            else
-                auto s = strides;
-
-            foreach (i; Iota!(ret.S))
-            {
-                enum j = i >= dimension ? i + 1 : i;
-                ret._strides[i] = s[j];
-            }
-
-            ret._iterator = _iterator;
-            ret._iterator += backIndex!dimension;
-            return ret;
+            enum j = i >= dimension ? i + 1 : i;
+            strides_[i] = s[j];
         }
+
+        return typeof(return)(lengths_, strides_[0 .. typeof(return).S], _iterator + backIndex!dimension);
     }
 
     static if (N == 1 && isMutable!DeepElemType && !hasAccessByRef)
     {
         ///ditto
-        auto ref back(size_t dimension = 0, T)(auto ref T value) @property
+        auto ref back(size_t dimension = 0, T)(auto ref T value) @trusted @property
             if (dimension == 0)
         {
+            // check assign safety 
+            static auto ref fun(ref DeepElemType t, ref T v) @safe
+            {
+                return t = v;
+            }
             assert(!empty!dimension);
             return _iterator[backIndex] = value;
         }
     }
 
     ///ditto
-    void popFront(size_t dimension = 0)()
+    void popFront(size_t dimension = 0)() @trusted
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
@@ -1177,7 +1200,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///ditto
-    void popBack(size_t dimension = 0)()
+    void popBack(size_t dimension = 0)() @safe
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
@@ -1185,7 +1208,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///ditto
-    void popFrontExactly(size_t dimension = 0)(size_t n)
+    void popFrontExactly(size_t dimension = 0)(size_t n) @trusted
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
         assert(n <= _lengths[dimension],
@@ -1195,7 +1218,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///ditto
-    void popBackExactly(size_t dimension = 0)(size_t n)
+    void popBackExactly(size_t dimension = 0)(size_t n) @safe
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
         assert(n <= _lengths[dimension],
@@ -1204,18 +1227,16 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///ditto
-    void popFrontN(size_t dimension = 0)(size_t n)
+    void popFrontN(size_t dimension = 0)(size_t n) @trusted
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
-        import mir.utility : min;
         popFrontExactly!dimension(min(n, _lengths[dimension]));
     }
 
     ///ditto
-    void popBackN(size_t dimension = 0)(size_t n)
+    void popBackN(size_t dimension = 0)(size_t n) @safe
         if (dimension < packs[0] && (dimension == 0 || kind != Contiguous))
     {
-        import mir.utility : min;
         popBackExactly!dimension(min(n, _lengths[dimension]));
     }
 
@@ -1256,7 +1277,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(slice.shape == cast(size_t[3])[0, 0, 0]);
     }
 
-    package(mir) ptrdiff_t lastIndex()() const @property
+    package(mir) ptrdiff_t lastIndex()() @safe const @property
     {
         static if (kind == Contiguous)
         {
@@ -1275,7 +1296,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     static if (packs[0] > 1)
     {
         /// Accesses the first deep element of the slice.
-        auto ref first()() @property
+        auto ref first()() @trusted @property
         {
             assert(!anyEmpty);
             static if (packs.length == 1)
@@ -1289,7 +1310,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (isMutable!DeepElemType && !hasAccessByRef)
         ///ditto
-        auto ref first(T)(auto ref T value) @property
+        auto ref first(T)(auto ref T value) @trusted @property
         {
             assert(!anyEmpty);
             static if (__traits(compiles, *_iterator = value))
@@ -1299,7 +1320,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         ///
-        unittest
+        @safe pure nothrow @nogc unittest
         {
             import mir.ndslice.topology: iota, universal, canonical;
             auto f = 5;
@@ -1307,7 +1328,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         /// Accesses the last deep element of the slice.
-        auto ref last()() @property
+        auto ref last()() @trusted @property
         {
             assert(!anyEmpty);
             import mir.ndslice.topology: retro;
@@ -1322,14 +1343,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (isMutable!DeepElemType && !hasAccessByRef)
         ///ditto
-        auto ref last(T)(auto ref T value) @property
+        auto ref last(T)(auto ref T value) @trusted @property
         {
             assert(!anyEmpty);
             return _iterator[lastIndex] = value;
         }
 
         ///
-        unittest
+        @safe pure nothrow @nogc unittest
         {
             import mir.ndslice.topology: iota;
             auto f = 5;
@@ -1345,7 +1366,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     Returns: `true` if for any dimension the length equals to `0`, and `false` otherwise.
     +/
-    bool anyEmpty()() const
+    bool anyEmpty()() @safe const
     {
         foreach (i; Iota!(packs[0]))
             if (_lengths[i] == 0)
@@ -1355,7 +1376,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     static if (doUnittest)
     ///
-    unittest
+    @safe pure nothrow @nogc unittest
     {
         import mir.ndslice.topology : iota, canonical;
         auto s = iota(2, 3).canonical;
@@ -1369,7 +1390,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     Returns: `this[$-index[0], $-index[1], ..., $-index[N-1]]`
     +/
-    auto ref backward()(size_t[packs[0]] index)
+    auto ref backward()(size_t[packs[0]] index) @safe
     {
         foreach (i; Iota!(packs[0]))
             index[i] = _lengths[i] - index[i];
@@ -1388,7 +1409,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     Returns: Total number of elements in a slice
     +/
-    size_t elementsCount() const
+    size_t elementsCount() @safe const
     {
         size_t len = 1;
         foreach (i; Iota!(packs[0]))
@@ -1420,7 +1441,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     Overloading `==` and `!=`
     +/
-    bool opEquals(SliceKind rkind, size_t[] rpacks, IteratorR)(const Slice!(rkind, rpacks, IteratorR) rslice) const
+    bool opEquals(SliceKind rkind, size_t[] rpacks, IteratorR)(const Slice!(rkind, rpacks, IteratorR) rslice) @trusted const
         if (rpacks.sum == N)
     {
         foreach (i; Iota!N)
@@ -1448,7 +1469,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///ditto
-    bool opEquals(T)(T[] arr) const
+    bool opEquals(T)(T[] arr) @trusted const
     {
         auto slice = cast(This)this;
         if (slice.length != arr.length)
@@ -1466,7 +1487,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     static if (doUnittest)
     ///
-    pure nothrow
+    @safe pure nothrow
     unittest
     {
         auto a = [1, 2, 3, 4].sliced(2, 2);
@@ -1482,14 +1503,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     static if (doUnittest)
-    pure nothrow unittest
+    @safe pure nothrow unittest
     {
         import mir.ndslice.allocation: slice;
         import mir.ndslice.topology : iota;
         assert(iota(2, 3).slice[0 .. $ - 2] == iota([4, 3], 2)[0 .. $ - 4]);
     }
 
-    _Slice!() opSlice(size_t dimension)(size_t i, size_t j) const
+    _Slice!() opSlice(size_t dimension)(size_t i, size_t j) @safe const
         if (dimension < packs[0])
     in
     {
@@ -1508,7 +1529,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     $(BOLD Fully defined index)
     +/
-    auto ref opIndex(size_t I)(size_t[I] _indexes...)
+    auto ref opIndex(size_t I)(size_t[I] _indexes...) @trusted
         if (I && I <= packs[0])
     {
         static if (I == N)
@@ -1541,7 +1562,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     $(BOLD Partially or fully defined slice.)
     +/
-    auto opIndex(Slices...)(Slices slices)
+    auto opIndex(Slices...)(Slices slices) @trusted
         if (isPureSlice!Slices)
     {
         static if (Slices.length)
@@ -1562,7 +1583,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             else
                 enum K = Canonical;
             alias Ret = Slice!(K, (packs[0] - F) ~ packs[1 .. $], Iterator);
-            mixin _DefineRet_;
+            size_t[Ret.N] lengths_;
+            ptrdiff_t[max(Ret.S, size_t(1))] strides_;
             enum bool shrink = kind == Canonical && slices.length == N;
             static if (shrink)
             {
@@ -1577,7 +1599,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     else
                     {
                         stride += slice.i;
-                        ret._lengths[j!i] = slice.j - slice.i;
+                        lengths_[j!i] = slice.j - slice.i;
                     }
                 }
             }
@@ -1593,8 +1615,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     else
                     {
                         stride += _strides[i] * slice.i;
-                        ret._lengths[j!i] = slice.j - slice.i;
-                        ret._strides[j!i] = _strides[i];
+                        lengths_[j!i] = slice.j - slice.i;
+                        strides_[j!i] = _strides[i];
                     }
                 }
             }
@@ -1611,23 +1633,20 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     else
                     {
                         stride += ball * slice.i;
-                        ret._lengths[j!i] = slice.j - slice.i;
-                        static if (j!i < ret.S)
-                            ret._strides[j!i] = ball;
+                        lengths_[j!i] = slice.j - slice.i;
+                        static if (j!i < Ret.S)
+                            strides_[j!i] = ball;
                     }
                     static if (i)
                         ball *= _lengths[i];
                 }
             }
             foreach (i; Iota!(Slices.length, N))
-                ret._lengths[i - F] = _lengths[i];
-            
+                lengths_[i - F] = _lengths[i];
             foreach (i; Iota!(Slices.length, N))
-                static if (ret.S > i - F)
-                    ret._strides[i - F] = _strides[i];
-            ret._iterator = _iterator;
-            ret._iterator += stride;
-            return ret;
+                static if (Ret.S > i - F)
+                    strides_[i - F] = _strides[i];
+            return Ret(lengths_, strides_[0 .. Ret.S], _iterator + stride);
         }
         else
         {
@@ -1654,7 +1673,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     $(BOLD Indexed slice.)
     +/
-    auto opIndex(Slices...)(Slices slices)
+    auto opIndex(Slices...)(Slices slices) @safe
         if (isIndexedSlice!Slices)
     {
         import mir.ndslice.topology: indexed, cartesian, map;
@@ -1666,7 +1685,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    pure nothrow unittest
+    @safe pure nothrow unittest
     {
         import mir.ndslice.allocation: slice;
         auto sli = slice!int(4, 3);
@@ -1700,7 +1719,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    pure nothrow unittest
+    @safe pure nothrow unittest
     {
         import mir.ndslice.topology: iota;
         import mir.ndslice.allocation: slice;
@@ -1729,6 +1748,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     static if (isMutable!(PureThis.DeepElemType))
     {
         private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RIterator)(Slice!(rkind, rpacks, RIterator) value)
+            @safe
         {
             static if (N > 1 && rpacks == packs && kind == Contiguous && rkind == Contiguous)
             {
@@ -1765,6 +1785,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         Assignment of a value of `Slice` type to a $(B fully defined slice).
         +/
         void opIndexAssign(SliceKind rkind, size_t[] rpacks, RIterator, Slices...)(Slice!(rkind, rpacks, RIterator) value, Slices slices)
+            @safe
             if (isFullPureSlice!Slices)
         {
             auto sl = this[slices];
@@ -1776,7 +1797,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         ///
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -1798,7 +1819,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         /// Left slice is packed
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.topology : blocks, iota;
             import mir.ndslice.allocation : slice;
@@ -1814,7 +1835,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         /// Both slices are packed
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.topology : blocks, iota, pack;
             import mir.ndslice.allocation : slice;
@@ -1828,7 +1849,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                      [4, 5, 6, 7]]);
         }
 
-        void opIndexOpAssignImplArray(string op, T, Slices...)(T[] value)
+        void opIndexOpAssignImplArray(string op, T, Slices...)(T[] value) @safe
         {
             auto ls = this;
             assert(ls.length == value.length, __FUNCTION__ ~ ": argument must have the same length.");
@@ -1870,7 +1891,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Assignment of a regular multidimensional array to a $(B fully defined slice).
         +/
-        void opIndexAssign(T, Slices...)(T[] value, Slices slices)
+        void opIndexAssign(T, Slices...)(T[] value, Slices slices) @safe
             if (isFullPureSlice!Slices
                 && !isDynamicArray!DeepElemType
                 && DynamicArrayDimensionsCount!(T[]) <= ReturnType!(opIndex!Slices).N)
@@ -1919,7 +1940,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
 
-        private void opIndexOpAssignImplConcatenation(string op, T)(T value)
+        private void opIndexOpAssignImplConcatenation(string op, T)(T value) @safe
         {
             auto sl = this;
             static if (concatenationDimension!T)
@@ -1944,7 +1965,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         ///
-        void opIndexAssign(T, Slices...)(T concatenation, Slices slices)
+        void opIndexAssign(T, Slices...)(T concatenation, Slices slices) @safe
             if (isFullPureSlice!Slices && isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
@@ -1956,7 +1977,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined slice).
         +/
-        void opIndexAssign(T, Slices...)(T value, Slices slices)
+        void opIndexAssign(T, Slices...)(T value, Slices slices) @safe
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !isSlice!T
@@ -1970,7 +1991,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         ///
-        pure nothrow
+        @safe pure nothrow
         unittest
         {
             import mir.ndslice.allocation;
@@ -1998,7 +2019,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         /// Packed slices have the same behavior.
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             import mir.ndslice.topology : pack;
@@ -2012,14 +2033,19 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexAssign(T)(T value, size_t[N] _indexes...)
+        auto ref opIndexAssign(T)(auto ref T value, size_t[N] _indexes...) @trusted
         {
+            // check assign safety 
+            static auto ref fun(ref DeepElemType t, ref T v) @safe
+            {
+                return t = v;
+            }
             return _iterator[indexStride(_indexes)] = value;
         }
 
         static if (doUnittest)
         ///
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2029,7 +2055,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         static if (doUnittest)
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             auto a = new int[6].sliced(2, 3);
 
@@ -2041,14 +2067,19 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexOpAssign(string op, T)(T value, size_t[N] _indexes...)
+        auto ref opIndexOpAssign(string op, T)(auto ref T value, size_t[N] _indexes...) @trusted
         {
+            // check op safety 
+            static auto ref fun(ref DeepElemType t, ref T v) @safe
+            {
+                return mixin(`t` ~ op ~ `= v`);
+            }
             return mixin (`_iterator[indexStride(_indexes)] ` ~ op ~ `= value`);
         }
 
         static if (doUnittest)
         ///
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2058,7 +2089,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         static if (doUnittest)
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             auto a = new int[6].sliced(2, 3);
 
@@ -2071,6 +2102,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         +/
         void opIndexOpAssign(string op, SliceKind kind, size_t[] rpacks, RIterator, Slices...)
             (Slice!(kind, rpacks, RIterator) value, Slices slices)
+            @safe
             if (isFullPureSlice!Slices)
         {
             auto sl = this[slices];
@@ -2082,7 +2114,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         ///
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2103,7 +2135,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         /// Left slice is packed
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation : slice;
             import mir.ndslice.topology : blocks, iota;
@@ -2119,7 +2151,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         /// Both slices are packed
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation : slice;
             import mir.ndslice.topology : blocks, iota, pack;
@@ -2137,6 +2169,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         Op Assignment `op=` of a regular multidimensional array to a $(B fully defined slice).
         +/
         void opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices)
+            @safe
             if (isFullPureSlice!Slices
                 && !isDynamicArray!DeepElemType
                 && DynamicArrayDimensionsCount!(T[]) <= ReturnType!(opIndex!Slices).N)
@@ -2146,7 +2179,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         ///
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation : slice;
             auto a = slice!int(2, 3);
@@ -2166,7 +2199,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         /// Packed slices
-        pure nothrow 
+        @safe pure nothrow 
         unittest
         {
             import mir.ndslice.allocation : slice;
@@ -2182,6 +2215,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         private void opIndexOpAssignImplValue(string op, T)(T value)
+            @safe
         {
             static if (N > 1 && kind == Contiguous)
             {
@@ -2207,6 +2241,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined slice).
        +/
         void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices)
+            @safe
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !isSlice!T
@@ -2220,7 +2255,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         ///
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2237,6 +2272,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         ///
         void opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices)
+            @safe
             if (isFullPureSlice!Slices && isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
@@ -2247,7 +2283,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         /// Packed slices have the same behavior.
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             import mir.ndslice.topology : pack;
@@ -2257,20 +2293,27 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             assert(a == [[9, 9, 9], [9, 9, 9]]);
         }
 
+
         static if (packs.length == 1)
         /++
         Increment `++` and Decrement `--` operators for a $(B fully defined index).
         +/
         auto ref opIndexUnary(string op)(size_t[N] _indexes...)
+            @trusted
             // @@@workaround@@@ for Issue 16473
             //if (op == `++` || op == `--`)
         {
+            // check op safety 
+            static auto ref fun(DeepElemType t) @safe
+            {
+                return mixin(op ~ `t`);
+            }
             return mixin (op ~ `_iterator[indexStride(_indexes)]`);
         }
 
         static if (doUnittest)
         ///
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2281,7 +2324,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         // Issue 16473
         static if (doUnittest)
-        unittest
+        @safe pure nothrow unittest
         {
             import mir.ndslice.allocation;
             auto sl = slice!double(2, 5);
@@ -2289,7 +2332,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         static if (doUnittest)
-        pure nothrow unittest
+        @safe pure nothrow unittest
         {
             auto a = new int[6].sliced(2, 3);
 
@@ -2298,6 +2341,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         private void opIndexUnaryImpl(string op, Slices...)(Slices slices)
+            @safe
         {
             auto sl = this;
             do
@@ -2316,6 +2360,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         Increment `++` and Decrement `--` operators for a $(B fully defined slice).
         +/
         void opIndexUnary(string op, Slices...)(Slices slices)
+            @safe
             if (isFullPureSlice!Slices && (op == `++` || op == `--`))
         {
             import mir.ndslice.topology: unpack;
@@ -2326,7 +2371,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         static if (doUnittest)
         ///
-        pure nothrow
+        @safe pure nothrow
         unittest
         {
             import mir.ndslice.allocation;
@@ -2399,7 +2444,6 @@ pure nothrow unittest
     // transposed tensor shape is (4, 5, 3)
     //            vector shape is (      3)
     tensor.transposed!(1, 2)[] = vector;
-
 
     // transposed tensor shape is (5, 3, 4)
     //            matrix shape is (   3, 4)
@@ -2483,12 +2527,12 @@ pure nothrow unittest
 {
     import std.algorithm.iteration : map;
     import std.array : array;
-    import std.bigint;
+    //import std.bigint;
     import std.range : iota;
 
     auto matrix = 72
         .iota
-        .map!(i => BigInt(i))
+        //.map!(i => BigInt(i))
         .array
         .sliced(8, 9);
 
@@ -2534,7 +2578,7 @@ unittest
     import std.container.array;
     Array!int ar;
     ar.length = 12;
-    Slice!(Contiguous, [2], typeof(ar[])) arSl = ar[].sliced(3, 4);
+    auto arSl = ar[].slicedField(3, 4);
 }
 
 // Test for map #1

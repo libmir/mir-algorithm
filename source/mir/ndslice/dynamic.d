@@ -83,6 +83,7 @@ import std.meta;
 import mir.internal.utility;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
+import mir.utility;
 
 @fastmath:
 
@@ -330,24 +331,15 @@ Returns:
     n-dimensional slice of the same type
 See_also: $(LREF swapped), $(LREF transposed)
 +/
-Slice!(Universal, packs, Iterator) everted(size_t[] packs, Iterator)(Slice!(Universal, packs, Iterator) slice)
+Slice!(kind, packs, Iterator) everted(size_t[] packs, SliceKind kind, Iterator)(Slice!(kind, packs, Iterator) slice)
+    if (kind == Universal || kind == Canonical && packs.length > 1)
 {
-    mixin _DefineRet;
-    with (slice)
+    with(slice) foreach (i; Iota!(packs[0] / 2))
     {
-         foreach (i; Iota!(packs[0]))
-        {
-            ret._lengths[N - 1 - i] = _lengths[i];
-            ret._strides[N - 1 - i] = _strides[i];
-        }
-        foreach (i; Iota!(packs[0], slice.N))
-        {
-            ret._lengths[i] = _lengths[i];
-            ret._strides[i] = _strides[i];
-        }
-        ret._iterator = _iterator;
-        return ret;
+        swap(_lengths[i], _lengths[packs[0] - i - 1]);
+        swap(_strides[i], _strides[packs[0] - i - 1]);
     }
+    return slice;
 }
 
 ///
@@ -362,24 +354,21 @@ Slice!(Universal, packs, Iterator) everted(size_t[] packs, Iterator)(Slice!(Univ
 }
 
 private enum _transposedCode = q{
-    mixin _DefineRet;
-    with (slice)
+    size_t[typeof(return).N] lengths_;
+    ptrdiff_t[max(typeof(return).S, size_t(1))] strides_;
+    with(slice) foreach (i; Iota!(packs[0]))
     {
-        foreach (i; Iota!(packs[0]))
-        {
-            ret._lengths[i] = _lengths[perm[i]];
-            static if (i < ret.S)
-                ret._strides[i] = _strides[perm[i]];
-        }
-        foreach (i; Iota!(packs[0], slice.N))
-        {
-            ret._lengths[i] = _lengths[i];
-            static if (i < ret.S)
-                ret._strides[i] = _strides[i];
-        }
-        ret._iterator = _iterator;
-        return ret;
+        lengths_[i] = _lengths[perm[i]];
+        static if (i < typeof(return).S)
+            strides_[i] = _strides[perm[i]];
     }
+    with(slice) foreach (i; Iota!(packs[0], slice.N))
+    {
+        lengths_[i] = _lengths[i];
+        static if (i < typeof(return).S)
+            strides_[i] = _strides[i];
+    }
+    return typeof(return)(lengths_, strides_[0 .. typeof(return).S], slice._iterator);
 };
 
 private size_t[N] completeTranspose(size_t N)(size_t[] dimensions)
@@ -536,6 +525,7 @@ Returns:
     n-dimensional slice of the same type
 +/
 Slice!(kind, packs, Iterator) allReversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @trusted
     if (kind == Universal || kind == Canonical && packs.length > 1)
 {
     foreach (dimension; Iota!(packs[0]))
@@ -571,7 +561,9 @@ template reversed(Dimensions...)
         alias reversed = .reversed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @fastmath Slice!(kind, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @fastmath Slice!(kind, packs, Iterator)
+        reversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+        @trusted
         if (kind == Universal || kind == Canonical)
     {
         foreach (i, dimension; Dimensions)
@@ -585,6 +577,7 @@ template reversed(Dimensions...)
 
 ///ditto
 Slice!(kind, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iterator, size_t M)(Slice!(kind, packs, Iterator) slice, size_t[M] dimensions...)
+    @trusted
     if (kind == Universal || kind == Canonical)
 in
 {
@@ -602,7 +595,7 @@ body
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.topology: iota, universal;
     auto slice = iota([2, 2], 1).universal;
@@ -626,7 +619,7 @@ pure nothrow unittest
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.topology: iota, canonical;
     auto slice = iota([2, 2], 1).canonical;

@@ -628,7 +628,7 @@ pure nothrow unittest
     import std.range : iota;
     auto r = (10_000L * 2 * 3 * 4).iota;
 
-    auto t0 = r.sliced(10, 20, 30, 40);
+    auto t0 = r.slicedField(10, 20, 30, 40);
     assert(t0.length == 10);
     assert(t0.length!0 == 10);
     assert(t0.length!1 == 20);

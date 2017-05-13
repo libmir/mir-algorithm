@@ -152,6 +152,7 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
 }
 
 ///
+@safe pure nothrow
 unittest
 {
     auto slice = iota(2, 3).universal;
@@ -160,6 +161,7 @@ unittest
     assert(slice._strides == [3, 1]);
 }
 
+@safe pure nothrow
 unittest
 {
     auto slice = iota(2, 3).canonical.universal;
@@ -206,6 +208,7 @@ Slice!(packs == [1] ? Contiguous : Canonical, packs, Iterator)
 }
 
 ///
+@safe pure nothrow
 unittest
 {
     auto slice = iota(2, 3).canonical;
@@ -249,6 +252,7 @@ Slice!(Canonical, packs, Iterator)
 }
 
 ///
+@safe pure nothrow
 unittest
 {
     auto slice = iota(2, 3).universal.assumeCanonical;
@@ -288,6 +292,7 @@ Slice!(Contiguous, packs, Iterator)
 }
 
 ///
+@safe pure nothrow
 unittest
 {
     auto slice = iota(2, 3).universal.assumeContiguous;
@@ -458,7 +463,6 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
     }
     else
     {
-
         mixin _DefineRet;
         with (slice)
         {
@@ -501,7 +505,7 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.dynamic : transposed;
@@ -523,7 +527,7 @@ pure nothrow unittest
     static assert(is(typeof(e) == size_t));
 }
 
-unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation;
@@ -550,7 +554,8 @@ unittest
 
 
 ///
-pure nothrow unittest
+@safe pure nothrow @nogc
+unittest
 {
     auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
     auto b = a.pack!2.unpack;
@@ -576,7 +581,7 @@ iota
     if (isIntegral!I)
 {
     import mir.ndslice.slice : sliced;
-    return IotaIterator!I.init.sliced(lengths);
+    return IotaIterator!I(I.init).sliced(lengths);
 }
 
 ///ditto
@@ -611,7 +616,8 @@ iota
 }
 
 ///
-pure nothrow unittest
+pure nothrow
+unittest
 {
     int[6] data;
     auto slice = iota([2, 3], data.ptr);
@@ -710,7 +716,7 @@ Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator)
 }
 
 /// Loop through diagonal
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation;
@@ -907,7 +913,7 @@ pure nothrow unittest
 }
 
 /// Diagonal blocks
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation;
@@ -939,8 +945,7 @@ pure nothrow unittest
 }
 
 /// Matrix divided into vertical blocks
-//pure nothrow
-unittest
+@safe pure unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1014,7 +1019,7 @@ body
 }
 
 ///
-pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.allocation;
@@ -1038,7 +1043,7 @@ unittest
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1059,7 +1064,7 @@ pure nothrow unittest
 }
 
 /// Multi-diagonal matrix
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1084,7 +1089,7 @@ pure nothrow unittest
 }
 
 /// Sliding window over matrix columns
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1109,7 +1114,7 @@ pure nothrow unittest
 }
 
 /// Overlapping blocks using windows
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     //  ----------------
     // |  0  1  2  3  4 |
@@ -1259,7 +1264,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
 }
 
 ///
-nothrow @safe pure
+@safe nothrow pure
 unittest
 {
     import mir.ndslice.dynamic : allReversed;
@@ -1277,8 +1282,7 @@ unittest
 }
 
 /// Reshaping with memory allocation
-//pure 
-unittest
+@safe pure unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
@@ -1347,6 +1351,7 @@ nothrow @nogc @safe pure unittest
     assert(err == ReshapeError.empty);
 }
 
+nothrow @nogc @safe pure 
 unittest
 {
     auto pElements = iota(3, 4, 5, 6, 7)
@@ -1462,7 +1467,7 @@ unittest
 }
 
 /// Properties
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     auto elems = iota(3, 4).universal.flattened;
 
@@ -1477,7 +1482,7 @@ pure nothrow unittest
 }
 
 /// Index property
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.slice;
     auto slice = new long[20].sliced(5, 4);
@@ -1495,7 +1500,7 @@ pure nothrow unittest
          [40, 43, 46, 49]]);
 }
 
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     auto elems = iota(3, 4).universal.flattened;
     assert(elems.front == 0);
@@ -1725,6 +1730,7 @@ auto linspace(T, size_t N)(size_t[N] lengths, T[2][N] intervals...)
 }
 
 /// 1D
+@safe pure nothrow
 unittest
 {
     auto s = linspace!double([5], [1.0, 2.0]);
@@ -1736,6 +1742,7 @@ unittest
 }
 
 /// 2D
+@safe pure nothrow
 unittest
 {
     import mir.functional: refTuple;
@@ -1760,6 +1767,7 @@ unittest
 }
 
 /// Complex numbers
+@safe pure nothrow
 unittest
 {
     auto s = linspace!cdouble([3], [1.0 + 0i, 2.0 + 4i]);
@@ -1834,7 +1842,7 @@ unittest
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation;
 
@@ -1911,6 +1919,7 @@ See_also: $(SUBREF dynamic, reversed), $(SUBREF dynamic, allReversed).
 auto retro
     (SliceKind kind, size_t[] packs, Iterator)
     (Slice!(kind, packs, Iterator) slice)
+    @trusted
     if (packs.length == 1)
 {
     static if (kind == Contiguous || kind == Canonical)
@@ -1990,6 +1999,7 @@ auto bitwise
 }
 
 ///
+@safe pure nothrow @nogc
 unittest
 {
     size_t[10] data;
@@ -2006,6 +2016,7 @@ unittest
     assert(bits[100] == false);
 }
 
+@safe pure nothrow @nogc
 unittest
 {
     size_t[10] data;
@@ -2067,6 +2078,7 @@ auto bitpack
 }
 
 ///
+@safe pure nothrow @nogc
 unittest
 {
     size_t[10] data;
@@ -2158,7 +2170,8 @@ template map(fun...)
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.topology : iota;
     auto s = iota(2, 3).map!(a => a * 3);
@@ -2167,14 +2180,16 @@ pure nothrow unittest
 }
 
 /// String lambdas
-pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.topology : iota;
     assert(iota(2, 3).map!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
 }
 
 /// Packed tensors.
-pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.topology : iota, windows;
 
@@ -2198,7 +2213,7 @@ pure nothrow unittest
     assert(s == [[8, 12]]);
 }
 
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota, windows;
 
@@ -2216,7 +2231,8 @@ pure nothrow unittest
 }
 
 /// Zipped tensors
-pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.topology : iota, zip;
 
@@ -2241,7 +2257,8 @@ Multiple functions can be passed to `map`.
 In that case, the element type of `map` is a refTuple containing
 one element for each function.
 +/
-pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -2364,7 +2381,7 @@ template as(T)
 }
 
 ///
-unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : diagonal, as;
@@ -2385,7 +2402,7 @@ unittest
 }
 
 /// Special behavior for pointers to a constant data.
-unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation : slice;
 
@@ -2418,7 +2435,7 @@ Slice!(kind, packs, IndexIterator!(Iterator, Field))
 }
 
 ///
-unittest
+@safe pure nothrow unittest
 {
     auto source = [1, 2, 3, 4, 5];
     auto indexes = [4, 3, 1, 2, 0, 4].sliced;
@@ -2474,7 +2491,7 @@ auto zip
 }
 
 ///
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : flattened, iota;
@@ -2494,7 +2511,7 @@ pure nothrow unittest
     assert(alpha == beta);
 }
 
-pure nothrow unittest
+@safe pure nothrow unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : flattened, iota;
