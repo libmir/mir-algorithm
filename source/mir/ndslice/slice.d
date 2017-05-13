@@ -109,6 +109,27 @@ See_also:
 +/
 alias Contiguous = SliceKind.contiguous;
 
+/++
+Definition shortcuts for $(LREF Slice).
+
+See_also: $(LREF SliceKind).
++/
+alias ContiguousVector(T) = ContiguousTensor!(1, T);
+/// ditto
+alias UniversalVector (T) = UniversalTensor !(1, T);
+/// ditto
+alias ContiguousMatrix(T) = ContiguousTensor!(2, T);
+/// ditto
+alias CanonicalMatrix (T) = CanonicalTensor !(2, T);
+/// ditto
+alias UniversalMatrix (T) = UniversalTensor !(2, T);
+/// ditto
+alias ContiguousTensor(size_t dim, T) = Slice!(Contiguous, [dim], T*);
+/// ditto
+alias CanonicalTensor (size_t dim, T) = Slice!(Canonical , [dim], T*);
+/// ditto
+alias UniversalTensor (size_t dim, T) = Slice!(Universal , [dim], T*);
+
 /// Extracts $(LREF SliceKind).
 enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;
 

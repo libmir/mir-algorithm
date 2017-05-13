@@ -448,8 +448,8 @@ unittest
 // relaxed example
 unittest
 {
-    static Slice!(Contiguous, [3], ubyte*) movingWindowByChannel
-    (Slice!(Universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(Universal, [2], ubyte*)) filter)
+    static ContiguousTensor!(3, ubyte) movingWindowByChannel
+    (UniversalTensor!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(UniversalMatrix!ubyte) filter)
     {
         return image
             .pack!1
@@ -461,7 +461,7 @@ unittest
             .slice;
     }
 
-    static T median(Range, T)(Slice!(Universal, [2], Range) sl, T[] buf)
+    static T median(Iterator, T)(Slice!(Universal, [2], Iterator) sl, T[] buf)
     {
         import std.algorithm.sorting : topN;
         // copy sl to the buffer
