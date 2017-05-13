@@ -213,6 +213,7 @@ $(TR $(TDNW $(SUBMODULE sorting)
         $(BR) $(SMALL Sorting utilities))
      $(TD
         $(SUBREF sorting, sort)
+        Examples for `isSorted`, `isStrictlyMonotonic`, `makeIndex`, and `schwartzSort`.
     )
 )
 

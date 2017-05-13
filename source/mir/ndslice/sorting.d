@@ -4,7 +4,11 @@ This is a submodule of $(MREF mir,ndslice).
 Note:
     The combination of
     $(SUBREF topology, pairwise) with lambda `"a <= b"` (`"a < b"`) and $(SUBREF algorithm, all) can be used
-    to check if an ndslice is sorted (strictly monotonic). See also the examples in the module.
+    to check if an ndslice is sorted (strictly monotonic).
+    $(SUBREF topology iota) can be used to make an index.
+    $(SUBREF topology map) and $(SUBREF topology zip) can be used to create Schwartzian transform.
+    See also the examples in the module.
+
 
 See_also: $(SUBREF topology, flattened)
 
@@ -19,11 +23,11 @@ Macros:
 +/
 module mir.ndslice.sorting;
 
-///
+/// Check if ndslice is sorted, or strictly monotonic.
 unittest
 {
     import mir.ndslice.algorithm: all;
-    import mir.ndslice.slice;
+    import mir.ndslice.slice: sliced;
     import mir.ndslice.sorting: sort;
     import mir.ndslice.topology: pairwise;
 
@@ -41,6 +45,41 @@ unittest
 
     assert(arr.pairwise!"a <= b".all);
     assert(arr.pairwise!"a < b".all);
+}
+
+/// Create index
+unittest
+{
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.sorting: sort;
+    import mir.ndslice.topology: iota, pairwise;
+
+    auto arr = [4, 2, 3, 1].sliced;
+
+    auto index = arr.length.iota.slice;
+    index.sort!((a, b) => arr[a] < arr[b]);
+
+    assert(arr[index].pairwise!"a <= b".all);
+}
+
+/// Schwartzian transform
+unittest
+{
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.sorting: sort;
+    import mir.ndslice.topology: zip, map, pairwise;
+
+    alias transform = (a) => (a - 3) ^^ 2;
+
+    auto arr = [4, 2, 3, 1].sliced;
+
+    arr.map!transform.slice.zip(arr).sort!((l, r) => l.a < r.a);
+
+    assert(arr.map!transform.pairwise!"a <= b".all);
 }
 
 import mir.ndslice.slice;
