@@ -26,7 +26,7 @@ $(TR $(TH Function Name) $(TH Description))
     $(TR $(TD $(LREF refTuple))
         $(TD Creates a $(LREF RefTuple) structure.
     ))
-    $(TR $(TD $(LREF _ref))
+    $(TR $(TD $(LREF __ref))
         $(TD Creates a $(LREF Ref) structure.
     ))
 )
