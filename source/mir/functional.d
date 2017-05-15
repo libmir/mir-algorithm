@@ -23,7 +23,7 @@ $(TR $(TH Function Name) $(TH Description))
     $(TR $(TD $(LREF forward))
         $(TD Forwards function arguments with saving ref-ness.
     ))
-    $(TR $(TD $(LREF tuple))
+    $(TR $(TD $(LREF refTuple))
         $(TD Creates a $(LREF RefTuple) structure.
     ))
     $(TR $(TD $(LREF _ref))
@@ -90,6 +90,7 @@ private mixin template _RefTupleMixin(T...)
 
 /++
 Simplified tuple structure. Some fields may be type of $(LREF Ref).
+Ref stores a pointer to a values.
 +/
 struct RefTuple(T...)
 {
@@ -110,6 +111,10 @@ alias tuple = refTuple;
 
 /++
 Returns: a $(LREF RefTuple) structure.
+
+If an argument is accessable by reference, then its pointer is stored instead.
+
+Use refTuple in combintation with $(LREF unref) to make a completely value tuple.
 +/
 RefTuple!Args refTuple(Args...)(auto ref Args args)
 {
