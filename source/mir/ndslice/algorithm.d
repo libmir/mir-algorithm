@@ -1383,6 +1383,9 @@ template equal(alias pred)
     auto sl2 = iota([2, 3], 1);
 
     assert(equal!"a == b"(sl1, sl1));
+    assert(sl1 == sl1); //can also use opEquals for two Slices
+    assert(equal!"a == b"(sl1, sl1, sl1));
+    
     assert(equal!"a < b"(sl1, sl2));
 
     assert(!equal!"a == b"(sl1[0 .. $ - 1], sl1));
