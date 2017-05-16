@@ -1386,7 +1386,7 @@ template equal(alias pred)
 
     assert(equal!"a == b"(sl1, sl1));
     assert(sl1 == sl1); //can also use opEquals for two Slices
-    assert(equal!"a == b"(sl1, sl1, sl1));
+    assert(equal!"2 * a == b + c"(sl1, sl1, sl1));
     
     assert(equal!"a < b"(sl1, sl2));
 
