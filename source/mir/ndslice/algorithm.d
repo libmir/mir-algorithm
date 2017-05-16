@@ -1331,7 +1331,7 @@ unittest
 /++
 Compares two or more slices for equality, as defined by predicate `pred`.
 
-See_also: $(SUBREF slice, .Slice.opEquals)
+See_also: $(SUBREF slice, Slice.opEquals)
 
 Params:
     pred = The predicate.
