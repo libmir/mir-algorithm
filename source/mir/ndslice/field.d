@@ -9,10 +9,11 @@ $(BOOKTABLE $(H2 Fields),
 $(TR $(TH Field Name) $(TH Used By))
 $(T2 BitpackField, $(SUBREF topology, bitpack))
 $(T2 BitwiseField, $(SUBREF topology, bitwise))
+$(T2 LinspaceField, $(SUBREF topology, linspace))
+$(T2 MagicField, $(SUBREF topology, magic))
 $(T2 MapField, $(SUBREF topology, map))
 $(T2 ndIotaField, $(SUBREF topology, ndiota))
 $(T2 RepeatField, $(SUBREF topology, repeat))
-$(T2 LinspaceField, $(SUBREF topology, linspace))
 )
 
 
@@ -312,5 +313,84 @@ struct LinspaceField(T)
         size_t[1] ret;
         ret[0] = _length;
         return ret;
+    }
+}
+
+/++
+Magic square field.
++/
+struct MagicField()
+{
+    /++
+    Magic Square size.
+    Should be even.
+    +/
+    size_t _n;
+
+    ///
+    size_t opIndex()(size_t index)
+    {
+        auto d = index / _n;
+        auto m = index % _n;
+        if (_n & 1)
+        {
+            //d = _n - 1 - d;     // MATLAB synchronization
+            //index = d * _n + m; // ditto
+            auto r = (index + 1 - d + (_n - 3) / 2) % _n;
+            auto c = (_n * _n - index + 2 * d) % _n;
+            return r * _n + c + 1;
+        }
+        else
+        if ((_n & 2) == 0)
+        {
+            auto a = (d + 1) & 2;
+            auto b = (m + 1) & 2;
+            return a != b ? index + 1: _n * _n - index;
+        }
+        else
+        {
+            auto n = _n / 2 ;
+            size_t shift;
+            ptrdiff_t q;
+            ptrdiff_t p = m - n;
+            if (p >= 0)
+            {
+                m = p;
+                shift = n * n;
+                auto mul = m <= n / 2 + 1;
+                q = d - n;
+                if (q >= 0)
+                {
+                    d = q;
+                    mul = !mul;
+                }
+                if (mul)
+                {
+                    shift *= 2;
+                }
+            }
+            else
+            {
+                auto mul = m < n / 2;
+                q = d - n;
+                if (q >= 0)
+                {
+                    d = q;
+                    mul = !mul;
+                }
+                if (d == n / 2 && (m == 0 || m == n / 2))
+                {
+                    mul = !mul;
+                }
+                if (mul)
+                {
+                    shift = n * n * 3; 
+                }
+            }
+            index = d * n + m;
+            auto r = (index + 1 - d + (n - 3) / 2) % n;
+            auto c = (n * n - index + 2 * d) % n;
+            return r * n + c + 1 + shift;
+        }
     }
 }

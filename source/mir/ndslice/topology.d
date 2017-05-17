@@ -18,6 +18,7 @@ $(T2 repeat, Slice with identical values)
 $(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
 $(T2 ndiota, Contiguous Slice with initial multidimensional index.)
 $(T2 linspace, Evenly spaced numbers over a specified interval.)
+$(T2 magic, Magic square.)
 )
 
 $(BOOKTABLE $(H2 Products),
@@ -2824,4 +2825,80 @@ unittest
         [-3,  3,  0,  0, -4,  4,  0,  0],
         [ 0,  0,  3, -3,  0,  0,  4, -4],
         [ 0,  0, -3,  3,  0,  0, -4,  4]]);
+}
+
+/++
+$(HTTPS en.wikipedia.org/wiki/Magic_square, Magic square).
+Params:
+    length = square matrix length.
+Returns:
+    Lazy magic matrix.
++/
+auto magic(size_t length)
+{
+    assert(length > 0);
+    static if (is(size_t == ulong))
+        assert(length <= uint.max);
+    else
+        assert(length <= ushort.max);
+    import mir.ndslice.field: MagicField;
+    return MagicField!()(length).slicedField(length, length);
+}
+
+///
+@safe pure nothrow
+unittest
+{
+    auto isMagic(S)(S matrix)
+    {
+        import mir.math.sum;
+        import mir.ndslice.algorithm: all;
+        import mir.ndslice.allocation: slice;
+        import mir.ndslice.dynamic: transposed, reversed;
+        import mir.ndslice.topology: flattened, universal, canonical, diagonal;
+
+        // check shape
+        if (matrix.length == 0)
+            return false;
+        if (matrix.length!0 != matrix.length!1)
+            return false;
+
+        // checks that matrix is composed of consequent elements from interval 1:N^2.
+        auto n2 = matrix.elementsCount;
+        enum bc = size_t.sizeof * 8;
+        auto flags = slice!size_t(n2 / bc + (n2 % bc != 0))
+            .bitwise[0 .. n2];
+        foreach(elem; matrix.flattened)
+        {
+            assert(elem > 0);
+            assert(elem <= n2);
+            flags[elem - 1] = true;
+        }
+        if (!flags.all)
+            return false;
+
+        // calculate magic number
+        auto n = matrix.front.sum;
+
+        // each row sum should equal magic number
+        foreach(row; matrix)
+            if (row.sum != n)
+                return false;
+        // each columns sum should equal magic number
+        foreach(col; matrix.universal.transposed)
+            if (col.sum != n)
+                return false;
+        // each diagonal sum should equal magic number
+        if (matrix.diagonal.sum != n)
+            return false;
+        if (matrix.canonical.reversed!0.diagonal.sum != n)
+            return false;
+
+        return true;
+    }
+
+    assert(isMagic(magic(1)));
+    assert(!isMagic(magic(2))); // 2x2 magic square does not exist
+    foreach(n; 3 .. 24)
+        assert(isMagic(magic(n)));
 }
