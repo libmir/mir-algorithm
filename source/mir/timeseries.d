@@ -458,24 +458,67 @@ template sort(alias less = "a < b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
-    ///
-    @fastmath
-    Series!(TimeIterator, kind, packs, Iterator)
-        sort(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
-        (Series!(TimeIterator, kind, packs, Iterator) series)
-    if (packs == [1])
     {
-        import mir.ndslice.sorting: sort;
-        import mir.ndslice.topology: zip;
-        with(series)
-            time.zip(data).sort!((a, b) => less(a.a, b.a));
-        return series;
+    @fastmath:
+
+        /++
+        One dimensional case.
+        +/
+        Series!(TimeIterator, kind, packs, Iterator)
+            sort(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
+            (Series!(TimeIterator, kind, packs, Iterator) series)
+        if (packs == [1])
+        {
+            import mir.ndslice.sorting: sort;
+            import mir.ndslice.topology: zip;
+            with(series)
+                time.zip(data).sort!((a, b) => less(a.a, b.a));
+            return series;
+        }
+
+        /++
+        N-dimensional case. Requires index and data buffers.
+        +/
+        Series!(TimeIterator, kind, packs, Iterator)
+            sort(
+                TimeIterator,
+                SliceKind kind,
+                size_t[] packs,
+                Iterator,
+                SliceKind indexKind,
+                IndexIterator,
+                SliceKind dataKind,
+                DataIterator,
+                )
+            (
+                Series!(TimeIterator, kind, packs, Iterator) series,
+                Slice!(indexKind, [1], IndexIterator) indexBuffer,
+                Slice!(dataKind, [1], DataIterator) dataBuffer,
+            )
+            if (packs.length == 1)
+        {
+            import mir.ndslice.algorithm: each;
+            import mir.ndslice.sorting: sort;
+            import mir.ndslice.topology: iota, zip, ipack, evertPack;
+
+            assert(indexBuffer.length == series.length);
+            assert(dataBuffer.length == series.length);
+            indexBuffer[] = indexBuffer.length.iota!(typeof(indexBuffer.front));
+            series.time.zip(indexBuffer).sort!((a, b) => less(a.a, b.a));
+            series.data.ipack!1.evertPack.each!((sl){
+            {
+                assert(sl.shape == dataBuffer.shape);
+                dataBuffer[] = sl[indexBuffer];
+                sl[] = dataBuffer;
+            }});
+            return series;
+        }
     }
     else
         alias sort = .sort!(naryFun!less);
 }
 
-/// 1-dimensional data
+/// 1D data
 unittest
 {
     auto time = [1, 2, 4, 3].sliced;
@@ -485,6 +528,36 @@ unittest
     assert(series.time == [1, 2, 3, 4]);
     assert(series.data == [2.1, 3.4, 7.8, 5.6]);
     /// initial time and data are the same
-    assert(time == [1, 2, 3, 4]);
-    assert(data == [2.1, 3.4, 7.8, 5.6]);
+    assert(time.iterator is series.time.iterator);
+    assert(data.iterator is series.data.iterator);
+}
+
+/// 2D data
+unittest
+{
+    import mir.timeseries;
+    import mir.ndslice.allocation: uninitSlice;
+
+    auto time = [4, 2, 3, 1].sliced;
+    auto data =
+        [2.1, 3.4, 
+         5.6, 7.8,
+         3.9, 9.0,
+         4.0, 2.0].sliced(4, 2);
+    auto series = time.series(data);
+
+    series.sort(
+        uninitSlice!size_t(time.length), // index buffer
+        uninitSlice!double(time.length), // data buffer
+        );
+
+    assert(series.time == [1, 2, 3, 4]);
+    assert(series.data ==
+        [[4.0, 2.0],
+         [5.6, 7.8],
+         [3.9, 9.0],
+         [2.1, 3.4]]);
+    /// initial time and data are the same
+    assert(time.iterator is series.time.iterator);
+    assert(data.iterator is series.data.iterator);
 }
