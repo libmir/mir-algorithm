@@ -7,11 +7,11 @@ $(BOOKTABLE $(H2 Transpose operators),
 $(TR $(TH Function Name) $(TH Description))
 $(T2 makeNdarray, Allocates a common n-dimensional array from a slice using an allocator. )
 $(T2 makeSlice, Allocates a slice using an allocator. )
-$(T2 makeUninitializedSlice, Allocates an uninitialized slice using an allocator. )
+$(T2 makeUninitSlice, Allocates an uninitialized slice using an allocator. )
 $(T2 ndarray, Allocates a common n-dimensional array from a slice. )
 $(T2 shape, Returns a shape of a common n-dimensional array. )
 $(T2 slice, Allocates a slice using GC.)
-$(T2 uninitializedSlice, Allocates an uninitialized slice using GC. )
+$(T2 uninitSlice, Allocates an uninitialized slice using GC. )
 )
 
 
@@ -30,6 +30,12 @@ import mir.ndslice.slice;
 import mir.ndslice.internal;
 import mir.ndslice.concatenation;
 import mir.internal.utility;
+
+
+deprecated("use uninitSlice instead")
+alias uninitializedSlice = uninitSlice;
+deprecated("use makeUninitSlice instead")
+alias makeUninitializedSlice = makeUninitSlice;
 
 @fastmath:
 
@@ -75,7 +81,7 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
     static if (hasElaborateAssign!T)
         alias fun = .slice;
     else
-        alias fun = .uninitializedSlice;
+        alias fun = .uninitSlice;
     auto ret = fun!T(slice.shape);
     ret[] = slice;
     return ret;
@@ -109,7 +115,7 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
     static if (hasElaborateAssign!T)
         alias fun = .slice;
     else
-        alias fun = .uninitializedSlice;
+        alias fun = .uninitSlice;
     auto ret = fun!T(concatenation.shape);
     ret[] = concatenation;
     return ret;
@@ -129,7 +135,7 @@ Params:
 Returns:
     uninitialized n-dimensional slice
 +/
-auto uninitializedSlice(T, size_t N)(size_t[N] lengths...)
+auto uninitSlice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
     import std.array : uninitializedArray;
@@ -140,7 +146,7 @@ auto uninitializedSlice(T, size_t N)(size_t[N] lengths...)
 ///
 @safe pure nothrow unittest
 {
-    auto tensor = uninitializedSlice!int(5, 6, 7);
+    auto tensor = uninitSlice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
     static assert(is(typeof(tensor) == Slice!(Contiguous, [3], int*)));
@@ -166,29 +172,25 @@ auto makeSlice(Allocator, size_t N, Iterator)(auto ref Allocator alloc, Slice!(N
 }
 
 /// ditto
-SliceAllocationResult!(N, T)
+ContiguousTensor!(N, T)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     import std.experimental.allocator : makeArray;
-    immutable len = lengthsProduct(lengths);
-    auto array = alloc.makeArray!T(len);
-    auto slice = array.sliced(lengths);
-    return typeof(return)(array, slice);
+    return alloc.makeArray!T(lengthsProduct(lengths)).sliced(lengths);
 }
 
 /// ditto
-SliceAllocationResult!(N, T)
+ContiguousTensor!(N, T)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T init)
 {
     import std.experimental.allocator : makeArray;
     immutable len = lengthsProduct(lengths);
     auto array = alloc.makeArray!T(len, init);
-    auto slice = array.sliced(lengths);
-    return typeof(return)(array, slice);
+    return array.sliced(lengths);
 }
 
 ///// ditto
-//SliceAllocationResult!(N, T)
+//ContiguousTensor!(N, T)
 //makeSlice(T,
 //    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
 //    Allocator,
@@ -228,10 +230,10 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
 
-    auto tup = makeSlice(Mallocator.instance, [2, 3, 4], 10);
-    auto slice = tup.slice;
-    assert(slice[1, 1, 1] == 10);
-    Mallocator.instance.dispose(tup.array);
+    auto sl = makeSlice(Mallocator.instance, [2, 3, 4], 10);
+    auto ar = sl.field;
+    assert(sl[1, 1, 1] == 10);
+    Mallocator.instance.dispose(ar);
 }
 
 @nogc unittest
@@ -240,10 +242,10 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
     import std.experimental.allocator.mallocator;
 
     // cast to your own type
-    auto tup = makeSlice!double(Mallocator.instance, [2, 3, 4], 10);
-    auto slice = tup.slice;
-    assert(slice[1, 1, 1] == 10.0);
-    Mallocator.instance.dispose(tup.array);
+    auto sl = makeSlice!double(Mallocator.instance, [2, 3, 4], 10);
+    auto ar = sl.field;
+    assert(sl[1, 1, 1] == 10.0);
+    Mallocator.instance.dispose(ar);
 }
 
 /++
@@ -255,13 +257,12 @@ Params:
 Returns:
     a structure with fields `array` and `slice`
 +/
-SliceAllocationResult!(N, T)
-makeUninitializedSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
+ContiguousTensor!(N, T)
+makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
     auto array = cast(T[]) alloc.allocate(len * T.sizeof);
-    auto slice = array.sliced(lengths);
-    return typeof(return)(array, slice);
+    return array.sliced(lengths);
 }
 
 ///
@@ -270,24 +271,13 @@ makeUninitializedSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
 
-    auto tup = makeUninitializedSlice!int(Mallocator.instance, 2, 3, 4);
+    auto sl = makeUninitSlice!int(Mallocator.instance, 2, 3, 4);
+    auto ar = sl.field;
+    assert(ar.ptr is sl.iterator);
+    assert(ar.length           == 24);
+    assert(sl.elementsCount    == 24);
 
-    assert(tup.array.length           == 24);
-    assert(tup.slice.elementsCount    == 24);
-    assert(tup.array.ptr == &tup.slice[0, 0, 0]);
-
-    Mallocator.instance.dispose(tup.array);
-}
-
-/++
-Structure used by $(LREF makeSlice) and $(LREF makeUninitializedSlice).
-+/
-struct SliceAllocationResult(size_t N, T)
-{
-    ///
-    T[] array;
-    ///
-    Slice!(Contiguous, [N], T*) slice;
+    Mallocator.instance.dispose(ar);
 }
 
 /++
@@ -452,7 +442,7 @@ nothrow unittest
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
 
-    auto tup1 = makeSlice!double(Mallocator.instance, 0, 0);
+    auto sl2 = makeSlice!double(Mallocator.instance, 0, 0);
 
-    Mallocator.instance.dispose(tup1.array);
+    Mallocator.instance.dispose(sl2.field);
 }
