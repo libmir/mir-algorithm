@@ -11,8 +11,8 @@
 
 # mir-algorithm
 
-1. Generic Multidimensional arrays of three kinds
-2. `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast executaion and multidimensional algorithms.
+1. Generic Multidimensional arrays of three kinds.
+2. `std.range`, `std.functional`, and partially `std.algorithm` alternative suitable for fast execution and multidimensional algorithms.
 3. Iterators like random access iterators in C++, Fields, and ndFields.
 4. LLVM oriented math functions.
 
@@ -38,7 +38,7 @@ https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
 
  - `Contiguous` - Contiguous in memory representation. It does not store strides and can be always flattened to 1 dimensional ndslice on top of the same iterator type.
  - `Canonical` - BLAS like. Stride for row dimension assumed to be equal to 1.
- - `Universal` - Numpy like. Each dimension has strides. All dimensions can be exchanged without reallocation. The old ndslice ABI corresponds to to the `Universal` ndslice.
+ - `Universal` - Numpy like. Each dimension has strides. All dimensions can be exchanged without reallocation. The old ndslice ABI corresponds to the `Universal` ndslice.
 
 ### Known bugs
 - With LDC <=1.1.1 `mir.ndslice.topology.map` may not work because LDC has deprecated DMD FE
