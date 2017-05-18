@@ -2878,20 +2878,21 @@ unittest
             return false;
 
         // calculate magic number
-        auto n = matrix.front.sum;
+        auto n = matrix.length;
+        auto c = n * (n * n + 1) / 2;
 
         // each row sum should equal magic number
         foreach(row; matrix)
-            if (row.sum != n)
+            if (row.sum != c)
                 return false;
         // each columns sum should equal magic number
         foreach(col; matrix.universal.transposed)
-            if (col.sum != n)
+            if (col.sum != c)
                 return false;
         // each diagonal sum should equal magic number
-        if (matrix.diagonal.sum != n)
+        if (matrix.diagonal.sum != c)
             return false;
-        if (matrix.canonical.reversed!0.diagonal.sum != n)
+        if (matrix.canonical.reversed!0.diagonal.sum != c)
             return false;
 
         return true;
