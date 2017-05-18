@@ -2855,7 +2855,7 @@ unittest
         import mir.ndslice.algorithm: all;
         import mir.ndslice.allocation: slice;
         import mir.ndslice.dynamic: transposed, reversed;
-        import mir.ndslice.topology: flattened, universal, canonical, diagonal;
+        import mir.ndslice.topology: flattened, universal, diagonal;
 
         // check shape
         if (matrix.length == 0)
@@ -2892,7 +2892,7 @@ unittest
         // each diagonal sum should equal magic number
         if (matrix.diagonal.sum != c)
             return false;
-        if (matrix.canonical.reversed!0.diagonal.sum != c)
+        if (matrix.universal.reversed!0.diagonal.sum != c)
             return false;
 
         return true;
