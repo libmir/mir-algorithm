@@ -158,7 +158,11 @@ unittest
 }
 
 
-///
+/++
+Sorts 1D ndslice.
+
+See_also: $(SUBREF topology, flattened).
++/
 template sort(alias less = "a < b")
 {
     import mir.functional: naryFun;
