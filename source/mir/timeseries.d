@@ -547,8 +547,8 @@ unittest
     auto series = time.series(data);
 
     series.sort(
-        uninitSlice!size_t(time.length), // index buffer
-        uninitSlice!double(time.length), // data buffer
+        uninitSlice!size_t(series.length), // index buffer
+        uninitSlice!double(series.length), // data buffer
         );
 
     assert(series.time == [1, 2, 3, 4]);
