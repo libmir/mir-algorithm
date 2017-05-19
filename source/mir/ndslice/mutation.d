@@ -18,51 +18,8 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.mutation;
 
-import mir.ndslice.slice;
+import mir.ndslice.algorithm: eachUploPair;
+import mir.utility: swap;
 
-/++
-Transposes square matrix in place.
-
-Params:
-    matrix = square matrix
-+/
-void transposeInPlace(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) matrix)
-in
-{
-    assert(matrix.length!0 == matrix.length!1);
-}
-body
-{
-    static if (kind == Contiguous)
-    {
-        import mir.ndslice.topology: canonical;
-        .transposeInPlace(matrix.canonical);
-    }
-    else
-    {
-        if (!matrix.empty)
-        do
-        {
-            import mir.ndslice.algorithm: eachImpl;
-            import mir.utility: swap;
-            eachImpl!swap(matrix.front!1, matrix.front!0);
-            matrix.popFront!1;
-            matrix.popFront!0;
-        }
-        while (matrix.length);
-    }
-}
-
-///
-unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota, universal;
-    import mir.ndslice.dynamic: transposed;
-
-    auto m = iota(4, 4).slice;
-
-    m.transposeInPlace;
-
-    assert(m == iota(4, 4).universal.transposed);
-}
+deprecated("use eachUploPair!swap instead")
+alias transposeInPlace = eachUploPair!swap;

@@ -18,7 +18,6 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,ndslice,dynamic)) $(TD Dynamic dimension manipulators))
     $(TR $(TDNW $(MREF mir,ndslice,field)) $(TD Field declarations))
     $(TR $(TDNW $(MREF mir,ndslice,iterator)) $(TD Iterator declarations))
-    $(TR $(TDNW $(MREF mir,ndslice,mutation)) $(TD Mutation algorithms))
     $(TR $(TDNW $(MREF mir,ndslice,ndfield)) $(TD NdField declarations))
     $(TR $(TDNW $(MREF mir,ndslice,slice)) $(TD Slice structure, basic constructors))
     $(TR $(TDNW $(MREF mir,ndslice,sorting)) $(TD Sorting utilities))

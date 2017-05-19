@@ -383,6 +383,88 @@ unittest
     assert(i == 0);
 }
 
+/++
+The call `eachUploPair!(fun)(matrix)`
+evaluates `fun` for each pair (`matrix[j, i]`, `matrix[i, j]`), i<=j.
+
+Params:
+    fun = A function.
+    matrix = Square matrix.
++/
+template eachUploPair(alias fun)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    /++
+    Params:
+        slices = One or more slices.
+    +/
+    auto eachUploPair(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) matrix)
+    in
+    {
+        assert(matrix.length!0 == matrix.length!1, "matrix must be square.");
+    }
+    body
+    {
+        static if (kind == Contiguous)
+        {
+            import mir.ndslice.topology: canonical;
+            .eachUploPair!fun(matrix.canonical);
+        }
+        else
+        {
+            if (!matrix.empty)
+            do
+            {
+                import mir.ndslice.algorithm: eachImpl;
+                eachImpl!fun(matrix.front!0, matrix.front!1);
+                matrix.popFront!1;
+                matrix.popFront!0;
+            }
+            while (matrix.length);
+        }
+    }
+    else
+        alias eachUploPair = .eachUploPair!(naryFun!fun);
+}
+
+/// Transpose matrix in place.
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, universal;
+    import mir.ndslice.dynamic: transposed;
+    import mir.utility: swap;
+
+    auto m = iota(4, 4).slice;
+
+    m.eachUploPair!swap;
+
+    assert(m == iota(4, 4).universal.transposed);
+}
+
+/// Reflect Upper matrix part to lower part.
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, universal;
+    import mir.ndslice.dynamic: transposed;
+    import mir.utility: swap;
+
+    // 0 1 2
+    // 3 4 5
+    // 6 7 8
+    auto m = iota(3, 3).slice;
+
+    m.eachUploPair!((u, ref l) { l = u; });
+
+    assert(m == [
+        [0, 1, 2],
+        [1, 4, 5],
+        [2, 5, 8]]);
+}
+
+
 bool minPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[packs[0]] backwardIndex, ref Iterator iterator, Slice!(kind, packs, Iterator) slice)
     if (packs.length == 1)
 {
