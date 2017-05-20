@@ -625,8 +625,10 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     enum PureIndexLength(Slices...) = Filter!(isIndex, Slices).length;
 
     enum isPureSlice(Slices...) =
-        Slices.length <= packs[0]
+        Slices.length == 0
+        || Slices.length <= packs[0]
         && PureIndexLength!Slices < packs[0]
+        && Filter!(isIndex, Slices).length < Slices.length
         && allSatisfy!(templateOr!(isIndex, is_Slice), Slices);
 
     enum isFullPureSlice(Slices...) =
@@ -653,7 +655,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         return _stride!dimension * (_lengths[dimension] - 1);
     }
 
-    size_t indexStride(size_t I)(size_t[I] _indexes...) @safe const
+    size_t indexStride(size_t I)(size_t[I] _indexes) @safe const
     {
         static if (_indexes.length)
         {
@@ -1550,7 +1552,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /++
     $(BOLD Fully defined index)
     +/
-    auto ref opIndex(size_t I)(size_t[I] _indexes...) @trusted
+    auto ref opIndex(Indexes...)(Indexes indexes) @safe
+        if (Indexes.length && Indexes.length <= packs[0] && allSatisfy!(isIndex, Indexes))
+    {
+        return this.opIndex!(indexes.length)([indexes]);
+    }
+
+    // ditto
+    auto ref opIndex(size_t I)(size_t[I] _indexes) @trusted
         if (I && I <= packs[0])
     {
         static if (I == N)
@@ -2054,7 +2063,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexAssign(T)(auto ref T value, size_t[N] _indexes...) @trusted
+        auto ref opIndexAssign(T, Indexes...)(auto ref T value, Indexes indexes) @safe
+            if (Indexes.length == packs[0] && allSatisfy!(isIndex, Indexes))
+        {
+            return this.opIndexAssign!(T)(value, [indexes]);
+        }
+        /// ditto
+        auto ref opIndexAssign(T)(auto ref T value, size_t[packs[0]] _indexes) @trusted
         {
             // check assign safety 
             static auto ref fun(ref DeepElemType t, ref T v) @safe
@@ -2088,7 +2103,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexOpAssign(string op, T)(auto ref T value, size_t[N] _indexes...) @trusted
+        auto ref opIndexOpAssign(string op, T, Indexes...)(auto ref T value, Indexes indexes) @safe
+            if (Indexes.length == packs[0] && allSatisfy!(isIndex, Indexes))
+        {
+            return this.opIndexOpAssign!(op, T)(value, [indexes]);
+        }
+        /// ditto
+        auto ref opIndexOpAssign(string op, T)(auto ref T value, size_t[N] _indexes) @trusted
         {
             // check op safety 
             static auto ref fun(ref DeepElemType t, ref T v) @safe
@@ -2319,7 +2340,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Increment `++` and Decrement `--` operators for a $(B fully defined index).
         +/
-        auto ref opIndexUnary(string op)(size_t[N] _indexes...)
+        auto ref opIndexOpAssign(string op, Indexes...)(Indexes indexes) @safe
+            if (Indexes.length == packs[0] && allSatisfy!(isIndex, Indexes))
+        {
+            return this.opIndexUnary!(op)([indexes]);
+        }
+        /// ditto
+        auto ref opIndexUnary(string op)(size_t[packs[0]] _indexes...)
             @trusted
             // @@@workaround@@@ for Issue 16473
             //if (op == `++` || op == `--`)
