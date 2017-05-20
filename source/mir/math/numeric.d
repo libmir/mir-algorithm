@@ -13,30 +13,40 @@ import mir.math.common;
 
 import std.traits;
 
-/++
-Compute the product of the input range $(D r) using separate exponent accomulation.
-+/
-Unqual!(ForeachType!Range) prod(Range)(Range r, ref long exp2)
-	if (isFloatingPoint!(ForeachType!Range))
+///
+struct Prod(T)
+	if (isFloatingPoint!T)
 {
-    long exp = 0;
-    typeof(return) x = 1;
-    foreach (e; r)
-    {
-        if (e < 0)
-            return typeof(return).nan;
-        int lexp = void;
+	///
+	long exp = 1;
+	///
+	T x = 0.5f;
+
+	void put()(T e)
+	{
+        int lexp;
         import std.math: frexp;
         x *= frexp(e, lexp);
         exp += lexp;
-        if (x < 0.5f)
+        if (x.fabs < 0.5f)
         {
             x *= 2;
             exp--;
         }
-    }
-    exp2 = exp;
-    return x;
+	}
+}
+
+/++
+Compute the product of the input range $(D r) using separate exponent accomulation.
++/
+Unqual!(ForeachType!Range) prod(Range)(Range r, ref long exp)
+	if (isFloatingPoint!(ForeachType!Range))
+{
+    Prod!(typeof(return)) prod;
+    foreach (e; r)
+	    prod.put(e);
+    exp = prod.exp;
+    return prod.x;
 }
 
 /// ditto
