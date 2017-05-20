@@ -13,12 +13,13 @@ $(T2 each, Iterates all elements.)
 $(T2 equal, Compares two slices for equality.)
 $(T2 find, Finds backward index.)
 $(T2 findIndex, Finds index.)
+$(T2 isSymmetric, Checks if the matrix is symmetric.)
+$(T2 maxIndex, Finds index of the maximum.)
+$(T2 maxPos, Finds backward index of the maximum.)
+$(T2 minIndex, Finds index of the minimum.)
 $(T2 minmaxIndex, Finds indexes of the minimum and the maximum.)
 $(T2 minmaxPos, Finds backward indexes of the minimum and the maximum.)
-$(T2 minIndex, Finds index of the minimum.)
-$(T2 maxIndex, Finds index of the maximum.)
 $(T2 minPos, Finds backward index of the minimum.)
-$(T2 maxPos, Finds backward index of the maximum.)
 $(T2 reduce, Accumulates all elements.)
 )
 
@@ -464,6 +465,57 @@ unittest
         [2, 5, 8]]);
 }
 
+/++
+Checks if the matrix is symmetric.
++/
+template isSymmetric(alias fun = "a == b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    /++
+    Params:
+        slices = One or more slices.
+    +/
+    bool isSymmetric(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) matrix)
+    {
+        static if (kind == Contiguous)
+        {
+            import mir.ndslice.topology: canonical;
+            return .isSymmetric!fun(matrix.canonical);
+        }
+        else
+        {
+            if (matrix.length!0 != matrix.length!1)
+                return false;
+            if (!matrix.empty)
+            do
+            {
+                import mir.ndslice.algorithm: eachImpl;
+                if (!allImpl!fun(matrix.front!0, matrix.front!1))
+                {
+                    return false;
+                }
+                matrix.popFront!1;
+                matrix.popFront!0;
+            }
+            while (matrix.length);
+            return true;
+        }
+    }
+    else
+        alias isSymmetric = .isSymmetric!(naryFun!fun);
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+    assert(iota(2, 2).isSymmetric == false);
+
+    assert(
+        [1, 2,
+         2, 3].sliced(2, 2).isSymmetric == true);
+}
 
 bool minPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[packs[0]] backwardIndex, ref Iterator iterator, Slice!(kind, packs, Iterator) slice)
     if (packs.length == 1)
