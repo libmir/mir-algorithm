@@ -1418,7 +1418,7 @@ See_also: $(SUBREF slice, Slice.opEquals)
 Params:
     pred = The predicate.
 +/
-template equal(alias pred)
+template equal(alias pred = "a == b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
