@@ -31,6 +31,7 @@ $(BOOKTABLE ,
     $(LEADINGROW Numeric)
     $(TR $(TDNW $(MREF mir,interpolation)) $(TD Interpolation algorithms))
     $(TR $(TDNW $(MREF mir,math,sum)) $(TD Various precise summation algorithms))
+    $(TR $(TDNW $(MREF mir,math,numeric)) $(TD Simple numeric algorithms))
     $(LEADINGROW Accessories)
     $(TR $(TDNW $(MREF mir,utility)) $(TD Everyday utilities))
     $(TR $(TDNW $(MREF mir,array,primitives)) $(TD Array range primitives with ndslice-like API))

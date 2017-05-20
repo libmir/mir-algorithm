@@ -1,0 +1,96 @@
+/++
+This module contains simple numric algorithms.
+
+License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
+
+Authors: Ilya Yaroshenko
+
+Copyright: Copyright © 2015-, Ilya Yaroshenko
++/
+module mir.math.numeric;
+
+import mir.math.common;
+
+import std.traits;
+
+/++
+Compute the product of the input range $(D r) using separate exponent accomulation.
++/
+Unqual!(ForeachType!Range) prod(Range)(Range r, ref long exp2)
+	if (isFloatingPoint!(ForeachType!Range))
+{
+    long exp = 0;
+    typeof(return) x = 1;
+    foreach (e; r)
+    {
+        if (e < 0)
+            return typeof(return).nan;
+        int lexp = void;
+        import std.math: frexp;
+        x *= frexp(e, lexp);
+        exp += lexp;
+        if (x < 0.5f)
+        {
+            x *= 2;
+            exp--;
+        }
+    }
+    exp2 = exp;
+    return x;
+}
+
+/// ditto
+Unqual!(ForeachType!Range) prod(Range)(Range r)
+	if (isFloatingPoint!(ForeachType!Range))
+{
+    import std.math: ldexp;
+    long exp;
+    auto x = .prod(r, exp);
+    if (exp > int.max)
+    	exp = int.max;
+    else
+    if (exp < int.min)
+    	exp = int.min;
+    return ldexp(x, cast(int)exp);
+}
+
+///
+unittest
+{
+	enum l = 2.0 ^^ (double.max_exp - 1);
+	enum s = 2.0 ^^ -(double.max_exp - 1);
+	auto r = [l, l, l, s, s, s, 0.8 * 2.0 ^^ 10];
+	long e;
+	assert(r.prod(e) == 0.8);
+	assert(e == 10);
+	assert(r.prod == 0.8 * 2.0 ^^ 10);
+}
+
+/++
+Compute the sum of binary logarithms of the input range $(D r).
+The error of this method is much smaller than with a naive sum of log2.
++/
+Unqual!(ForeachType!Range) sumOfLog2s(Range)(Range r)
+	if (isFloatingPoint!(ForeachType!Range))
+{
+    long exp = 0;
+    auto x = .prod(r, exp);
+    return exp + log2(x);
+}
+
+///
+@safe unittest
+{
+    import std.math : isNaN;
+
+    assert(sumOfLog2s(new double[0]) == 0);
+    assert(sumOfLog2s([0.0L]) == -real.infinity);
+    assert(sumOfLog2s([-0.0L]) == -real.infinity);
+    assert(sumOfLog2s([2.0L]) == 1);
+    assert(sumOfLog2s([-2.0L]).isNaN());
+    assert(sumOfLog2s([real.nan]).isNaN());
+    assert(sumOfLog2s([-real.nan]).isNaN());
+    assert(sumOfLog2s([real.infinity]) == real.infinity);
+    assert(sumOfLog2s([-real.infinity]).isNaN());
+    assert(sumOfLog2s([ 0.25, 0.25, 0.25, 0.125 ]) == -9);
+}
