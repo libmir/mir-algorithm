@@ -14,6 +14,7 @@ $(T2 MapIterator, $(SUBREF topology, map))
 $(T2 RetroIterator, $(SUBREF topology, retro))
 $(T2 SliceIterator, $(SUBREF topology, map) in composition with $(LREF MapIterator) for packed slices.)
 $(T2 SlideIterator, $(SUBREF topology, diff), $(SUBREF topology, pairwise), and $(SUBREF topology, slide).)
+$(T2 Stairsterator, $(SUBREF topology, stairs))
 $(T2 StrideIterator, $(SUBREF topology, stride))
 $(T2 ZipIterator, $(SUBREF topology, zip))
 )
@@ -203,7 +204,7 @@ struct RetroIterator(Iterator)
     { --_iterator; }
 
     auto ref opIndex()(ptrdiff_t index)
-    { return _iterator[-index]; }
+    { return *(_iterator - index); }
 
     void opOpAssign(string op : "-")(ptrdiff_t index)
     { _iterator += index; }
@@ -1128,4 +1129,101 @@ unittest
     assert(it0 == it1);
     assert(it0 <= it1);
     assert(it0 >= it1);
+}
+
+/++
+`StairsIterator` is used by $(SUBREF topology, stairs).
++/
+struct StairsIterator(Iterator)
+{
+    ///
+    size_t _length = 1;
+
+    ///
+    Iterator _iterator;
+
+    ///
+    Slice!(Contiguous, [1], Iterator) opUnary(string op : "*")()
+    {
+        import mir.ndslice.slice: sliced;
+        return _iterator.sliced(_length);
+    }
+
+    ///
+    Slice!(Contiguous, [1], Iterator) opIndex()(ptrdiff_t index)
+    {
+        import mir.ndslice.slice: sliced;
+        auto newLength = _length + index;
+        assert(ptrdiff_t(newLength) >= 0);
+        auto shift = ptrdiff_t(_length + newLength - 1) * index / 2;
+        return (_iterator + shift).sliced(newLength);
+    }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    {
+        static if (op == "++")
+        {
+            _iterator += _length;
+            ++_length;
+        }
+        else
+        {
+            assert(_length);
+            --_length;
+            _iterator -= _length;
+        }
+    }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    {
+        auto newLength = mixin("_length " ~ op ~ " index");
+        assert(ptrdiff_t(newLength) >= 0);
+        auto shift = ptrdiff_t(_length + newLength - 1) * index / 2;
+        _length = newLength;
+        mixin("_iterator " ~ op ~ "= shift;");
+    }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return this._length - right._length; }
+
+    bool opEquals()(ref const typeof(this) right) const
+    { return this._length == right._length; }
+
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
+    { return this._length - right._length; }
+}
+
+///
+unittest
+{
+    // 0
+    // 1 2
+    // 3 4 5
+    // 6 7 8 9
+    // 10 11 12 13 14
+    auto it = StairsIterator!(IotaIterator!size_t)(1, IotaIterator!size_t());
+    assert(*it == [0]);
+    assert(it[4] == [10, 11, 12, 13, 14]);
+    assert(*(it + 4) == [10, 11, 12, 13, 14]);
+    ++it;
+    assert(*it == [1, 2]);
+    it += 3;
+    assert(*it == [10, 11, 12, 13, 14]);
+    assert(it[-3] == [1, 2]);
+    assert(*(it - 3) == [1, 2]);
+    assert(it + 1 > it);
+    assert(it + 1 - 1 == it);
+    assert(it + 3 - it == 3);
+    --it;
+    assert(*it == [6, 7, 8, 9]);
 }

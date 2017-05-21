@@ -42,6 +42,7 @@ $(T2 map, Multidimensional functional map.)
 $(T2 pairwise, Pairwise map for vectors.)
 $(T2 retro, Reverses order of iteration for all dimensions.)
 $(T2 slide, Sliding map for vectors.)
+$(T2 stairs, Two functions to pack, unpack, and iterate triangular and symmetric matrix storage.)
 $(T2 stride, Strides 1-dimensional slice.)
 $(T2 unzip, Selects a slice from a zipped slice.)
 $(T2 zip, Zips slices into a slice of refTuples.)
@@ -2902,4 +2903,150 @@ unittest
     assert(!isMagic(magic(2))); // 2x2 magic square does not exist
     foreach(n; 3 .. 24)
         assert(isMagic(magic(n)));
+}
+
+/++
+Chops 1D input slice into n chunks with ascending or descending lengths.
+
+`stairs` can be used to pack and unpack symmetric and triangular matrix storage.
+
+Note: `stairs` is defined for 1D (packet) input and 2D (general) input.
+    This part of documentation is for 1D input.
+
+Params:
+    type =
+        "+" for stairs with lengths `1, 2, ..., n`;
+        "-" for stairs with lengths `n, n-1, ..., 1`.
+    slice = input slice with length equal to `n * (n + 1) / 2`
+    n = stairs count
+Returns:
+    1D contiguous slice composed of 1D contiguous slices.
++/
+auto stairs(string type, Iterator)(Slice!(Contiguous, [1], Iterator) slice, size_t n)
+    if (type == "+" || type == "-")
+{
+    assert(slice.length == (n + 1) * n / 2, "stairs: slice length must be equal to n * (n + 1) / 2, where n is stairs count.");
+    static if (type == "+")
+    {
+        return StairsIterator!Iterator(1, slice._iterator)
+            .sliced(n);
+    }
+    else
+    {
+        auto it = slice.retro._iterator;
+        return StairsIterator!(typeof(it))(1, it)
+            .sliced(n)
+            .map!retro
+            .retro;
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota, stairs;
+
+    auto pck = 15.iota;
+    auto inc = pck.stairs!"+"(5);
+    auto dec = pck.stairs!"-"(5);
+
+    assert(inc == [
+        [0],
+        [1, 2],
+        [3, 4, 5],
+        [6, 7, 8, 9],
+        [10, 11, 12, 13, 14]]);
+
+    assert(dec == [
+        [0, 1, 2, 3, 4],
+           [5, 6, 7, 8],
+            [9, 10, 11],
+               [12, 13],
+                   [14]]);
+
+    static assert(is(typeof(inc.front) == typeof(pck)));
+    static assert(is(typeof(dec.front) == typeof(pck)));
+}
+
+/++
+Slice composed of rows of lower or upper triangular matrix.
+
+`stairs` can be used to pack and unpack symmetric and triangular matrix storage.
+
+Note: `stairs` is defined for 1D (packet) input and 2D (general) input.
+    This part of documentation is for 2D input.
+
+Params:
+    type =
+        "+" for stairs with lengths `1, 2, ..., n`, lower matrix;
+        "-" for stairs with lengths `n, n-1, ..., 1`, upper matrix.
+    slice = input slice with length equal to `n * (n + 1) / 2`
+    n = stairs count
+Returns:
+    1D slice composed of 1D contiguous slices.
+
+See_also: $(SUBREF dynamic, transposed), $(LREF universal)
++/
+auto stairs(string type, SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) slice)
+    if (type == "+" || type == "-")
+{
+    assert(slice.length!0 == slice.length!1, "stairs: input slice must be a square matrix.");
+    static if (type == "+")
+    {
+        return slice
+            .pack!1
+            .map!"a"
+            .zip([slice.length].iota!size_t(1))
+            .map!"a[0 .. b]";
+    }
+    else
+    {
+        return slice
+            .pack!1
+            .map!"a"
+            .zip([slice.length].iota!size_t)
+            .map!"a[b .. $]";
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota, as, stairs;
+
+    auto gen = [3, 3].iota.as!double;
+    auto inc = gen.stairs!"+";
+    auto dec = gen.stairs!"-";
+
+    assert(inc == [
+        [0],
+        [3, 4],
+        [6, 7, 8]]);
+
+    assert(dec == [
+        [0, 1, 2],
+           [4, 5],
+              [8]]);
+
+    static assert(is(typeof(inc.front) == typeof(gen.front)));
+    static assert(is(typeof(dec.front) == typeof(gen.front)));
+
+    /////////////////////////////////////////
+    // Pack lower and upper matrix parts
+    auto n = gen.length;
+    auto m = n * (n + 1) / 2;
+    // allocate memory
+    import mir.ndslice.allocation: uninitSlice;
+    auto lowerData = m.uninitSlice!double;
+    auto upperData = m.uninitSlice!double;
+    // construct packed stairs
+    auto lower = lowerData.stairs!"+"(n);
+    auto upper = upperData.stairs!"-"(n);
+    // copy data
+    import mir.ndslice.algorithm: each;
+    each!"a[] = b"(lower, inc);
+    each!"a[] = b"(upper, dec);
+
+    assert(lowerData == [0, 3, 4, 6, 7, 8]);
+    assert(upperData == [0, 1, 2, 4, 5, 8]);
 }
