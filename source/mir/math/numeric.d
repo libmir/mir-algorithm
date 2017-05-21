@@ -34,6 +34,17 @@ struct Prod(T)
             exp--;
         }
 	}
+
+    T value()() @property
+    {
+        if (exp > int.max)
+            exp = int.max;
+        else
+        if (exp < int.min)
+            exp = int.min;
+        import std.math: ldexp;
+        return ldexp(x, cast(int)exp);
+    }
 }
 
 /++
@@ -53,15 +64,10 @@ Unqual!(ForeachType!Range) prod(Range)(Range r, ref long exp)
 Unqual!(ForeachType!Range) prod(Range)(Range r)
 	if (isFloatingPoint!(ForeachType!Range))
 {
-    import std.math: ldexp;
+
     long exp;
     auto x = .prod(r, exp);
-    if (exp > int.max)
-    	exp = int.max;
-    else
-    if (exp < int.min)
-    	exp = int.min;
-    return ldexp(x, cast(int)exp);
+    return Prod!(typeof(return))(exp, x).value;
 }
 
 ///
