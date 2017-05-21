@@ -2921,6 +2921,8 @@ Params:
     n = stairs count
 Returns:
     1D contiguous slice composed of 1D contiguous slices.
+
+See_also: $(LREF stairs.2)
 +/
 auto stairs(string type, Iterator)(Slice!(Contiguous, [1], Iterator) slice, size_t n)
     if (type == "+" || type == "-")
@@ -2985,7 +2987,7 @@ Params:
 Returns:
     1D slice composed of 1D contiguous slices.
 
-See_also: $(SUBREF dynamic, transposed), $(LREF universal)
+See_also: $(LREF stairs) $(SUBREF dynamic, transposed), $(LREF universal)
 +/
 auto stairs(string type, SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) slice)
     if (type == "+" || type == "-")
