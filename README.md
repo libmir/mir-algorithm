@@ -13,7 +13,7 @@
 
 http://docs.algorithm.dlang.io
 
-### Scheme
+### Scheme of basic API
 https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
 
 ### Our sponsors
