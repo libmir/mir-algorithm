@@ -2922,7 +2922,7 @@ Params:
 Returns:
     1D contiguous slice composed of 1D contiguous slices.
 
-See_also: $(LREF _stairs.2)
+See_also: $(LREF ._stairs.2)
 +/
 auto stairs(string type, Iterator)(Slice!(Contiguous, [1], Iterator) slice, size_t n)
     if (type == "+" || type == "-")
@@ -3048,6 +3048,9 @@ unittest
     import mir.ndslice.algorithm: each;
     each!"a[] = b"(lower, inc);
     each!"a[] = b"(upper, dec);
+
+    assert(&lower[0][0] is &lowerData[0]);
+    assert(&upper[0][0] is &upperData[0]);
 
     assert(lowerData == [0, 3, 4, 6, 7, 8]);
     assert(upperData == [0, 1, 2, 4, 5, 8]);
