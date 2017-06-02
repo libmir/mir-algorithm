@@ -27,7 +27,6 @@ $(BOOKTABLE ,
     $(LEADINGROW Math)
     $(TR $(TDNW $(MREF mir,math,common)) $(TD Common math functions))
     $(TR $(TDNW $(MREF mir,math,constant)) $(TD Constants))
-    $(TR $(TDNW $(MREF mir,math,func)) $(TD Special math functions))
     $(LEADINGROW Numeric)
     $(TR $(TDNW $(MREF mir,interpolation)) $(TD Interpolation algorithms))
     $(TR $(TDNW $(MREF mir,math,sum)) $(TD Various precise summation algorithms))
