@@ -17,7 +17,7 @@ $(TR $(TH Function Name) $(TH Description))
     $(TR $(TD $(LREF not))
         $(TD Creates a function that negates another.
     ))
-    $(TR $(TD $(LREF reverseArgs)
+    $(TR $(TD $(LREF reverseArgs))
         $(TD Predicate that reverses the order of its arguments.
     ))
     $(TR $(TD $(LREF forward))

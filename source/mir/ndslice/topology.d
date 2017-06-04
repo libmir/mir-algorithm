@@ -2917,9 +2917,10 @@ Note: `stairs` is defined for 1D (packet) input and 2D (general) input.
     This part of documentation is for 1D input.
 
 Params:
-    type =
-        "+" for stairs with lengths `1, 2, ..., n`;
-        "-" for stairs with lengths `n, n-1, ..., 1`.
+    type = $(UL
+        $(LI `"-"` for stairs with lengths `n, n-1, ..., 1`.)
+        $(LI `"+"` for stairs with lengths `1, 2, ..., n`;)
+        )
     slice = input slice with length equal to `n * (n + 1) / 2`
     n = stairs count
 Returns:
@@ -2982,11 +2983,11 @@ Note: `stairs` is defined for 1D (packet) input and 2D (general) input.
     This part of documentation is for 2D input.
 
 Params:
-    type =
-        "+" for stairs with lengths `1, 2, ..., n`, lower matrix;
-        "-" for stairs with lengths `n, n-1, ..., 1`, upper matrix.
+    type = $(UL
+        $(LI `"+"` for stairs with lengths `1, 2, ..., n`, lower matrix;)
+        $(LI `"-"` for stairs with lengths `n, n-1, ..., 1`, upper matrix.)
+        )
     slice = input slice with length equal to `n * (n + 1) / 2`
-    n = stairs count
 Returns:
     1D slice composed of 1D contiguous slices.
 
