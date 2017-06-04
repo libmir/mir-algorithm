@@ -1,11 +1,11 @@
 /++
 This is a submodule of $(MREF mir, ndslice).
 
-The module contains lazy concatenation routines.
-They construct $(LREF Concatenation) structure that can be
+The module contains $(LREF ._concatenation) routine.
+It construct $(LREF Concatenation) structure that can be
 assigned to an ndslice of the same shape with `[] = ` or `[] op= `.
 
-$(SUBREF slice, slicedNdField) can be used to construct ndslice lazy view on top of $(LREF Concatenation).
+$(SUBREF slice, slicedNdField) can be used to construct ndslice view on top of $(LREF Concatenation).
 
 $(SUBREF allocation, slice) has special overload for $(LREF Concatenation) that can be used to allocate new ndslice.
 
