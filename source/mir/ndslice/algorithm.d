@@ -390,7 +390,6 @@ evaluates `fun` for each pair (`matrix[j, i]`, `matrix[i, j]`), i<=j.
 
 Params:
     fun = A function.
-    matrix = Square matrix.
 +/
 template eachUploPair(alias fun)
 {
@@ -398,7 +397,7 @@ template eachUploPair(alias fun)
     static if (__traits(isSame, naryFun!fun, fun))
     /++
     Params:
-        slices = One or more slices.
+        matrix = Square matrix.
     +/
     auto eachUploPair(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) matrix)
     in
@@ -474,7 +473,7 @@ template isSymmetric(alias fun = "a == b")
     static if (__traits(isSame, naryFun!fun, fun))
     /++
     Params:
-        slices = One or more slices.
+        matrix = 2D ndslice.
     +/
     bool isSymmetric(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) matrix)
     {
