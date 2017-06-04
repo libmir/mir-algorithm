@@ -8,6 +8,18 @@ import mir.array.primitives;
 
 @fastmath:
 
+version(LDC)
+{
+    public import ldc.intrinsics: _expect = llvm_expect;
+}
+else
+{
+    T _expect(T)(T val, T expected_val) if (__traits(isIntegral, T))
+    {
+        return val;
+    }
+}
+
 private template _prod(size_t len)
     if (len)
 {
