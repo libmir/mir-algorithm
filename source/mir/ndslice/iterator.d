@@ -1142,6 +1142,8 @@ struct StairsIterator(Iterator)
     ///
     Iterator _iterator;
 
+@fastmath:
+
     ///
     Slice!(Contiguous, [1], Iterator) opUnary(string op : "*")()
     {
