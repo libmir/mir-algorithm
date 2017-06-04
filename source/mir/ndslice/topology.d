@@ -850,6 +850,8 @@ Params:
     lengths = dimensions of block, residual blocks are ignored
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
+
+See_also: $(SUBREF chunks, ._chunks)
 +/
 Slice!(kind == Contiguous ? Canonical : kind, packs[0] ~ packs, Iterator) 
     blocks

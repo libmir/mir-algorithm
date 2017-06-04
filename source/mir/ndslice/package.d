@@ -425,6 +425,7 @@ module mir.ndslice;
 public import mir.ndslice.algorithm;
 public import mir.ndslice.allocation;
 public import mir.ndslice.concatenation;
+public import mir.ndslice.chunks;
 public import mir.ndslice.dynamic;
 public import mir.ndslice.field;
 public import mir.ndslice.iterator;
