@@ -306,7 +306,8 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     void popFrontN(size_t dimension = 0)(size_t n)
         if (dimension < packs[0])
     {
-        n = n <= length ? n : length;
+        auto len = length!dimension;
+        n = n <= len ? n : len;
         popFrontExactly!dimension(n);
     }
 
@@ -314,7 +315,8 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     void popBackN(size_t dimension = 0)(size_t n)
         if (dimension < packs[0])
     {
-        n = n <= length ? n : length;
+        auto len = length!dimension;
+        n = n <= len ? n : len;
         popBackExactly!dimension(n);
     }
 
