@@ -321,6 +321,8 @@ Magic square field.
 +/
 struct MagicField()
 {
+@fastmath:
+
     /++
     Magic Square size.
     Should be even.
