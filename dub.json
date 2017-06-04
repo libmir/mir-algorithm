@@ -6,7 +6,28 @@
 		"Walter Bright",
 		"Phobos developers (see information per file)"
 	],
-	"targetType": "sourceLibrary",
+	"buildTypes": {
+		"unittest": {
+			"buildOptions": ["unittests", "debugMode", "debugInfoC"]
+		}
+	},
+	"configurations": [
+		{
+			"name": "library",
+			"targetType": "library"
+		},
+		{
+			"name": "sourceLibrary",
+			"targetType": "sourceLibrary"
+		},
+		{
+			"name": "test",
+			"targetType": "executable",
+			"dflags": [
+				"-main"
+			]
+		}
+	],
 	"description": "Multidimensional arrays (ndslice), ranges, iterators, and algorithms for Dlang",
 	"copyright": "Copyright © 2016 - 2017, Ilya Yaroshenko; Copyright © 2017, Symmetry Investments Group and Kaleidic Associates Advisory Limited; Copyright 2016 - 2017 © Digital Mars; (see information per file)",
 	"license": "BSL-1.0"
