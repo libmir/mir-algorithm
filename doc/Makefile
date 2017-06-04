@@ -34,7 +34,20 @@ PACKAGE_mir_internal = utility
 PACKAGE_mir_interpolation = package linear pchip
 PACKAGE_mir_math = constant common sum numeric
 PACKAGE_mir_math_func = expdigamma
-PACKAGE_mir_ndslice = package algorithm allocation dynamic field ndfield mutation iterator package slice sorting concatenation topology
+PACKAGE_mir_ndslice = \
+	algorithm\
+	allocation\
+	chunks\
+	concatenation\
+	dynamic\
+	field\
+	iterator\
+	mutation\
+	ndfield\
+	package\
+	slice\
+	sorting\
+	topology\
 
 MOD_EXCLUDES=$(addprefix --ex=,)
 
