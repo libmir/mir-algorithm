@@ -1462,6 +1462,105 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     }
 
     /++
+    Slice selected dimension.
+    Params:
+        begin = initial index of the sub-slice (inclusive)
+        end = final index of the sub-slice (noninclusive)
+    Returns: ndslice with `length!dimension` equal to `end - begin`.
+    +/
+    auto select(size_t dimension)(size_t begin, size_t end)
+    {
+        static if (kind == Contiguous && dimension)
+        {
+            import mir.ndslice.topology: canonical;
+            auto ret = this.canonical;    
+        }
+        else
+        {
+            auto ret = this;
+        }
+        auto len = end - begin;
+        assert(len <= ret._lengths[dimension]);
+        ret._lengths[dimension] = len;
+        ret._iterator += ret._stride!dimension * begin;
+        return ret;
+    }
+
+    static if (doUnittest)
+    ///
+    @safe @nogc pure nothrow unittest
+    {
+        import mir.ndslice.topology : iota;
+        auto sl = iota(3, 4);
+        assert(sl.select!1(1, 3) == sl[0 .. $, 1 .. 3]);
+    }
+
+    /++
+    Select the first n elements for the dimension.
+    Params:
+        dimension = Dimension to slice.
+        n = count of elements for the dimension
+    Returns: ndslice with `length!dimension` equal to `n`.
+    +/
+    auto selectFront(size_t dimension)(size_t n)
+    {
+        static if (kind == Contiguous && dimension)
+        {
+            import mir.ndslice.topology: canonical;
+            auto ret = this.canonical;    
+        }
+        else
+        {
+            auto ret = this;
+        }
+        assert(n <= ret._lengths[dimension]);
+        ret._lengths[dimension] = n;
+        return ret;
+    }
+
+    static if (doUnittest)
+    ///
+    @safe @nogc pure nothrow unittest
+    {
+        import mir.ndslice.topology : iota;
+        auto sl = iota(3, 4);
+        assert(sl.selectFront!1(2) == sl[0 .. $, 0 .. 2]);
+    }
+
+    /++
+    Select the last n elements for the dimension.
+    Params:
+        dimension = Dimension to slice.
+        n = count of elements for the dimension
+    Returns: ndslice with `length!dimension` equal to `n`.
+    +/
+    auto selectBack(size_t dimension)(size_t n)
+    {
+        static if (kind == Contiguous && dimension)
+        {
+            import mir.ndslice.topology: canonical;
+            auto ret = this.canonical;    
+        }
+        else
+        {
+            auto ret = this;
+        }
+        assert(n <= ret._lengths[dimension]);
+        ret._iterator += ret._stride!dimension * (ret._lengths[dimension] - n);
+        ret._lengths[dimension] = n;
+        return ret;
+    }
+
+    static if (doUnittest)
+    ///
+    @safe @nogc pure nothrow unittest
+    {
+        import mir.ndslice.topology : iota;
+        auto sl = iota(3, 4);
+        assert(sl.selectBack!1(2) == sl[0 .. $, $ - 2 .. $]);
+    }
+
+    /++
     Overloading `==` and `!=`
     +/
     bool opEquals(SliceKind rkind, size_t[] rpacks, IteratorR)(const Slice!(rkind, rpacks, IteratorR) rslice) @trusted const
@@ -1539,9 +1638,8 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     {
         assert(i <= j,
             "Slice.opSlice!" ~ dimension.stringof ~ ": the left bound must be less than or equal to the right bound.");
-        enum errorMsg = ": difference between the right and the left bounds"
-                        ~ " must be less than or equal to the length of the given dimension.";
-        assert(j - i <= _lengths[dimension],
+        enum errorMsg = ": the right must be less than or equal to the length of the given dimension.";
+        assert(j <= _lengths[dimension],
               "Slice.opSlice!" ~ dimension.stringof ~ errorMsg);
     }
     body
@@ -1586,7 +1684,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     return Ret(_lengths[I .. N], _strides, _iterator + indexStride(_indexes));
             }
         }
-
     }
 
     /++
