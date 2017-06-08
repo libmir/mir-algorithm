@@ -19,13 +19,6 @@
 		{
 			"name": "sourceLibrary",
 			"targetType": "sourceLibrary"
-		},
-		{
-			"name": "test",
-			"targetType": "executable",
-			"dflags": [
-				"-main"
-			]
 		}
 	],
 	"description": "Multidimensional arrays (ndslice), ranges, iterators, and algorithms for Dlang",
