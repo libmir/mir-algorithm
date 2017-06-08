@@ -24,6 +24,9 @@ $(TR $(TH Function Name) $(TH Description))
         $(TD Forwards function arguments with saving ref-ness.
     ))
     $(TR $(TD $(LREF refTuple))
+        $(TD Removes $(LREF Ref) shell.
+    ))
+    $(TR $(TD $(LREF unref))
         $(TD Creates a $(LREF RefTuple) structure.
     ))
     $(TR $(TD $(LREF __ref))
