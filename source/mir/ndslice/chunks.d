@@ -4,7 +4,7 @@ This is a submodule of $(MREF mir,ndslice).
 The module contains $(LREF _chunks) routine.
 $(LREF Chunks) structure is multidimensional random access range with slicing.
 
-$(SUBREF slice, slicedNdField) can be used to construct ndslice view on top of $(LREF Chunks).
+$(SUBREF slice, slicedField), $(SUBREF slice, slicedNdField) can be used to construct ndslice view on top of $(LREF Chunks).
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-, Ilya Yaroshenko
@@ -174,7 +174,6 @@ unittest
     static assert(isRandomAccessRange!(typeof(ch)));
 }
 
-
 /// 1Dx2D
 unittest
 {
@@ -203,6 +202,23 @@ unittest
 
     import std.range.primitives: isRandomAccessRange;
     static assert(isRandomAccessRange!(typeof(ch)));
+}
+
+// conversion to ndslice
+unittest
+{
+    import mir.ndslice.slice : slicedField;
+    import mir.ndslice.chunks: chunks;
+    import mir.ndslice.topology: iota, map;
+    import mir.math.sum: sum;
+
+    // 0 1 2 3 4 5 6 7 8 9 10
+    auto sl = iota(11);
+    // 0 1 2 | 3 4 5 | 6 7 8 | 9 10
+    auto ch = sl.chunks(3);
+    // 3 | 12 | 21 | 19
+    auto s = ch.slicedField.map!sum;
+    assert(s == [3, 12, 21, 19]);
 }
 
 /++
