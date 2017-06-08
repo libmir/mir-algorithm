@@ -2155,13 +2155,13 @@ template map(fun...)
             @fastmath auto map(SliceKind kind, size_t[] packs, Iterator)
                 (Slice!(kind, packs, Iterator) slice)
             {
-                // Specialization for packed tensors (tensors composed of tensors).
                 static if (packs.length == 1)
                 {
                     import mir.ndslice.iterator: mapIterator;
                     auto iterator = slice._iterator.mapIterator!f;
                     return Slice!(kind, packs, typeof(iterator))(slice._lengths, slice._strides, iterator);
                 }
+                // Specialization for packed tensors (tensors composed of tensors).
                 else
                 {
                     alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
