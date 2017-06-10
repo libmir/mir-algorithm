@@ -16,6 +16,9 @@ http://docs.algorithm.dlang.io
 ### Scheme of basic API
 https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg
 
+### Mir Blog
+http://blog.mir.dlang.io/
+
 ### Our sponsors
 
 [<img src="https://raw.githubusercontent.com/libmir/mir-algorithm/master/images/symmetry.png" height="80" />](http://symmetryinvestments.com/) 	&nbsp; 	&nbsp;	&nbsp;	&nbsp;
