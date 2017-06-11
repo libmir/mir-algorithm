@@ -1154,6 +1154,12 @@ unittest
               [[12, 13, 14], [17, 18, 19], [22, 23, 24]]]]);
 }
 
+unittest
+{
+    auto w = iota(9, 9).windows(3, 3);
+    assert(w.front == w[0]);
+}
+
 /++
 Error codes for $(LREF reshape).
 +/

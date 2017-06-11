@@ -1575,7 +1575,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             {
                 enum size_t diff = packs[0] - I;
                 alias Ret = Slice!(
-                    diff == 1 && kind == Canonical ?
+                    diff == 1 && kind == Canonical && packs.length == 1 ?
                         Contiguous:
                         kind,
                     diff ~ packs[1 .. $],
