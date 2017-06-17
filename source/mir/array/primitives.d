@@ -174,7 +174,7 @@ unittest
 }
 
 ///
-size_t length(size_t d : 0, T)(T[] array)
+size_t length(size_t d : 0, T)(in T[] array)
     if (d == 0)
 {
     pragma(inline, true);
