@@ -1476,7 +1476,7 @@ unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.dynamic;
-    assert(iota(3, 4, 5, 6, 7).pack!2.flattened()[1] == iota([6, 7], 6 * 7));
+    assert(iota(3, 4, 5, 6, 7).pack!2.flattened[1] == iota([6, 7], 6 * 7));
 }
 
 /// Properties

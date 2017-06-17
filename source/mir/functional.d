@@ -99,6 +99,7 @@ struct RefTuple(T...)
 {
     @fastmath:
     T expand;
+    alias expand this;
     mixin _RefTupleMixin!T;
 }
 
