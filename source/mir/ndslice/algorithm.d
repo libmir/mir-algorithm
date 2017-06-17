@@ -40,6 +40,7 @@ module mir.ndslice.algorithm;
 import std.traits;
 import std.meta;
 
+import mir.primitives;
 import mir.ndslice.internal;
 import mir.internal.utility;
 import mir.ndslice.slice;
@@ -114,12 +115,12 @@ template reduce(alias fun)
     /++
     Params:
         seed = An initial accumulation value.
-        slices = One or more slices.
+        slices = One or more slices, range, and arrays.
     Returns:
         the accumulated `result`
     +/
     @fastmath auto reduce(S, Slices...)(S seed, Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
+        if (Slices.length)
     {
         slices.checkShapesMatch;
         if (slices[0].anyEmpty)
@@ -132,6 +133,14 @@ template reduce(alias fun)
     }
     else
         alias reduce = .reduce!(naryFun!fun);
+}
+
+/// Ranges and arrays
+unittest
+{
+    auto ar = [1, 2, 3];
+    auto s = 0.reduce!"a + b"(ar);
+    assert (s == 6);
 }
 
 /// Single slice
@@ -302,10 +311,10 @@ template each(alias fun)
     static if (__traits(isSame, naryFun!fun, fun))
     /++
     Params:
-        slices = One or more slices.
+        slices = One or more slices, ranges, and arrays.
     +/
     @fastmath auto each(Slices...)(Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
+        if (Slices.length)
     {
         slices.checkShapesMatch;
         if (slices[0].anyEmpty)
@@ -314,6 +323,14 @@ template each(alias fun)
     }
     else
         alias each = .each!(naryFun!fun);
+}
+
+/// Ranges and arrays
+unittest
+{
+    auto ar = [1, 2, 3];
+    ar.each!"a *= 2";
+    assert (ar == [2, 4, 6]);
 }
 
 /// Single slice, multiply-add
@@ -907,7 +924,7 @@ unittest
 }
 
 bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slices slices)
-    if (Slices.length && allSatisfy!(isSlice, Slices))
+    if (Slices.length)
 {
     do
     {
@@ -958,18 +975,31 @@ template findIndex(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @fastmath size_t[isSlice!(Slices[0])[0]] findIndex(Slices...)(Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
+    @fastmath size_t[DimensionCount!(Slices[0])] findIndex(Slices...)(Slices slices)
+        if (Slices.length)
     {
         slices.checkShapesMatch;
         typeof(return) ret = -1;
+        auto lengths = slices[0].shape;
         if (!slices[0].anyEmpty && findImpl!pred(ret, slices))
-            foreach (i; Iota!((isSlice!(Slices[0])[0])))
-                ret[i] = slices[0]._lengths[i] - ret[i];
+            foreach (i; Iota!(typeof(return).length))
+                ret[i] = lengths[i] - ret[i];
         return ret;
     }
     else
         alias findIndex = .findIndex!(naryFun!pred);
+}
+
+/// Ranges and arrays
+unittest
+{
+    import std.range : iota;
+    // 0 1 2 3 4 5
+    auto sl = iota(5);
+    size_t index = sl.findIndex!"a == 3"[0];
+
+    assert(index == 3);
+    assert(sl[index] == 3);
 }
 
 ///
@@ -1031,8 +1061,8 @@ template find(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @fastmath size_t[isSlice!(Slices[0])[0]] find(Slices...)(Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
+    @fastmath size_t[DimensionCount!(Slices[0])] find(Slices...)(Slices slices)
+        if (Slices.length)
     {
         slices.checkShapesMatch;
         typeof(return) ret;
@@ -1042,6 +1072,17 @@ template find(alias pred)
     }
     else
         alias find = .find!(naryFun!pred);
+}
+
+/// Ranges and arrays
+unittest
+{
+    import std.range : iota;
+
+    auto sl = iota(10);
+    size_t index = sl.find!"a == 3"[0];
+
+    assert(sl[$ - index] == 3);
 }
 
 ///
@@ -1132,7 +1173,7 @@ pure nothrow unittest
 }
 
 size_t anyImpl(alias fun, Slices...)(Slices slices)
-    if (Slices.length && allSatisfy!(isSlice, Slices))
+    if (Slices.length)
 {
     do
     {
@@ -1165,20 +1206,31 @@ template any(alias pred = "a")
     static if (__traits(isSame, naryFun!pred, pred))
     /++
     Params:
-        slices = One or more slices.
+        slices = One or more slices, ranges, and arrays.
     Returns:
         `true` if the search was successful and `false` otherwise.
     Constraints:
         All slices must have the same shape.
     +/
     @fastmath bool any(Slices...)(Slices slices)
-        if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length && allSatisfy!(isSlice, Slices))
+        if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
         return !slices[0].anyEmpty && anyImpl!pred(slices);
     }
     else
         alias any = .any!(naryFun!pred);
+}
+
+/// Ranges and arrays
+@safe pure nothrow @nogc unittest
+{
+    import std.range : iota;
+    // 0 1 2 3 4 5
+    auto r = iota(6);
+
+    assert(r.any!"a == 3");
+    assert(!r.any!"a == 6");
 }
 
 ///
@@ -1252,7 +1304,7 @@ pure nothrow unittest
 }
 
 size_t allImpl(alias fun, Slices...)(Slices slices)
-    if (Slices.length && allSatisfy!(isSlice, Slices))
+    if (Slices.length)
 {
     do
     {
@@ -1293,13 +1345,24 @@ template all(alias pred = "a")
         All slices must have the same shape.
     +/
     @fastmath bool all(Slices...)(Slices slices)
-        if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length && allSatisfy!(isSlice, Slices))
+        if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
         return slices[0].anyEmpty || allImpl!pred(slices);
     }
     else
         alias all = .all!(naryFun!pred);
+}
+
+/// Ranges and arrays
+@safe pure nothrow @nogc unittest
+{
+    import std.range : iota;
+    // 0 1 2 3 4 5
+    auto r = iota(6);
+
+    assert(r.all!"a < 6");
+    assert(!r.all!"a < 5");
 }
 
 ///
@@ -1390,7 +1453,7 @@ template count(alias fun)
     static if (__traits(isSame, naryFun!fun, fun))
     /++
     Params:
-        slices = One or more slices.
+        slices = One or more slices, ranges, and arrays.
 
     Returns: The number elements according to the `fun`.
 
@@ -1398,29 +1461,47 @@ template count(alias fun)
         All slices must have the same shape.
     +/
     @fastmath size_t count(Slices...)(Slices slices)
-        if (Slices.length && allSatisfy!(isSlice, Slices))
+        if (Slices.length)
     {
         static if (__traits(isSame, fun, naryFun!"true"))
         {
             return slices[0].elementsCount;
         }
         else
-        static if (Slices.length == 1 && kindOf!(Slices[0]) == Contiguous && isSlice!(Slices[0]) != [1])
         {
-            import mir.ndslice.topology: flattened;
-            return .count!(naryFun!fun)(slices[0].flattened);
-        }
-        else
-        {
-            slices.checkShapesMatch;
-            if (slices[0].anyEmpty)
-                return 0;
-            return countImpl!(fun, Slices)(slices);
+            static if (isSlice!(Slices[0]))
+                enum flat = Slices.length == 1 && kindOf!(Slices[0]) == Contiguous && isSlice!(Slices[0]) != [1];
+            else
+                enum flat = false;
+            static if (flat)
+            {
+                import mir.ndslice.topology: flattened;
+                return .count!(naryFun!fun)(slices[0].flattened);
+            }
+            else
+            {
+                slices.checkShapesMatch;
+                if (slices[0].anyEmpty)
+                    return 0;
+                return countImpl!(fun, Slices)(slices);
+            }
         }
     }
     else
         alias count = .count!(naryFun!fun);
 
+}
+
+/// Ranges and arrays
+@safe pure nothrow @nogc unittest
+{
+    import std.range : iota;
+    // 0 1 2 3 4 5
+    auto r = iota(6);
+
+    assert(r.count!"true" == 6);
+    assert(r.count!"a" == 5);
+    assert(r.count!"a % 2" == 3);
 }
 
 /// Single slice
@@ -1469,13 +1550,13 @@ See_also: $(SUBREF slice, Slice.opEquals)
 Params:
     pred = The predicate.
 +/
-template equal(alias pred)
+template equal(alias pred = "a == b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
     /++
     Params:
-        slices = Two or more slices.
+        slices = Two or more slices, slices, ranges, and arrays.
 
     Returns:
         `true` any of the elements verify `pred` and `false` otherwise.
@@ -1488,11 +1569,11 @@ template equal(alias pred)
         import mir.internal.utility;
         foreach (i, Slice; Slices)
         {
-            static assert (isSlice!Slice, msg);
+            // static assert (isSlice!Slice, msg);
             static if (i)
             {
-                static assert (isSlice!(Slices[i])[0] == isSlice!(Slices[0])[0]);
-                foreach (j; Iota!(isSlice!(Slices[0])[0]))
+                static assert (DimensionCount!(Slices[i]) == DimensionCount!(Slices[0]));
+                foreach (j; Iota!(DimensionCount!(Slices[0])))
                     if (slices[i].shape[j] != slices[0].shape[j])
                         goto False;
             }
@@ -1502,6 +1583,14 @@ template equal(alias pred)
     }
     else
         alias equal = .equal!(naryFun!pred);
+}
+
+/// Ranges and arrays
+@safe pure nothrow unittest
+{
+    import std.range : iota;
+    auto r = iota(6);
+    assert(r.equal([0, 1, 2, 3, 4, 5]));
 }
 
 ///
@@ -1517,23 +1606,23 @@ template equal(alias pred)
     // 4 5 6
     auto sl2 = iota([2, 3], 1);
 
-    assert(equal!"a == b"(sl1, sl1));
+    assert(equal(sl1, sl1));
     assert(sl1 == sl1); //can also use opEquals for two Slices
     assert(equal!"2 * a == b + c"(sl1, sl1, sl1));
     
     assert(equal!"a < b"(sl1, sl2));
 
-    assert(!equal!"a == b"(sl1[0 .. $ - 1], sl1));
-    assert(!equal!"a == b"(sl1[0 .. $, 0 .. $ - 1], sl1));
+    assert(!equal(sl1[0 .. $ - 1], sl1));
+    assert(!equal(sl1[0 .. $, 0 .. $ - 1], sl1));
 }
 
-ptrdiff_t cmpImpl(alias pred, SliceKind kindA, SliceKind kindB, size_t[] packsA, size_t[] packsB, IteratorA, IteratorB)
-    (Slice!(kindA, packsA, IteratorA) sl1, Slice!(kindB, packsB, IteratorB) sl2)
-    if (packsA[0] == packsB[0])
+ptrdiff_t cmpImpl(alias pred, A, B)
+    (A sl1, B sl2)
+    if (DimensionCount!A == DimensionCount!B)
 {
     for (;;)
     {
-        static if (packsA[0] == 1)
+        static if (DimensionCount!A == 1)
         {
             import mir.functional : naryFun;
             if (naryFun!pred(sl1.front, sl2.front))
@@ -1572,8 +1661,8 @@ template cmp(alias pred = "a < b")
     static if (__traits(isSame, naryFun!pred, pred))
     /++
     Params:
-        sl1 = First slice.
-        sl2 = Second slice.
+        sl1 = First slice, range, or array.
+        sl2 = Second slice, range, or array.
 
     Returns:
         `0` if both ranges compare equal.
@@ -1582,18 +1671,19 @@ template cmp(alias pred = "a < b")
         Positive value if the first differing element of `sl2` is less than the corresponding
         element of `sl1` according to `pred`.
     +/
-    ptrdiff_t cmp(SliceKind kindA, SliceKind kindB, size_t[] packsA, size_t[] packsB, IteratorA, IteratorB)
-        (Slice!(kindA, packsA, IteratorA) sl1, Slice!(kindB, packsB, IteratorB) sl2)
-        if (packsA[0] == packsB[0])
+    ptrdiff_t cmp(A, B)
+        (A sl1, B sl2)
+        if (DimensionCount!A == DimensionCount!B)
     {
         auto b = sl2.anyEmpty;
         if (sl1.anyEmpty)
         {
             if (!b)
                 return -1;
-            import mir.internal.utility;
-            foreach (i; Iota!(packsA[0]))
-                if (ptrdiff_t ret = sl1.length!i - sl2.length!i)
+            auto sh1 = sl1.shape;
+            auto sh2 = sl2.shape;
+            foreach (i; Iota!(DimensionCount!A))
+                if (ptrdiff_t ret = sh1[i] - sh2[i])
                     return ret;
             return 0;
         }
@@ -1603,6 +1693,21 @@ template cmp(alias pred = "a < b")
     }
     else
         alias cmp = .cmp!(naryFun!pred);
+}
+
+/// Ranges and arrays
+@safe pure nothrow unittest
+{
+    import std.range : iota;
+
+    // 0 1 2 3 4 5
+    auto r1 = iota(0, 6);
+    // 1 2 3 4 5 6
+    auto r2 = iota(1, 7);
+
+    assert(cmp(r1, r1) == 0);
+    assert(cmp(r1, r2) < 0);
+    assert(cmp!"a >= b"(r1, r2) > 0);
 }
 
 ///

@@ -83,6 +83,7 @@ Chunks!([0], kind, packs, Iterator) chunks(SliceKind kind, size_t[] packs, Itera
     static assert(isChunks!(typeof(ch)) == [0]); // isChunks returns dimension indexes
 
     assert(ch.length == 4);
+    assert(ch.shape == cast(size_t[1])[4]);
 
     // 0 1 2
     assert(ch.front == iota([3], 0));
@@ -146,6 +147,7 @@ unittest
     // Chunk columns first, then blocks rows.
     auto ch = sl.chunks!(1, 0)(4, 3);
 
+    assert(ch.shape == [3, 4]);
     assert(ch.slice == sl);
     assert(ch.front.slice == sl[0 .. $, 0 .. 4]);
 
@@ -279,6 +281,20 @@ struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
     {
         enum dimension = dimensions[dimensionIndex];
         return _slice.empty!(dimension);
+    }
+
+    ///
+    size_t[dimensions.length] shape()() const @property
+    {
+        typeof(return) ret;
+        foreach(dimensionIndex; Iota!(ret.length))
+        {
+            enum dimension = dimensions[dimensionIndex];
+            auto l = _slice._lengths[dimension];
+            auto n = _chunkLengths[dimensionIndex];
+            ret[dimensionIndex] = l / n + (l % n != 0);
+        }
+        return ret;
     }
 
     /// ditto
