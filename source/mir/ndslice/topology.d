@@ -2479,9 +2479,9 @@ auto zip
     foreach(i, S; Slices[1 .. $])
     {
         static assert(isSlice!S == packs, "zip: all Slices must have the same shape packs");
-        assert(slices[i]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
+        assert(slices[i + 1]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
         static if (sameStrides)
-            assert(slices[i].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides");
+            assert(slices[i + 1].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides");
     }
     static if (!sameStrides && minElem(staticMap!(kindOf, Slices)) != Contiguous)
     {
