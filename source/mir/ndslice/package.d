@@ -251,6 +251,16 @@ $(TR $(TDNW $(SUBMODULE ndfield)
     )
 )
 
+$(TR $(TDNW $(SUBMODULE chunks)
+        $(BR) $(SMALL Declarations))
+     $(TD
+        $(SUBREF field, chunks)
+        $(SUBREF field, Chunks)
+        $(SUBREF field, isChunks)
+        $(SUBREF field, popFrontTuple)
+    )
+)
+
 ))
 
 $(H2 Example: Image Processing)
