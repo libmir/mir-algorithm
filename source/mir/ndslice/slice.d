@@ -124,11 +124,11 @@ alias CanonicalMatrix (T) = CanonicalTensor !(2, T);
 /// ditto
 alias UniversalMatrix (T) = UniversalTensor !(2, T);
 /// ditto
-alias ContiguousTensor(size_t dim, T) = Slice!(Contiguous, [dim], T*);
+alias ContiguousSlice (size_t dim, T) = Slice!(Contiguous, [dim], T*);
 /// ditto
-alias CanonicalTensor (size_t dim, T) = Slice!(Canonical , [dim], T*);
+alias CanonicalSlice (size_t dim, T) = Slice!(Canonical , [dim], T*);
 /// ditto
-alias UniversalTensor (size_t dim, T) = Slice!(Universal , [dim], T*);
+alias UniversalSlice (size_t dim, T) = Slice!(Universal , [dim], T*);
 
 /// Extracts $(LREF SliceKind).
 enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;
