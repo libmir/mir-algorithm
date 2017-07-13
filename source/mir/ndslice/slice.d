@@ -114,15 +114,15 @@ Definition shortcuts for $(LREF Slice).
 
 See_also: $(LREF SliceKind).
 +/
-alias ContiguousVector(T) = ContiguousTensor!(1, T);
+alias ContiguousVector (T) = ContiguousSlice!(1, T);
 /// ditto
-alias UniversalVector (T) = UniversalTensor !(1, T);
+alias UniversalVector (T) = UniversalSlice!(1, T);
 /// ditto
-alias ContiguousMatrix(T) = ContiguousTensor!(2, T);
+alias ContiguousMatrix (T) = ContiguousSlice!(2, T);
 /// ditto
-alias CanonicalMatrix (T) = CanonicalTensor !(2, T);
+alias CanonicalMatrix (T) = CanonicalSlice!(2, T);
 /// ditto
-alias UniversalMatrix (T) = UniversalTensor !(2, T);
+alias UniversalMatrix (T) = UniversalSlice!(2, T);
 /// ditto
 alias ContiguousSlice (size_t dim, T) = Slice!(Contiguous, [dim], T*);
 /// ditto
