@@ -459,8 +459,8 @@ unittest
 // relaxed example
 unittest
 {
-    static ContiguousTensor!(3, ubyte) movingWindowByChannel
-    (UniversalTensor!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(UniversalMatrix!ubyte) filter)
+    static ContiguousSlice!(3, ubyte) movingWindowByChannel
+    (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(UniversalMatrix!ubyte) filter)
     {
         return image
             .pack!1
