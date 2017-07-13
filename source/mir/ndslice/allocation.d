@@ -48,7 +48,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-ContiguousTensor!(N, T)
+ContiguousSlice!(N, T)
     slice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
@@ -56,7 +56,7 @@ ContiguousTensor!(N, T)
 }
 
 /// ditto
-ContiguousTensor!(N, T)
+ContiguousSlice!(N, T)
     slice(T, size_t N)(size_t[N] lengths, T init)
 {
     immutable len = lengthsProduct(lengths);
@@ -172,7 +172,7 @@ auto makeSlice(Allocator, size_t N, Iterator)(auto ref Allocator alloc, Slice!(N
 }
 
 /// ditto
-ContiguousTensor!(N, T)
+ContiguousSlice!(N, T)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     import std.experimental.allocator : makeArray;
@@ -180,7 +180,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...
 }
 
 /// ditto
-ContiguousTensor!(N, T)
+ContiguousSlice!(N, T)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T init)
 {
     import std.experimental.allocator : makeArray;
@@ -190,7 +190,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
 }
 
 ///// ditto
-//ContiguousTensor!(N, T)
+//ContiguousSlice!(N, T)
 //makeSlice(T,
 //    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
 //    Allocator,
@@ -257,7 +257,7 @@ Params:
 Returns:
     a structure with fields `array` and `slice`
 +/
-ContiguousTensor!(N, T)
+ContiguousSlice!(N, T)
 makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     immutable len = lengthsProduct(lengths);
