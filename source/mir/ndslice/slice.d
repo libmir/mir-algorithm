@@ -21,6 +21,16 @@ $(T2 slicedField, Creates a slice on top of a field, a random access range, or a
 $(T2 slicedNdField, Creates a slice on top of an ndField.)
 $(T2 kindOf, Extracts $(LREF SliceKind).)
 $(T2 isSlice, Extracts dimension packs from a type. Extracts `null` if the template argument is not a `Slice`.)
+$(T2 isVector, Test if type is a one-dimensional slice.)
+$(T2 isMatrix, Test if type is a two-dimensional slice.)
+$(T2 isContiguousSlice, Test if type is a contiguous slice.)
+$(T2 isCanonicalSlice, Test if type is a canonical slice.)
+$(T2 isUniversalSlice, Test if type is a universal slice.)
+$(T2 isContiguousVector, Test if type is a contiguous one-dimensional slice.)
+$(T2 isUniversalVector, Test if type is a universal one-dimensional slice.)
+$(T2 isContiguousMatrix, Test if type is a contiguous two-dimensional slice.)
+$(T2 isCanonicalMatrix, Test if type is a canonical two-dimensional slice.)
+$(T2 isUniversalMatrix, Test if type is a universal two-dimensional slice.)
 $(T2 DeepElementType, Extracts the element type of a $(LREF Slice).)
 $(T2 Structure, A tuple of lengths and strides.)
 )
@@ -129,6 +139,164 @@ alias ContiguousTensor(size_t dim, T) = Slice!(Contiguous, [dim], T*);
 alias CanonicalTensor (size_t dim, T) = Slice!(Canonical , [dim], T*);
 /// ditto
 alias UniversalTensor (size_t dim, T) = Slice!(Universal , [dim], T*);
+
+///
+enum bool isVector(T) = is(T : Slice!(kind, [1], Iterator), 
+									SliceKind kind, Iterator);
+///
+enum bool isMatrix(T) = is(T : Slice!(kind, [2], Iterator), 
+									SliceKind kind, Iterator);
+///
+enum bool isContiguousSlice(T) = is(T : Slice!(Contiguous, packs, Iterator), 
+											size_t[] packs, Iterator);
+///
+enum bool isCanonicalSlice(T) = is(T : Slice!(Canonical, packs, Iterator), 
+											size_t[] packs, Iterator);
+///
+enum bool isUniversalSlice(T) = is(T : Slice!(Universal, packs, Iterator), 
+											size_t[] packs, Iterator);
+///
+enum bool isContiguousVector(T) = is(T : Slice!(Contiguous, [1], Iterator), 
+													Iterator);
+///
+enum bool isUniversalVector(T) = is(T : Slice!(Universal, [1], Iterator), 
+													Iterator);
+///
+enum bool isContiguousMatrix(T) = is(T : Slice!(Contiguous, [2], Iterator), 
+													Iterator);
+///
+enum bool isCanonicalMatrix(T) = is(T : Slice!(Canonical, [2], Iterator), 
+													Iterator);
+///
+enum bool isUniversalMatrix(T) = is(T : Slice!(Universal, [2], Iterator), 
+													Iterator);
+
+unittest
+{
+	alias S1 = ContiguousVector!int;
+	static assert(isContiguousVector!S1);
+	static assert(!isUniversalVector!S1);
+	
+	static assert(!isContiguousMatrix!S1);
+	static assert(!isCanonicalMatrix!S1);
+	static assert(!isUniversalMatrix!S1);
+	
+	static assert(isVector!S1);
+	static assert(!isMatrix!S1);
+	
+	static assert(isContiguousSlice!S1);
+	static assert(!isCanonicalSlice!S1);
+	static assert(!isUniversalSlice!S1);
+	
+	alias S2 = UniversalVector!float;
+	static assert(!isContiguousVector!S2);
+	static assert(isUniversalVector!S2);
+	
+	static assert(!isContiguousMatrix!S2);
+	static assert(!isCanonicalMatrix!S2);
+	static assert(!isUniversalMatrix!S2);
+	
+	static assert(isVector!S2);
+	static assert(!isMatrix!S2);
+	
+	static assert(!isContiguousSlice!S2);
+	static assert(!isCanonicalSlice!S2);
+	static assert(isUniversalSlice!S2);
+	
+	alias S3 = ContiguousMatrix!byte;
+	static assert(!isContiguousVector!S3);
+	static assert(!isUniversalVector!S3);
+	
+	static assert(isContiguousMatrix!S3);
+	static assert(!isCanonicalMatrix!S3);
+	static assert(!isUniversalMatrix!S3);
+	
+	static assert(!isVector!S3);
+	static assert(isMatrix!S3);
+	
+	static assert(isContiguousSlice!S3);
+	static assert(!isCanonicalSlice!S3);
+	static assert(!isUniversalSlice!S3);
+	
+	alias S4 = CanonicalMatrix!uint;
+	static assert(!isContiguousVector!S4);
+	static assert(!isUniversalVector!S4);
+	
+	static assert(!isContiguousMatrix!S4);
+	static assert(isCanonicalMatrix!S4);
+	static assert(!isUniversalMatrix!S4);
+	
+	static assert(!isVector!S4);
+	static assert(isMatrix!S4);
+	
+	static assert(!isContiguousSlice!S4);
+	static assert(isCanonicalSlice!S4);
+	static assert(!isUniversalSlice!S4);
+	
+	alias S5 = UniversalMatrix!double;
+	static assert(!isContiguousVector!S5);
+	static assert(!isUniversalVector!S5);
+	
+	static assert(!isContiguousMatrix!S5);
+	static assert(!isCanonicalMatrix!S5);
+	static assert(isUniversalMatrix!S5);
+	
+	static assert(!isVector!S5);
+	static assert(isMatrix!S5);
+	
+	static assert(!isContiguousSlice!S5);
+	static assert(!isCanonicalSlice!S5);
+	static assert(isUniversalSlice!S5);
+	
+	alias S6 = ContiguousTensor!(3, ubyte);
+	
+	static assert(!isContiguousVector!S6);
+	static assert(!isUniversalVector!S6);
+	
+	static assert(!isContiguousMatrix!S6);
+	static assert(!isCanonicalMatrix!S6);
+	static assert(!isUniversalMatrix!S6);
+	
+	static assert(!isVector!S6);
+	static assert(!isMatrix!S6);
+	
+	static assert(isContiguousSlice!S6);
+	static assert(!isCanonicalSlice!S6);
+	static assert(!isUniversalSlice!S6);
+	
+	alias S7 = CanonicalTensor!(3, real);
+	
+	static assert(!isContiguousVector!S7);
+	static assert(!isUniversalVector!S7);
+	
+	static assert(!isContiguousMatrix!S7);
+	static assert(!isCanonicalMatrix!S7);
+	static assert(!isUniversalMatrix!S7);
+	
+	static assert(!isVector!S7);
+	static assert(!isMatrix!S7);
+	
+	static assert(!isContiguousSlice!S7);
+	static assert(isCanonicalSlice!S7);
+	static assert(!isUniversalSlice!S7);
+	
+	alias S8 = UniversalTensor!(3, long);
+	
+	static assert(!isContiguousVector!S8);
+	static assert(!isUniversalVector!S8);
+	
+	static assert(!isContiguousMatrix!S8);
+	static assert(!isCanonicalMatrix!S8);
+	static assert(!isUniversalMatrix!S8);
+	
+	static assert(!isVector!S8);
+	static assert(!isMatrix!S8);
+	
+	static assert(!isContiguousSlice!S8);
+	static assert(!isCanonicalSlice!S8);
+	static assert(isUniversalSlice!S8);
+}
+
 
 /// Extracts $(LREF SliceKind).
 enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;
