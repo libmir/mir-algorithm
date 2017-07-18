@@ -1470,7 +1470,7 @@ template count(alias fun)
         else
         {
             static if (isSlice!(Slices[0]))
-                enum flat = Slices.length == 1 && kindOf!(Slices[0]) == Contiguous && isSlice!(Slices[0]) != [1];
+                enum flat = Slices.length == 1 && kindOf!(Slices[0]) == Contiguous && packsOf!(Slices[0]) != [1];
             else
                 enum flat = false;
             static if (flat)
