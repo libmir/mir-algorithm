@@ -20,6 +20,7 @@ $(T2 sliced, Creates a slice on top of an iterator, a pointer, or an array's poi
 $(T2 slicedField, Creates a slice on top of a field, a random access range, or an array.)
 $(T2 slicedNdField, Creates a slice on top of an ndField.)
 $(T2 kindOf, Extracts $(LREF SliceKind).)
+$(T2 packsOf, Extracts dimension packs from a $(LREF Slice). Alias for $(LREF isSlice).)
 $(T2 isSlice, Extracts dimension packs from a type. Extracts `null` if the template argument is not a `Slice`.)
 $(T2 DeepElementType, Extracts the element type of a $(LREF Slice).)
 $(T2 Structure, A tuple of lengths and strides.)
@@ -147,6 +148,17 @@ enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, I
 unittest
 {
     static assert(kindOf!(Slice!(Universal, [1], int*)) == Universal);
+}
+
+/// Extracts dimension packs from a $(LREF Slice). Alias for $(LREF isSlice).
+alias packsOf(T) = isSlice!(T);
+
+@safe pure nothrow @nogc
+unittest
+{
+    alias S = Slice!(Universal, [2, 3], int*);
+
+    static assert(packsOf!S == [2, 3]);
 }
 
 private template SkipDimension(size_t dimension, size_t index)
