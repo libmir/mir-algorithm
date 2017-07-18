@@ -261,6 +261,23 @@ $(TR $(TDNW $(SUBMODULE chunks)
     )
 )
 
+$(TR $(TDNW $(SUBMODULE traits)
+        $(BR) $(SMALL Declarations))
+     $(TD
+        $(SUBREF field, isVector)
+        $(SUBREF field, isMatrix)
+        $(SUBREF field, isContiguousSlice)
+        $(SUBREF field, isCanonicalSlice)
+		$(SUBREF field, isUniversalSlice)
+		$(SUBREF field, isContiguousVector)
+		$(SUBREF field, isUniversalVector)
+		$(SUBREF field, isContiguousMatrix)
+		$(SUBREF field, isCanonicalMatrix)
+		$(SUBREF field, isUniversalMatrix)
+		
+    )
+)
+
 ))
 
 $(H2 Example: Image Processing)
