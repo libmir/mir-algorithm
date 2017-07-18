@@ -459,6 +459,7 @@ public import mir.ndslice.iterator;
 public import mir.ndslice.ndfield;
 public import mir.ndslice.slice;
 public import mir.ndslice.topology;
+public import mir.ndslice.traits;
 
 
 unittest
