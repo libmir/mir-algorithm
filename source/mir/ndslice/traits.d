@@ -30,6 +30,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 
 module mir.ndslice.traits;
 
+import mir.ndslice.slice : Slice, SliceKind, Contiguous, Universal, Canonical;
 
 /// Test if type is a one-dimensional slice.
 enum bool isVector(T) = is(T : Slice!(kind, [1], Iterator), 
@@ -75,6 +76,8 @@ enum bool isUniversalMatrix(T) = is(T : Slice!(Universal, [2], Iterator),
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : ContiguousVector;
+
 	alias S1 = ContiguousVector!int;
 	static assert(isContiguousVector!S1);
 	static assert(!isUniversalVector!S1);
@@ -94,6 +97,8 @@ unittest
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : UniversalVector;
+
 	alias S2 = UniversalVector!float;
 	static assert(!isContiguousVector!S2);
 	static assert(isUniversalVector!S2);
@@ -113,6 +118,8 @@ unittest
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : ContiguousMatrix;
+
 	alias S3 = ContiguousMatrix!byte;
 	static assert(!isContiguousVector!S3);
 	static assert(!isUniversalVector!S3);
@@ -132,6 +139,8 @@ unittest
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : CanonicalMatrix;
+
 	alias S4 = CanonicalMatrix!uint;
 	static assert(!isContiguousVector!S4);
 	static assert(!isUniversalVector!S4);
@@ -151,6 +160,8 @@ unittest
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : UniversalMatrix;
+
 	alias S5 = UniversalMatrix!double;
 	static assert(!isContiguousVector!S5);
 	static assert(!isUniversalVector!S5);
@@ -170,6 +181,8 @@ unittest
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : ContiguousTensor;
+
 	alias S6 = ContiguousTensor!(3, ubyte);
 	
 	static assert(!isContiguousVector!S6);
@@ -190,6 +203,8 @@ unittest
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : CanonicalTensor;
+
 	alias S7 = CanonicalTensor!(3, real);
 	
 	static assert(!isContiguousVector!S7);
@@ -210,6 +225,8 @@ unittest
 @safe pure nothrow @nogc 
 unittest
 {
+	import mir.ndslice.slice : UniversalTensor;
+
 	alias S8 = UniversalTensor!(3, long);
 	
 	static assert(!isContiguousVector!S8);
