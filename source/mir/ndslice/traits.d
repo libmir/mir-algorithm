@@ -19,7 +19,7 @@ $(T2 isUniversalMatrix, Test if type is a universal two-dimensional slice.)
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2016-, Ilya Yaroshenko, John Hall
+Copyright: Copyright $(COPYRIGHT) 2016-, Ilya Yaroshenko, John Hall
 Authors:   John Hall
 
 
