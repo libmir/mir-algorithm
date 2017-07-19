@@ -32,6 +32,7 @@ $(T2 kronecker, Kronecker product.)
 $(BOOKTABLE $(H2 Representation Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
+$(T2 apply, Convenience function to apply a function along a dimension of a slice.)
 $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
@@ -66,6 +67,7 @@ $(T2 pack     , Returns slice of slices.)
 $(T2 ipack    , Returns slice of slices.)
 $(T2 unpack   , Merges all dimension packs.)
 $(T2 evertPack, Reverses dimension packs.)
+$(T2 byDim    , Convenience function to return a slice that can be iterated by dimension.)
 
 )
 
@@ -3066,4 +3068,412 @@ unittest
 
     assert(lowerData == [0, 3, 4, 6, 7, 8]);
     assert(upperData == [0, 1, 2, 4, 5, 8]);
+}
+
+// Transposed adjusted to ignore dim=0 and include universal
+private template adjTransposed(size_t dim = 0)
+{
+    import mir.ndslice : Slice, SliceKind;
+	
+    auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        static assert (packs != [1], "1-dimensional slice not accepted");
+		
+        static if (dim == 0)
+        {
+            return slice;
+        }
+        else
+        {
+            import mir.ndslice : universal, transposed;
+            return slice.universal.transposed!dim;
+        }
+    }
+}
+
+// 2-dimensional slice support
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota;
+	
+    auto slice = iota(3, 4);
+	
+    static immutable shape34 = [3, 4];
+    static immutable shape43 = [4, 3];
+	
+    auto x = slice.adjTransposed;
+    assert(x.shape == shape34);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
+	
+    auto y = slice.adjTransposed!1;
+    assert(y.shape == shape43);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
+
+
+// 3-dimensional slice support, N-dimensional also supported
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota, universal, strided, flattened, reshape;
+	
+    auto slice = iota(3, 4, 5);
+	
+    static immutable shape345 = [3, 4, 5];
+    static immutable shape435 = [4, 3, 5];
+    static immutable shape534 = [5, 3, 4];
+    static immutable shape45 = [4, 5];
+    static immutable shape35 = [3, 5];
+    static immutable shape34 = [3, 4];
+	
+    auto x = slice.adjTransposed;
+    assert(x.shape == shape345);
+    assert(x.front.shape == shape45);
+    assert(x.front == iota([4, 5]));
+    x.popFront;
+    assert(x.front == iota([4, 5], (4 * 5)));
+	
+    auto y = slice.adjTransposed!1;
+    assert(y.shape == shape435);
+    assert(y.front.shape == shape35);
+    int err;
+    assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
+    y.popFront;
+    assert(y.front.front == iota([5], 5));
+	
+    auto z = slice.adjTransposed!2;
+    assert(z.shape == shape534);
+    assert(z.front.shape == shape34);
+    assert(z.front == slice.universal.strided!2(5).reshape([3, -1], err));
+    z.popFront;
+    assert(z.front.front == iota([4], 1, 5));
+}
+
+// Ensure works on canonical
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota, canonical;
+	
+    auto slice = iota(3, 4).canonical;
+	
+    static immutable shape34 = [3, 4];
+    static immutable shape43 = [4, 3];
+	
+    auto x = slice.adjTransposed;
+    assert(x.shape == shape34);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
+	
+    auto y = slice.adjTransposed!1;
+    assert(y.shape == shape43);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
+
+// Ensure works on universal
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota, universal;
+	
+    auto slice = iota(3, 4).universal;
+	
+    static immutable shape34 = [3, 4];
+    static immutable shape43 = [4, 3];
+	
+    auto x = slice.adjTransposed;
+    assert(x.shape == shape34);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
+	
+    auto y = slice.adjTransposed!1;
+    assert(y.shape == shape43);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
+
+/++
+Convenience function to return a slice that can be iterated by dimension. 
+
+Combines $(LREF transposed) and $(LREF ipack) together.
+
+Params:
+    dim = dimension to perform iteration on
+    slice = input slice (may not be 1-dimensional slice)
+Returns:
+    n-dimensional slice ipacked to allow iteration by dimension
+See_also:
+	$(LREF slice),
+	$(LREF ipack),
+	$(LREF transposed).
++/
+template byDim(size_t dim = 0)
+{
+    import mir.ndslice : Slice, SliceKind;
+	
+    auto byDim(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        static assert (packs != [1], "1-dimensional slice not accepted");
+		
+        import mir.ndslice : ipack;
+        return slice.adjTransposed!dim.ipack!1;
+    }
+}
+
+/// 2-dimensional slice support
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota;
+	
+    auto slice = iota(3, 4);
+	
+    static immutable shape3 = [3];
+    static immutable shape4 = [4];
+	
+    auto x = slice.byDim;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape4);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
+	
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape3);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
+
+/// 3-dimensional slice support, N-dimensional also supported
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota, universal, strided, flattened, reshape;
+	
+    auto slice = iota(3, 4, 5);
+	
+    static immutable shape45 = [4, 5];
+    static immutable shape35 = [3, 5];
+    static immutable shape34 = [3, 4];
+    static immutable shape3 = [3];
+    static immutable shape4 = [4];
+    static immutable shape5 = [5];
+	
+    auto x = slice.byDim;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape45);
+    assert(x.front == iota([4, 5]));
+    x.popFront;
+    assert(x.front == iota([4, 5], (4 * 5)));
+	
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape35);
+    int err;
+    assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
+    y.popFront;
+    assert(y.front.front == iota([5], 5));
+	
+    auto z = slice.byDim!2;
+    assert(z.shape == shape5);
+    assert(z.front.shape == shape34);
+    assert(z.front == slice.universal.strided!2(5).reshape([3, -1], err));
+    z.popFront;
+    assert(z.front.front == iota([4], 1, 5));
+}
+
+// Ensure works on canonical
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota, canonical;
+	
+    auto slice = iota(3, 4).canonical;
+	
+    static immutable shape3 = [3];
+    static immutable shape4 = [4];
+	
+    auto x = slice.byDim;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape4);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
+	
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape3);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
+
+// Ensure works on universal
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice : iota, universal;
+	
+    auto slice = iota(3, 4).universal;
+	
+    static immutable shape3 = [3];
+    static immutable shape4 = [4];
+	
+    auto x = slice.byDim;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape4);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
+	
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape3);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
+
+/++
+Convenience function to apply a function along a dimension of a slice.
+
+Combines $(LREF byDim) and $(LREF map) together for ease of use.
+
+Params:
+    f = function to feed to map
+    dim = dimension to perform function on
+    slice = input slice (may not be 1-dimensional slice)
+Returns:
+    1-dimensional slice of results of function applied to each dimension
+See_also:
+    $(LREF byDim),
+    $(LREF map),
+    $(HTTP https://stat.ethz.ch/R-manual/R-devel/library/base/html/apply.html, apply)
++/
+template apply(alias f, size_t dim = 0)
+{
+    import mir.ndslice : Slice, SliceKind;
+    
+    auto apply(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        import mir.ndslice : map;
+        return slice.byDim!dim.map!f;
+    }
+}
+
+/// Apply functions to matrix by row
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.math.sum : sum;
+    import mir.ndslice : sliced, count;
+    
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    auto y = x.sliced(3, 2);
+    
+    static immutable sumResult = [1.0, 3.5, 7.75];
+    assert(y.apply!sum == sumResult.sliced);
+    
+    static immutable countResult = [0, 0, 2];
+    assert(y.apply!(count!(a => a > 2.0)) == countResult.sliced);
+}
+
+/// Apply functions to matrix by row with lambda
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.math.sum : sum;
+    import mir.ndslice : sliced, count;
+    
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    auto y = x.sliced(3, 2);
+    
+    static immutable sumResult = [1.0, 3.5, 7.75];
+    assert(y.apply!(a => a.sum(0.0L)) == sumResult.sliced);
+    
+    static immutable countResult = [0, 0, 2];
+    assert(y.apply!(a => a.count!(a => a > 2.0)) == countResult.sliced);
+}
+
+/// Apply functions to matrix by column
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.math.sum : sum;
+    import mir.ndslice : sliced, count;
+    
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    auto y = x.sliced(3, 2);
+    
+    static immutable sumResult = [5.0, 7.25];
+    assert(x.sliced(3, 2).apply!(sum, 1) == sumResult.sliced);
+    
+    static immutable countResult = [1, 1];
+    assert(y.apply!(count!(a => a > 2.0), 1) == countResult.sliced);
+}
+
+/// Apply functions to 3-dimensional slice by 1st dimension
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.math.sum : sum;
+    import mir.ndslice : sliced, count;
+    
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25, 
+                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    auto y = x.sliced(3, 2, 2);
+                          
+    static immutable sumResult = [4.5, 17.25, 7.5];
+    assert(y.apply!(sum) == sumResult.sliced);
+    
+    static immutable countResult = [0, 3, 1];
+    assert(y.apply!(count!(a => a > 2.0)) == countResult.sliced);
+}
+
+/// Apply functions to 3-dimensional slice by 2nd dimension
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.math.sum : sum;
+    import mir.ndslice : sliced, count;
+    
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25, 
+                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    auto y = x.sliced(3, 2, 2);
+                          
+    static immutable sumResult = [14.75, 14.5];
+    assert(y.apply!(sum, 1) == sumResult.sliced);
+    
+    static immutable countResult = [3, 1];
+    assert(y.apply!(count!(a => a > 2.0), 1) == countResult.sliced);
+}
+
+/// Apply functions to 3-dimensional slice by 3rd dimension
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.math.sum : sum;
+    import mir.ndslice : sliced, count;
+    
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25, 
+                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    auto y = x.sliced(3, 2, 2);
+                          
+    static immutable sumResult = [13.5, 15.75];
+    assert(y.apply!(sum, 2) == sumResult.sliced);
+    
+    static immutable countResult = [2, 2];
+    assert(y.apply!(count!(a => a > 2.0), 2) == countResult.sliced);
 }
