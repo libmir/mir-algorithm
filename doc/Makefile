@@ -49,6 +49,7 @@ PACKAGE_mir_ndslice = \
 	slice\
 	sorting\
 	topology\
+	traits\
 
 MOD_EXCLUDES=$(addprefix --ex=,)
 
