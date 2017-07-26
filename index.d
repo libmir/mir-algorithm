@@ -22,7 +22,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,ndslice,slice)) $(TD Slice structure, basic constructors))
     $(TR $(TDNW $(MREF mir,ndslice,sorting)) $(TD Sorting utilities))
     $(TR $(TDNW 🔷 $(MREF mir,ndslice,topology) 🔷) $(TD Advanced ndslice constructors (key module).))
-	$(TR $(TDNW $(MREF mir,ndslice,traits)) $(TD Multi-dimensional traits))
+    $(TR $(TDNW $(MREF mir,ndslice,traits)) $(TD Multi-dimensional traits))
     $(LEADINGROW Finance)
     $(TR $(TDNW $(MREF mir,timeseries)) $(TD Time-series))
     $(LEADINGROW Math)
