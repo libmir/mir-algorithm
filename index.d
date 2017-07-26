@@ -14,6 +14,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,ndslice)) $(TD Package))
     $(TR $(TDNW $(MREF mir,ndslice,algorithm)) $(TD Loop free programming))
     $(TR $(TDNW $(MREF mir,ndslice,allocation)) $(TD Allocation utilities))
+    $(TR $(TDNW $(MREF mir,ndslice,chunks)) $(TD Multi-dimensional random access range with slicing))
     $(TR $(TDNW $(MREF mir,ndslice,concatenation)) $(TD Concatenation and padding))
     $(TR $(TDNW $(MREF mir,ndslice,dynamic)) $(TD Dynamic dimension manipulators))
     $(TR $(TDNW $(MREF mir,ndslice,field)) $(TD Field declarations))
