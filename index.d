@@ -27,6 +27,7 @@ $(BOOKTABLE ,
     $(LEADINGROW Finance)
     $(TR $(TDNW $(MREF mir,timeseries)) $(TD Time-series))
     $(LEADINGROW Math)
+    $(TR $(TDNW $(MREF mir,math)) $(TD Package))
     $(TR $(TDNW $(MREF mir,math,common)) $(TD Common math functions))
     $(TR $(TDNW $(MREF mir,math,constant)) $(TD Constants))
     $(LEADINGROW Numeric)
