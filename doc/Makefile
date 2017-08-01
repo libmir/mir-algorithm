@@ -32,7 +32,7 @@ PACKAGE_mir = bitmanip conv functional primitives timeseries utility
 PACKAGE_mir_array = primitives
 PACKAGE_mir_internal = utility
 PACKAGE_mir_interpolation = package linear pchip
-PACKAGE_mir_math = constant common sum numeric
+PACKAGE_mir_math = constant common sum numeric package
 PACKAGE_mir_math_func = expdigamma
 
 PACKAGE_mir_ndslice = \
