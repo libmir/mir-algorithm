@@ -116,7 +116,7 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
             $(BR) Advanced constructors
             $(BR) Kind conversion utilities))
      $(TD
-	$(SUBREF topology, as)
+        $(SUBREF topology, as)
         $(SUBREF topology, assumeCanonical)
         $(SUBREF topology, assumeContiguous)
         $(SUBREF topology, bitpack)
