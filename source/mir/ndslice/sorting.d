@@ -174,7 +174,7 @@ template sort(alias less = "a < b")
     {
         import mir.ndslice.topology: flattened;
         if (slice.anyEmpty)
-            return;
+            return slice;
         slice.flattened.quickSortImpl!less;
         return slice;
     }
