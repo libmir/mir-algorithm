@@ -4,6 +4,7 @@
 *.o
 *.pdf
 *.s
+*.exe
 *.sublime-project
 *.sublime-workspace
 .dub
@@ -12,6 +13,8 @@
 __*
 dub.selections.json
 mir-algorithm
+mir-algorithm.exe
 mir-algorithm-test-library
+mir-algorithm-test-library.exe
 mir-internal
 web
