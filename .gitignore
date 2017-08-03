@@ -13,8 +13,6 @@
 __*
 dub.selections.json
 mir-algorithm
-mir-algorithm.exe
 mir-algorithm-test-library
-mir-algorithm-test-library.exe
 mir-internal
 web
