@@ -3070,7 +3070,7 @@ unittest
 }
 
 /// Transposed adjusted to ignore dim=0 and include universal
-@fastmath private template adjTransposed(Dimensions...)
+private template adjTransposed(Dimensions...)
     if (Dimensions.length)
 {
     import mir.ndslice.slice : Slice, SliceKind;
@@ -3081,17 +3081,25 @@ unittest
         alias adjTransposed = .adjTransposed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @fastmath auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         import mir.ndslice.topology : ipack;
         import mir.ndslice.internal : DimensionsCountCTError, DimensionCTError;
-       
+        import mir.internal.utility : Iota;
+
         mixin DimensionsCountCTError;
-            
-        static if (Dimensions.length == 1 && Dimensions[0] == 0)
+
+        static if (Dimensions == Iota!(Dimensions.length))
         {
             return slice;
         }
+        else static if (Dimensions[0] + 1 < packs[0] || packs.length > 1)
+        {
+            import mir.ndslice.topology : canonical;
+            import mir.ndslice.dynamic : transposed;
+            
+            return slice.canonical.transposed!Dimensions;
+        } 
         else
         {
             import mir.ndslice.topology : universal;
@@ -3103,7 +3111,7 @@ unittest
 }
 
 ///
-@fastmath private auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
+private auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
                                         (Slice!(kind, packs, Iterator) slice)
 {
     return slice.adjTransposed!0;
@@ -3411,7 +3419,7 @@ unittest
 }
 
 // Ensure works on canonical packed slice
-//@safe @nogc pure nothrow
+@safe @nogc pure nothrow
 unittest
 {
     import mir.ndslice.topology : iota, universal, flattened, reshape;
@@ -3523,7 +3531,7 @@ template byDim(Dimensions...)
         alias byDim = .byDim!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    auto byDim(SliceKind kind, size_t[] packs, Iterator)
+    @fastmath auto byDim(SliceKind kind, size_t[] packs, Iterator)
                                         (Slice!(kind, packs, Iterator) slice)
     {
         import mir.ndslice.topology : ipack;
