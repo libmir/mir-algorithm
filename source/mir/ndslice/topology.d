@@ -3081,7 +3081,8 @@ private template adjTransposed(Dimensions...)
         alias adjTransposed = .adjTransposed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @fastmath auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @fastmath auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
+                                           (Slice!(kind, packs, Iterator) slice)
     {
         import mir.ndslice.topology : ipack;
         import mir.ndslice.internal : DimensionsCountCTError, DimensionCTError;
@@ -3122,12 +3123,14 @@ private auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
 unittest
 {
     import mir.ndslice.topology : iota;
+    import mir.ndslice.traits : isContiguousSlice;
     //  -------
     // | 0 1 2 |
     //  -------
     auto slice = iota(3);
     auto x = slice.adjTransposed;
     assert(x == slice);
+    assert(isContiguousSlice!(typeof(x)));
 }
 
 // 2-dimensional slice support
@@ -3135,11 +3138,12 @@ unittest
 unittest
 {
     import mir.ndslice.topology : iota;
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice;
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto slice = iota(3, 4);
     //->
     // | 3 4 |
@@ -3148,25 +3152,27 @@ unittest
     size_t[2] shape34 = [3, 4];
     size_t[2] shape43 = [4, 3];
     
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto x = slice.adjTransposed;
     assert(x == slice);
+    assert(isContiguousSlice!(typeof(x)));
     assert(x.shape == shape34);
     assert(x.front == iota(4));
     x.popFront;
     assert(x.front == iota([4], 4));
     
-    //  --------
-    // | 0 4  8 |
-    // | 1 5  9 |
-    // | 2 6 10 |
-    // | 3 7 11 |
-    //  --------
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
     auto y = slice.adjTransposed!1;
+    assert(isUniversalSlice!(typeof(y)));
     assert(y.shape == shape43);
     assert(y.front == iota([3], 0, 4));
     y.popFront;
@@ -3179,10 +3185,12 @@ unittest
 {
     import mir.ndslice.topology : iota, universal, flattened, reshape;
     import mir.ndslice.dynamic : strided, transposed;
+    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
+                                isCanonicalSlice;
     //  ----------------
     // |  0  1  2  3  4 |
     // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 | 
+    // | 10 11 12 13 14 |
     // | 15 16 17 18 19 |
     //  - - - - - - - -
     // | 20 21 22 23 24 |
@@ -3224,7 +3232,7 @@ unittest
     //  ----------------
     // |  0  1  2  3  4 |
     // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 | 
+    // | 10 11 12 13 14 |
     // | 15 16 17 18 19 |
     //  - - - - - - - -
     // | 20 21 22 23 24 |
@@ -3239,6 +3247,7 @@ unittest
     //  ----------------
     auto x = slice.adjTransposed;
     assert(x == slice);
+    assert(isContiguousSlice!(typeof(x)));
     assert(x.shape == shape345);
     assert(x.front.shape == shape45);
     assert(x.front == iota([4, 5]));
@@ -3248,7 +3257,7 @@ unittest
     //  ----------------
     // |  0  1  2  3  4 |
     // | 20 21 22 23 24 |
-    // | 40 41 42 43 44 | 
+    // | 40 41 42 43 44 |
     //  - - - - - - - -
     // |  5  6  7  8  9 |
     // | 25 26 27 28 29 |
@@ -3263,6 +3272,7 @@ unittest
     // | 55 56 57 58 59 |
     //  ----------------
     auto y = slice.adjTransposed!1;
+    assert(isCanonicalSlice!(typeof(y)));
     assert(y.shape == shape435);
     assert(y.front.shape == shape35);
     int err;
@@ -3273,7 +3283,7 @@ unittest
     //  -------------
     // |  0  5 10 15 |
     // | 20 25 30 35 |
-    // | 40 45 50 55 | 
+    // | 40 45 50 55 |
     //  - - - - - - -
     // |  1  6 11 16 |
     // | 21 26 31 36 |
@@ -3292,6 +3302,7 @@ unittest
     // | 44 49 54 59 |
     //  -------------
     auto z = slice.adjTransposed!2;
+    assert(isUniversalSlice!(typeof(z)));
     assert(z.shape == shape534);
     assert(z.front.shape == shape34);
     assert(z.front == iota([3, 4], 0, 5));
@@ -3302,7 +3313,7 @@ unittest
     // |  0 20 40 |
     // |  5 25 45 |
     // | 10 30 50 |
-    // | 15 35 55 | 
+    // | 15 35 55 |
     //  - - - - -
     // |  1 21 41 |
     // |  6 26 46 |
@@ -3325,6 +3336,7 @@ unittest
     // | 19 39 59 |
     //  ----------
     auto a = slice.adjTransposed!(2, 1);
+    assert(isUniversalSlice!(typeof(a)));
     assert(a.shape == shape543);
     assert(a.front.shape == shape43);
     assert(a.front == iota([3, 4], 0, 5).universal.transposed!1);
@@ -3337,11 +3349,12 @@ unittest
 unittest
 {
     import mir.ndslice.topology : iota, canonical;
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    import mir.ndslice.traits : isUniversalSlice, isCanonicalSlice;
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto slice = iota(3, 4).canonical;
     //->
     // | 3 4 |
@@ -3350,25 +3363,27 @@ unittest
     size_t[2] shape34 = [3, 4];
     size_t[2] shape43 = [4, 3];
     
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto x = slice.adjTransposed;
     assert(x == slice);
+    assert(isCanonicalSlice!(typeof(x)));
     assert(x.shape == shape34);
     assert(x.front == iota(4));
     x.popFront;
     assert(x.front == iota([4], 4));
     
-    //  --------
-    // | 0 4  8 |
-    // | 1 5  9 |
-    // | 2 6 10 |
-    // | 3 7 11 |
-    //  --------
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
     auto y = slice.adjTransposed!1;
+    assert(isUniversalSlice!(typeof(y)));
     assert(y.shape == shape43);
     assert(y.front == iota([3], 0, 4));
     y.popFront;
@@ -3380,11 +3395,12 @@ unittest
 unittest
 {
     import mir.ndslice.topology : iota, universal;
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    import mir.ndslice.traits : isUniversalSlice;
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto slice = iota(3, 4).universal;
     //->
     // | 3 4 |
@@ -3393,25 +3409,27 @@ unittest
     size_t[2] shape34 = [3, 4];
     size_t[2] shape43 = [4, 3];
     
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto x = slice.adjTransposed;
     assert(x == slice);
+    assert(isUniversalSlice!(typeof(x)));
     assert(x.shape == shape34);
     assert(x.front == iota(4));
     x.popFront;
     assert(x.front == iota([4], 4));
     
-    //  --------
-    // | 0 4  8 |
-    // | 1 5  9 |
-    // | 2 6 10 |
-    // | 3 7 11 |
-    //  --------
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
     auto y = slice.adjTransposed!1;
+    assert(isUniversalSlice!(typeof(y)));
     assert(y.shape == shape43);
     assert(y.front == iota([3], 0, 4));
     y.popFront;
@@ -3424,10 +3442,11 @@ unittest
 {
     import mir.ndslice.topology : iota, universal, flattened, reshape;
     import mir.ndslice.dynamic : strided;
+    import mir.ndslice.traits : isCanonicalSlice;
     //  ----------------
     // |  0  1  2  3  4 |
     // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 | 
+    // | 10 11 12 13 14 |
     // | 15 16 17 18 19 |
     //  - - - - - - - -
     // | 20 21 22 23 24 |
@@ -3442,23 +3461,27 @@ unittest
     //  ----------------
     auto slice = iota(3, 4, 5).canonical.pack!1;
     //->
-    // | 4 3 |
-    //->
-    // | 3 |
-    //->
     // | 3 4 |
     //->
+    // | 4 3 |
+    //->
+    // | 2 1 |
+    //->
     // | 4 |
-    size_t[2] shape45 = [4, 5];
-    size_t[2] shape43 = [4, 3];
-    size_t[1] shape3 = [3];
+    //->
+    // | 3 |
     size_t[2] shape34 = [3, 4];
+    size_t[2] shape43 = [4, 3];
+    size_t[2] shape21 = [2, 1];
     size_t[1] shape4 = [4];
+    size_t[1] shape3 = [3];
+
+    assert(packsOf!(typeof(slice)) == shape21);
 
     //  ----------------
     // |  0  1  2  3  4 |
     // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 | 
+    // | 10 11 12 13 14 |
     // | 15 16 17 18 19 |
     //  - - - - - - - -
     // | 20 21 22 23 24 |
@@ -3473,6 +3496,7 @@ unittest
     //  ----------------
     auto x = slice.adjTransposed;
     assert(x == slice);
+    assert(isCanonicalSlice!(typeof(x)));
     assert(x.shape == shape34);
     assert(x.front.shape == shape4);
     assert(x.front == iota([4, 5]));
@@ -3482,7 +3506,7 @@ unittest
     //  ----------------
     // |  0  1  2  3  4 |
     // | 20 21 22 23 24 |
-    // | 40 41 42 43 44 | 
+    // | 40 41 42 43 44 |
     //  - - - - - - - -
     // |  5  6  7  8  9 |
     // | 25 26 27 28 29 |
@@ -3497,12 +3521,648 @@ unittest
     // | 55 56 57 58 59 |
     //  ----------------
     auto y = slice.adjTransposed!1;
+    assert(isCanonicalSlice!(typeof(y)));
     assert(y.shape == shape43);
     assert(y.front.shape == shape3);
     int err;
     assert(y.front == slice.universal.strided!1(4).unpack.reshape([3, -1], err));
     y.popFront;
     assert(y.front.front == iota([5], 5));
+}
+
+// Ensure works on contiguous pack!1 slice
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice.topology : iota, packsOf;
+    import mir.ndslice.dynamic : strided;
+    import mir.ndslice.traits : isContiguousSlice, isCanonicalSlice;
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto slice = iota(2, 3, 4, 5).pack!1;
+    //->
+    // | 2 3 4 |
+    //->
+    // | 3 2 4 |
+    //->
+    // | 4 2 3 |
+    //->
+    // | 4 3 2 |
+    //->
+    // | 3 4 2 |
+    //->
+    // | 2 4 3 |
+    //->
+    // | 3 4 |
+    //->
+    // | 2 4 |
+    //->
+    // | 3 1 |
+    //->
+    // | 2 3 |
+    //->
+    // | 4 2 |
+    //->
+    // | 4 3 |
+    size_t[3] shape234 = [2, 3, 4];
+    size_t[3] shape324 = [3, 2, 4];
+    size_t[3] shape423 = [4, 2, 3];
+    size_t[3] shape432 = [4, 3, 2];
+    size_t[3] shape342 = [3, 4, 2];
+    size_t[3] shape243 = [2, 4, 3];
+    size_t[2] shape34 = [3, 4];
+    size_t[2] shape24 = [2, 4];
+    size_t[2] shape31 = [3, 1];
+    size_t[2] shape23 = [2, 3];
+    size_t[2] shape32 = [3, 2];
+    size_t[2] shape42 = [4, 2];
+    size_t[2] shape43 = [4, 3];
+
+    assert(packsOf!(typeof(slice)) == shape31);
+    
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto x = slice.adjTransposed;
+    assert(x == slice);
+    assert(isContiguousSlice!(typeof(x)));
+    assert(x.shape == shape234);
+    assert(x.front.shape == shape34);
+    assert(x.front == iota(3, 4, 5));
+    x.popFront;
+    assert(x.front == iota([3, 4, 5], (3 * 4 * 5)));
+    
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto y = slice.adjTransposed!1;
+    assert(isCanonicalSlice!(typeof(y)));
+    assert(y.shape == shape324);
+    assert(y.front.shape == shape24);
+    assert(y.front.front == iota([4, 5]));
+    y.popFront;
+    assert(y.front.front == iota([4, 5], (4 * 5)));
+    
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |  20  21  22  23  24 |
+    // |  40  41  42  43  44 |
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  80  81  82  83  84 |
+    // | 100 101 102 103 104 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |   5   6   7   8   9 |
+    // |  25  26  27  28  29 |
+    // |  45  46  47  48  49 |
+    //  - - - - - - - - - - -
+    // |  65  66  67  68  69 |
+    // |  85  86  87  88  89 |
+    // | 105 106 107 108 109 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  10  11  12  13  14 |
+    // |  30  31  32  33  34 |
+    // |  70  71  72  73  74 |
+    //  - - - - - - - - - - -
+    // |  70  71  72  73  74 |
+    // |  90  91  92  93  94 |
+    // | 110 111 112 113 114 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  15  16  17  18  19 |
+    // |  35  36  37  38  39 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    // |  75  76  77  78  79 |
+    // |  95  96  97  98  99 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto z = slice.adjTransposed!2;
+    assert(isCanonicalSlice!(typeof(z)));
+    assert(z.shape == shape423);
+    assert(z.front.shape == shape23);
+    int err;
+    assert(z.front.front == 
+             slice.front.universal.strided!1(4).unpack.reshape([3, -1], err));
+    z.popFront;
+    assert(z.front.front == slice
+                                .front
+                                .universal
+                                .strided!1(4)
+                                .unpack.
+                                reshape([3, -1], err)
+                                .map!(a => a + 5));
+                                
+    auto a = slice.adjTransposed!(0, 1);
+    assert(a == slice);
+    
+    //see y
+    auto b = slice.adjTransposed!(1, 0);
+    auto yAlt = slice.adjTransposed!1; //y, but y has been popFronted
+    assert(isCanonicalSlice!(typeof(b)));
+    assert(b.shape == yAlt.shape);
+    assert(b.front.shape == yAlt.front.shape);
+    assert(b.front == yAlt.front);
+    b.popFront;
+    yAlt.popFront;
+    assert(b.front == yAlt.front);
+    
+    //see z
+    auto c = slice.adjTransposed!(2, 0);
+    auto zAlt = slice.adjTransposed!2; //z, but z has been popFronted
+    assert(isCanonicalSlice!(typeof(c)));
+    assert(c.shape == zAlt.shape);
+    assert(c.front.shape == zAlt.front.shape);
+    assert(c.front == zAlt.front);
+    c.popFront;
+    zAlt.popFront;
+    assert(c.front == zAlt.front);
+    
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |  60  61  62  63  64 |
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  80  81  82  83  84 |
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // | 100 101 102 103 104 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |   5   6   7   8   9 |
+    // |  65  66  67  68  69 |
+    //  - - - - - - - - - - -
+    // |  25  26  27  28  29 |
+    // |  85  86  87  88  89 |
+    //  - - - - - - - - - - -
+    // |  45  46  47  48  49 |
+    // | 105 106 107 108 109 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  10  11  12  13  14 |
+    // |  70  71  72  73  74 |
+    //  - - - - - - - - - - -
+    // |  30  31  32  33  34 |
+    // |  90  91  92  93  94 |
+    //  - - - - - - - - - - -
+    // |  50  51  52  53  54 |
+    // | 110 111 112 113 114 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  15  16  17  18  19 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    // |  35  36  37  38  39 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    // |  55  56  57  58  59 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto d = slice.adjTransposed!(2, 1);
+    assert(isCanonicalSlice!(typeof(d)));
+    assert(d.shape == shape432);
+    assert(d.front.shape == shape32);
+    assert(d.front.front[0] == iota(5));
+    assert(d.front.front[1] == iota([5], 60));
+    d.popFront;
+    assert(d.front.front[0] == iota([5], 5));
+    assert(d.front.front[1] == iota([5], 65));
+    
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |  60  61  62  63  64 |
+    //  - - - - - - - - - - -
+    // |   5   6   7   8   9 |
+    // |  65  66  67  68  69 |
+    //  - - - - - - - - - - -
+    // |  10  11  12  13  14 |
+    // |  70  71  72  73  74 |
+    //  - - - - - - - - - - -
+    // |  15  16  17  18  19 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  80  81  82  83  84 |
+    //  - - - - - - - - - - -
+    // |  25  26  27  28  29 |
+    // |  85  86  87  88  89 |
+    //  - - - - - - - - - - -
+    // |  30  31  32  33  34 |
+    // |  90  91  92  93  94 |
+    //  - - - - - - - - - - -
+    // |  35  36  37  38  39 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // | 100 101 102 103 104 |
+    //  - - - - - - - - - - -
+    // |  45  46  47  48  49 |
+    // | 105 106 107 108 109 |
+    //  - - - - - - - - - - -
+    // |  50  51  52  53  54 |
+    // | 110 111 112 113 114 |
+    //  - - - - - - - - - - -
+    // |  55  56  57  58  59 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto e = slice.adjTransposed!(1, 2);
+    assert(isCanonicalSlice!(typeof(e)));
+    assert(e.shape == shape342);
+    assert(e.front.shape == shape42);
+    assert(e.front.front[0] == iota(5));
+    assert(e.front.front[1] == iota([5], 60));
+    e.popFront;
+    assert(e.front.front[0] == iota([5], 20));
+    assert(e.front.front[1] == iota([5], 80));
+    
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |  20  21  22  23  24 |
+    // |  40  41  42  43  44 |
+    //  - - - - - - - - - - -
+    // |   5   6   7   8   9 |
+    // |  25  26  27  28  29 |
+    // |  45  46  47  48  49 |
+    //  - - - - - - - - - - -
+    // |  10  11  12  13  14 |
+    // |  30  31  32  33  34 |
+    // |  70  71  72  73  74 |
+    //  - - - - - - - - - - -
+    // |  15  16  17  18  19 |
+    // |  35  36  37  38  39 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  80  81  82  83  84 |
+    // | 100 101 102 103 104 |
+    //  - - - - - - - - - - -
+    // |  65  66  67  68  69 |
+    // |  85  86  87  88  89 |
+    // | 105 106 107 108 109 |
+    //  - - - - - - - - - - -
+    // |  70  71  72  73  74 |
+    // |  90  91  92  93  94 |
+    // | 110 111 112 113 114 |
+    //  - - - - - - - - - - -
+    // |  75  76  77  78  79 |
+    // |  95  96  97  98  99 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto f = slice.adjTransposed!(0, 2);
+    assert(isCanonicalSlice!(typeof(f)));
+    assert(f.shape == shape243);
+    assert(f.front.shape == shape43);
+    assert(f.front.front[0] == iota(5));
+    assert(f.front.front[1] == iota([5], 20));
+    assert(f.front.front[2] == iota([5], 40));
+    f.popFront;
+    assert(f.front.front[0] == iota([5], 60));
+    assert(f.front.front[1] == iota([5], 80));
+    assert(f.front.front[2] == iota([5], 100));
+}
+
+
+// Ensure works on contiguous pack!2 slice
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice.topology : iota, packsOf;
+    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
+                                isCanonicalSlice;
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto slice = iota(2, 3, 4, 5).pack!2;
+    //->
+    // | 2 3 |
+    //->
+    // | 3 2 |
+    //->
+    // | 2 2 |
+    //->
+    // | 3 |
+    //->
+    // | 2 |
+    size_t[2] shape23 = [2, 3];
+    size_t[2] shape32 = [3, 2];
+    size_t[2] shape22 = [2, 2];
+    size_t[1] shape3 = [3];
+    size_t[1] shape2 = [2];
+    
+    assert(packsOf!(typeof(slice)) == shape22);
+
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto x = slice.adjTransposed;
+    assert(x == slice);
+    assert(isContiguousSlice!(typeof(x)));
+    assert(x.shape == shape23);
+    assert(x.front.shape == shape3);
+    assert(x.front == iota(3, 4, 5));
+    x.popFront;
+    assert(x.front == iota([3, 4, 5], (3 * 4 * 5)));
+    
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto y = slice.adjTransposed!1;
+    assert(isCanonicalSlice!(typeof(y)));
+    assert(y.shape == shape32);
+    assert(y.front.shape == shape2);
+    assert(y.front.front == iota([4, 5]));
+    y.popFront;
+    assert(y.front.front == iota([4, 5], (4 * 5)));
+    
+    auto z = slice.adjTransposed!(0, 1);
+    assert(z == slice);
+    
+    auto a = slice.adjTransposed!(1, 0);
+    auto yAlt = slice.adjTransposed!1; //y, but y has been popFronted
+    assert(isCanonicalSlice!(typeof(a)));
+    assert(a.shape == yAlt.shape);
+    assert(a.front.shape == yAlt.front.shape);
+    assert(a.front == yAlt.front);
+    a.popFront;
+    yAlt.popFront;
+    assert(a.front == yAlt.front);
+}
+
+// Ensure works on contiguous pack!3 slice
+@safe @nogc pure nothrow
+unittest
+{
+    import mir.ndslice.topology : iota, packsOf;
+    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
+                                isCanonicalSlice;
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto slice = iota(2, 3, 4, 5).pack!3;
+    //->
+    // | 3 4 5 |
+    //->
+    // | 1 3 |
+    //->
+    // | 2 |
+    size_t[3] shape345 = [3, 4, 5];
+    size_t[2] shape13 = [1, 3];
+    size_t[1] shape2 = [2];
+    
+    assert(packsOf!(typeof(slice)) == shape13);
+
+    //  ---------------------
+    // |   0   1   2   3   4 |
+    // |   5   6   7   8   9 |
+    // |  10  11  12  13  14 |
+    // |  15  16  17  18  19 |
+    //  - - - - - - - - - - -
+    // |  20  21  22  23  24 |
+    // |  25  26  27  28  29 |
+    // |  30  31  32  33  34 |
+    // |  35  36  37  38  39 |
+    //  - - - - - - - - - - -
+    // |  40  41  42  43  44 |
+    // |  45  46  47  48  49 |
+    // |  50  51  52  53  54 |
+    // |  55  56  57  58  59 |
+    //  - - - - - - - - - - -
+    //  - - - - - - - - - - -
+    // |  60  61  62  63  64 |
+    // |  65  66  67  68  69 |
+    // |  70  71  72  73  74 |
+    // |  75  76  77  78  79 |
+    //  - - - - - - - - - - -
+    // |  80  81  82  83  84 |
+    // |  85  86  87  88  89 |
+    // |  90  91  92  93  94 |
+    // |  95  96  97  98  99 |
+    //  - - - - - - - - - - -
+    // | 100 101 102 103 104 |
+    // | 105 106 107 108 109 |
+    // | 110 111 112 113 114 |
+    // | 115 116 117 118 119 |
+    //  ---------------------
+    auto x = slice.adjTransposed;
+
+    assert(x == slice);
+    assert(isContiguousSlice!(typeof(x)));
+    assert(x.shape == shape2);
+    assert(x.front.shape == shape345);
+    assert(x.front == iota(3, 4, 5));
+    x.popFront;
+    assert(x.front == iota([3, 4, 5], (3 * 4 * 5)));
 }
 
 /++
@@ -3563,11 +4223,11 @@ auto byDim(SliceKind kind, size_t[] packs, Iterator)
 unittest
 {
     import mir.ndslice.topology : iota;
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto slice = iota(3, 4);
     //->
     // | 3 |
@@ -3576,11 +4236,11 @@ unittest
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
     
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto x = slice.byDim;
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
@@ -3588,12 +4248,12 @@ unittest
     x.popFront;
     assert(x.front == iota([4], 4));
     
-    //  --------
-    // | 0 4  8 |
-    // | 1 5  9 |
-    // | 2 6 10 |
-    // | 3 7 11 |
-    //  --------
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
     auto y = slice.byDim!1;
     assert(y.shape == shape4);
     assert(y.front.shape == shape3);
@@ -3611,7 +4271,7 @@ unittest
     //  ----------------
     // | 0   1  2  3  4 |
     // | 5   6  7  8  9 |
-    // | 10 11 12 13 14 | 
+    // | 10 11 12 13 14 |
     // | 15 16 17 18 19 |
     //  - - - - - - - -
     // | 20 21 22 23 24 |
@@ -3648,9 +4308,9 @@ unittest
     size_t[1] shape5 = [5];
     
     //  ----------------
-    // | 0   1  2  3  4 |
-    // | 5   6  7  8  9 |
-    // | 10 11 12 13 14 | 
+    // |  0  1  2  3  4 |
+    // |  5  6  7  8  9 |
+    // | 10 11 12 13 14 |
     // | 15 16 17 18 19 |
     //  - - - - - - - -
     // | 20 21 22 23 24 |
@@ -3673,7 +4333,7 @@ unittest
     //  ----------------
     // |  0  1  2  3  4 |
     // | 20 21 22 23 24 |
-    // | 40 41 42 43 44 | 
+    // | 40 41 42 43 44 |
     //  - - - - - - - -
     // |  5  6  7  8  9 |
     // | 25 26 27 28 29 |
@@ -3698,7 +4358,7 @@ unittest
     //  -------------
     // |  0  5 10 15 |
     // | 20 25 30 35 |
-    // | 40 45 50 55 | 
+    // | 40 45 50 55 |
     //  - - - - - - -
     // |  1  6 11 16 |
     // | 21 26 31 36 |
@@ -3727,7 +4387,7 @@ unittest
     // |  0 20 40 |
     // |  5 25 45 |
     // | 10 30 50 |
-    // | 15 35 55 | 
+    // | 15 35 55 |
     //  - - - - -
     // |  1 21 41 |
     // |  6 26 46 |
@@ -3762,11 +4422,11 @@ unittest
 unittest
 {
     import mir.ndslice.topology : iota, canonical;
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto slice = iota(3, 4).canonical;
     //->
     // | 3 |
@@ -3775,11 +4435,11 @@ unittest
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
     
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto x = slice.byDim;
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
@@ -3787,12 +4447,12 @@ unittest
     x.popFront;
     assert(x.front == iota([4], 4));
     
-    //  --------
-    // | 0 4  8 |
-    // | 1 5  9 |
-    // | 2 6 10 |
-    // | 3 7 11 |
-    //  --------
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
     auto y = slice.byDim!1;
     assert(y.shape == shape4);
     assert(y.front.shape == shape3);
@@ -3806,11 +4466,11 @@ unittest
 unittest
 {
     import mir.ndslice.topology : iota, universal;
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto slice = iota(3, 4).universal;
     //->
     // | 3 |
@@ -3819,11 +4479,11 @@ unittest
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
 
-    //  -----------
-    // | 0 1  2  3 |
-    // | 4 5  6  7 |
-    // | 8 9 10 11 |
-    //  -----------
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
     auto x = slice.byDim;
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
@@ -3831,12 +4491,12 @@ unittest
     x.popFront;
     assert(x.front == iota([4], 4));
     
-    //  --------
-    // | 0 4  8 |
-    // | 1 5  9 |
-    // | 2 6 10 |
-    // | 3 7 11 |
-    //  --------
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
     auto y = slice.byDim!1;
     assert(y.shape == shape4);
     assert(y.front.shape == shape3);
