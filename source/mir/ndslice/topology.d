@@ -4181,41 +4181,42 @@ See_also:
     $(LREF transposed).
 +/
 template byDim(Dimensions...)
-    if (Dimensions.length)
+    if (Dimensions.length > 0)
 {
-    import mir.ndslice.slice : Slice, SliceKind;
-    import mir.ndslice.internal : isSize_t, toSize_t;
-    import std.meta : allSatisfy, staticMap;
-   
+    import mir.ndslice.internal : isSize_t;
+    import std.meta : allSatisfy;
+    
     static if (!allSatisfy!(isSize_t, Dimensions))
-        alias byDim = .byDim!(staticMap!(toSize_t, Dimensions));
-    else
-    ///
-    @fastmath auto byDim(SliceKind kind, size_t[] packs, Iterator)
-                                        (Slice!(kind, packs, Iterator) slice)
     {
-        import mir.ndslice.topology : ipack;
-        import mir.ndslice.internal : DimensionsCountCTError, DimensionCTError;
-       
-        mixin DimensionsCountCTError;
-
-        static if (packs == [1])
-        {
-            return slice;
-        }
-        else
+        import std.meta : staticMap;
+        import mir.ndslice.internal : toSize_t;
+    
+        alias byDim = .byDim!(staticMap!(toSize_t, Dimensions));
+    }
+    else
+    {
+        import mir.ndslice.slice : Slice, SliceKind;
+        ///
+        @fastmath auto byDim(SliceKind kind, size_t[] packs, Iterator)
+                                       (Slice!(kind, packs, Iterator) slice)
         {
             import mir.ndslice.topology : ipack;
-            return slice.adjTransposed!Dimensions.ipack!1;
+            import mir.ndslice.internal : DimensionsCountCTError;
+            
+            mixin DimensionsCountCTError;
+            
+            static if (packs == [1])
+            {
+                return slice;
+            }
+            else
+            {
+                return slice
+                            .adjTransposed!Dimensions
+                            .ipack!(Dimensions.length);
+            }
         }
     }
-}
-
-///
-auto byDim(SliceKind kind, size_t[] packs, Iterator)
-                                        (Slice!(kind, packs, Iterator) slice)
-{
-    return slice.byDim!0;
 }
 
 /// 2-dimensional slice support
@@ -4241,7 +4242,7 @@ unittest
     // | 4  5  6  7 |
     // | 8  9 10 11 |
     //  ------------
-    auto x = slice.byDim;
+    auto x = slice.byDim!0;
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
     assert(x.front == iota(4));
@@ -4292,7 +4293,7 @@ unittest
     //->
     // | 3 4 |
     //->
-    // | 4 3 |
+    // | 5 4 |
     //->
     // | 3 |
     //->
@@ -4302,7 +4303,7 @@ unittest
     size_t[2] shape45 = [4, 5];
     size_t[2] shape35 = [3, 5];
     size_t[2] shape34 = [3, 4];
-    size_t[2] shape43 = [4, 3];
+    size_t[2] shape54 = [5, 4];
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
     size_t[1] shape5 = [5];
@@ -4323,7 +4324,7 @@ unittest
     // | 50 51 52 53 54 |
     // | 55 56 57 58 59 |
     //  ----------------
-    auto x = slice.byDim;
+    auto x = slice.byDim!0;
     assert(x.shape == shape3);
     assert(x.front.shape == shape45);
     assert(x.front == iota([4, 5]));
@@ -4410,8 +4411,8 @@ unittest
     // | 19 39 59 |
     //  ----------
     auto a = slice.byDim!(2, 1);
-    assert(a.shape == shape5);
-    assert(a.front.shape == shape43);
+    assert(a.shape == shape54);
+    assert(a.front.shape == shape4);
     assert(a.front == iota([3, 4], 0, 5).universal.transposed!1);
     a.popFront;
     assert(a.front.front == iota([3], 1, 20));
@@ -4440,7 +4441,7 @@ unittest
     // | 4  5  6  7 |
     // | 8  9 10 11 |
     //  ------------
-    auto x = slice.byDim;
+    auto x = slice.byDim!0;
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
     assert(x.front == iota(4));
@@ -4484,7 +4485,7 @@ unittest
     // | 4  5  6  7 |
     // | 8  9 10 11 |
     //  ------------
-    auto x = slice.byDim;
+    auto x = slice.byDim!0;
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
     assert(x.front == iota(4));
@@ -4514,6 +4515,6 @@ unittest
     // | 0 1 2 |
     //  -------
     auto slice = iota(3);
-    auto x = slice.byDim;
+    auto x = slice.byDim!0;
     assert(x == slice);
 }
