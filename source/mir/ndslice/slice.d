@@ -652,6 +652,11 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         && Filter!(isIndex, Slices).length < Slices.length
         && allSatisfy!(templateOr!(isIndex, is_Slice), Slices);
 
+    enum isIndexSlice(Indexes...) =
+        Indexes.length
+        && Indexes.length <= packs[0]
+        && allSatisfy!(isIndex, Indexes);
+
     enum isFullPureSlice(Slices...) =
            Slices.length == 0
         || Slices.length == packs[0]
@@ -752,80 +757,138 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     static if (isPointer!Iterator)
     {
         private alias ConstThis = Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*);
+        private alias ImmutableThis = Slice!(kind, packs, immutable(Unqual!(PointerTarget!Iterator))*);
 
-        static if (!is(ConstThis == This))
+        /++
+        Cast to const and immutable slices in case of underlaying range is a pointer.
+        +/
+        ref toImmutable()() immutable @trusted pure nothrow @nogc
         {
-            /++
-            Implicit cast to const slices in case of underlaying range is a pointer.
-            +/
-            ref ConstThis toConst()() const @trusted pure nothrow @nogc
+            pragma(inline, true);
+            return *cast(Slice!(kind, packs, immutable(Unqual!(PointerTarget!Iterator))*)*) &this;
+        }
+
+        /// ditto
+        ref toConst()() const @trusted pure nothrow @nogc
+        {
+            pragma(inline, true);
+            return *cast(Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*)*) &this;
+        }
+
+        static if (!is(Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*) == This))
+        /// ditto
+        alias toConst this;
+
+        /// ditto
+        auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
+                if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
+        {
+            return (*cast(Slice!(kind, packs, const(PointerTarget!Iterator)*)*) &this)[indexes];
+        }
+
+        /// ditto
+        auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
+                if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
+        {
+            return (*cast(Slice!(kind, packs, immutable(PointerTarget!Iterator)*)*) &this)[indexes];
+        }
+
+        static if (doUnittest)
+        ///
+        unittest
+        {
+            static struct Foo
             {
-                pragma(inline, true);
-                return *cast(ConstThis*) &this;
+                ContiguousSlice!(1, int) bar;
+
+                int get(size_t i) immutable
+                {
+                    return bar[i];
+                }
+
+                int get(size_t i) const
+                {
+                    return bar[i];
+                }
+
+                int get(size_t i) inout
+                {
+                    return bar[i];
+                }
+            }
+        }
+
+        static if (doUnittest)
+        ///
+        unittest
+        {
+            Slice!(Universal, [2], double*) nn;
+            Slice!(Universal, [2], immutable(double)*) ni;
+            Slice!(Universal, [2], const(double)*) nc;
+
+            const Slice!(Universal, [2], double*) cn;
+            const Slice!(Universal, [2], immutable(double)*) ci;
+            const Slice!(Universal, [2], const(double)*) cc;
+
+            immutable Slice!(Universal, [2], double*) in_;
+            immutable Slice!(Universal, [2], immutable(double)*) ii;
+            immutable Slice!(Universal, [2], const(double)*) ic;
+
+            nc = nc; nc = cn; nc = in_;
+            nc = nc; nc = cc; nc = ic;
+            nc = ni; nc = ci; nc = ii;
+
+            void fun(size_t[] packs, T)(Slice!(Universal, packs, const(T)*) sl)
+            {
+                //...
             }
 
-            /// ditto
-            alias toConst this;
+            fun(nn); fun(cn); fun(in_);
+            fun(nc); fun(cc); fun(ic);
+            fun(ni); fun(ci); fun(ii);
+
+            static assert(is(typeof(cn[]) == typeof(nc)));
+            static assert(is(typeof(ci[]) == typeof(ni)));
+            static assert(is(typeof(cc[]) == typeof(nc)));
+
+            static assert(is(typeof(in_[]) == typeof(ni)));
+            static assert(is(typeof(ii[]) == typeof(ni)));
+            static assert(is(typeof(ic[]) == typeof(ni)));
+
+            ni = ci[];
+            ni = in_[];
+            ni = ii[];
+            ni = ic[];
         }
-    }
 
-    static if (doUnittest)
-    ///
-    unittest
-    {
-        Slice!(Universal, [2], double*) nn;
-        Slice!(Universal, [2], immutable(double)*) ni;
-        Slice!(Universal, [2], const(double)*) nc;
-
-        const Slice!(Universal, [2], double*) cn;
-        const Slice!(Universal, [2], immutable(double)*) ci;
-        const Slice!(Universal, [2], const(double)*) cc;
-
-        immutable Slice!(Universal, [2], double*) in_;
-        immutable Slice!(Universal, [2], immutable(double)*) ii;
-        immutable Slice!(Universal, [2], const(double)*) ic;
-
-        nc = nc; nc = cn; nc = in_;
-        nc = nc; nc = cc; nc = ic;
-        nc = ni; nc = ci; nc = ii;
-
-        void fun(size_t[] packs, T)(Slice!(Universal, packs, const(T)*) sl)
+        static if (doUnittest)
+        unittest
         {
-            //...
+            Slice!(Universal, [2, 2], double*) nn;
+            Slice!(Universal, [2, 2], immutable(double)*) ni;
+            Slice!(Universal, [2, 2], const(double)*) nc;
+
+            const Slice!(Universal, [2, 2], double*) cn;
+            const Slice!(Universal, [2, 2], immutable(double)*) ci;
+            const Slice!(Universal, [2, 2], const(double)*) cc;
+
+            immutable Slice!(Universal, [2, 2], double*) in_;
+            immutable Slice!(Universal, [2, 2], immutable(double)*) ii;
+            immutable Slice!(Universal, [2, 2], const(double)*) ic;
+
+            nc = nc; nc = cn; nc = in_;
+            nc = nc; nc = cc; nc = ic;
+            nc = ni; nc = ci; nc = ii;
+
+            void fun(size_t[] packs, T)(Slice!(Universal, packs, const(T)*) sl)
+            {
+                //...
+            }
+
+            fun(nn); fun(cn); fun(in_);
+            fun(nc); fun(cc); fun(ic);
+            fun(ni); fun(ci); fun(ii);
         }
-
-        fun(nn); fun(cn); fun(in_);
-        fun(nc); fun(cc); fun(ic);
-        fun(ni); fun(ci); fun(ii);
-    }
-
-    static if (doUnittest)
-    unittest
-    {
-        Slice!(Universal, [2, 2], double*) nn;
-        Slice!(Universal, [2, 2], immutable(double)*) ni;
-        Slice!(Universal, [2, 2], const(double)*) nc;
-
-        const Slice!(Universal, [2, 2], double*) cn;
-        const Slice!(Universal, [2, 2], immutable(double)*) ci;
-        const Slice!(Universal, [2, 2], const(double)*) cc;
-
-        immutable Slice!(Universal, [2, 2], double*) in_;
-        immutable Slice!(Universal, [2, 2], immutable(double)*) ii;
-        immutable Slice!(Universal, [2, 2], const(double)*) ic;
-
-        nc = nc; nc = cn; nc = in_;
-        nc = nc; nc = cc; nc = ic;
-        nc = ni; nc = ci; nc = ii;
-
-        void fun(size_t[] packs, T)(Slice!(Universal, packs, const(T)*) sl)
-        {
-            //...
-        }
-
-        fun(nn); fun(cn); fun(in_);
-        fun(nc); fun(cc); fun(ic);
-        fun(ni); fun(ci); fun(ii);
     }
 
     /++
@@ -1672,7 +1735,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     $(BOLD Fully defined index)
     +/
     auto ref opIndex(Indexes...)(Indexes indexes) @safe
-        if (Indexes.length && Indexes.length <= packs[0] && allSatisfy!(isIndex, Indexes))
+        if (isIndexSlice!Indexes)
     {
         return this.opIndex!(indexes.length)([indexes]);
     }
@@ -2042,7 +2105,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         void opIndexAssign(T, Slices...)(T[] value, Slices slices) @safe
             if (isFullPureSlice!Slices
                 && !isDynamicArray!DeepElemType
-                && DynamicArrayDimensionsCount!(T[]) <= ReturnType!(opIndex!Slices).N)
+                && DynamicArrayDimensionsCount!(T[]) <= typeof(this[slices]).N)
         {
             this[slices].opIndexOpAssignImplArray!""(value);
         }
@@ -2332,7 +2395,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             @safe
             if (isFullPureSlice!Slices
                 && !isDynamicArray!DeepElemType
-                && DynamicArrayDimensionsCount!(T[]) <= ReturnType!(opIndex!Slices).N)
+                && DynamicArrayDimensionsCount!(T[]) <= typeof(this[slices]).N)
         {
             this[slices].opIndexOpAssignImplArray!op(value);
         }
