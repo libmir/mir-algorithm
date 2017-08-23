@@ -12,6 +12,9 @@ $(T2 ndarray, Allocates a common n-dimensional array from a slice. )
 $(T2 shape, Returns a shape of a common n-dimensional array. )
 $(T2 slice, Allocates a slice using GC.)
 $(T2 uninitSlice, Allocates an uninitialized slice using GC. )
+$(T2 stdcSlice, Allocates a slice copy using `core.stdc.stdlib.malloc`)
+$(T2 stdcFreeSlice, Frees memory using `core.stdc.stdlib.free`)
+$(T2 stdcUninitSlice, Allocates an uninitialized slice using `core.stdc.stdlib.malloc`.)
 )
 
 
@@ -133,7 +136,7 @@ Allocates an uninitialized array and an n-dimensional slice over it.
 Params:
     lengths = list of lengths for each dimension
 Returns:
-    uninitialized n-dimensional slice
+    contiguous uninitialized n-dimensional slice
 +/
 auto uninitSlice(T, size_t N)(size_t[N] lengths...)
 {
@@ -445,4 +448,69 @@ nothrow unittest
     auto sl2 = makeSlice!double(Mallocator.instance, 0, 0);
 
     Mallocator.instance.dispose(sl2.field);
+}
+
+/++
+Allocates an uninitialized array using `core.stdc.stdlib.malloc` and an n-dimensional slice over it.
+Params:
+    lengths = list of lengths for each dimension
+Returns:
+    contiguous uninitialized n-dimensional slice
+See_also:
+    $(MREF stdcSlice), $(MREF stdcFreeSlice)
++/
+Slice!(Contiguous, [N], T*) stdcUninitSlice(T, size_t N)(size_t[N] lengths...)
+{
+    import core.stdc.stdlib: malloc;
+    immutable len = lengthsProduct(lengths);
+    auto ptr = len ? cast(T*) malloc(len * T.sizeof) : null;
+    return ptr.sliced(lengths);
+}
+
+/++
+Allocates a copy of a slice using `core.stdc.stdlib.malloc`.
+Params:
+    slice = n-dimensional slice
+Returns:
+    contiguous n-dimensional slice
+See_also:
+    $(MREF stdcUninitSlice), $(MREF stdcFreeSlice)
++/
+auto stdcSlice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+{
+    alias T = Unqual!(slice.DeepElemType);
+    static assert (!hasElaborateAssign!T, "stdcSlice is not miplemented for slices that have elaborate assign");
+    auto ret = stdcUninitSlice!T(slice.shape);
+    ret[] = slice;
+    return ret;
+}
+
+/++
+Frees memory using `core.stdc.stdlib.free`.
+Params:
+    slice = n-dimensional slice
+See_also:
+    $(MREF stdcSlice), $(MREF stdcUninitSlice)
++/
+void stdcFreeSlice(size_t[] packs, T)(Slice!(Contiguous, packs, T*) slice)
+{
+    import core.stdc.stdlib: free;
+    slice._iterator.free;
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+    
+    auto i = iota(3, 4);
+    auto s = i.stdcSlice;
+    auto t = s.shape.stdcUninitSlice!size_t;
+    
+    t[] = s;
+
+    assert(t == i);
+    
+    s.stdcFreeSlice;
+    t.stdcFreeSlice;
 }
