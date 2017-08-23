@@ -9,6 +9,18 @@
 [![codecov.io](https://codecov.io/github/libmir/mir-algorithm/coverage.svg?branch=master)](https://codecov.io/github/libmir/mir-algorithm?branch=master)
 [![Circle CI](https://circleci.com/gh/libmir/mir-algorithm.svg?style=svg)](https://circleci.com/gh/libmir/mir-algorithm)
 
+```d
+import mir.ndslice;
+
+auto matrix = slice!double(3, 4);
+matrix[] = 0;
+matrix.diagonal[] = 1;
+
+auto row = matrix[2];
+row[3] = 6;
+assert(matrix[2, 3] == 6); // D & C index order
+```
+
 ### API Documentation
 
 http://docs.algorithm.dlang.io
