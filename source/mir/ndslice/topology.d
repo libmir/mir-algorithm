@@ -2112,6 +2112,8 @@ Bytegroup slice over an integral slice.
 
 Groups exisinting slice into fixed length chunks and uses them as data store for destination type.
 
+Correctly handles scalar types on both little-endian and big-endian platforms.
+
 Params:
     group = count of iterator items used to store the destination type.
     DestinationType = deep element type of the result slice.

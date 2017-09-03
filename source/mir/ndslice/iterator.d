@@ -628,10 +628,26 @@ struct BytegroupIterator(Iterator, size_t count, DestinationType)
 
     package alias Byte = Unqual!(typeof(_iterator[0]));
 
+    version(LittleEndian)
+        private enum BE = false;
+    else
+        private enum BE = true;
+
     private union U
     {
         DestinationType value;
-        Byte[count] bytes;
+        static if (DestinationType.sizeof > Byte[count].sizeof && BE && isScalarType!DestinationType)
+        {
+            struct
+            {
+                ubyte[DestinationType.sizeof - Byte[count].sizeof] shiftPayload;
+                Byte[count] bytes;
+            }
+        }
+        else
+        {
+            Byte[count] bytes;
+        }
     }
 
     DestinationType opUnary(string op : "*")()
