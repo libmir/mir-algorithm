@@ -2143,7 +2143,7 @@ unittest
     auto int24ar = data[].sliced.bytegroup!(3, int); // 24 bit integers
     assert(int24ar.length == data.length / 3);
 
-    enum checkInt = 22 << 1;
+    enum checkInt = ((1 << 20) - 1);
 
     int24ar[3] = checkInt;
     assert(int24ar[3] == checkInt);
@@ -2163,7 +2163,7 @@ unittest
     auto int48ar = data[].sliced.bytegroup!(3, long); // 48 bit integers
     assert(int48ar.length == data.length / 3);
 
-    enum checkInt = 46 << 1;
+    enum checkInt = ((1L << 44) - 1);
 
     int48ar[3] = checkInt;
     assert(int48ar[3] == checkInt);
