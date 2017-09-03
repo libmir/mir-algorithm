@@ -2160,18 +2160,18 @@ unittest
 {
     ushort[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
-    auto int24ar = data[].sliced.bytegroup!(3, long); // 48 bit integers
-    assert(int24ar.length == data.length / 3);
+    auto int48ar = data[].sliced.bytegroup!(3, long); // 48 bit integers
+    assert(int48ar.length == data.length / 3);
 
     enum checkInt = 46 << 1;
 
-    int24ar[3] = checkInt;
-    assert(int24ar[3] == checkInt);
+    int48ar[3] = checkInt;
+    assert(int48ar[3] == checkInt);
 
-    int24ar.popFront;
-    assert(int24ar[2] == checkInt);
+    int48ar.popFront;
+    assert(int48ar[2] == checkInt);
 
-    static assert(is(DeepElementType!(typeof(int24ar)) == long));
+    static assert(is(DeepElementType!(typeof(int48ar)) == long));
 }
 
 /++
