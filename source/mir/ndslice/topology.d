@@ -36,6 +36,7 @@ $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
+$(T2 bytegroup, Groups exisinting slice into fixed length chunks and uses them as data store for destination type.)
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
@@ -2104,6 +2105,71 @@ unittest
 
     packs.popFront;
     assert(packs[$ - 1] == 24);
+}
+
+/++
+Bytegroup slice over an integral slice.
+
+Groups exisinting slice into fixed length chunks and uses them as data store for destination type.
+
+Params:
+    group = count of iterator items used to store the destination type.
+    DestinationType = deep element type of the result slice.
+    slice = a contiguous or canonical slice.
+Returns: A bytegroup slice.
++/
+Slice!(kind, packs, BytegroupIterator!(Iterator, group, DestinationType))
+bytegroup
+    (size_t group, DestinationType, SliceKind kind, size_t[] packs, Iterator)
+    (auto ref Slice!(kind, packs, Iterator) slice)
+    if ((kind == Contiguous || kind == Canonical) && group)
+{
+    mixin _DefineRet;
+    ret._lengths = slice._lengths;
+    ret._lengths[$ - 1] /= group;
+    ret._strides = slice._strides;
+    ret._iterator = BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator);
+    return ret;
+}
+
+/// 24 bit integers
+@safe pure nothrow @nogc
+unittest
+{
+    ubyte[20] data;
+    // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
+    auto int24ar = data[].sliced.bytegroup!(3, int); // 24 bit integers
+    assert(int24ar.length == data.length / 3);
+
+    enum checkInt = 22 << 1;
+
+    int24ar[3] = checkInt;
+    assert(int24ar[3] == checkInt);
+
+    int24ar.popFront;
+    assert(int24ar[2] == checkInt);
+
+    static assert(is(DeepElementType!(typeof(int24ar)) == int));
+}
+
+/// 48 bit integers
+@safe pure nothrow @nogc
+unittest
+{
+    ushort[20] data;
+    // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
+    auto int24ar = data[].sliced.bytegroup!(3, long); // 48 bit integers
+    assert(int24ar.length == data.length / 3);
+
+    enum checkInt = 46 << 1;
+
+    int24ar[3] = checkInt;
+    assert(int24ar[3] == checkInt);
+
+    int24ar.popFront;
+    assert(int24ar[2] == checkInt);
+
+    static assert(is(DeepElementType!(typeof(int24ar)) == long));
 }
 
 /++

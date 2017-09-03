@@ -6,6 +6,7 @@ An ndslice can be created on top of an iterator using $(SUBREF slice, sliced).
 
 $(BOOKTABLE $(H2 Iterators),
 $(TR $(TH Iterator Name) $(TH Used By))
+$(T2 BytegroupIterator, $(SUBREF topology, bytegroup).)
 $(T2 FieldIterator, $(SUBREF slice, slicedField), $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.)
 $(T2 FlattenedIterator, $(SUBREF topology, flattened))
 $(T2 IndexIterator, $(SUBREF topology, indexed))
@@ -566,7 +567,7 @@ struct MapIterator(Iterator, alias fun)
 
     static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
     {
-        auto ref opIndexAssign(T)(T value, ptrdiff_t index)
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index)
         {
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
@@ -612,6 +613,78 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
         return Iterator.__map!fun(iterator);
     else
        return MapIterator!(Iterator, fun)(iterator);
+}
+
+
+/++
+`BytegroupIterator` is used by $(SUBREF topology, Bytegroup) and $(SUBREF topology, bytegroup).
++/
+struct BytegroupIterator(Iterator, size_t count, DestinationType)
+    if (count)
+{
+@fastmath:
+    ///
+    Iterator _iterator;
+
+    package alias Byte = Unqual!(typeof(_iterator[0]));
+
+    private union U
+    {
+        DestinationType value;
+        Byte[count] bytes;
+    }
+
+    DestinationType opUnary(string op : "*")()
+    {
+        U ret = { value: DestinationType.init };
+        foreach (i; Iota!count)
+            ret.bytes[i] = _iterator[i];
+        return ret.value;
+    }
+
+    DestinationType opIndex()(ptrdiff_t index)
+    {
+        return *(this + index);
+    }
+
+    DestinationType opIndexAssign(T)(auto ref T val, ptrdiff_t index)
+    {
+        auto it = this + index;
+        U ret = { value: val };
+        foreach (i; Iota!count)
+            it._iterator[i] = ret.bytes[i];
+        return ret.value;
+    }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    { mixin("_iterator " ~ op[0] ~ "= count;"); }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    { mixin("_iterator " ~ op ~ "= index * count;"); }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return (this._iterator - right._iterator) / count; }
+
+    bool opEquals()(ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
 }
 
 auto SlideIterator__map(Iterator, size_t params, alias fun0, alias fun)(ref SlideIterator!(Iterator, params, fun0) it)
@@ -717,7 +790,7 @@ struct IndexIterator(Iterator, Field)
 
     static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
     {
-        auto ref opIndexAssign(T)(T value, ptrdiff_t index)
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index)
         {
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
@@ -840,7 +913,7 @@ struct FieldIterator(Field)
 
     static if (!__traits(compiles, &_field[_index]))
     {
-        auto ref opIndexAssign(T)(T value, ptrdiff_t index)
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index)
         { return _field[_index + index] = value; }
 
         auto ref opIndexUnary(string op)(ptrdiff_t index)
@@ -987,7 +1060,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
 
     static if (isMutable!(_slice.DeepElemType) && !_slice.hasAccessByRef)
     ///
-    auto opIndexAssign(E)(E elem, size_t index)
+    auto opIndexAssign(E)(auto ref E elem, size_t index)
     {
         static if (packs.length == 1)
         {
