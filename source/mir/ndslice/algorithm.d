@@ -403,46 +403,73 @@ unittest
 
 /++
 The call `eachUploPair!(fun)(matrix)`
-evaluates `fun` for each pair (`matrix[j, i]`, `matrix[i, j]`), i<=j.
+evaluates `fun` for each pair (`matrix[j, i]`, `matrix[i, j]`),
+for i <= j (default) or i < j (if includeDiagonal is false).
 
 Params:
     fun = A function.
+    includeDiagonal = true (default) if applying function to diagonal, 
+                      false otherwise.
 +/
-template eachUploPair(alias fun)
+template eachUploPair(alias fun, bool includeDiagonal = true)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
-    /++
-    Params:
-        matrix = Square matrix.
-    +/
-    auto eachUploPair(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) matrix)
-    in
     {
-        assert(matrix.length!0 == matrix.length!1, "matrix must be square.");
-    }
-    body
-    {
-        static if (kind == Contiguous)
+        /++
+        Params:
+            matrix = Square matrix.
+        +/
+        auto eachUploPair(SliceKind kind, Iterator)
+                                            (Slice!(kind, [2], Iterator) matrix)
+        in
         {
-            import mir.ndslice.topology: canonical;
-            .eachUploPair!fun(matrix.canonical);
+            assert(matrix.length!0 == matrix.length!1,
+                                                      "matrix must be square.");
         }
-        else
+        body
         {
-            if (!matrix.empty)
-            do
+            static if (kind == Contiguous)
             {
-                import mir.ndslice.algorithm: eachImpl;
-                eachImpl!fun(matrix.front!0, matrix.front!1);
-                matrix.popFront!1;
-                matrix.popFront!0;
+                import mir.ndslice.topology: canonical;
+
+                .eachUploPair!(fun, includeDiagonal)(matrix.canonical);
             }
-            while (matrix.length);
+            else
+            {
+                if (!matrix.empty)
+                {
+                    import mir.ndslice.algorithm: eachImpl;
+
+                    static if (includeDiagonal == true)
+                    {
+                        do
+                        {
+                            eachImpl!fun(matrix.front!0, matrix.front!1);
+                            matrix.popFront!1;
+                            matrix.popFront!0;
+                        }
+                        while (matrix.length);
+                    }
+                    else
+                    {
+                        do
+                        {
+                            eachImpl!fun(matrix.front!0[1 .. $],
+                                         matrix.front!1[1 .. $]);
+                            matrix.popFront!1;
+                            matrix.popFront!0;
+                        }
+                        while (matrix.length > 1);
+                    }
+                }
+            }
         }
     }
     else
-        alias eachUploPair = .eachUploPair!(naryFun!fun);
+    {
+        alias eachUploPair = .eachUploPair!(naryFun!fun, includeDiagonal);
+    }
 }
 
 /// Transpose matrix in place.
@@ -479,6 +506,25 @@ unittest
         [0, 1, 2],
         [1, 4, 5],
         [2, 5, 8]]);
+}
+
+/// Fill lower triangle with zeroes.
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+
+    m.eachUploPair!((u, ref l) { l = 0; }, false);
+
+    assert(m == [
+        [1, 2, 3],
+        [0, 5, 6],
+        [0, 0, 9]]);
 }
 
 /++
