@@ -424,8 +424,7 @@ template eachUploPair(alias fun, bool includeDiagonal = true)
                                             (Slice!(kind, [2], Iterator) matrix)
         in
         {
-            assert(matrix.length!0 == matrix.length!1,
-                                                      "matrix must be square.");
+            assert(matrix.length!0 == matrix.length!1, "matrix must be square.");
         }
         body
         {
@@ -460,7 +459,7 @@ template eachUploPair(alias fun, bool includeDiagonal = true)
                             matrix.popFront!1;
                             matrix.popFront!0;
                         }
-                        while (matrix.length > 1);
+                        while (matrix.length);
                     }
                 }
             }
