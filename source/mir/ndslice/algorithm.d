@@ -432,35 +432,39 @@ template eachUploPair(alias fun, bool includeDiagonal = true)
             static if (kind == Contiguous)
             {
                 import mir.ndslice.topology: canonical;
-
                 .eachUploPair!(fun, includeDiagonal)(matrix.canonical);
             }
             else
             {
-                if (!matrix.empty)
+                static if (includeDiagonal == true)
                 {
-                    import mir.ndslice.algorithm: eachImpl;
-
-                    static if (includeDiagonal == true)
+                    if (matrix.length) do
                     {
-                        do
-                        {
-                            eachImpl!fun(matrix.front!0, matrix.front!1);
-                            matrix.popFront!1;
-                            matrix.popFront!0;
-                        }
-                        while (matrix.length);
+                        eachImpl!fun(matrix.front!0, matrix.front!1);
+                        matrix.popFront!1;
+                        matrix.popFront!0;
+                        // hint for optimizer
+                        matrix._lengths[1] = matrix._lengths[0];
                     }
-                    else
+                    while (matrix.length);
+                }
+                else
+                {
+                    if (matrix.length) for(;;)
                     {
-                        do
-                        {
-                            eachImpl!fun(matrix.front!0[1 .. $],
-                                         matrix.front!1[1 .. $]);
-                            matrix.popFront!1;
-                            matrix.popFront!0;
-                        }
-                        while (matrix.length - 1);
+                        auto l = matrix.front!1;
+                        auto u = matrix.front!0;
+                        l.popFront;
+                        u.popFront;
+                        // hint for optimizer
+                        l._lengths[0] = u._lengths[1];
+                        if (u.length == 0)
+                            break;
+                        matrix.popFront!1;
+                        matrix.popFront!0;
+                        // hint for optimizer
+                        matrix._lengths[1] = matrix._lengths[0] = u._lengths[1];
+                        eachImpl!fun(u, l);
                     }
                 }
             }
