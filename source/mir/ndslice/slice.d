@@ -1708,6 +1708,60 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(a != [[9, 2], [3, 4]]);
     }
 
+    static if (packs == [1])
+    ///
+    auto opBinary(string op : "*", SliceKind rkind, RIterator)(const Slice!(rkind, [1], RIterator) rhs) const
+    {
+        return _dot(this, rhs);
+    }
+
+    ///
+    unittest
+    {
+        auto a = [1.0, 2.0, 3.0].sliced;
+        auto b = [3, 4, 1].sliced;
+        assert(a * b == 3 + 8 + 3);
+    }
+
+    ///
+    unittest
+    {
+        import mir.ndslice.allocation: slice;
+        auto x = slice!double(4);
+        auto y = slice!double(4);
+        x[] = [0, 1, 2, 3];
+        y[] = [4, 5, 6, 7];
+        assert(x * y == 5 + 12 + 21);
+    }
+
+    /// builtin complex numbers
+    unittest
+    {
+        import mir.ndslice.allocation: slice;
+
+        auto x = slice!cdouble(2);
+        auto y = slice!cdouble(2);
+        x[] = [0 + 1i, 2 + 3i];
+        y[] = [4 + 5i, 6 + 7i];
+        version(LDC) // DMD Internal error: backend/cgxmm.c 628
+        assert(x * y == (0 + -1i) * (4 + 5i) + (2 + -3i) * (6 + 7i));
+    }
+
+
+    /// user-defined complex numbers requires the structure be called "Complex"
+    unittest
+    {
+        import std.complex;
+        import mir.ndslice.allocation: slice;
+
+        auto x = slice!(Complex!double)(2);
+        auto y = slice!(Complex!double)(2);
+        x[] = [complex!double(0, 1), complex!double(2, 3)];
+        y[] = [complex!double(4, 5), complex!double(6, 7)];
+        version(LDC) // DMD Internal error: backend/cgxmm.c 628
+        assert(x * y == complex!double(0, -1) * complex!double(4, 5) + complex!double(2, -3) * complex!double(6, 7));
+    }
+
     static if (doUnittest)
     @safe pure nothrow unittest
     {
@@ -3129,4 +3183,41 @@ unittest
     auto s = iota(2, 3);
     assert(s.front!1 == [0, 3]);
     assert(s.back!1 == [2, 5]);
+}
+
+private auto _dot(SliceKind kindL, IteratorL, SliceKind kindR, IteratorR)
+    (const Slice!(kindL, [1], IteratorL) x, const Slice!(kindR, [1], IteratorR) y)
+{
+    alias F = Unqual!(typeof(x[][0] * y[][0]));
+    static if (isBasicType!F || isComplex!F)
+    {
+        auto zero = cast(F) 0;
+    }
+    else
+    static if (__traits(identifier, F) == "Complex")
+    {
+        auto zero = F(0, 0);
+    }
+    else
+    {
+        auto zero = cast(F) 0;
+    }
+    assert(x.length == y.length, "dot product: vectors must have equal shapes");
+    import mir.ndslice.algorithm: reduce;
+    return reduce!_fmuladd_(zero, x[], y[]);
+}
+
+package A _fmuladd_(A, B, C)(A a, in B b, in C c)
+{
+    static if (isComplex!B)
+    {
+        return a + (b.re - b.im * 1fi) * c;
+    }
+    else
+    static if (!isBasicType!B)
+    {
+        return a + B(b.re, -b.im) * c;
+    }
+    else
+        return a + b * c;
 }
