@@ -459,7 +459,7 @@ template eachUploPair(alias fun, bool includeDiagonal = true)
                             matrix.popFront!1;
                             matrix.popFront!0;
                         }
-                        while (matrix.length);
+                        while (matrix.length - 1);
                     }
                 }
             }
@@ -524,6 +524,39 @@ unittest
         [1, 2, 3],
         [0, 5, 6],
         [0, 0, 9]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 0 1 2
+    // 3 4 5
+    // 6 7 8
+    auto m = iota(3, 3).slice;
+    m.eachUploPair!((u, ref l) { l = l + 1; }, true);
+    assert(m == [
+        [1, 1, 2],
+        [4, 5, 5],
+        [7, 8, 9]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 0 1 2
+    // 3 4 5
+    // 6 7 8
+    auto m = iota(3, 3).slice;
+    m.eachUploPair!((u, ref l) { l = l + 1; }, false);
+
+    assert(m == [
+        [0, 1, 2],
+        [4, 4, 5],
+        [7, 8, 8]]);
 }
 
 /++
