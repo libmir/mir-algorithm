@@ -457,13 +457,13 @@ template eachUploPair(alias fun, bool includeDiagonal = true)
                         l.popFront;
                         u.popFront;
                         // hint for optimizer
-                        l._lengths[0] = u._lengths[1];
+                        l._lengths[0] = u._lengths[0];
                         if (u.length == 0)
                             break;
                         matrix.popFront!1;
                         matrix.popFront!0;
                         // hint for optimizer
-                        matrix._lengths[1] = matrix._lengths[0] = u._lengths[1];
+                        matrix._lengths[1] = matrix._lengths[0] = u._lengths[0];
                         eachImpl!fun(u, l);
                     }
                 }
