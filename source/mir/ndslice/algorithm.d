@@ -279,6 +279,8 @@ unittest
 
 void eachImpl(alias fun, Slices...)(Slices slices)
 {
+    foreach(ref slice; slices)
+        assert(!slice.empty);
     do
     {
         static if (slices[0].shape.length == 1)
