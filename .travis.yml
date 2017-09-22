@@ -14,7 +14,7 @@ env:
  - ARCH="x86_64"
 matrix:
   include:
-    - {os: linux, d: ldc-1.3.0, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
     - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
 branches:
   only:
