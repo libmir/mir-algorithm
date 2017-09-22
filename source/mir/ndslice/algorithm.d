@@ -414,7 +414,7 @@ Params:
     includeDiagonal = true (default) if applying function to diagonal, 
                       false otherwise.
 +/
-template eachUploPair(alias fun, bool includeDiagonal = true)
+template eachUploPair(alias fun, bool includeDiagonal = false)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
@@ -514,7 +514,7 @@ unittest
         [2, 5, 8]]);
 }
 
-/// Fill lower triangle with zeroes.
+/// Fill lower triangle and diagonal with zeroes.
 unittest
 {
     import mir.ndslice.allocation: slice;
@@ -525,12 +525,12 @@ unittest
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
 
-    m.eachUploPair!((u, ref l) { l = 0; }, false);
+    m.eachUploPair!((u, ref l) { l = 0; }, true);
 
     assert(m == [
-        [1, 2, 3],
-        [0, 5, 6],
-        [0, 0, 9]]);
+        [0, 2, 3],
+        [0, 0, 6],
+        [0, 0, 0]]);
 }
 
 unittest
