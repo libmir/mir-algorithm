@@ -451,18 +451,18 @@ template eachUploPair(alias fun, bool includeDiagonal = true)
                 {
                     if (matrix.length) for(;;)
                     {
+                        assert(!matrix.empty!0);
+                        assert(!matrix.empty!1);
                         auto l = matrix.front!1;
                         auto u = matrix.front!0;
+                        matrix.popFront!1;
+                        matrix.popFront!0;
                         l.popFront;
                         u.popFront;
                         // hint for optimizer
-                        l._lengths[0] = u._lengths[0];
+                        matrix._lengths[1] = matrix._lengths[0] = l._lengths[0] = u._lengths[0];
                         if (u.length == 0)
                             break;
-                        matrix.popFront!1;
-                        matrix.popFront!0;
-                        // hint for optimizer
-                        matrix._lengths[1] = matrix._lengths[0] = u._lengths[0];
                         eachImpl!fun(u, l);
                     }
                 }
