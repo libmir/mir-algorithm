@@ -2091,8 +2091,34 @@ size_t maxLength(S)(auto ref S s)
     return length;
 }
 
-private template eachLowerTriangle(alias fun, size_t k = 1,
-                                                bool BeyondMainDiagonal = false)
+/++
+The call `eachLower!(fun, Upper)(matrix)` applies `fun` to the lower triangle of
+a two-dimensional slice.
+
+The value `k` determines which diagonals will have the function applied:
+For k = 0, the function is also applied to the main diagonal
+For k = 1 (default), only the non-main diagonals below the main diagonal
+will have the function applied.
+For k > 1, fewer diagonals (or additional if BeyondMainDiagonal = true) will
+have the function applied.
+
+The `BeyondMainDiagonal` parameter determines whether to also apply the function
+beyond the main diagonal.
+
+For instance, if k=1, and BeyondMainDiagonal=false, then calling
+`eachLower` will apply to all sub-diagonals below the main diagonal. However,
+if BeyondMainDiagonal=true, then then calling `eachLower` will apply the
+function to the sub-diagonals, the main diagonal, and the first super-diagonal
+above the main diagonal.
+
+Params:
+    fun = A function
+    k = adjustment to diagonals (default = 1)
+    BeyondMainDiagonal = true if applying function beyond main diagonal, false
+    otherwise (default)
++/
+template eachLower(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
+
 {
     import mir.functional : naryFun;
     import mir.ndslice.algorithm : eachImpl;
@@ -2100,7 +2126,7 @@ private template eachLowerTriangle(alias fun, size_t k = 1,
 
     static if (__traits(isSame, naryFun!fun, fun))
     {
-        void eachLowerTriangle(SliceKind kind, Iterator)
+        void eachLower(SliceKind kind, Iterator)
                            (Slice!(kind, [2], Iterator) matrix)
         {
             immutable(size_t) m = matrix.length!0;
@@ -2135,7 +2161,7 @@ private template eachLowerTriangle(alias fun, size_t k = 1,
     }
     else
     {
-        alias eachLowerTriangle = .eachLowerTriangle!(naryFun!fun);
+        alias eachLower = .eachLower!(naryFun!fun);
     }
 }
 
@@ -2148,7 +2174,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    m.eachLower!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 2, 3],
         [0, 0, 6],
@@ -2164,7 +2190,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice.universal;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    m.eachLower!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 2, 3],
         [0, 0, 6],
@@ -2180,7 +2206,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice.canonical;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    m.eachLower!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 2, 3],
         [0, 0, 6],
@@ -2197,7 +2223,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; });
+    m.eachLower!((ref a) {a = 0; });
     assert(m == [
         [1, 2, 3],
         [0, 5, 6],
@@ -2213,7 +2239,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 1, true);
+    m.eachLower!((ref a) {a = 0; }, 1, true);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2229,7 +2255,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 2);
+    m.eachLower!((ref a) {a = 0; }, 2);
     assert(m == [
         [1, 2, 3],
         [4, 5, 6],
@@ -2245,7 +2271,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 2, true);
+    m.eachLower!((ref a) {a = 0; }, 2, true);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2261,7 +2287,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    m.eachLower!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 2, 3, 4],
         [0, 0, 7, 8],
@@ -2277,7 +2303,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 1);
+    m.eachLower!((ref a) {a = 0; }, 1);
     assert(m == [
         [1, 2, 3, 4],
         [0, 6, 7, 8],
@@ -2293,7 +2319,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 1, true);
+    m.eachLower!((ref a) {a = 0; }, 1, true);
     assert(m == [
         [0, 0, 3, 4],
         [0, 0, 0, 8],
@@ -2309,7 +2335,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 2);
+    m.eachLower!((ref a) {a = 0; }, 2);
     assert(m == [
         [1, 2, 3, 4],
         [5, 6, 7, 8],
@@ -2325,7 +2351,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 2, true);
+    m.eachLower!((ref a) {a = 0; }, 2, true);
     assert(m == [
         [0, 0, 0, 4],
         [0, 0, 0, 0],
@@ -2342,7 +2368,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    m.eachLower!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 2, 3],
         [0, 0, 6],
@@ -2360,7 +2386,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) {a = 0; }, 1);
+    m.eachLower!((ref a) {a = 0; }, 1);
     assert(m == [
         [1, 2, 3],
         [0, 5, 6],
@@ -2378,7 +2404,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) { a = 0; }, 1, true);
+    m.eachLower!((ref a) { a = 0; }, 1, true);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2396,7 +2422,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) { a = 0; }, 2);
+    m.eachLower!((ref a) { a = 0; }, 2);
     assert(m == [
         [1, 2, 3],
         [4, 5, 6],
@@ -2414,7 +2440,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLowerTriangle!((ref a) { a = 0; }, 2, true);
+    m.eachLower!((ref a) { a = 0; }, 2, true);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2422,8 +2448,33 @@ unittest
         [0, 0, 0]]);
 }
 
-private template eachUpperTriangle(alias fun, size_t k = 1,
-                                                bool BeyondMainDiagonal = false)
+/++
+The call `eachUpper!(fun)(matrix)` applies `fun` to the upper triangle of
+a two-dimensional slice.
+
+The value `k` determines which diagonals will have the function applied:
+For k = 0, the function is also applied to the main diagonal
+For k = 1 (default), only the non-main diagonals above the main diagonal
+will have the function applied.
+For k > 1, fewer diagonals (or additional if BeyondMainDiagonal = true) will
+have the function applied.
+
+The `BeyondMainDiagonal` parameter determines whether to also apply the function
+beyond the main diagonal.
+
+For instance, if k=1, and BeyondMainDiagonal=false, then calling
+`eachUpper` will apply the function to all super-diagonals above the main
+diagonal. However, if BeyondMainDiagonal=true, then then calling `eachUpper`
+will apply the function to the super-diagonals, the main diagonal, and the first
+sub-diagonal below the main diagonal.
+
+Params:
+    fun = A function
+    k = adjustment to diagonals (default = 1)
+    BeyondMainDiagonal = true if applying function beyond main diagonal, false
+    otherwise (default)
++/
+template eachUpper(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
 {
     import mir.functional: naryFun;
     import mir.ndslice.algorithm : eachImpl;
@@ -2431,7 +2482,7 @@ private template eachUpperTriangle(alias fun, size_t k = 1,
 
     static if (__traits(isSame, naryFun!fun, fun))
     {
-        private void eachUpperTriangle(SliceKind kind, Iterator)
+        private void eachUpper(SliceKind kind, Iterator)
                            (Slice!(kind, [2], Iterator) matrix)
         {
             immutable(size_t) m = matrix.length!0;
@@ -2472,7 +2523,7 @@ private template eachUpperTriangle(alias fun, size_t k = 1,
     }
     else
     {
-        alias eachUpperTriangle = .eachUpperTriangle!(naryFun!fun);
+        alias eachUpper = .eachUpper!(naryFun!fun);
     }
 }
 
@@ -2485,7 +2536,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    m.eachUpper!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 0, 0],
         [4, 0, 0],
@@ -2501,7 +2552,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice.universal;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    m.eachUpper!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 0, 0],
         [4, 0, 0],
@@ -2517,7 +2568,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice.canonical;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    m.eachUpper!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 0, 0],
         [4, 0, 0],
@@ -2534,7 +2585,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; });
+    m.eachUpper!((ref a) {a = 0; });
     assert(m == [
         [1, 0, 0],
         [4, 5, 0],
@@ -2550,7 +2601,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 1, true);
+    m.eachUpper!((ref a) {a = 0; }, 1, true);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2566,7 +2617,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 2);
+    m.eachUpper!((ref a) {a = 0; }, 2);
     assert(m == [
         [1, 2, 0],
         [4, 5, 6],
@@ -2582,7 +2633,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 2, true);
+    m.eachUpper!((ref a) {a = 0; }, 2, true);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2598,7 +2649,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    m.eachUpper!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 0, 0, 0],
         [5, 0, 0, 0],
@@ -2614,7 +2665,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 1);
+    m.eachUpper!((ref a) {a = 0; }, 1);
     assert(m == [
         [1, 0, 0, 0],
         [5, 6, 0, 0],
@@ -2630,7 +2681,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 1, true);
+    m.eachUpper!((ref a) {a = 0; }, 1, true);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2646,7 +2697,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 2);
+    m.eachUpper!((ref a) {a = 0; }, 2);
     assert(m == [
         [1, 2, 0, 0],
         [5, 6, 7, 0],
@@ -2662,7 +2713,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 2, true);
+    m.eachUpper!((ref a) {a = 0; }, 2, true);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2679,7 +2730,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    m.eachUpper!((ref a) {a = 0; }, 0);
     assert(m == [
         [0, 0, 0],
         [4, 0, 0],
@@ -2697,7 +2748,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 1);
+    m.eachUpper!((ref a) {a = 0; }, 1);
     assert(m == [
         [1, 0, 0],
         [4, 5, 0],
@@ -2715,7 +2766,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 1, true);
+    m.eachUpper!((ref a) {a = 0; }, 1, true);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2733,7 +2784,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 2);
+    m.eachUpper!((ref a) {a = 0; }, 2);
     assert(m == [
         [1, 2, 0],
         [4, 5, 6],
@@ -2751,7 +2802,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpperTriangle!((ref a) {a = 0; }, 2, true);
+    m.eachUpper!((ref a) {a = 0; }, 2, true);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2759,39 +2810,7 @@ unittest
         [10, 0, 0]]);
 }
 
-/++
-The call `eachTriangle!(fun, Upper)(matrix)` applies `fun` to the upper or
-lower triangle of a two-dimensional slice.
 
-The value `k` determines which diagonals will have the function applied:
-For k = 0, the function is also applied to the main diagonal
-For k = 1 (default), only the non-main diagonals above (below) the main diagonal
-will be filled for Upper = true (Upper = false).
-For k > 1, fewer diagonals (or additional if BeyondMainDiagonal = true) will
-have the function applied.
-
-The `BeyondMainDiagonal` parameter determines whether to also apply the function
-beyond the main diagonal.
-
-For instance, if Upper=false, k=1, and BeyondMainDiagonal=false, then calling
-`eachTriangle` will apply to all sub-diagonals below the main diagonal. However,
-if BeyondMainDiagonal=true, then then calling `eachTriangle` will apply the
-function to the sub-diagonals, the main diagonal, and the first super-diagonal
-above the main diagonal.
-
-By contrast, if Upper=true, k=1, and BeyondMainDiagonal=false, then calling
-`eachTriangle` will apply the function to all super-diagonals above the main
-diagonal. However, if BeyondMainDiagonal=true, then then calling `eachTriangle`
-will apply the function to the super-diagonals, the main diagonal, and the first
-sub-diagonal below the main diagonal.
-
-Params:
-    fun = A function
-    Upper = true if filling upper triangle, false (default) for lower
-    k = adjustment to diagonals (default = 1)
-    BeyondMainDiagonal = true if applying function beyond main diagonal, false
-    otherwise (default)
-+/
 template eachTriangle(alias fun, bool Upper = false, size_t k = 1,
                                                 bool BeyondMainDiagonal = false)
 {
@@ -2804,9 +2823,9 @@ template eachTriangle(alias fun, bool Upper = false, size_t k = 1,
                        (Slice!(kind, [2], Iterator) matrix)
     {
         static if (!Upper)
-            matrix.eachLowerTriangle!(fun, k, BeyondMainDiagonal);
+            matrix.eachLower!(fun, k, BeyondMainDiagonal);
         else
-            matrix.eachUpperTriangle!(fun, k, BeyondMainDiagonal);
+            matrix.eachUpper!(fun, k, BeyondMainDiagonal);
     }
 }
 
