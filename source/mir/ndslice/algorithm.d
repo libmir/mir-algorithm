@@ -2077,6 +2077,14 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     return ret;
 }
 
+version(unittest)
+{
+    T identity(T)(T x)
+    {
+        return x;
+    }
+}
+
 /++
 Returns: max length across all dimensions.
 +/
@@ -2168,49 +2176,26 @@ template eachLower(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
 unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota;
-
-    // 1 2 3
-    // 4 5 6
-    // 7 8 9
-    auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 0);
-    assert(m == [
-        [0, 2, 3],
-        [0, 0, 6],
-        [0, 0, 0]]);
-}
-
-unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota, universal;
-
-    // 1 2 3
-    // 4 5 6
-    // 7 8 9
-    auto m = iota([3, 3], 1).slice.universal;
-    m.eachLower!((ref a) {a = 0; }, 0);
-    assert(m == [
-        [0, 2, 3],
-        [0, 0, 6],
-        [0, 0, 0]]);
-}
-
-unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota, canonical;
-
-    // 1 2 3
-    // 4 5 6
-    // 7 8 9
-    auto m = iota([3, 3], 1).slice.canonical;
-    m.eachLower!((ref a) {a = 0; }, 0);
-    assert(m == [
-        [0, 2, 3],
-        [0, 0, 6],
-        [0, 0, 0]]);
+    import mir.ndslice.topology: iota, canonical, universal;
+    import std.meta: AliasSeq;
+    
+    void test(alias func)()
+    {
+        // 1 2 3
+        // 4 5 6
+        // 7 8 9
+        auto m = func(iota([3, 3], 1).slice);
+        m.eachLower!((ref a) {a = 0; }, 0);
+        assert(m == [
+            [0, 2, 3],
+            [0, 0, 6],
+            [0, 0, 0]]);
+    }
+    
+    static foreach(type; AliasSeq!(identity, canonical, universal))
+    {
+        test!type;
+    }
 }
 
 ///
@@ -2530,49 +2515,26 @@ template eachUpper(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
 unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota;
-
-    // 1 2 3
-    // 4 5 6
-    // 7 8 9
-    auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 0);
-    assert(m == [
-        [0, 0, 0],
-        [4, 0, 0],
-        [7, 8, 0]]);
-}
-
-unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota, universal;
-
-    // 1 2 3
-    // 4 5 6
-    // 7 8 9
-    auto m = iota([3, 3], 1).slice.universal;
-    m.eachUpper!((ref a) {a = 0; }, 0);
-    assert(m == [
-        [0, 0, 0],
-        [4, 0, 0],
-        [7, 8, 0]]);
-}
-
-unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: iota, canonical;
-
-    // 1 2 3
-    // 4 5 6
-    // 7 8 9
-    auto m = iota([3, 3], 1).slice.canonical;
-    m.eachUpper!((ref a) {a = 0; }, 0);
-    assert(m == [
-        [0, 0, 0],
-        [4, 0, 0],
-        [7, 8, 0]]);
+    import mir.ndslice.topology: iota, canonical, universal;
+    import std.meta: AliasSeq;
+    
+    void test(alias func)()
+    {
+        // 1 2 3
+        // 4 5 6
+        // 7 8 9
+        auto m = func(iota([3, 3], 1).slice);
+        m.eachUpper!((ref a) {a = 0; }, 0);
+        assert(m == [
+            [0, 0, 0],
+            [4, 0, 0],
+            [7, 8, 0]]);
+    }
+    
+    static foreach(type; AliasSeq!(identity, canonical, universal))
+    {
+        test!type;
+    }
 }
 
 ///
