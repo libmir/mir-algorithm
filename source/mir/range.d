@@ -5,7 +5,7 @@ See_also: $(MREF mir,_primitives).
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2017-, Ilya Yaroshenko
-Authors:   Ilya Yaroshenko
+Authors:   Ilya Yaroshenko, Phobos Authors
 +/
 module mir.range;
 
