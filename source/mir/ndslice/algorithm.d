@@ -10,6 +10,7 @@ $(T2 any, Checks if at least one element satisfy to a predicate.)
 $(T2 cmp, Compares two slices.)
 $(T2 count, Counts elements in a slices according to a predicate.)
 $(T2 each, Iterates all elements.)
+$(T2 eachTriangle, Iterates upper or lower triangle of matrix.)
 $(T2 eachUploPair, Iterates upper and lower pairs of elements in square matrix.)
 $(T2 equal, Compares two slices for equality.)
 $(T2 find, Finds backward index.)
@@ -2088,4 +2089,761 @@ size_t maxLength(S)(auto ref S s)
         if (shape[i] > length)
             length = shape[i];
     return length;
+}
+
+private template eachLowerTriangle(alias fun, size_t k = 1,
+                                                bool BeyondMainDiagonal = false)
+{
+    import mir.functional : naryFun;
+    import mir.ndslice.algorithm : eachImpl;
+    import mir.ndslice.slice : Slice, SliceKind;
+
+    static if (__traits(isSame, naryFun!fun, fun))
+    {
+        void eachLowerTriangle(SliceKind kind, Iterator)
+                           (Slice!(kind, [2], Iterator) matrix)
+        {
+            immutable(size_t) m = matrix.length!0;
+            immutable(size_t) n = matrix.length!1;
+
+            size_t i;
+            do
+            {
+                auto e = matrix.front!0;
+
+                static if (!BeyondMainDiagonal)
+                {
+                    if (i >= k)
+                    {
+                        if (i < (n + k))
+                            e[0..(i - k + 1)].eachImpl!fun;
+                        else
+                            e.eachImpl!fun;
+                    }
+                }
+                else
+                {
+                    if (i < (n - k))
+                        e[0..(i + k + 1)].eachImpl!fun;
+                    else
+                        e.eachImpl!fun;
+                }
+                matrix.popFront!0;
+                i++;
+            } while (i < m);
+        }
+    }
+    else
+    {
+        alias eachLowerTriangle = .eachLowerTriangle!(naryFun!fun);
+    }
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 2, 3],
+        [0, 0, 6],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, universal;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice.universal;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 2, 3],
+        [0, 0, 6],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, canonical;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice.canonical;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 2, 3],
+        [0, 0, 6],
+        [0, 0, 0]]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; });
+    assert(m == [
+        [1, 2, 3],
+        [0, 5, 6],
+        [0, 0, 9]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 1, true);
+    assert(m == [
+        [0, 0, 3],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 2);
+    assert(m == [
+        [1, 2, 3],
+        [4, 5, 6],
+        [0, 8, 9]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 2, true);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 2, 3, 4],
+        [0, 0, 7, 8],
+        [0, 0, 0, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 1);
+    assert(m == [
+        [1, 2, 3, 4],
+        [0, 6, 7, 8],
+        [0, 0, 11, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 1, true);
+    assert(m == [
+        [0, 0, 3, 4],
+        [0, 0, 0, 8],
+        [0, 0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 2);
+    assert(m == [
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [0, 10, 11, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 2, true);
+    assert(m == [
+        [0, 0, 0, 4],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 2, 3],
+        [0, 0, 6],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) {a = 0; }, 1);
+    assert(m == [
+        [1, 2, 3],
+        [0, 5, 6],
+        [0, 0, 9],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) { a = 0; }, 1, true);
+    assert(m == [
+        [0, 0, 3],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) { a = 0; }, 2);
+    assert(m == [
+        [1, 2, 3],
+        [4, 5, 6],
+        [0, 8, 9],
+        [0, 0, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachLowerTriangle!((ref a) { a = 0; }, 2, true);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+private template eachUpperTriangle(alias fun, size_t k = 1,
+                                                bool BeyondMainDiagonal = false)
+{
+    import mir.functional: naryFun;
+    import mir.ndslice.algorithm : eachImpl;
+    import mir.ndslice.slice : Slice, SliceKind;
+
+    static if (__traits(isSame, naryFun!fun, fun))
+    {
+        private void eachUpperTriangle(SliceKind kind, Iterator)
+                           (Slice!(kind, [2], Iterator) matrix)
+        {
+            immutable(size_t) m = matrix.length!0;
+            immutable(size_t) n = matrix.length!1;
+
+            size_t i;
+
+            do
+            {
+                auto e = matrix.front!0;
+
+                static if (!BeyondMainDiagonal)
+                {
+                    if (i < (n - k))
+                    {
+                        e[(i + k)..$].eachImpl!fun;
+                    }
+                }
+                else
+                {
+                    if (i > k)
+                    {
+                        if (i < (n + k))
+                        {
+                            e[(i - k)..$].eachImpl!fun;
+                        }
+                    }
+                    else
+                    {
+                        e.eachImpl!fun;
+                    }
+                }
+
+                matrix.popFront!0;
+                i++;
+            } while (i < m);
+        }
+    }
+    else
+    {
+        alias eachUpperTriangle = .eachUpperTriangle!(naryFun!fun);
+    }
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 0, 0],
+        [4, 0, 0],
+        [7, 8, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, universal;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice.universal;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 0, 0],
+        [4, 0, 0],
+        [7, 8, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, canonical;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice.canonical;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 0, 0],
+        [4, 0, 0],
+        [7, 8, 0]]);
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; });
+    assert(m == [
+        [1, 0, 0],
+        [4, 5, 0],
+        [7, 8, 9]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 1, true);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [7, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 2);
+    assert(m == [
+        [1, 2, 0],
+        [4, 5, 6],
+        [7, 8, 9]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 2, true);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 0, 0, 0],
+        [5, 0, 0, 0],
+        [9, 10, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 1);
+    assert(m == [
+        [1, 0, 0, 0],
+        [5, 6, 0, 0],
+        [9, 10, 11, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 1, true);
+    assert(m == [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [9, 0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 2);
+    assert(m == [
+        [1, 2, 0, 0],
+        [5, 6, 7, 0],
+        [9, 10, 11, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3  4
+    // 5  6  7  8
+    // 9 10 11 12
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 2, true);
+    assert(m == [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 0);
+    assert(m == [
+        [0, 0, 0],
+        [4, 0, 0],
+        [7, 8, 0],
+        [10, 11, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 1);
+    assert(m == [
+        [1, 0, 0],
+        [4, 5, 0],
+        [7, 8, 9],
+        [10, 11, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 1, true);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [7, 0, 0],
+        [10, 11, 0]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 2);
+    assert(m == [
+        [1, 2, 0],
+        [4, 5, 6],
+        [7, 8, 9],
+        [10, 11, 12]]);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1  2  3
+    // 4  5  6
+    // 7  8  9
+    //10 11 12
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpperTriangle!((ref a) {a = 0; }, 2, true);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [10, 0, 0]]);
+}
+
+/++
+The call `eachTriangle!(fun, Upper)(matrix)` applies `fun` to the upper or
+lower triangle of a two-dimensional slice.
+
+The value `k` determines which diagonals will have the function applied:
+For k = 0, the function is also applied to the main diagonal
+For k = 1 (default), only the non-main diagonals above (below) the main diagonal
+will be filled for Upper = true (Upper = false).
+For k > 1, fewer diagonals (or additional if BeyondMainDiagonal = true) will
+have the function applied.
+
+The `BeyondMainDiagonal` parameter determines whether to also apply the function
+beyond the main diagonal.
+
+For instance, if Upper=false, k=1, and BeyondMainDiagonal=false, then calling
+`eachTriangle` will apply to all sub-diagonals below the main diagonal. However,
+if BeyondMainDiagonal=true, then then calling `eachTriangle` will apply the
+function to the sub-diagonals, the main diagonal, and the first super-diagonal
+above the main diagonal.
+
+By contrast, if Upper=true, k=1, and BeyondMainDiagonal=false, then calling
+`eachTriangle` will apply the function to all super-diagonals above the main
+diagonal. However, if BeyondMainDiagonal=true, then then calling `eachTriangle`
+will apply the function to the super-diagonals, the main diagonal, and the first
+sub-diagonal below the main diagonal.
+
+Params:
+    fun = A function
+    Upper = true if filling upper triangle, false (default) for lower
+    k = adjustment to diagonals (default = 1)
+    BeyondMainDiagonal = true if applying function beyond main diagonal, false
+    otherwise (default)
++/
+template eachTriangle(alias fun, bool Upper = false, size_t k = 1,
+                                                bool BeyondMainDiagonal = false)
+{
+    import mir.ndslice.slice : Slice, SliceKind;
+    /++
+    Params:
+        matrix = two-dimensional slice to fill
+    +/
+    void eachTriangle(SliceKind kind, Iterator)
+                       (Slice!(kind, [2], Iterator) matrix)
+    {
+        static if (!Upper)
+            matrix.eachLowerTriangle!(fun, k, BeyondMainDiagonal);
+        else
+            matrix.eachUpperTriangle!(fun, k, BeyondMainDiagonal);
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    auto m = iota([3, 3], 1).slice;
+    m.eachTriangle!((ref a) {a = 0; });
+    assert(m == [
+        [1, 2, 3],
+        [0, 5, 6],
+        [0, 0, 9]]);
+    m.eachTriangle!((ref a) {a = 1; }, false, 0);
+    assert(m == [
+        [1, 2, 3],
+        [1, 1, 6],
+        [1, 1, 1]]);
+    m.eachTriangle!((ref a) {a = 2; }, true);
+    assert(m == [
+        [1, 2, 2],
+        [1, 1, 2],
+        [1, 1, 1]]);
+    m.eachTriangle!((ref a) {a = 3; }, false, 1, true);
+    assert(m == [
+        [3, 3, 2],
+        [3, 3, 3],
+        [3, 3, 3]]);
+    size_t i;
+    m.eachTriangle!((ref a) {i++; a = a + i; });
+    assert(m == [
+        [3, 3, 2],
+        [4, 3, 3],
+        [5, 6, 3]]);
 }
