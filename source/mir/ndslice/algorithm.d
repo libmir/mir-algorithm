@@ -411,8 +411,8 @@ for i <= j (default) or i < j (if includeDiagonal is false).
 
 Params:
     fun = A function.
-    includeDiagonal = true (default) if applying function to diagonal, 
-                      false otherwise.
+    includeDiagonal = true if applying function to diagonal, 
+                      false (default) otherwise.
 +/
 template eachUploPair(alias fun, bool includeDiagonal = false)
 {
