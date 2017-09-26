@@ -153,7 +153,7 @@ mixin template DimensionCTError()
         ~ tailErrorMessage!());
     static assert(dimension < slice.S,
         "dimension = " ~ dimension.stringof ~ " at position "
-        ~ i.stringof ~ " should be less than " ~ slice.S.stringof ~ ". "
+        ~ i.stringof ~ " should be less than " ~ (slice.S).stringof ~ ". "
         ~ "`universal` and `canonical` from `mir.ndslice.topology` can be used to relax slice kind."
         ~ tailErrorMessage!());
 }
