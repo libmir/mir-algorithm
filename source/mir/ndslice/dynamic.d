@@ -5,7 +5,7 @@ This is a submodule of $(MREF mir, ndslice).
 
 Operators only change strides and lengths of a slice.
 The range of a slice remains unmodified.
-All operators return slice of the same type as the type of the argument.
+All operators return slice as the type of the argument, maybe except slice kind.
 
 $(BOOKTABLE $(H2 Transpose operators),
 
@@ -108,7 +108,7 @@ Params:
     dimensionA = first dimension
     dimensionB = second dimension
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 See_also: $(LREF everted), $(LREF transposed)
 +/
 template swapped(size_t dimensionA, size_t dimensionB)
@@ -249,7 +249,7 @@ Params:
     dimensionB = second dimension
     k = rotation counter, can be negative
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 +/
 template rotated(size_t dimensionA, size_t dimensionB)
 {
@@ -358,7 +358,7 @@ Reverses the order of dimensions.
 Params:
     slice = input slice
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 See_also: $(LREF swapped), $(LREF transposed)
 +/
 auto everted(size_t[] packs, SliceKind kind, Iterator)(Slice!(kind, packs, Iterator) _slice)
@@ -438,7 +438,7 @@ Params:
     Dimensions = indexes of dimensions to be brought to the first position
     dimensions = indexes of dimensions to be brought to the first position
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 See_also: $(LREF swapped), $(LREF everted)
 +/
 template transposed(Dimensions...)
@@ -578,7 +578,7 @@ Reverses the direction of iteration for all dimensions.
 Params:
     slice = input slice
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 +/
 Slice!(Universal, packs, Iterator) allReversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
 {
@@ -608,7 +608,7 @@ Params:
     Dimensions = indexes of dimensions to reverse order of iteration
     dimensions = indexes of dimensions to reverse order of iteration
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 +/
 template reversed(Dimensions...)
     if (Dimensions.length)
@@ -748,7 +748,7 @@ Params:
     dimension = indexe of a dimension to be strided
     factor = step extension factors
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 +/
 template strided(Dimensions...)
     if (Dimensions.length)
@@ -883,7 +883,7 @@ Returns maximal multidimensional cube.
 Params:
     slice = input slice
 Returns:
-    n-dimensional slice of the same type
+    n-dimensional slice
 +/
 Slice!(kind, packs, Iterator) dropToHypercube(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     if (kind == Canonical || kind == Universal)
