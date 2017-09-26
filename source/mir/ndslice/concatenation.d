@@ -39,23 +39,96 @@ import mir.primitives;
 
 @fastmath:
 
+private template _expose(size_t maxN, size_t dim)
+{
+    static @fastmath auto _expose(S)(S s)
+    {
+        static if (s.N == maxN)
+        {
+            return s;
+        }
+        else
+        {
+            static assert(s.shape.length == s.N, "Cannot create concatentaion for packed slice of smaller dimension.");
+            import mir.ndslice.topology: repeat, unpack;
+            auto r = s.repeat(1).unpack;
+            static if (dim)
+            {
+                import mir.ndslice.dynamic: transposed;
+                return r.transposed!(Iota!(1, dim + 1));
+            }
+            else
+            {
+                return r;
+            }
+        }
+    }
+}
+
+private template _Expose(size_t maxN, size_t dim)
+{
+    alias _expose = ._expose!(maxN, dim);
+    alias _Expose(S) = ReturnType!(_expose!S);
+}
+
+
 /++
 Creates a $(LREF Concatenation) view of multiple slices.
 
 Can be used in combination with itself, $(LREF until), $(SUBREF, allocation, slice),
 and $(SUBREF slice, Slice) assignment.
-until pred returns true.
-
-Returns: true if an element was 
 
 Params:
-    slices = tuple of slices and concatenations. All slices and concatenations must have the same dimension count.
+    slices = tuple of slices and/or concatenations.
 
 Returns: $(LREF Concatenation).
 +/
-Concatenation!(dim, Slices) concatenation(size_t dim = 0, Slices...)(Slices slices)
+auto concatenation(size_t dim = 0, Slices...)(Slices slices)
 {
-    return typeof(return)(slices);
+    import mir.ndslice.algorithm: reduce;
+    import mir.utility: min, max; 
+    enum NOf(S) = S.N;
+    enum NArray = [staticMap!(NOf, Slices)];
+    enum minN = size_t.max.reduce!min(NArray);
+    enum maxN = size_t.min.reduce!max(NArray);
+    static if (minN == maxN)
+    {
+        return Concatenation!(dim, Slices)(slices);
+    }
+    else
+    {
+        static assert(minN + 1 == maxN);
+        alias S = staticMap!(_Expose!(maxN, dim), Slices);
+        S s;
+        foreach (i, ref e; s)
+            e = _expose!(maxN, dim)(slices[i]);
+        return Concatenation!(dim, S)(s);
+    }
+}
+
+/// Concatenation of slices with different dimmensions. 
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: repeat, iota;
+
+    // 1 2 3
+    // 4 5 6
+    auto matrix = iota([2, 3], 1);
+    // 0 0 0
+    auto vector = size_t.init.repeat([3]);
+
+    assert(concatenation(vector, matrix).slice == [
+        [0, 0, 0],
+        [1, 2, 3],
+        [4, 5, 6],
+    ]);
+
+    vector.popFront;
+    assert(concatenation!1(vector, matrix).slice == [
+        [0, 1, 2, 3],
+        [0, 4, 5, 6],
+    ]);
 }
 
 /// Multidimensional
@@ -265,7 +338,6 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// Simplest multidimensional random access primitive
-    // auto ref
     auto opIndex()(size_t[N] indexes...)
     {
         foreach(i, ref slice; _slices[0 .. $-1])
