@@ -41,6 +41,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,conv)) $(TD Conversion utilities))
     $(TR $(TDNW $(MREF mir,functional)) $(TD Functions that manipulate other functions))
     $(TR $(TDNW $(MREF mir,primitives)) $(TD Templates used to check primitives))
+    $(TR $(TDNW $(MREF mir,range)) $(TD Ranges))
 )
 
 Copyright: Copyright © 2016-, Ilya Yaroshenko.
