@@ -33,44 +33,34 @@ module mir.ndslice.traits;
 import mir.ndslice.slice : Slice, SliceKind, Contiguous, Universal, Canonical;
 
 /// Test if type is a one-dimensional slice.
-enum bool isVector(T) = is(T : Slice!(kind, [1], Iterator), 
-                                    SliceKind kind, Iterator);
+enum bool isVector(T) = is(T : Slice!(kind, [1], Iterator), SliceKind kind, Iterator);
                                     
 /// Test if type is a two-dimensional slice.
-enum bool isMatrix(T) = is(T : Slice!(kind, [2], Iterator), 
-                                    SliceKind kind, Iterator);
+enum bool isMatrix(T) = is(T : Slice!(kind, [2], Iterator), SliceKind kind, Iterator);
                                     
 /// Test if type is a contiguous slice.
-enum bool isContiguousSlice(T) = is(T : Slice!(Contiguous, packs, Iterator), 
-                                            size_t[] packs, Iterator);
+enum bool isContiguousSlice(T) = is(T : Slice!(Contiguous, packs, Iterator), size_t[] packs, Iterator);
                                             
 /// Test if type is a canonical slice.
-enum bool isCanonicalSlice(T) = is(T : Slice!(Canonical, packs, Iterator), 
-                                            size_t[] packs, Iterator);
+enum bool isCanonicalSlice(T) = is(T : Slice!(Canonical, packs, Iterator), size_t[] packs, Iterator);
                                             
 /// Test if type is a universal slice.
-enum bool isUniversalSlice(T) = is(T : Slice!(Universal, packs, Iterator), 
-                                            size_t[] packs, Iterator);
+enum bool isUniversalSlice(T) = is(T : Slice!(Universal, packs, Iterator), size_t[] packs, Iterator);
                                             
 /// Test if type is a contiguous one-dimensional slice.
-enum bool isContiguousVector(T) = is(T : Slice!(Contiguous, [1], Iterator), 
-                                                    Iterator);
+enum bool isContiguousVector(T) = is(T : Slice!(Contiguous, [1], Iterator), Iterator);
                                                     
 /// Test if type is a universal one-dimensional slice.
-enum bool isUniversalVector(T) = is(T : Slice!(Universal, [1], Iterator), 
-                                                    Iterator);
+enum bool isUniversalVector(T) = is(T : Slice!(Universal, [1], Iterator), Iterator);
                                                     
 /// Test if type is a contiguous two-dimensional slice.
-enum bool isContiguousMatrix(T) = is(T : Slice!(Contiguous, [2], Iterator), 
-                                                    Iterator);
+enum bool isContiguousMatrix(T) = is(T : Slice!(Contiguous, [2], Iterator), Iterator);
                                                     
 /// Test if type is a canonical two-dimensional slice.
-enum bool isCanonicalMatrix(T) = is(T : Slice!(Canonical, [2], Iterator), 
-                                                    Iterator);
+enum bool isCanonicalMatrix(T) = is(T : Slice!(Canonical, [2], Iterator), Iterator);
                                                     
 /// Test if type is a universal two-dimensional slice.
-enum bool isUniversalMatrix(T) = is(T : Slice!(Universal, [2], Iterator), 
-                                                    Iterator);
+enum bool isUniversalMatrix(T) = is(T : Slice!(Universal, [2], Iterator), Iterator);
 
 ///
 @safe pure nothrow @nogc 
