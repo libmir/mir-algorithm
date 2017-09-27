@@ -34,9 +34,7 @@ See_also: $(SUBREF topology, blocks)
 template chunks(Dimensions...)
     if (Dimensions.length)
 {
-    static if (!allSatisfy!(isSize_t, Dimensions))
-        alias chunks = .chunks!(staticMap!(toSize_t, Dimensions));
-    else
+    static if (allSatisfy!(isSize_t, Dimensions))
     /++
     Params:
         slice = Slice to chunk.
@@ -60,6 +58,8 @@ template chunks(Dimensions...)
             ret._norm!i;
         return ret;
     }
+    else
+        alias chunks = .chunks!(staticMap!(toSize_t, Dimensions));
 }
 
 /// ditto
@@ -142,7 +142,7 @@ unittest
     //  | 80  81  82  83 | | 84  85  86  87 | | 88  89 |
     //  |----------------| |----------------| |--------|
     //  | 90  91  92  93 | | 94  95  96  97 | | 98  99 |
-    //  | 00 101 102 103 | |104 105 106 107 | |108 109 |
+    //  |100 101 102 103 | |104 105 106 107 | |108 109 |
     //   ----------------   ----------------   -------- 
     // Chunk columns first, then blocks rows.
     auto ch = sl.chunks!(1, 0)(4, 3);
