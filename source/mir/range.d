@@ -62,10 +62,18 @@ struct Counter(T)
         // note, we disable this branch for appending one type of char to
         // another because we can't trust the length portion.
         static if (!(isSomeChar!T && isSomeChar!(ElementType!Range) &&
-                     !is(immutable Range == immutable T[])) &&
-                    is(typeof(items.length) == size_t))
+                     !is(immutable Range == immutable T[])))
         {
-            _count += items.length;
+            import mir.primitives: hasLength;
+            static if (hasLength!Range)
+            {
+                _count += items.length;
+            }
+            else
+            {
+                for (;!items.empty; items.popFront)
+                    _count++;
+            }
         }
         else
         {
@@ -79,7 +87,9 @@ struct Counter(T)
 unittest
 {
     Counter!char counter;
-    counter.put("Мир");
+    counter.put("Ми");
+    assert(counter.count == 4);
+    counter.put('р'); // Cyrillic 
     assert(counter.count == 6);
 }
 
@@ -87,6 +97,16 @@ unittest
 unittest
 {
     Counter!wchar counter;
-    counter.put("Мир");
+    counter.put("Ми");
+    assert(counter.count == 2);
+    counter.put('р'); // Cyrillic
     assert(counter.count == 3);
+}
+
+///
+unittest
+{
+    Counter!int counter;
+    import std.algorithm: until;
+    counter.put([1, 2, 3, 4, 5].until(3));
 }
