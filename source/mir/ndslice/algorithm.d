@@ -2077,14 +2077,6 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     return ret;
 }
 
-version(unittest)
-{
-    T identity(T)(T x)
-    {
-        return x;
-    }
-}
-
 /++
 Returns: max length across all dimensions.
 +/
@@ -2205,6 +2197,11 @@ unittest
             [0, 2, 3],
             [0, 0, 6],
             [0, 0, 0]]);
+    }
+
+    T identity(T)(T x)
+    {
+        return x;
     }
 
     static foreach(type; AliasSeq!(identity, canonical, universal))
@@ -2559,6 +2556,11 @@ unittest
             [0, 0, 0],
             [4, 0, 0],
             [7, 8, 0]]);
+    }
+
+    T identity(T)(T x)
+    {
+        return x;
     }
 
     static foreach(type; AliasSeq!(identity, canonical, universal))
