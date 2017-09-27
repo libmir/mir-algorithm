@@ -2100,33 +2100,23 @@ size_t maxLength(S)(auto ref S s)
 }
 
 /++
-The call `eachLower!(fun, Upper)(matrix)` applies `fun` to the lower triangle of
+The call `eachLower!(fun)(matrix)` applies `fun` to the lower triangle of
 a two-dimensional slice.
 
 The value `k` determines which diagonals will have the function applied:
 For k = 0, the function is also applied to the main diagonal
 For k = 1 (default), only the non-main diagonals below the main diagonal
 will have the function applied.
-For k > 1, fewer diagonals (or additional if BeyondMainDiagonal = true) will
-have the function applied.
-
-The `BeyondMainDiagonal` parameter determines whether to also apply the function
-beyond the main diagonal.
-
-For instance, if k=1, and BeyondMainDiagonal=false, then calling
-`eachLower` will apply to all sub-diagonals below the main diagonal. However,
-if BeyondMainDiagonal=true, then then calling `eachLower` will apply the
-function to the sub-diagonals, the main diagonal, and the first super-diagonal
-above the main diagonal.
+For k > 1, fewer diagonals below the main diagonal will have the function
+applied.
+For k < 0, more diagonals above the main diagonal will have the function
+applied.
 
 Params:
     fun = A function
     k = adjustment to diagonals (default = 1)
-    BeyondMainDiagonal = true if applying function beyond main diagonal, false
-    otherwise (default)
 +/
-template eachLower(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
-
+template eachLower(alias fun, ptrdiff_t k = 1)
 {
     import mir.functional : naryFun;
     import mir.ndslice.algorithm : eachImpl;
@@ -2141,11 +2131,12 @@ template eachLower(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
             immutable(size_t) n = matrix.length!1;
 
             size_t i;
+
             do
             {
                 auto e = matrix.front!0;
 
-                static if (!BeyondMainDiagonal)
+                static if (k > 0)
                 {
                     if (i >= k)
                     {
@@ -2157,8 +2148,8 @@ template eachLower(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
                 }
                 else
                 {
-                    if (i < (n - k))
-                        e[0..(i + k + 1)].eachImpl!fun;
+                    if (i < (n + k))
+                        e[0..(i - k + 1)].eachImpl!fun;
                     else
                         e.eachImpl!fun;
                 }
@@ -2224,7 +2215,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 1, true);
+    m.eachLower!((ref a) {a = 0; }, -1);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2256,7 +2247,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 2, true);
+    m.eachLower!((ref a) {a = 0; }, -2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2304,7 +2295,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 1, true);
+    m.eachLower!((ref a) {a = 0; }, -1);
     assert(m == [
         [0, 0, 3, 4],
         [0, 0, 0, 8],
@@ -2336,7 +2327,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 2, true);
+    m.eachLower!((ref a) {a = 0; }, -2);
     assert(m == [
         [0, 0, 0, 4],
         [0, 0, 0, 0],
@@ -2389,7 +2380,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; }, 1, true);
+    m.eachLower!((ref a) { a = 0; }, -1);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2425,7 +2416,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; }, 2, true);
+    m.eachLower!((ref a) { a = 0; }, -2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2441,25 +2432,16 @@ The value `k` determines which diagonals will have the function applied:
 For k = 0, the function is also applied to the main diagonal
 For k = 1 (default), only the non-main diagonals above the main diagonal
 will have the function applied.
-For k > 1, fewer diagonals (or additional if BeyondMainDiagonal = true) will
-have the function applied.
-
-The `BeyondMainDiagonal` parameter determines whether to also apply the function
-beyond the main diagonal.
-
-For instance, if k=1, and BeyondMainDiagonal=false, then calling
-`eachUpper` will apply the function to all super-diagonals above the main
-diagonal. However, if BeyondMainDiagonal=true, then then calling `eachUpper`
-will apply the function to the super-diagonals, the main diagonal, and the first
-sub-diagonal below the main diagonal.
+For k > 1, fewer diagonals above the main diagonal will have the function
+applied.
+For k < 0, more diagonals below the main diagonal will have the function
+applied.
 
 Params:
     fun = A function
     k = adjustment to diagonals (default = 1)
-    BeyondMainDiagonal = true if applying function beyond main diagonal, false
-    otherwise (default)
 +/
-template eachUpper(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
+template eachUpper(alias fun, ptrdiff_t k = 1)
 {
     import mir.functional: naryFun;
     import mir.ndslice.algorithm : eachImpl;
@@ -2468,7 +2450,7 @@ template eachUpper(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
     static if (__traits(isSame, naryFun!fun, fun))
     {
         private void eachUpper(SliceKind kind, Iterator)
-                           (Slice!(kind, [2], Iterator) matrix)
+                                            (Slice!(kind, [2], Iterator) matrix)
         {
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
@@ -2479,7 +2461,7 @@ template eachUpper(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
             {
                 auto e = matrix.front!0;
 
-                static if (!BeyondMainDiagonal)
+                static if (k > 0)
                 {
                     if (i < (n - k))
                     {
@@ -2488,11 +2470,11 @@ template eachUpper(alias fun, size_t k = 1, bool BeyondMainDiagonal = false)
                 }
                 else
                 {
-                    if (i > k)
+                    if (i > (-k))
                     {
-                        if (i < (n + k))
+                        if (i < (n - k))
                         {
-                            e[(i - k)..$].eachImpl!fun;
+                            e[(i + k)..$].eachImpl!fun;
                         }
                     }
                     else
@@ -2563,7 +2545,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 1, true);
+    m.eachUpper!((ref a) {a = 0; }, -1);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2595,7 +2577,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 2, true);
+    m.eachUpper!((ref a) {a = 0; }, -2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2643,7 +2625,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 1, true);
+    m.eachUpper!((ref a) {a = 0; }, -1);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2675,7 +2657,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 2, true);
+    m.eachUpper!((ref a) {a = 0; }, -2);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2728,7 +2710,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 1, true);
+    m.eachUpper!((ref a) {a = 0; }, -1);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2764,7 +2746,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 2, true);
+    m.eachUpper!((ref a) {a = 0; }, -2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
