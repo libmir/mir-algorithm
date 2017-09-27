@@ -2122,56 +2122,32 @@ template eachLower(alias fun, ptrdiff_t k = 1)
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
 
-            void eachLowerImpl(T)(T matrix)
+            size_t i;
+
+            do
             {
-                void eachLowerImpl_i(U)(U e, size_t i)
+                auto e = matrix.front!0;
+
+                static if (k > 0)
+                {
+                    if (i >= k)
+                    {
+                        if (i < (n + k))
+                            e[0..(i - k + 1)].eachImpl!fun;
+                        else
+                            e.eachImpl!fun;
+                    }
+                }
+                else
                 {
                     if (i < (n + k))
                         e[0..(i - k + 1)].eachImpl!fun;
                     else
                         e.eachImpl!fun;
                 }
-
-                size_t i;
-
-                do
-                {
-                    auto e = matrix.front!0;
-
-                    static if (k > 0)
-                    {
-                        if (i >= k)
-                        {
-                            eachLowerImpl_i(e, i);
-                        }
-                    }
-                    else
-                    {
-                        eachLowerImpl_i(e, i);
-                    }
-                    matrix.popFront!0;
-                    i++;
-                } while (i < m);
-            }
-
-            static if (k == 0 || k == 1)
-            {
-                if (m == n)
-                {
-                    static if (k == 0)
-                        matrix.eachUploPair!((u, ref l) { fun(l); }, true);
-                    else static if (k == 1)
-                        matrix.eachUploPair!((u, ref l) { fun(l); }, false);
-                }
-                else
-                {
-                    eachLowerImpl(matrix);
-                }
-            }
-            else
-            {
-                eachLowerImpl(matrix);
-            }
+                matrix.popFront!0;
+                i++;
+            } while (i < m);
         }
     }
     else
@@ -2476,61 +2452,37 @@ template eachUpper(alias fun, ptrdiff_t k = 1)
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
 
-            void eachUpperImpl(T)(T matrix)
+            size_t i;
+
+            do
             {
-                void eachUpperImpl_i(T)(T e, size_t i)
+                auto e = matrix.front!0;
+
+                static if (k > 0)
                 {
                     if (i < (n - k))
                     {
                         e[(i + k)..$].eachImpl!fun;
                     }
                 }
-
-                size_t i;
-
-                do
+                else
                 {
-                    auto e = matrix.front!0;
-
-                    static if (k > 0)
+                    if (i > (-k))
                     {
-                        eachUpperImpl_i(e, i);
+                        if (i < (n - k))
+                        {
+                            e[(i + k)..$].eachImpl!fun;
+                        }
                     }
                     else
                     {
-                        if (i > (-k))
-                        {
-                            eachUpperImpl_i(e, i);
-                        }
-                        else
-                        {
-                            e.eachImpl!fun;
-                        }
+                        e.eachImpl!fun;
                     }
-
-                    matrix.popFront!0;
-                    i++;
-                } while (i < m);
-            }
-
-            static if (k == 0 || k == 1)
-            {
-                if (m == n)
-                {
-                    static if (k == 0)
-                        matrix.eachUploPair!((ref u, l) { fun(u); }, true);
-                    else static if (k == 1)
-                        matrix.eachUploPair!((ref u, l) { fun(u); }, false);
                 }
-                else
-                {
-                    eachUpperImpl(matrix);
-                }
-            }
-            else
-            {
-                eachUpperImpl(matrix);
-            }
+
+                matrix.popFront!0;
+                i++;
+            } while (i < m);
         }
     }
     else
