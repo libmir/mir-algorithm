@@ -74,6 +74,37 @@ template frontOf(size_t N)
     }
 }
 
+private template areAllContiguousTensors(Slices...)
+{
+    import mir.ndslice.traits: isContiguousSlice;
+     static if (allSatisfy!(isContiguousSlice, Slices))
+        enum areAllContiguousTensors = packsOf!(Slices[0])[0] > 1;
+     else
+        enum areAllContiguousTensors = false;
+}
+
+private template Flattened(Slice)
+{
+    import mir.ndslice.topology: flattened;
+    alias Flattened = typeof(Slice.init.flattened);
+}
+
+private alias FlattenedList(Slices...) = staticMap!(Flattened, Slices);
+
+private void createVectors(Args...)(ref Args args)
+{
+    static assert(Args.length % 2 == 0);
+    alias slices = args[0 .. $ / 2];
+    alias vectors = args[$ / 2 .. $];
+    foreach (i, ref vector; vectors)
+    {
+        import mir.ndslice.topology;
+        vector = slices[i].flattened;
+        static if (i)
+            vector._lengths[0] = vectors[0]._lengths[0]; // hint for compiler
+    }
+}
+
 S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {
     do
@@ -124,13 +155,22 @@ template reduce(alias fun)
         if (Slices.length)
     {
         slices.checkShapesMatch;
-        if (slices[0].anyEmpty)
-            return cast(Unqual!S) seed;
-        static if (is(S : Unqual!S))
-            alias UT = Unqual!S;
+        static if (areAllContiguousTensors!Slices)
+        {
+            FlattenedList!Slices vectors;
+            createVectors(slices, vectors);
+            return .reduce!fun(seed, vectors);
+        }
         else
-            alias UT = S;
-        return reduceImpl!(fun, UT, Slices)(seed, slices);
+        {
+            if (slices[0].anyEmpty)
+                return cast(Unqual!S) seed;
+            static if (is(S : Unqual!S))
+                alias UT = Unqual!S;
+            else
+                alias UT = S;
+            return reduceImpl!(fun, UT, Slices)(seed, slices);
+        }
     }
     else
         alias reduce = .reduce!(naryFun!fun);
@@ -320,9 +360,18 @@ template each(alias fun)
         if (Slices.length)
     {
         slices.checkShapesMatch;
-        if (slices[0].anyEmpty)
-            return;
-        eachImpl!fun(slices);
+        static if (areAllContiguousTensors!Slices)
+        {
+            FlattenedList!Slices vectors;
+            createVectors(slices, vectors);
+            .each!fun(vectors);
+        }
+        else
+        {
+            if (slices[0].anyEmpty)
+                return;
+            eachImpl!fun(slices);
+        }
     }
     else
         alias each = .each!(naryFun!fun);
@@ -588,16 +637,15 @@ template isSymmetric(alias fun = "a == b")
         {
             if (matrix.length!0 != matrix.length!1)
                 return false;
-            if (!matrix.empty)
-            do
+            if (matrix.length) do
             {
-                import mir.ndslice.algorithm: eachImpl;
                 if (!allImpl!fun(matrix.front!0, matrix.front!1))
                 {
                     return false;
                 }
                 matrix.popFront!1;
                 matrix.popFront!0;
+                matrix._lengths[1] = matrix._lengths[0];
             }
             while (matrix.length);
             return true;
@@ -1301,7 +1349,16 @@ template any(alias pred = "a")
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
-        return !slices[0].anyEmpty && anyImpl!pred(slices);
+        static if (areAllContiguousTensors!Slices)
+        {
+            FlattenedList!Slices vectors;
+            createVectors(slices, vectors);
+            return .any!pred(vectors);
+        }
+        else
+        {
+            return !slices[0].anyEmpty && anyImpl!pred(slices);
+        }
     }
     else
         alias any = .any!(naryFun!pred);
@@ -1433,7 +1490,16 @@ template all(alias pred = "a")
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
-        return slices[0].anyEmpty || allImpl!pred(slices);
+        static if (areAllContiguousTensors!Slices)
+        {
+            FlattenedList!Slices vectors;
+            createVectors(slices, vectors);
+            return .all!pred(vectors);
+        }
+        else
+        {
+            return slices[0].anyEmpty || allImpl!pred(slices);
+        }
     }
     else
         alias all = .all!(naryFun!pred);
@@ -1548,28 +1614,23 @@ template count(alias fun)
     @fastmath size_t count(Slices...)(Slices slices)
         if (Slices.length)
     {
+        slices.checkShapesMatch;
         static if (__traits(isSame, fun, naryFun!"true"))
         {
             return slices[0].elementsCount;
         }
         else
+        static if (areAllContiguousTensors!Slices)
         {
-            static if (isSlice!(Slices[0]))
-                enum flat = Slices.length == 1 && kindOf!(Slices[0]) == Contiguous && packsOf!(Slices[0]) != [1];
-            else
-                enum flat = false;
-            static if (flat)
-            {
-                import mir.ndslice.topology: flattened;
-                return .count!(naryFun!fun)(slices[0].flattened);
-            }
-            else
-            {
-                slices.checkShapesMatch;
-                if (slices[0].anyEmpty)
-                    return 0;
-                return countImpl!(fun, Slices)(slices);
-            }
+            FlattenedList!Slices vectors;
+            createVectors(slices, vectors);
+            return .count!fun(vectors);
+        }
+        else
+        {
+            if (slices[0].anyEmpty)
+                return 0;
+            return countImpl!(fun, Slices)(slices);
         }
     }
     else
