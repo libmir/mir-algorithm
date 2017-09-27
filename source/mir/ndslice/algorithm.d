@@ -2108,7 +2108,7 @@ Params:
     fun = A function
     k = adjustment to diagonals (default = 1)
 +/
-template eachLower(alias fun, ptrdiff_t k = 1)
+template eachLower(alias fun)
 {
     import mir.functional : naryFun;
     import mir.ndslice.algorithm : eachImpl;
@@ -2117,7 +2117,7 @@ template eachLower(alias fun, ptrdiff_t k = 1)
     static if (__traits(isSame, naryFun!fun, fun))
     {
         void eachLower(SliceKind kind, Iterator)
-                           (Slice!(kind, [2], Iterator) matrix)
+                           (Slice!(kind, [2], Iterator) matrix, ptrdiff_t k = 1)
         {
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
@@ -2128,7 +2128,7 @@ template eachLower(alias fun, ptrdiff_t k = 1)
             {
                 auto e = matrix.front!0;
 
-                static if (k > 0)
+                if (k > 0)
                 {
                     if (i >= k)
                     {
@@ -2168,7 +2168,7 @@ unittest
         // 4 5 6
         // 7 8 9
         auto m = func(iota([3, 3], 1).slice);
-        m.eachLower!((ref a) {a = 0; }, 0);
+        m.eachLower!((ref a) {a = 0; })(0);
         assert(m == [
             [0, 2, 3],
             [0, 0, 6],
@@ -2212,7 +2212,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, -1);
+    m.eachLower!((ref a) {a = 0; })(-1);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2228,7 +2228,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 2);
+    m.eachLower!((ref a) {a = 0; })(2);
     assert(m == [
         [1, 2, 3],
         [4, 5, 6],
@@ -2244,7 +2244,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, -2);
+    m.eachLower!((ref a) {a = 0; })(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2260,7 +2260,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 0);
+    m.eachLower!((ref a) {a = 0; })(0);
     assert(m == [
         [0, 2, 3, 4],
         [0, 0, 7, 8],
@@ -2276,7 +2276,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 1);
+    m.eachLower!((ref a) {a = 0; });
     assert(m == [
         [1, 2, 3, 4],
         [0, 6, 7, 8],
@@ -2292,7 +2292,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, -1);
+    m.eachLower!((ref a) {a = 0; })(-1);
     assert(m == [
         [0, 0, 3, 4],
         [0, 0, 0, 8],
@@ -2308,7 +2308,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 2);
+    m.eachLower!((ref a) {a = 0; })(2);
     assert(m == [
         [1, 2, 3, 4],
         [5, 6, 7, 8],
@@ -2324,7 +2324,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, -2);
+    m.eachLower!((ref a) {a = 0; })(-2);
     assert(m == [
         [0, 0, 0, 4],
         [0, 0, 0, 0],
@@ -2341,7 +2341,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 0);
+    m.eachLower!((ref a) {a = 0; })(0);
     assert(m == [
         [0, 2, 3],
         [0, 0, 6],
@@ -2359,7 +2359,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; }, 1);
+    m.eachLower!((ref a) {a = 0; });
     assert(m == [
         [1, 2, 3],
         [0, 5, 6],
@@ -2377,7 +2377,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; }, -1);
+    m.eachLower!((ref a) { a = 0; })(-1);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2395,7 +2395,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; }, 2);
+    m.eachLower!((ref a) { a = 0; })(2);
     assert(m == [
         [1, 2, 3],
         [4, 5, 6],
@@ -2413,7 +2413,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; }, -2);
+    m.eachLower!((ref a) { a = 0; })(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2438,7 +2438,7 @@ Params:
     fun = A function
     k = adjustment to diagonals (default = 1)
 +/
-template eachUpper(alias fun, ptrdiff_t k = 1)
+template eachUpper(alias fun)
 {
     import mir.functional: naryFun;
     import mir.ndslice.algorithm : eachImpl;
@@ -2447,7 +2447,7 @@ template eachUpper(alias fun, ptrdiff_t k = 1)
     static if (__traits(isSame, naryFun!fun, fun))
     {
         void eachUpper(SliceKind kind, Iterator)
-                                            (Slice!(kind, [2], Iterator) matrix)
+                           (Slice!(kind, [2], Iterator) matrix, ptrdiff_t k = 1)
         {
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
@@ -2458,7 +2458,7 @@ template eachUpper(alias fun, ptrdiff_t k = 1)
             {
                 auto e = matrix.front!0;
 
-                static if (k > 0)
+                if (k > 0)
                 {
                     if (i < (n - k))
                     {
@@ -2503,7 +2503,7 @@ unittest
         // 4 5 6
         // 7 8 9
         auto m = func(iota([3, 3], 1).slice);
-        m.eachUpper!((ref a) {a = 0; }, 0);
+        m.eachUpper!((ref a) {a = 0; })(0);
         assert(m == [
             [0, 0, 0],
             [4, 0, 0],
@@ -2547,7 +2547,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, -1);
+    m.eachUpper!((ref a) {a = 0; })(-1);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2563,7 +2563,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 2);
+    m.eachUpper!((ref a) {a = 0; })(2);
     assert(m == [
         [1, 2, 0],
         [4, 5, 6],
@@ -2579,7 +2579,7 @@ unittest
     // 4 5 6
     // 7 8 9
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, -2);
+    m.eachUpper!((ref a) {a = 0; })(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2595,7 +2595,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 0);
+    m.eachUpper!((ref a) {a = 0; })(0);
     assert(m == [
         [0, 0, 0, 0],
         [5, 0, 0, 0],
@@ -2611,7 +2611,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 1);
+    m.eachUpper!((ref a) {a = 0; });
     assert(m == [
         [1, 0, 0, 0],
         [5, 6, 0, 0],
@@ -2627,7 +2627,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, -1);
+    m.eachUpper!((ref a) {a = 0; })(-1);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2643,7 +2643,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 2);
+    m.eachUpper!((ref a) {a = 0; })(2);
     assert(m == [
         [1, 2, 0, 0],
         [5, 6, 7, 0],
@@ -2659,7 +2659,7 @@ unittest
     // 5  6  7  8
     // 9 10 11 12
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, -2);
+    m.eachUpper!((ref a) {a = 0; })(-2);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2676,7 +2676,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 0);
+    m.eachUpper!((ref a) {a = 0; })(0);
     assert(m == [
         [0, 0, 0],
         [4, 0, 0],
@@ -2694,7 +2694,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 1);
+    m.eachUpper!((ref a) {a = 0; });
     assert(m == [
         [1, 0, 0],
         [4, 5, 0],
@@ -2712,7 +2712,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, -1);
+    m.eachUpper!((ref a) {a = 0; })(-1);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2730,7 +2730,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, 2);
+    m.eachUpper!((ref a) {a = 0; })(2);
     assert(m == [
         [1, 2, 0],
         [4, 5, 6],
@@ -2748,7 +2748,7 @@ unittest
     // 7  8  9
     //10 11 12
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; }, -2);
+    m.eachUpper!((ref a) {a = 0; })(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
