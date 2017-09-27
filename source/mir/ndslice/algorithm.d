@@ -2122,33 +2122,28 @@ template eachLower(alias fun)
         {
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
+            
+            if ((n + k) < m)
+                matrix[(n + k)..$, 0..$].eachImpl!fun;
 
             size_t i;
+
+            if (k > 0)
+            {
+                do
+                {
+                    matrix.popFront!0;
+                    i++;
+                } while (i < k);
+            }
 
             do
             {
                 auto e = matrix.front!0;
-
-                if (k > 0)
-                {
-                    if (i >= k)
-                    {
-                        if (i < (n + k))
-                            e[0..(i - k + 1)].eachImpl!fun;
-                        else
-                            e.eachImpl!fun;
-                    }
-                }
-                else
-                {
-                    if (i < (n + k))
-                        e[0..(i - k + 1)].eachImpl!fun;
-                    else
-                        e.eachImpl!fun;
-                }
+                e[0..(i - k + 1)].eachImpl!fun;
                 matrix.popFront!0;
                 i++;
-            } while (i < m);
+            } while ((i < (n + k)) && (i < m));
         }
     }
     else
@@ -2455,35 +2450,23 @@ template eachUpper(alias fun)
 
             size_t i;
 
+            if (k < 0)
+            {
+                matrix[0..(-k), 0..$].eachImpl!fun;
+                do
+                {
+                    matrix.popFront!0;
+                    i++;
+                } while (i < (-k));
+            }
+            
             do
             {
                 auto e = matrix.front!0;
-
-                if (k > 0)
-                {
-                    if (i < (n - k))
-                    {
-                        e[(i + k)..$].eachImpl!fun;
-                    }
-                }
-                else
-                {
-                    if (i > (-k))
-                    {
-                        if (i < (n - k))
-                        {
-                            e[(i + k)..$].eachImpl!fun;
-                        }
-                    }
-                    else
-                    {
-                        e.eachImpl!fun;
-                    }
-                }
-
+                e[(i + k)..$].eachImpl!fun;
                 matrix.popFront!0;
                 i++;
-            } while (i < m);
+            } while ((i < (n - k)) && (i < m));
         }
     }
     else
