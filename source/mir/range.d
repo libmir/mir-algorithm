@@ -12,7 +12,7 @@ module mir.range;
 /++
 Data size counter.
 
-Does not store anything
+Does not store anything.
 +/
 struct Counter(T)
 {
