@@ -2130,32 +2130,56 @@ template eachLower(alias fun, ptrdiff_t k = 1)
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
 
-            size_t i;
-
-            do
+            void eachLowerImpl(T)(T matrix)
             {
-                auto e = matrix.front!0;
-
-                static if (k > 0)
-                {
-                    if (i >= k)
-                    {
-                        if (i < (n + k))
-                            e[0..(i - k + 1)].eachImpl!fun;
-                        else
-                            e.eachImpl!fun;
-                    }
-                }
-                else
+                void eachLowerImpl_i(U)(U e, size_t i)
                 {
                     if (i < (n + k))
                         e[0..(i - k + 1)].eachImpl!fun;
                     else
                         e.eachImpl!fun;
                 }
-                matrix.popFront!0;
-                i++;
-            } while (i < m);
+
+                size_t i;
+
+                do
+                {
+                    auto e = matrix.front!0;
+
+                    static if (k > 0)
+                    {
+                        if (i >= k)
+                        {
+                            eachLowerImpl_i(e, i);
+                        }
+                    }
+                    else
+                    {
+                        eachLowerImpl_i(e, i);
+                    }
+                    matrix.popFront!0;
+                    i++;
+                } while (i < m);
+            }
+
+            static if (k == 0 || k == 1)
+            {
+                if (m == n)
+                {
+                    static if (k == 0)
+                        matrix.eachUploPair!((u, ref l) { fun(l); }, true);
+                    else static if (k == 1)
+                        matrix.eachUploPair!((u, ref l) { fun(l); }, false);
+                }
+                else
+                {
+                    eachLowerImpl(matrix);
+                }
+            }
+            else
+            {
+                eachLowerImpl(matrix);
+            }
         }
     }
     else
@@ -2169,7 +2193,7 @@ unittest
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
     import std.meta: AliasSeq;
-    
+
     void test(alias func)()
     {
         // 1 2 3
@@ -2182,7 +2206,7 @@ unittest
             [0, 0, 6],
             [0, 0, 0]]);
     }
-    
+
     static foreach(type; AliasSeq!(identity, canonical, universal))
     {
         test!type;
@@ -2449,43 +2473,67 @@ template eachUpper(alias fun, ptrdiff_t k = 1)
 
     static if (__traits(isSame, naryFun!fun, fun))
     {
-        private void eachUpper(SliceKind kind, Iterator)
+        void eachUpper(SliceKind kind, Iterator)
                                             (Slice!(kind, [2], Iterator) matrix)
         {
             immutable(size_t) m = matrix.length!0;
             immutable(size_t) n = matrix.length!1;
 
-            size_t i;
-
-            do
+            void eachUpperImpl(T)(T matrix)
             {
-                auto e = matrix.front!0;
-
-                static if (k > 0)
+                void eachUpperImpl_i(T)(T e, size_t i)
                 {
                     if (i < (n - k))
                     {
                         e[(i + k)..$].eachImpl!fun;
                     }
                 }
-                else
+
+                size_t i;
+
+                do
                 {
-                    if (i > (-k))
+                    auto e = matrix.front!0;
+
+                    static if (k > 0)
                     {
-                        if (i < (n - k))
-                        {
-                            e[(i + k)..$].eachImpl!fun;
-                        }
+                        eachUpperImpl_i(e, i);
                     }
                     else
                     {
-                        e.eachImpl!fun;
+                        if (i > (-k))
+                        {
+                            eachUpperImpl_i(e, i);
+                        }
+                        else
+                        {
+                            e.eachImpl!fun;
+                        }
                     }
-                }
 
-                matrix.popFront!0;
-                i++;
-            } while (i < m);
+                    matrix.popFront!0;
+                    i++;
+                } while (i < m);
+            }
+
+            static if (k == 0 || k == 1)
+            {
+                if (m == n)
+                {
+                    static if (k == 0)
+                        matrix.eachUploPair!((ref u, l) { fun(u); }, true);
+                    else static if (k == 1)
+                        matrix.eachUploPair!((ref u, l) { fun(u); }, false);
+                }
+                else
+                {
+                    eachUpperImpl(matrix);
+                }
+            }
+            else
+            {
+                eachUpperImpl(matrix);
+            }
         }
     }
     else
@@ -2499,7 +2547,7 @@ unittest
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
     import std.meta: AliasSeq;
-    
+
     void test(alias func)()
     {
         // 1 2 3
@@ -2512,7 +2560,7 @@ unittest
             [4, 0, 0],
             [7, 8, 0]]);
     }
-    
+
     static foreach(type; AliasSeq!(identity, canonical, universal))
     {
         test!type;
