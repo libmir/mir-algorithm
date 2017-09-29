@@ -20,6 +20,24 @@ else
     }
 }
 
+struct RightOp(string op, T)
+{
+    T value;
+    auto ref opIndex(F)(auto ref F right)
+    {
+        return mixin("value " ~ op ~ " right");
+    }
+}
+
+struct LeftOp(string op, T)
+{
+    T value;
+    auto ref opIndex(F)(auto ref F left)
+    {
+        return mixin("left " ~ op ~ " value");
+    }
+}
+
 private template _prod(size_t len)
     if (len)
 {

@@ -1744,6 +1744,24 @@ auto linspace(T, size_t N)(size_t[N] lengths, T[2][N] intervals...)
         return cartesian(fields);
 }
 
+// example from readme
+unittest
+{
+    import mir.ndslice;
+    // import std.stdio: writefln;
+
+    enum fmt = "%(%(%.2f %)\n%)\n";
+
+    auto a = magic(5).as!float;
+    // writefln(fmt, a);
+
+    auto b = linspace!float([5, 5], [1f, 2f], [0f, 1f]).map!"a * a + b";
+    // writefln(fmt, b);
+
+    auto c = slice!float(5, 5);
+    c[] = transposed(a + b / 2);
+}
+
 /// 1D
 @safe pure nothrow
 unittest
