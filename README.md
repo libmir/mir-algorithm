@@ -22,7 +22,7 @@ row[3] = 6;
 assert(matrix[2, 3] == 6); // D & C index order
 ```
 
-## Example for C++/D proffesionals
+## Example for C++/D developers
 ```d
 import mir.ndslice;
 import std.stdio: writefln;
@@ -55,6 +55,7 @@ writefln(fmt, c);
  - [API Documentation](http://docs.algorithm.dlang.io)
  - [Scheme of basic API (advanced)](https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg)
  - [Mir Blog](http://blog.mir.dlang.io/)
+ - [Lubeck](https://github.com/kaleidicassociates/lubeck) - Linear Algebra Library for Mir Algorithm
 
 ### Our sponsors
 
