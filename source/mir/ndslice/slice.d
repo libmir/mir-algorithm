@@ -1962,6 +1962,104 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             ]);
     }
 
+    /++
+    Element-wise binary operator overloading.
+    Returns:
+        lazy slice of the same kind and the same structure
+    Note:
+        Does not allocate neither new slice nor a closure.
+    +/
+    auto opUnary(string op)()
+        if (op == "*" || op == "~")
+    {
+        import mir.ndslice.topology: map;
+        return this.map!(op ~ "a");
+    }
+
+    static if (doUnittest)
+    ///
+    unittest
+    {
+        import mir.ndslice.topology;
+
+        auto payload = [1, 2, 3, 4];
+        auto s = iota([payload.length], payload.ptr); // slice of references;
+        assert(s[1] == payload.ptr + 1);
+
+        auto c = *s; // the same as s.map!"*a"
+        assert(c[1] == *s[1]);
+
+        *s[1] = 3;
+        assert(c[1] == *s[1]);
+    }
+
+    /++
+    Element-wise operator overloading for scalars.
+    Params:
+        value = a scalar
+    Returns:
+        lazy slice of the same kind and the same structure
+    Note:
+        Does not allocate neither new slice nor a closure.
+    +/
+    auto opBinary(string op, T)(T value) @nogc
+        if(!isSlice!T)
+    {
+        import mir.ndslice.topology: indexed;
+        return indexed(LeftOp!(op, T)(value), this);
+    }
+
+    /// ditto
+    auto opBinaryRight(string op, T)(T value) @nogc
+        if(!isSlice!T)
+    {
+        import mir.ndslice.topology: indexed;
+        return indexed(RightOp!(op, T)(value), this);
+    }
+
+    static if (doUnittest)
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        import mir.ndslice.topology;
+
+        // 0 1 2 3
+        auto s = iota([4]);
+        // 0 1 2 0
+        assert(s % 3 == iota([4]).map!"a % 3");
+        // 0 2 4 6
+        assert(2 * s == iota([4], 0, 2));
+    }
+
+    /++
+    Element-wise operator overloading for slices.
+    Params:
+        rhs = a slice of the same shape.
+    Returns:
+        lazy slice the same shape that has $(LREF Contiguous) kind
+    Note:
+        Binary operator overloading is allowed if both slices are contigous or one-dimensional.
+        $(BR)
+        Does not allocate neither new slice nor a closure.
+    +/
+    auto opBinary(string op, SliceKind rkind, size_t[] rpacks, RIterator)(Slice!(rkind, rpacks, RIterator) rhs) @nogc
+        if(packs[0] == rpacks[0] && (kind == Contiguous && rkind == Contiguous || packs[0] == 1) && op != "~")
+    {
+        import mir.ndslice.topology: zip, map;
+        return zip(this, rhs).map!("a " ~ op ~ " b");
+    }
+
+    static if (doUnittest)
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        import mir.ndslice.topology: iota, map, zip;
+
+        auto s = iota([2, 3]);
+        auto c = iota([2, 3], 5, 8);
+        assert(s * s + c == s.map!"a * a".zip(c).map!"a + b");
+    }
+
     static if (isMutable!(PureThis.DeepElemType))
     {
         private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RIterator)(Slice!(rkind, rpacks, RIterator) value)
