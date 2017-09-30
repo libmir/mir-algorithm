@@ -750,7 +750,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         array[2] = 42;
         assert(slice == [[1, 2], [5, 6]]);
-        pragma(msg, "ii");
+
         array[1] = 99;
         assert(slice == [[1, 99], [5, 6]]);
     }
