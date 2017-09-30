@@ -616,7 +616,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     ///
     alias PureThis = Slice!(kind, [N], Iterator);
 
-    enum doUnittest = is(Iterator == int*) && N == 1 && kind == Universal;
+    enum doUnittest = is(Iterator == int*) && N == 1 && kind == Contiguous;
 
     template ElemType(size_t dimension)
         if (dimension < packs[0])
@@ -734,6 +734,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     public:
 
+    static if (doUnittest)
     /// Creates a 2-dimentional slice with custom strides.
     nothrow pure
     unittest
@@ -749,7 +750,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
         array[2] = 42;
         assert(slice == [[1, 2], [5, 6]]);
-
+        pragma(msg, "ii");
         array[1] = 99;
         assert(slice == [[1, 99], [5, 6]]);
     }
@@ -922,6 +923,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
+    static if (doUnittest)
     ///
     @safe unittest
     {
@@ -1426,6 +1428,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 return _iterator[0] = value;
         }
 
+        static if (doUnittest)
         ///
         @safe pure nothrow @nogc unittest
         {
@@ -1456,6 +1459,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             return _iterator[lastIndex] = value;
         }
 
+        static if (doUnittest)
         ///
         @safe pure nothrow @nogc unittest
         {
@@ -1895,6 +1899,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         return this.indexed(index);
     }
 
+    static if (doUnittest)
     ///
     @safe pure nothrow unittest
     {
@@ -1929,6 +1934,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             ]);
     }
 
+    static if (doUnittest)
     ///
     @safe pure nothrow unittest
     {
