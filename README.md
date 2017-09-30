@@ -41,8 +41,8 @@ writefln(fmt, b);
 
 // allocate a 5 x 5 contiguous matrix
 auto c = slice!float(5, 5);
-// no memory allocations here
-c[] = transposed(a + b / 2);
+
+c[] = transposed(a + b / 2); // no memory allocations here
     // 1. b / 2 - lazy element-wise operation with scalars
     // 2. a + (...) - lazy element-wise operation with other slices
         // Both slices must be `contiguous` or one-dimensional.
