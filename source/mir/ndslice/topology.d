@@ -36,7 +36,7 @@ $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
-$(T2 bytegroup, Groups exisinting slice into fixed length chunks and uses them as data store for destination type.)
+$(T2 bytegroup, Groups existing slice into fixed length chunks and uses them as data store for destination type.)
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
