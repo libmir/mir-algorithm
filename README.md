@@ -9,7 +9,6 @@
 [![codecov.io](https://codecov.io/github/libmir/mir-algorithm/coverage.svg?branch=master)](https://codecov.io/github/libmir/mir-algorithm?branch=master)
 [![Circle CI](https://circleci.com/gh/libmir/mir-algorithm.svg?style=svg)](https://circleci.com/gh/libmir/mir-algorithm)
 
-## Example for researchers
 ```d
 import mir.ndslice;
 
@@ -22,7 +21,6 @@ row[3] = 6;
 assert(matrix[2, 3] == 6); // D & C index order
 ```
 
-## Example for C++/D developers
 ```d
 import mir.ndslice;
 import std.stdio: writefln;
