@@ -149,7 +149,6 @@ version(mir_test)
 }
 
 /// Precise summation
-
 version(mir_test)
 nothrow @nogc unittest
 {
@@ -160,7 +159,6 @@ nothrow @nogc unittest
 }
 
 /// Precise summation with output range
-
 version(mir_test)
 nothrow @nogc unittest
 {
@@ -174,7 +172,6 @@ nothrow @nogc unittest
 }
 
 /// Precise summation with output range
-
 version(mir_test)
 nothrow @nogc unittest
 {
