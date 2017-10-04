@@ -47,6 +47,7 @@ F expDigamma(F)(in F x)
     return y;
 }
 
+version(mir_test)
 unittest
 {
     import std.meta;

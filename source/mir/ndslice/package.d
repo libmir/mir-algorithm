@@ -38,7 +38,7 @@
 
 8. Memory allocation and algorithm logic should be separated whenever possible.
 
-9. CTFE unittests should be added to new functions.
+9. CTFE version(mir_test) unittests should be added to new functions.
 +/
 
 /**
@@ -469,7 +469,7 @@ public import mir.ndslice.topology;
 public import mir.ndslice.traits;
 
 
-unittest
+version(mir_test) unittest
 {
     auto matrix = new double[12].sliced(3, 4);
     matrix[] = 0;
@@ -482,7 +482,7 @@ unittest
 }
 
 // relaxed example
-unittest
+version(mir_test) unittest
 {
     static ContiguousSlice!(3, ubyte) movingWindowByChannel
     (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(UniversalMatrix!ubyte) filter)
@@ -540,7 +540,7 @@ unittest
     }
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     immutable r = 1000.iota;
 
@@ -567,7 +567,7 @@ unittest
     assert(t1 == iota([6], 12));
 }
 
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
     import std.array : array;
@@ -659,7 +659,7 @@ pure nothrow unittest
     assert(&t1[$ - 1] is &(t1.back()));
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import std.range : iota;
     auto r = (10_000L * 2 * 3 * 4).iota;
@@ -672,14 +672,14 @@ pure nothrow unittest
     assert(t0.length!3 == 40);
 }
 
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     auto tensor = new int[3 * 4 * 8].sliced(3, 4, 8);
     assert(&(tensor.back.back.back()) is &tensor[2, 3, 7]);
     assert(&(tensor.front.front.front()) is &tensor[0, 0, 0]);
 }
 
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     auto slice = new int[24].sliced(2, 3, 4);
     auto r0 = slice.pack!1[1, 2];
@@ -688,7 +688,7 @@ pure nothrow unittest
     assert(slice[1, 2, 3] == 4);
 }
 
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     auto ar = new int[3 * 8 * 9];
 

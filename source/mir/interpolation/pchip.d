@@ -200,6 +200,7 @@ body
 }
 
 ///
+version(mir_test)
 unittest
 {
     import std.math: approxEqual;
@@ -232,6 +233,7 @@ unittest
 }
 
 // Check direction equality
+version(mir_test)
 unittest
 {
     import std.math: approxEqual;

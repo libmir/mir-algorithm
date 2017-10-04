@@ -177,6 +177,7 @@ template reduce(alias fun)
 }
 
 /// Ranges and arrays
+version(mir_test)
 unittest
 {
     auto ar = [1, 2, 3];
@@ -185,6 +186,7 @@ unittest
 }
 
 /// Single slice
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology : iota;
@@ -201,6 +203,7 @@ unittest
 
 /// Multiple slices, dot product
 //version(none)
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation : slice;
@@ -224,7 +227,8 @@ unittest
 }
 
 /// Zipped slices, dot product
-pure unittest
+pure
+version(mir_test) unittest
 {
     import std.typecons : Yes;
     import std.numeric : dotProduct;
@@ -255,6 +259,7 @@ pure unittest
 }
 
 /// Tensor mutation on-the-fly
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation : slice;
@@ -284,6 +289,7 @@ Packed slices.
 
 Computes minimum value of maximum values for each row.
 +/
+version(mir_test)
 unittest
 {
     import mir.math.common;
@@ -311,7 +317,8 @@ unittest
     assert(resT == 3);
 }
 
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     auto a = reduce!"a + b"(size_t(7), iota([0, 1], 1));
@@ -378,6 +385,7 @@ template each(alias fun)
 }
 
 /// Ranges and arrays
+version(mir_test)
 unittest
 {
     auto ar = [1, 2, 3];
@@ -386,6 +394,7 @@ unittest
 }
 
 /// Single slice, multiply-add
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation : slice;
@@ -404,6 +413,7 @@ unittest
 }
 
 /// Swap two slices
+version(mir_test)
 unittest
 {
     import mir.utility : swap;
@@ -424,6 +434,7 @@ unittest
 }
 
 /// Swap two zipped slices
+version(mir_test)
 unittest
 {
     import mir.utility : swap;
@@ -445,7 +456,8 @@ unittest
     assert(b == iota([2, 3], 0));
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     size_t i;
@@ -528,6 +540,7 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
 }
 
 /// Transpose matrix in place.
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation: slice;
@@ -543,6 +556,7 @@ unittest
 }
 
 /// Reflect Upper matrix part to lower part.
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation: slice;
@@ -564,6 +578,7 @@ unittest
 }
 
 /// Fill lower triangle and diagonal with zeroes.
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation: slice;
@@ -582,6 +597,7 @@ unittest
         [0, 0, 0]]);
 }
 
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation: slice;
@@ -598,6 +614,7 @@ unittest
         [7, 8, 9]]);
 }
 
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation: slice;
@@ -656,6 +673,7 @@ template isSymmetric(alias fun = "a == b")
 }
 
 ///
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology: iota;
@@ -804,6 +822,7 @@ template minmaxPos(alias pred = "a < b")
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto s = [
@@ -869,6 +888,7 @@ template minmaxIndex(alias pred = "a < b")
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto s = [
@@ -952,6 +972,7 @@ template maxPos(alias pred = "a < b")
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto s = [
@@ -1022,6 +1043,7 @@ template maxIndex(alias pred = "a < b")
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto s = [
@@ -1042,6 +1064,7 @@ unittest
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto s = [
@@ -1124,6 +1147,7 @@ template findIndex(alias pred)
 }
 
 /// Ranges and arrays
+version(mir_test)
 unittest
 {
     import std.range : iota;
@@ -1136,7 +1160,8 @@ unittest
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     // 0 1 2
@@ -1208,6 +1233,7 @@ template find(alias pred)
 }
 
 /// Ranges and arrays
+version(mir_test)
 unittest
 {
     import std.range : iota;
@@ -1219,7 +1245,8 @@ unittest
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     // 0 1 2
@@ -1234,7 +1261,8 @@ unittest
 }
 
 /// Multiple slices
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -1251,7 +1279,8 @@ unittest
 }
 
 /// Zipped slices
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, zip;
 
@@ -1269,7 +1298,8 @@ unittest
 }
 
 /// Mutation on-the-fly
-pure nothrow unittest
+pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
@@ -1296,7 +1326,8 @@ pure nothrow unittest
                   [8, 8, 5]]);
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     size_t i;
@@ -1365,7 +1396,8 @@ template any(alias pred = "a")
 }
 
 /// Ranges and arrays
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import std.range : iota;
     // 0 1 2 3 4 5
@@ -1376,7 +1408,8 @@ template any(alias pred = "a")
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     // 0 1 2
@@ -1388,7 +1421,8 @@ template any(alias pred = "a")
 }
 
 /// Multiple slices
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -1403,7 +1437,8 @@ template any(alias pred = "a")
 }
 
 /// Zipped slices
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, zip;
 
@@ -1420,7 +1455,8 @@ template any(alias pred = "a")
 }
 
 /// Mutation on-the-fly
-pure nothrow unittest
+pure nothrow
+version(mir_test) unittest
 {
     import std.conv : to;
     import mir.ndslice.allocation : slice;
@@ -1506,7 +1542,8 @@ template all(alias pred = "a")
 }
 
 /// Ranges and arrays
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import std.range : iota;
     // 0 1 2 3 4 5
@@ -1517,7 +1554,8 @@ template all(alias pred = "a")
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -1530,7 +1568,8 @@ template all(alias pred = "a")
 }
 
 /// Multiple slices
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -1542,7 +1581,8 @@ template all(alias pred = "a")
 }
 
 /// Zipped slices
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, zip;
 
@@ -1555,7 +1595,8 @@ template all(alias pred = "a")
 }
 
 /// Mutation on-the-fly
-pure nothrow unittest
+pure nothrow
+version(mir_test) unittest
 {
     import std.conv : to;
     import mir.ndslice.allocation : slice;
@@ -1582,7 +1623,8 @@ pure nothrow unittest
                   [8, 4, 5]]);
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     size_t i;
@@ -1639,7 +1681,8 @@ template count(alias fun)
 }
 
 /// Ranges and arrays
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import std.range : iota;
     // 0 1 2 3 4 5
@@ -1651,6 +1694,7 @@ template count(alias fun)
 }
 
 /// Single slice
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology : iota;
@@ -1665,6 +1709,7 @@ unittest
 }
 
 /// Accelerated set bit count
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology: iota, bitwise;
@@ -1732,7 +1777,8 @@ template equal(alias pred = "a == b")
 }
 
 /// Ranges and arrays
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import std.range : iota;
     auto r = iota(6);
@@ -1740,7 +1786,8 @@ template equal(alias pred = "a == b")
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : iota;
@@ -1842,7 +1889,8 @@ template cmp(alias pred = "a < b")
 }
 
 /// Ranges and arrays
-@safe pure nothrow unittest
+@safe pure nothrow
+version(mir_test) unittest
 {
     import std.range : iota;
 
@@ -1857,7 +1905,8 @@ template cmp(alias pred = "a < b")
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -1873,7 +1922,8 @@ template cmp(alias pred = "a < b")
     assert(cmp!"a >= b"(sl1, sl2) > 0);
 }
 
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 

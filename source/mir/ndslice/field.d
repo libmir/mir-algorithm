@@ -149,7 +149,7 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 	import mir.ndslice.iterator: FieldIterator;
     ushort[10] data;

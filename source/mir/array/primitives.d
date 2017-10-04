@@ -26,6 +26,7 @@ bool empty(size_t dim = 0, T)(in T[] ar)
 }
 
 ///
+version(mir_test)
 unittest
 {
    assert((int[]).init.empty);
@@ -41,6 +42,7 @@ ref front(size_t dim = 0, T)(T[] ar)
 }
 
 ///
+version(mir_test)
 unittest
 {
    assert(*&[3, 4].front == 3); // access be ref
@@ -57,6 +59,7 @@ ref back(size_t dim = 0, T)(T[] ar)
 }
 
 ///
+version(mir_test)
 unittest
 {
    assert(*&[3, 4].back == 4); // access be ref
@@ -72,6 +75,7 @@ void popFront(size_t dim = 0, T)(ref T[] ar)
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto ar = [3, 4];
@@ -90,6 +94,7 @@ void popBack(size_t dim = 0, T)(ref T[] ar)
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto ar = [3, 4];
@@ -109,6 +114,7 @@ size_t popFrontN(size_t dim = 0, T)(ref T[] ar, size_t n)
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto ar = [3, 4];
@@ -128,6 +134,7 @@ size_t popBackN(size_t dim = 0, T)(ref T[] ar, size_t n)
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto ar = [3, 4];
@@ -146,6 +153,7 @@ void popFrontExactly(size_t dim = 0, T)(ref T[] ar, size_t n)
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto ar = [3, 4, 5];
@@ -164,6 +172,7 @@ void popBackExactly(size_t dim = 0, T)(ref T[] ar, size_t n)
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto ar = [3, 4, 5];
@@ -182,6 +191,7 @@ size_t length(size_t d : 0, T)(in T[] array)
 }
 
 ///
+version(mir_test)
 unittest
 {
     assert([1, 2].length!0 == 2);

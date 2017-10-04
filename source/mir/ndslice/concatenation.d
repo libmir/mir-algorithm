@@ -107,7 +107,7 @@ auto concatenation(size_t dim = 0, Slices...)(Slices slices)
 }
 
 /// Concatenation of slices with different dimmensions. 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: repeat, iota;
@@ -132,7 +132,7 @@ unittest
 }
 
 /// Multidimensional
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -179,7 +179,7 @@ unittest
 }
 
 /// 1D
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -400,7 +400,7 @@ auto pad(string direction = "both", S, T, size_t N)(S s, T value, size_t[N] leng
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -413,7 +413,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -494,7 +494,7 @@ template pad(size_t[] dimensions, string[] directions)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -509,7 +509,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -547,7 +547,7 @@ auto padWrap(string direction = "both", SliceKind kind, size_t[] packs, Iterator
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -560,7 +560,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -663,7 +663,7 @@ template padWrap(size_t[] dimensions, string[] directions)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -678,7 +678,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -716,7 +716,7 @@ auto padSymmetric(string direction = "both", SliceKind kind, size_t[] packs, Ite
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -729,7 +729,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -851,7 +851,7 @@ template padSymmetric(size_t[] dimensions, string[] directions)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -866,7 +866,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -904,7 +904,7 @@ auto padEdge(string direction = "both", SliceKind kind, size_t[] packs, Iterator
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -917,7 +917,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -1028,7 +1028,7 @@ template padEdge(size_t[] dimensions, string[] directions)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -1046,7 +1046,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;

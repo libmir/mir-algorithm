@@ -116,6 +116,7 @@ LinearInterpolation!(RangeG, RangeV) linearInterpolation(RangeG, RangeV)(RangeG 
 }
 
 ///
+version(mir_test)
 unittest
 {
     import mir.ndslice;

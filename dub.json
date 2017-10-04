@@ -8,7 +8,8 @@
 	],
 	"buildTypes": {
 		"unittest": {
-			"buildOptions": ["unittests", "debugMode", "debugInfo", "debugInfoC"]
+			"buildOptions": ["unittests", "debugMode", "debugInfo"],
+			"versions": ["mir_test"]
 		}
 	},
 	"configurations": [

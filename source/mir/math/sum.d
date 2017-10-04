@@ -10,6 +10,7 @@ Copyright: Copyright © 2015-, Ilya Yaroshenko
 module mir.math.sum;
 
 ///
+version(mir_test)
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -22,6 +23,7 @@ unittest
 }
 
 ///
+version(mir_test)
 unittest
 {
     import mir.ndslice.slice: sliced, slicedField;
@@ -40,6 +42,7 @@ unittest
 /++
 `Naive`, `Pairwise` and `Kahan` algorithms can be used for user defined types.
 +/
+version(mir_test)
 unittest
 {
     static struct Quaternion(F)
@@ -92,6 +95,7 @@ unittest
 /++
 All summation algorithms available for complex numbers.
 +/
+version(mir_test)
 unittest
 {
     cdouble[] ar = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i];
@@ -109,6 +113,7 @@ unittest
 }
 
 ///
+version(mir_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.topology: repeat, iota;
@@ -144,6 +149,8 @@ unittest
 }
 
 /// Precise summation
+
+version(mir_test)
 nothrow @nogc unittest
 {
     import mir.ndslice.topology: iota, map;
@@ -153,6 +160,8 @@ nothrow @nogc unittest
 }
 
 /// Precise summation with output range
+
+version(mir_test)
 nothrow @nogc unittest
 {
     import mir.ndslice.topology: iota, map;
@@ -165,6 +174,8 @@ nothrow @nogc unittest
 }
 
 /// Precise summation with output range
+
+version(mir_test)
 nothrow @nogc unittest
 {
     import std.math: isFinite;
@@ -181,6 +192,7 @@ nothrow @nogc unittest
 }
 
 /// Moving mean
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology: linspace;
@@ -237,6 +249,7 @@ Bugs: ICE 1662 (dmd only)
 +/
 version(LDC)
 version(X86_Any)
+version(mir_test)
 unittest
 {
     import core.simd;
@@ -1483,6 +1496,8 @@ public:
     }
 
     ///
+    
+    version(mir_test)
     @nogc nothrow unittest
     {
         import mir.math.common;
@@ -1497,6 +1512,8 @@ public:
         assert(s1.sum() == -1);
     }
 
+    
+    version(mir_test)
     @nogc nothrow unittest
     {
         with(Summation)
@@ -1520,6 +1537,8 @@ public:
         }
     }
 
+    
+    version(mir_test)
     @nogc nothrow unittest
     {
         import std.math: approxEqual;
@@ -1588,6 +1607,7 @@ public:
     }
 }
 
+version(mir_test)
 unittest
 {
     import mir.functional: RefTuple, refTuple;
@@ -1717,6 +1737,8 @@ template sum(string summation)
 }
 
 
+
+version(mir_test)
 @safe pure nothrow unittest
 {
     static assert(is(typeof(sum([cast( byte)1])) ==  int));
@@ -1734,6 +1756,8 @@ template sum(string summation)
     assert(sum([42, 43, 44, 45]) == 42 + 43 + 44 + 45);
 }
 
+
+version(mir_test)
 @safe pure nothrow unittest
 {
     static assert(is(typeof(sum([1.0, 2.0, 3.0, 4.0])) == double));
@@ -1751,6 +1775,8 @@ template sum(string summation)
     assert(sum([42., 43., 44., 45.5]) == 42 + 43 + 44 + 45.5);
 }
 
+
+version(mir_test)
 @safe pure nothrow unittest
 {
     import std.container;
@@ -1765,6 +1791,8 @@ template sum(string summation)
     assert(sum(SList!double(1, 2, 3, 4)[]) == 10);
 }
 
+
+version(mir_test)
 pure nothrow unittest // 12434
 {
     import mir.ndslice.slice: sliced;
@@ -1775,6 +1803,7 @@ pure nothrow unittest // 12434
     auto s2 = s.map!(x => x).sum; // Error
 }
 
+version(mir_test)
 unittest
 {
     import std.bigint;
@@ -1788,6 +1817,7 @@ unittest
     assert(sb == (BigInt(ulong.max/2) * 10));
 }
 
+version(mir_test)
 unittest
 {
     with(Summation)
@@ -1805,6 +1835,7 @@ unittest
 
 version(LDC)
 version(X86_Any)
+version(mir_test)
 unittest
 {
     import core.simd;
@@ -1827,6 +1858,7 @@ unittest
 
 version(LDC)
 version(X86_Any)
+version(mir_test)
 unittest
 {
     import core.simd;
@@ -1984,6 +2016,7 @@ template isSummable(Range, F)
         isSummable!F;
 }
 
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology: iota;
@@ -1997,6 +2030,7 @@ private enum bool isCompesatorAlgorithm(Summation summation) =
  || summation == Summation.kahan;
 
 
+version(mir_test)
 unittest
 {
     import mir.ndslice;
