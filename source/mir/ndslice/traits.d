@@ -64,7 +64,7 @@ enum bool isUniversalMatrix(T) = is(T : Slice!(Universal, [2], Iterator), Iterat
 
 ///
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : ContiguousVector;
 
@@ -85,7 +85,7 @@ unittest
 }
 
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : UniversalVector;
 
@@ -106,7 +106,7 @@ unittest
 }
 
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : ContiguousMatrix;
 
@@ -127,7 +127,7 @@ unittest
 }
 
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : CanonicalMatrix;
 
@@ -148,7 +148,7 @@ unittest
 }
 
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : UniversalMatrix;
 
@@ -169,7 +169,7 @@ unittest
 }
 
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : ContiguousTensor;
 
@@ -191,7 +191,7 @@ unittest
 }
 
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : CanonicalTensor;
 
@@ -213,7 +213,7 @@ unittest
 }
 
 @safe pure nothrow @nogc 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : UniversalTensor;
 

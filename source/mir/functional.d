@@ -195,7 +195,7 @@ template adjoin(fun...) if (fun.length && fun.length <= 26)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     static bool f1(int a) { return a != 0; }
     static int f2(int a) { return a / 2; }
@@ -204,7 +204,7 @@ template adjoin(fun...) if (fun.length && fun.length <= 26)
     assert(x.a == true && x.b == 2);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     static bool F1(int a) { return a != 0; }
     auto x1 = adjoin!(F1)(5);
@@ -230,7 +230,7 @@ template adjoin(fun...) if (fun.length && fun.length <= 26)
 }
 
 //@safe
-unittest
+version(mir_test) unittest
 {
     alias funs = staticMap!(naryFun, "a", "a * 2", "a * 3", "a * a", "-a");
     alias afun = adjoin!funs;
@@ -312,7 +312,7 @@ template naryFun(alias fun)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     // Strings are compiled into functions:
     alias isEven = naryFun!("(a & 1) == 0");
@@ -320,7 +320,7 @@ template naryFun(alias fun)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     alias less = naryFun!("a < b");
     assert(less(1, 2) && !less(2, 1));
@@ -329,25 +329,25 @@ template naryFun(alias fun)
 }
 
 /// `naryFun` accepts up to 26 arguments.
-@safe unittest
+@safe version(mir_test) unittest
 {
     assert(naryFun!("a * b + c")(2, 3, 4) == 10);
 }
 
 /// `naryFun` can return by reference.
-unittest
+version(mir_test) unittest
 {
     int a;
     assert(&naryFun!("a")(a) == &a);
 }
 
 /// `args` paramter tuple
-unittest
+version(mir_test) unittest
 {
     assert(naryFun!("args[0] + args[1]")(2, 3) == 5);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     static int f1(int a) { return a + 1; }
     static assert(is(typeof(naryFun!(f1)(1)) == int));
@@ -388,7 +388,7 @@ unittest
     static assert(!is(typeof(naryFun!FuncObj)));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     static int f1(int a, string b) { return a + 1; }
     static assert(is(typeof(naryFun!(f1)(1, "2")) == int));
@@ -438,28 +438,28 @@ template reverseArgs(alias fun)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     int abc(int a, int b, int c) { return a * b + c; }
     alias cba = reverseArgs!abc;
     assert(abc(91, 17, 32) == cba(32, 17, 91));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     int a(int a) { return a * 2; }
     alias _a = reverseArgs!a;
     assert(a(2) == _a(2));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     int b() { return 4; }
     alias _b = reverseArgs!b;
     assert(b() == _b());
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     alias gt = reverseArgs!(naryFun!("a < b"));
     assert(gt(2, 1) && !gt(1, 1));
@@ -487,7 +487,7 @@ template not(alias pred)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     import std.algorithm.searching : find;
     import std.uni : isWhite;
@@ -495,7 +495,7 @@ template not(alias pred)
     assert(find!(not!isWhite)(a) == "Hello, world!");
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     assert(not!"a != 5"(5));
     assert(not!"a != b"(5, 5));
@@ -556,20 +556,20 @@ template pipe(fun...)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     assert(pipe!("a + b", a => a * 10)(2, 3) == 50);
 }
 
 /// `pipe` can return by reference.
-unittest
+version(mir_test) unittest
 {
     int a;
     assert(&pipe!("a", "a")(a) == &a);
 }
 
 /// Template bloat reduction
-unittest
+version(mir_test) unittest
 {
     enum  a = "a * 2";
     alias b = e => e + 2;
@@ -580,7 +580,7 @@ unittest
     static assert(__traits(isSame, p0, p1));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
     import std.algorithm.iteration : map;
@@ -611,7 +611,7 @@ template forward(args...)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     class C
     {
@@ -626,7 +626,7 @@ template forward(args...)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     void foo(int n, ref string s) { s = null; foreach (i; 0..n) s ~= "Hello"; }
 
@@ -643,7 +643,7 @@ template forward(args...)
     assert(s == "HelloHello");
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     auto foo(TL...)(auto ref TL args)
     {
@@ -673,7 +673,7 @@ template forward(args...)
     assert(baz(S(), makeS(), n, s) == "LLRRRL");
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     ref int foo(return ref int a) { return a; }
     ref int bar(Args)(auto ref Args args)

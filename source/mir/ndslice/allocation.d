@@ -91,6 +91,7 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
 }
 
 ///
+version(mir_test)
 @safe pure nothrow unittest
 {
     auto tensor = slice!int(5, 6, 7);
@@ -104,6 +105,7 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
 }
 
 ///
+version(mir_test)
 @safe pure nothrow unittest
 {
     auto tensor = slice([2, 3], 5);
@@ -124,6 +126,7 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
     return ret;
 }
 
+version(mir_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
@@ -147,6 +150,7 @@ auto uninitSlice(T, size_t N)(size_t[N] lengths...)
 }
 
 ///
+version(mir_test)
 @safe pure nothrow unittest
 {
     auto tensor = uninitSlice!int(5, 6, 7);
@@ -207,6 +211,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
 //}
 
 /////
+version(mir_test)
 //@nogc unittest
 //{
 //    import std.experimental.allocator;
@@ -228,6 +233,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
 //}
 
 /// Initialization with default value
+version(mir_test)
 @nogc unittest
 {
     import std.experimental.allocator;
@@ -239,6 +245,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
     Mallocator.instance.dispose(ar);
 }
 
+version(mir_test)
 @nogc unittest
 {
     import std.experimental.allocator;
@@ -269,6 +276,7 @@ makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] leng
 }
 
 ///
+version(mir_test)
 @system @nogc unittest
 {
     import std.experimental.allocator;
@@ -305,6 +313,7 @@ auto ndarray(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Itera
 }
 
 ///
+version(mir_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
@@ -340,6 +349,7 @@ auto makeNdarray(T, Allocator, SliceKind kind, size_t[] packs, Iterator)(auto re
 }
 
 ///
+version(mir_test)
 @nogc unittest
 {
     import std.experimental.allocator;
@@ -399,6 +409,7 @@ L:
 }
 
 ///
+version(mir_test)
 @safe pure unittest
 {
     int err;
@@ -411,6 +422,7 @@ L:
 }
 
 /// Slice from ndarray
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation: slice, shape;
@@ -421,6 +433,7 @@ unittest
     assert(s == array);
 }
 
+version(mir_test)
 @safe pure unittest
 {
     int err;
@@ -429,6 +442,7 @@ unittest
     assert(shape[1] == 0);
 }
 
+version(mir_test)
 nothrow unittest
 {
     import mir.ndslice.allocation;
@@ -499,6 +513,7 @@ void stdcFreeSlice(size_t[] packs, T)(Slice!(Contiguous, packs, T*) slice)
 }
 
 ///
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology: iota;

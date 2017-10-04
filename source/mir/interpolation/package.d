@@ -77,6 +77,7 @@ struct Interp1(Range, Interpolation)
 /++
 PCHIP interpolation.
 +/
+version(mir_test)
 unittest
 {
     import std.math: approxEqual;

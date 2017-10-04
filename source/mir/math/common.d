@@ -145,6 +145,7 @@ else
     T round(T)(in T x) if (isFloatingPoint!T) { return std.math.round(x); }
     ///
     T fmuladd(T)(in T a, in T b, in T c) if (isFloatingPoint!T) { return a * b + c; }
+    version(mir_test)
     unittest { assert(fmuladd!double(2, 3, 4) == 2 * 3 + 4); }
     ///
     T fmin(T)(in T x, in T y) if (isFloatingPoint!T) { return std.math.fmin(x, y); }

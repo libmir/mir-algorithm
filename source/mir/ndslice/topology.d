@@ -160,7 +160,7 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto slice = iota(2, 3).universal;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
@@ -169,7 +169,7 @@ unittest
 }
 
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto slice = iota(2, 3).canonical.universal;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
@@ -216,7 +216,7 @@ Slice!(packs == [1] ? Contiguous : Canonical, packs, Iterator)
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto slice = iota(2, 3).canonical;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
@@ -260,7 +260,7 @@ Slice!(Canonical, packs, Iterator)
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto slice = iota(2, 3).universal.assumeCanonical;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
@@ -300,7 +300,7 @@ Slice!(Contiguous, packs, Iterator)
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto slice = iota(2, 3).universal.assumeContiguous;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
@@ -332,7 +332,7 @@ pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
 }
 
 ///
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice : sliced, Slice;
 
@@ -372,7 +372,7 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
 }
 
 ///
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice : sliced, Slice;
 
@@ -388,7 +388,7 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!size_t)));
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
@@ -407,7 +407,7 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     static assert(is(typeof(e) == size_t));
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
     auto b = a.pack!2.pack!3;
@@ -498,7 +498,7 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
 }
 
 ///
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.dynamic : transposed;
     auto slice = iota(3, 4, 5, 6, 7, 8, 9, 10, 11).universal;
@@ -512,7 +512,7 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.dynamic : transposed;
@@ -534,7 +534,7 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
     static assert(is(typeof(e) == size_t));
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation;
@@ -562,7 +562,7 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
 
 ///
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
     auto b = a.pack!2.unpack;
@@ -612,7 +612,7 @@ iota
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
     auto slice = iota(2, 3);
     static immutable array =
@@ -624,7 +624,7 @@ iota
 
 ///
 pure nothrow
-unittest
+version(mir_test) unittest
 {
     int[6] data;
     auto slice = iota([2, 3], data.ptr);
@@ -637,7 +637,7 @@ unittest
 
 ///
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     auto im = iota([10, 5], 100);
     assert(im[2, 1] == 111); // 100 + 2 * 5 + 1
@@ -648,7 +648,7 @@ unittest
 }
 
 /// `iota` with step
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto sl = iota([2, 3], 10, 10);
 
@@ -696,7 +696,7 @@ Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator)
 }
 
 /// Matrix, main diagonal
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     //  -------
     // | 0 1 2 |
@@ -709,7 +709,7 @@ Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator)
 }
 
 /// Non-square matrix
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     //  -------
     // | 0 1 |
@@ -723,7 +723,7 @@ Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator)
 }
 
 /// Loop through diagonal
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation;
@@ -740,7 +740,7 @@ Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator)
 
 /// Matrix, subdiagonal
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     //  -------
     // | 0 1 2 |
@@ -755,7 +755,7 @@ unittest
 }
 
 /// Matrix, antidiagonal
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.dynamic : dropToHypercube, reversed;
     //  -------
@@ -769,7 +769,7 @@ unittest
 }
 
 /// 3D, main diagonal
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     //  -----------
     // |  0   1  2 |
@@ -785,7 +785,7 @@ unittest
 }
 
 /// 3D, subdiagonal
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     //  -----------
     // |  0   1  2 |
@@ -804,7 +804,7 @@ unittest
 
 /// 3D, diagonal plain
 @nogc @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     //  -----------
     // |  0   1  2 |
@@ -894,7 +894,7 @@ body
 }
 
 ///
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation;
@@ -922,7 +922,7 @@ pure nothrow unittest
 }
 
 /// Diagonal blocks
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation;
@@ -954,7 +954,7 @@ pure nothrow unittest
 }
 
 /// Matrix divided into vertical blocks
-@safe pure unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1029,7 +1029,7 @@ body
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1052,7 +1052,7 @@ unittest
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1073,7 +1073,7 @@ unittest
 }
 
 /// Multi-diagonal matrix
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1098,7 +1098,7 @@ unittest
 }
 
 /// Sliding window over matrix columns
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.slice;
@@ -1123,7 +1123,7 @@ unittest
 }
 
 /// Overlapping blocks using windows
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     //  ----------------
     // |  0  1  2  3  4 |
@@ -1158,7 +1158,7 @@ unittest
               [[12, 13, 14], [17, 18, 19], [22, 23, 24]]]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     auto w = iota(9, 9).windows(3, 3);
     assert(w.front == w[0]);
@@ -1280,7 +1280,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
 
 ///
 @safe nothrow pure
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.dynamic : allReversed;
     int err;
@@ -1297,7 +1297,7 @@ unittest
 }
 
 /// Reshaping with memory allocation
-@safe pure unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
@@ -1329,7 +1329,7 @@ unittest
          [ 1, 2,  3]]);
 }
 
-nothrow @safe pure unittest
+nothrow @safe pure version(mir_test) unittest
 {
     import mir.ndslice.dynamic : allReversed;
     auto slice = iota(1, 1, 3, 2, 1, 2, 1).universal.allReversed;
@@ -1344,14 +1344,14 @@ nothrow @safe pure unittest
 
 // Issue 15919
 nothrow @nogc @safe pure
-unittest
+version(mir_test) unittest
 {
     int err;
     assert(iota(3, 4, 5, 6, 7).pack!2.reshape([4, 3, 5], err)[0, 0, 0].shape == cast(size_t[2])[6, 7]);
     assert(err == 0);
 }
 
-nothrow @nogc @safe pure unittest
+nothrow @nogc @safe pure version(mir_test) unittest
 {
     import mir.ndslice.slice;
 
@@ -1367,7 +1367,7 @@ nothrow @nogc @safe pure unittest
 }
 
 nothrow @nogc @safe pure 
-unittest
+version(mir_test) unittest
 {
     auto pElements = iota(3, 4, 5, 6, 7)
         .pack!2
@@ -1450,7 +1450,7 @@ Slice!(Contiguous, [1], StrideIterator!(SliceIterator!(packs[1 .. $].sum == 1 &&
     return ret;
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     auto sl1 = iota(2, 3).slice.universal.pack!1.flattened;
@@ -1459,14 +1459,14 @@ unittest
 }
 
 /// Regular slice
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     assert(iota(4, 5).flattened == iota(20));
     assert(iota(4, 5).canonical.flattened == iota(20));
     assert(iota(4, 5).universal.flattened == iota(20));
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     assert(iota(4).flattened == iota(4));
     assert(iota(4).canonical.flattened == iota(4));
@@ -1474,7 +1474,7 @@ unittest
 }
 
 /// Packed slice
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.dynamic;
@@ -1482,7 +1482,7 @@ unittest
 }
 
 /// Properties
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto elems = iota(3, 4).universal.flattened;
 
@@ -1497,7 +1497,7 @@ unittest
 }
 
 /// Index property
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     auto slice = new long[20].sliced(5, 4);
@@ -1515,7 +1515,7 @@ unittest
          [40, 43, 46, 49]]);
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto elems = iota(3, 4).universal.flattened;
     assert(elems.front == 0);
@@ -1525,7 +1525,7 @@ unittest
 /++
 Random access and slicing
 +/
-nothrow unittest
+nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
 
@@ -1556,7 +1556,7 @@ nothrow unittest
     assert(elems[2 .. 6] == sl);
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.dynamic : allReversed;
 
@@ -1578,7 +1578,7 @@ nothrow unittest
     }
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import std.range.primitives : isRandomAccessRange, hasSlicing;
     auto elems = iota(4, 5).flattened;
@@ -1587,7 +1587,7 @@ nothrow unittest
 }
 
 // Checks strides
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.dynamic;
     import std.range.primitives : isRandomAccessRange;
@@ -1603,7 +1603,7 @@ nothrow unittest
     }
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.dynamic;
@@ -1644,7 +1644,7 @@ nothrow unittest
 }
 
 // Issue 15549
-unittest
+version(mir_test) unittest
 {
     import std.range.primitives;
     import mir.ndslice.allocation;
@@ -1659,7 +1659,7 @@ unittest
 }
 
 // Issue 16010
-unittest
+version(mir_test) unittest
 {
     auto s = iota(3, 4).flattened;
     foreach (_; 0 .. s.length)
@@ -1687,7 +1687,7 @@ Slice!(Contiguous, [N], FieldIterator!(ndIotaField!N))
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
     auto slice = ndiota(2, 3);
     static immutable array =
@@ -1698,7 +1698,7 @@ Slice!(Contiguous, [N], FieldIterator!(ndIotaField!N))
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto im = ndiota(7, 9);
 
@@ -1709,7 +1709,7 @@ Slice!(Contiguous, [N], FieldIterator!(ndIotaField!N))
     assert(cm[2, 1] == [3, 5]);
 }
 
-unittest
+version(mir_test) unittest
 {
     auto r = ndiota(1);
     auto d = r.front;
@@ -1745,7 +1745,7 @@ auto linspace(T, size_t N)(size_t[N] lengths, T[2][N] intervals...)
 }
 
 // example from readme
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice;
     // import std.stdio: writefln;
@@ -1764,7 +1764,7 @@ unittest
 
 /// 1D
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto s = linspace!double([5], [1.0, 2.0]);
     assert(s == [1.0, 1.25, 1.5, 1.75, 2.0]);
@@ -1776,7 +1776,7 @@ unittest
 
 /// 2D
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.functional: refTuple;
 
@@ -1801,7 +1801,7 @@ unittest
 
 /// Complex numbers
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto s = linspace!cdouble([3], [1.0 + 0i, 2.0 + 4i]);
     assert(s == [1.0 + 0i, 1.5 + 2i, 2.0 + 4i]);
@@ -1849,7 +1849,7 @@ Slice!(kind == Contiguous ? Canonical : kind, M ~ packs, Iterator)
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto sl = iota(3).repeat(4);
     assert(sl == [[0, 1, 2],
@@ -1859,7 +1859,7 @@ unittest
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.dynamic : transposed;
 
@@ -1875,7 +1875,7 @@ unittest
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation;
 
@@ -1891,7 +1891,7 @@ unittest
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto sl = repeat(4.0, 2, 3);
     assert(sl == [[4.0, 4.0, 4.0],
@@ -1933,7 +1933,7 @@ body
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
     auto slice = iota(6);
     static immutable str = [0, 2, 4];
@@ -1983,7 +1983,7 @@ auto retro
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
     auto slice = iota(2, 3);
     static immutable reversed = [[5, 4, 3], [2, 1, 0]];
@@ -2033,7 +2033,7 @@ auto bitwise
 
 ///
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     size_t[10] data;
     auto bits = data[].sliced.bitwise;
@@ -2050,7 +2050,7 @@ unittest
 }
 
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     size_t[10] data;
     auto slice = FieldIterator!(size_t[])(0, data[]).sliced(10);
@@ -2112,7 +2112,7 @@ auto bitpack
 
 ///
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     size_t[10] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
@@ -2154,7 +2154,7 @@ bytegroup
 
 /// 24 bit integers
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     ubyte[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
@@ -2174,7 +2174,7 @@ unittest
 
 /// 48 bit integers
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     ushort[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
@@ -2271,7 +2271,7 @@ template map(fun...)
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     auto s = iota(2, 3).map!(a => a * 3);
@@ -2281,7 +2281,7 @@ unittest
 
 /// String lambdas
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     assert(iota(2, 3).map!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
@@ -2289,7 +2289,7 @@ unittest
 
 /// Packed tensors.
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, windows;
 
@@ -2313,7 +2313,7 @@ unittest
     assert(s == [[8, 12]]);
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, windows;
 
@@ -2332,7 +2332,7 @@ unittest
 
 /// Zipped tensors
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, zip;
 
@@ -2358,7 +2358,7 @@ In that case, the element type of `map` is a refTuple containing
 one element for each function.
 +/
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -2379,7 +2379,7 @@ unittest
 /++
 You may alias `map` with some function(s) to a symbol and use it separately:
 +/
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -2390,7 +2390,7 @@ pure nothrow unittest
 /++
 Type normalization
 +/
-unittest
+version(mir_test) unittest
 {
     import mir.functional : pipe;
     import mir.ndslice.topology : iota;
@@ -2401,7 +2401,7 @@ unittest
 }
 
 ///
-pure unittest
+pure version(mir_test) unittest
 {
     import std.algorithm.iteration : sum, reduce;
     import mir.utility : max;
@@ -2481,7 +2481,7 @@ template as(T)
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : diagonal, as;
@@ -2502,7 +2502,7 @@ template as(T)
 }
 
 /// Special behavior for pointers to a constant data.
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
 
@@ -2535,7 +2535,7 @@ Slice!(kind, packs, IndexIterator!(Iterator, Field))
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto source = [1, 2, 3, 4, 5];
     auto indexes = [4, 3, 1, 2, 0, 4].sliced;
@@ -2591,7 +2591,7 @@ auto zip
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : flattened, iota;
@@ -2611,7 +2611,7 @@ auto zip
     assert(alpha == beta);
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : flattened, iota;
@@ -2643,7 +2643,7 @@ auto unzip
 }
 
 ///
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : iota;
@@ -2707,7 +2707,7 @@ template slide(size_t params, alias fun)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     auto data = 10.iota;
     auto sw = data.slide!(3, "a + 2 * b + c");
@@ -2731,7 +2731,7 @@ See_also: $(LREF slide).
 alias pairwise(alias fun, size_t lag = 1) = slide!(lag + 1, fun);
 
 ///
-unittest
+version(mir_test) unittest
 {
     assert([2, 4, 3, -1].sliced.pairwise!"a + b" == [6, 7, 2]);
 }
@@ -2748,7 +2748,7 @@ See_also: $(LREF slide).
 alias diff(size_t lag = 1) = pairwise!(('a' + lag) ~ " - a", lag);
 
 ///
-unittest
+version(mir_test) unittest
 {
     assert([2, 4, 3, -1].sliced.diff == [2, -1, -4]);
 }
@@ -2769,7 +2769,7 @@ auto cartesian(NdFields...)(NdFields fields)
 }
 
 /// 1D x 1D
-unittest
+version(mir_test) unittest
 {
     auto a = [10, 20, 30];
     auto b = [ 1,  2,  3];
@@ -2784,7 +2784,7 @@ unittest
 }
 
 /// 1D x 2D
-unittest
+version(mir_test) unittest
 {
     auto a = [10, 20, 30];
     auto b = iota([2, 3], 1);
@@ -2810,7 +2810,7 @@ unittest
 }
 
 /// 1D x 1D x 1D
-unittest
+version(mir_test) unittest
 {
     auto u = [100, 200];
     auto v = [10, 20, 30];
@@ -2863,7 +2863,7 @@ template kronecker(alias fun = product)
 }
 
 /// 2D
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
 
@@ -2888,7 +2888,7 @@ unittest
 }
 
 /// 1D
-unittest
+version(mir_test) unittest
 {
     auto a = iota([3], 1);
 
@@ -2900,7 +2900,7 @@ unittest
 }
 
 /// 2D with 3 arguments
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
 
@@ -2946,7 +2946,7 @@ auto magic(size_t length)
 
 ///
 @safe pure nothrow
-unittest
+version(mir_test) unittest
 {
     auto isMagic(S)(S matrix)
     {
@@ -3043,7 +3043,7 @@ auto stairs(string type, Iterator)(Slice!(Contiguous, [1], Iterator) slice, size
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology: iota, stairs;
 
@@ -3111,7 +3111,7 @@ auto stairs(string type, SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) s
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology: iota, as, stairs;
 
@@ -3206,7 +3206,7 @@ private auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
 
 // 1-dimensional slice support
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     import mir.ndslice.traits : isContiguousSlice;
@@ -3221,7 +3221,7 @@ unittest
 
 // 2-dimensional slice support
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     import mir.ndslice.traits : isContiguousSlice, isUniversalSlice;
@@ -3267,7 +3267,7 @@ unittest
 
 // 3-dimensional slice support, N-dimensional also supported
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, universal, flattened, reshape;
     import mir.ndslice.dynamic : strided, transposed;
@@ -3432,7 +3432,7 @@ unittest
 
 // Ensure works on canonical
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, canonical;
     import mir.ndslice.traits : isUniversalSlice, isCanonicalSlice;
@@ -3478,7 +3478,7 @@ unittest
 
 // Ensure works on universal
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, universal;
     import mir.ndslice.traits : isUniversalSlice;
@@ -3524,7 +3524,7 @@ unittest
 
 // Ensure works on canonical packed slice
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, universal, flattened, reshape;
     import mir.ndslice.dynamic : strided;
@@ -3618,7 +3618,7 @@ unittest
 
 // Ensure works on contiguous pack!1 slice
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, packsOf;
     import mir.ndslice.dynamic : strided;
@@ -4004,7 +4004,7 @@ unittest
 
 // Ensure works on contiguous pack!2 slice
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, packsOf;
     import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
@@ -4158,7 +4158,7 @@ unittest
 
 // Ensure works on contiguous pack!3 slice
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, packsOf;
     import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
@@ -4307,7 +4307,7 @@ template byDim(Dimensions...)
 
 /// 2-dimensional slice support
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     //  ------------
@@ -4351,7 +4351,7 @@ unittest
 
 /// 3-dimensional slice support, N-dimensional also supported
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, universal, flattened, reshape;
     import mir.ndslice.dynamic : strided, transposed;
@@ -4506,7 +4506,7 @@ unittest
 
 // Ensure works on canonical
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, canonical;
     //  ------------
@@ -4550,7 +4550,7 @@ unittest
 
 // Ensure works on universal
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, universal;
     //  ------------
@@ -4594,7 +4594,7 @@ unittest
 
 // 1-dimensional slice support
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
     //  -------

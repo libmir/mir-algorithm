@@ -175,7 +175,7 @@ Slice!(Universal, [2], Iterator) swapped(SliceKind kind, Iterator)(Slice!(kind, 
 }
 
 /// Template
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -190,7 +190,7 @@ Slice!(Universal, [2], Iterator) swapped(SliceKind kind, Iterator)(Slice!(kind, 
 }
 
 /// Function
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -205,7 +205,7 @@ Slice!(Universal, [2], Iterator) swapped(SliceKind kind, Iterator)(Slice!(kind, 
 }
 
 /// 2D
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -315,7 +315,7 @@ Slice!(Universal, [2], Iterator) rotated(SliceKind kind, Iterator)(Slice!(kind, 
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -386,7 +386,7 @@ auto everted(size_t[] packs, SliceKind kind, Iterator)(Slice!(kind, packs, Itera
 }
 
 ///
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -510,7 +510,7 @@ Slice!(Universal, [2], Iterator) transposed(SliceKind kind, Iterator)(Slice!(kin
 }
 
 /// Template
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -525,7 +525,7 @@ Slice!(Universal, [2], Iterator) transposed(SliceKind kind, Iterator)(Slice!(kin
 }
 
 /// Function
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -540,7 +540,7 @@ Slice!(Universal, [2], Iterator) transposed(SliceKind kind, Iterator)(Slice!(kin
 }
 
 /// Single-argument function
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -555,7 +555,7 @@ Slice!(Universal, [2], Iterator) transposed(SliceKind kind, Iterator)(Slice!(kin
 }
 
 /// _2-dimensional transpose
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota;
@@ -593,7 +593,7 @@ Slice!(Universal, packs, Iterator) allReversed(SliceKind kind, size_t[] packs, I
 
 ///
 @safe @nogc pure nothrow
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology: iota, retro;
@@ -662,7 +662,7 @@ Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iter
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology: iota;
 
@@ -687,7 +687,7 @@ Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iter
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology: iota, canonical;
     auto slice = iota([2, 2], 1).canonical;
@@ -702,7 +702,7 @@ Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iter
     assert(slice.reversed (0, 0, 0) == [[3, 4], [1, 2]]);
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology;
@@ -801,7 +801,7 @@ Slice!(Universal, packs, Iterator) strided(SliceKind kind, size_t[] packs, Itera
 }
 
 ///
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology: iota;
     auto slice = iota(3, 4);
@@ -831,7 +831,7 @@ pure nothrow unittest
 }
 
 ///
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology: iota, universal;
     static assert(iota(13, 40).universal.strided!(0, 1)(2, 5).shape == [7, 8]);
@@ -839,7 +839,7 @@ pure nothrow unittest
 }
 
 ///
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology: iota, canonical;
     auto slice = iota(3, 4).canonical;
@@ -856,7 +856,7 @@ pure nothrow unittest
         == [[0,1,2,3],            [8,9,10,11]]);
 }
 
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.ndslice.topology;
@@ -906,7 +906,7 @@ Slice!(Canonical, packs, Iterator) dropToHypercube(size_t[] packs, Iterator)(Sli
 }
 
 ///
-@safe @nogc pure nothrow unittest
+@safe @nogc pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.topology: iota, canonical, universal;
 

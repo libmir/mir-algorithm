@@ -18,7 +18,7 @@ module mir.timeseries;
 public import mir.ndslice.slice;
 
 ///
-unittest
+version(mir_test) unittest
 {
     import std.datetime: Date;
     import std.algorithm.setops: nWayUnion;
@@ -123,7 +123,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    unittest
+    version(mir_test) unittest
     {
         auto time = [1, 2, 3, 4].sliced;
         auto data = [10.0, 10, 10, 10].sliced;
@@ -200,7 +200,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    unittest
+    version(mir_test) unittest
     {
         auto time = [1, 2, 3, 4].sliced;
         auto data = [10.0, 10, 10, 10].sliced;
@@ -365,7 +365,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
 }
 
 /// 1-dimensional data
-unittest
+version(mir_test) unittest
 {
     auto time = [1, 2, 3, 4].sliced;
     auto data = [2.1, 3.4, 5.6, 7.8].sliced;
@@ -392,7 +392,7 @@ unittest
 }
 
 /// 2-dimensional data
-unittest
+version(mir_test) unittest
 {
     import std.datetime: Date;
     import mir.ndslice.topology: canonical, iota;
@@ -521,7 +521,7 @@ template sort(alias less = "a < b")
 }
 
 /// 1D data
-unittest
+version(mir_test) unittest
 {
     auto time = [1, 2, 4, 3].sliced;
     auto data = [2.1, 3.4, 5.6, 7.8].sliced;
@@ -535,7 +535,7 @@ unittest
 }
 
 /// 2D data
-unittest
+version(mir_test) unittest
 {
     import mir.timeseries;
     import mir.ndslice.allocation: uninitSlice;

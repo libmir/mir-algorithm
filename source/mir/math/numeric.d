@@ -73,6 +73,7 @@ Unqual!(ForeachType!Range) prod(Range)(Range r)
 }
 
 ///
+version(mir_test)
 unittest
 {
 	enum l = 2.0 ^^ (double.max_exp - 1);
@@ -97,6 +98,7 @@ Unqual!(ForeachType!Range) sumOfLog2s(Range)(Range r)
 }
 
 ///
+version(mir_test)
 @safe unittest
 {
     import std.math : isNaN;

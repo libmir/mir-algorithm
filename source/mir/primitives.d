@@ -27,7 +27,7 @@ enum bool hasLength(R) = is(typeof(
 }));
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     static assert(hasLength!(char[]));
     static assert(hasLength!(int[]));
@@ -53,7 +53,7 @@ enum bool hasShape(R) = is(typeof(
 }));
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     static assert(hasLength!(char[]));
     static assert(hasLength!(int[]));
@@ -81,7 +81,7 @@ auto shape(Range)(Range range)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     static assert([2, 2, 2].shape == [3]);
 }

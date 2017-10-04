@@ -286,7 +286,7 @@ template taggedPointer(T : T*, string name, Ts...) {
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     struct A
     {
@@ -320,7 +320,7 @@ if (is(T == class))
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     struct A
     {
@@ -335,7 +335,7 @@ if (is(T == class))
 }
 
 @safe pure nothrow @nogc
-unittest
+version(mir_test) unittest
 {
     // Degenerate bitfields (#8474 / #11160) tests mixed with range tests
     struct Test1
@@ -401,7 +401,7 @@ unittest
     t4b.a = -5; assert(t4b.a == -5L);
 }
 
-@system unittest
+@system version(mir_test) unittest
 {
     struct Test5
     {
@@ -441,7 +441,7 @@ unittest
     assert(t6.b == true);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     static assert(!__traits(compiles,
         taggedPointer!(
@@ -465,7 +465,7 @@ unittest
     static assert(!__traits(compiles, bar(s)));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     // Bug #6686
     union  S {
@@ -482,7 +482,7 @@ unittest
     assert(num.bits == 0xFFFF_FFFF_8000_0001uL);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     // Bug #5942
     struct S
@@ -499,7 +499,7 @@ unittest
     assert(data.b == 42);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     struct Test
     {
@@ -524,7 +524,7 @@ unittest
     test();
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     {
         static struct Integrals {
@@ -601,7 +601,7 @@ unittest
 }
 
 // Issue 12477
-@system unittest
+@system version(mir_test) unittest
 {
     import std.algorithm.searching : canFind;
     import mir.bitmanip : bitfields;

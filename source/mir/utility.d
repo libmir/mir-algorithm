@@ -87,7 +87,7 @@ if (isBlitAssignable!T && !is(typeof(lhs.proxySwap(rhs))))
 
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     // Swapping POD (plain old data) types:
     int a = 42, b = 34;
@@ -113,7 +113,7 @@ if (isBlitAssignable!T && !is(typeof(lhs.proxySwap(rhs))))
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     // Non-copyable types can still be swapped.
     static struct NoCopy
@@ -158,7 +158,7 @@ if (isBlitAssignable!T && !is(typeof(lhs.proxySwap(rhs))))
     static assert(!__traits(compiles, swap(const1, const2)));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     //Bug# 4789
     int[1] s = [1];
@@ -169,7 +169,7 @@ if (isBlitAssignable!T && !is(typeof(lhs.proxySwap(rhs))))
     assert(a == [1, 3, 2]);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     static struct NoAssign
     {
@@ -183,7 +183,7 @@ if (isBlitAssignable!T && !is(typeof(lhs.proxySwap(rhs))))
     assert(s2.i == 1);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     struct S
     {
@@ -193,7 +193,7 @@ if (isBlitAssignable!T && !is(typeof(lhs.proxySwap(rhs))))
     static assert(!__traits(compiles, swap(s, s)));
 }
 
-unittest
+version(mir_test) unittest
 {
     static struct A
     {
@@ -265,7 +265,7 @@ package template isBlitAssignable(T)
         enum isBlitAssignable = isMutable!T;
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     static assert( isBlitAssignable!int);
     static assert(!isBlitAssignable!(const int));
@@ -379,7 +379,7 @@ auto min(T...)(T args)
     }
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     int a = 5;
     short b = 6;
@@ -396,7 +396,7 @@ auto min(T...)(T args)
 `min` is not defined for arguments of mixed signedness because of security reasons.
 Please unify type or use a Phobos analog.
 +/
-unittest
+version(mir_test) unittest
 {
     int a = -10;
     uint b = 10;
@@ -446,7 +446,7 @@ auto max(T...)(T args)
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     int a = 5;
     short b = 6;
@@ -463,7 +463,7 @@ auto max(T...)(T args)
 `max` is not defined for arguments of mixed signedness because of security reasons.
 Please unify type or use a Phobos analog.
 +/
-unittest
+version(mir_test) unittest
 {
     int a = -10;
     uint b = 10;

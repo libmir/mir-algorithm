@@ -114,7 +114,7 @@ struct IotaIterator(I)
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
     IotaIterator!int iota;
     assert(*iota == 0);
@@ -140,7 +140,7 @@ struct IotaIterator(I)
 }
 
 ///
-pure nothrow @nogc unittest
+pure nothrow @nogc version(mir_test) unittest
 {
     int[32] data;
     auto iota = IotaIterator!(int*)(data.ptr);
@@ -172,7 +172,7 @@ auto RetroIterator__map(Iterator, alias fun)(ref RetroIterator!Iterator it)
     return RetroIterator!(typeof(iterator))(iterator);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -237,7 +237,7 @@ struct RetroIterator(Iterator)
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
     IotaIterator!int iota;
     RetroIterator!(IotaIterator!int) retro;
@@ -277,7 +277,7 @@ auto StrideIterator__map(Iterator, alias fun)(ref StrideIterator!Iterator it)
     return StrideIterator!(typeof(iterator))(it._stride, iterator);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -341,7 +341,7 @@ struct StrideIterator(Iterator)
 }
 
 ///
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
     IotaIterator!int iota;
     StrideIterator!(IotaIterator!int) stride;
@@ -489,7 +489,7 @@ struct ZipIterator(Iterators...)
 }
 
 ///
-pure nothrow @nogc unittest
+pure nothrow @nogc version(mir_test) unittest
 {
     double[10] data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     alias ItA = IotaIterator!int;
@@ -736,7 +736,7 @@ struct SlideIterator(Iterator, size_t params, alias fun)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.functional: naryFun;
     auto data = [1, 3, 8, 18];
@@ -753,7 +753,7 @@ auto IndexIterator__map(Iterator, Field, alias fun)(ref IndexIterator!(Iterator,
     return IndexIterator!(Iterator, typeof(field))(it._iterator, field);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -877,7 +877,7 @@ public auto FieldIterator__map(Field, alias fun)(ref FieldIterator!(Field) it)
     return FieldIterator!(typeof(field))(it._index, field);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -968,7 +968,7 @@ auto FlattenedIterator__map(SliceKind kind, size_t[] packs, Iterator, alias fun)
     return FlattenedIterator!(TemplateArgsOf!(typeof(slice)))(it._indexes, slice);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -1157,7 +1157,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     }
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.slice;
@@ -1295,7 +1295,7 @@ struct StairsIterator(Iterator)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     // 0
     // 1 2

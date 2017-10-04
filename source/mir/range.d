@@ -84,7 +84,7 @@ struct Counter(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     Counter!char counter;
     counter.put("Ми");
@@ -94,7 +94,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     Counter!wchar counter;
     counter.put("Ми");
@@ -104,7 +104,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     Counter!int counter;
     import std.algorithm: until;
