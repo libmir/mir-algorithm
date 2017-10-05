@@ -2248,15 +2248,16 @@ version(mir_test) unittest
             [0, 0, 0]]);
     }
 
+    @safe pure nothrow @nogc
     T identity(T)(T x)
     {
         return x;
     }
 
-    static foreach(type; AliasSeq!(identity, canonical, universal))
-    {
-        test!type;
-    }
+    alias kinds = AliasSeq!(identity, canonical, universal);
+    test!(kinds[0]);
+    test!(kinds[1]);
+    test!(kinds[2]);
 }
 
 ///
@@ -2720,15 +2721,16 @@ version(mir_test) unittest
             [7, 8, 0]]);
     }
 
+    @safe pure nothrow @nogc
     T identity(T)(T x)
     {
         return x;
     }
 
-    static foreach(type; AliasSeq!(identity, canonical, universal))
-    {
-        test!type;
-    }
+    alias kinds = AliasSeq!(identity, canonical, universal);
+    test!(kinds[0]);
+    test!(kinds[1]);
+    test!(kinds[2]);
 }
 
 ///
