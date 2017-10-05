@@ -2227,7 +2227,7 @@ template eachLower(alias fun)
     }
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
@@ -2258,7 +2258,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2274,7 +2274,7 @@ unittest
         [0, 0, 9]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2290,7 +2290,7 @@ unittest
         [0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2306,7 +2306,7 @@ unittest
         [0, 8, 9]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2322,7 +2322,7 @@ unittest
         [0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2338,7 +2338,7 @@ unittest
         [0, 0, 0, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2354,7 +2354,7 @@ unittest
         [0, 0, 11, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2370,7 +2370,7 @@ unittest
         [0, 0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2386,7 +2386,7 @@ unittest
         [0, 10, 11, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2402,7 +2402,7 @@ unittest
         [0, 0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2420,7 +2420,7 @@ unittest
         [0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2438,7 +2438,7 @@ unittest
         [0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2456,7 +2456,7 @@ unittest
         [0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2474,7 +2474,7 @@ unittest
         [0, 0, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2493,7 +2493,7 @@ unittest
 }
 
 /// Swap two slices
-unittest
+version(mir_test) unittest
 {
     import mir.utility : swap;
     import mir.ndslice.allocation : slice;
@@ -2521,7 +2521,7 @@ unittest
 }
 
 /// Swap two zipped slices
-unittest
+version(mir_test) unittest
 {
     import mir.utility : swap;
     import mir.ndslice.allocation : slice;
@@ -2682,7 +2682,7 @@ template eachUpper(alias fun)
     }
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
@@ -2713,7 +2713,7 @@ unittest
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2729,7 +2729,7 @@ unittest
         [7, 8, 9]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2745,7 +2745,7 @@ unittest
         [7, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2761,7 +2761,7 @@ unittest
         [7, 8, 9]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2777,7 +2777,7 @@ unittest
         [0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2793,7 +2793,7 @@ unittest
         [9, 10, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2809,7 +2809,7 @@ unittest
         [9, 10, 11, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2825,7 +2825,7 @@ unittest
         [9, 0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2841,7 +2841,7 @@ unittest
         [9, 10, 11, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2857,7 +2857,7 @@ unittest
         [0, 0, 0, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2875,7 +2875,7 @@ unittest
         [10, 11, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2893,7 +2893,7 @@ unittest
         [10, 11, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2911,7 +2911,7 @@ unittest
         [10, 11, 0]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2929,7 +2929,7 @@ unittest
         [10, 11, 12]]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -2948,7 +2948,7 @@ unittest
 }
 
 /// Swap two slices
-unittest
+version(mir_test) unittest
 {
     import mir.utility : swap;
     import mir.ndslice.allocation : slice;
@@ -2976,7 +2976,7 @@ unittest
 }
 
 /// Swap two zipped slices
-unittest
+version(mir_test) unittest
 {
     import mir.utility : swap;
     import mir.ndslice.allocation : slice;
