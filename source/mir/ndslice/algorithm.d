@@ -560,7 +560,7 @@ for i <= j (default) or i < j (if includeDiagonal is false).
 
 Params:
     fun = A function.
-    includeDiagonal = true if applying function to diagonal, 
+    includeDiagonal = true if applying function to diagonal,
                       false (default) otherwise.
 +/
 template eachUploPair(alias fun, bool includeDiagonal = false)
@@ -2078,27 +2078,27 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     return ret;
 }
 
-private template selectBackOf(size_t N)
+private template selectBackOf(size_t N, string input)
 {
     static if (N == 0)
         enum selectBackOf = "";
     else
     {
         enum i = N - 1;
-        enum selectBackOf = selectBackOf!i ~
-                       "slices[" ~ i.stringof ~ "].selectBack!0(m - (n + k)), ";
+        enum selectBackOf = selectBackOf!(i, input) ~
+                     "slices[" ~ i.stringof ~ "].selectBack!0(" ~ input ~ "), ";
     }
 }
 
-private template frontSelectFrontOf(size_t N)
+private template frontSelectFrontOf(size_t N, string input)
 {
     static if (N == 0)
         enum frontSelectFrontOf = "";
     else
     {
         enum i = N - 1;
-        enum frontSelectFrontOf = frontSelectFrontOf!i ~
-                "slices[" ~ i.stringof ~ "].front!0.selectFront!0(i - k + 1), ";
+        enum frontSelectFrontOf = frontSelectFrontOf!(i, input) ~
+            "slices[" ~ i.stringof ~ "].front!0.selectFront!0(" ~ input ~ "), ";
     }
 }
 
@@ -2157,6 +2157,7 @@ template eachLower(alias fun)
             import mir.ndslice.slice : Slice;
 
             ptrdiff_t k = 1;
+            size_t val;
 
             static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
             {
@@ -2184,11 +2185,12 @@ template eachLower(alias fun)
 
             if ((n + k) < m)
             {
+                val = m - (n + k);
                 static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ selectBackOf!(Slices.length) ~ ");");
+                    mixin("fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
                 else
                     mixin(".eachImpl!fun(" ~
-                                           selectBackOf!(Slices.length) ~ ");");
+                                    selectBackOf!(Slices.length, "val") ~ ");");
             }
 
             size_t i;
@@ -2205,11 +2207,13 @@ template eachLower(alias fun)
 
             do
             {
+                val = i - k + 1;
                 static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ frontSelectFrontOf!(Slices.length) ~ ");");
+                    mixin("fun(" ~
+                              frontSelectFrontOf!(Slices.length, "val") ~ ");");
                 else
                     mixin(".eachImpl!fun(" ~
-                                     frontSelectFrontOf!(Slices.length) ~ ");");
+                              frontSelectFrontOf!(Slices.length, "val") ~ ");");
 
                 foreach(ref slice; slices)
                         slice.popFront!0;
@@ -2546,27 +2550,28 @@ unittest
         [ 6,  7, 18]]);
 }
 
-private template frontSelectBackOf(size_t N)
+
+private template frontSelectBackOf(size_t N, string input)
 {
     static if (N == 0)
         enum frontSelectBackOf = "";
     else
     {
         enum i = N - 1;
-        enum frontSelectBackOf = frontSelectBackOf!i ~
-               "slices[" ~ i.stringof ~ "].front!0.selectBack!0(n - k - i), ";
+        enum frontSelectBackOf = frontSelectBackOf!(i, input) ~
+               "slices[" ~ i.stringof ~ "].front.selectBack!0(" ~ input ~ "), ";
     }
 }
 
-private template selectFrontOf(size_t N)
+private template selectFrontOf(size_t N, string input)
 {
     static if (N == 0)
         enum selectFrontOf = "";
     else
     {
         enum i = N - 1;
-        enum selectFrontOf = selectFrontOf!i ~
-                               "slices[" ~ i.stringof ~ "].selectFront!0(-k), ";
+        enum selectFrontOf = selectFrontOf!(i, input) ~
+                    "slices[" ~ i.stringof ~ "].selectFront!0(" ~ input ~ "), ";
     }
 }
 
@@ -2611,6 +2616,7 @@ template eachUpper(alias fun)
             import mir.ndslice.slice : Slice;
 
             ptrdiff_t k = 1;
+            size_t val;
 
             static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
             {
@@ -2640,11 +2646,12 @@ template eachUpper(alias fun)
 
             if (k < 0)
             {
+                val = -k;
                 static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ selectFrontOf!(Slices.length) ~ ");");
+                    mixin("fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
                 else
                     mixin(".eachImpl!fun(" ~
-                                          selectFrontOf!(Slices.length) ~ ");");
+                                   selectFrontOf!(Slices.length, "val") ~ ");");
                 do
                 {
                     foreach(ref slice; slices)
@@ -2655,11 +2662,13 @@ template eachUpper(alias fun)
 
             do
             {
+                val = (n - k) - i;
                 static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ frontSelectBackOf!(Slices.length) ~ ");");
+                    mixin("fun(" ~
+                               frontSelectBackOf!(Slices.length, "val") ~ ");");
                 else
                     mixin(".eachImpl!fun(" ~
-                                      frontSelectBackOf!(Slices.length) ~ ");");
+                               frontSelectBackOf!(Slices.length, "val") ~ ");");
 
                 foreach(ref slice; slices)
                     slice.popFront;
