@@ -2227,12 +2227,14 @@ template eachLower(alias fun)
     }
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
     import std.meta: AliasSeq;
 
+    pure nothrow
     void test(alias func)()
     {
         //| 1 2 3 |
@@ -2258,6 +2260,7 @@ version(mir_test) unittest
 }
 
 ///
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2274,6 +2277,7 @@ version(mir_test) unittest
         [0, 0, 9]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2290,6 +2294,7 @@ version(mir_test) unittest
         [0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2306,6 +2311,7 @@ version(mir_test) unittest
         [0, 8, 9]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2322,6 +2328,7 @@ version(mir_test) unittest
         [0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2338,6 +2345,7 @@ version(mir_test) unittest
         [0, 0, 0, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2354,6 +2362,7 @@ version(mir_test) unittest
         [0, 0, 11, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2370,6 +2379,7 @@ version(mir_test) unittest
         [0, 0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2386,6 +2396,7 @@ version(mir_test) unittest
         [0, 10, 11, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2402,6 +2413,7 @@ version(mir_test) unittest
         [0, 0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2420,6 +2432,7 @@ version(mir_test) unittest
         [0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2438,6 +2451,7 @@ version(mir_test) unittest
         [0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2456,6 +2470,7 @@ version(mir_test) unittest
         [0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2474,6 +2489,7 @@ version(mir_test) unittest
         [0, 0, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2493,6 +2509,7 @@ version(mir_test) unittest
 }
 
 /// Swap two slices
+pure nothrow
 version(mir_test) unittest
 {
     import mir.utility : swap;
@@ -2521,6 +2538,7 @@ version(mir_test) unittest
 }
 
 /// Swap two zipped slices
+pure nothrow
 version(mir_test) unittest
 {
     import mir.utility : swap;
@@ -2549,7 +2567,6 @@ version(mir_test) unittest
         [ 3, 14, 15],
         [ 6,  7, 18]]);
 }
-
 
 private template frontSelectBackOf(size_t N, string input)
 {
@@ -2682,12 +2699,14 @@ template eachUpper(alias fun)
     }
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
     import std.meta: AliasSeq;
 
+    pure nothrow
     void test(alias func)()
     {
         //| 1 2 3 |
@@ -2713,6 +2732,7 @@ version(mir_test) unittest
 }
 
 ///
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2729,6 +2749,7 @@ version(mir_test) unittest
         [7, 8, 9]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2745,6 +2766,7 @@ version(mir_test) unittest
         [7, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2761,6 +2783,7 @@ version(mir_test) unittest
         [7, 8, 9]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2777,6 +2800,7 @@ version(mir_test) unittest
         [0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2793,6 +2817,7 @@ version(mir_test) unittest
         [9, 10, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2809,6 +2834,7 @@ version(mir_test) unittest
         [9, 10, 11, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2825,6 +2851,7 @@ version(mir_test) unittest
         [9, 0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2841,6 +2868,7 @@ version(mir_test) unittest
         [9, 10, 11, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2857,6 +2885,7 @@ version(mir_test) unittest
         [0, 0, 0, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2875,6 +2904,7 @@ version(mir_test) unittest
         [10, 11, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2893,6 +2923,7 @@ version(mir_test) unittest
         [10, 11, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2911,6 +2942,7 @@ version(mir_test) unittest
         [10, 11, 0]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2929,6 +2961,7 @@ version(mir_test) unittest
         [10, 11, 12]]);
 }
 
+pure nothrow
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
@@ -2948,6 +2981,7 @@ version(mir_test) unittest
 }
 
 /// Swap two slices
+pure nothrow
 version(mir_test) unittest
 {
     import mir.utility : swap;
@@ -2976,6 +3010,7 @@ version(mir_test) unittest
 }
 
 /// Swap two zipped slices
+pure nothrow
 version(mir_test) unittest
 {
     import mir.utility : swap;
