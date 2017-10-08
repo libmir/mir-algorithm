@@ -2156,17 +2156,17 @@ template eachLower(alias fun)
             import mir.ndslice.traits : isMatrix;
             import mir.ndslice.slice : Slice;
 
-            ptrdiff_t k = 1;
             size_t val;
 
             static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
             {
-                k = inputs[$ - 1];
+                sizediff_t k = inputs[$ - 1];
                 alias Slices = Inputs[0..($ - 1)];
                 alias slices = inputs[0..($ - 1)];
             }
             else
             {
+                enum sizediff_t k = 1;
                 alias Slices = Inputs;
                 alias slices = inputs;
             }
@@ -2189,31 +2189,25 @@ template eachLower(alias fun)
                 static if (slices[0].shape.length == 1)
                     mixin("fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
                 else
-                    mixin(".eachImpl!fun(" ~
-                                    selectBackOf!(Slices.length, "val") ~ ");");
+                    mixin(".eachImpl!fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
             }
 
             size_t i;
 
             if (k > 0)
             {
-                do
-                {
-                    foreach(ref slice; slices)
-                        slice.popFront!0;
-                    i++;
-                } while (i < k);
+                foreach(ref slice; slices)
+                    slice.popFrontExactly!0(k);
+                i = k;
             }
 
             do
             {
                 val = i - k + 1;
                 static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~
-                              frontSelectFrontOf!(Slices.length, "val") ~ ");");
+                    mixin("fun(" ~ frontSelectFrontOf!(Slices.length, "val") ~ ");");
                 else
-                    mixin(".eachImpl!fun(" ~
-                              frontSelectFrontOf!(Slices.length, "val") ~ ");");
+                    mixin(".eachImpl!fun(" ~ frontSelectFrontOf!(Slices.length, "val") ~ ");");
 
                 foreach(ref slice; slices)
                         slice.popFront!0;
@@ -2633,17 +2627,17 @@ template eachUpper(alias fun)
             import mir.ndslice.traits : isMatrix;
             import mir.ndslice.slice : Slice;
 
-            ptrdiff_t k = 1;
             size_t val;
 
             static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
             {
-                k = inputs[$ - 1];
+                sizediff_t k = inputs[$ - 1];
                 alias Slices = Inputs[0..($ - 1)];
                 alias slices = inputs[0..($ - 1)];
             }
             else
             {
+                enum sizediff_t k = 1;
                 alias Slices = Inputs;
                 alias slices = inputs;
             }
@@ -2668,25 +2662,20 @@ template eachUpper(alias fun)
                 static if (slices[0].shape.length == 1)
                     mixin("fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
                 else
-                    mixin(".eachImpl!fun(" ~
-                                   selectFrontOf!(Slices.length, "val") ~ ");");
-                do
-                {
-                    foreach(ref slice; slices)
-                        slice.popFront;
-                    i++;
-                } while (i < (-k));
+                    mixin(".eachImpl!fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
+
+                foreach(ref slice; slices)
+                    slice.popFrontExactly!0(-k);
+                i = -k;
             }
 
             do
             {
                 val = (n - k) - i;
                 static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~
-                               frontSelectBackOf!(Slices.length, "val") ~ ");");
+                    mixin("fun(" ~ frontSelectBackOf!(Slices.length, "val") ~ ");");
                 else
-                    mixin(".eachImpl!fun(" ~
-                               frontSelectBackOf!(Slices.length, "val") ~ ");");
+                    mixin(".eachImpl!fun(" ~ frontSelectBackOf!(Slices.length, "val") ~ ");");
 
                 foreach(ref slice; slices)
                     slice.popFront;
