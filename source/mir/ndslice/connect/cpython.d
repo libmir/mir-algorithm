@@ -18,34 +18,6 @@ import mir.ndslice.slice;
 import core.stdc.config;
 import std.traits;
 
-/// Python $(LINK2 https://docs.python.org/3/c-api/buffer.html#buffer-structure, Buffer structure).
-extern(C)
-struct bufferinfo
-{
-    ///
-    void *buf;
-    ///
-    void *obj;
-    ///
-    sizediff_t len;
-    ///
-    sizediff_t itemsize;
-    ///
-    int readonly;
-    ///
-    int ndim;
-    ///
-    char *format;
-    ///
-    sizediff_t *shape;
-    ///
-    sizediff_t *strides;
-    ///
-    sizediff_t *suboffsets;
-    ///
-    void *internal;
-}
-
 /// ditto
 alias Py_buffer = bufferinfo;
 
@@ -265,8 +237,34 @@ unittest
 
         return view;
     }
+}
 
-    
+/// Python $(LINK2 https://docs.python.org/3/c-api/buffer.html#buffer-structure, Buffer structure).
+extern(C)
+struct bufferinfo
+{
+    ///
+    void *buf;
+    ///
+    void *obj;
+    ///
+    sizediff_t len;
+    ///
+    sizediff_t itemsize;
+    ///
+    int readonly;
+    ///
+    int ndim;
+    ///
+    char *format;
+    ///
+    sizediff_t *shape;
+    ///
+    sizediff_t *strides;
+    ///
+    sizediff_t *suboffsets;
+    ///
+    void *internal;
 }
 
 /++

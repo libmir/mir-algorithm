@@ -26,7 +26,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,ndslice,traits)) $(TD Multi-dimensional traits))
     $(LEADINGROW Interconnection with other languages)
     $(TR $(TDNW $(MREF mir,ndslice,connect,cpp)) $(TD Definitions suitable for `extern(C++)` functions))
-    $(TR $(TDNW $(MREF mir,ndslice,connect,cpython)) $(TD Utilities for $(LINK2 https://docs.python.org/3/c-api/buffer.html, Python Buffer Protocol))
+    $(TR $(TDNW $(MREF mir,ndslice,connect,cpython)) $(TD Utilities for $(HTTPS docs.python.org/3/c-api/buffer.html, Python Buffer Protocol)))
     $(LEADINGROW Finance)
     $(TR $(TDNW $(MREF mir,timeseries)) $(TD Time-series))
     $(LEADINGROW Math)
