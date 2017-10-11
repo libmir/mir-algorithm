@@ -31,7 +31,7 @@ row[3] = 6;
 assert(matrix[2, 3] == 6); // D & C index order
 ```
 
-#### Example (10 sec)
+#### Example (30 sec)
 ```d
 import mir.ndslice;
 import std.stdio: writefln;
