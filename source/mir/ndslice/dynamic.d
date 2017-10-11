@@ -421,7 +421,7 @@ Slice!(Universal, [2], Iterator) rotated(SliceKind kind, Iterator)(Slice!(kind, 
 Reverses the order of dimensions.
 
 Params:
-    slice = input slice
+    _slice = input slice
 Returns:
     n-dimensional slice
 See_also: $(LREF swapped), $(LREF transposed)
@@ -641,7 +641,7 @@ private enum _reversedCode = q{
 /++
 Reverses the direction of iteration for all dimensions.
 Params:
-    slice = input slice
+    _slice = input slice
 Returns:
     n-dimensional slice
 +/
@@ -669,7 +669,7 @@ version(mir_test) unittest
 Reverses the direction of iteration for selected dimensions.
 
 Params:
-    slice = input slice
+    _slice = input slice
     Dimensions = indexes of dimensions to reverse order of iteration
     dimensions = indexes of dimensions to reverse order of iteration
 Returns:

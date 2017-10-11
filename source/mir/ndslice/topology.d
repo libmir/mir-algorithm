@@ -4257,8 +4257,7 @@ Returns a slice that can be iterated by dimension. Transposes dimensions on top 
 Combines $(LREF transposed) and $(LREF ipack).
 
 Params:
-    dim = dimension to perform iteration on
-    slice = input slice (may not be 1-dimensional slice)
+    Dimensions = dimensions to perform iteration on
 Returns:
     n-dimensional slice ipacked to allow iteration by dimension
 See_also:
@@ -4282,7 +4281,12 @@ template byDim(Dimensions...)
     else
     {
         import mir.ndslice.slice : Slice, SliceKind;
-        ///
+        /++
+        Params:
+            slice = input slice (may not be 1-dimensional slice)
+        Returns:
+            n-dimensional slice ipacked to allow iteration by dimension
+        +/
         @fastmath auto byDim(SliceKind kind, size_t[] packs, Iterator)
                                        (Slice!(kind, packs, Iterator) slice)
         {

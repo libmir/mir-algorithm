@@ -18,9 +18,6 @@ import mir.ndslice.slice;
 import core.stdc.config;
 import std.traits;
 
-/// ditto
-alias Py_buffer = bufferinfo;
-
 /++
 Construct flags for $(PGB).
 If `T` is not `const` or `immutable` then the flags requrie writable buffer.
@@ -266,6 +263,8 @@ struct bufferinfo
     ///
     void *internal;
 }
+/// ditto
+alias Py_buffer = bufferinfo;
 
 /++
 Error codes for ndslice - Py_buffer conversion.
@@ -336,7 +335,7 @@ enum PyBuf_records = (PyBuf_strides | PyBuf_writable | PyBuf_format);
 enum PyBuf_records_ro = (PyBuf_strides | PyBuf_format);
 
 /++
-Returns $(LINK2 https://docs.python.org/3/c-api/buffer.html#c.Py_buffer.format, python format (type))) string.
+Returns $(HTTPS docs.python.org/3/c-api/buffer.html#c.Py_buffer.format, python format (type)) string.
 For example, `"O"` for `PyObject` and "B" for ubyte.
 +/
 template pythonBufferFormat(T)
