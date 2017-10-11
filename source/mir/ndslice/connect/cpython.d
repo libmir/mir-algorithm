@@ -98,7 +98,7 @@ Params:
         $(LREF Py_buffer.obj) is not initialized.
         Other $(LREF Py_buffer) fields are initialized accroding to the flags and slice.
     flags = requester flags
-    structureBuffer = Single chunk of memory with the same alignment and size as $(SUBREF slice, Structure).
+    structureBuffer = Single chunk of memory with the same alignment and size as $(SUBREF _slice, Structure).
         The buffer is used to store shape and strides for the view.
 Returns:
     one of the `cannot_create_*` $(LREF PythonBufferErrorCode) on failure and `success` otherwise.
