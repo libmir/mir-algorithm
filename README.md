@@ -9,6 +9,11 @@
 [![codecov.io](https://codecov.io/github/libmir/mir-algorithm/coverage.svg?branch=master)](https://codecov.io/github/libmir/mir-algorithm?branch=master)
 [![Circle CI](https://circleci.com/gh/libmir/mir-algorithm.svg?style=svg)](https://circleci.com/gh/libmir/mir-algorithm)
 
+Mir Algorithm
+=============
+Dlang core library for math, finance and a home for Dlang multidimensional array package - ndslice.
+
+#### Example (3 sec)
 ```d
 import mir.ndslice;
 
@@ -21,6 +26,7 @@ row[3] = 6;
 assert(matrix[2, 3] == 6); // D & C index order
 ```
 
+#### Example (10 sec)
 ```d
 import mir.ndslice;
 import std.stdio: writefln;
