@@ -16,22 +16,39 @@ STD = $(TD $(SMALL $0))
 +/
 module mir.ndslice.connect.cpp;
 
+/// CppSlice definition. It is not shown in the docs because of a DDOC bug.
+unittest
+{
+    // extern(C++, ndslice) - ndslice namespace
+    struct CppSlice(SliceKind kind, int N, Iterator)
+    {extern(D):
+        ///
+        Slice!(kind, [N], Iterator) _slice;
+        ///
+        alias _slice this;
+        ///
+        this()(Slice!(kind, [N], Iterator) slice)
+        {
+            this._slice = slice;
+        }
+    }
+}
+
 ///
 unittest
 {
-    static extern(C++) void cppFun(CppContiguousMatrix!double matrix)
+    static extern(C++) void fillEye(CppContiguousMatrix!double matrix)
     {
         import mir.ndslice.topology: diagonal;
         matrix[] = 0;
         matrix.diagonal[] = 1;
     }
 
-    import mir.ndslice.allocation: stdcUninitSlice;
-    import core.stdc.stdlib: free;
+    import mir.ndslice.allocation;
 
     auto mat = stdcUninitSlice!double(2, 3).cppSlice;
-    cppFun(mat);
-    mat.iterator.free;
+    fillEye(mat);
+    mat.stdcFreeSlice;
 }
 
 public import mir.ndslice.slice: SliceKind, Universal, Contiguous, Canonical;
