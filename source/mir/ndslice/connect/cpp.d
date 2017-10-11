@@ -16,7 +16,10 @@ STD = $(TD $(SMALL $0))
 +/
 module mir.ndslice.connect.cpp;
 
-/// CppSlice definition. It is not shown in the docs because of a DDOC bug.
+/++
+CppSlice definition. It is not shown in the docs because of a DDOC bug.
+See also C++ $(HTTPS github.com/libmir/mir-algorithm/blob/master/include/ndslice.h, ndslice header).
++/
 unittest
 {
     // extern(C++, ndslice) - ndslice namespace
