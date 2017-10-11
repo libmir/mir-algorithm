@@ -13,6 +13,12 @@ Mir Algorithm
 =============
 Dlang core library for math, finance and a home for Dlang multidimensional array package - ndslice.
 
+### Links
+ - [API Documentation](http://docs.algorithm.dlang.io)
+ - [Scheme of basic API (advanced)](https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg)
+ - [Mir Blog](http://blog.mir.dlang.io/)
+ - [Lubeck](https://github.com/kaleidicassociates/lubeck) - Linear Algebra Library for Mir Algorithm
+
 #### Example (3 sec)
 ```d
 import mir.ndslice;
@@ -54,12 +60,6 @@ c[] = transposed(a + b / 2); // no memory allocations here
     // 5. c[] = (...) -- performs element-wise assignment.
 writefln(fmt, c);
 ```
-
-### Links
- - [API Documentation](http://docs.algorithm.dlang.io)
- - [Scheme of basic API (advanced)](https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg)
- - [Mir Blog](http://blog.mir.dlang.io/)
- - [Lubeck](https://github.com/kaleidicassociates/lubeck) - Linear Algebra Library for Mir Algorithm
 
 ### Our sponsors
 
