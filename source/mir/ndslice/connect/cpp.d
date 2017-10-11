@@ -37,7 +37,7 @@ unittest
 public import mir.ndslice.slice: SliceKind, Universal, Contiguous, Canonical;
 import mir.ndslice.slice;
 
-/// Converts $(SUBREF, _slice, Slice) to appropriate $(LREF CppSlice) type.
+/// Converts $(SUBREF _slice, Slice) to appropriate $(LREF CppSlice) type.
 CppSlice!(kind, packs[0], Iterator) cppSlice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
     return typeof(return)(slice);
