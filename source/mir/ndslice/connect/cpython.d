@@ -79,7 +79,6 @@ unittest
 {
     auto bar(ref const Py_buffer view)
     {
-        import mir.ndslice.allocation: stdcUninitSlice, stdcFreeSlice;
         ContiguousMatrix!(const double) mat = void;
         if (auto error = mat.fromPythonBuffer(view))
         {
@@ -225,6 +224,7 @@ unittest
         if (auto error = slice.toPythonBuffer(view, PyBuf_records_ro, *structurePtr))
         {
             view = view.init; // null buffer
+            structurePtr.free;
         }
         else
         {
