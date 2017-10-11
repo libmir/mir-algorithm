@@ -36,7 +36,8 @@ $(TR $(TH Function Name) $(TH Description))
 $(T2 rotated, Rotates two selected dimensions by `k*90` degrees. $(BR)
     `iota(2, 3).rotated` equals to `[[2, 5], [1, 4], [0, 3]]`.)
 $(T2 dropToHypercube, Returns maximal multidimensional cube of a slice.)
-
+$(T2 normalizeStructure, Reverses iteration order for dimensions with nagative strides, they become not negative;
+and sorts dimensions according to the strides, dimensions with larger strides are going first.)
 )
 
 $(H2 Bifacial operators)
@@ -86,6 +87,70 @@ import mir.ndslice.slice;
 import mir.utility;
 
 @fastmath:
+
+/++
+Reverses iteration order for dimensions with nagative strides, they become not negative;
+and sorts dimensions according to the strides, dimensions with larger strides are going first.
+
+Params:
+    slice = a slice to normalize dimension
+Returns:
+    `true` if the slice can be safely casted to $(SUBREF slice, Contiguous) kind using $(SUBREF topology, assumeContiguous) and false otherwise.
++/
+bool normalizeStructure(SliceKind kind, size_t[] packs, Iterator)(ref Slice!(kind, packs, Iterator) slice)
+{
+    static if (kind == Contiguous)
+    {
+        return true;
+    }
+    else
+    {
+        import mir.utility: min;
+        enum Y = min(slice.S, packs[0]);
+        foreach(i; Iota!Y)
+            if (slice._stride!i < 0)
+                slice = slice.reversed!i;
+        static if (packs[0] == 1)
+            return slice._stride!0 == 1;
+        else
+        static if (packs[0] == 2 && kind == Canonical)
+        {
+            return slice._stride!0 == slice.length!1;
+        }
+        else
+        {
+            import mir.ndslice.sorting: sort;
+            import mir.ndslice.topology: zip, iota;
+            auto l = slice._lengths[0 .. Y].sliced;
+            auto s = slice._strides[0 .. Y].sliced;
+            zip(l, s).sort!"a.b > b.b";
+            return slice.shape.iota.strides == slice.strides;
+        }
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+
+    auto g = iota(2, 3); //contiguous
+    auto c = g.reversed!0; //canonical
+    auto u = g.transposed.allReversed; //universal
+
+    assert(g.normalizeStructure);
+    assert(c.normalizeStructure);
+    assert(u.normalizeStructure);
+
+    assert(c == g);
+    assert(u == g);
+
+    c.popFront!1;
+    u.popFront!1;
+
+    assert(!c.normalizeStructure);
+    assert(!u.normalizeStructure);
+}
 
 private enum _swappedCode = q{
     with (slice)
