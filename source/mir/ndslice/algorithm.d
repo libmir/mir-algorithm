@@ -2612,11 +2612,11 @@ template eachUpper(alias fun)
             The value `k` determines which diagonals will have the function
             applied:
             For k = 0, the function is also applied to the main diagonal
-            For k = 1 (default), only the non-main diagonals below the main
+            For k = 1 (default), only the non-main diagonals above the main
             diagonal will have the function applied.
-            For k > 1, fewer diagonals above the main diagonal will have the
+            For k > 1, fewer diagonals below the main diagonal will have the
             function applied.
-            For k < 0, more diagonals below the main diagonal will have the
+            For k < 0, more diagonals above the main diagonal will have the
             function applied.
         +/
         void eachUpper(Inputs...)(Inputs inputs)
