@@ -68,9 +68,11 @@ struct Interp1(Range, Interpolation)
     {
         assert(!empty);
         auto x = _range.front;
-        while (x > _interpolation._grid[_interval + 1] && _interpolation._grid.length > _interval + 2)
-            _interval++;
-        return _interpolation(x, _interval);
+        return (x) @trusted {
+            while (x > _interpolation._grid[_interval + 1] && _interpolation._length > _interval + 2)
+                _interval++;
+            return _interpolation(x, _interval);
+        } (x);
     }
 }
 
@@ -78,18 +80,19 @@ struct Interp1(Range, Interpolation)
 PCHIP interpolation.
 +/
 version(mir_test)
-unittest
+@safe unittest
 {
     import std.math: approxEqual;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: slice;
     import mir.interpolation: interp1;
     import mir.interpolation.pchip;
 
-    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
+    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
     auto interpolation = x.pchip(y);
 
-    auto xs = x[0 .. $ - 1].dup;
-    xs[] += 0.5;
+    auto xs = slice(x[0 .. $ - 1] + 0.5);
 
     auto ys = xs.interp1(interpolation);
 
@@ -107,7 +110,7 @@ unittest
 
 }
 
-unittest
+@safe unittest
 {
     import mir.interpolation.linear;
     import mir.ndslice;
@@ -117,7 +120,7 @@ unittest
     auto y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
     auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
 
-    auto interpolation = linearInterpolation(x, y);
+    auto interpolation = linearInterpolation(x.sliced, y.sliced);
 
     auto data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
 

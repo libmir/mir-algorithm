@@ -14,6 +14,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.interpolation.pchip;
 
 import std.traits;
+import mir.ndslice.slice;
 import mir.array.primitives;
 import mir.utility: fastmath;
 
@@ -22,31 +23,33 @@ import mir.utility: fastmath;
 /++
 Structure for unbounded piecewise cubic hermite interpolating polynomial.
 +/
-struct Pchip(RangeG, RangeV, RangeS)
+struct Pchip(T)
 {
     import std.range: assumeSorted;
 
     ///
-    RangeG _grid;
+    const size_t _length;
     ///
-    RangeV _values;
+    const T* _grid;
     ///
-    RangeS _slopes;
+    const T* _values;
+    ///
+    const T* _slopes;
 
-    private alias G = Unqual!(ForeachType!RangeG);
-    private alias V = Unqual!(ForeachType!RangeV);
-    private alias S = Unqual!(ForeachType!RangeS);
+@trusted @fastmath:
 
-@fastmath:
-
-    this()(RangeG grid, RangeV values, RangeS slopes)
+    this()(
+        Slice!(Contiguous, [1], const(T)*) grid,
+        Slice!(Contiguous, [1], const(T)*) values,
+        Slice!(Contiguous, [1], const(T)*)  slopes) @system
     {
-        assert(grid.length >= 2);
-        assert(grid.length == values.length);
-        assert(grid.length == slopes.length);
-        this._grid   = grid;
-        this._values = values;
-        this._slopes = slopes;
+        assert (grid.length >= 2);
+        assert (grid.length == values.length);
+        assert (grid.length == slopes.length);
+        this._length = grid.length;
+        this._grid   = grid._iterator;
+        this._values = values._iterator;
+        this._slopes = slopes._iterator;
     }
 
     /++
@@ -55,7 +58,7 @@ struct Pchip(RangeG, RangeV, RangeS)
     size_t interval(T)(in T x)
     {
         import std.range: assumeSorted;
-        return _grid[1 .. $ - 1]
+        return _grid.sliced(_length)[1 .. $ - 1]
             .assumeSorted
             .lowerBound(x)
             .length;
@@ -66,9 +69,9 @@ struct Pchip(RangeG, RangeV, RangeS)
     Complexity:
         `O(log(_grid.length))`
     +/
-    auto opCall(T)(in T x)
+    T opCall()(T x)
     {
-        return opCall!T(x, interval(x));
+        return opCall(x, interval(x));
     }
 
     /++
@@ -76,9 +79,9 @@ struct Pchip(RangeG, RangeV, RangeS)
     Complexity:
         `O(1)`
     +/
-    auto opCall(T)(in T x, size_t interval)
+    T opCall()(T x, size_t interval) @system
     {
-        assert(interval + 1 < _grid.length);
+        assert(interval + 1 < _length);
 
         auto x0 = _grid  [interval + 0];
         auto x1 = _grid  [interval + 1];
@@ -87,11 +90,11 @@ struct Pchip(RangeG, RangeV, RangeS)
         auto s0 = _slopes[interval + 0];
         auto s1 = _slopes[interval + 1];
 
-        return opCall!T(x0, x1, y0, y1, s0, s1, x);
+        return opCall(x0, x1, y0, y1, s0, s1, x);
     }
 
     ///
-    static auto opCall(T)(G x0, G x1, V y0, V y1, S s0, S s1, in T x)
+    static T opCall()(T x0, T x1, T y0, T y1, T s0, T s1, T x)
     {
         auto step = x1 - x0;
         auto diff = y1 - y0;
@@ -134,11 +137,12 @@ Constraints:
 Returns: $(LREF Pchip)
 Allocation: Allocates slopes using GC.
 +/
-auto pchip(RangeG, RangeV)(RangeG grid, RangeV values)
+auto pchip(T)(
+    Slice!(Contiguous, [1], const(T)*) grid,
+    Slice!(Contiguous, [1], const(T)*) values)
 {
-    import std.meta: staticMap;
-    alias T = CommonType!(staticMap!(Unqual, staticMap!(ForeachType, RangeG, RangeV)));
-    return pchip(grid, values, new T[grid.length]);
+    import mir.ndslice.allocation: uninitSlice;
+    return pchip(grid, values, uninitSlice!T(grid.length));
 }
 
 /++
@@ -146,27 +150,27 @@ Piecewise cubic hermite interpolating polynomial.
 Params:
     grid = `x` values for interpolation
     values = `f(x)` values for interpolation
-    slopes = uninitialized arrays to write slopes into
+    slopes = uninitialized ndslice to write slopes into
 Constraints:
     `grid`, `values`, and `slopes` must have the same length >= 3
 Returns: $(LREF Pchip)
 +/
-Pchip!(RangeG, RangeV, RangeS) pchip(RangeG, RangeV, RangeS)(RangeG grid, RangeV values, RangeS slopes)
-in 
+Pchip!T pchip(T)(
+    Slice!(Contiguous, [1], const(T)*) grid,
+    Slice!(Contiguous, [1], const(T)*) values,
+    Slice!(Contiguous, [1], T*)  slopes) @trusted
 {
-    assert(grid.length >= 3);
-    assert(grid.length == values.length);
-    assert(grid.length == slopes.length);
-}
-body
-{
-    alias G = Unqual!(ForeachType!RangeG);
-    alias V = Unqual!(ForeachType!RangeV);
+    if (grid.length < 3)
+        assert(0);
+    if (grid.length != values.length)
+        assert(0);
+    if (grid.length != slopes.length)
+        assert(0);
 
-    G step0 = grid  [1] - grid  [0];
-    G step1 = grid  [2] - grid  [1];
-    V diff0 = values[1] - values[0];
-    V diff1 = values[2] - values[1];
+    T step0 = grid  [1] - grid  [0];
+    T step1 = grid  [2] - grid  [1];
+    T diff0 = values[1] - values[0];
+    T diff1 = values[2] - values[1];
     diff0 /= step0;
     diff1 /= step1;
 
@@ -201,17 +205,18 @@ body
 
 ///
 version(mir_test)
-unittest
+@safe unittest
 {
     import std.math: approxEqual;
+    import mir.ndslice.allocation: slice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: map, indexed;
     
-    auto x   = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto x   = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
+    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
     auto interpolation = x.pchip(y);
 
-    auto xs = x.sliced[0 .. $ - 1].map!"a + 0.5";
+    auto xs = x[0 .. $ - 1] + 0.5;
     auto ys = xs.map!interpolation;
     
     auto ys2 = interpolation.indexed(xs); // alternative to map
@@ -234,14 +239,15 @@ unittest
 
 // Check direction equality
 version(mir_test)
-unittest
+@safe unittest
 {
     import std.math: approxEqual;
     import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: retro, map;
 
     auto grid   = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
-    auto values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
 
     auto results = [
         5.333333333333334,
@@ -256,16 +262,15 @@ unittest
         ];
     auto interpolation = grid.pchip(values);
 
-    auto gridR = grid.retro.map!"-a";
-    auto valuesR = values.sliced.retro;
+    auto gridR = slice(-grid.retro);
+    auto valuesR = values.retro.slice;
     auto interpolationR = gridR.pchip(valuesR);
 
     version(X86_64)
-    assert(grid[0 .. $ - 1].map!"a + 0.5".map!interpolation ==
-        gridR.retro[0 .. $ - 1].map!"a - 0.5".map!interpolationR);
+    assert(map!interpolation(grid[0 .. $ - 1] +  0.5) == map!interpolationR(gridR.retro[0 .. $ - 1] - 0.5));
 }
 
-auto pchipTail(G, V)(in G step0, in G step1, in V diff0, in V diff1)
+auto pchipTail(T)(in T step0, in T step1, in T diff0, in T diff1)
 {
     import mir.math.common: copysign, fabs;
     if (!diff0)

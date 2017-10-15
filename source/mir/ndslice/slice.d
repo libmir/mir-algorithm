@@ -1970,10 +1970,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         Does not allocate neither new slice nor a closure.
     +/
     auto opUnary(string op)()
-        if (op == "*" || op == "~")
+        if (op == "*" || op == "~" || op == "-" || op == "+")
     {
         import mir.ndslice.topology: map;
-        return this.map!(op ~ "a");
+        static if (op == "+")
+            return this;
+        else
+            return this.map!(op ~ "a");
     }
 
     static if (doUnittest)
