@@ -2,7 +2,7 @@
 This is a submodule of $(MREF mir, ndslice).
 
 Safety_note:
-    User-defined iterators $(RED must) care about its safety except bounds checks.
+    User-defined iterators $(RED must) care about their safety except bounds checks.
     Bounds are checked in ndslice code.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).

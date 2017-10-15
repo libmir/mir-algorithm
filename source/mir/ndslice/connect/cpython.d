@@ -32,7 +32,7 @@ Returns:
 enum int pythonBufferFlags(SliceKind kind, T) = (kind == Contiguous ? PyBuf_c_contiguous : PyBuf_strides) | (is(T == const) || is (T == immutable) ? PyBuf_records_ro : PyBuf_records);
 
 /++
-Fills the slice from the python `view`.
+Fills the slice (structure) from the python `view`.
 The view should be created by $(PGB) that was called with $(LREF pythonBufferFlags).
 
 Params:
@@ -79,7 +79,6 @@ unittest
 {
     auto bar(ref const Py_buffer view)
     {
-        import mir.ndslice.allocation: stdcUninitSlice, stdcFreeSlice;
         ContiguousMatrix!(const double) mat = void;
         if (auto error = mat.fromPythonBuffer(view))
         {
@@ -90,7 +89,7 @@ unittest
 }
 
 /++
-Fills the python view from the slice.
+Fills the python view (structure) from the slice.
 Params:
     slice = input ndslice
     view = output $(LREF Py_buffer).
@@ -225,6 +224,7 @@ unittest
         if (auto error = slice.toPythonBuffer(view, PyBuf_records_ro, *structurePtr))
         {
             view = view.init; // null buffer
+            structurePtr.free;
         }
         else
         {
