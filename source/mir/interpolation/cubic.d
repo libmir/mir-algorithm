@@ -23,24 +23,24 @@ import mir.utility: fastmath;
 /++
 Structure for unbounded cubic spline in symmetrical form.
 +/
-struct CubicSpline(T)
-    if (is(Unqual!T == T))
+struct CubicSpline(IG, IV, IS)
 {
     ///
-    const size_t _length;
+    size_t _length;
     ///
-    const T* _grid;
+    IG _grid;
     ///
-    const T* _values;
+    IV _values;
     ///
-    const T* _slopes;
+    IS _slopes;
+
+    private alias G = Unqual!(typeof(IG.init[0]));
+    private alias V = Unqual!(typeof(IV.init[0]));
+    private alias S = Unqual!(typeof(IS.init[0]));
 
 @trusted @fastmath:
 
-    this()(
-        Slice!(Contiguous, [1], const(T)*) grid,
-        Slice!(Contiguous, [1], const(T)*) values,
-        Slice!(Contiguous, [1], const(T)*)  slopes) @system
+    this()(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values, Slice!(Contiguous, [1], IS) slopes) @system
     {
         assert (grid.length >= 2);
         assert (grid.length == values.length);
@@ -68,9 +68,9 @@ struct CubicSpline(T)
     Complexity:
         `O(log(_grid.length))`
     +/
-    T opCall()(T x)
+    auto opCall(uint derivative = 0, T)(in T x)
     {
-        return opCall(x, interval(x));
+        return opCall!derivative(x, interval(x));
     }
 
     /++
@@ -78,7 +78,7 @@ struct CubicSpline(T)
     Complexity:
         `O(1)`
     +/
-    T opCall()(T x, size_t interval) @system
+    auto opCall(uint derivative = 0, T)(in T x, size_t interval) @system
     {
         assert(interval + 1 < _length);
 
@@ -89,37 +89,39 @@ struct CubicSpline(T)
         auto s0 = _slopes[interval + 0];
         auto s1 = _slopes[interval + 1];
 
-        return opCall(x0, x1, y0, y1, s0, s1, x);
+        return opCall!derivative(x0, x1, y0, y1, s0, s1, x);
     }
 
     ///
-    static T opCall()(T x0, T x1, T y0, T y1, T s0, T s1, T x)
+    static auto opCall(uint derivative = 0, T)(G x0, G x1, V y0, V y1, S s0, S s1, in T x)
+        if (derivative <= 6)
     {
-        auto step = x1 - x0;
-        auto diff = y1 - y0;
-        s0 *= step;
-        s1 *= step;
-        auto w0 = x - x0;
-        auto w1 = x1 - x;
-        auto d0 = diff - s0;
-        auto d1 = diff - s1;
-        w0 /= step;
-        w1 /= step;
-        auto b_ = d0 + d1;
-        d0 += w1 * b_;
-        d1 += w0 * b_;
-        d0 *= w0;
-        d1 *= w1;
-        d0 += s0;
-        d1 += s1;
-        d0 *= w0;
-        d1 *= w1;
-        y0 += d0;
-        y1 -= d1;
-        y0 *= w1;
-        y1 *= w0;
-
-        return y0 + y1;
+        immutable step = x1 - x0;
+        immutable diff = y1 - y0;
+        immutable c0 = x - x0;
+        immutable c1 = x1 - x;
+        immutable w0 = c0 / step;
+        immutable w1 = c1 / step;
+        immutable z0 = s0 * step - diff;
+        immutable z1 = s1 * step - diff;
+        immutable wq = w0 * w1;
+        immutable pr = z0 * w1 - z1 * w0;
+        immutable y = w0 * y1 + w1 * y0 + wq * pr;
+        static if (derivative == 0)
+        {
+            return y;
+        }
+        else
+        {
+            typeof(y)[derivative + 1] ret = 0;
+            ret[0] = y;
+            immutable wd = w2 - w1;
+            immutable zd = z1 + z0;
+            ret[1] = (diff + wd * pr - wq * zd) / step;
+            static if (derivative > 1)
+            ret[2] = zd * (1 -   3 * wd) / (step * step);
+            return ret;
+        }
     }
 
     /// ditto

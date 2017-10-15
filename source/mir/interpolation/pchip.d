@@ -50,10 +50,10 @@ Constraints:
     `grid`, `values`, and `slopes` must have the same length >= 3
 Returns: $(LREF Pchip)
 +/
-CubicSpline!T pchip(T)(
-    Slice!(Contiguous, [1], const(T)*) grid,
-    Slice!(Contiguous, [1], const(T)*) values,
-    Slice!(Contiguous, [1], T*)  slopes) @trusted
+CubicSpline!(IG, IV, IS) pchip(IG, IV, IS)(
+    Slice!(Contiguous, [1], IG) grid,
+    Slice!(Contiguous, [1], IV) values,
+    Slice!(Contiguous, [1], IS) slopes) @trusted
 {
     if (grid.length < 3)
         assert(0);
@@ -62,10 +62,10 @@ CubicSpline!T pchip(T)(
     if (grid.length != slopes.length)
         assert(0);
 
-    T step0 = grid  [1] - grid  [0];
-    T step1 = grid  [2] - grid  [1];
-    T diff0 = values[1] - values[0];
-    T diff1 = values[2] - values[1];
+    auto step0 = cast()(grid  [1] - grid  [0]);
+    auto step1 = cast()(grid  [2] - grid  [1]);
+    auto diff0 = cast()(values[1] - values[0]);
+    auto diff1 = cast()(values[2] - values[1]);
     diff0 /= step0;
     diff1 /= step1;
 

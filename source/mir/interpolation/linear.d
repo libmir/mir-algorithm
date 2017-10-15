@@ -23,19 +23,21 @@ import mir.utility: fastmath;
 /++
 Unbounded linear interpolation.
 +/
-struct LinearInterpolation(T)
-    if (is(Unqual!T == T))
+struct LinearInterpolation(IG, IV)
 {
     ///
-    const size_t _length;
+    size_t _length;
     ///
-    const T* _grid;
+    IG _grid;
     ///
-    const T* _values;
+    IV _values;
+
+    private alias G = Unqual!(typeof(IG.init[0]));
+    private alias V = Unqual!(typeof(IV.init[0]));
 
 @trusted @fastmath:
 
-    this()(Slice!(Contiguous, [1], const(T)*) grid, Slice!(Contiguous, [1], const(T)*) values) @system
+    this()(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values) @system
     {
         assert (grid.length >= 2);
         assert (grid.length == values.length);
@@ -61,7 +63,7 @@ struct LinearInterpolation(T)
     Complexity:
         `O(log(_grid.length))`
     +/
-    T opCall()(T x)
+    auto opCall(uint derivative = 0, T)(T x)
     {
         return opCall(x, interval(x));
     }
@@ -71,7 +73,7 @@ struct LinearInterpolation(T)
     Complexity:
         `O(1)`
     +/
-    T opCall()(T x, size_t interval) @system
+    auto opCall(uint derivative = 0, T)(in T x, size_t interval) @system
     {
         assert(interval + 1 < _length);
 
@@ -84,16 +86,27 @@ struct LinearInterpolation(T)
     }
 
     ///
-    static T opCall()(T x0, T x1, T y0, T y1, in T x)
+    static auto opCall(uint derivative = 0, T)(G x0, G x1, V y0, V y1, in T x)
+        if (derivative <= 6)
     {
-        auto step = x1 - x0;
-        auto w0 = x - x0;
-        auto w1 = x1 - x;
-        w0 /= step;
-        w1 /= step;
-        y0 *= w1;
-        y1 *= w0;
-        return y0 + y1;
+        immutable step = x1 - x0;
+        immutable c0 = x - x0;
+        immutable c1 = x1 - x;
+        immutable w0 = c0 / step;
+        immutable w1 = c1 / step;
+        immutable r0 = y0 * w1;
+        immutable r1 = y1 * w0;
+        immutable y = r0 + r1;
+        static if (derivative == 0)
+        {
+            return y;
+        }
+        else
+        {
+            typeof(y)[derivative + 1] ret = 0;
+            ret[0] = y;
+            return ret;
+        }
     }
 
     /// ditto
@@ -112,7 +125,7 @@ Constraints:
 
 Returns: $(LREF LinearInterpolation)
 +/
-LinearInterpolation!T linearInterpolation(T)(Slice!(Contiguous, [1], const(T)*) grid, Slice!(Contiguous, [1], const(T)*) values) @trusted
+LinearInterpolation!(IG, IV) linearInterpolation(IG, IV)(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values) @trusted
 {
     if (grid.length < 2)
         assert(0);
