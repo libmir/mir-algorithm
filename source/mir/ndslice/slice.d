@@ -3245,7 +3245,7 @@ Params:
     lside = left side
     rside = right side
 Returns:
-    expresion value
+    expression value
 +/
 auto ref ndassign(string op = "", L, R)(ref L lside, auto ref R rside) @property
     if (op.length == 0 || op[$-1] != '=')
