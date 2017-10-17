@@ -3237,3 +3237,42 @@ version(mir_test) unittest
     assert(s.front!1 == [0, 3]);
     assert(s.back!1 == [2, 5]);
 }
+
+/++
+Assignment utility for generic code that works both with scalars and with ndslices.
+Params:
+    op = assign operation (generic, optional)
+    lside = left side
+    rside = right side
+Returns:
+    expresion value
++/
+auto ref ndassign(string op = "", L, R)(ref L lside, auto ref R rside) @property
+    if (op.length == 0 || op[$-1] != '=')
+{
+    static if (isSlice!L)
+        return mixin(`lside[] ` ~ op ~ `= rside`);
+    else
+        return mixin(`lside ` ~ op ~ `= rside`);
+}
+
+///
+unittest
+{
+    import mir.ndslice.topology: iota;
+    import mir.ndslice.allocation: slice;
+    auto scalar = 3;
+    auto vector = 3.iota.slice; // [0, 1, 2] 
+
+    // scalar = 5;
+    scalar.ndassign = 5; 
+    assert(scalar == 5);
+
+    // vector[] = vector * 2;
+    vector.ndassign = vector * 2;
+    assert(vector == [0, 2, 4]);
+
+    // vector[] += scalar;
+    vector.ndassign !"+"= scalar;
+    assert(vector == [5, 7, 9]);
+}
