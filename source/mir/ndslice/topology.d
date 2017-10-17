@@ -2664,6 +2664,7 @@ private enum TotalDim(NdFields...) = [staticMap!(DimensionCount, NdFields)].sum;
 
 /++
 Sliding map for vectors.
+Works with packed slices.
 
 Suitable for simple convolution algorithms.
 
@@ -2676,23 +2677,20 @@ template slide(size_t params, alias fun)
     if (params <= 'z' - 'a' + 1)
 {
     import mir.functional: naryFun;
-    static if (params == 1)
-    {
-        alias slide = .map!(naryFun!fun);
-    }
-    else
-    static if (__traits(isSame, naryFun!fun, fun))
+
+    static if (params > 1 && __traits(isSame, naryFun!fun, fun))
     {
         /++
         Params:
-            slice = An 1-dimensional input slice.
+            slice = An input slice with first dimension pack equals to one (e.g. 1-dimensional for not packed slices).
         Returns:
             1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
         +/
-        @fastmath auto slide(SliceKind kind, Iterator)
-            (Slice!(kind, [1], Iterator) slice)
+        @fastmath auto slide(SliceKind kind, size_t[] packs, Iterator)
+            (Slice!(kind, packs, Iterator) slice)
+            if (packs[0] == 1)
         {
-            auto s = slice.flattened;
+            auto s = slice.map!"a".flattened;
             s._lengths[0] -= params - 1;
             if (cast(sizediff_t)s._lengths[0] < 0)
                 s._lengths[0] = 0;
@@ -2703,6 +2701,9 @@ template slide(size_t params, alias fun)
                 I(s._iterator));
         }
     }
+    else
+    static if (params == 1)
+        alias slide = .map!(naryFun!fun);
     else alias slide = .slide!(params, naryFun!fun);
 }
 
@@ -2720,6 +2721,7 @@ version(mir_test) unittest
 
 /++
 Pairwise map for vectors.
+Works with packed slices.
 
 Params:
     fun = function to accomulate
@@ -2738,12 +2740,13 @@ version(mir_test) unittest
 
 /++
 Differences between vector elements.
+Works with packed slices.
 
 Params:
     lag = an integer indicating which lag to use
 Returns: lazy differences.
 
-See_also: $(LREF slide).
+See_also: $(LREF slide), $(LREF slide).
 +/
 alias diff(size_t lag = 1) = pairwise!(('a' + lag) ~ " - a", lag);
 
@@ -2752,6 +2755,24 @@ version(mir_test) unittest
 {
     assert([2, 4, 3, -1].sliced.diff == [2, -1, -4]);
 }
+
+/// packed slices
+version(mir_test) unittest
+{
+    // 0 1  2  3
+    // 4 5  6  7
+    // 8 9 10 11
+    auto s = iota(3, 4);
+    import std.stdio;
+    assert(iota(3, 4).byDim!0.diff == [
+        [4, 4, 4, 4], 
+        [4, 4, 4, 4]]);
+    assert(iota(3, 4).byDim!1.diff == [
+        [1, 1, 1],
+        [1, 1, 1], 
+        [1, 1, 1]]);
+}
+
 
 /++
 Cartesian product.
