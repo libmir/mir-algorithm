@@ -19,6 +19,7 @@ import std.traits;
 import mir.ndslice.slice;
 import mir.array.primitives;
 import mir.utility: fastmath;
+import mir.ndslice.internal: ConstIfPointer;
 
 @fastmath:
 
@@ -32,12 +33,13 @@ Constraints:
 Returns: $(LREF Pchip)
 Allocation: Allocates slopes using GC.
 +/
-auto pchip(T)(
+CubicSpline!(false,  const(T)*) pchip(T, size_t[] packs)(
     Slice!(Contiguous, [1], const(T)*) grid,
-    Slice!(Contiguous, [1], const(T)*) values)
+    Slice!(Contiguous, packs, const(T)*) values)
+    if (packs == [1] || packs == [2])
 {
     import mir.ndslice.allocation: uninitSlice;
-    return pchip(grid, values, uninitSlice!T(grid.length));
+    return pchip(grid, values, uninitSlice!T(values.shape));
 }
 
 /++
@@ -50,7 +52,7 @@ Constraints:
     `grid`, `values`, and `slopes` must have the same length >= 3
 Returns: $(LREF Pchip)
 +/
-CubicSpline!(IG, IV, IS) pchip(IG, IV, IS)(
+CubicSpline!(false, ConstIfPointer!IG, ConstIfPointer!IV, ConstIfPointer!IS) pchip(IG, IV, IS)(
     Slice!(Contiguous, [1], IG) grid,
     Slice!(Contiguous, [1], IV) values,
     Slice!(Contiguous, [1], IS) slopes) @trusted
@@ -106,14 +108,14 @@ version(mir_test)
     import mir.ndslice.allocation: slice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: map, indexed;
-    
+
     auto x   = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
     auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
     auto interpolation = x.pchip(y);
 
     auto xs = x[0 .. $ - 1] + 0.5;
     auto ys = xs.map!interpolation;
-    
+
     auto ys2 = interpolation.indexed(xs); // alternative to map
     version(X86_64)
         assert(ys == ys2);

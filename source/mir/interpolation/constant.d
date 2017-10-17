@@ -1,5 +1,5 @@
 /++
-$(H2 Linear Interpolation)
+$(H2 Constant Interpolation)
 
 See_also: $(REF_ALTTEXT $(TT interp1), interp1, mir, interpolation)
 
@@ -11,7 +11,7 @@ Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, interpolation, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
-module mir.interpolation.linear;
+module mir.interpolation.constant;
 
 import std.traits;
 import mir.array.primitives;
@@ -21,9 +21,9 @@ import mir.utility: fastmath;
 @fastmath:
 
 /++
-Unbounded linear interpolation.
+Unbounded constant interpolation.
 +/
-struct LinearSpline(IG, IV)
+struct ZeroSpline(IG, IV)
 {
     ///
     size_t _length;
@@ -39,7 +39,7 @@ struct LinearSpline(IG, IV)
 
     this()(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values) @system
     {
-        assert (grid.length >= 2);
+        assert (grid.length >= 1);
         assert (grid.length == values.length);
         this._length = grid.length;
         this._grid   = grid._iterator;
@@ -52,7 +52,7 @@ struct LinearSpline(IG, IV)
     size_t interval(T)(in T x)
     {
         import std.range: assumeSorted;
-        return _length - 2 -_grid.sliced(_length)[1 .. $ - 1]
+        return _length - 1 -_grid.sliced(_length)[1 .. $]
             .assumeSorted
             .upperBound(x)
             .length;
@@ -75,28 +75,10 @@ struct LinearSpline(IG, IV)
     +/
     auto opCall(uint derivative = 0, T)(in T x, size_t interval) @system
     {
-        assert(interval + 1 < _length);
+        assert(interval < _length);
 
-        auto x0 = _grid  [interval + 0];
-        auto x1 = _grid  [interval + 1];
-        auto y0 = _values[interval + 0];
-        auto y1 = _values[interval + 1];
+        auto y = _values[interval];
 
-        return opCall(x0, x1, y0, y1, x);
-    }
-
-    ///
-    static auto opCall(uint derivative = 0, T)(G x0, G x1, V y0, V y1, in T x)
-        if (derivative <= 6)
-    {
-        immutable step = x1 - x0;
-        immutable c0 = x - x0;
-        immutable c1 = x1 - x;
-        immutable w0 = c0 / step;
-        immutable w1 = c1 / step;
-        immutable r0 = y0 * w1;
-        immutable r1 = y1 * w0;
-        immutable y = r0 + r1;
         static if (derivative == 0)
         {
             return y;
@@ -105,10 +87,10 @@ struct LinearSpline(IG, IV)
         {
             typeof(y)[derivative + 1] ret = 0;
             ret[0] = y;
-            ret[1] = (y1 - y0) / step;
             return ret;
         }
     }
+
 
     /// opIndex is alias for opCall
     alias opIndex = opCall;
@@ -119,7 +101,7 @@ struct LinearSpline(IG, IV)
 }
 
 /++
-Linear interpolation.
+Constant interpolation.
 
 Params:
     grid = `x` values for interpolation
@@ -128,11 +110,11 @@ Params:
 Constraints:
     `grid`, `values` must have the same length >= 3
 
-Returns: $(LREF LinearSpline)
+Returns: $(LREF ZeroSpline)
 +/
-LinearSpline!(IG, IV) linearSpline(IG, IV)(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values) @trusted
+ZeroSpline!(IG, IV) constantInterpolation(IG, IV)(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values) @trusted
 {
-    if (grid.length < 2)
+    if (grid.length == 0)
         assert(0);
     if (grid.length != values.length)
         assert(0);
@@ -146,21 +128,17 @@ version(mir_test)
     import mir.ndslice;
     import std.math: approxEqual;
 
-    auto x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
-    auto y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
-    auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
+    auto x = [0, 1, 2, 3];
+    auto y = [10, 20, 30, 40];
 
-    auto interpolation = linearSpline(x.sliced, y.sliced);
+    auto interpolation = constantInterpolation(x.sliced, y.sliced);
 
-    auto data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
+    assert(interpolation(-1) == 10);
+    assert(interpolation(0) == 10);
+    assert(interpolation(0.5) == 10);
 
-    assert(approxEqual(xs.sliced.map!interpolation, data, 1e-4, 1e-4));
-}
-
-unittest
-{
-    auto x = [0.0, 1, 2].sliced;
-    auto y = [10.0, 2, 4].sliced;
-    auto interpolation = linearSpline(x, y);
-    assert(interpolation.interval(1.0) == 1);
+    assert(interpolation(1) == 20);
+    
+    assert(interpolation(3) == 40);
+    assert(interpolation(4) == 40);
 }
