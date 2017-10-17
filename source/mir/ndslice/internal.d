@@ -8,6 +8,14 @@ import mir.array.primitives;
 
 @fastmath:
 
+template ConstIfPointer(T)
+{
+    static if (isPointer!T)
+        alias ConstIfPointer = const(PointerTarget!T)*;
+    else
+        alias ConstIfPointer = T;
+}
+
 version(LDC)
 {
     public import ldc.intrinsics: _expect = llvm_expect;
