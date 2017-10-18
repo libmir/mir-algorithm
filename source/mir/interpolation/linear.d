@@ -23,20 +23,38 @@ import mir.utility: fastmath;
 /++
 Unbounded linear interpolation.
 +/
-struct LinearSpline(IG, IV)
+struct LinearSpline(bool vec, IG, IV)
 {
-    ///
-    size_t _length;
-    ///
-    IG _points;
-    ///
-    IV _values;
+    private
+    {
+        size_t _length;
+        static if (vec)
+        size_t _vectorLength;
+        IG _points;
+        IV _values;
 
-    private alias G = Unqual!(typeof(IG.init[0]));
-    private alias V = Unqual!(typeof(IV.init[0]));
+        alias G = Unqual!(typeof(IG.init[0]));
+        alias V = Unqual!(typeof(IV.init[0]));
+    }
 
 @trusted @fastmath:
 
+    ///
+    auto points()() @property
+    {
+        return _points.sliced(_length);
+    }
+
+    ///
+    auto values()() @property
+    {
+        static if (vec)
+            return _values.sliced(_length, _vectorLength);
+        else
+            return _values.sliced(_length);
+    }
+
+    ///
     this()(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @system
     {
         assert (points.length >= 2);
@@ -130,7 +148,7 @@ Constraints:
 
 Returns: $(LREF LinearSpline)
 +/
-LinearSpline!(IG, IV) linearSpline(IG, IV)(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @trusted
+LinearSpline!(false, IG, IV) linearSpline(IG, IV)(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @trusted
 {
     if (points.length < 2)
         assert(0);

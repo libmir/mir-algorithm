@@ -69,7 +69,8 @@ struct Interp1(Range, Interpolation)
         assert(!empty);
         auto x = _range.front;
         return (x) @trusted {
-            while (x > _interpolation._points[_interval + 1] && _interpolation._length > _interval + 2)
+            auto points = _interpolation.points;
+            while (x > points[_interval + 1] && points.length > _interval + 2)
                 _interval++;
             return _interpolation(x, _interval);
         } (x);

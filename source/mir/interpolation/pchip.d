@@ -33,7 +33,7 @@ Constraints:
 Returns: $(LREF Pchip)
 Allocation: Allocates slopes using GC.
 +/
-CubicSpline!(false,  const(T)*) pchip(T, size_t[] packs)(
+CubicSpline!(packs == [2],  const(T)*) pchip(T, size_t[] packs)(
     Slice!(Contiguous, [1], const(T)*) points,
     Slice!(Contiguous, packs, const(T)*) values)
     if (packs == [1] || packs == [2])
@@ -99,6 +99,24 @@ CubicSpline!(false, ConstIfPointer!IG, ConstIfPointer!IV, ConstIfPointer!IS) pch
 
     return typeof(return)(points, values, slopes);
 }
+
+/// ditto
+CubicSpline!(true, ConstIfPointer!IG, ConstIfPointer!IV, ConstIfPointer!IS) pchip(IG, IV, IS)(
+    Slice!(Contiguous, [1], IG) points,
+    Slice!(Contiguous, [2], IV) values,
+    Slice!(Contiguous, [2], IS) slopes) @trusted
+{
+    if (slopes.length!1 != values.length!1)
+        assert(0);
+    import mir.ndslice.algorithm: each;
+    import mir.ndslice.topology: ipack;
+    each!((values, slopes)
+    {
+        .pchip(points, values, slopes);
+    })(values.ipack!1, slopes.ipack!1);
+    return typeof(return)(points, values, slopes);
+}
+
 
 ///
 version(mir_test)

@@ -362,8 +362,7 @@ version(mir_test) unittest
     auto interpolation = x.cubicSpline(y); // default boundary condition is 'not-a-knot'
 
     auto xs = x + 0.5;
-    auto ys = xs.map!interpolation;
-
+    auto ys1 = xs.map!interpolation;
     auto ys2 = interpolation.indexed(xs); // alternative to map
     version(D_LP64)
         assert(ys1 == ys2);
@@ -382,7 +381,7 @@ version(mir_test) unittest
        [  0.64413911,   4.56888621,   1.624089  ,   6.84250849],
        [ 10.81768928,   6.83993473,   5.10460598,  -1.49345532]];
 
-    assert(all!(all!approxEqual)(ys, r));
+    assert(all!(all!approxEqual)(ys1, r));
 }
 
 /++
@@ -390,32 +389,30 @@ Structure for unbounded cubic spline in symmetrical form.
 +/
 struct CubicSpline(bool vec, IG, IV = IG, IS = IV)
 {
-    ///
-    size_t _length;
-    static if (vec)
-    ///
-    size_t _vectorLength;
-    ///
-    IG _points;
-    ///
-    IV _values;
-    ///
-    IS _slopes;
+    private
+    {
+        size_t _length;
+        static if (vec)
+        size_t _vectorLength;
+        IG _points;
+        IV _values;
+        IS _slopes;
 
-    private alias G = Unqual!(typeof(IG.init[0]));
-    private alias V = Unqual!(typeof(IV.init[0]));
-    private alias S = Unqual!(typeof(IS.init[0]));
+        alias G = Unqual!(typeof(IG.init[0]));
+        alias V = Unqual!(typeof(IV.init[0]));
+        alias S = Unqual!(typeof(IS.init[0]));
+    }
 
 @trusted @fastmath:
 
     ///
-    auto points()
+    auto points()() @property
     {
         return _points.sliced(_length);
     }
 
     ///
-    auto values()
+    auto values()() @property
     {
         static if (vec)
             return _values.sliced(_length, _vectorLength);
@@ -424,7 +421,7 @@ struct CubicSpline(bool vec, IG, IV = IG, IS = IV)
     }
 
     ///
-    auto slopes()
+    auto slopes() @property
     {
         static if (vec)
             return _slopes.sliced(_length, _vectorLength);

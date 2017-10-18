@@ -23,20 +23,38 @@ import mir.utility: fastmath;
 /++
 Unbounded constant interpolation.
 +/
-struct ZeroSpline(IG, IV)
+struct ZeroSpline(bool vec, IG, IV = IG)
 {
-    ///
-    size_t _length;
-    ///
-    IG _points;
-    ///
-    IV _values;
+    private
+    {
+        size_t _length;
+        static if (vec)
+        size_t _vectorLength;
+        IG _points;
+        IV _values;
 
-    private alias G = Unqual!(typeof(IG.init[0]));
-    private alias V = Unqual!(typeof(IV.init[0]));
+        alias G = Unqual!(typeof(IG.init[0]));
+        alias V = Unqual!(typeof(IV.init[0]));
+    }
 
 @trusted @fastmath:
 
+    ///
+    auto points()() @property
+    {
+        return _points.sliced(_length);
+    }
+
+    ///
+    auto values()() @property
+    {
+        static if (vec)
+            return _values.sliced(_length, _vectorLength);
+        else
+            return _values.sliced(_length);
+    }
+
+    ///
     this()(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @system
     {
         assert (points.length >= 1);
@@ -112,7 +130,7 @@ Constraints:
 
 Returns: $(LREF ZeroSpline)
 +/
-ZeroSpline!(IG, IV) zeroSpline(IG, IV)(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @trusted
+ZeroSpline!(false, IG, IV) zeroSpline(IG, IV)(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @trusted
 {
     if (points.length == 0)
         assert(0);
