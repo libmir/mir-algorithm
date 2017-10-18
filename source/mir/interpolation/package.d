@@ -24,9 +24,9 @@ Lazy interpolation shell with linear complexity.
 
 Params:
     range = sorted range
-    interpolation = interpolation structure with `._grid` and `.opCall(x, interval)` methods.
+    interpolation = interpolation structure with `._points` and `.opCall(x, interval)` methods.
 Complexity:
-    `O(range.length + interpolation._grid.length)` to evaluate all elements.
+    `O(range.length + interpolation._points.length)` to evaluate all elements.
 Returns:
     Lazy input range.
 See_also:
@@ -69,7 +69,7 @@ struct Interp1(Range, Interpolation)
         assert(!empty);
         auto x = _range.front;
         return (x) @trusted {
-            while (x > _interpolation._grid[_interval + 1] && _interpolation._length > _interval + 2)
+            while (x > _interpolation._points[_interval + 1] && _interpolation._length > _interval + 2)
                 _interval++;
             return _interpolation(x, _interval);
         } (x);
@@ -141,7 +141,7 @@ extern(C++) interface InterpolationI(T)
     T[2] withDerivative(T x);
     T[3] withDerivatives(T x);
 
-    Slice!(Contiguous, [1], const(T)*) grid(size_t index);
+    Slice!(Contiguous, [1], const(T)*) points(size_t index);
 
     size_t intervalIndex(T x) @property;
 }

@@ -299,6 +299,7 @@ private enum isReference(P) =
 enum hasReference(T) = anySatisfy!(isReference, RepresentationTypeTuple!T);
 
 alias ImplicitlyUnqual(T) = Select!(isImplicitlyConvertible!(T, Unqual!T), Unqual!T, T);
+alias ImplicitlyUnqual(T : T*) = T*;
 
 size_t lengthsProduct(size_t N)(auto ref in size_t[N] lengths)
 {

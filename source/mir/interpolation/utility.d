@@ -5,7 +5,7 @@ import mir.ndslice.slice;
 /++
 ParabolaKernel structure.
 +/
-struct ParabolaKernel(T, uint derivative = 0)
+struct ParabolaKernel(uint derivative, T)
     if (derivative <= 2)
 {
     ///
@@ -60,13 +60,19 @@ struct ParabolaKernel(T, uint derivative = 0)
     alias opIndex = opCall;
 }
 
+/// ditto
+ParabolaKernel!(derivative, typeof(X.init - Y.init)) parabolaKernel(uint derivative = 0, X, Y)(in X x0, in X x1, in X x2, in Y y0, in Y y1, in Y y2)
+{
+    return typeof(return)(x0, x1, x2, y0, y1, y2);
+}
+
 ///
 unittest
 {
     import std.math: approxEqual;
 
     alias f = (double x) => 3 * (x ^^ 2) + 7 * x + 5;
-    auto p = ParabolaKernel!double(4, 9, 20, f(4), f(9), f(20));
+    auto p = parabolaKernel(4, 9, 20, f(4), f(9), f(20));
 
     assert(p.a.approxEqual(3));
     assert(p.b.approxEqual(7));

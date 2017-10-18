@@ -28,7 +28,7 @@ struct LinearSpline(IG, IV)
     ///
     size_t _length;
     ///
-    IG _grid;
+    IG _points;
     ///
     IV _values;
 
@@ -37,12 +37,12 @@ struct LinearSpline(IG, IV)
 
 @trusted @fastmath:
 
-    this()(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values) @system
+    this()(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @system
     {
-        assert (grid.length >= 2);
-        assert (grid.length == values.length);
-        this._length = grid.length;
-        this._grid   = grid._iterator;
+        assert (points.length >= 2);
+        assert (points.length == values.length);
+        this._length = points.length;
+        this._points = points._iterator;
         this._values = values._iterator;
     }
 
@@ -52,7 +52,7 @@ struct LinearSpline(IG, IV)
     size_t interval(T)(in T x)
     {
         import std.range: assumeSorted;
-        return _length - 2 -_grid.sliced(_length)[1 .. $ - 1]
+        return _length - 2 -_points.sliced(_length)[1 .. $ - 1]
             .assumeSorted
             .upperBound(x)
             .length;
@@ -61,7 +61,7 @@ struct LinearSpline(IG, IV)
     /++
     `(x)` and `[x]` operators.
     Complexity:
-        `O(log(_grid.length))`
+        `O(log(_points.length))`
     +/
     auto opCall(uint derivative = 0, T)(T x)
     {
@@ -77,8 +77,8 @@ struct LinearSpline(IG, IV)
     {
         assert(interval + 1 < _length);
 
-        auto x0 = _grid  [interval + 0];
-        auto x1 = _grid  [interval + 1];
+        auto x0 = _points[interval + 0];
+        auto x1 = _points[interval + 1];
         auto y0 = _values[interval + 0];
         auto y1 = _values[interval + 1];
 
@@ -122,21 +122,21 @@ struct LinearSpline(IG, IV)
 Linear interpolation.
 
 Params:
-    grid = `x` values for interpolation
+    points = `x` values for interpolation
     values = `f(x)` values for interpolation
 
 Constraints:
-    `grid`, `values` must have the same length >= 3
+    `points`, `values` must have the same length >= 3
 
 Returns: $(LREF LinearSpline)
 +/
-LinearSpline!(IG, IV) linearSpline(IG, IV)(Slice!(Contiguous, [1], IG) grid, Slice!(Contiguous, [1], IV) values) @trusted
+LinearSpline!(IG, IV) linearSpline(IG, IV)(Slice!(Contiguous, [1], IG) points, Slice!(Contiguous, [1], IV) values) @trusted
 {
-    if (grid.length < 2)
+    if (points.length < 2)
         assert(0);
-    if (grid.length != values.length)
+    if (points.length != values.length)
         assert(0);
-    return typeof(return)(grid, values);
+    return typeof(return)(points, values);
 }
 
 ///
