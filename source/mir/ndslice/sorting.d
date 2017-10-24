@@ -83,9 +83,9 @@ unittest
 }
 
 import mir.ndslice.slice;
-import mir.internal.utility;
+import mir.math.common: optmath;
 
-@fastmath:
+@optmath:
 
 deprecated(`Use 'yourSlice.pairwise!"a <= b".all' instead. Imports:
     import mir.ndslice.algorithm: all;
@@ -95,7 +95,7 @@ template isSorted(alias less = "!(a >= b)")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
-    @fastmath bool isSorted(SliceKind kind, size_t[] packs, Iterator)
+    @optmath bool isSorted(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
@@ -116,7 +116,7 @@ template isStrictlyMonotonic(alias less = "a < b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
-    @fastmath bool isStrictlyMonotonic(SliceKind kind, size_t[] packs, Iterator)
+    @optmath bool isStrictlyMonotonic(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
@@ -168,7 +168,7 @@ template sort(alias less = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
     ///
-    @fastmath Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
+    @optmath Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {

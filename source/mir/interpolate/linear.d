@@ -302,7 +302,6 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repea
     alias withDerivative = opCall!1;
 }
 
-///
 struct LinearKernel(uint derivative, X)
     if (derivative <= 3)
 {
@@ -319,7 +318,6 @@ struct LinearKernel(uint derivative, X)
         w1 = c1 / step;
     }
 
-    ///
     auto opCall(Y)(in Y y0, in Y y1)
     {
         auto r0 = y0 * w1;

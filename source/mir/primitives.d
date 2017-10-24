@@ -68,8 +68,8 @@ enum bool hasShape(R) = is(typeof(
 }
 
 ///
-auto shape(Range)(Range range)
-    if (__traits(hasMember, Range, "shape") || __traits(hasMember, Range, "length") || isArray!Range)
+auto shape(Range)(auto ref Range range)
+    if (hasLength!Range || hasShape!Range)
 {
     static if (__traits(hasMember, Range, "shape"))
     {
@@ -101,11 +101,7 @@ template DimensionCount(T)
 
 ///
 bool anyEmpty(Range)(Range range)
-    if (
-        __traits(compiles, { bool b = range.anyEmpty; }) || 
-        __traits(compiles, { auto b = range.shape; enum size_t e = b.length; }) ||
-        __traits(compiles, { bool b = range.empty; })
-        )
+    if (hasShape!Range || __traits(hasMember, Range, "anyEmpty"))
 {
     static if (__traits(hasMember, Range, "anyEmpty"))
     {
@@ -128,13 +124,13 @@ bool anyEmpty(Range)(Range range)
 
 ///
 size_t elementsCount(Range)(Range range)
+    if (hasShape!Range || __traits(hasMember, Range, "elementsCount"))
 {
     static if (__traits(hasMember, Range, "elementsCount"))
     {
         return range;
     }
     else
-    static if (__traits(hasMember, Range, "shape"))
     {
         auto sh = range.shape;
         size_t ret = sh[0];
@@ -143,9 +139,5 @@ size_t elementsCount(Range)(Range range)
             ret *= sh[i];
         }
         return ret;
-    }
-    else
-    {
-        return range.length;
     }
 }

@@ -384,6 +384,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repea
     Params:
         lbc = left boundary condition
         rbc = right boundary condition
+
     $(RED For internal use.)
     +/
     void _computeDerivatives()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) @trusted nothrow @nogc
@@ -762,7 +763,6 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     }
 }
 
-///
 struct SplineKernel(uint derivative, X)
     if (derivative <= 3)
 {
@@ -781,7 +781,6 @@ struct SplineKernel(uint derivative, X)
         wq = w0 * w1;
     }
 
-    ///
     auto opCall(Y)(in Y y0, in Y y1, in Y s0, in Y s1)
     {
         auto diff = y1 - y0;
