@@ -22,5 +22,6 @@ branches:
     - master
 script:
  - dub test --arch "$ARCH" --build=unittest-cov
+ - dub test --arch "$ARCH" --build=unittest-release
 after_success:
  - bash <(curl -s https://codecov.io/bash)
