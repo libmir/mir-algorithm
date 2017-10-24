@@ -22,7 +22,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,ndslice,ndfield)) $(TD NdField declarations))
     $(TR $(TDNW $(MREF mir,ndslice,slice)) $(TD Slice structure, basic constructors))
     $(TR $(TDNW $(MREF mir,ndslice,sorting)) $(TD Sorting utilities))
-    $(TR $(TDNW $(BOLD $(MREF mir,ndslice,topology))) $(TD Advanced ndslice constructors (key module).))
+    $(TR $(TDNW $(MREF mir,ndslice,topology)) $(TD Advanced ndslice constructors (key module).))
     $(TR $(TDNW $(MREF mir,ndslice,traits)) $(TD Multi-dimensional traits))
     $(LEADINGROW Interconnection with other languages)
     $(TR $(TDNW $(MREF mir,ndslice,connect,cpp)) $(TD Definitions suitable for `extern(C++)` functions))
