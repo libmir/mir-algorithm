@@ -32,7 +32,7 @@ import std.traits;
 import mir.ndslice.slice;
 import mir.ndslice.internal;
 import mir.ndslice.concatenation;
-import mir.internal.utility;
+import mir.math.common: optmath;
 
 
 deprecated("use uninitSlice instead")
@@ -40,7 +40,7 @@ alias uninitializedSlice = uninitSlice;
 deprecated("use makeUninitSlice instead")
 alias makeUninitializedSlice = makeUninitSlice;
 
-@fastmath:
+@optmath:
 
 /++
 Allocates an array and an n-dimensional slice over it.
@@ -319,7 +319,7 @@ version(mir_test)
     import mir.ndslice.topology : iota;
     auto slice = iota(3, 4);
     auto m = slice.ndarray;
-    static assert(is(typeof(m) == size_t[][]));
+    static assert(is(typeof(m) == sizediff_t[][])); // sizediff_t is long for 64 bit platforms
     assert(m == [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]]);
 }
 

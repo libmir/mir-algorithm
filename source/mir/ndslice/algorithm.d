@@ -41,12 +41,14 @@ module mir.ndslice.algorithm;
 import std.traits;
 import std.meta;
 
-import mir.primitives;
-import mir.ndslice.internal;
 import mir.internal.utility;
+import mir.math.common: optmath;
+import mir.ndslice.internal;
 import mir.ndslice.slice;
+import mir.primitives;
 
-@fastmath:
+
+@optmath:
 
 private void checkShapesMatch(
     string fun = __FUNCTION__,
@@ -151,7 +153,7 @@ template reduce(alias fun)
     Returns:
         the accumulated `result`
     +/
-    @fastmath auto reduce(S, Slices...)(S seed, Slices slices)
+    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
         slices.checkShapesMatch;
@@ -208,7 +210,6 @@ unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
-    import mir.ndslice.internal : fastmath;
 
     //| 0 1 2 |
     //| 3 4 5 |
@@ -234,9 +235,9 @@ version(mir_test) unittest
     import std.numeric : dotProduct;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota, zip, universal;
-    import mir.ndslice.internal : fastmath;
+    import mir.math.common : optmath;
 
-    static @fastmath T fmuladd(T, Z)(const T a, Z z)
+    static @optmath T fmuladd(T, Z)(const T a, Z z)
     {
         return a + z.a * z.b;
     }
@@ -264,9 +265,9 @@ unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
-    import mir.ndslice.internal : fastmath;
+    import mir.math.common : optmath;
 
-    static @fastmath T fun(T)(const T a, ref T b)
+    static @optmath T fun(T)(const T a, ref T b)
     {
         return a + b++;
     }
@@ -363,7 +364,7 @@ template each(alias fun)
     Params:
         slices = One or more slices, ranges, and arrays.
     +/
-    @fastmath auto each(Slices...)(Slices slices)
+    @optmath auto each(Slices...)(Slices slices)
         if (Slices.length)
     {
         slices.checkShapesMatch;
@@ -774,7 +775,7 @@ template minmaxPos(alias pred = "a < b")
     Returns:
         2 subslices with minimal and maximal `first` elements.
     +/
-    @fastmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)[2]
+    @optmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)[2]
         minmaxPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         import mir.ndslice.topology: map;
@@ -865,7 +866,7 @@ template minmaxIndex(alias pred = "a < b")
     Returns:
         Subslice with minimal (maximal) `first` element.
     +/
-    @fastmath size_t[packs[0]][2] minmaxIndex(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath size_t[packs[0]][2] minmaxIndex(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         import mir.ndslice.topology: map;
         typeof(return) pret = size_t.max;
@@ -928,7 +929,7 @@ template minPos(alias pred = "a < b")
         Multidimensional backward index such that element is minimal(maximal).
         Backward index equals zeros, if slice is empty.
     +/
-    @fastmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)
+    @optmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)
         minPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         typeof(return) ret;
@@ -1017,7 +1018,7 @@ template minIndex(alias pred = "a < b")
         Multidimensional index such that element is minimal(maximal).
         Index elements equal to `size_t.max`, if slice is empty.
     +/
-    @fastmath size_t[packs[0]] minIndex(SliceKind kind, ptrdiff_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath size_t[packs[0]] minIndex(SliceKind kind, ptrdiff_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         size_t[packs[0]] ret = size_t.max;
         import mir.ndslice.topology: map;
@@ -1131,7 +1132,7 @@ template findIndex(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @fastmath size_t[DimensionCount!(Slices[0])] findIndex(Slices...)(Slices slices)
+    @optmath size_t[DimensionCount!(Slices[0])] findIndex(Slices...)(Slices slices)
         if (Slices.length)
     {
         slices.checkShapesMatch;
@@ -1219,7 +1220,7 @@ template find(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @fastmath size_t[DimensionCount!(Slices[0])] find(Slices...)(Slices slices)
+    @optmath size_t[DimensionCount!(Slices[0])] find(Slices...)(Slices slices)
         if (Slices.length)
     {
         slices.checkShapesMatch;
@@ -1376,7 +1377,7 @@ template any(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @fastmath bool any(Slices...)(Slices slices)
+    @optmath bool any(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
@@ -1522,7 +1523,7 @@ template all(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @fastmath bool all(Slices...)(Slices slices)
+    @optmath bool all(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
@@ -1653,7 +1654,7 @@ template count(alias fun)
     Constraints:
         All slices must have the same shape.
     +/
-    @fastmath size_t count(Slices...)(Slices slices)
+    @optmath size_t count(Slices...)(Slices slices)
         if (Slices.length)
     {
         slices.checkShapesMatch;
@@ -1717,7 +1718,7 @@ unittest
 
     //| 0 1 2 |
     //| 3 4 5 |
-    auto sl = iota(2, 3).bitwise;
+    auto sl = iota!size_t(2, 3).bitwise;
 
     assert(sl.count!"true" == 6 * size_t.sizeof * 8);
 
@@ -1994,4 +1995,18 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     }
     while(!slices[0].empty);
     return ret;
+}
+
+/++
+Returns: max length across all dimensions.
++/
+size_t maxLength(S)(auto ref S s)
+ if (hasShape!S)
+{
+    auto shape = s.shape;
+    size_t length = 0;
+    foreach(i; Iota!(shape.length))
+        if (shape[i] > length)
+            length = shape[i];
+    return length;
 }

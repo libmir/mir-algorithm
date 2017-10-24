@@ -1,12 +1,13 @@
 module mir.ndslice.internal;
 
-import std.traits;
-import std.meta;
-import mir.ndslice.slice;
-import mir.internal.utility;
 import mir.array.primitives;
+import mir.internal.utility;
+import mir.math.common: optmath;
+import mir.ndslice.slice;
+import std.meta;
+import std.traits;
 
-@fastmath:
+@optmath:
 
 template ConstIfPointer(T)
 {
@@ -31,7 +32,8 @@ else
 struct RightOp(string op, T)
 {
     T value;
-    auto ref opIndex(F)(auto ref F right)
+    this()(auto ref T v) { value = v; }
+    auto ref opCall(F)(auto ref F right)
     {
         return mixin("value " ~ op ~ " right");
     }
@@ -40,7 +42,8 @@ struct RightOp(string op, T)
 struct LeftOp(string op, T)
 {
     T value;
-    auto ref opIndex(F)(auto ref F left)
+    this()(auto ref T v) { value = v; }
+    auto ref opCall(F)(auto ref F left)
     {
         return mixin("left " ~ op ~ " value");
     }

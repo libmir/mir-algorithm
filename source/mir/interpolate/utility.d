@@ -1,4 +1,4 @@
-module mir.interpolation.utility;
+module mir.interpolate.utility;
 
 import mir.ndslice.slice;
 
@@ -52,12 +52,9 @@ struct ParabolaKernel(uint derivative, T)
     /// ditto
     auto opCall(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, iterator) x)
     {
-        import mir.ndslice.topology: indexed;
-        return this.indexed(x);
+        import mir.ndslice.topology: vmap;
+        return x.vmap(this);
     }
-
-    ///
-    alias opIndex = opCall;
 }
 
 /// ditto

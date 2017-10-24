@@ -17,6 +17,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.ndslice.chunks;
 
 import mir.internal.utility;
+import mir.math.common: optmath;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 
@@ -228,7 +229,7 @@ version(mir_test) unittest
 struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
     //if (packs.length == 1)
 {
-@fastmath:
+@optmath:
 
     /++
     Chunk shape.

@@ -99,6 +99,7 @@ import std.traits;
 import std.meta;
 
 import mir.internal.utility;
+import mir.math.common: optmath;
 import mir.ndslice.field;
 import mir.ndslice.internal;
 import mir.ndslice.iterator;
@@ -106,7 +107,7 @@ import mir.ndslice.ndfield;
 import mir.ndslice.slice;
 import mir.primitives;
 
-@fastmath:
+@optmath:
 
 /++
 Converts a slice to universal kind.
@@ -345,7 +346,7 @@ pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     assert(b[0, 0].shape == res2);
     assert(a == b);
     static assert(is(typeof(b) == typeof(a.pack!2)));
-    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!size_t)));
+    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!sizediff_t)));
 }
 
 /++
@@ -385,7 +386,7 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     assert(b[0, 0].shape == res2);
     assert(a == b);
     static assert(is(typeof(b) == typeof(a.ipack!2)));
-    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!size_t)));
+    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!sizediff_t)));
 }
 
 @safe @nogc pure nothrow version(mir_test) unittest
@@ -401,10 +402,10 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     assert(a == b);
     assert(c == a[1, 2, 3, 4]);
     static assert(is(typeof(b) == typeof(a.pack!2.pack!3)));
-    static assert(is(typeof(b) == Slice!(Contiguous, [4, 3, 2], IotaIterator!size_t)));
-    static assert(is(typeof(c) == Slice!(Contiguous, [3, 2], IotaIterator!size_t)));
-    static assert(is(typeof(d) == Slice!(Contiguous, [2], IotaIterator!size_t)));
-    static assert(is(typeof(e) == size_t));
+    static assert(is(typeof(b) == Slice!(Contiguous, [4, 3, 2], IotaIterator!sizediff_t)));
+    static assert(is(typeof(c) == Slice!(Contiguous, [3, 2], IotaIterator!sizediff_t)));
+    static assert(is(typeof(d) == Slice!(Contiguous, [2], IotaIterator!sizediff_t)));
+    static assert(is(typeof(e) == sizediff_t));
 }
 
 @safe @nogc pure nothrow version(mir_test) unittest
@@ -528,10 +529,10 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
     assert(e == g);
     assert(a == b.evertPack);
     assert(c == a.transposed!(7, 8, 4, 5, 6)[8, 9]);
-    static assert(is(typeof(b) == Slice!(Universal, [2, 3, 4], IotaIterator!size_t)));
-    static assert(is(typeof(c) == Slice!(Universal, [3, 4], IotaIterator!size_t)));
-    static assert(is(typeof(d) == Slice!(Universal, [4], IotaIterator!size_t)));
-    static assert(is(typeof(e) == size_t));
+    static assert(is(typeof(b) == Slice!(Universal, [2, 3, 4], IotaIterator!sizediff_t)));
+    static assert(is(typeof(c) == Slice!(Universal, [3, 4], IotaIterator!sizediff_t)));
+    static assert(is(typeof(d) == Slice!(Universal, [4], IotaIterator!sizediff_t)));
+    static assert(is(typeof(e) == sizediff_t));
 }
 
 @safe pure nothrow version(mir_test) unittest
@@ -584,7 +585,7 @@ See_also: $(LREF ndiota)
 +/
 Slice!(Contiguous, [N], IotaIterator!I)
 iota
-    (I = size_t, size_t N)(size_t[N] lengths...)
+    (I = sizediff_t, size_t N)(size_t[N] lengths...)
     if (isIntegral!I)
 {
     import mir.ndslice.slice : sliced;
@@ -620,6 +621,8 @@ iota
          [3, 4, 5]];
 
     assert(slice == array);
+
+    static assert(is(DeepElementType!(typeof(slice)) == sizediff_t));
 }
 
 ///
@@ -2223,7 +2226,7 @@ template map(fun...)
                 a slice with each fun applied to all the elements. If there is more than one
                 fun, the element type will be `Tuple` containing one element for each fun.
             +/
-            @fastmath auto map(SliceKind kind, size_t[] packs, Iterator)
+            @optmath auto map(SliceKind kind, size_t[] packs, Iterator)
                 (Slice!(kind, packs, Iterator) slice)
             {
                 static if (packs.length == 1)
@@ -2247,7 +2250,7 @@ template map(fun...)
         static if (__traits(isSame, naryFun!(fun[0]), fun[0]))
         {
             alias f = fun[0];
-            @fastmath auto map(SliceKind kind, size_t[] packs, Iterator)
+            @optmath auto map(SliceKind kind, size_t[] packs, Iterator)
                 (Slice!(kind, packs, Iterator) slice)
             {
                 static if (packs.length == 1)
@@ -2259,7 +2262,6 @@ template map(fun...)
                 // Specialization for packed tensors (tensors composed of tensors).
                 else
                 {
-                    alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
                     return .map!f(.map!(naryFun!"a")(slice));
                 }
             }
@@ -2292,6 +2294,7 @@ version(mir_test) unittest
 version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, windows;
+    import mir.math.sum: sum;
 
     //  iota        windows     map  sums ( reduce!"a + b" )
     //                --------------
@@ -2302,30 +2305,7 @@ version(mir_test) unittest
     //                --------------
     auto s = iota(2, 3)
         .windows(2, 2)
-        .map!((a) {
-            size_t s;
-            foreach (r; a)
-                foreach (e; r)
-                    s += e;
-            return s;
-            });
-
-    assert(s == [[8, 12]]);
-}
-
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, windows;
-
-    auto s = iota(2, 3)
-        .windows(2, 2)
-        .map!((a) {
-            size_t s;
-            foreach (r; a)
-                foreach (e; r)
-                    s += e;
-            return s;
-            });
+        .map!sum;
 
     assert(s == [[8, 12]]);
 }
@@ -2345,11 +2325,7 @@ version(mir_test) unittest
 
     auto z = zip(sl1, sl2);
 
-    auto lazySum = z.map!"a + b";
-
-    assert(zip(sl1, sl2).map!"a + b" ==
-            [[ 1,  3,  5],
-             [ 7,  9, 11]]);
+    assert(zip(sl1, sl2).map!"a + b" == sl1 + sl2);
 }
 
 /++
@@ -2362,22 +2338,18 @@ version(mir_test) unittest
 {
     import mir.ndslice.topology : iota;
 
-    auto s = iota(2, 3).map!("a + a", "a * a");
+    auto sl = iota(2, 3);
+    auto s = sl.map!("a + a", "a * a");
 
     auto sums     = [[0, 2, 4], [6,  8, 10]];
     auto products = [[0, 1, 4], [9, 16, 25]];
 
-    foreach (i; 0..s.length!0)
-    foreach (j; 0..s.length!1)
-    {
-        auto values = s[i, j];
-        assert(values.a == sums[i][j]);
-        assert(values.b == products[i][j]);
-    }
+    assert(s.map!"a[0]" == sl + sl);
+    assert(s.map!"a[1]" == sl * sl);
 }
 
 /++
-You may alias `map` with some function(s) to a symbol and use it separately:
+`map` can be aliased to a symbol and be used separately:
 +/
 pure nothrow version(mir_test) unittest
 {
@@ -2415,6 +2387,129 @@ pure version(mir_test) unittest
     // 3 4
     auto matrix = iota([2, 2], 1);
     assert(maxAvg(matrix) == 3);
+}
+
+
+/++
+Implements the homonym function (also known as `transform`) present
+in many languages of functional flavor. The call `slice.vmap(fun)`
+returns a slice of which elements are obtained by applying `fun`
+for all elements in `slice`. The original slices are
+not changed. Evaluation is done lazily.
+
+Note:
+    $(SUBREF dynamic, transposed) and
+    $(SUBREF topology, pack) can be used to specify dimensions.
+Params:
+    fun = One or more functions.
+See_Also:
+    $(LREF pairwise), $(LREF slide), $(LREF zip), 
+    $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
++/
+@optmath auto vmap(SliceKind kind, size_t[] packs, Iterator, Callable)
+    (Slice!(kind, packs, Iterator) slice, Callable callable)
+{
+    static if (packs.length == 1)
+    {
+        import mir.ndslice.iterator: VmapIterator;
+        alias It = VmapIterator!(Iterator, Callable);
+        return Slice!(kind, packs, It)(slice._lengths, slice._strides, It(slice._iterator, callable));
+    }
+    // Specialization for packed tensors (tensors composed of tensors).
+    else
+    {
+        return .vmap(slice.map!"a", callable);
+    }
+}
+
+///
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota;
+
+    static struct Mul {
+        double factor; this(double f) { factor = f; } 
+        auto opCall(long x) {return x * factor; }}
+
+    auto callable = Mul(3);
+    auto s = iota(2, 3).vmap(callable);
+
+    assert(s == [[ 0,  3,  6],
+                 [ 9, 12, 15]]);
+}
+
+/// Packed tensors.
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.math.sum: sum;
+    import mir.ndslice.topology : iota, windows;
+
+    //  iota        windows     vmap  scaled sums
+    //                --------------
+    //  -------      |  ---    ---  |      -----
+    // | 0 1 2 |  => || 0 1 || 1 2 ||  => | 4 6 |
+    // | 3 4 5 |     || 3 4 || 4 5 ||      -----
+    //  -------      |  ---    ---  |
+    //                --------------
+
+    struct Callable { double factor; this(double f) {factor = f;} auto opCall(S)(S x) { return x.sum * factor; } }
+    auto callable = Callable(0.5);
+
+    auto s = iota(2, 3)
+        .windows(2, 2)
+        .vmap(callable);
+
+    assert(s == [[4, 6]]);
+}
+
+/// Zipped tensors
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota, zip;
+
+    struct Callable { double factor; this(double f) {factor = f;} auto opCall(S, T)(S x, T y) { return x + y * factor; } }
+    auto callable = Callable(10);
+
+    // 0 1 2
+    // 3 4 5
+    auto sl1 = iota(2, 3);
+    // 1 2 3
+    // 4 5 6
+    auto sl2 = iota([2, 3], 1);
+
+    auto z = zip(sl1, sl2);
+
+    assert(zip(sl1, sl2).vmap(callable) ==
+            [[10,  21,  32],
+             [43,  54,  65]]);
+}
+
+// TODO
+/+
+Multiple functions can be passed to `vmap`.
+In that case, the element type of `vmap` is a refTuple containing
+one element for each function.
++/
+@safe pure nothrow
+version(none) version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota;
+
+    auto s = iota(2, 3).vmap!("a + a", "a * a");
+
+    auto sums     = [[0, 2, 4], [6,  8, 10]];
+    auto products = [[0, 1, 4], [9, 16, 25]];
+
+    foreach (i; 0..s.length!0)
+    foreach (j; 0..s.length!1)
+    {
+        auto values = s[i, j];
+        assert(values.a == sums[i][j]);
+        assert(values.b == products[i][j]);
+    }
 }
 
 private auto hideStride
@@ -2465,7 +2560,7 @@ Returns:
 template as(T)
 {
     ///
-    @fastmath auto as(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath auto as(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
     {
         static if (is(slice.DeepElemType == T))
             return slice;
@@ -2520,7 +2615,7 @@ Params:
 Returns:
     n-dimensional slice with the same kind, shape and strides.
 
-See_also: `indexed` is similar to $(LREF, map), but a field is used instead of a function.
+See_also: `indexed` is similar to $(LREF, vmap), but a field (`[]`) is used instead of a function (`()`), and order of arguments is reversed.
 +/
 Slice!(kind, packs, IndexIterator!(Iterator, Field))
     indexed(Field, SliceKind kind, size_t[] packs, Iterator)
@@ -2686,7 +2781,7 @@ template slide(size_t params, alias fun)
         Returns:
             1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
         +/
-        @fastmath auto slide(SliceKind kind, size_t[] packs, Iterator)
+        @optmath auto slide(SliceKind kind, size_t[] packs, Iterator)
             (Slice!(kind, packs, Iterator) slice)
             if (packs[0] == 1)
         {
@@ -2874,7 +2969,7 @@ template kronecker(alias fun = product)
     Returns:
         $(SUBREF ndfield, Kronecker)`!(fun, NdFields)(fields).`$(SUBREF slice, slicedNdField)
     +/
-    @fastmath auto kronecker(NdFields...)(NdFields fields)
+    @optmath auto kronecker(NdFields...)(NdFields fields)
         if (allSatisfy!(hasShape, NdFields) || allSatisfy!(hasLength, NdFields))
     {
         return Kronecker!(fun, NdFields)(fields).slicedNdField;
@@ -3188,7 +3283,7 @@ private template adjTransposed(Dimensions...)
         alias adjTransposed = .adjTransposed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @fastmath auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
+    @optmath auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
                                            (Slice!(kind, packs, Iterator) slice)
     {
         import mir.ndslice.topology : ipack;
@@ -4308,7 +4403,7 @@ template byDim(Dimensions...)
         Returns:
             n-dimensional slice ipacked to allow iteration by dimension
         +/
-        @fastmath auto byDim(SliceKind kind, size_t[] packs, Iterator)
+        @optmath auto byDim(SliceKind kind, size_t[] packs, Iterator)
                                        (Slice!(kind, packs, Iterator) slice)
         {
             import mir.ndslice.topology : ipack;

@@ -32,16 +32,17 @@ module mir.ndslice.concatenation;
 import std.traits;
 import std.meta;
 
+import mir.internal.utility;
+import mir.math.common: optmath;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
-import mir.internal.utility;
 import mir.primitives;
 
-@fastmath:
+@optmath:
 
 private template _expose(size_t maxN, size_t dim)
 {
-    static @fastmath auto _expose(S)(S s)
+    static @optmath auto _expose(S)(S s)
     {
         static if (s.N == maxN)
         {
@@ -235,7 +236,7 @@ enum size_t concatenationDimension(T : Concatenation!(dim, Slices), size_t dim, 
 struct Concatenation(size_t dim, Slices...)
     if (Slices.length > 1)
 {
-    @fastmath:
+    @optmath:
 
     /// Slices and sub-concatenations
     Slices _slices;
@@ -448,7 +449,7 @@ See_also: $(LREF ._concatenation) examples.
 template pad(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @fastmath:
+    @optmath:
 
     /++
     Params:
@@ -595,7 +596,7 @@ See_also: $(LREF ._concatenation) examples.
 template padWrap(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @fastmath:
+    @optmath:
 
     /++
     Params:
@@ -764,7 +765,7 @@ See_also: $(LREF ._concatenation) examples.
 template padSymmetric(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @fastmath:
+    @optmath:
 
     /++
     Params:
@@ -952,7 +953,7 @@ See_also: $(LREF ._concatenation) examples.
 template padEdge(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @fastmath:
+    @optmath:
 
     /++
     Params:
@@ -1073,7 +1074,7 @@ See_also: $(LREF ._concatenation) examples.
 +/
 template forEachFragment(alias pred)
 {
-    @fastmath:
+    @optmath:
 
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
@@ -1143,7 +1144,7 @@ See_also: $(LREF ._concatenation) examples.
 +/
 template until(alias pred)
 {
-    @fastmath:
+    @optmath:
 
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))

@@ -28,10 +28,11 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.ndslice.field;
 
 import std.traits;
-import mir.internal.utility;
+import mir.internal.utility: Iota;
+import mir.math.common: optmath;
 import mir.ndslice.internal;
 
-@fastmath:
+@optmath:
 
 auto MapField__map(Field, alias fun, alias fun1)(ref MapField!(Field, fun) f)
 {
@@ -45,7 +46,7 @@ auto MapField__map(Field, alias fun, alias fun1)(ref MapField!(Field, fun) f)
 +/
 struct MapField(Field, alias fun)
 {
-@fastmath:
+@optmath:
     ///
     Field _field;
 
@@ -99,7 +100,7 @@ auto mapField(alias fun, Field)(Field field)
 +/
 struct RepeatField(T)
 {
-@fastmath:
+@optmath:
     static if (is(T == class) || is(T == interface) || is(T : Unqual!T) && is(Unqual!T : T))
         ///
         alias UT = Unqual!T;
@@ -120,7 +121,7 @@ struct RepeatField(T)
 struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
     if (isUnsigned!I)
 {
-@fastmath:
+@optmath:
     import core.bitop: bsr;
     package alias E = I;
     package enum shift = bsr(I.sizeof) + 3;
@@ -166,7 +167,7 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
     if (isUnsigned!I)
 {
     //static assert();
-@fastmath:
+@optmath:
     package alias E = I;
     package enum mask = (I(1) << pack) - 1;
     package enum bits = I.sizeof * 8;
@@ -259,7 +260,7 @@ unittest
 struct ndIotaField(size_t N)
     if (N)
 {
-@fastmath:
+@optmath:
     ///
     size_t[N - 1] _lengths;
 
@@ -285,34 +286,35 @@ struct LinspaceField(T)
     size_t _length;
 
     ///
-    T start, stop;
+    T _start = cast(T) 0, _stop = cast(T) 0;
 
     // no fastmath
     ///
-    T opIndex()(size_t index)
+    T opIndex()(sizediff_t index)
     {
-        auto d = _length - 1;
+        sizediff_t d = _length - 1;
         auto v = typeof(T.init.re)(d - index);
         auto w = typeof(T.init.re)(index);
         v /= d;
         w /= d;
-        auto a = v * start;
-        auto b = w * stop;
+        auto a = v * _start;
+        auto b = w * _stop;
         return a + b;
     }
 
-@fastmath:
+@optmath:
 
+    ///
     size_t length()() @property
     {
         return _length;
     }
 
-    size_t[1] shape()() @property
+    ///
+    size_t[1] shape(size_t dimension = 0)() @property @nogc
+        if (dimension == 0)
     {
-        size_t[1] ret;
-        ret[0] = _length;
-        return ret;
+        return [_length];
     }
 }
 
@@ -321,13 +323,26 @@ Magic square field.
 +/
 struct MagicField()
 {
-@fastmath:
+@optmath:
 
     /++
     Magic Square size.
     Should be even.
     +/
     size_t _n;
+
+    ///
+    size_t length(size_t dimension = 0)() @property
+        if(dimension <= 2)
+    {
+        return _n * _n;
+    }
+
+    ///
+    size_t[1] shape()() @property @nogc
+    {
+        return [_n * _n];
+    }
 
     ///
     size_t opIndex()(size_t index)

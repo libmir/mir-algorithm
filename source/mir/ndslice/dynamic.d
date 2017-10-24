@@ -81,12 +81,13 @@ module mir.ndslice.dynamic;
 import std.traits;
 import std.meta;
 
-import mir.internal.utility;
+import mir.math.common: optmath;
+import mir.internal.utility: Iota;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.utility;
 
-@fastmath:
+@optmath:
 
 /++
 Reverses iteration order for dimensions with nagative strides, they become not negative;
@@ -179,7 +180,7 @@ See_also: $(LREF everted), $(LREF transposed)
 template swapped(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @fastmath auto swapped(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
+    @optmath auto swapped(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
     {
         static if (kind == Universal || kind == Canonical && dimensionA + 1 < packs.sum && dimensionB + 1 < packs.sum)
         {
@@ -319,7 +320,7 @@ Returns:
 template rotated(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @fastmath auto rotated(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, sizediff_t k = 1)
+    @optmath auto rotated(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, sizediff_t k = 1)
     {
         static if (kind == Universal || kind == Canonical && dimensionA + 1 < packs.sum && dimensionB + 1 < packs.sum)
         {
@@ -513,7 +514,7 @@ template transposed(Dimensions...)
         alias transposed = .transposed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @fastmath auto transposed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
+    @optmath auto transposed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
     {
         import mir.ndslice.algorithm: any;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == packs.sum);
@@ -682,7 +683,7 @@ template reversed(Dimensions...)
         alias reversed = .reversed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @fastmath auto reversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice) @trusted
+    @optmath auto reversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice) @trusted
     {
         import mir.ndslice.algorithm: any;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == packs.sum);
@@ -826,7 +827,7 @@ template strided(Dimensions...)
         slice = input slice
         factors = list of step extension factors
     +/
-    @fastmath auto strided(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
+    @optmath auto strided(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
     {
         import mir.ndslice.algorithm: any;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == packs.sum);

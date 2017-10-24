@@ -10,7 +10,7 @@ Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
 
 Macros:
-SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, interpolation, $1)$(NBSP)
+SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, interpolate, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.timeseries;
@@ -60,11 +60,11 @@ version(mir_test) unittest
 
 import mir.ndslice.slice;
 import mir.ndslice.internal: _Slice, is_Slice, isIndex;
-import mir.internal.utility: fastmath;
+import mir.math.common: optmath;
 
 import std.meta;
 
-@fastmath:
+@optmath:
 
 /++
 Plain time observation data structure.
@@ -105,7 +105,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     +/
     Slice!(kind, packs, Iterator) data;
 
-@fastmath:
+@optmath:
 
     /++
     Special `[] =` index-assign operator for time-series.
@@ -461,7 +461,7 @@ template sort(alias less = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
     {
-    @fastmath:
+    @optmath:
 
         /++
         One dimensional case.

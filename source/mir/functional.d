@@ -36,6 +36,9 @@ $(TR $(TH Function Name) $(TH Description))
 Copyright: Andrei Alexandrescu 2008 - 2009, Ilya Yaroshenko 2016-.
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   Ilya Yaroshenko, $(HTTP erdani.org, Andrei Alexandrescu (some original code from std.functional))
+
+Macros:
+NDSLICE = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 +/
 module mir.functional;
 
@@ -45,9 +48,9 @@ import std.traits;
 private enum isRef(T) = is(T : Ref!T0, T0);
 private enum isLangRef(alias arg) = __traits(isRef, arg);
 
-import mir.internal.utility;
+import mir.math.common: optmath;
 
-@fastmath:
+@optmath:
 
 /++
 Simple wrapper that holds a pointer.
@@ -56,7 +59,7 @@ It is used for as workaround to return multiple auto ref values.
 struct Ref(T)
     if (!isRef!T)
 {
-    @fastmath:
+    @optmath:
 
     @disable this();
     ///
@@ -84,7 +87,7 @@ private mixin template _RefTupleMixin(T...)
     {
         enum i = T.length - 1;
         static if (isRef!(T[i]))
-            mixin(`@fastmath @property ref ` ~ cast(char)('a' + i) ~ `() { return *expand[` ~ i.stringof ~ `].__ptr; }` );
+            mixin(`@optmath @property ref ` ~ cast(char)('a' + i) ~ `() { return *expand[` ~ i.stringof ~ `].__ptr; }` );
         else
             mixin(`alias ` ~ cast(char)('a' + i) ~ ` = expand[` ~ i.stringof ~ `];`);
         mixin ._RefTupleMixin!(T[0 .. $-1]);
@@ -97,7 +100,7 @@ Ref stores a pointer to a values.
 +/
 struct RefTuple(T...)
 {
-    @fastmath:
+    @optmath:
     T expand;
     alias expand this;
     mixin _RefTupleMixin!T;
@@ -175,7 +178,7 @@ template adjoin(fun...) if (fun.length && fun.length <= 26)
         static if (Filter!(_needNary, fun).length == 0)
         {
             ///
-            @fastmath auto adjoin(Args...)(auto ref Args args)
+            @optmath auto adjoin(Args...)(auto ref Args args)
             {
                 template _adjoin(size_t i)
                 {
@@ -298,7 +301,7 @@ template naryFun(alias fun)
     static if (is(typeof(fun) : string))
     {
         /// Specialization for string lambdas
-        @fastmath auto ref naryFun(Args...)(auto ref Args args)
+        @optmath auto ref naryFun(Args...)(auto ref Args args)
             if (args.length <= 26)
         {
             mixin(_naryAliases!(Args.length));
@@ -429,7 +432,7 @@ N-ary predicate that reverses the order of arguments, e.g., given
 template reverseArgs(alias fun)
 {
     ///
-    @fastmath auto ref reverseArgs(Args...)(auto ref Args args)
+    @optmath auto ref reverseArgs(Args...)(auto ref Args args)
         if (is(typeof(fun(Reverse!args))))
     {
         return fun(Reverse!args);
@@ -478,7 +481,7 @@ template not(alias pred)
 {
     static if (!is(typeof(pred) : string) && !needOpCallAlias!pred)
     ///
-    @fastmath bool not(T...)(auto ref T args)
+    @optmath bool not(T...)(auto ref T args)
     {
         return !pred(args);
     }
@@ -545,7 +548,7 @@ template pipe(fun...)
         static if (f.length == fun.length && Filter!(_needNary, f).length == 0)
         {
             ///
-            @fastmath auto ref pipe(Args...)(auto ref Args args)
+            @optmath auto ref pipe(Args...)(auto ref Args args)
             {
                 return mixin (_pipe!(fun.length));
             }
@@ -603,7 +606,7 @@ template forward(args...)
         static if (__traits(isRef, arg))
             alias fwd = arg;
         else
-            @fastmath @property fwd()(){ return arg; } //TODO: use move
+            @optmath @property fwd()(){ return arg; } //TODO: use move
         alias forward = AliasSeq!(fwd, forward!(args[1..$]));
     }
     else
@@ -685,3 +688,63 @@ template forward(args...)
     auto x2 = bar(value); // case of OK
 }
 
+struct AliasCall(T, string methodName, TemplateArgs...)
+{
+    T __this;
+    alias __this this;
+    this()(auto ref T value)
+    {
+        __this = value;
+    }
+    auto ref opCall(Args...)(auto ref Args args)
+    {
+        mixin("return __this." ~ methodName ~ (TemplateArgs.length ? "!TemplateArgs" : "") ~ "(forward!args);");
+    }
+}
+
+/++
+Replaces call operator (`opCall`) for the value using its method.
+The funciton is designed to use with  $(NDSLICE, topology, vmap) or $(NDSLICE, topology, map).
+Params:
+    methodName = name of the methods to use for opCall and opIndex
+    TemplateArgs = template arguments
++/
+template aliasCall(string methodName, TemplateArgs...)
+{
+    /++
+    Params:
+        value = the value to wrap
+    Returns:
+        wrapped value with implemented opCall and opIndex methods
+    +/
+    AliasCall!(T, methodName, TemplateArgs) aliasCall(T)(auto ref T value)
+    {
+        return typeof(return)(value);
+    }
+}
+
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.topology: vmap, map, iota, indexed;
+
+    static struct S
+    {
+        auto fun(size_t ct_param = 1)(size_t rt_param)
+        {
+            return rt_param + ct_param;
+        }
+    }
+
+    // 0, 1, 2
+    auto io = iota(3);
+    S s;
+
+    auto sfun = aliasCall!"fun"(s);
+    assert(3.iota.vmap(sfun) == io + 1);   //  opCall is overloded
+    assert(3.iota.map!sfun == io + 1);  //  opCall is overloded
+
+    auto sfun10 = aliasCall!("fun", 10)(s);   // uses fun!10
+    assert(3.iota.vmap(sfun10) == io + 10);   //  opCall is overloded
+    assert(3.iota.map!sfun10 == io + 10);   //  opCall is overloded
+}

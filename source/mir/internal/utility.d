@@ -36,13 +36,5 @@ template isComplex(C)
     || is(Unqual!C == cfloat);
 }
 
-version(LDC)
-{
-    static import ldc.attributes;
-    ///
-    alias fastmath = ldc.attributes.fastmath;
-}
-else
-{
-    enum { fastmath };
-}
+deprecated("use mir.math.common: fastmath instead")
+public import mir.math.common: fastmath;

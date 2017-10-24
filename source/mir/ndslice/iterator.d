@@ -31,11 +31,12 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.ndslice.iterator;
 
 import std.traits;
-import mir.internal.utility;
+import mir.internal.utility: Iota;
+import mir.math.common: optmath;
 import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous;
 import mir.ndslice.internal;
 
-@fastmath:
+@optmath:
 
 enum std_ops = q{
     void opUnary(string op)()
@@ -77,7 +78,7 @@ Step counter.
 struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {
-@fastmath:
+@optmath:
     ///
     I _index;
 
@@ -188,7 +189,7 @@ Reverse directions for an iterator.
 +/
 struct RetroIterator(Iterator)
 {
-@fastmath:
+@optmath:
     ///
     Iterator _iterator;
 
@@ -293,7 +294,7 @@ Iterates an iterator with a fixed strides.
 +/
 struct StrideIterator(Iterator)
 {
-@fastmath:
+@optmath:
     ///
     ptrdiff_t _stride;
     ///
@@ -430,7 +431,7 @@ Iterates multiple iterators in lockstep.
 struct ZipIterator(Iterators...)
     if (Iterators.length > 1)
 {
-@fastmath:
+@optmath:
     import mir.functional: RefTuple, Ref;
     ///
     Iterators _iterators;
@@ -523,25 +524,9 @@ pure nothrow @nogc version(mir_test) unittest
     assert(zip - 1 < zip);
 }
 
-auto MapIterator__map(Iterator, alias fun0, alias fun)(ref MapIterator!(Iterator, fun0) it)
-{
-    return MapIterator!(Iterator, fun)(it._iterator);
-}
+private enum map_primitives = q{
 
-/++
-`MapIterator` is used by $(SUBREF topology, map).
-+/
-struct MapIterator(Iterator, alias fun)
-{
     import mir.functional: RefTuple, unref;
-
-@fastmath:
-    ///
-    Iterator _iterator;
-
-    import mir.functional: pipe;
-    ///
-    static alias __map(alias fun1) = MapIterator__map!(Iterator, fun, pipe!(fun, fun1));
 
     auto ref opUnary(string op : "*")()
     {
@@ -600,7 +585,42 @@ struct MapIterator(Iterator, alias fun)
                 return mixin("fun(_iterator[index])" ~ op ~ "= value");
         }
     }
+};
 
+/++
+`VmapIterator` is used by $(SUBREF topology, map).
++/
+struct VmapIterator(Iterator, Fun)
+{
+@optmath:
+    ///
+    Iterator _iterator;
+    ///
+    Fun fun;
+
+    mixin(map_primitives);
+    mixin(std_ops);
+}
+
+auto MapIterator__map(Iterator, alias fun0, alias fun)(ref MapIterator!(Iterator, fun0) it)
+{
+    return MapIterator!(Iterator, fun)(it._iterator);
+}
+
+/++
+`MapIterator` is used by $(SUBREF topology, map).
++/
+struct MapIterator(Iterator, alias fun)
+{
+@optmath:
+    ///
+    Iterator _iterator;
+
+    import mir.functional: pipe;
+    ///
+    static alias __map(alias fun1) = MapIterator__map!(Iterator, fun, pipe!(fun, fun1));
+
+    mixin(map_primitives);
     mixin(std_ops);
 }
 
@@ -622,7 +642,7 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
 struct BytegroupIterator(Iterator, size_t count, DestinationType)
     if (count)
 {
-@fastmath:
+@optmath:
     ///
     Iterator _iterator;
 
@@ -714,7 +734,7 @@ auto SlideIterator__map(Iterator, size_t params, alias fun0, alias fun)(ref Slid
 struct SlideIterator(Iterator, size_t params, alias fun)
     if (params > 1)
 {
-@fastmath:
+@optmath:
     ///
     Iterator _iterator;
 
@@ -773,7 +793,7 @@ struct IndexIterator(Iterator, Field)
 {
     import mir.functional: RefTuple, unref;
 
-@fastmath:
+@optmath:
     ///
     Iterator _iterator;
     ///
@@ -851,7 +871,7 @@ as a multidimensional window at the current position.
 +/
 struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
 {
-@fastmath:
+@optmath:
     ///
     alias Elem = Slice!(kind, packs, Iterator);
     ///
@@ -893,7 +913,7 @@ Creates an iterator on top of a field.
 +/
 struct FieldIterator(Field)
 {
-@fastmath:
+@optmath:
     ///
     ptrdiff_t _index;
     ///
@@ -985,7 +1005,7 @@ Creates an iterator on top of all elements in a slice.
 struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     if (packs[0] > 1 && (kind == Universal || kind == Canonical))
 {
-@fastmath:
+@optmath:
     ///
     ptrdiff_t[packs[0]] _indexes;
     ///
@@ -1231,7 +1251,7 @@ struct StairsIterator(Iterator)
     ///
     Iterator _iterator;
 
-@fastmath:
+@optmath:
 
     ///
     Slice!(Contiguous, [1], Iterator) opUnary(string op : "*")()

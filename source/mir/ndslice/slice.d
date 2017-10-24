@@ -37,15 +37,16 @@ module mir.ndslice.slice;
 import std.traits;
 import std.meta;
 
-import mir.internal.utility;
-import mir.ndslice.internal;
+import mir.internal.utility: Iota;
+import mir.math.common: optmath;
 import mir.ndslice.concatenation;
-import mir.primitives;
-import mir.ndslice.iterator;
 import mir.ndslice.field;
+import mir.ndslice.internal;
+import mir.ndslice.iterator;
+import mir.primitives;
 import mir.utility;
 
-@fastmath:
+@optmath:
 
 ///
 template isSlice(T)
@@ -160,6 +161,9 @@ version(mir_test) unittest
 
     static assert(packsOf!S == [2, 3]);
 }
+
+/// Extracts iterator type from a $(LREF Slice).
+alias IteratorOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = Iterator;
 
 private template SkipDimension(size_t dimension, size_t index)
 {
@@ -600,7 +604,7 @@ Slice!(Universal, [N], Iterator)
 struct Slice(SliceKind kind, size_t[] packs, Iterator)
     if (packs.sum < 255 && !(kind == Canonical && packs == [1]))
 {
-    @fastmath:
+    @optmath:
 
     package(mir):
 
@@ -897,10 +901,16 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Returns:
         Iterator (pointer) to the $(LREF Slice.first) element.
     +/
-    auto iterator()() @property
+    auto iterator()() inout  @property
     {
         return _iterator;
     }
+
+    static if (kind == Contiguous && isPointer!Iterator)
+    /++
+    `ptr` alias is available only if the slice kind is $(LREF Contiguous) contiguous and the $(LREF Slice.iterator) is a pointers.
+    +/
+    alias ptr = iterator;
 
     /++
     Field (array) data.
@@ -2008,16 +2018,16 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     auto opBinary(string op, T)(T value) @nogc
         if(!isSlice!T)
     {
-        import mir.ndslice.topology: indexed;
-        return indexed(LeftOp!(op, ImplicitlyUnqual!T)(value), this);
+        import mir.ndslice.topology: vmap;
+        return this.vmap(LeftOp!(op, ImplicitlyUnqual!T)(value));
     }
 
     /// ditto
     auto opBinaryRight(string op, T)(T value) @nogc
         if(!isSlice!T)
     {
-        import mir.ndslice.topology: indexed;
-        return indexed(RightOp!(op, ImplicitlyUnqual!T)(value), this);
+        import mir.ndslice.topology: vmap;
+        return this.vmap(RightOp!(op, ImplicitlyUnqual!T)(value));
     }
 
     static if (doUnittest)
@@ -2852,7 +2862,7 @@ pure nothrow version(mir_test) unittest
     import mir.ndslice.allocation;
     import mir.ndslice.topology : iota;
 
-    auto fun(ref size_t x) { x *= 3; }
+    auto fun(ref sizediff_t x) { x *= 3; }
 
     auto tensor = iota(8, 9, 10).slice;
 

@@ -263,14 +263,7 @@ unittest
 
 import std.traits;
 import std.meta: AliasSeq;
-
-private template isComplex(C)
-{
-    enum bool isComplex
-     = is(Unqual!C == creal)
-    || is(Unqual!C == cdouble)
-    || is(Unqual!C == cfloat);
-}
+import mir.internal.utility: Iota, isComplex;
 
 private template chainSeq(size_t n)
 {
@@ -278,17 +271,6 @@ private template chainSeq(size_t n)
         alias chainSeq = AliasSeq!(n, chainSeq!(n / 2));
     else
         alias chainSeq = AliasSeq!();
-}
-
-private alias Iota(size_t j) = Iota!(0, j);
-
-private template Iota(size_t i, size_t j)
-{
-    static assert(i <= j, "Iota: i should be less than or equal to j");
-    static if (i == j)
-        alias Iota = AliasSeq!();
-    else
-        alias Iota = AliasSeq!(i, Iota!(i + 1, j));
 }
 
 /++
@@ -1772,6 +1754,12 @@ version(mir_test)
     assert(sum([42., 43., 44., 45.5]) == 42 + 43 + 44 + 45.5);
 }
 
+version(mir_test)
+@safe pure nothrow unittest
+{
+    import mir.ndslice.topology: iota;
+    assert(iota(2, 3).sum == 15);
+}
 
 version(mir_test)
 @safe pure nothrow unittest

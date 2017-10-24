@@ -18,9 +18,9 @@ module mir.utility;
 
 import std.traits;
 
-import mir.internal.utility;
+import mir.math.common: optmath;
 
-@fastmath:
+@optmath:
 
 void swapStars(I1, I2)(auto ref I1 i1, auto ref I2 i2)
 {

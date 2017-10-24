@@ -11,8 +11,10 @@ module mir.primitives;
 
 import mir.internal.utility;
 public import mir.array.primitives;
+import mir.math.common: optmath;
+import std.traits;
 
-@fastmath:
+@optmath:
 
 /++
 Returns: `true` if `R` has a `length` member that returns an
@@ -67,6 +69,7 @@ enum bool hasShape(R) = is(typeof(
 
 ///
 auto shape(Range)(Range range)
+    if (__traits(hasMember, Range, "shape") || __traits(hasMember, Range, "length") || isArray!Range)
 {
     static if (__traits(hasMember, Range, "shape"))
     {
@@ -98,10 +101,24 @@ template DimensionCount(T)
 
 ///
 bool anyEmpty(Range)(Range range)
+    if (
+        __traits(compiles, { bool b = range.anyEmpty; }) || 
+        __traits(compiles, { auto b = range.shape; enum size_t e = b.length; }) ||
+        __traits(compiles, { bool b = range.empty; })
+        )
 {
     static if (__traits(hasMember, Range, "anyEmpty"))
     {
         return range.anyEmpty;
+    }
+    else
+    static if (__traits(hasMember, Range, "shape"))
+    {
+        auto shape = range.shape;
+        foreach(i; Iota!(shape.length))
+            if (shape[i] == 0)
+                return true;
+        return false;
     }
     else
     {

@@ -14,9 +14,9 @@ Authors:   Ilya Yaroshenko
 module mir.array.primitives;
 
 import std.traits;
-import mir.internal.utility;
+import mir.math.common: optmath;
 
-pragma(inline, true) @fastmath:
+pragma(inline, true) @optmath:
 
 ///
 bool empty(size_t dim = 0, T)(in T[] ar)
