@@ -40,7 +40,7 @@ unittest
 }
 
 import std.traits;
-import std.meta: AliasSeq;
+import std.meta: AliasSeq, staticMap;
 import mir.array.primitives;
 import mir.ndslice.slice;
 import mir.math.common: optmath;
@@ -326,7 +326,7 @@ struct LinearKernel(uint derivative, X)
         static if (derivative)
         {
             auto diff = y1 - y0;
-            typeof(y)[derivative + 1] ret = 0;
+            Y[derivative + 1] ret = 0;
             ret[0] = y;
             ret[1] = diff / step;
             return ret;

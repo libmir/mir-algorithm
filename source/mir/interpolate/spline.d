@@ -795,7 +795,7 @@ struct SplineKernel(uint derivative, X)
         auto y = pl + wq * pr;
         static if (derivative)
         {
-            typeof(y)[derivative + 1] ret = 0;
+            Y[derivative + 1] ret = 0;
             ret[0] = y;
             auto wd = w1 - w0;
             auto zd = z1 + z0;

@@ -300,6 +300,7 @@ template naryFun(alias fun)
 {
     static if (is(typeof(fun) : string))
     {
+        import mir.math.common;
         /// Specialization for string lambdas
         @optmath auto ref naryFun(Args...)(auto ref Args args)
             if (args.length <= 26)

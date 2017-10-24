@@ -13,6 +13,8 @@ version(LDC)
 {
     static import ldc.attributes;
 
+    import std.meta: AliasSeq;
+
     /++
     Functions attribute, an alias for `AliasSeq!(llvmFastMathFlag("contract"));`.
         
