@@ -171,6 +171,112 @@ unittest
     assert(all!approxEqual(d3, r3));
 }
 
+// /// R -> R: Cubic interpolation
+// version(mir_test)
+// @safe unittest
+// {
+//     import mir.ndslice;
+//     import std.math: approxEqual;
+
+//     auto x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
+//     auto y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
+//     auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
+
+//     auto interpolation = linear!double(x.sliced, y.sliced);
+
+//     auto data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
+
+//     assert(approxEqual(xs.sliced.map!interpolation, data, 1e-4, 1e-4));
+// }
+
+// /// R^2 -> R: Bicubic interpolaiton
+// unittest
+// {
+//     import std.math: approxEqual;
+//     import mir.ndslice;
+//     alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
+
+//     ///// set test function ////
+//     const double y_x0 = 2;
+//     const double y_x1 = -7;
+//     const double y_x0x1 = 3;
+
+//     // this function should be approximated very well
+//     alias f = (x0, x1) => y_x0 * x0 + y_x1 * x1 + y_x0x1 * x0 * x1 - 11;
+
+//     ///// set interpolant ////
+//     auto x0 = [-1.0, 2, 8, 15].sliced;
+//     auto x1 = [-4.0, 2, 5, 10, 13].sliced;
+//     auto grid = cartesian(x0, x1);
+
+//     auto interpolant = spline!(double, 2)(x0, x1, grid.map!f.slice);
+
+//     ///// compute test data ////
+//     auto test_grid = cartesian(x0 + 1.23, x1 + 3.23);
+//     auto real_data = test_grid.map!f;
+//     auto interp_data = test_grid.vmap(interpolant);
+
+//     ///// verify result ////
+//     assert(all!appreq(interp_data, real_data));
+
+//     //// check derivatives ////
+//     auto z0 = 1.23;
+//     auto z1 = 3.21;
+//     auto d = interpolant.withDerivative(z0, z1);
+//     assert(appreq(interpolant(z0, z1), f(z0, z1)));
+//     assert(appreq(d[0][0], f(z0, z1)));
+//     assert(appreq(d[1][0], y_x0 + y_x0x1 * z1));
+//     assert(appreq(d[0][1], y_x1 + y_x0x1 * z0));
+//     assert(appreq(d[1][1], y_x0x1));
+// }
+
+// /// R^3 -> R: Tricubic interpolaiton
+// unittest
+// {
+//     import std.math: approxEqual;
+//     import mir.ndslice;
+//     alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
+
+//     ///// set test function ////
+//     const y_x0 = 2;
+//     const y_x1 = -7;
+//     const y_x2 = 5;
+//     const y_x0x1 = 10;
+//     const y_x0x1x2 = 3;
+
+//     // this function should be approximated very well
+//     alias f = (x0, x1, x2) => y_x0 * x0 + y_x1 * x1 + y_x2 * x2
+//          + y_x0x1 * x0 * x1 + y_x0x1x2 * x0 * x1 * x2 - 11;
+
+//     ///// set interpolant ////
+//     auto x0 = [-1.0, 2, 8, 15].sliced;
+//     auto x1 = [-4.0, 2, 5, 10, 13].sliced;
+//     auto x2 = [3, 3.7, 5].sliced;
+//     auto grid = cartesian(x0, x1, x2);
+
+//     auto interpolant = spline!(double, 3)(x0, x1, x2, grid.map!f.slice);
+
+//     ///// compute test data ////
+//     auto test_grid = cartesian(x0 + 1.23, x1 + 3.23, x2 - 3);
+//     auto real_data = test_grid.map!f;
+//     auto interp_data = test_grid.vmap(interpolant);
+
+//     ///// verify result ////
+//     assert(all!appreq(interp_data, real_data));
+
+//     //// check derivatives ////
+//     auto z0 = 1.23;
+//     auto z1 = 3.21;
+//     auto z2 = 4;
+//     auto d = interpolant.withDerivative(z0, z1, z2);
+//     assert(appreq(interpolant(z0, z1, z2), f(z0, z1, z2)));
+//     assert(appreq(d[0][0][0], f(z0, z1, z2)));
+//     assert(appreq(d[1][0][0], y_x0 + y_x0x1 * z1 + y_x0x1x2 * z1 * z2));
+//     assert(appreq(d[0][1][0], y_x1 + y_x0x1 * z0 + y_x0x1x2 * z0 * z2));
+//     assert(appreq(d[1][1][0], y_x0x1 + y_x0x1x2 * z2));
+//     assert(appreq(d[1][1][1], y_x0x1x2));
+// }
+
 @optmath:
 
 /++
@@ -180,7 +286,7 @@ Result has continues second derivatives throughout the curve / nd-surface.
 template spline(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
 {
-    static if (N > 1) pragma(msg, "Warning: multivariate cubic spline was not tested.");
+    static if (N > 1) pragma(msg, "Warning: multivariate cubic spline was not tested!!!");
 
     private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     private alias GridVectors = Spline!(T, N, GridIterators).GridVectors;
@@ -280,7 +386,7 @@ struct SplineBoundaryCondition(T)
 /++
 Multivariate cubic spline with nodes on rectilinear grid.
 +/
-struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
@@ -416,7 +522,6 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repea
         else
         foreach_reverse(i, ref x; _grid)
         {
-                auto data = _data.
             _data
                 .byDim!i
                 .evertPack
@@ -526,7 +631,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repea
                     from += strides[i] * indexes[i];
                     load!(i - 1)(from, to);
                     from += strides[i];
-                    enum s = 2 ^^ i;
+                    enum s = 2 ^^ (N - 1 - i);
                     to += s;
                     load!(i - 1)(from, to);
                 }
@@ -534,14 +639,15 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repea
 
             immutable strides = _data._lengths.iota.strides;
             load!(N - 1)(_data.ptr, cast(F[2 ^^ N]*) local[0].ptr);
+
             foreach(i; Iota!N)
             {
                 enum P = 2 ^^ (N - 1 - i);
                 enum L = (2 ^^ N) ^^ 2 / (2 ^^ (i * (2 - rp2d))) / 4;
                 shuffle2!P(local[0][0 * L .. 1 * L], local[0][1 * L .. 2 * L], local[1][0 * L .. 1 * L], local[1][1 * L .. 2 * L]);
                 shuffle2!P(local[0][2 * L .. 3 * L], local[0][3 * L .. 4 * L], local[1][2 * L .. 3 * L], local[1][3 * L .. 4 * L]);
-                auto kernel = kernels[i];
-                vectorize!(kernel)(
+                vectorize(
+                    kernels[i],
                     local[1][0 * L .. 1 * L], local[1][2 * L .. 3 * L],
                     local[1][1 * L .. 2 * L], local[1][3 * L .. 4 * L],
                     *cast(F[L][2 ^^ rp2d]*) local[0].ptr,
@@ -596,7 +702,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     assert (points.length >= 2);
     assert (points.length == values.length);
     assert (points.length == slopes.length);
-    assert (temp.length == points.length);
+    assert (temp.length + 1 >= points.length);
 
     auto n = points.length;
 

@@ -13,7 +13,66 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.linear;
 
-///
+import std.traits;
+import std.meta: AliasSeq, staticMap;
+import mir.array.primitives;
+import mir.ndslice.slice;
+import mir.math.common: optmath;
+import mir.internal.utility;
+
+public import mir.interpolate: atInterval;
+import mir.interpolate;
+
+/++
+Constructs multivariate linear interpolant with nodes on rectilinear grid.
+
+Params:
+    T = element floating point type
+    N = arity (dimension) number
+    grid = N `x` values for interpolation
+    values = `f(x)` values for interpolation
+
+Constraints:
+    `grid`, `values` must have the same length >= 2
+
+Returns: $(LREF Linear)
++/
+template linear(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+    // if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
+{
+    private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
+    private alias GridVectors = Linear!(T, N, GridIterators).GridVectors;
+
+    /++
+    Params:
+        grid = N `x` values for interpolation
+        values = `f(x)` values for interpolation
+    Constraints:
+        `grid` and `values` must have the same length >= 2
+    Returns: $(LREF Spline)
+    +/
+    Linear!(T, N, GridIterators) linear(SliceKind ykind, yIterator)(
+        GridVectors grid,
+        scope Slice!(ykind, [N], yIterator) values,
+        bool forceCopyValues = false
+        )
+    {
+        static if (__traits(compiles, typeof(return)(grid, values)))
+        {
+            if (!forceCopyValues)
+            {
+                return typeof(return)(grid, values);
+            }
+        }
+        import std.algorithm.mutation: move;
+        auto ret = typeof(return)(grid);
+        ret._data[] = values;
+        return ret.move;
+    }
+}
+
+
+/// R -> R: Linear interpolation
 version(mir_test)
 @safe unittest
 {
@@ -39,68 +98,98 @@ unittest
     assert(interpolation.interval(1.0) == 1);
 }
 
-import std.traits;
-import std.meta: AliasSeq, staticMap;
-import mir.array.primitives;
-import mir.ndslice.slice;
-import mir.math.common: optmath;
-import mir.internal.utility;
-
-public import mir.interpolate: atInterval;
-import mir.interpolate;
-
-/++
-Constructs multivariate linear interpolant with nodes on rectilinear grid.
-
-Params:
-    grid = `x` values for interpolation
-    values = `f(x)` values for interpolation
-
-Constraints:
-    `grid`, `values` must have the same length >= 3
-
-Returns: $(LREF Linear)
-+/
-template linear(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
-    if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
+/// R^2 -> R: Bilinear interpolaiton
+unittest
 {
-    static if (N > 1) pragma(msg, "Warning: multivariate cubic linear was not tested.");
+    import std.math: approxEqual;
+    import mir.ndslice;
+    alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
 
-    private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    private alias GridVectors = Linear!(T, N, GridIterators).GridVectors;
+    ///// set test function ////
+    const double y_x0 = 2;
+    const double y_x1 = -7;
+    const double y_x0x1 = 3;
 
-    /++
-    Params:
-        grid = `x` values for interpolation
-        values = `f(x)` values for interpolation
-    Constraints:
-        `grid` and `values` must have the same length >= 3
-    Returns: $(LREF Spline)
-    +/
-    Linear!(T, N, GridIterators) linear(SliceKind ykind, yIterator)(
-        GridVectors grid,
-        scope Slice!(ykind, [1], yIterator) values,
-        bool forceCopyValues = false
-        )
-    {
-        static if (__traits(compiles, typeof(return)(grid, values)))
-        {
-            if (!forceCopyValues)
-            {
-                return typeof(return)(grid, values);
-            }
-        }
-        import std.algorithm.mutation: move;
-        auto ret = typeof(return)(grid);
-        ret._data[] = values;
-        return ret.move;
-    }
+    // this function should be approximated very well
+    alias f = (x0, x1) => y_x0 * x0 + y_x1 * x1 + y_x0x1 * x0 * x1 - 11;
+
+    ///// set interpolant ////
+    auto x0 = [-1.0, 2, 8, 15].sliced;
+    auto x1 = [-4.0, 2, 5, 10, 13].sliced;
+    auto grid = cartesian(x0, x1);
+
+    auto interpolant = linear!(double, 2)(x0, x1, grid.map!f.slice);
+
+    ///// compute test data ////
+    auto test_grid = cartesian(x0 + 1.23, x1 + 3.23);
+    auto real_data = test_grid.map!f;
+    auto interp_data = test_grid.vmap(interpolant);
+
+    ///// verify result ////
+    assert(all!appreq(interp_data, real_data));
+
+    //// check derivatives ////
+    auto z0 = 1.23;
+    auto z1 = 3.21;
+    auto d = interpolant.withDerivative(z0, z1);
+    assert(appreq(interpolant(z0, z1), f(z0, z1)));
+    assert(appreq(d[0][0], f(z0, z1)));
+    assert(appreq(d[1][0], y_x0 + y_x0x1 * z1));
+    assert(appreq(d[0][1], y_x1 + y_x0x1 * z0));
+    assert(appreq(d[1][1], y_x0x1));
+}
+
+/// R^3 -> R: Trilinear interpolaiton
+unittest
+{
+    import std.math: approxEqual;
+    import mir.ndslice;
+    alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
+
+    ///// set test function ////
+    const y_x0 = 2;
+    const y_x1 = -7;
+    const y_x2 = 5;
+    const y_x0x1 = 10;
+    const y_x0x1x2 = 3;
+
+    // this function should be approximated very well
+    alias f = (x0, x1, x2) => y_x0 * x0 + y_x1 * x1 + y_x2 * x2
+         + y_x0x1 * x0 * x1 + y_x0x1x2 * x0 * x1 * x2 - 11;
+
+    ///// set interpolant ////
+    auto x0 = [-1.0, 2, 8, 15].sliced;
+    auto x1 = [-4.0, 2, 5, 10, 13].sliced;
+    auto x2 = [3, 3.7, 5].sliced;
+    auto grid = cartesian(x0, x1, x2);
+
+    auto interpolant = linear!(double, 3)(x0, x1, x2, grid.map!f.slice);
+
+    ///// compute test data ////
+    auto test_grid = cartesian(x0 + 1.23, x1 + 3.23, x2 - 3);
+    auto real_data = test_grid.map!f;
+    auto interp_data = test_grid.vmap(interpolant);
+
+    ///// verify result ////
+    assert(all!appreq(interp_data, real_data));
+
+    //// check derivatives ////
+    auto z0 = 1.23;
+    auto z1 = 3.21;
+    auto z2 = 4;
+    auto d = interpolant.withDerivative(z0, z1, z2);
+    assert(appreq(interpolant(z0, z1, z2), f(z0, z1, z2)));
+    assert(appreq(d[0][0][0], f(z0, z1, z2)));
+    assert(appreq(d[1][0][0], y_x0 + y_x0x1 * z1 + y_x0x1x2 * z1 * z2));
+    assert(appreq(d[0][1][0], y_x1 + y_x0x1 * z0 + y_x0x1x2 * z0 * z2));
+    assert(appreq(d[1][1][0], y_x0x1 + y_x0x1x2 * z2));
+    assert(appreq(d[1][1][1], y_x0x1x2));
 }
 
 /++
 Multivariate linear interpolant with nodes on rectilinear grid.
 +/
-struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
     import mir.ndslice.internal: ConstIfPointer;
@@ -269,7 +358,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repea
                     from += strides[i] * indexes[i];
                     load!(i - 1)(from, to);
                     from += strides[i];
-                    enum s = 2 ^^ i;
+                    enum s = 2 ^^ (N - 1 - i);
                     to += s;
                     load!(i - 1)(from, to);
                 }
@@ -281,19 +370,11 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repea
             {
                 enum P = 2 ^^ (N - 1 - i);
                 enum L = 2 ^^ (N - i * (1 - rp2d)) / 2;
-                auto kernel = kernels[i];
-                vectorize!(kernel)(local[0][0 * L .. 1 * L], local[0][1 * L .. 2 * L], *cast(F[L][2 ^^ rp2d]*)local[rp2d].ptr);
+                vectorize(kernels[i], local[0][0 * L .. 1 * L], local[0][1 * L .. 2 * L], *cast(F[L][2 ^^ rp2d]*)local[rp2d].ptr);
+                static if (rp2d == 1)
+                    shuffle3!1(local[1][0 .. L], local[1][L .. 2 * L], local[0][0 .. L], local[0][L .. 2 * L]);
                 static if (i + 1 == N)
-                {
-                    return *cast(SplineReturnType!(F, N, rp2d)*) local[rp2d].ptr;
-                }
-                else
-                {
-                    static if (rp2d == 1)
-                    {
-                        shuffle1!1(local[1][0 .. L], local[1][L .. 2 * L], local[0][0 .. L], local[0][L .. 2 * L]);
-                    }
-                }
+                    return *cast(SplineReturnType!(F, N, rp2d)*) local[0].ptr;
             }
         }
     }
