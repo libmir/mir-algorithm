@@ -67,10 +67,7 @@ template findInterval(size_t dimension = 0)
             auto grid = interpolant.grid[1 .. $][0 .. len];
         }
         assert(len >= 0);
-        return len - grid
-            .assumeSorted
-            .upperBound(x)
-            .length;
+        return len - grid.assumeSorted.upperBound(x).length;
     }
 }
 
@@ -262,10 +259,10 @@ auto copyvec(F, size_t N)(ref const F[N] from, ref F[N] to)
 
 package template SplineReturnType(F, size_t N, size_t P)
 {
-    static if (P == 0 || N == 0)
+    static if (P <= 1 || N == 0)
         alias SplineReturnType = F;
     else
-        alias SplineReturnType = .SplineReturnType!(F, N - 1, P)[2 ^^ P];
+        alias SplineReturnType = .SplineReturnType!(F, N - 1, P)[P];
 }
 
 template generateShuffles3(size_t N, size_t P)

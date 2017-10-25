@@ -566,12 +566,12 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
             // X.length == N || derivative == 0 && X.length && X.length <= N
         {
             auto d4 = this.opCall!3(xs);
-            SplineReturnType!(F, N, 2) d3;
+            SplineReturnType!(F, N, 3) d3;
             void fun(size_t d, A, B)(ref A a, ref B b)
             {
                 static if (d)
                     foreach(i; Iota!3)
-                        fun!(d - 1)(a, b);
+                        fun!(d - 1)(a[i], b[i]);
                 else
                     b = a;
             }
@@ -653,7 +653,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
                     );
                 static if (i + 1 == N)
                 {
-                    return *cast(SplineReturnType!(F, N, rp2d)*) local[0].ptr;
+                    return *cast(SplineReturnType!(F, N, 2 ^^ rp2d)*) local[0].ptr;
                 }
                 else
                 {

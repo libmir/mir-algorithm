@@ -269,6 +269,8 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
         this._ownsData = false;
     }
 
+@trusted:
+
     ///
     GridVectors[dimension] grid(size_t dimension = 0)() const @property
         if (dimension < N)
@@ -362,7 +364,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
                 static if (rp2d == 1)
                     shuffle3!1(local[1][0 .. L], local[1][L .. 2 * L], local[0][0 .. L], local[0][L .. 2 * L]);
                 static if (i + 1 == N)
-                    return *cast(SplineReturnType!(F, N, rp2d)*) local[0].ptr;
+                    return *cast(SplineReturnType!(F, N, 2 ^^ rp2d)*) local[0].ptr;
             }
         }
     }

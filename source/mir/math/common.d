@@ -69,7 +69,7 @@ version(LDC)
 }
 else
 {
-    enum { fastmath, fusedmath, optmath };
+    enum { fmamath, optmath, fastmath };
 }
 
 version(LDC)

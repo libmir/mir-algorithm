@@ -183,6 +183,8 @@ struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Rep
         this._ownsData = false;
     }
 
+@trusted:
+
     ///
     GridVectors[dimension] grid(size_t dimension = 0)() const @property
         if (dimension < N)
@@ -232,7 +234,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Rep
                 else
                     indexes[i] = this.findInterval!i(xs[i]);
             }
-            return _data[indexes];
+            return _data[][indexes];
         }
     }
 }
