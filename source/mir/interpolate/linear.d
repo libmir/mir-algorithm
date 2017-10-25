@@ -90,14 +90,6 @@ version(mir_test)
     assert(approxEqual(xs.sliced.map!interpolation, data, 1e-4, 1e-4));
 }
 
-unittest
-{
-    auto x = [0.0, 1, 2].sliced;
-    auto y = [10.0, 2, 4].sliced;
-    auto interpolation = linear!double(x, y);
-    assert(interpolation.interval(1.0) == 1);
-}
-
 /// R^2 -> R: Bilinear interpolaiton
 unittest
 {
@@ -207,19 +199,19 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     import mir.utility: min, max;
     package enum alignment = min(64u, F.sizeof).max(size_t.sizeof);
 
+    package ref shared(sizediff_t) counter() @trusted @property
+    {
+        assert(_ownsData);
+        auto p = cast(shared sizediff_t*) _data.ptr;
+        return *(p - 1);
+    }
+
     ///
     this(this) @safe nothrow @nogc
     {
         import core.atomic: atomicOp;
         if (_ownsData)
             counter.atomicOp!"+="(1);
-    }
-
-    ///
-    GridVectors[dimension] grid(size_t dimension = 0)() @property
-        if (dimension < N)
-    {
-        return _grid[dimension].sliced(_data._lengths[dimension]);
     }
 
     /++
@@ -233,13 +225,6 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
         if (_ownsData)
             if (counter.atomicOp!"-="(1) <= 0)
                 alignedFree(cast(void*)(_data.ptr) - alignment);
-    }
-
-    package ref shared(sizediff_t) counter() @trusted @property
-    {
-        assert(_ownsData);
-        auto p = cast(shared sizediff_t*) _data.ptr;
-        return *(p - 1);
     }
 
     /++
@@ -285,37 +270,40 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     }
 
     ///
-    size_t[N] dataShape()() @property
+    GridVectors[dimension] grid(size_t dimension = 0)() const @property
+        if (dimension < N)
+    {
+        return _grid[dimension].sliced(_data._lengths[dimension]);
+    }
+
+    /++
+    Returns: intervals count.
+    +/
+    size_t intervalCount(size_t dimension = 0)() const @property
+    {
+        assert(_data._lengths[dimension] > 1);
+        return _data._lengths[dimension] - 1;
+    }
+
+    ///
+    size_t[N] gridShape()() const @property
     {
         return _data.shape;
     }
 
-    /++
-    Interval index for x.
-    +/
-    size_t interval(size_t dimension = 0, X)(in X x)
-    {
-        import std.range: assumeSorted;
-        return _data._lengths[dimension] - 2 - _grid[dimension].sliced(_data._lengths[dimension])[1 .. $ - 1]
-            .assumeSorted
-            .upperBound(x)
-            .length;
-    }
-
     ///
-    enum uint maxDerivative = 1;
+    enum uint derivativeOrder = 1;
 
     ///
     template opCall(uint derivative = 0)
-        if (derivative <= maxDerivative)
+        if (derivative <= derivativeOrder)
     {
-        @trusted:
         /++
         `(x)` and `[x]` operators.
         Complexity:
             `O(log(grid.length))`
         +/
-        auto opCall(X...)(in X xs)
+        auto opCall(X...)(in X xs) const @trusted
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N
@@ -338,7 +326,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
                 else
                 { 
                     alias x = xs[i];
-                    indexes[i] = interval!i(x);
+                    indexes[i] = this.findInterval!i(x);
                 }
                 kernels[i] = Kernel(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
             }

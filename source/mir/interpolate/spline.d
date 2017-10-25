@@ -400,6 +400,12 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     import mir.utility: min, max;
     package enum alignment = min(64u, F[2 ^^ N].sizeof).max(size_t.sizeof);
 
+    package ref shared(sizediff_t) counter() @trusted @property
+    {
+        auto p = cast(shared sizediff_t*) _data.ptr;
+        return *(p - 1);
+    }
+
     ///
     this(this) @safe nothrow @nogc
     {
@@ -419,19 +425,6 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
         if (_data.ptr)
             if (counter.atomicOp!"-="(1) <= 0)
                 alignedFree(cast(void*)(_data.ptr) - alignment);
-    }
-
-    ///
-    GridVectors[dimension] grid(size_t dimension = 0)() @property
-        if (dimension < N)
-    {
-        return _grid[dimension].sliced(_data._lengths[dimension]);
-    }
-
-    package ref shared(sizediff_t) counter() @trusted @property
-    {
-        auto p = cast(shared sizediff_t*) _data.ptr;
-        return *(p - 1);
     }
 
     /++
@@ -459,12 +452,6 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
         this.counter = 1;
     }
 
-    ///
-    size_t[N] dataShape()() @property
-    {
-        return _data.shape;
-    }
-
     package static auto pickDataSubslice(D)(auto ref D data, size_t index) @trusted
     {
         import mir.ndslice.dynamic: transposed;
@@ -480,7 +467,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     +/
     void _values(SliceKind kind, Iterator)(scope Slice!(kind, [N], Iterator) values) @property @trusted
     {
-        assert(values.shape == _data.shape, "'values' should have the same shape as the .dataShape");
+        assert(values.shape == _data.shape, "'values' should have the same shape as the .gridShape");
         pickDataSubslice(_data, 0)[] = values;
     }
 
@@ -540,13 +527,26 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
 
 @trusted:
 
-    size_t interval(size_t dimension = 0, X)(in X x)
+    ///
+    GridVectors[dimension] grid(size_t dimension = 0)() const @property
+        if (dimension < N)
     {
-        import std.range: assumeSorted;
-        return _data._lengths[dimension] - 2 - _grid[dimension].sliced(_data._lengths[dimension])[1 .. $ - 1]
-            .assumeSorted
-            .upperBound(x)
-            .length;
+        return _grid[dimension].sliced(_data._lengths[dimension]);
+    }
+
+    /++
+    Returns: intervals count.
+    +/
+    size_t intervalCount(size_t dimension = 0)() const @property
+    {
+        assert(_data._lengths[dimension] > 1);
+        return _data._lengths[dimension] - 1;
+    }
+
+    ///
+    size_t[N] gridShape()() const @property
+    {
+        return _data.shape;
     }
 
     ///
@@ -555,12 +555,12 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     alias withTwoDerivatives = opCall!2;
 
     ///
-    enum uint maxDerivative = 3;;
+    enum uint derivativeOrder = 3;
 
     ///
     template opCall(uint derivative : 2)
     {
-         auto opCall(X...)(in X xs)
+         auto opCall(X...)(in X xs) const
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N
@@ -584,13 +584,12 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     template opCall(uint derivative = 0)
         if (derivative == 0 || derivative == 1 || derivative == 3)
     {
-        @trusted:
         /++
         `(x)` and `[x]` operators.
         Complexity:
             `O(log(points.length))`
         +/
-        auto opCall(X...)(in X xs)
+        auto opCall(X...)(in X xs) const @trusted
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N
@@ -612,14 +611,14 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
                 else
                 {
                     alias x = xs[i];
-                    indexes[i] = interval!i(x);
+                    indexes[i] = this.findInterval!i(x);
                 }
                 kernels[i] = Kernel(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
             }
 
             align(64) F[2 ^^ N * 2 ^^ N][2] local = void;
 
-            void load(sizediff_t i)(F[2 ^^ N]* from, F[2 ^^ N]* to)
+            void load(sizediff_t i)(const(F[2 ^^ N])* from, F[2 ^^ N]* to)
             {
                 version(LDC) pragma(inline, true);
                 static if (i == -1)
@@ -887,7 +886,7 @@ struct SplineKernel(uint derivative, X)
         wq = w0 * w1;
     }
 
-    auto opCall(Y)(in Y y0, in Y y1, in Y s0, in Y s1)
+    auto opCall(Y)(in Y y0, in Y y1, in Y s0, in Y s1) const
     {
         auto diff = y1 - y0;
         auto z0 = s0 * step - diff;

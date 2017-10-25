@@ -116,19 +116,19 @@ struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Rep
     import mir.utility: min, max;
     package enum alignment = min(64u, F.sizeof).max(size_t.sizeof);
 
+    package ref shared(sizediff_t) counter() @trusted @property
+    {
+        assert(_ownsData);
+        auto p = cast(shared sizediff_t*) _data.ptr;
+        return *(p - 1);
+    }
+
     ///
     this(this) @safe nothrow @nogc
     {
         import core.atomic: atomicOp;
         if (_ownsData)
             counter.atomicOp!"+="(1);
-    }
-
-    ///
-    GridVectors[dimension] grid(size_t dimension = 0)() @property
-        if (dimension < N)
-    {
-        return _grid[dimension].sliced(_data._lengths[dimension]);
     }
 
     /++
@@ -142,13 +142,6 @@ struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Rep
         if (_ownsData)
             if (counter.atomicOp!"-="(1) <= 0)
                 alignedFree(cast(void*)(_data.ptr) - alignment);
-    }
-
-    package ref shared(sizediff_t) counter() @trusted @property
-    {
-        assert(_ownsData);
-        auto p = cast(shared sizediff_t*) _data.ptr;
-        return *(p - 1);
     }
 
     /++
@@ -191,29 +184,33 @@ struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Rep
     }
 
     ///
-    size_t[N] dataShape()() @property
+    GridVectors[dimension] grid(size_t dimension = 0)() const @property
+        if (dimension < N)
+    {
+        return _grid[dimension].sliced(_data._lengths[dimension]);
+    }
+
+    /++
+    Returns: intervals count.
+    +/
+    size_t intervalCount(size_t dimension = 0)() const @property
+    {
+        assert(_data._lengths[dimension] > 0);
+        return _data._lengths[dimension] - 0;
+    }
+
+    ///
+    size_t[N] gridShape()() const @property
     {
         return _data.shape;
     }
 
-    /++
-    Interval index for x.
-    +/
-    size_t interval(size_t dimension = 0, X)(in X x)
-    {
-        import std.range: assumeSorted;
-        return _data._lengths[dimension] - 1 - _grid[dimension].sliced(_data._lengths[dimension])[1 .. $]
-            .assumeSorted
-            .upperBound(x)
-            .length;
-    }
-
     ///
-    enum uint maxDerivative = 0;
+    enum uint derivativeOrder = 0;
 
     ///
     template opCall(uint derivative = 0)
-        if (derivative <= maxDerivative)
+        if (derivative <= derivativeOrder)
     {
         @trusted:
         /++
@@ -221,23 +218,19 @@ struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Rep
         Complexity:
             `O(log(grid.length))`
         +/
-        auto opCall(X...)(in X xs)
+        auto opCall(X...)(in X xs) const
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N
         {
-            import mir.ndslice.topology: iota;
-
             size_t[N] indexes = void;
-
-            enum rp2d = derivative;
 
             foreach(i; Iota!N)
             {
                 static if (isInterval!(typeof(xs[i])))
                     indexes[i] = xs[i][1];
                 else
-                    indexes[i] = interval!i(xs[i]);
+                    indexes[i] = this.findInterval!i(xs[i]);
             }
             return _data[indexes];
         }

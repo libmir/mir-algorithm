@@ -42,6 +42,51 @@ package template Repeat(ulong n, L...)
 }
 
 /++
+Interval index for x value given.
++/
+template findInterval(size_t dimension = 0)
+{
+    /++
+    Interval index for x value given.
+    Params:
+        interpolant = interpolant
+        x = X value
+    +/
+    size_t findInterval(Interpolant, X)(auto ref const Interpolant interpolant, in X x) @trusted
+    {
+        import mir.ndslice.slice: sliced;
+        import std.range: assumeSorted;
+        static if (dimension)
+        {
+            immutable sizediff_t len = interpolant.intervalCount!dimension - 1;
+            auto grid = interpolant.grid!dimension[1 .. $][0 .. len];
+        }
+        else
+        {
+            immutable sizediff_t len = interpolant.intervalCount - 1;
+            auto grid = interpolant.grid[1 .. $][0 .. len];
+        }
+        assert(len >= 0);
+        return len - grid
+            .assumeSorted
+            .upperBound(x)
+            .length;
+    }
+}
+
+///
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.interpolate.linear;
+
+    auto x = [0.0, 1, 2].sliced;
+    auto y = [10.0, 2, 4].sliced;
+    auto interpolation = linear!double(x, y);
+    assert(interpolation.findInterval(1.0) == 1);
+}
+
+/++
 Lazy interpolation shell with linear complexity.
 
 Params:
@@ -61,14 +106,14 @@ auto interp1(Range, Interpolant)(Range range, Interpolant interpolant, size_t in
 }
 
 /// ditto
-struct Interp1(Range, Interpolation)
+struct Interp1(Range, Interpolant)
 {
-    /// Sorted range (descending)
-    Range _range;
-    ///  Interpolation structure
-    Interpolation _interpolation;
-    /// Current interpolation interval
-    size_t _interval;
+    /// Sorted range (descending). $(RED For internal use.)
+    private Range _range;
+    ///  Interpolant structure. $(RED For internal use.)
+    private Interpolant _interpolant;
+    /// Current interpolation interval. $(RED For internal use.)
+    private size_t _interval;
 
     static if (hasLength!Range)
     /// Length (optional)
@@ -91,10 +136,12 @@ struct Interp1(Range, Interpolation)
         assert(!empty);
         auto x = _range.front;
         return (x) @trusted {
-            auto points = _interpolation.grid;
-            while (x > points[_interval + 1] && points.length > _interval + 2)
+            auto points = _interpolant.grid;
+            sizediff_t len = _interpolant.intervalCount - 1;
+            assert(len >= 0);
+            while (x > points[_interval + 1] && _interval < len)
                 _interval++;
-            return _interpolation(x.atInterval(_interval));
+            return _interpolant(x.atInterval(_interval));
         } (x);
     }
 }
@@ -185,7 +232,7 @@ version(LDC)
 else
     enum LDC = false;
 
-auto copyvec(F, size_t N)(ref F[N] from, ref F[N] to)
+auto copyvec(F, size_t N)(ref const F[N] from, ref F[N] to)
 {
     import mir.internal.utility;
 
