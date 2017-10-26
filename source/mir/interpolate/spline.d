@@ -595,7 +595,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
             // X.length == N || derivative == 0 && X.length && X.length <= N
         {
             import mir.ndslice.topology: iota;
-            alias Kernel = SplineKernel!(derivative, F);
+            alias Kernel = AliasCall!(SplineKernel!F, "opCall", derivative);
             enum rp2d = derivative == 3 ? 2 : derivative;
 
             size_t[N] indexes = void;
@@ -613,7 +613,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
                     alias x = xs[i];
                     indexes[i] = this.findInterval!i(x);
                 }
-                kernels[i] = Kernel(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
+                kernels[i] = SplineKernel!F(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
             }
 
             align(64) F[2 ^^ N * 2 ^^ N][2] local = void;
@@ -728,10 +728,10 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         import mir.interpolate.utility;
         // static if (packs == [1])
         {
-            auto parabolaDerivative = parabolaKernel!1(points[0], points[1], points[2], values[0], values[1], values[2]);
-            slopes[0] = parabolaDerivative(points[0]);
-            slopes[1] = parabolaDerivative(points[1]);
-            slopes[2] = parabolaDerivative(points[2]);
+            auto parabola = parabolaKernel(points[0], points[1], points[2], values[0], values[1], values[2]);
+            slopes[0] = parabola.withDerivative(points[0])[1];
+            slopes[1] = parabola.withDerivative(points[1])[1];
+            slopes[2] = parabola.withDerivative(points[2])[1];
         }
         // else
         // {
@@ -868,14 +868,15 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     }
 }
 
-struct SplineKernel(uint derivative, X)
-    if (derivative <= 3)
+///
+struct SplineKernel(X)
 {
     X step = 0;
     X w0 = 0;
     X w1 = 0;
     X wq = 0;
 
+    ///
     this()(X x0, X x1, X x)
     {
         step = x1 - x0;
@@ -886,37 +887,48 @@ struct SplineKernel(uint derivative, X)
         wq = w0 * w1;
     }
 
-    auto opCall(Y)(in Y y0, in Y y1, in Y s0, in Y s1) const
+    ///
+    template opCall(uint derivative = 0)
+        if (derivative <= 3)
     {
-        auto diff = y1 - y0;
-        auto z0 = s0 * step - diff;
-        auto z1 = s1 * step - diff;
-        auto a0 = z0 * w1;
-        auto a1 = z1 * w0;
-        auto pr = a0 - a1;
-        auto b0 = y0 * w1;
-        auto b1 = y1 * w0;
-        auto pl = b0 + b1;
-        auto y = pl + wq * pr;
-        static if (derivative)
+        ///
+        auto opCall(Y)(in Y y0, in Y y1, in Y s0, in Y s1) const
         {
-            Y[derivative + 1] ret = 0;
-            ret[0] = y;
-            auto wd = w1 - w0;
-            auto zd = z1 + z0;
-            ret[1] = (diff + (wd * pr - wq * zd)) / step;
-            static if (derivative > 1)
+            auto diff = y1 - y0;
+            auto z0 = s0 * step - diff;
+            auto z1 = s1 * step - diff;
+            auto a0 = z0 * w1;
+            auto a1 = z1 * w0;
+            auto pr = a0 - a1;
+            auto b0 = y0 * w1;
+            auto b1 = y1 * w0;
+            auto pl = b0 + b1;
+            auto y = pl + wq * pr;
+            static if (derivative)
             {
-                auto astep = zd / (step * step);
-                ret[2] = -3 * wd * astep + (s1 - s0) / step;
-                static if (derivative > 2)
-                    ret[3] = 6 * astep / step;
+                Y[derivative + 1] ret = 0;
+                ret[0] = y;
+                auto wd = w1 - w0;
+                auto zd = z1 + z0;
+                ret[1] = (diff + (wd * pr - wq * zd)) / step;
+                static if (derivative > 1)
+                {
+                    auto astep = zd / (step * step);
+                    ret[2] = -3 * wd * astep + (s1 - s0) / step;
+                    static if (derivative > 2)
+                        ret[3] = 6 * astep / step;
+                }
+                return ret;
             }
-            return ret;
-        }
-        else
-        {
-            return y;
+            else
+            {
+                return y;
+            }
         }
     }
+
+    ///
+    alias withDerivative = opCall!1;
+    ///
+    alias withTwoDerivatives = opCall!2;
 }

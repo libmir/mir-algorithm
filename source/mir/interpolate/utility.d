@@ -1,20 +1,18 @@
 module mir.interpolate.utility;
 
 import mir.ndslice.slice;
+import std.traits;
 
 /++
 ParabolaKernel structure.
 +/
-struct ParabolaKernel(uint derivative, T)
-    if (derivative <= 2)
+struct ParabolaKernel(T)
 {
     ///
     T a = 0;
     ///
-    static if (derivative <= 1)
     T b = 0;
     ///
-    static if (derivative == 0)
     T c = 0;
 
     /// Builds parabola given three points
@@ -30,35 +28,35 @@ struct ParabolaKernel(uint derivative, T)
         auto a3 = bm * a1 + a2;
         auto d3 = bm * d1 + d2;
         a = d3 / a3;
-        static if (derivative <= 1)
         b = (d1 - a1 * a) / b1;
-        static if (derivative == 0)
         c = y1 - x1 * (a * x1 + b);
     }
 
     ///
-    auto opCall(V)(V x)
-        if (!isSlice!V)
+    auto opCall(uint derivative = 0)(T x) const
+        if (derivative <= 2)
     {
+        auto y = (a * x + b) * x + c;
         static if (derivative == 0)
-           return (a * x + b) * x + c;
+           return y;
         else
-        static if (derivative == 1)
-            return 2 * a * x + b;
-        else
-            return 2 * a;        
+        {
+            auto y1 = 2 * a * x + b;
+            static if (derivative == 1)
+                return cast(T[2])[y, y1];
+            else
+                return cast(T[3])[y, y1, 2 * a];
+        }
     }
 
-    /// ditto
-    auto opCall(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, iterator) x)
-    {
-        import mir.ndslice.topology: vmap;
-        return x.vmap(this);
-    }
+    ///
+    alias withDerivative = opCall!1;
+    ///
+    alias withTwoDerivatives = opCall!2;
 }
 
 /// ditto
-ParabolaKernel!(derivative, typeof(X.init - Y.init)) parabolaKernel(uint derivative = 0, X, Y)(in X x0, in X x1, in X x2, in Y y0, in Y y1, in Y y2)
+ParabolaKernel!(Unqual!(typeof(X.init - Y.init))) parabolaKernel(X, Y)(in X x0, in X x1, in X x2, in Y y0, in Y y1, in Y y2)
 {
     return typeof(return)(x0, x1, x2, y0, y1, y2);
 }

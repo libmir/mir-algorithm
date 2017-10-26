@@ -718,9 +718,15 @@ template aliasCall(string methodName, TemplateArgs...)
     Returns:
         wrapped value with implemented opCall and opIndex methods
     +/
-    AliasCall!(T, methodName, TemplateArgs) aliasCall(T)(auto ref T value)
+    AliasCall!(T, methodName, TemplateArgs) aliasCall(T)(T value) @property
     {
         return typeof(return)(value);
+    }
+
+    /// ditto
+    ref AliasCall!(T, methodName, TemplateArgs) aliasCall(T)(return ref T value) @property @trusted
+    {
+        return  *cast(typeof(return)*) &value;
     }
 }
 

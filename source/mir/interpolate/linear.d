@@ -310,8 +310,9 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N
         {
+            import mir.functional: AliasCall;
             import mir.ndslice.topology: iota;
-            alias Kernel = LinearKernel!(derivative, F);
+            alias Kernel = AliasCall!(LinearKernel!F, "opCall", derivative);
 
             size_t[N] indexes = void;
             Kernel[N] kernels = void;
@@ -330,7 +331,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
                     alias x = xs[i];
                     indexes[i] = this.findInterval!i(x);
                 }
-                kernels[i] = Kernel(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
+                kernels[i] = LinearKernel!F(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
             }
 
             align(64) F[2 ^^ N][derivative + 1] local = void;
@@ -373,13 +374,14 @@ struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
     alias withDerivative = opCall!1;
 }
 
-struct LinearKernel(uint derivative, X)
-    if (derivative <= 3)
+///
+struct LinearKernel(X)
 {
     X step = 0;
     X w0 = 0;
     X w1 = 0;
 
+    ///
     this()(X x0, X x1, X x)
     {
         step = x1 - x0;
@@ -389,22 +391,31 @@ struct LinearKernel(uint derivative, X)
         w1 = c1 / step;
     }
 
-    auto opCall(Y)(in Y y0, in Y y1)
+    ///
+    template opCall(uint derivative = 0)
+        if (derivative <= 1)
     {
-        auto r0 = y0 * w1;
-        auto r1 = y1 * w0;
-        auto y = r0 + r1;
-        static if (derivative)
+        ///
+        auto opCall(Y)(in Y y0, in Y y1)
         {
-            auto diff = y1 - y0;
-            Y[derivative + 1] ret = 0;
-            ret[0] = y;
-            ret[1] = diff / step;
-            return ret;
-        }
-        else
-        {
-            return y;
+            auto r0 = y0 * w1;
+            auto r1 = y1 * w0;
+            auto y = r0 + r1;
+            static if (derivative)
+            {
+                auto diff = y1 - y0;
+                Y[derivative + 1] ret = 0;
+                ret[0] = y;
+                ret[1] = diff / step;
+                return ret;
+            }
+            else
+            {
+                return y;
+            }
         }
     }
+
+    ///
+    alias withDerivative = opCall!1;
 }
