@@ -5,6 +5,20 @@ Authors: $(HTTP erdani.com, Andrei Alexandrescu), Ilya Yaroshenko
 +/
 module mir.internal.memory;
 
+pure nothrow @nogc extern(C)
+{
+    ///
+    void*   malloc(size_t size);
+    ///
+    void*   calloc(size_t nmemb, size_t size);
+    ///
+    void*   realloc(void* ptr, size_t size);
+    ///
+    void    free(void* ptr);
+}
+
+pure:
+
 enum uint platformAlignment = double.alignof > real.alignof ? double.alignof : real.alignof;
 
 @nogc nothrow pragma(inline, true):
@@ -42,7 +56,6 @@ version (Windows)
        
         private void* _aligned_malloc()(size_t size, size_t alignment)
         {
-            import core.stdc.stdlib : malloc;
             size_t offset = alignment + size_t.sizeof * 2 - 1;
 
             // unaligned chunk
@@ -64,7 +77,6 @@ version (Windows)
        
         private void* _aligned_realloc()(void* ptr, size_t size, size_t alignment)
         {
-            import core.stdc.stdlib : free;
             import core.stdc.string : memcpy;
 
             if (!ptr) return _aligned_malloc(size, alignment);
@@ -91,7 +103,6 @@ version (Windows)
        
         private void _aligned_free()(void *ptr)
         {
-            import core.stdc.stdlib : free;
             if (!ptr) return;
             AlignInfo* head = AlignInfo(ptr);
             free(head.basePtr);
@@ -148,7 +159,7 @@ $(D __aligned_free(b.ptr))) on Windows.
 */
 version (Posix)
 {
-    public import core.stdc.stdlib : alignedFree = free;
+    alias alignedFree = free;
 }
 else
 version (Windows)

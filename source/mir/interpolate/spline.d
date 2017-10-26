@@ -32,15 +32,15 @@ import mir.ndslice.slice;
 import mir.ndslice.traits;
 
 ///
-@safe nothrow unittest
+@safe pure nothrow unittest
 {
     import std.math: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap;
     import mir.ndslice.algorithm: all;
 
-    auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
+    auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
+    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
 
     auto interpolant = spline!double(x, y); // constructs Spline
     auto xs = x + 0.5;                     // input X values for cubic spline
@@ -84,7 +84,7 @@ import mir.ndslice.traits;
 }
 
 ///
-unittest
+@safe pure unittest
 {
     import std.math: approxEqual;
     import mir.ndslice.allocation: uninitSlice;
@@ -93,7 +93,7 @@ unittest
     import mir.ndslice.algorithm: all;
     import mir.functional: aliasCall;
 
-    auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
+    auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
     auto y = [
        8.77842512,
        7.96429686,
@@ -283,7 +283,7 @@ unittest
 Constructs multivariate cubic spline in symmetrical form with nodes on rectilinear grid.
 Result has continues second derivatives throughout the curve / nd-surface.
 +/
-template spline(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
 {
     static if (N > 1) pragma(msg, "Warning: multivariate cubic spline was not tested!!!");
@@ -293,8 +293,10 @@ template spline(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Rep
 
     /++
     Params:
-        grid = `x` values for interpolant
+        grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
+        typeOfBondaries = $(LREF SplineBoundaryType) for both tails (optional).
+        valueOfBondaryConditions = value of the boundary type (optional). 
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -311,8 +313,9 @@ template spline(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Rep
 
     /++
     Params:
-        grid = `x` values for interpolant
+        grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
+        bondaries = $(LREF SplineBoundaryCondition) for both tails.
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -328,8 +331,10 @@ template spline(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Rep
 
     /++
     Params:
-        grid = `x` values for interpolant
+        grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
+        rBoundary = $(LREF SplineBoundaryCondition) for left tail.
+        lBoundary = $(LREF SplineBoundaryCondition) for right tail.
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -386,16 +391,16 @@ struct SplineBoundaryCondition(T)
 /++
 Multivariate cubic spline with nodes on rectilinear grid.
 +/
-struct Spline(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
+struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    package alias GridVectors = staticMap!(GridVector, staticMap!(ConstIfPointer, GridIterators));
+    package alias GridVectors = staticMap!(GridVector, GridIterators);
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(Contiguous, [N], F[2 ^^ N]*) _data;
     /// Grid iterators. $(RED For internal use.)
-    staticMap!(ConstIfPointer, GridIterators) _grid;
+    GridIterators _grid;
 
     import mir.utility: min, max;
     package enum alignment = min(64u, F[2 ^^ N].sizeof).max(size_t.sizeof);
@@ -684,8 +689,11 @@ Params:
     values = `f(x)` values for interpolant
     slopes = uninitialized ndslice to write slopes into
     temp = uninitialized temporary ndslice
+    lbc = left boundary condition
+    rbc = right boundary condition
 Constraints:
-    `points`, `values`, `slopes`, and `temp` must have the same length > 3
+    `points`, `values`, and `slopes`, must have the same length > 3;
+    `temp` must have length greater or equal to points less minus one.
 +/
 void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
     scope Slice!(gkind, [1], IP) points,

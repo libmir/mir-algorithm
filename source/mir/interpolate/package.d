@@ -77,8 +77,8 @@ unittest
     import mir.ndslice.slice: sliced;
     import mir.interpolate.linear;
 
-    auto x = [0.0, 1, 2].sliced;
-    auto y = [10.0, 2, 4].sliced;
+    auto x = [0.0, 1, 2].idup.sliced;
+    auto y = [10.0, 2, 4].idup.sliced;
     auto interpolation = linear!double(x, y);
     assert(interpolation.findInterval(1.0) == 1);
 }
@@ -182,9 +182,9 @@ version(mir_test)
     import mir.ndslice;
     import std.math: approxEqual;
 
-    auto x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
-    auto y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
-    auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
+    immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
+    immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
+    immutable xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
 
     auto interpolation = linear!double(x.sliced, y.sliced);
 
@@ -211,7 +211,7 @@ unittest
 {
     import mir.ndslice.slice;
     import mir.interpolate.spline;
-    auto interpolant = spline!double([0.0, 1, 2].sliced, [3, 4, -10].sliced);
+    auto interpolant = spline!double([0.0, 1, 2].idup.sliced, [3, 4, -10].idup.sliced);
     assert(interpolant(1.3) != interpolant(1.3.atInterval(0)));
     assert(interpolant(1.3) == interpolant(1.3.atInterval(1)));
 }

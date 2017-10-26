@@ -37,7 +37,7 @@ Constraints:
 
 Returns: $(LREF Linear)
 +/
-template linear(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     // if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
 {
     private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
@@ -45,8 +45,9 @@ template linear(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Rep
 
     /++
     Params:
-        grid = N `x` values for interpolation
-        values = `f(x)` values for interpolation
+        grid = immutable `x` values for interpolant
+        values = `f(x)` values for interpolant
+        forceCopyValues = always copy `values` if set
     Constraints:
         `grid` and `values` must have the same length >= 2
     Returns: $(LREF Spline)
@@ -74,13 +75,13 @@ template linear(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Rep
 
 /// R -> R: Linear interpolation
 version(mir_test)
-@safe unittest
+@safe pure unittest
 {
     import mir.ndslice;
     import std.math: approxEqual;
 
-    auto x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
-    auto y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
+    immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
+    immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
     auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
 
     auto interpolation = linear!double(x.sliced, y.sliced);
@@ -91,7 +92,7 @@ version(mir_test)
 }
 
 /// R^2 -> R: Bilinear interpolaiton
-unittest
+@safe pure unittest
 {
     import std.math: approxEqual;
     import mir.ndslice;
@@ -106,11 +107,11 @@ unittest
     alias f = (x0, x1) => y_x0 * x0 + y_x1 * x1 + y_x0x1 * x0 * x1 - 11;
 
     ///// set interpolant ////
-    auto x0 = [-1.0, 2, 8, 15].sliced;
-    auto x1 = [-4.0, 2, 5, 10, 13].sliced;
+    auto x0 = [-1.0, 2, 8, 15].idup.sliced;
+    auto x1 = [-4.0, 2, 5, 10, 13].idup.sliced;
     auto grid = cartesian(x0, x1);
 
-    auto interpolant = linear!(double, 2)(x0, x1, grid.map!f.slice);
+    auto interpolant = linear!(double, 2)(x0, x1, grid.map!f);
 
     ///// compute test data ////
     auto test_grid = cartesian(x0 + 1.23, x1 + 3.23);
@@ -132,7 +133,7 @@ unittest
 }
 
 /// R^3 -> R: Trilinear interpolaiton
-unittest
+@safe pure unittest
 {
     import std.math: approxEqual;
     import mir.ndslice;
@@ -150,12 +151,12 @@ unittest
          + y_x0x1 * x0 * x1 + y_x0x1x2 * x0 * x1 * x2 - 11;
 
     ///// set interpolant ////
-    auto x0 = [-1.0, 2, 8, 15].sliced;
-    auto x1 = [-4.0, 2, 5, 10, 13].sliced;
-    auto x2 = [3, 3.7, 5].sliced;
+    auto x0 = [-1.0, 2, 8, 15].idup.sliced;
+    auto x1 = [-4.0, 2, 5, 10, 13].idup.sliced;
+    auto x2 = [3, 3.7, 5].idup.sliced;
     auto grid = cartesian(x0, x1, x2);
 
-    auto interpolant = linear!(double, 3)(x0, x1, x2, grid.map!f.slice);
+    auto interpolant = linear!(double, 3)(x0, x1, x2, grid.map!f);
 
     ///// compute test data ////
     auto test_grid = cartesian(x0 + 1.23, x1 + 3.23, x2 - 3);
@@ -181,18 +182,16 @@ unittest
 /++
 Multivariate linear interpolant with nodes on rectilinear grid.
 +/
-struct Linear(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators...)
+struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
-    import mir.ndslice.internal: ConstIfPointer;
-
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    package alias GridVectors = staticMap!(GridVector, staticMap!(ConstIfPointer, GridIterators));
+    package alias GridVectors = staticMap!(GridVector, GridIterators);
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(Contiguous, [N], F*) _data;
     /// Grid iterators. $(RED For internal use.)
-    staticMap!(ConstIfPointer, GridIterators) _grid;
+    GridIterators _grid;
     ///
     bool _ownsData;
 

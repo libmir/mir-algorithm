@@ -2401,7 +2401,8 @@ Note:
     $(SUBREF dynamic, transposed) and
     $(SUBREF topology, pack) can be used to specify dimensions.
 Params:
-    fun = One or more functions.
+    slice = ndslice
+    callable = callable object, structure, delegate, or function pointer.
 See_Also:
     $(LREF pairwise), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))

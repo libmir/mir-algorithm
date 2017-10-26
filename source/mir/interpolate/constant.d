@@ -15,13 +15,13 @@ module mir.interpolate.constant;
 
 ///
 version(mir_test)
-@safe unittest
+@safe pure unittest
 {
     import mir.ndslice;
     import std.math: approxEqual;
 
-    auto x = [0, 1, 2, 3];
-    auto y = [10, 20, 30, 40];
+    immutable x = [0, 1, 2, 3];
+    immutable y = [10, 20, 30, 40];
 
     auto interpolant = constant!int(x.sliced, y.sliced);
 
@@ -59,7 +59,7 @@ Constraints:
 
 Returns: $(LREF Constant)
 +/
-template constant(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (is(T == Unqual!T) && N <= 6)
 {
     static if (N > 1) pragma(msg, "Warning: multivariate constant interplant was not tested.");
@@ -69,8 +69,9 @@ template constant(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = R
 
     /++
     Params:
-        grid = `x` values for interpolant
+        grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
+        forceCopyValues = always copy `values` if set
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -79,7 +80,7 @@ template constant(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = R
         GridVectors grid,
         scope Slice!(ykind, [1], yIterator) values,
         bool forceCopyValues = false
-        )
+        ) pure
     {
         static if (__traits(compiles, typeof(return)(grid, values)))
         {
@@ -98,18 +99,16 @@ template constant(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = R
 /++
 Multivariate constant interpolant with nodes on rectilinear grid.
 +/
-struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
-    import mir.ndslice.internal: ConstIfPointer;
-
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    package alias GridVectors = staticMap!(GridVector, staticMap!(ConstIfPointer, GridIterators));
+    package alias GridVectors = staticMap!(GridVector, GridIterators);
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(Contiguous, [N], F*) _data;
     /// Grid iterators. $(RED For internal use.)
-    staticMap!(ConstIfPointer, GridIterators) _grid;
+    GridIterators _grid;
     ///
     bool _ownsData;
 
@@ -170,7 +169,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = F*, NextGridIterators = Rep
 
     /++
     +/
-    this()(GridVectors grid, Slice!(Contiguous, [N], const(F)*) values) @trusted nothrow @nogc
+    this()(GridVectors grid, Slice!(Contiguous, [N], immutable(F)*) values) @trusted nothrow @nogc
     {
         foreach(i, ref x; grid)
         {
