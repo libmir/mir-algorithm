@@ -21,7 +21,7 @@ pure:
 
 enum uint platformAlignment = double.alignof > real.alignof ? double.alignof : real.alignof;
 
-@nogc nothrow pragma(inline, true):
+@nogc nothrow:
 
 @safe pure
 package bool isGoodDynamicAlignment()(uint x)

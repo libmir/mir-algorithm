@@ -577,7 +577,7 @@ unittest
 
 private ExtMulResult!ulong extMul_X86_64()(ulong a, ulong b)
 {
-    pragma(msg, "EEE");
+    // pragma(inline, true);
     asm @safe pure nothrow @nogc
     {
         naked;
