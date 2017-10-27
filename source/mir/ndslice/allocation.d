@@ -87,7 +87,8 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
         alias fun = .uninitSlice;
     auto ret = fun!T(slice.shape);
     ret[] = slice;
-    return ret;
+    auto retq = ()@trusted{ return (cast(slice.DeepElemType*)ret._iterator).sliced(ret.shape); }();
+    return retq;
 }
 
 ///
