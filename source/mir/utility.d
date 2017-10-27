@@ -506,65 +506,73 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
 
     enum hbc = H.sizeof * 8;
 
-    if (!__ctfe)
+    static if (is(U == ulong) && __traits(compiles, ucent.init))
     {
-        version(LDC)
+        auto ret = ucent(a) * b;
+        return typeof(return)(cast(ulong) ret, cast(ulong)(ret >>> 64));
+    }
+    else
+    {
+        if (!__ctfe)
         {
-            // LLVM IR by n8sh
-            pragma(inline, true);
-            static if (is(U == ulong))
+            version(LDC)
             {
-                auto r = inlineIR!(`
-                %a = zext i64 %0 to i128
-                %b = zext i64 %1 to i128
-                %m = mul i128 %a, %b
-                %n = lshr i128 %m, 64
-                %h = trunc i128 %n to i64
-                %l = trunc i128 %m to i64
-                %agg1 = insertvalue [2 x i64] undef, i64 %l, 0
-                %agg2 = insertvalue [2 x i64] %agg1, i64 %h, 1
-                ret [2 x i64] %agg2`, ulong[2])(a, b);
+                // LLVM IR by n8sh
+                pragma(inline, true);
+                static if (is(U == ulong))
+                {
+                    auto r = inlineIR!(`
+                    %a = zext i64 %0 to i128
+                    %b = zext i64 %1 to i128
+                    %m = mul i128 %a, %b
+                    %n = lshr i128 %m, 64
+                    %h = trunc i128 %n to i64
+                    %l = trunc i128 %m to i64
+                    %agg1 = insertvalue [2 x i64] undef, i64 %l, 0
+                    %agg2 = insertvalue [2 x i64] %agg1, i64 %h, 1
+                    ret [2 x i64] %agg2`, ulong[2])(a, b);
+                }
+                else
+                {
+                    auto r = inlineIR!(`
+                    %a = zext i128 %0 to i256
+                    %b = zext i128 %1 to i256
+                    %m = mul i256 %a, %b
+                    %n = lshr i256 %m, 128
+                    %h = trunc i256 %n to i128
+                    %l = trunc i256 %m to i128
+                    %agg1 = insertvalue [2 x i128] undef, i128 %l, 0
+                    %agg2 = insertvalue [2 x i128] %agg1, i128 %h, 1
+                    ret [2 x i128] %agg2`, ucent[2])(a, b);
+                }
+                return ExtMulResult!U(r[0], r[1]);
             }
             else
+            version(D_InlineAsm_X86_64)
             {
-                auto r = inlineIR!(`
-                %a = zext i128 %0 to i256
-                %b = zext i128 %1 to i256
-                %m = mul i256 %a, %b
-                %n = lshr i256 %m, 128
-                %h = trunc i256 %n to i128
-                %l = trunc i256 %m to i128
-                %agg1 = insertvalue [2 x i128] undef, i128 %l, 0
-                %agg2 = insertvalue [2 x i128] %agg1, i128 %h, 1
-                ret [2 x i128] %agg2`, ucent[2])(a, b);
-            }
-            return ExtMulResult!U(r[0], r[1]);
-        }
-        else
-        version(D_InlineAsm_X86_64)
-        {
-            static if (is(U == ulong))
-            {
-                return extMul_X86_64(a, b);
+                static if (is(U == ulong) && !is(ucent))
+                {
+                    return extMul_X86_64(a, b);
+                }
             }
         }
+
+        U al = cast(H)a;
+        U ah = a >>> hbc;
+        U bl = cast(H)b;
+        U bh = b >>> hbc;
+
+        U p0 = al * bl;
+        U p1 = al * bh;
+        U p2 = ah * bl;
+        U p3 = ah * bh;
+
+        H cy = cast(H)(((p0 >>> hbc) + cast(H)p1 + cast(H)p2) >>> hbc);
+        U lo = p0 + (p1 << hbc) + (p2 << hbc);
+        U hi = p3 + (p1 >>> hbc) + (p2 >>> hbc) + cy;
+
+        return typeof(return)(lo, hi);
     }
-
-    U al = cast(H)a;
-    U ah = a >>> hbc;
-    U bl = cast(H)b;
-    U bh = b >>> hbc;
-
-    U p0 = al * bl;
-    U p1 = al * bh;
-    U p2 = ah * bl;
-    U p3 = ah * bh;
-
-    H cy = cast(H)(((p0 >>> hbc) + cast(H)p1 + cast(H)p2) >>> hbc);
-    U lo = p0 + (p1 << hbc) + (p2 << hbc);
-    U hi = p3 + (p1 >>> hbc) + (p2 >>> hbc) + cy;
-
-    return typeof(return)(lo, hi);
 }
 
 unittest
