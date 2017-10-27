@@ -536,6 +536,7 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
                     %agg1 = insertvalue [2 x i64] undef, i64 %l, 0
                     %agg2 = insertvalue [2 x i64] %agg1, i64 %h, 1
                     ret [2 x i64] %agg2`, ulong[2])(a, b);
+                    return ExtMulResult!U(r[0], r[1]);
                 }
                 else
                 static if (false)
@@ -550,8 +551,8 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
                     %agg1 = insertvalue [2 x i128] undef, i128 %l, 0
                     %agg2 = insertvalue [2 x i128] %agg1, i128 %h, 1
                     ret [2 x i128] %agg2`, ucent[2])(a, b);
+                    return ExtMulResult!U(r[0], r[1]);
                 }
-                return ExtMulResult!U(r[0], r[1]);
             }
             else
             version(D_InlineAsm_X86_64)
