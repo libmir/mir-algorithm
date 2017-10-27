@@ -27,7 +27,7 @@ import mir.ndslice.internal: ConstIfPointer;
 /++
 Constructs piecewise cubic hermite interpolating polynomial with nodes on rectilinear grid.
 +/
-template pchip(T, size_t N = 1, FirstGridIterator = T*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
 {
     static assert (N == 1, "multivariate PCHIP is not implemented.");
@@ -65,8 +65,8 @@ version(mir_test)
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap;
 
-    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
+    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
+    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
     auto interpolant = pchip!double(x, y);
 
     auto xs = x[0 .. $ - 1] + 0.5;
@@ -95,8 +95,8 @@ version(mir_test)
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: retro, map;
 
-    auto points = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
-    auto values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
+    auto points = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
+    auto values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
 
     auto results = [
         5.333333333333334,

@@ -155,8 +155,8 @@ version(mir_test)
     import mir.interpolate: interp1;
     import mir.interpolate.pchip;
 
-    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].sliced;
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].sliced;
+    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
+    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
     auto interpolation = pchip!double(x, y);
 
     auto xs = slice(x[0 .. $ - 1] + 0.5);
