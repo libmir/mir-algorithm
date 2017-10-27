@@ -515,6 +515,11 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
     {
         if (!__ctfe)
         {
+            static if (size_t.sizeof == 4)
+            {
+                // https://github.com/ldc-developers/ldc/issues/2391
+            }
+            else
             version(LDC)
             {
                 // LLVM IR by n8sh
@@ -533,6 +538,7 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
                     ret [2 x i64] %agg2`, ulong[2])(a, b);
                 }
                 else
+                static if (false)
                 {
                     auto r = inlineIR!(`
                     %a = zext i128 %0 to i256
