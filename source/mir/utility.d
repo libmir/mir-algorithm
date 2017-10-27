@@ -20,6 +20,9 @@ import std.traits;
 
 import mir.math.common: optmath;
 
+version(LDC)
+pragma(LDC_inline_ir) R inlineIR(string s, R, P...)(P) @safe pure nothrow @nogc;
+
 @optmath:
 
 void swapStars(I1, I2)(auto ref I1 i1, auto ref I2 i2)
@@ -468,4 +471,118 @@ version(mir_test) unittest
     int a = -10;
     uint b = 10;
     static assert(!is(typeof(max(a, b))));
+}
+
+/++
+Return type for $(LREF extMul);
++/
+struct ExtMulResult(I)
+    if (isIntegral!I)
+{
+    /// Lower I.sizeof * 8 bits
+    I low;
+    /// Higher I.sizeof * 8 bits
+    I high;
+}
+
+/++
+Extended unsigned multiplications.
+Performs U x U multiplication and returns $(LREF ExtMulResult)!U that contains extended result.
+Params:
+    a = unsigned integer
+    b = unsigned integer
+Returns:
+    128bit result if U is ulong or 256bit result if U is ucent.
+Optimization:
+    Algorithm is optimized for LDC (LLVM IR, any target) and for DMD (X86_64).
++/
+ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
+    if(isUnsigned!U && U.sizeof >= ulong.sizeof)
+{
+    static if (is(U == ulong))
+        alias H = uint;
+    else
+        alias H = ulong;
+
+    enum hbc = H.sizeof * 8;
+
+    if (!__ctfe)
+    {
+        version(LDC)
+        {
+            // LLVM IR by n8sh
+            pragma(inline, true);
+            static if (is(U == ulong))
+            {
+                auto r = inlineIR!(`
+                %a = zext i64 %0 to i128
+                %b = zext i64 %1 to i128
+                %m = mul i128 %a, %b
+                %n = lshr i128 %m, 64
+                %h = trunc i128 %n to i64
+                %l = trunc i128 %m to i64
+                %agg1 = insertvalue [2 x i64] undef, i64 %l, 0
+                %agg2 = insertvalue [2 x i64] %agg1, i64 %h, 1
+                ret [2 x i64] %agg2`, ulong[2])(a, b);
+            }
+            else
+            {
+                auto r = inlineIR!(`
+                %a = zext i128 %0 to i256
+                %b = zext i128 %1 to i256
+                %m = mul i256 %a, %b
+                %n = lshr i256 %m, 128
+                %h = trunc i256 %n to i128
+                %l = trunc i256 %m to i128
+                %agg1 = insertvalue [2 x i128] undef, i128 %l, 0
+                %agg2 = insertvalue [2 x i128] %agg1, i128 %h, 1
+                ret [2 x i128] %agg2`, ucent[2])(a, b);
+            }
+            return ExtMulResult!U(r[0], r[1]);
+        }
+        else
+        version(D_InlineAsm_X86_64)
+        {
+            static if (is(U == ulong))
+            {
+                return extMul_X86_64(a, b);
+            }
+        }
+    }
+
+    U al = cast(H)a;
+    U ah = a >>> hbc;
+    U bl = cast(H)b;
+    U bh = b >>> hbc;
+
+    U p0 = al * bl;
+    U p1 = al * bh;
+    U p2 = ah * bl;
+    U p3 = ah * bh;
+
+    H cy = cast(H)(((p0 >>> hbc) + cast(H)p1 + cast(H)p2) >>> hbc);
+    U lo = p0 + (p1 << hbc) + (p2 << hbc);
+    U hi = p3 + (p1 >>> hbc) + (p2 >>> hbc) + cy;
+
+    return typeof(return)(lo, hi);
+}
+
+unittest
+{
+    immutable a = 0x93_8d_28_00_0f_50_a5_56;
+    immutable b = 0x54_c3_2f_e8_cc_a5_97_10;
+    enum c = extMul(a, b);     // Compile time algorithm
+    assert(extMul(a, b) == c); // Fast runtime algorihtm
+}
+
+private ExtMulResult!ulong extMul_X86_64()(ulong a, ulong b)
+{
+    pragma(msg, "EEE");
+    asm @safe pure nothrow @nogc
+    {
+        naked;
+        mov RAX, RDI;
+        mul RSI;
+        ret;
+    }
 }
