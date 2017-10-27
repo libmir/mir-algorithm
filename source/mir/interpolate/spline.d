@@ -305,7 +305,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         GridVectors grid,
         scope Slice!(ykind, [N], yIterator) values,
         SplineBoundaryType typeOfBondaries = SplineBoundaryType.notAKnot,
-        T valueOfBondaryConditions = 0,
+        in T valueOfBondaryConditions = 0,
         )
     {
         return spline(grid, values, SplineBoundaryCondition!T(typeOfBondaries, valueOfBondaryConditions));
@@ -320,7 +320,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(T, SliceKind ykind, yIterator)(
+    Spline!(T, N, GridIterators) spline(SliceKind ykind, yIterator)(
         GridVectors grid,
         scope Slice!(ykind, [N], yIterator) values,
         SplineBoundaryCondition!T bondaries,
@@ -339,7 +339,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(T, SliceKind ykind, yIterator)(
+    Spline!(T, N, GridIterators) spline(SliceKind ykind, yIterator)(
         GridVectors grid,
         scope Slice!(ykind, [N], yIterator) values,
         SplineBoundaryCondition!T rBoundary,
