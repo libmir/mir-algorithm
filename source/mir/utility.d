@@ -575,6 +575,7 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
     }
 }
 
+///
 unittest
 {
     immutable a = 0x93_8d_28_00_0f_50_a5_56;
