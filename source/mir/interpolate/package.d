@@ -286,7 +286,7 @@ template generateShuffles3(size_t N, size_t P)
 void shuffle3(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N] d)
     if (P <= N && N)
 {
-    static if (P == 0)
+    static if (P == 0 || N == 1)
     {
         copyvec(a, c);
         copyvec(b, d);
@@ -311,6 +311,7 @@ void shuffle3(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N
             static if (j < N)
             {
                 copyvec(a[i * P .. i * P + P], c[j .. j + P]);
+                static assert(j + 2 * P <= c.length);
                 copyvec(b[i * P .. i * P + P], c[j + P .. j + 2 * P]);
             }
             else
@@ -325,9 +326,9 @@ void shuffle3(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N
 void shuffle2(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N] d)
     if (P <= N && N)
 {
-    static if (P == 0)
+    static if (P == 0 || N == 1)
     {
-        copyvec(a, b);
+        copyvec(a, c);
         copyvec(b, d);
     }
     else
@@ -366,9 +367,9 @@ void shuffle2(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N
 void shuffle1(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N] d)
     if (P <= N && N)
 {
-    static if (P == 0)
+    static if (P == 0 || N == 1)
     {
-        copyvec(a, b);
+        copyvec(a, c);
         copyvec(b, d);
     }
     else

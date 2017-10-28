@@ -92,6 +92,7 @@ version(mir_test)
 }
 
 /// R^2 -> R: Bilinear interpolaiton
+version(mir_test)
 @safe pure unittest
 {
     import std.math: approxEqual;
@@ -133,6 +134,7 @@ version(mir_test)
 }
 
 /// R^3 -> R: Trilinear interpolaiton
+version(mir_test)
 @safe pure unittest
 {
     import std.math: approxEqual;
