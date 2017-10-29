@@ -233,13 +233,13 @@ auto copyvec(F, size_t N)(ref const F[N] from, ref F[N] to)
 {
     import mir.internal.utility;
 
-    static if (LDC && F.mant_dig != 64)
+    static if (LDC && F.mant_dig != 64 && is(__vector(F[N])))
     {
         alias V = __vector(F[N]); // @FUTURE@ vector support
         *cast(V*) to.ptr = *cast(V*) from.ptr;
     }
     else
-    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof)
+    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && is(__vector(F[N])))
     {
         import mir.utility;
         enum S = _avx ? 32u : 16u;
@@ -529,13 +529,13 @@ auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a0, re
 
 auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a, ref F[N] b, ref F[N][R] c)
 {
-    static if (LDC && F.mant_dig != 64)
+    static if (LDC && F.mant_dig != 64 && is(__vector(F[N])))
     {
         alias V = __vector(F[N]); // @FUTURE@ vector support
         *cast(V[R]*) c.ptr = kernel(*cast(V*)a.ptr, *cast(V*)b.ptr);
     }
     else
-    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof)
+    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && is(__vector(F[N])))
     {
         import mir.utility;
         enum S = _avx ? 32u : 16u;
