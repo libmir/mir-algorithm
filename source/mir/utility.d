@@ -554,14 +554,6 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
                     return ExtMulResult!U(r[0], r[1]);
                 }
             }
-            else
-            version(D_InlineAsm_X86_64)
-            {
-                static if (is(U == ulong) && !is(ucent))
-                {
-                    return extMul_X86_64(a, b);
-                }
-            }
         }
 
         U al = cast(H)a;
@@ -589,16 +581,4 @@ unittest
     immutable b = 0x54_c3_2f_e8_cc_a5_97_10;
     enum c = extMul(a, b);     // Compile time algorithm
     assert(extMul(a, b) == c); // Fast runtime algorihtm
-}
-
-private ExtMulResult!ulong extMul_X86_64()(ulong a, ulong b)
-{
-    // pragma(inline, true);
-    asm @safe pure nothrow @nogc
-    {
-        naked;
-        mov RAX, RDI;
-        mul RSI;
-        ret;
-    }
 }
