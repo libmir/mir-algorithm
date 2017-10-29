@@ -67,7 +67,7 @@ version (Windows)
                 & ~(alignment - 1));
 
             // write the header before the aligned pointer
-            AlignInfo* head = AlignInfo!()(alignedPtr);
+            AlignInfo!()* head = AlignInfo!()(alignedPtr);
             head.basePtr = basePtr;
             head.size = size;
 
@@ -82,7 +82,7 @@ version (Windows)
             if (!ptr) return _aligned_malloc(size, alignment);
 
             // gets the header from the exising pointer
-            AlignInfo* head = AlignInfo(ptr);
+            AlignInfo!()* head = AlignInfo!()(ptr);
 
             // gets a new aligned pointer
             void* alignedPtr = _aligned_malloc(size, alignment);
@@ -104,7 +104,7 @@ version (Windows)
         private void _aligned_free()(void *ptr)
         {
             if (!ptr) return;
-            AlignInfo* head = AlignInfo(ptr);
+            AlignInfo!()* head = AlignInfo!()(ptr);
             free(head.basePtr);
         }
 
@@ -112,6 +112,8 @@ version (Windows)
     // DMD Win 64 bit, uses microsoft standard C library which implements them
     else
     {
+        private extern(C) void* _aligned_free(void *);
+        private extern(C) void* _aligned_malloc(size_t, size_t);
         private extern(C) void* _aligned_realloc(void *, size_t, size_t);
     }
 }
@@ -199,11 +201,12 @@ unittest
     //...
 }
 
+version (CRuntime_DigitalMars) version(unittest)
+    private size_t addr(ref void* ptr) { return cast(size_t) ptr; }
+
 version(CRuntime_DigitalMars)
 unittest
 {
-    static size_t addr()(ref void* ptr) { return cast(size_t) ptr; }
-
     void* m;
 
     m = _aligned_malloc(16, 0x10);
