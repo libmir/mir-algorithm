@@ -239,7 +239,7 @@ auto copyvec(F, size_t N)(ref const F[N] from, ref F[N] to)
         *cast(V*) to.ptr = *cast(V*) from.ptr;
     }
     else
-    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && is(__vector(F[N])))
+    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && is(__vector(F[M])))
     {
         import mir.utility;
         enum S = _avx ? 32u : 16u;
