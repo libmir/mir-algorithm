@@ -229,6 +229,11 @@ version(LDC)
 else
     enum LDC = false;
 
+version(x86_64)
+    enum x86_64 = true;
+else
+    enum x86_64 = false;
+
 auto copyvec(F, size_t N)(ref const F[N] from, ref F[N] to)
 {
     import mir.internal.utility;
@@ -239,7 +244,7 @@ auto copyvec(F, size_t N)(ref const F[N] from, ref F[N] to)
         *cast(V*) to.ptr = *cast(V*) from.ptr;
     }
     else
-    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && is(__vector(F[M])))
+    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && x86_64)
     {
         import mir.utility;
         enum S = _avx ? 32u : 16u;
