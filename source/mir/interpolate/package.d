@@ -540,7 +540,7 @@ auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a, ref
         *cast(V[R]*) c.ptr = kernel(*cast(V*)a.ptr, *cast(V*)b.ptr);
     }
     else
-    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && is(__vector(F[N])))
+    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && x86_64)
     {
         import mir.utility;
         enum S = _avx ? 32u : 16u;
