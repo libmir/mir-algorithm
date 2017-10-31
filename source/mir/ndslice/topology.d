@@ -135,27 +135,27 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     else
     {
         alias Ret = Slice!(Universal, packs, Iterator);
-        mixin _DefineRet_;
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
         foreach (i; Iota!(slice.N))
-            ret._lengths[i] = slice._lengths[i];
+            lengths[i] = slice._lengths[i];
         static if (kind == Canonical)
         {
             foreach (i; Iota!(slice.S))
-                ret._strides[i] = slice._strides[i];
-            ret._strides[$-1] = 1;
+                strides[i] = slice._strides[i];
+            strides[$-1] = 1;
         }
         else
         {
             ptrdiff_t ball = 1;
-            foreach_reverse (i; Iota!(ret.S))
+            foreach_reverse (i; Iota!(Ret.S))
             {
-                ret._strides[i] = ball;
+                strides[i] = ball;
                 static if (i)
                     ball *= slice._lengths[i];
             }
         }
-        ret._iterator = slice._iterator;
-        return ret;
+        return Ret(lengths, strides, slice._iterator);
     }
 }
 
@@ -177,7 +177,6 @@ version(mir_test) unittest
     assert(slice._lengths == [2, 3]);
     assert(slice._strides == [3, 1]);
 }
-
 
 /++
 Converts a slice to canonical kind.
@@ -201,17 +200,18 @@ Slice!(packs == [1] ? Contiguous : Canonical, packs, Iterator)
         return slice;
     else
     {
-        mixin _DefineRet;
+        alias Ret = typeof(return);
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
         foreach (i; Iota!(slice.N))
-            ret._lengths[i] = slice._lengths[i];
+            lengths[i] = slice._lengths[i];
         ptrdiff_t ball = 1;
-        foreach_reverse (i; Iota!(ret.S))
+        foreach_reverse (i; Iota!(Ret.S))
         {
             ball *= slice._lengths[i + 1];
-            ret._strides[i] = ball;
+            strides[i] = ball;
         }
-        ret._iterator = slice._iterator;
-        return ret;
+        return Ret(lengths, strides, slice._iterator);
     }
 }
 
@@ -249,13 +249,14 @@ Slice!(Canonical, packs, Iterator)
         return slice;
     else
     {
-        mixin _DefineRet;
+        alias Ret = typeof(return);
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
         foreach (i; Iota!(slice.N))
-            ret._lengths[i] = slice._lengths[i];
-        foreach (i; Iota!(ret.S))
-            ret._strides[i] = slice._strides[i];
-        ret._iterator = slice._iterator;
-        return ret;
+            lengths[i] = slice._lengths[i];
+        foreach (i; Iota!(Ret.S))
+            strides[i] = slice._strides[i];
+        return Ret(lengths, strides, slice._iterator);
     }
 }
 
@@ -291,11 +292,12 @@ Slice!(Contiguous, packs, Iterator)
         return slice;
     else
     {
-        mixin _DefineRet;
+        alias Ret = typeof(return);
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
         foreach (i; Iota!(slice.N))
-            ret._lengths[i] = slice._lengths[i];
-        ret._iterator = slice._iterator;
-        return ret;
+            lengths[i] = slice._lengths[i];
+        return Ret(lengths, strides, slice._iterator);
     }
 }
 
@@ -471,22 +473,20 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
     }
     else
     {
-        mixin _DefineRet;
-        with (slice)
+        alias Ret = typeof(return);
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
+        alias C = Snowball!(aliasSeqOf!packs);
+        alias D = Reverse!(Snowball!(aliasSeqOf!(reverse(packs))));
+        foreach (i, _; Iota!(packs.length))
         {
-            alias C = Snowball!(aliasSeqOf!packs);
-            alias D = Reverse!(Snowball!(aliasSeqOf!(reverse(packs))));
-            foreach (i, _; Iota!(packs.length))
+            foreach (j; Iota!(0, C[i + 1] - C[i]))
             {
-                foreach (j; Iota!(0, C[i + 1] - C[i]))
-                {
-                    ret._lengths[j + D[i + 1]] = _lengths[j + C[i]];
-                    ret._strides[j + D[i + 1]] = _strides[j + C[i]];
-                }
+                lengths[j + D[i + 1]] = slice._lengths[j + C[i]];
+                strides[j + D[i + 1]] = slice._strides[j + C[i]];
             }
-            ret._iterator = _iterator;
         }
-        return ret;
+        return Ret(lengths, strides, slice._iterator);
     }
 }
 
@@ -680,21 +680,22 @@ Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator)
     }
     else
     {
-        mixin _DefineRet;
-        ret._lengths[0] = slice._lengths[0];
+        alias Ret = typeof(return);
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
+        lengths[0] = slice._lengths[0];
         foreach (i; Iota!(1, packs[0]))
-            if (ret._lengths[0] > slice._lengths[i])
-                ret._lengths[0] = slice._lengths[i];
-        foreach (i; Iota!(1, ret.N))
-            ret._lengths[i] = slice._lengths[i + packs[0] - 1];
-        auto strides = slice.unpack.strides;
-        ret._strides[0] = strides[0];
+            if (lengths[0] > slice._lengths[i])
+                lengths[0] = slice._lengths[i];
+        foreach (i; Iota!(1, Ret.N))
+            lengths[i] = slice._lengths[i + packs[0] - 1];
+        auto rstrides = slice.unpack.strides;
+        strides[0] = rstrides[0];
         foreach (i; Iota!(1, packs[0]))
-            ret._strides[0] += strides[i];
-        foreach (i; Iota!(1, ret.S))
-            ret._strides[i] = strides[i + packs[0] - 1];
-        ret._iterator = slice._iterator;
-        return ret;
+            strides[0] += rstrides[i];
+        foreach (i; Iota!(1, Ret.S))
+            strides[i] = rstrides[i + packs[0] - 1];
+        return Ret(lengths, strides, slice._iterator);
     }
 }
 
@@ -852,7 +853,7 @@ For overlapped blocks, combine $(LREF windows) with $(SUBREF dynamic, strided).
 Params:
     N = dimension count
     slice = slice to be split into blocks
-    lengths = dimensions of block, residual blocks are ignored
+    rlengths = dimensions of block, residual blocks are ignored
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 
@@ -861,39 +862,40 @@ See_also: $(SUBREF chunks, ._chunks)
 Slice!(kind == Contiguous ? Canonical : kind, packs[0] ~ packs, Iterator) 
     blocks
     (SliceKind kind, size_t[] packs, Iterator, size_t N)
-    (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
+    (Slice!(kind, packs, Iterator) slice, size_t[N] rlengths...)
         if (packs[0] == N)
 in
 {
-    foreach (i, length; lengths)
+    foreach (i, length; rlengths)
         assert(length > 0, "length of dimension = " ~ i.stringof ~ " must be positive"
             ~ tailErrorMessage!());
 }
 body
 {
-    mixin _DefineRet;
+    alias Ret = typeof(return);
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
     foreach (dimension; Iota!(packs[0]))
     {
-        ret._lengths[dimension] = slice._lengths[dimension] / lengths[dimension];
-        ret._lengths[dimension + packs[0]] = lengths[dimension];
+        lengths[dimension] = slice._lengths[dimension] / rlengths[dimension];
+        lengths[dimension + packs[0]] = rlengths[dimension];
     }
     foreach (dimension; Iota!(packs[0], slice.N))
     {
-        ret._lengths[dimension + packs[0]] = slice._lengths[dimension];
+        lengths[dimension + packs[0]] = slice._lengths[dimension];
     }
-    auto strides = slice.unpack.strides;
+    auto rstrides = slice.unpack.strides;
     foreach (dimension; Iota!(packs[0]))
     {
-        ret._strides[dimension] = strides[dimension];
-        if (ret._lengths[dimension]) //do not remove `if (...)`
-            ret._strides[dimension] *= lengths[dimension];
+        strides[dimension] = rstrides[dimension];
+        if (lengths[dimension]) //do not remove `if (...)`
+            strides[dimension] *= rlengths[dimension];
     }
-    foreach (dimension; Iota!(packs[0], ret.S))
+    foreach (dimension; Iota!(packs[0], Ret.S))
     {
-        ret._strides[dimension] = strides[dimension - packs[0]];
+        strides[dimension] = rstrides[dimension - packs[0]];
     }
-    ret._iterator = slice._iterator;
-    return ret;
+    return Ret(lengths, strides, slice._iterator);
 }
 
 ///
@@ -989,45 +991,46 @@ For example, `windows` in combination with $(LREF diagonal) can be used to get a
 Params:
     N = dimension count
     slice = slice to be iterated
-    lengths = dimensions of windows
+    rlengths = dimensions of windows
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
 Slice!(kind == Contiguous ? Canonical : kind, packs[0] ~ packs, Iterator) 
     windows
     (SliceKind kind, size_t[] packs, Iterator, size_t N)
-    (Slice!(kind, packs, Iterator) slice, size_t[N] lengths...)
+    (Slice!(kind, packs, Iterator) slice, size_t[N] rlengths...)
         if (packs[0] == N)
 in
 {
-    foreach (i, length; lengths)
+    foreach (i, length; rlengths)
         assert(length > 0, "length of dimension = " ~ i.stringof ~ " must be positive"
             ~ tailErrorMessage!());
 }
 body
 {
-    mixin _DefineRet;
+    alias Ret = typeof(return);
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
     foreach (dimension; Iota!(0, packs[0]))
     {
-        ret._lengths[dimension] = slice._lengths[dimension] >= lengths[dimension] ?
-                                  slice._lengths[dimension] - lengths[dimension] + 1: 0;
-        ret._lengths[dimension + packs[0]] = lengths[dimension];
+        lengths[dimension] = slice._lengths[dimension] >= rlengths[dimension] ?
+                                  slice._lengths[dimension] - rlengths[dimension] + 1: 0;
+        lengths[dimension + packs[0]] = rlengths[dimension];
     }
     foreach (dimension; Iota!(packs[0], slice.N))
     {
-        ret._lengths[dimension + packs[0]] = slice._lengths[dimension];
+        lengths[dimension + packs[0]] = slice._lengths[dimension];
     }
-    auto strides = slice.unpack.strides;
+    auto rstrides = slice.unpack.strides;
     foreach (dimension; Iota!(packs[0]))
     {
-        ret._strides[dimension] = strides[dimension];
+        strides[dimension] = rstrides[dimension];
     }
-    foreach (dimension; Iota!(packs[0], ret.S))
+    foreach (dimension; Iota!(packs[0], Ret.S))
     {
-        ret._strides[dimension] = strides[dimension - packs[0]];
+        strides[dimension] = rstrides[dimension - packs[0]];
     }
-    ret._iterator = slice._iterator;
-    return ret;
+    return Ret(lengths, strides, slice._iterator);
 }
 
 ///
@@ -1187,7 +1190,7 @@ Returns a new slice for the same data with different dimensions.
 
 Params:
     slice = slice to be reshaped
-    lengths = list of new dimensions. One of the lengths can be set to `-1`.
+    rlengths = list of new dimensions. One of the lengths can be set to `-1`.
         In this case, the corresponding dimension is inferable.
     err = $(LREF ReshapeError) code
 Returns:
@@ -1195,7 +1198,7 @@ Returns:
 +/
 Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
         (SliceKind kind, size_t[] packs, Iterator, size_t M)
-        (Slice!(kind, packs, Iterator) slice, ptrdiff_t[M] lengths, ref int err)
+        (Slice!(kind, packs, Iterator) slice, ptrdiff_t[M] rlengths, ref int err)
 {
     static if (kind == Canonical)
     {
@@ -1206,27 +1209,26 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
     }
     else
     {
-        mixin _DefineRet;
+        alias Ret = typeof(return);
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
         foreach (i; Iota!M)
-            ret._lengths[i] = lengths[i];
+            lengths[i] = rlengths[i];
+
         /// Code size optimization
-        goto B;
-    R:
-            return ret;
-    B:
         immutable size_t eco = slice.elementsCount;
+        size_t ecn = lengths[0 .. rlengths.length].iota.elementsCount;
         if (eco == 0)
         {
             err = ReshapeError.empty;
             goto R;
         }
-        size_t ecn = ret.elementsCount;
         foreach (i; Iota!M)
-            if (ret._lengths[i] == -1)
+            if (lengths[i] == -1)
             {
                 ecn = -ecn;
-                ret._lengths[i] = eco / ecn;
-                ecn *= ret._lengths[i];
+                lengths[i] = eco / ecn;
+                ecn *= lengths[i];
                 break;
             }
         if (eco != ecn)
@@ -1239,19 +1241,19 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
             for (size_t oi, ni, oj, nj; oi < packs[0] && ni < M; oi = oj, ni = nj)
             {
                 size_t op = slice._lengths[oj++];
-                size_t np = ret  ._lengths[nj++];
+                size_t np =        lengths[nj++];
 
                 for (;;)
                 {
                     if (op < np)
                         op *= slice._lengths[oj++];
                     if (op > np)
-                        np *= ret  ._lengths[nj++];
+                        np *=        lengths[nj++];
                     if (op == np)
                         break;
                 }
                 while (oj < packs[0] && slice._lengths[oj] == 1) oj++;
-                while (nj < M        && ret  ._lengths[nj] == 1) nj++;
+                while (nj < M        &&        lengths[nj] == 1) nj++;
 
                 for (size_t l = oi, r = oi + 1; r < oj; r++)
                     if (slice._lengths[r] != 1)
@@ -1265,19 +1267,20 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
                     }
                 assert((oi == packs[0]) == (ni == M));
 
-                ret._strides[nj - 1] = slice._strides[oj - 1];
+                strides[nj - 1] = slice._strides[oj - 1];
                 foreach_reverse (i; ni .. nj - 1)
-                    ret._strides[i] = ret._lengths[i + 1] * ret._strides[i + 1];
+                    strides[i] = lengths[i + 1] * strides[i + 1];
             }
         }
-        foreach (i; Iota!(M, ret.N))
-            ret._lengths[i] = slice._lengths[i + packs[0] - M];
-        static if (M < ret.S)
-        foreach (i; Iota!(M, ret.S))
-            ret._strides[i] = slice._strides[i + packs[0] - M];
-        ret._iterator = slice._iterator;
+        foreach (i; Iota!(M, Ret.N))
+            lengths[i] = slice._lengths[i + packs[0] - M];
+        static if (M < Ret.S)
+        foreach (i; Iota!(M, Ret.S))
+            strides[i] = slice._strides[i + packs[0] - M];
         err = 0;
-        goto R;
+        return Ret(lengths, strides, slice._iterator);
+    R:
+        return Ret(lengths, strides, slice._iterator.init);
     }
 }
 
@@ -1397,12 +1400,12 @@ Slice!(Contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
     (Slice!(kind, packs, Iterator) slice)
     if (packs[0] != 1 && kind != Contiguous)
 {
-    mixin _DefineRet;
-    ret._lengths[0] = slice.elementsCount;
-    foreach(i; Iota!(ret._iterator._indexes.length))
-        ret._iterator._indexes[i] = 0;
-    ret._iterator._slice = slice;
-    return ret;
+    alias Ret = typeof(return);
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
+    sizediff_t[typeof(return)._iterator._indexes.length] indexes;
+    lengths[0] = slice.elementsCount;
+    return Ret(lengths, strides, FlattenedIterator!(kind, packs, Iterator)(indexes, slice));
 }
 
 /// ditto
@@ -1417,12 +1420,12 @@ Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator)
     }
     else
     {
-        mixin _DefineRet;
-        ret._lengths[0] = slice.elementsCount;
-        foreach(i; Iota!(1, ret.N))
-            ret._lengths[i] = slice._lengths[i - 1 + packs[0]];
-        ret._iterator = slice._iterator;
-        return ret;
+        size_t[typeof(return).N] lengths;
+        sizediff_t[0] strides;
+        lengths[0] = slice.elementsCount;
+        foreach(i; Iota!(1, typeof(return).N))
+            lengths[i] = slice._lengths[i - 1 + packs[0]];
+        return typeof(return)(lengths, strides, slice._iterator);
     }
 }
 
@@ -1442,15 +1445,14 @@ Slice!(Contiguous, [1], StrideIterator!(SliceIterator!(packs[1 .. $].sum == 1 &&
     (Slice!(kind, packs, Iterator) slice)
     if (packs[0] == 1 && kind != Contiguous && packs.length > 1)
 {
-    mixin _DefineRet;
-    ret._lengths[0] = slice._lengths[0];
-    ret._iterator._stride = slice._strides[0];
-    foreach(i; Iota!(ret._iterator._iterator.Elem.N))
-        ret._iterator._iterator._lengths[i] = slice._lengths[i + 1];
-    foreach(i; Iota!(ret._iterator._iterator.Elem.S))
-        ret._iterator._iterator._strides[i] = slice._strides[i + 1];
-    ret._iterator._iterator._iterator = slice._iterator;
-    return ret;
+    alias Ret = typeof(return);
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
+    lengths[0] = slice._lengths[0];
+    return Ret(lengths, strides, typeof(Ret._iterator)(slice._strides[0], typeof(Ret._iterator._iterator)(
+        slice._lengths[1 .. Ret._iterator._iterator.Elem.N + 1],
+        slice._strides[1 .. Ret._iterator._iterator.Elem.S + 1],
+        slice._iterator)));
 }
 
 version(mir_test) unittest
@@ -1814,40 +1816,42 @@ version(mir_test) unittest
 Returns a slice with identical elements.
 `RepeatSlice` stores only single value.
 Params:
-    lengths = list of dimension lengths
+    rlengths = list of dimension lengths
 Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 +/
 Slice!(Contiguous, [M], FieldIterator!(RepeatField!T))
-    repeat(T, size_t M)(T value, size_t[M] lengths...)
+    repeat(T, size_t M)(T value, size_t[M] rlengths...)
     if (M && !is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
 {
-    mixin _DefineRet;
+    alias Ret = typeof(return);
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
     foreach (i; Iota!M)
-        ret._lengths[i] = lengths[i];
-    ret._iterator = FieldIterator!(RepeatField!T)(0, RepeatField!T(cast(RepeatField!T.UT) value));
-    return ret;
+        lengths[i] = rlengths[i];
+    return Ret(lengths, strides, FieldIterator!(RepeatField!T)(0, RepeatField!T(cast(RepeatField!T.UT) value)));
 }
 
 /// ditto
 Slice!(kind == Contiguous ? Canonical : kind, M ~ packs, Iterator)
     repeat
     (SliceKind kind, size_t[] packs, Iterator, size_t M)
-    (Slice!(kind, packs, Iterator) slice, size_t[M] lengths...)
+    (Slice!(kind, packs, Iterator) slice, size_t[M] rlengths...)
     if (M)
 {
-    mixin _DefineRet;
+    alias Ret = typeof(return);
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
     foreach (i; Iota!M)
-        ret._lengths[i] = lengths[i];
+        lengths[i] = rlengths[i];
     foreach (i; Iota!(slice.N))
-        ret._lengths[M + i] = slice._lengths[i];
+        lengths[M + i] = slice._lengths[i];
     foreach (i; Iota!M)
-        ret._strides[i] = 0;
-    auto strides = slice.unpack.strides;
-    foreach (i; Iota!(M, ret.S))
-        ret._strides[i] = strides[i - M];
-    ret._iterator = slice._iterator;
-    return ret;
+        strides[i] = 0;
+    auto rstrides = slice.unpack.strides;
+    foreach (i; Iota!(M, Ret.S))
+        strides[i] = rstrides[i - M];
+    return Ret(lengths, strides, slice._iterator);
 }
 
 ///
@@ -1960,23 +1964,23 @@ auto retro
 {
     static if (kind == Contiguous || kind == Canonical)
     {
+        size_t[slice.N] lengths;
+        sizediff_t[slice.S] strides;
+        foreach (i; Iota!(slice.N))
+            lengths[i] = slice._lengths[i];
+        foreach (i; Iota!(slice.S))
+            strides[i] = slice._strides[i];
         static if (is(Iterator : RetroIterator!It, It))
         {
             alias Ret = Slice!(kind, packs, It);
-            mixin _DefineRet_;
-            ret._iterator = slice._iterator._iterator - slice.lastIndex;
+            return Ret(lengths, strides, slice._iterator._iterator - slice.lastIndex);
         }
         else
         {
             alias Ret = Slice!(kind, packs, RetroIterator!Iterator);
-            mixin _DefineRet_;
-            ret._iterator = RetroIterator!Iterator(slice._iterator + slice.lastIndex);
+            return Ret(lengths, strides, RetroIterator!Iterator(slice._iterator + slice.lastIndex));
+
         }
-        foreach (i; Iota!(ret.N))
-            ret._lengths[i] = slice._lengths[i];
-        foreach (i; Iota!(ret.S))
-            ret._strides[i] = slice._strides[i];
-        return ret;
     }
     else
     {
@@ -2021,17 +2025,17 @@ auto bitwise
         alias It = FieldIterator!(BitwiseField!Iterator);
     }
     alias Ret = Slice!(kind, packs, It);
-    mixin _DefineRet_;
-    foreach(i; Iota!(ret.N))
-        ret._lengths[i] = slice._lengths[i];
-    ret._lengths[$ - 1] *= I.sizeof * 8;
-    foreach(i; Iota!(ret.S))
-        ret._strides[i] = slice._strides[i];
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
+    foreach(i; Iota!(Ret.N))
+        lengths[i] = slice._lengths[i];
+    lengths[$ - 1] *= I.sizeof * 8;
+    foreach(i; Iota!(Ret.S))
+        strides[i] = slice._strides[i];
     static if (simplified)
-        ret._iterator = It(slice._iterator._index * I.sizeof * 8, BitwiseField!Field(slice._iterator._field));
+        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8, BitwiseField!Field(slice._iterator._field)));
     else
-        ret._iterator = It(0, BitwiseField!Iterator(slice._iterator));
-    return ret;
+        return Ret(lengths, strides, It(0, BitwiseField!Iterator(slice._iterator)));
 }
 
 ///
@@ -2099,18 +2103,18 @@ auto bitpack
         alias It = FieldIterator!(BitpackField!(Iterator, pack));
     }
     alias Ret = Slice!(kind, packs, It);
-    mixin _DefineRet_;
-    foreach(i; Iota!(ret.N))
-        ret._lengths[i] = slice._lengths[i];
-    ret._lengths[$ - 1] *= I.sizeof * 8;
-    ret._lengths[$ - 1] /= pack;
-    foreach(i; Iota!(ret.S))
-        ret._strides[i] = slice._strides[i];
+    size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
+    foreach(i; Iota!(Ret.N))
+        lengths[i] = slice._lengths[i];
+    lengths[$ - 1] *= I.sizeof * 8;
+    lengths[$ - 1] /= pack;
+    foreach(i; Iota!(Ret.S))
+        strides[i] = slice._strides[i];
     static if (simplified)
-        ret._iterator = It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field));
+        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field)));
     else
-        ret._iterator = It(0, BitpackField!(Iterator, pack)(slice._iterator));
-    return ret;
+        return Ret(lengths, strides, It(0, BitpackField!(Iterator, pack)(slice._iterator)));
 }
 
 ///
@@ -2144,15 +2148,14 @@ Returns: A bytegroup slice.
 Slice!(kind, packs, BytegroupIterator!(Iterator, group, DestinationType))
 bytegroup
     (size_t group, DestinationType, SliceKind kind, size_t[] packs, Iterator)
-    (auto ref Slice!(kind, packs, Iterator) slice)
+    (Slice!(kind, packs, Iterator) slice)
     if ((kind == Contiguous || kind == Canonical) && group)
 {
-    mixin _DefineRet;
-    ret._lengths = slice._lengths;
-    ret._lengths[$ - 1] /= group;
-    ret._strides = slice._strides;
-    ret._iterator = BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator);
-    return ret;
+    alias Ret = typeof(return);
+    size_t[Ret.N] lengths;
+    lengths = slice._lengths;
+    lengths[$ - 1] /= group;
+    return Ret(lengths, slice._strides, BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator));
 }
 
 /// 24 bit integers
@@ -2535,11 +2538,12 @@ private auto unhideStride
         static if (kind == Universal)
         {
             alias Ret = SliceKind!(Universal, packs, It);
-            mixin _DefineRet_;
-            foreach(i; Iota!(ret.N))
-                ret._lengths[i] = slice._lengths[i];
-            foreach(i; Iota!(ret.S))
-                ret._strides[i] = slice._strides[i] * slice._iterator._stride;
+            size_t[Ret.N] lengths;
+    sizediff_t[Ret.S] strides;
+            foreach(i; Iota!(Ret.N))
+                lengths[i] = slice._lengths[i];
+            foreach(i; Iota!(Ret.S))
+                strides[i] = slice._strides[i] * slice._iterator._stride;
         }
         else
             return slice.universal.unhideStride;
@@ -2676,13 +2680,13 @@ auto zip
         enum kind = maxElem(staticMap!(kindOf, Slices));
         alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
         alias Ret = Slice!(kind, packs, Iterator);
-        mixin _DefineRet_;
+        size_t[Ret.N] lengths;
+        sizediff_t[Ret.S] strides;
         foreach (i; Iota!(Ret.N))
-            ret._lengths[i] = slices[0]._lengths[i];
+            lengths[i] = slices[0]._lengths[i];
         foreach (i; Iota!(Ret.S))
-            ret._strides[i] = slices[0]._strides[i];
-        ret._iterator = mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")");
-        return ret;
+            strides[i] = slices[0]._strides[i];
+        return Ret(lengths, strides, mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")"));
     }
 }
 
