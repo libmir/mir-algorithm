@@ -24,7 +24,7 @@ Macros:
 module mir.ndslice.sorting;
 
 /// Check if ndslice is sorted, or strictly monotonic.
-version(mir_test) unittest
+version(mir_test) @safe pure unittest
 {
     import mir.ndslice.algorithm: all;
     import mir.ndslice.slice: sliced;
@@ -48,7 +48,7 @@ version(mir_test) unittest
 }
 
 /// Create index
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.algorithm: all;
     import mir.ndslice.allocation: slice;
@@ -65,7 +65,7 @@ unittest
 }
 
 /// Schwartzian transform
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.algorithm: all;
     import mir.ndslice.allocation: slice;
@@ -128,7 +128,7 @@ template isStrictlyMonotonic(alias less = "a < b")
         alias isStrictlyMonotonic = .isStrictlyMonotonic!(naryFun!less);
 }
 
-unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.algorithm: all;
     import mir.ndslice.topology: pairwise;
@@ -145,7 +145,7 @@ unittest
     assert(c.pairwise!"a <= b".all);
 }
 
-unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.algorithm: all;
     import mir.ndslice.topology: pairwise;
@@ -172,6 +172,12 @@ template sort(alias less = "a < b")
         (Slice!(kind, packs, Iterator) slice)
         if (packs.length == 1)
     {
+        if (false) // break safety
+        {
+            import mir.utility : swapStars;
+            swapStars(slice._iterator, slice._iterator);
+            auto l = less(*slice._iterator, *slice._iterator);
+        }
         import mir.ndslice.topology: flattened;
         if (slice.anyEmpty)
             return slice;
@@ -183,7 +189,7 @@ template sort(alias less = "a < b")
 }
 
 ///
-unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.algorithm: all;
     import mir.ndslice.slice;
@@ -192,12 +198,12 @@ unittest
 
     int[10] arr = [7,1,3,2,9,0,5,4,8,6];
 
-    auto data = arr[].ptr.sliced(arr.length);
+    auto data = arr[].sliced(arr.length);
     data.sort();
     assert(data.pairwise!"a <= b".all);
 }
 
-void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice)
+void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice) @trusted
 {
     import mir.utility : swap, swapStars;
 
@@ -308,7 +314,7 @@ void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice
     }
 }
 
-void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator mid, ref Iterator r)
+void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator mid, ref Iterator r) @trusted
 {
     if (length < 512)
     {
@@ -323,7 +329,7 @@ void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator 
 }
 
 void medianOf(alias less, Iterator)
-    (ref Iterator a, ref Iterator b, ref Iterator c)
+    (ref Iterator a, ref Iterator b, ref Iterator c) @trusted
 {
     import mir.utility : swapStars;
    if (less(*c, *a)) // c < a
@@ -355,7 +361,7 @@ void medianOf(alias less, Iterator)
 }
 
 void medianOf(alias less, Iterator)
-    (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d, ref Iterator e)
+    (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d, ref Iterator e) @trusted
 {
     import mir.utility : swapStars;   // Credit: Teppo Niinimäki
     version(unittest) scope(success)

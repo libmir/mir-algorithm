@@ -85,7 +85,7 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
         alias fun = .slice;
     else
         alias fun = .uninitSlice;
-    auto ret = fun!T(slice.shape);
+    auto ret = (shape)@trusted{ return fun!T(shape);}(slice.shape);
     ret[] = slice;
     auto retq = ()@trusted{ return (cast(slice.DeepElemType*)ret._iterator).sliced(ret.shape); }();
     return retq;
@@ -122,7 +122,7 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
         alias fun = .slice;
     else
         alias fun = .uninitSlice;
-    auto ret = fun!T(concatenation.shape);
+    auto ret = (shape)@trusted{ return fun!T(shape);}(concatenation.shape);
     ret[] = concatenation;
     return ret;
 }
