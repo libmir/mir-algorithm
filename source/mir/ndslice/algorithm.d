@@ -107,6 +107,72 @@ private void createVectors(Args...)(ref Args args)
     }
 }
 
+version(LDC) {}
+else version (Windows) {}
+else version (X86_64)
+{
+    //Compiling with DMD for x86-64 for Linux & OS X with optimizations enabled,
+    //"Tensor mutation on-the-fly" unittest was failing. Disabling inlining
+    //caused it to succeed.
+    //TODO: Rework so this is unnecessary!
+    version = Mir_disable_inlining_in_reduce;
+}
+
+version(Mir_disable_inlining_in_reduce)
+{
+    private enum Mir_disable_inlining_in_reduce = true;
+
+    private template _naryAliases(size_t n)
+    {
+        static if (n == 0)
+            enum _naryAliases = "";
+        else
+        {
+            enum i = n - 1;
+            enum _naryAliases = _naryAliases!i ~ "alias " ~ cast(char)('a' + i) ~ " = args[" ~ i.stringof ~ "];\n";
+        }
+    }
+
+    private template nonInlinedNaryFun(alias fun)
+    {
+        import mir.math.common : optmath;
+        static if (is(typeof(fun) : string))
+        {
+            /// Specialization for string lambdas
+            @optmath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
+                if (args.length <= 26)
+            {
+                pragma(inline,false);
+                import mir.functional: _naryAliases;
+                mixin(_naryAliases!(Args.length));
+                return mixin(fun);
+            }
+        }
+        else static if (is(typeof(fun.opCall) == function))
+        {
+            @optmath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
+                if (is(typeof(fun.opCall(args))))
+            {
+                pragma(inline,false);
+                return fun.opCall(args);
+            }
+        }
+        else
+        {
+            @optmath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
+                if (is(typeof(fun(args))))
+            {
+                pragma(inline,false);
+                return fun(args);
+            }
+        }
+    }
+}
+else
+{
+    private enum Mir_disable_inlining_in_reduce = false;
+}
+
 S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {
     do
@@ -145,7 +211,8 @@ See_Also:
 template reduce(alias fun)
 {
     import mir.functional: naryFun;
-    static if (__traits(isSame, naryFun!fun, fun))
+    static if (__traits(isSame, naryFun!fun, fun)
+        && !Mir_disable_inlining_in_reduce)
     /++
     Params:
         seed = An initial accumulation value.
@@ -172,6 +239,29 @@ template reduce(alias fun)
             else
                 alias UT = S;
             return reduceImpl!(fun, UT, Slices)(seed, slices);
+        }
+    }
+    else version(Mir_disable_inlining_in_reduce)
+    //As above, but with inlining disabled.
+    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
+        if (Slices.length)
+    {
+        slices.checkShapesMatch;
+        static if (areAllContiguousTensors!Slices)
+        {
+            FlattenedList!Slices vectors;
+            createVectors(slices, vectors);
+            return .reduce!fun(seed, vectors);
+        }
+        else
+        {
+            if (slices[0].anyEmpty)
+                return cast(Unqual!S) seed;
+            static if (is(S : Unqual!S))
+                alias UT = Unqual!S;
+            else
+                alias UT = S;
+            return reduceImpl!(nonInlinedNaryFun!fun, UT, Slices)(seed, slices);
         }
     }
     else
