@@ -229,7 +229,7 @@ version(LDC)
 else
     enum LDC = false;
 
-version(x86_64)
+version(X86_64)
     enum x86_64 = true;
 else
     enum x86_64 = false;
@@ -562,15 +562,17 @@ auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a, ref
     }
     else
     {
+        F[N][R] _c = void;//Temporary array in case "c" overlaps "a" and/or "b".
         foreach(i; Iota!N)
         {
             auto r = kernel(a[i], b[i]);
             static if (R == 1)
-                return c[0] = r;
+                _c[0][i] = r;
             else
                 foreach(j; Iota!R)
-                    c[j][i] = r[j];
+                    _c[j][i] = r[j];
         }
+        c = _c;
     }
 }
 
