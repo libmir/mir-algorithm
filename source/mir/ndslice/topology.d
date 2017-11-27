@@ -1449,10 +1449,17 @@ Slice!(Contiguous, [1], StrideIterator!(SliceIterator!(packs[1 .. $].sum == 1 &&
     size_t[Ret.N] lengths;
     sizediff_t[Ret.S] strides;
     lengths[0] = slice._lengths[0];
-    return Ret(lengths, strides, typeof(Ret._iterator)(slice._strides[0], typeof(Ret._iterator._iterator)(
+    enum ret_mixin = q{
+        Ret(lengths, strides, typeof(Ret._iterator)(slice._strides[0], typeof(Ret._iterator._iterator)(
         slice._lengths[1 .. Ret._iterator._iterator.Elem.N + 1],
         slice._strides[1 .. Ret._iterator._iterator.Elem.S + 1],
         slice._iterator)));
+    };
+    version (LDC_LLVM_400)
+        //Workaround to allow compilation with LDC 1.2.0.
+        mixin ("Ret ret = "~ret_mixin~" return ret;");
+    else
+        mixin ("return "~ret_mixin);
 }
 
 version(mir_test) unittest
