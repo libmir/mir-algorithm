@@ -20,6 +20,8 @@ matrix:
     - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
     - {os: linux, d: dmd-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
     - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+  allow_failures:
+    - {d: dmd-nightly}
 branches:
   only:
     - master
