@@ -554,6 +554,22 @@ ExtMulResult!U extMul(U)(in U a, in U b) @nogc nothrow pure @safe
                     return ExtMulResult!U(r[0], r[1]);
                 }
             }
+            else
+            version(D_InlineAsm_X86_64)
+            {
+                static if (is(U == ulong))
+                {
+                    version(Windows)
+                    {
+                        ulong[2] r = extMul_X86_64(a, b);
+                        return ExtMulResult!ulong(r[0], r[1]);
+                    }
+                    else
+                    {
+                        return extMul_X86_64(a, b);
+                    }
+                }
+            }
         }
 
         U al = cast(H)a;
@@ -581,4 +597,52 @@ unittest
     immutable b = 0x54_c3_2f_e8_cc_a5_97_10;
     enum c = extMul(a, b);     // Compile time algorithm
     assert(extMul(a, b) == c); // Fast runtime algorihtm
+    static assert(c.high == 0x30_da_d1_42_95_4a_50_78);
+    static assert(c.low == 0x27_9b_4b_b4_9e_fe_0f_60);
+}
+
+version(D_InlineAsm_X86_64)
+{
+    version(Windows)
+    private ulong[2] extMul_X86_64()(ulong a, ulong b)
+    {
+        asm @safe pure nothrow @nogc
+        {
+            naked;
+            mov RAX, RCX;
+            mul RDX;
+            ret;
+        }
+    }
+    else
+    private ExtMulResult!ulong extMul_X86_64()(ulong a, ulong b)   
+    {  
+        asm @safe pure nothrow @nogc
+        {
+            naked;
+            mov RAX, RDI;
+            mul RSI;
+            ret;
+        }
+    }
+}
+
+version(LDC) {} else version(D_InlineAsm_X86_64)
+@nogc nothrow pure @safe unittest
+{
+    immutable a = 0x93_8d_28_00_0f_50_a5_56;
+    immutable b = 0x54_c3_2f_e8_cc_a5_97_10;
+
+    version(Windows)
+    {
+        immutable ulong[2] r = extMul_X86_64(a, b);
+        immutable ExtMulResult!ulong c = ExtMulResult!ulong(r[0], r[1]);
+    }
+    else
+    {
+        immutable ExtMulResult!ulong c = extMul_X86_64(a, b);       
+    }
+
+    assert(c.high == 0x30_da_d1_42_95_4a_50_78);
+    assert(c.low == 0x27_9b_4b_b4_9e_fe_0f_60);
 }
