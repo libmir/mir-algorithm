@@ -464,6 +464,16 @@ unittest
     enum bi = [4, 5, 6, 7];
     align(32)
     double[4] a = [0, 1, 2, 3], b = [4, 5, 6, 7], c, d;
+    shuffle3!1(a, b, c, d);
+    assert([c, d] == [[0.0, 4, 1, 5], [2.0, 6, 3, 7]]);
+}
+
+unittest
+{
+    enum ai = [0, 1, 2, 3];
+    enum bi = [4, 5, 6, 7];
+    align(32)
+    double[4] a = [0, 1, 2, 3], b = [4, 5, 6, 7], c, d;
     shuffle2!1(a, b, c, d);
     assert([c, d] == [[0.0, 2, 4, 6], [1.0, 3, 5, 7]]);
     shuffle2!2(a, b, c, d);
@@ -490,78 +500,78 @@ import mir.internal.utility;
 
 auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a0, ref F[N] b0, ref F[N] a1, ref F[N] b1, ref F[N][R] c)
 {
-    static if (LDC && F.mant_dig != 64)
-    {
-        alias V = __vector(F[N]); // @FUTURE@ vector support
-        *cast(V[R]*) c.ptr = kernel(
-            *cast(V*)a0.ptr, *cast(V*)b0.ptr,
-            *cast(V*)a1.ptr, *cast(V*)b1.ptr);
-    }
-    else
-    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof)
-    {
-        import mir.utility;
-        enum S = _avx ? 32u : 16u;
-        enum M = min(S, F[N].sizeof) / F.sizeof;
-        alias V = __vector(F[M]); // @FUTURE@ vector support
-        enum C = N / M;
-        foreach(i; Iota!C)
-        {
-            auto r = kernel(
-                *cast(V*)(a0.ptr + i * M), *cast(V*)(b0.ptr + i * M),
-                *cast(V*)(a1.ptr + i * M), *cast(V*)(b1.ptr + i * M),
-                );
-            static if (R == 1)
-                *cast(V*)(c[0].ptr + i * M) = r;
-            else
-                foreach(j; Iota!R)
-                    *cast(V*)(c[j].ptr + i * M) = r[j];
-        }
-    }
-    else
-    {
+    // static if (LDC && F.mant_dig != 64)
+    // {
+    //     alias V = __vector(F[N]); // @FUTURE@ vector support
+    //     *cast(V[R]*) c.ptr = kernel(
+    //         *cast(V*)a0.ptr, *cast(V*)b0.ptr,
+    //         *cast(V*)a1.ptr, *cast(V*)b1.ptr);
+    // }
+    // else
+    // static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof)
+    // {
+    //     import mir.utility;
+    //     enum S = _avx ? 32u : 16u;
+    //     enum M = min(S, F[N].sizeof) / F.sizeof;
+    //     alias V = __vector(F[M]); // @FUTURE@ vector support
+    //     enum C = N / M;
+    //     foreach(i; Iota!C)
+    //     {
+    //         auto r = kernel(
+    //             *cast(V*)(a0.ptr + i * M), *cast(V*)(b0.ptr + i * M),
+    //             *cast(V*)(a1.ptr + i * M), *cast(V*)(b1.ptr + i * M),
+    //             );
+    //         static if (R == 1)
+    //             *cast(V*)(c[0].ptr + i * M) = r;
+    //         else
+    //             foreach(j; Iota!R)
+    //                 *cast(V*)(c[j].ptr + i * M) = r[j];
+    //     }
+    // }
+    // else
+    // {
         foreach(i; Iota!N)
         {
             auto r = kernel(a0[i], b0[i], a1[i], b1[i]);
             static if (R == 1)
-                return c[0] = r;
+                c[0][i] = r;
             else
                 foreach(j; Iota!R)
                     c[j][i] = r[j];
         }
-    }
+    // }
 }
 
 auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a, ref F[N] b, ref F[N][R] c)
 {
-    static if (LDC && F.mant_dig != 64 && is(__vector(F[N])))
-    {
-        alias V = __vector(F[N]); // @FUTURE@ vector support
-        *cast(V[R]*) c.ptr = kernel(*cast(V*)a.ptr, *cast(V*)b.ptr);
-    }
-    else
-    static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && x86_64)
-    {
-        import mir.utility;
-        enum S = _avx ? 32u : 16u;
-        enum M = min(S, F[N].sizeof) / F.sizeof;
-        alias V = __vector(F[M]); // @FUTURE@ vector support
-        enum C = N / M;
-        foreach(i; Iota!C)
-        {
-            auto r = kernel(
-                *cast(V*)(a.ptr + i * M),
-                *cast(V*)(b.ptr + i * M),
-                );
-            static if (R == 1)
-                *cast(V*)(c[0].ptr + i * M) = r;
-            else
-                foreach(j; Iota!R)
-                    *cast(V*)(c[j].ptr + i * M) = r[j];
-        }
-    }
-    else
-    {
+    // static if (LDC && F.mant_dig != 64 && is(__vector(F[N])))
+    // {
+    //     alias V = __vector(F[N]); // @FUTURE@ vector support
+    //     *cast(V[R]*) c.ptr = kernel(*cast(V*)a.ptr, *cast(V*)b.ptr);
+    // }
+    // else
+    // static if (F.sizeof <= double.sizeof && F[N].sizeof >= (double[2]).sizeof && x86_64)
+    // {
+    //     import mir.utility;
+    //     enum S = _avx ? 32u : 16u;
+    //     enum M = min(S, F[N].sizeof) / F.sizeof;
+    //     alias V = __vector(F[M]); // @FUTURE@ vector support
+    //     enum C = N / M;
+    //     foreach(i; Iota!C)
+    //     {
+    //         auto r = kernel(
+    //             *cast(V*)(a.ptr + i * M),
+    //             *cast(V*)(b.ptr + i * M),
+    //             );
+    //         static if (R == 1)
+    //             *cast(V*)(c[0].ptr + i * M) = r;
+    //         else
+    //             foreach(j; Iota!R)
+    //                 *cast(V*)(c[j].ptr + i * M) = r[j];
+    //     }
+    // }
+    // else
+    // {
         F[N][R] _c = void;//Temporary array in case "c" overlaps "a" and/or "b".
         foreach(i; Iota!N)
         {
@@ -573,7 +583,7 @@ auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a, ref
                     _c[j][i] = r[j];
         }
         c = _c;
-    }
+    // }
 }
 
 // version(unittest)
