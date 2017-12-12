@@ -143,7 +143,6 @@ version(Mir_disable_inlining_in_reduce)
                 if (args.length <= 26)
             {
                 pragma(inline,false);
-                import mir.functional: _naryAliases;
                 mixin(_naryAliases!(Args.length));
                 return mixin(fun);
             }
