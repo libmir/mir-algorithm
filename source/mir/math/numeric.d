@@ -1,5 +1,5 @@
 /++
-This module contains simple numric algorithms.
+This module contains simple numeric algorithms.
 
 License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
@@ -50,7 +50,7 @@ struct Prod(T)
 }
 
 /++
-Compute the product of the input range $(D r) using separate exponent accomulation.
+Compute the product of the input range $(D r) using separate exponent accumulation.
 +/
 Unqual!(ForeachType!Range) prod(Range)(Range r, ref long exp)
 	if (isFloatingPoint!(ForeachType!Range))

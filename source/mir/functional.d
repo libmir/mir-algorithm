@@ -119,9 +119,9 @@ alias tuple = refTuple;
 /++
 Returns: a $(LREF RefTuple) structure.
 
-If an argument is accessable by reference, then its pointer is stored instead.
+If an argument is accessible by reference, then its pointer is stored instead.
 
-Use refTuple in combintation with $(LREF unref) to make a completely value tuple.
+Use refTuple in combination with $(LREF unref) to make a completely value tuple.
 +/
 RefTuple!Args refTuple(Args...)(auto ref Args args)
 {
@@ -345,7 +345,7 @@ version(mir_test) unittest
     assert(&naryFun!("a")(a) == &a);
 }
 
-/// `args` paramter tuple
+/// `args` parameter tuple
 version(mir_test) unittest
 {
     assert(naryFun!("args[0] + args[1]")(2, 3) == 5);
@@ -748,10 +748,10 @@ template aliasCall(string methodName, TemplateArgs...)
     S s;
 
     auto sfun = aliasCall!"fun"(s);
-    assert(3.iota.vmap(sfun) == io + 1);   //  opCall is overloded
-    assert(3.iota.map!sfun == io + 1);  //  opCall is overloded
+    assert(3.iota.vmap(sfun) == io + 1);   //  opCall is overloaded
+    assert(3.iota.map!sfun == io + 1);  //  opCall is overloaded
 
     auto sfun10 = aliasCall!("fun", 10)(s);   // uses fun!10
-    assert(3.iota.vmap(sfun10) == io + 10);   //  opCall is overloded
-    assert(3.iota.map!sfun10 == io + 10);   //  opCall is overloded
+    assert(3.iota.vmap(sfun10) == io + 10);   //  opCall is overloaded
+    assert(3.iota.map!sfun10 == io + 10);   //  opCall is overloaded
 }

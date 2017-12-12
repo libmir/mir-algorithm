@@ -78,10 +78,13 @@ struct MapField(Field, alias fun)
         return _field.shape;
     }
 
-    auto elemenstCount()() @property
+    auto elementsCount()() @property
     {
-        return _field.elemenstCount;
+        return _field.elementsCount;
     }
+
+    deprecated("this is a misspelling of 'elementsCount'")
+    alias elemenstCount() = elementsCount!();
 }
 
 /++

@@ -50,7 +50,7 @@ private template _expose(size_t maxN, size_t dim)
         }
         else
         {
-            static assert(s.shape.length == s.N, "Cannot create concatentaion for packed slice of smaller dimension.");
+            static assert(s.shape.length == s.N, "Cannot create concatenation for packed slice of smaller dimension.");
             import mir.ndslice.topology: repeat, unpack;
             auto r = s.repeat(1).unpack;
             static if (dim)
