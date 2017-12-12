@@ -68,8 +68,59 @@ version(LDC)
     alias fastmath = ldc.attributes.fastmath;
 }
 else
+enum
 {
-    enum { fmamath, optmath, fastmath };
+    /++
+    Functions attribute, an alias for `AliasSeq!(llvmFastMathFlag("contract"));`.
+
+    $(UL
+    $(LI Allow floating-point contraction (e.g. fusing a multiply followed by an addition into a fused multiply-and-add). )
+    )
+
+    Note: Can be used with all compilers.
+    +/
+    fmamath,
+
+    /++
+    Functions attribute, an alias for `AliasSeq!(llvmAttr("unsafe-fp-math", "false"), llvmFastMathFlag("fast"))`.
+
+    It is similar to $(LREF fastmath), but does not allow unsafe-fp-math.
+    This flag does NOT force LDC to use the reciprocal of an argument rather than perform division.
+
+    This flag is default for string lambdas.
+
+    Note: Can be used with all compilers.
+    +/
+    optmath,
+
+    /++
+    Functions attribute, an alias for `ldc.attributes.fastmath = AliasSeq!(llvmAttr("unsafe-fp-math", "true"), llvmFastMathFlag("fast"))` .
+
+    $(UL
+
+    $(LI Enable optimizations that make unsafe assumptions about IEEE math (e.g. that addition is associative) or may not work for all input ranges.
+    These optimizations allow the code generator to make use of some instructions which would otherwise not be usable (such as fsin on X86). )
+
+    $(LI Allow optimizations to assume the arguments and result are not NaN.
+        Such optimizations are required to retain defined behavior over NaNs,
+        but the value of the result is undefined. )
+
+    $(LI Allow optimizations to assume the arguments and result are not +$(BACKTICK)-inf.
+        Such optimizations are required to retain defined behavior over +$(BACKTICK)-Inf,
+        but the value of the result is undefined. )
+
+    $(LI Allow optimizations to treat the sign of a zero argument or result as insignificant. )
+
+    $(LI Allow optimizations to use the reciprocal of an argument rather than perform division. )
+
+    $(LI Allow floating-point contraction (e.g. fusing a multiply followed by an addition into a fused multiply-and-add). )
+
+    $(LI Allow algebraically equivalent transformations that may dramatically change results in floating point (e.g. reassociate). )
+    )
+
+    Note: Can be used with all compilers.
+    +/
+    fastmath
 }
 
 version(LDC)
