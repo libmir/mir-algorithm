@@ -3,7 +3,7 @@ Range primitives for arrays with multi-dimensional like API support.
 
 Note:
 UTF strings behaves like common arrays in Mir.
-`std.uni.byCodePoint` can be used to creat a range of chararacters.
+`std.uni.byCodePoint` can be used to create a range of characters.
 
 See_also: $(MREF mir,_primitives).
 

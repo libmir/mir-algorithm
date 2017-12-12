@@ -596,7 +596,7 @@ unittest
     immutable a = 0x93_8d_28_00_0f_50_a5_56;
     immutable b = 0x54_c3_2f_e8_cc_a5_97_10;
     enum c = extMul(a, b);     // Compile time algorithm
-    assert(extMul(a, b) == c); // Fast runtime algorihtm
+    assert(extMul(a, b) == c); // Fast runtime algorithm
     static assert(c.high == 0x30_da_d1_42_95_4a_50_78);
     static assert(c.low == 0x27_9b_4b_b4_9e_fe_0f_60);
 }

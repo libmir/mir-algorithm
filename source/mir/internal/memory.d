@@ -81,7 +81,7 @@ version (Windows)
 
             if (!ptr) return _aligned_malloc(size, alignment);
 
-            // gets the header from the exising pointer
+            // gets the header from the existing pointer
             AlignInfo!()* head = AlignInfo!()(ptr);
 
             // gets a new aligned pointer
@@ -93,7 +93,7 @@ version (Windows)
                 return null;
             }
 
-            // copy exising data
+            // copy existing data
             memcpy(alignedPtr, ptr, head.size);
             free(head.basePtr);
 

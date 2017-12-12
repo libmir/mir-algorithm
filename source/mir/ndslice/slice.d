@@ -765,7 +765,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         private alias ImmutableThis = Slice!(kind, packs, immutable(Unqual!(PointerTarget!Iterator))*);
 
         /++
-        Cast to const and immutable slices in case of underlaying range is a pointer.
+        Cast to const and immutable slices in case of underlying range is a pointer.
         +/
         ref toImmutable()() immutable @trusted pure nothrow @nogc
         {
@@ -2051,7 +2051,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     Returns:
         lazy slice the same shape that has $(LREF Contiguous) kind
     Note:
-        Binary operator overloading is allowed if both slices are contigous or one-dimensional.
+        Binary operator overloading is allowed if both slices are contiguous or one-dimensional.
         $(BR)
         Does not allocate neither new slice nor a closure.
     +/

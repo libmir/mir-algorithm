@@ -20,7 +20,7 @@ import std.traits;
 
 /++
 Construct flags for $(PGB).
-If `T` is not `const` or `immutable` then the flags requrie writable buffer.
+If `T` is not `const` or `immutable` then the flags require writable buffer.
 If slice kind is $(SUBREF slice, Contiguous) then the flags require $(LINK2 https://docs.python.org/3/c-api/buffer.html#contiguity-requests, c_contiguous) buffer.
 
 Params:
@@ -95,7 +95,7 @@ Params:
     view = output $(LREF Py_buffer).
         $(LREF Py_buffer.internal) is initialized with null value,
         $(LREF Py_buffer.obj) is not initialized.
-        Other $(LREF Py_buffer) fields are initialized accroding to the flags and slice.
+        Other $(LREF Py_buffer) fields are initialized according to the flags and slice.
     flags = requester flags
     structureBuffer = Single chunk of memory with the same alignment and size as $(SUBREF _slice, Structure).
         The buffer is used to store shape and strides for the view.

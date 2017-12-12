@@ -198,7 +198,7 @@ version(mir_test)
     assert(approxEqual(xs.sliced.vmap(interpolation), data, 1e-4, 1e-4));
 }
 
-/// R^2 -> R: Bicubic interpolaiton
+/// R^2 -> R: Bicubic interpolation
 version(mir_test)
 unittest
 {
@@ -252,7 +252,7 @@ unittest
     // assert(appreq(d[1][1], y_x0x1));
 }
 
-/// R^3 -> R: Tricubic interpolaiton
+/// R^3 -> R: Tricubic interpolation
 version(mir_test)
 unittest
 {
@@ -336,8 +336,8 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     Params:
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
-        typeOfBondaries = $(LREF SplineBoundaryType) for both tails (optional).
-        valueOfBondaryConditions = value of the boundary type (optional). 
+        typeOfBoundaries = $(LREF SplineBoundaryType) for both tails (optional).
+        valueOfBoundaryConditions = value of the boundary type (optional). 
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -345,18 +345,18 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     Spline!(T, N, GridIterators) spline(SliceKind ykind, yIterator)(
         GridVectors grid,
         scope Slice!(ykind, [N], yIterator) values,
-        SplineBoundaryType typeOfBondaries = SplineBoundaryType.notAKnot,
-        in T valueOfBondaryConditions = 0,
+        SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
+        in T valueOfBoundaryConditions = 0,
         )
     {
-        return spline(grid, values, SplineBoundaryCondition!T(typeOfBondaries, valueOfBondaryConditions));
+        return spline(grid, values, SplineBoundaryCondition!T(typeOfBoundaries, valueOfBoundaryConditions));
     }
 
     /++
     Params:
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
-        bondaries = $(LREF SplineBoundaryCondition) for both tails.
+        boundaries = $(LREF SplineBoundaryCondition) for both tails.
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -364,10 +364,10 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     Spline!(T, N, GridIterators) spline(SliceKind ykind, yIterator)(
         GridVectors grid,
         scope Slice!(ykind, [N], yIterator) values,
-        SplineBoundaryCondition!T bondaries,
+        SplineBoundaryCondition!T boundaries,
         )
     {
-        return spline(grid, values, bondaries, bondaries);
+        return spline(grid, values, boundaries, boundaries);
     }
 
     /++
@@ -486,7 +486,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
             assert(x.length >= 2, "cubic spline interpolant: minimal allowed length for the grid equals 2.");
             shape[i] = x.length;
             // assert(x.length == values.length!i, "grid[" ~ i.stringof ~
-            //     "].length shoud be equal to values.length!" ~ i.stringof ~ ".");
+            //     "].length should be equal to values.length!" ~ i.stringof ~ ".");
         }
 
         auto data_ptr = cast(F[2 ^^ N]*) (alignedAllocate(F[2 ^^ N].sizeof * shape.iota.elementsCount + alignment, alignment) + alignment);
@@ -522,7 +522,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /++
     Computes derivatives and stores them in `_data`.
-    `_data` is assumeed to be preinitialized with function values filled in `F[2 ^^ N][0]`.
+    `_data` is assumed to be preinitialized with function values filled in `F[2 ^^ N][0]`.
     Params:
         lbc = left boundary condition
         rbc = right boundary condition

@@ -1500,7 +1500,7 @@ version(mir_test) unittest
 
     elems.popFrontExactly(2);
     assert(elems.front == 2);
-    /// `_index` is availble only for canonical and universal ndslices.
+    /// `_index` is available only for canonical and universal ndslices.
     assert(elems._iterator._indexes == [0, 2]);
 
     elems.popBackExactly(2);
@@ -2142,7 +2142,7 @@ version(mir_test) unittest
 /++
 Bytegroup slice over an integral slice.
 
-Groups exisinting slice into fixed length chunks and uses them as data store for destination type.
+Groups existing slice into fixed length chunks and uses them as data store for destination type.
 
 Correctly handles scalar types on both little-endian and big-endian platforms.
 
@@ -2831,7 +2831,7 @@ Pairwise map for vectors.
 Works with packed slices.
 
 Params:
-    fun = function to accomulate
+    fun = function to accumulate
     lag = an integer indicating which lag to use
 Returns: lazy ndslice composed of `fun(a_n, a_n+1)` values.
 

@@ -1,7 +1,7 @@
 /++
 Common floating point math functions.
 
-This module has generic LLVM-oriented API compatable with all D compilers.
+This module has generic LLVM-oriented API compatible with all D compilers.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-, Ilya Yaroshenko
@@ -32,7 +32,7 @@ version(LDC)
     It is similar to $(LREF fastmath), but does not allow unsafe-fp-math.
     This flag does NOT force LDC to use the reciprocal of an argument rather than perform division.
 
-    This flag is defualt for string lambdas.
+    This flag is default for string lambdas.
 
     Note: Can be used with all compilers.
     +/

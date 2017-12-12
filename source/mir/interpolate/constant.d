@@ -62,7 +62,7 @@ Returns: $(LREF Constant)
 template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (is(T == Unqual!T) && N <= 6)
 {
-    static if (N > 1) pragma(msg, "Warning: multivariate constant interplant was not tested.");
+    static if (N > 1) pragma(msg, "Warning: multivariate constant interpolant was not tested.");
 
     private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     private alias GridVectors = Constant!(T, N, GridIterators).GridVectors;

@@ -36,7 +36,7 @@ $(TR $(TH Function Name) $(TH Description))
 $(T2 rotated, Rotates two selected dimensions by `k*90` degrees. $(BR)
     `iota(2, 3).rotated` equals to `[[2, 5], [1, 4], [0, 3]]`.)
 $(T2 dropToHypercube, Returns maximal multidimensional cube of a slice.)
-$(T2 normalizeStructure, Reverses iteration order for dimensions with nagative strides, they become not negative;
+$(T2 normalizeStructure, Reverses iteration order for dimensions with negative strides, they become not negative;
 and sorts dimensions according to the strides, dimensions with larger strides are going first.)
 )
 
@@ -90,7 +90,7 @@ import mir.utility;
 @optmath:
 
 /++
-Reverses iteration order for dimensions with nagative strides, they become not negative;
+Reverses iteration order for dimensions with negative strides, they become not negative;
 and sorts dimensions according to the strides, dimensions with larger strides are going first.
 
 Params:

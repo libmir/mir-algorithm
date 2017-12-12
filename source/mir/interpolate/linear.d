@@ -91,7 +91,7 @@ version(mir_test)
     assert(approxEqual(xs.sliced.map!interpolation, data, 1e-4, 1e-4));
 }
 
-/// R^2 -> R: Bilinear interpolaiton
+/// R^2 -> R: Bilinear interpolation
 version(mir_test)
 @safe pure unittest
 {
@@ -133,7 +133,7 @@ version(mir_test)
     assert(appreq(d[1][1], y_x0x1));
 }
 
-/// R^3 -> R: Trilinear interpolaiton
+/// R^3 -> R: Trilinear interpolation
 version(mir_test)
 @safe pure unittest
 {
