@@ -630,11 +630,46 @@ Creates a mapped iterator. Uses `__map` if possible.
 auto mapIterator(alias fun, Iterator)(Iterator iterator)
 {
     static if (__traits(hasMember, Iterator, "__map"))
-        return Iterator.__map!fun(iterator);
+    {
+        static if (is(Iterator : MapIterator!(Iter0, fun0), Iter0, alias fun0)
+                && !__traits(compiles, Iterator.__map!fun(iterator)))
+        {
+            // https://github.com/libmir/mir-algorithm/issues/111
+            pragma(msg, __FUNCTION__~" not coalescing chained map calls into a single lambda, possibly because of multiple embedded context pointers");
+            return MapIterator!(Iterator, fun)(iterator);
+        }
+        else
+            return Iterator.__map!fun(iterator);
+    }
     else
        return MapIterator!(Iterator, fun)(iterator);
 }
 
+@safe pure nothrow @nogc version(mir_test) unittest
+{
+    // https://github.com/libmir/mir-algorithm/issues/111
+    import mir.ndslice.topology : iota, map;
+    import mir.functional : pipe;
+
+    static auto foo(T)(T x)
+    {
+        return x.map!(a => a + 1);
+    }
+
+    static auto bar(T)(T x)
+    {
+        return foo(x).map!(a => a + 2);
+    }
+
+    auto data = iota(5);
+    auto result = iota([5], 3);
+
+    auto x = data.map!(a => a + 1).map!(a => a + 2);
+    assert(x == result);
+
+    auto y = bar(data);
+    assert(y == result);
+}
 
 /++
 `BytegroupIterator` is used by $(SUBREF topology, Bytegroup) and $(SUBREF topology, bytegroup).
