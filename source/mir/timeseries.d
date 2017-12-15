@@ -91,21 +91,50 @@ Plain time series data structure.
 +/
 struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
 {
+    import std.range: SearchPolicy, assumeSorted;
+
+@optmath:
+
+    ///
+    Slice!(kind, packs, Iterator) _data;
+
+    ///
+    TimeIterator _time;
+
+    ///
+    this()(Slice!(Contiguous, [1], TimeIterator) time, Slice!(kind, packs, Iterator) data)
+    {
+        assert(time.length == data.length, "Series constructor: time and data lengths must be equal.");
+        _data = data;
+        _time = time._iterator;
+
+    }
+
+    ///
+    bool opEquals()(typeof(this) rhs)
+    {
+        return this.time == rhs.time && this.data == rhs.data;
+    }
+
     /++
     Time series is assumed to be sorted.
 
     `TimeIterator` is an iterator on top of date, date-time, time, or integer types.
     For example, `Date*`, `DateTime*`, `immutable(long)*`, `mir.ndslice.iterator.IotaIterator`.
     +/
-    Slice!(Contiguous, [1], TimeIterator) time;
+    Slice!(Contiguous, [1], TimeIterator) time() @property @trusted
+    {
+        return _time.sliced(_data._lengths[0]);
+    }
 
     /++
     Data is any ndslice with only one constraints, 
     `data` and `time` lengths should be equal.
     +/
-    Slice!(kind, packs, Iterator) data;
-
-@optmath:
+    Slice!(kind, packs, Iterator) data() @property @trusted
+    {
+        return _data;
+    }
 
     /++
     Special `[] =` index-assign operator for time-series.
@@ -133,7 +162,8 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         auto rdata = [1.0, 2, 3, 4].sliced;
         auto rseries = rtime.series(rdata);
 
-        series[] = rseries;
+        // series[] = rseries;
+        series.opIndexAssign(rseries);
         assert(series.data == [10, 2, 10, 3]);
     }
 
@@ -149,9 +179,8 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     void opIndexOpAssign(string op, TimeIterator_, SliceKind kind_, size_t[] packs_, Iterator_)
         (Series!(TimeIterator_, kind_, packs_, Iterator_) r)
     {
+        import std.traits: Unqual;
         auto l = this;
-        assert(r.data.length == r.time.length);
-        assert(l.data.length == l.time.length);
         if (r.empty)
             return;
         if (l.empty)
@@ -218,8 +247,6 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     bool empty(size_t dimension = 0)() const @property
         if (dimension < packs[0])
     {
-        static if (!dimension)
-            assert(data.length == time.length);
         return !length!dimension;
     }
 
@@ -227,9 +254,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     size_t length(size_t dimension = 0)() const @property
         if (dimension < packs[0])
     {
-        static if (!dimension)
-            assert(data.length == time.length);
-        return data.length!dimension;
+        return _data.length!dimension;
     }
 
     /// ditto
@@ -254,22 +279,22 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         assert(!empty!dimension);
         static if (dimension)
         {
-            return time.series(data.back!dimension);
+            return time.series(_data.back!dimension);
         }
         else
         {
-            return time.back.observation(data.back);
+            return time.back.observation(_data.back);
         }
     }
 
     /// ditto
-    void popFront(size_t dimension = 0)()
+    void popFront(size_t dimension = 0)() @trusted
         if (dimension < packs[0])
     {
         assert(!empty!dimension);
-        static if (!dimension)
-            time.popFront;
-        data.popFront!dimension;
+        static if (dimension == 0)
+            _time++;
+        _data.popFront!dimension;
     }
 
     /// ditto
@@ -277,19 +302,17 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         if (dimension < packs[0])
     {
         assert(!empty!dimension);
-        static if (!dimension)
-            time.popBack;
-        data.popBack!dimension;
+        _data.popBack!dimension;
     }
 
     /// ditto
-    void popFrontExactly(size_t dimension = 0)(size_t n)
+    void popFrontExactly(size_t dimension = 0)(size_t n) @trusted
         if (dimension < packs[0])
     {
         assert(length!dimension >= n);
-        static if (!dimension)
-            time.popFrontExactly(n);
-        data.popFrontExactly!dimension(n);
+        static if (dimension == 0)
+            _time += n;
+        _data.popFrontExactly!dimension(n);
     }
 
     /// ditto
@@ -297,9 +320,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         if (dimension < packs[0])
     {
         assert(length!dimension >= n);
-        static if (!dimension)
-            time.popBackExactly(n);
-        data.popBackExactly!dimension(n);
+        _data.popBackExactly!dimension(n);
     }
 
     /// ditto
@@ -329,7 +350,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
             "Series.opSlice!" ~ dimension.stringof ~ ": the left bound must be less than or equal to the right bound.");
         enum errorMsg = ": difference between the right and the left bounds"
                         ~ " must be less than or equal to the length of the given dimension.";
-        assert(j - i <= data._lengths[dimension],
+        assert(j - i <= _data._lengths[dimension],
               "Series.opSlice!" ~ dimension.stringof ~ errorMsg);
     }
     body
@@ -340,7 +361,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     /// ditto
     size_t opDollar(size_t dimension = 0)() const
     {
-        return data.opDollar!dimension;
+        return _data.opDollar!dimension;
     }
 
     /// ditto
@@ -357,19 +378,50 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
+    /++
+    This function uses a search with policy sp to find the largest left subrange on which 
+    `t < moment` is true for all `t`.
+    The search schedule and its complexity are documented in `std.range.SearchPolicy`.
+    +/
+    auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment)
+    {
+        return this[0 .. time.assumeSorted.lowerBound!sp(moment).length];
+    }
+
+    /++
+    This function uses a search with policy sp to find the largest left subrange on which 
+    `t > moment` is true for all `t`.
+    The search schedule and its complexity are documented in `std.range.SearchPolicy`.
+    +/
+    auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment)
+    {
+        return this[$ - time.assumeSorted.upperBound!sp(moment).length .. $];
+    }
+
     /// ditto
     auto save()() @property
     {
         return this;
     }
+
+    bool contains(Time)(Time momemt)
+    {
+        return time.assumeSorted.contains(momemt);
+    }
 }
 
 /// 1-dimensional data
-version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     auto time = [1, 2, 3, 4].sliced;
     auto data = [2.1, 3.4, 5.6, 7.8].sliced;
     auto series = time.series(data);
+
+    assert(series.contains(2));
+    assert(!series.contains(5));
+
+    assert(series.lowerBound(2) == series[0 .. 1]);
+    assert(series.upperBound(2) == series[2 .. $]);
 
     /// slicing
     auto seriesSlice  = series[1 .. $ - 1];
@@ -392,7 +444,7 @@ version(mir_test) unittest
 }
 
 /// 2-dimensional data
-version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import std.datetime: Date;
     import mir.ndslice.topology: canonical, iota;
@@ -521,7 +573,7 @@ template sort(alias less = "a < b")
 }
 
 /// 1D data
-version(mir_test) unittest
+pure version(mir_test) unittest
 {
     auto time = [1, 2, 4, 3].sliced;
     auto data = [2.1, 3.4, 5.6, 7.8].sliced;
@@ -535,7 +587,7 @@ version(mir_test) unittest
 }
 
 /// 2D data
-version(mir_test) unittest
+pure version(mir_test) unittest
 {
     import mir.timeseries;
     import mir.ndslice.allocation: uninitSlice;
