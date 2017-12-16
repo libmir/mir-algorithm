@@ -243,6 +243,50 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         assert(series.data == [10, 12, 10, 13]);
     }
 
+    /++
+    This function uses a search with policy sp to find the largest left subrange on which 
+    `t < moment` is true for all `t`.
+    The search schedule and its complexity are documented in `std.range.SearchPolicy`.
+    +/
+    auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment)
+    {
+        return this[0 .. time.assumeSorted.lowerBound!sp(moment).length];
+    }
+
+    /++
+    This function uses a search with policy sp to find the largest left subrange on which 
+    `t > moment` is true for all `t`.
+    The search schedule and its complexity are documented in `std.range.SearchPolicy`.
+    +/
+    auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment)
+    {
+        return this[$ - time.assumeSorted.upperBound!sp(moment).length .. $];
+    }
+
+    ///
+    bool contains(Time)(Time moment)
+    {
+        size_t idx = time.assumeSorted.lowerBound(moment).length;
+        return idx < _data._lengths[0] && time[idx] == moment;
+    }
+
+    ///
+    auto opBinaryRight(string op : "in", Time)(Time moment)
+    {
+        size_t idx = time.assumeSorted.lowerBound(moment).length;
+        bool cond = idx < _data._lengths[0] && time[idx] == moment;
+        static if (__traits(compiles, &_data[size_t.init]))
+        {
+            if (cond)
+                return &_data[idx];
+            return null; 
+        }
+        else
+        {
+            return bool(cond);
+        }
+    }
+
     /// ndslice-like primitives
     bool empty(size_t dimension = 0)() const @property
         if (dimension < packs[0])
@@ -378,35 +422,10 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
-    /++
-    This function uses a search with policy sp to find the largest left subrange on which 
-    `t < moment` is true for all `t`.
-    The search schedule and its complexity are documented in `std.range.SearchPolicy`.
-    +/
-    auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment)
-    {
-        return this[0 .. time.assumeSorted.lowerBound!sp(moment).length];
-    }
-
-    /++
-    This function uses a search with policy sp to find the largest left subrange on which 
-    `t > moment` is true for all `t`.
-    The search schedule and its complexity are documented in `std.range.SearchPolicy`.
-    +/
-    auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment)
-    {
-        return this[$ - time.assumeSorted.upperBound!sp(moment).length .. $];
-    }
-
     /// ditto
     auto save()() @property
     {
         return this;
-    }
-
-    bool contains(Time)(Time momemt)
-    {
-        return time.assumeSorted.contains(momemt);
     }
 }
 
@@ -418,7 +437,10 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     auto series = time.series(data);
 
     assert(series.contains(2));
+    assert( ()@trusted{ return (2 in series) is &data[1]; }() );
+
     assert(!series.contains(5));
+    assert( ()@trusted{ return (5 in series) is null; }() );
 
     assert(series.lowerBound(2) == series[0 .. 1]);
     assert(series.upperBound(2) == series[2 .. $]);
@@ -502,6 +524,72 @@ enum isSeries(U : Series!(TimeIterator, kind, packs, Iterator), TimeIterator, Sl
 
 /// ditto
 enum isSeries(U) = (size_t[]).init;
+
+
+/++
+Finds an index such that `series.time[index] == moment`.
+
+Params:
+    series = timeseries
+    moment = time moment to find in the series
+Returns:
+    `size_t.max` if the series does not contain the moment and appropriate index otherwise.
++/
+size_t findIndex(TimeIterator, SliceKind kind, size_t[] packs, Iterator, Time)(Series!(TimeIterator, kind, packs, Iterator) series, Time moment)
+{
+    import std.range: assumeSorted;
+
+    auto idx = series.time.assumeSorted.lowerBound(moment).length;
+    if (idx < series._data._lengths[0] && series.time[idx] == moment)
+    {
+        return idx;
+    }
+    return size_t.max;
+}
+
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    auto time = [1, 2, 3, 4].sliced;
+    auto data = [2.1, 3.4, 5.6, 7.8].sliced;
+    auto series = time.series(data);
+
+    assert(series.data[series.findIndex(3)] == 5.6);
+    assert(series.findIndex(0) == size_t.max);
+}
+
+/++
+Finds a backward index such that `series.time[$ - backward_index] == moment`.
+
+Params:
+    series = timeseries
+    moment = time moment to find in the series
+Returns:
+    `0` if the series does not contain the moment and appropriate backward index otherwise.
++/
+size_t find(TimeIterator, SliceKind kind, size_t[] packs, Iterator, Time)(Series!(TimeIterator, kind, packs, Iterator) series, Time moment)
+{
+    import std.range: assumeSorted;
+
+    auto idx = series.time.assumeSorted.lowerBound(moment).length;
+    auto bidx = series._data._lengths[0] - idx;
+    if (bidx && series.time[idx] == moment)
+    {
+        return bidx;
+    }
+    return 0;
+}
+
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    auto time = [1, 2, 3, 4].sliced;
+    auto data = [2.1, 3.4, 5.6, 7.8].sliced;
+    auto series = time.series(data);
+
+    assert(series.data[$ - series.find(3)] == 5.6);
+    assert(series.find(0) == 0);
+}
 
 /++
 Sorts time-series according to the `less` predicate applied to time observations.
