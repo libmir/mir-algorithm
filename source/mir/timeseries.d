@@ -16,6 +16,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.timeseries;
 
 public import mir.ndslice.slice;
+import std.traits;
 
 ///
 version(mir_test) unittest
@@ -111,7 +112,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    bool opEquals()(typeof(this) rhs)
+    bool opEquals()(const typeof(this) rhs) const
     {
         return this.time == rhs.time && this.data == rhs.data;
     }
@@ -122,7 +123,19 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     `TimeIterator` is an iterator on top of date, date-time, time, or integer types.
     For example, `Date*`, `DateTime*`, `immutable(long)*`, `mir.ndslice.iterator.IotaIterator`.
     +/
-    Slice!(Contiguous, [1], TimeIterator) time() @property @trusted
+    auto time()() @property @trusted
+    {
+        return _time.sliced(_data._lengths[0]);
+    }
+
+    /// ditto
+    auto time()() @property @trusted const
+    {
+        return _time.sliced(_data._lengths[0]);
+    }
+
+    /// ditto
+    auto time()() @property @trusted immutable
     {
         return _time.sliced(_data._lengths[0]);
     }
@@ -131,9 +144,21 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     Data is any ndslice with only one constraints, 
     `data` and `time` lengths should be equal.
     +/
-    Slice!(kind, packs, Iterator) data() @property @trusted
+    auto data()() @property @trusted
     {
         return _data;
+    }
+
+    /// ditto
+    auto data()() @property @trusted const
+    {
+        return _data[];
+    }
+
+    /// ditto
+    auto data()() @property @trusted immutable
+    {
+        return _data[];
     }
 
     /++
@@ -205,7 +230,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
             if (lf == rf)
             {
             E:
-                static if (isSlice!(typeof(l.data.front)))
+                static if (packs != [1])
                     mixin("l.data.front[] " ~ op ~ "= r.data.front;");
                 else
                     mixin("l.data.front   " ~ op ~ "= r.data.front;");
@@ -253,12 +278,25 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
         return this[0 .. time.assumeSorted.lowerBound!sp(moment).length];
     }
 
+    /// ditto
+    auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment) const
+    {
+        return this[0 .. time.assumeSorted.lowerBound!sp(moment).length];
+    }
+
+
     /++
     This function uses a search with policy sp to find the largest left subrange on which 
     `t > moment` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
     auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment)
+    {
+        return this[$ - time.assumeSorted.upperBound!sp(moment).length .. $];
+    }
+
+    /// ditto
+    auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Time)(Time moment) const
     {
         return this[$ - time.assumeSorted.upperBound!sp(moment).length .. $];
     }
@@ -412,6 +450,49 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     auto opIndex(Slices...)(Slices slices)
         if (allSatisfy!(templateOr!(is_Slice, isIndex), Slices))
     {
+        static if (Slices.length == 0)
+        {
+            return this;
+        }
+        else
+        static if (is_Slice!(Slices[0]))
+        {
+            return time[slices[0]].series(data[slices]);
+        }
+        else
+        {
+            return time[slices[0]].observation(data[slices]);
+        }
+    }
+
+    /// ditto
+    auto opIndex(Slices...)(Slices slices) const
+        if (allSatisfy!(templateOr!(is_Slice, isIndex), Slices))
+    {
+        static if (Slices.length == 0)
+        {
+            return time.series(_data[]);
+        }
+        else
+        static if (is_Slice!(Slices[0]))
+        {
+            return time[slices[0]].series(data[slices]);
+        }
+        else
+        {
+            return time[slices[0]].observation(data[slices]);
+        }
+    }
+
+    /// ditto
+    auto opIndex(Slices...)(Slices slices) immutable
+        if (allSatisfy!(templateOr!(is_Slice, isIndex), Slices))
+    {
+        static if (Slices.length == 0)
+        {
+            return time.series(_data[]);
+        }
+        else
         static if (is_Slice!(Slices[0]))
         {
             return time[slices[0]].series(data[slices]);
@@ -435,6 +516,7 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
     auto time = [1, 2, 3, 4].sliced;
     auto data = [2.1, 3.4, 5.6, 7.8].sliced;
     auto series = time.series(data);
+    const cseries = series;
 
     assert(series.contains(2));
     assert( ()@trusted{ return (2 in series) is &data[1]; }() );
@@ -444,6 +526,17 @@ struct Series(TimeIterator, SliceKind kind, size_t[] packs, Iterator)
 
     assert(series.lowerBound(2) == series[0 .. 1]);
     assert(series.upperBound(2) == series[2 .. $]);
+
+    assert(cseries.lowerBound(2) == cseries[0 .. 1]);
+    assert(cseries.upperBound(2) == cseries[2 .. $]);
+
+    // slicing type deduction for const / immutable series
+    static assert(is(typeof(series[]) == 
+        Series!(int*, cast(SliceKind)2, [1LU], double*)));
+    static assert(is(typeof(cseries[]) == 
+        Series!(const(int)*, cast(SliceKind)2, [1LU], const(double)*)));
+    static assert(is(typeof((cast(immutable) series)[]) == 
+        Series!(immutable(int)*, cast(SliceKind)2, [1LU], immutable(double)*)));
 
     /// slicing
     auto seriesSlice  = series[1 .. $ - 1];

@@ -1518,6 +1518,13 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         return this[index];
     }
 
+    auto ref backward()(size_t[packs[0]] index) @safe const
+    {
+        foreach (i; Iota!(packs[0]))
+            index[i] = _lengths[i] - index[i];
+        return this[index];
+    }
+
     static if (doUnittest)
     ///
     @safe @nogc pure nothrow version(mir_test) unittest
@@ -1782,6 +1789,20 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     return Ret(_lengths[I .. N], _strides, _iterator + indexStride(_indexes));
             }
         }
+    }
+
+    /// ditto
+    auto ref opIndex(size_t I)(size_t[I] _indexes) @trusted const
+        if (I && I <= packs[0])
+    {
+        return this[][_indexes];
+    }
+
+    /// ditto
+    auto ref opIndex(size_t I)(size_t[I] _indexes) @trusted immutable
+        if (I && I <= packs[0])
+    {
+        return this[][_indexes];
     }
 
     /++
