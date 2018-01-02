@@ -725,14 +725,14 @@ template sort(alias less = "a < b")
                 SliceKind kind,
                 size_t[] packs,
                 Iterator,
-                SliceKind indexKind,
-                IndexIterator,
+                SliceKind sortIndexKind,
+                SortIndexIterator,
                 SliceKind dataKind,
                 DataIterator,
                 )
             (
                 Series!(IndexIterator, kind, packs, Iterator) series,
-                Slice!(indexKind, [1], IndexIterator) indexBuffer,
+                Slice!(sortIndexKind, [1], SortIndexIterator) indexBuffer,
                 Slice!(dataKind, [1], DataIterator) dataBuffer,
             )
             if (packs.length == 1)
