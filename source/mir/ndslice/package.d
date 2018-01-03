@@ -571,8 +571,8 @@ version(mir_test) unittest
 pure nothrow version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
-    import std.array : array;
     import std.range : iota;
+    import mir.array.allocation : array;
     auto r = 1000.iota.array;
 
     auto t0 = r.sliced(1000);

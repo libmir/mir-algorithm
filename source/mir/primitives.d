@@ -91,7 +91,6 @@ version(mir_test) unittest
 
 ///
 template DimensionCount(T)
-    if (hasShape!T || hasLength!T)
 {
     static if (hasShape!T)
         enum size_t DimensionCount = typeof(T.init.shape).length;

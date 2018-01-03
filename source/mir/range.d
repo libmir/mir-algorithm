@@ -36,7 +36,7 @@ struct Counter(T)
 
     private template canPutRange(Range)
     {
-        import std.array: front;
+        import mir.primitives: front;
         enum bool canPutRange =
             isInputRange!Range &&
             is(typeof(Counter.init.put(Range.init.front)));

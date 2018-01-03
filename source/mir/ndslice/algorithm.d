@@ -47,7 +47,6 @@ import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.primitives;
 
-
 @optmath:
 
 private void checkShapesMatch(

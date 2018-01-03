@@ -19,15 +19,20 @@ public import mir.ndslice.slice;
 import std.traits;
 
 ///
-version(mir_test) unittest
+@safe version(mir_test) unittest
 {
     import std.datetime.date: Date;
-    import std.algorithm.setops: nWayUnion;
-    import std.algorithm.iteration: uniq;
-    import std.array: array;
+    import std.algorithm.mutation: move;
+
+    import mir.array.allocation: array;
+
+    import mir.algorithm.setops: multiwayUnion;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
 
+    //////////////////////////////////////
+    // Constructs two time-series.
+    //////////////////////////////////////
     auto index0 = [
         Date(2017, 01, 01),
         Date(2017, 03, 01),
@@ -44,7 +49,31 @@ version(mir_test) unittest
     auto data1 = [10.0, 20, 50].sliced;
     auto series1 = index1.series(data1);
 
-    auto index = [index0, index1].nWayUnion.uniq.array.sliced;
+    //////////////////////////////////////
+    // Merges multiple series into one.
+    // Allocates using GC. M
+    // Makes exactly two allocations per merge:
+    // one for index/time and one for data.
+    //////////////////////////////////////
+    auto m0 = merge(series0, series1);
+    auto m1 = merge(series1, series0); // order is matter
+
+    assert(m0.index == [
+        Date(2017, 01, 01),
+        Date(2017, 02, 01),
+        Date(2017, 03, 01),
+        Date(2017, 04, 01),
+        Date(2017, 05, 01)]);
+
+    assert(m0.index == m1.index);
+    assert(m0.data == [ 1, 20,  3,  4, 50]);
+    assert(m1.data == [10, 20,  3,  4, 50]);
+
+    //////////////////////////////////////
+    // Joins two time-series into a one with two columns.
+    //////////////////////////////////////
+    auto u = [index0, index1].multiwayUnion;
+    auto index = u.move.array.sliced;
     auto data = slice!double([index.length, 2], 0); // initialized to 0 value
     auto series = index.series(data);
 
@@ -75,7 +104,7 @@ struct Observation(Index, Data)
 {
     /// Date, date-time, time, or index.
     Index index;
-    /// An alias for time-series observation.
+    /// An alias for time-series index.
     alias time = index;
     /// Value or ndslice.
     Data data;
@@ -103,6 +132,11 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     ///
     IndexIterator _index;
+
+    ///
+    alias Index = typeof(this.front.index);
+    ///
+    alias Data = typeof(this.front.data);
 
     ///
     this()(Slice!(Contiguous, [1], IndexIterator) index, Slice!(kind, packs, Iterator) data)
@@ -142,7 +176,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return _index.sliced(_data._lengths[0]);
     }
 
-    /// An alias for time-series.
+    /// An alias for time-series index.
     alias time = index;
 
     /++
@@ -217,45 +251,39 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
             return;
         Unqual!(typeof(r.index.front)) rf = r.index.front;
         Unqual!(typeof(l.index.front)) lf = l.index.front;
+        goto Begin;
+    R:
+        r.popFront;
+        if (r.empty)
+            goto End;
+        rf = r.index.front;
+    Begin:
         if (lf > rf)
             goto R;
         if (lf < rf)
             goto L;
-        goto E;
-        F: for(;;)
-        {
-            R: do
-            {
-                r.popFront;
-                if (r.empty)
-                    break F;
-                rf = r.index.front;
-            }
-            while(lf > rf);
-            if (lf == rf)
-            {
-            E:
-                static if (packs != [1])
-                    mixin("l.data.front[] " ~ op ~ "= r.data.front;");
-                else
-                    mixin("l.data.front   " ~ op ~ "= r.data.front;");
+    E:
+        static if (packs != [1])
+            mixin("l.data.front[] " ~ op ~ "= r.data.front;");
+        else
+            mixin("l.data.front   " ~ op ~ "= r.data.front;");
 
-                r.popFront;
-                if (r.empty)
-                    break F;
-                rf = r.index.front;
-            }
-            L: do
-            {
-                l.popFront;
-                if (l.empty)
-                    break F;
-                lf = l.index.front;
-            }
-            while(lf < rf);
-            if (lf == rf)
-                goto E;
-        }
+        r.popFront;
+        if (r.empty)
+            goto End;
+        rf = r.index.front;
+    L:
+        l.popFront;
+        if (l.empty)
+            goto End;
+        lf = l.index.front;
+
+        if (lf < rf)
+            goto L;
+        if (lf == rf)
+            goto E;
+        goto R;
+    End:
     }
 
     ///
@@ -629,7 +657,7 @@ Finds an index such that `series.index[index] == moment`.
 
 Params:
     series = series
-    moment = index moment to find in the series
+    moment = index to find in the series
 Returns:
     `size_t.max` if the series does not contain the moment and appropriate index otherwise.
 +/
@@ -685,7 +713,15 @@ size_t find(IndexIterator, SliceKind kind, size_t[] packs, Iterator, Index)(Seri
     auto data = [2.1, 3.4, 5.6, 7.8].sliced;
     auto series = index.series(data);
 
-    assert(series.data[$ - series.find(3)] == 5.6);
+    if (auto bi = series.find(3))
+    {
+        assert(series.data[$ - bi] == 5.6);
+    }
+    else
+    {
+        assert(0);
+    }
+
     assert(series.find(0) == 0);
 }
 
@@ -770,6 +806,11 @@ pure version(mir_test) unittest
     /// initial index and data are the same
     assert(index.iterator is series.index.iterator);
     assert(data.iterator is series.data.iterator);
+
+    foreach(obs; series)
+    {
+        static assert(is(typeof(obs) == Observation!(int, double)));
+    }
 }
 
 /// 2D data
@@ -800,4 +841,87 @@ pure version(mir_test) unittest
     /// initial index and data are the same
     assert(index.iterator is series.index.iterator);
     assert(data.iterator is series.data.iterator);
+}
+
+/++
+Merges multiple timeseries into one.
+
+This funcitons allocates using the GC.
++/
+auto merge(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N)(Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple...)
+    if (N > 1 && packs.length == 1)
+{
+    import mir.internal.utility: Iota;
+    Slice!(Contiguous, [1], IndexIterator)[N] indeces;
+    foreach (i; Iota!N)
+        indeces[i] = seriesTuple[i].index;
+    return mergeImpl(indeces, seriesTuple);
+}
+
+/// ditto
+private pragma(inline, false)
+auto mergeImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator)(
+    Slice!(Contiguous, [1], IndexIterator)[] indecesTuple,
+    Series!(IndexIterator, kind, packs, Iterator)[] seriesTuple,
+    )
+    if (packs.length == 1)
+{
+    import mir.internal.utility: Iota;
+    import mir.algorithm.setops: multiwayUnion, unionLength;
+    import mir.ndslice.allocation: uninitSlice;
+    import std.range: walkLength;
+    import mir.array.allocation: array;
+    import mir.ndslice.topology: map;
+    import std.conv: emplace;
+
+    import std.algorithm.mutation: move;
+
+    enum N = packs[0];
+
+    alias I = typeof(seriesTuple[0].front.index);
+    alias E = typeof(seriesTuple[0].front.data);
+    alias R = Series!(I*, Contiguous, packs, E*);
+    alias UI = Unqual!I;
+    alias UE = Unqual!E;
+
+    immutable len = indecesTuple.unionLength;
+
+    static if (N > 1)
+    {
+        auto shape = dataSlices[0].shape;
+        shape[0] = index.length;
+
+        foreach (ref sl; dataSlices[1 .. $])
+            foreach (i; Iota!(1, packs[0]))
+                if (data[0].shape[i] != sl.shape[i])
+                    assert(0, "shapes mismatch");
+    }
+    else
+    {
+        alias shape = len;
+    }
+
+    auto ret = len.uninitSlice!UI.series(shape.uninitSlice!UE);
+
+    auto it = ret;
+    auto u = seriesTuple.multiwayUnion!"a.index < b.index";
+
+    if(it.length) do
+    {
+        auto obs = u.front;
+        emplace(it._index, obs.index);
+        static if (packs == [1])
+            emplace(it._data._iterator, obs.data);
+        else
+        {
+            each!((ref to, ref from) @trusted {
+                cast(void) emplace(&to, from);
+            })(it._data.front, obs.data);
+        }
+        u.popFront;
+        it.popFront;
+    }
+    while(it.length);
+
+    return cast(R) ret;
 }

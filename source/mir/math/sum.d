@@ -194,7 +194,7 @@ unittest
 {
     import mir.ndslice.topology: linspace;
     import mir.math.sum;
-    import std.array: array;
+    import mir.array.allocation: array;
 
     class MovingAverage
     {
@@ -1591,7 +1591,7 @@ unittest
 {
     import mir.functional: RefTuple, refTuple;
     import mir.ndslice.topology: map, iota, retro;
-    import std.array: array;
+    import mir.array.allocation: array;
     import std.math: isInfinity, isFinite, isNaN;
 
     Summator!(double, Summation.precise) summator = 0.0;

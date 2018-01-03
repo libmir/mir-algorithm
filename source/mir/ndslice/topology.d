@@ -1833,7 +1833,7 @@ Slice!(Contiguous, [M], FieldIterator!(RepeatField!T))
 {
     alias Ret = typeof(return);
     size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
+    auto strides = sizediff_t[Ret.S].init;
     foreach (i; Iota!M)
         lengths[i] = rlengths[i];
     return Ret(lengths, strides, FieldIterator!(RepeatField!T)(0, RepeatField!T(cast(RepeatField!T.UT) value)));

@@ -603,11 +603,13 @@ template forward(args...)
 {
     static if (args.length)
     {
+        import std.algorithm.mutation : move;
+
         alias arg = args[0];
         static if (__traits(isRef, arg))
             alias fwd = arg;
         else
-            @optmath @property fwd()(){ return arg; } //TODO: use move
+            @optmath @property fwd()(){ return arg.move; }
         alias forward = AliasSeq!(fwd, forward!(args[1..$]));
     }
     else

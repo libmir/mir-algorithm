@@ -301,15 +301,15 @@ Returns:
 +/
 auto ndarray(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
-    import std.array : array;
+    import  mir.array.allocation : array;
     static if (slice.N == 1)
     {
         return array(slice);
     }
     else
     {
-        import std.algorithm.iteration : map;
-        return array(slice.map!(a => .ndarray(a)));
+        import mir.ndslice.topology: ipack, map;
+        return array(slice.ipack!1.map!(a => .ndarray(a)));
     }
 }
 

@@ -2901,7 +2901,7 @@ pure nothrow version(mir_test) unittest
 pure nothrow version(mir_test) unittest
 {
     import std.algorithm.iteration : map;
-    import std.array : array;
+    import mir.array.allocation : array;
     //import std.bigint;
     import std.range : iota;
 
