@@ -80,15 +80,24 @@ ContiguousSlice!(N, T)
 /// ditto
 auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
-    alias T = Unqual!(slice.DeepElemType);
-    static if (hasElaborateAssign!T)
-        alias fun = .slice;
+    if (__ctfe)
+    {
+        import mir.ndslice.topology: flattened;
+        import mir.array.allocation: array;
+        return slice.flattened.array.sliced(slice.shape);
+    }
     else
-        alias fun = .uninitSlice;
-    auto ret = (shape)@trusted{ return fun!T(shape);}(slice.shape);
-    ret[] = slice;
-    auto retq = ()@trusted{ return (cast(slice.DeepElemType*)ret._iterator).sliced(ret.shape); }();
-    return retq;
+    {
+        import std.backdoor: emplaceRef;
+        alias E = slice.DeepElemType;
+
+        auto result = (() @trusted => slice.shape.uninitSlice!(Unqual!E))();
+
+        import mir.ndslice.algorithm: each;
+        each!((ref to, auto ref from) => emplaceRef!E(to, from))(result, slice);
+
+        return (() @trusted => cast(Slice!(Contiguous, [packs[0]], E*)) result)();
+    }
 }
 
 ///
@@ -197,41 +206,20 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
     return array.sliced(lengths);
 }
 
-///// ditto
-//ContiguousSlice!(N, T)
-//makeSlice(T,
-//    Flag!`replaceArrayWithPointer` ra = Yes.replaceArrayWithPointer,
-//    Allocator,
-//    SliceKind kind, size_t[] packs, Iterator)(auto ref Allocator alloc, Slice!(kind, packs, Iterator) slice)
-//{
-//    import std.experimental.allocator : makeArray;
-//    import mir.ndslice.topology : flattened;
-//    auto array = alloc.makeArray!T(slice.flattened);
-//    auto _slice = array.sliced!ra(slice.shape);
-//    return typeof(return)(array, _slice);
-//}
+/// ditto
+auto makeSlice(Allocator, SliceKind kind, size_t[] packs, Iterator)
+    (auto ref Allocator allocator, Slice!(kind, packs, Iterator) slice)
+{
+    import std.backdoor: emplaceRef;
+    alias E = slice.DeepElemType;
 
-/////
-version(mir_test)
-//@nogc unittest
-//{
-//    import std.experimental.allocator;
-//    import std.experimental.allocator.mallocator;
+    auto result = allocator.makeUninitSlice!(Unqual!E)(slice.shape);
 
-//    auto tup = makeSlice!int(Mallocator.instance, 2, 3, 4);
+    import mir.ndslice.algorithm: each;
+    each!((ref to, auto ref from) => emplaceRef!E(to, from))(result, slice);
 
-//    assert(tup.array.length           == 24);
-//    assert(tup.slice.elementsCount    == 24);
-//    assert(tup.array.ptr == &tup.slice[0, 0, 0]);
-
-//     //makes duplicate using `makeSlice`
-//    tup.slice[0, 0, 0] = 3;
-//    auto dup = makeSlice(Mallocator.instance, tup.slice);
-//    assert(dup.slice == tup.slice);
-
-//    Mallocator.instance.dispose(tup.array);
-//    Mallocator.instance.dispose(dup.array);
-//}
+    return cast(Slice!(Contiguous, [packs[0]], E*)) result;
+}
 
 /// Initialization with default value
 version(mir_test)
@@ -239,11 +227,19 @@ version(mir_test)
 {
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.topology: map;
 
-    auto sl = makeSlice(Mallocator.instance, [2, 3, 4], 10);
+    auto sl = Mallocator.instance.makeSlice([2, 3, 4], 10);
     auto ar = sl.field;
-    assert(sl[1, 1, 1] == 10);
+    assert(sl.all!"a == 10");
+
+    auto sl2 = Mallocator.instance.makeSlice(sl.map!"a * 2");
+    auto ar2 = sl2.field;
+    assert(sl2.all!"a == 20");
+
     Mallocator.instance.dispose(ar);
+    Mallocator.instance.dispose(ar2);
 }
 
 version(mir_test)
@@ -270,6 +266,7 @@ Returns:
 +/
 ContiguousSlice!(N, T)
 makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
+    if (N)
 {
     if (immutable len = lengthsProduct(lengths))
     {

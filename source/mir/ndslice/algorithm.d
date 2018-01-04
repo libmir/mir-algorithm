@@ -75,6 +75,21 @@ template frontOf(size_t N)
     }
 }
 
+template allFlattened(args...)
+{
+    static if (args.length)
+    {
+        alias arg = args[0];
+        @optmath @property fwd()(){
+            import mir.ndslice.topology: flattened;
+            return arg.flattened;
+        }
+        alias allFlattened = AliasSeq!(fwd, allFlattened!(args[1..$]));
+    }
+    else
+        alias allFlattened = AliasSeq!();
+}
+
 private template areAllContiguousTensors(Slices...)
 {
     import mir.ndslice.traits: isContiguousSlice;
@@ -82,28 +97,6 @@ private template areAllContiguousTensors(Slices...)
         enum areAllContiguousTensors = packsOf!(Slices[0])[0] > 1;
      else
         enum areAllContiguousTensors = false;
-}
-
-private template Flattened(Slice)
-{
-    import mir.ndslice.topology: flattened;
-    alias Flattened = typeof(Slice.init.flattened);
-}
-
-private alias FlattenedList(Slices...) = staticMap!(Flattened, Slices);
-
-private void createVectors(Args...)(ref Args args)
-{
-    static assert(Args.length % 2 == 0);
-    alias slices = args[0 .. $ / 2];
-    alias vectors = args[$ / 2 .. $];
-    foreach (i, ref vector; vectors)
-    {
-        import mir.ndslice.topology;
-        vector = slices[i].flattened;
-        static if (i)
-            vector._lengths[0] = vectors[0]._lengths[0]; // hint for compiler
-    }
 }
 
 version(LDC) {}
@@ -224,9 +217,7 @@ template reduce(alias fun)
         slices.checkShapesMatch;
         static if (areAllContiguousTensors!Slices)
         {
-            FlattenedList!Slices vectors;
-            createVectors(slices, vectors);
-            return .reduce!fun(seed, vectors);
+            return .reduce!fun(seed, allFlattened!slices);
         }
         else
         {
@@ -247,9 +238,7 @@ template reduce(alias fun)
         slices.checkShapesMatch;
         static if (areAllContiguousTensors!Slices)
         {
-            FlattenedList!Slices vectors;
-            createVectors(slices, vectors);
-            return .reduce!fun(seed, vectors);
+            return .reduce!fun(seed, allFlattened!slices);
         }
         else
         {
@@ -458,9 +447,7 @@ template each(alias fun)
         slices.checkShapesMatch;
         static if (areAllContiguousTensors!Slices)
         {
-            FlattenedList!Slices vectors;
-            createVectors(slices, vectors);
-            .each!fun(vectors);
+            .each!fun(allFlattened!slices);
         }
         else
         {
@@ -1471,9 +1458,7 @@ template any(alias pred = "a")
         slices.checkShapesMatch;
         static if (areAllContiguousTensors!Slices)
         {
-            FlattenedList!Slices vectors;
-            createVectors(slices, vectors);
-            return .any!pred(vectors);
+            return .any!pred(allFlattened!slices);
         }
         else
         {
@@ -1617,9 +1602,7 @@ template all(alias pred = "a")
         slices.checkShapesMatch;
         static if (areAllContiguousTensors!Slices)
         {
-            FlattenedList!Slices vectors;
-            createVectors(slices, vectors);
-            return .all!pred(vectors);
+            return .all!pred(allFlattened!slices);
         }
         else
         {
@@ -1753,9 +1736,7 @@ template count(alias fun)
         else
         static if (areAllContiguousTensors!Slices)
         {
-            FlattenedList!Slices vectors;
-            createVectors(slices, vectors);
-            return .count!fun(vectors);
+            return .count!fun(allFlattened!slices);
         }
         else
         {

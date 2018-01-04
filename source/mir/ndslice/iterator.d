@@ -635,7 +635,7 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
                 && !__traits(compiles, Iterator.__map!fun(iterator)))
         {
             // https://github.com/libmir/mir-algorithm/issues/111
-            pragma(msg, __FUNCTION__~" not coalescing chained map calls into a single lambda, possibly because of multiple embedded context pointers");
+            debug(mir) pragma(msg, __FUNCTION__~" not coalescing chained map calls into a single lambda, possibly because of multiple embedded context pointers");
             return MapIterator!(Iterator, fun)(iterator);
         }
         else

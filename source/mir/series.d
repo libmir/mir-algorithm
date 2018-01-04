@@ -107,8 +107,12 @@ struct Observation(Index, Data)
     Index index;
     /// An alias for time-series index.
     alias time = index;
+    /// An alias for key-value representation.
+    alias key = index;
     /// Value or ndslice.
     Data data;
+    /// An alias for key-value representation.
+    alias value = index;
 }
 
 /// Convenient function for $(LREF Observation) construction.
@@ -149,7 +153,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    bool opEquals()(const typeof(this) rhs) const
+    bool opEquals(RhsIndexIterator, SliceKind rhsKind, size_t[] rhsPacks, RhsIterator)(Series!(RhsIndexIterator, rhsKind, rhsPacks, RhsIterator) rhs) const
     {
         return this.index == rhs.index && this.data == rhs.data;
     }
@@ -179,6 +183,8 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// An alias for time-series index.
     alias time = index;
+    /// An alias for key-value representation.
+    alias key = index;
 
     /++
     Data is any ndslice with only one constraints, 
@@ -200,6 +206,9 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     {
         return _data[];
     }
+
+    /// An alias for key-value representation.
+    alias value = index;
 
     /++
     Special `[] =` index-assign operator for index-series.
@@ -344,26 +353,26 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Throws:
         Exception if the series does not contains the index.
     */
-    auto ref get(Index)(Index moment, lazy Exception exc = null)
+    auto ref get(Index)(Index moment, lazy Exception exc = null) inout
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         if (idx < _data._lengths[0] && index[idx] == moment)
         {
             return data[idx];
         }
-        static immutable e = new Exception(Index.stringof ~ "-" ~ typeof(data[idx]).stringof ~ " series does not contain required index." );
-        throw exc ? exc : e;
+        throw exc ? exc : new Exception(Unqual!Index.stringof ~ "-" ~ Unqual!(typeof(_data[size_t.init])).stringof ~ " series does not contain required index." );
     }
 
     ///
-    bool contains(Index)(Index moment)
+    bool contains(Index)(Index moment) const
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         return idx < _data._lengths[0] && index[idx] == moment;
     }
 
+    static if (packs == [1])
     ///
-    auto opBinaryRight(string op : "in", Index)(Index moment)
+    auto opBinaryRight(string op : "in", Index)(Index moment) inout @trusted
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         bool cond = idx < _data._lengths[0] && index[idx] == moment;
@@ -700,31 +709,31 @@ Series!(K*, Contiguous, [1], V*) series(K, V)(V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
     immutable size_t length = aa.length;
+    alias R = typeof(return);
     auto ret = ()
     {
         if (__ctfe)
         {
-            auto ret = series(new Unqual!K[length], new Unqual!V[length]);
-            auto it = ret;
+            K[] keys;
+            V[] values;
             foreach(kv; aa.byKeyValue)
             {
-                it.index.front = kv.key;
-                it._data.front = kv.value;
-                it.popFront;
+                keys ~= kv.key;
+                values ~= kv.value;
             }
-            return ret;
+            return (()=>.series(cast(Unqual!K[])keys, cast(Unqual!V[])values))();
         }
         else
         {
             import mir.ndslice.allocation: uninitSlice;
-            import std.conv: emplace;
 
             auto ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
             auto it = ret;
             foreach(kv; aa.byKeyValue)
             {
-                it._index.emplace(kv.key);
-                it._data._iterator.emplace(kv.value);
+                import std.backdoor: emplaceRef;
+                emplaceRef!K(it.index.front, kv.key);
+                emplaceRef!V(it._data.front, kv.value);
                 it.popFront;
             }
             return ret;
@@ -735,7 +744,21 @@ Series!(K*, Contiguous, [1], V*) series(K, V)(V[K] aa)
     static if (is(typeof(ret) == typeof(return)))
         return ret;
     else
-        return ()@trusted{ return cast(typeof(return)) ret; }();
+        return ()@trusted{ return cast(R) ret; }();
+}
+
+/// ditto
+Series!(const(K)*, Contiguous, [1], const(V)*) series(K, V)(const V[K] aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    return .series(cast(const(V)[const K]) aa);
+}
+
+/// ditto
+Series!(immutable(K)*, Contiguous, [1], immutable(V)*) series(K, V)(immutable V[K] aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    return .series(cast(immutable(V)[immutable K]) aa);
 }
 
 /// ditto
@@ -777,8 +800,8 @@ Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator 
     auto it = ret;
     foreach(kv; aa.byKeyValue)
     {
-        it._index.emplace(kv.key);
-        it._data._iterator.emplace(kv.value);
+        it._index.myEmplace(cast(Unqual!K) kv.key);
+        it._data._iterator.myEmplace(cast(Unqual!V) kv.value);
         it.popFront;
     }
 
@@ -1117,6 +1140,26 @@ auto makeUnionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, si
     allocator.dispose(m1.data.field);
 }
 
+auto myEmplace(T, U)(T* to, auto ref U from)
+{
+    static if (is(Unqual!U == Unqual!T) && !is(T == struct))
+    {
+        () @trusted { *to = cast(T) from; }();
+        return to;
+    }
+    else
+    static if (!hasElaborateAssign!T && __traits(compiles, *to = from))
+    {
+        () @trusted { *to = from; }();
+        return to;
+    }
+    else
+    {
+        import std.conv: emplace;
+        return emplace(to, from);
+    }
+}
+
 /**
 Initialize preallocated series using union of multiple (time) series.
 Doesn't make any allocations.
@@ -1149,13 +1192,13 @@ auto unionSeriesImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator, I,
     if(uninitSeries.length) do
     {
         auto obs = u.front;
-        emplace(uninitSeries._index, obs.index);
+        myEmplace(uninitSeries._index, obs.index);
         static if (packs == [1])
-            emplace(uninitSeries._data._iterator, obs.data);
+            myEmplace(uninitSeries._data._iterator, obs.data);
         else
         {
             each!((ref to, ref from) {
-                cast(void) emplace(()@trusted {return &to;}(), from);
+                cast(void) myEmplace(()@trusted {return &to;}(), from);
             })(uninitSeries._data.front, obs.data);
         }
         u.popFront;
@@ -1206,6 +1249,60 @@ private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] pack
     unionSeriesImpl(seriesTuple, ret);
 
     return () @trusted {return cast(R) ret; }();
+}
+
+/**
+Inserts or assigns a series to the associative array `aa`.
+Params:
+    aa = associative array
+    series = series
+Returns:
+    associative array 
+*/
+ref V[K] insertOrAssign(V, K, IndexIterator, SliceKind kind, size_t[] packs, Iterator)(return ref V[K] aa, Series!(IndexIterator, kind, packs, Iterator) series) @property
+{
+    foreach (i; 0 .. series.length)
+    {
+        aa[series.index[i]] = series.data[i];
+    }
+    return aa;
+}
+
+///
+@safe pure nothrow unittest
+{
+    auto a = [1: 3.0, 4: 2.0];
+    auto s = series([1, 2, 3], [10, 20, 30]);
+    a.insertOrAssign = s;
+    assert(a.series == series([1, 2, 3, 4], [10.0, 20, 30, 2]));
+}
+
+/**
+Inserts a series to the associative array `aa`.
+Params:
+    aa = associative array
+    series = series
+Returns:
+    associative array 
+*/
+ref V[K] insert(V, K, IndexIterator, SliceKind kind, size_t[] packs, Iterator)(return ref V[K] aa, Series!(IndexIterator, kind, packs, Iterator) series) @property
+{
+    foreach (i; 0 .. series.length)
+    {
+        if (series.index[i] in aa)
+            continue;
+        aa[series.index[i]] = series.data[i];
+    }
+    return aa;
+}
+
+///
+@safe pure nothrow unittest
+{
+    auto a = [1: 3.0, 4: 2.0];
+    auto s = series([1, 2, 3], [10, 20, 30]);
+    a.insert = s;
+    assert(a.series == series([1, 2, 3, 4], [3.0, 20, 30, 2]));
 }
 
 //////////////////// OBJECT.d

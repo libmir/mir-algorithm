@@ -139,7 +139,7 @@ Unref!(RefTuple!T) unref(V : RefTuple!T, T...)(V value)
 {
     typeof(return) ret;
     foreach(i, ref elem; ret.expand)
-        elem = value.expand[i].unref;
+        elem = unref(value.expand[i]);
     return ret;
 }
 

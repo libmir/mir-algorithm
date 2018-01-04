@@ -2266,7 +2266,7 @@ template map(fun...)
                 static if (packs.length == 1)
                 {
                     import mir.ndslice.iterator: mapIterator;
-                    auto iterator = slice._iterator.mapIterator!f;
+                    auto iterator = mapIterator!f(slice._iterator);
                     return Slice!(kind, packs, typeof(iterator))(slice._lengths, slice._strides, iterator);
                 }
                 // Specialization for packed tensors (tensors composed of tensors).

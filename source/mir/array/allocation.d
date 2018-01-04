@@ -126,24 +126,41 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
         if (length == 0)
             return null;
 
-        import std.conv : emplace;
+        import std.backdoor : emplaceRef;
+        import std.array: uninitializedArray;
 
-        return () @trusted {
-            import std.array: uninitializedArray;
-            auto result = length.uninitializedArray!(Unqual!E[]);
-            auto p = cast(E*) result.ptr;
-            static if (isInputRange!Range)
-                for (; !r.empty; r.popFront)
-                    p = emplace!E(p, r.front) + 1;
-            else
-            static if (isPointer!Range)
-                foreach (e; *r)
-                    p = emplace!E(p, e) + 1;
-            else
-                foreach (e; r)
-                    p = emplace!E(p, e) + 1;
-            return cast(E[]) result;
-        }();
+        auto result = (() @trusted => uninitializedArray!(Unqual!E[])(length))();
+
+        static if (isInputRange!Range)
+        {
+            foreach(ref e; result)
+            {
+                emplaceRef!E(e, r.front);
+                r.popFront;
+            }
+        }
+        else
+        static if (isPointer!Range)
+        {
+            auto it = result;
+            foreach(ref f; *r)
+            {
+                emplaceRef!E(it[0], f);
+                it = it[1 .. $];
+            }
+        }
+        else
+        static if (isPointer!Range)
+        {
+            auto it = result;
+            foreach(ref f; r)
+            {
+                emplaceRef!E(it[0], f);
+                it = it[1 .. $];
+            }
+        }
+
+        return (() @trusted => cast(E[]) result)();
     }
     else
     {
