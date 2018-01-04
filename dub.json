@@ -31,6 +31,6 @@
 		}
 	],
 	"description": "Multidimensional arrays (ndslice), ranges, iterators, and algorithms for Dlang",
-	"copyright": "Copyright © 2016 - 2017, Ilya Yaroshenko; Copyright © 2017, Symmetry Investments Group and Kaleidic Associates Advisory Limited; Copyright 2016 - 2017 © Digital Mars; (see information per file)",
+	"copyright": "Copyright © 2016 - 2018, Ilya Yaroshenko; Copyright © 2017 - 2018, Symmetry Investments Group and Kaleidic Associates Advisory Limited; Copyright 2016 - 2018 © Digital Mars and Phobos Authors; (see information per file)",
 	"license": "BSL-1.0"
 }
