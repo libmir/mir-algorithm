@@ -271,9 +271,17 @@ Returns:
 ContiguousSlice!(N, T)
 makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
-    immutable len = lengthsProduct(lengths);
-    auto array = cast(T[]) alloc.allocate(len * T.sizeof);
-    return array.sliced(lengths);
+    if (immutable len = lengthsProduct(lengths))
+    {
+        auto mem = alloc.allocate(len * T.sizeof);
+        if (mem.length == 0) assert(0);
+        auto array = () @trusted { return cast(T[]) mem; }();
+        return array.sliced(lengths);
+    }
+    else
+    {
+        return T[].init.sliced(lengths);
+    }
 }
 
 ///

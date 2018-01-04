@@ -27,7 +27,6 @@ import std.traits;
     import mir.array.allocation: array;
 
     import mir.algorithm.setops: multiwayUnion;
-    import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
 
     //////////////////////////////////////
@@ -36,17 +35,17 @@ import std.traits;
     auto index0 = [
         Date(2017, 01, 01),
         Date(2017, 03, 01),
-        Date(2017, 04, 01)].sliced;
+        Date(2017, 04, 01)];
 
-    auto data0 = [1.0, 3, 4].sliced;
+    auto data0 = [1.0, 3, 4];
     auto series0 = index0.series(data0);
 
     auto index1 = [
         Date(2017, 01, 01),
         Date(2017, 02, 01),
-        Date(2017, 05, 01)].sliced;
+        Date(2017, 05, 01)];
 
-    auto data1 = [10.0, 20, 50].sliced;
+    auto data1 = [10.0, 20, 50];
     auto series1 = index1.series(data1);
 
     //////////////////////////////////////
@@ -55,8 +54,8 @@ import std.traits;
     // Makes exactly two allocations per merge:
     // one for index/time and one for data.
     //////////////////////////////////////
-    auto m0 = merge(series0, series1);
-    auto m1 = merge(series1, series0); // order is matter
+    auto m0 = unionSeries(series0, series1);
+    auto m1 = unionSeries(series1, series0); // order is matter
 
     assert(m0.index == [
         Date(2017, 01, 01),
@@ -73,7 +72,7 @@ import std.traits;
     // Joins two time-series into a one with two columns.
     //////////////////////////////////////
     auto u = [index0, index1].multiwayUnion;
-    auto index = u.move.array.sliced;
+    auto index = u.move.array;
     auto data = slice!double([index.length, 2], 0); // initialized to 0 value
     auto series = index.series(data);
 
@@ -218,12 +217,12 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     ///
     version(mir_test) unittest
     {
-        auto index = [1, 2, 3, 4].sliced;
-        auto data = [10.0, 10, 10, 10].sliced;
+        auto index = [1, 2, 3, 4];
+        auto data = [10.0, 10, 10, 10];
         auto series = index.series(data);
 
-        auto rindex = [0, 2, 4, 5].sliced;
-        auto rdata = [1.0, 2, 3, 4].sliced;
+        auto rindex = [0, 2, 4, 5];
+        auto rdata = [1.0, 2, 3, 4];
         auto rseries = rindex.series(rdata);
 
         // series[] = rseries;
@@ -289,12 +288,12 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     ///
     version(mir_test) unittest
     {
-        auto index = [1, 2, 3, 4].sliced;
-        auto data = [10.0, 10, 10, 10].sliced;
+        auto index = [1, 2, 3, 4];
+        auto data = [10.0, 10, 10, 10];
         auto series = index.series(data);
 
-        auto rindex = [0, 2, 4, 5].sliced;
-        auto rdata = [1.0, 2, 3, 4].sliced;
+        auto rindex = [0, 2, 4, 5];
+        auto rdata = [1.0, 2, 3, 4];
         auto rseries = rindex.series(rdata);
 
         series[] += rseries;
@@ -546,8 +545,8 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 /// 1-dimensional data
 @safe pure version(mir_test) unittest
 {
-    auto index = [1, 2, 3, 4].sliced;
-    auto data = [2.1, 3.4, 5.6, 7.8].sliced;
+    auto index = [1, 2, 3, 4];
+    auto data = [2.1, 3.4, 5.6, 7.8];
     auto series = index.series(data);
     const cseries = series;
 
@@ -603,7 +602,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         Date(2017, 01, 01),
         Date(2017, 02, 01),
         Date(2017, 03, 01),
-        Date(2017, 04, 01)].sliced;
+        Date(2017, 04, 01)];
 
     //  1,  2,  3,  4,  5
     //  6,  7,  8,  9, 10
@@ -643,6 +642,160 @@ auto series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 {
     assert(index.length == data.length);
     return Series!(IndexIterator, kind, packs, Iterator)(index, data);
+}
+
+/// ditto
+auto series(Index, Data)(Index[] index, Data[] data)
+{
+    assert(index.length == data.length);
+    return .series(index.sliced, data.sliced);
+}
+
+/// ditto
+auto series(IndexIterator, Data)(Slice!(Contiguous, [1], IndexIterator) index, Data[] data)
+{
+    assert(index.length == data.length);
+    return .series(index, data.sliced);
+}
+
+/// ditto
+auto series(Index, SliceKind kind, size_t[] packs, Iterator)(Index[] index, Slice!(kind, packs, Iterator) data)
+{
+    assert(index.length == data.length);
+    return .series(index.sliced, data);
+}
+
+/**
+Constructs a GC-allocated series from an associative array.
+Performs exactly two allocations.
+
+Params:
+    aa == associative array or a pointer to associative array
+Returns:
+    sorted GC-allocated series.
+*/
+Series!(K*, Contiguous, [1], V*) series(K, V)(V[K] aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    immutable size_t length = aa.length;
+    auto ret = ()
+    {
+        if (__ctfe)
+        {
+            auto ret = series(new Unqual!K[length], new Unqual!V[length]);
+            auto it = ret;
+            foreach(kv; aa.byKeyValue)
+            {
+                it.index.front = kv.key;
+                it._data.front = kv.value;
+                it.popFront;
+            }
+            return ret;
+        }
+        else
+        {
+            import mir.ndslice.allocation: uninitSlice;
+            import std.conv: emplace;
+
+            auto ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
+            auto it = ret;
+            foreach(kv; aa.byKeyValue)
+            {
+                it._index.emplace(kv.key);
+                it._data._iterator.emplace(kv.value);
+                it.popFront;
+            }
+            return ret;
+        }
+    }();
+
+    ret.sort;
+    static if (is(typeof(ret) == typeof(return)))
+        return ret;
+    else
+        return ()@trusted{ return cast(typeof(return)) ret; }();
+}
+
+/// ditto
+auto series(K, V)(V[K]* aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    return series(*a);
+}
+
+///
+@safe pure nothrow unittest
+{
+    auto s = [1: 1.5, 3: 3.3, 2: 2.9].series;
+    assert(s.index == [1, 2, 3]);
+    assert(s.data == [1.5, 2.9, 3.3]);
+    assert(s.data[s.findIndex(2)] == 2.9);
+}
+
+/**
+Constructs a manually allocated series from an associative array.
+Performs exactly two allocations.
+
+Params:
+    aa == associative array or a pointer to associative array
+Returns:
+    sorted manually allocated series.
+*/
+Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
+{
+    immutable size_t length = aa.length;
+    import mir.ndslice.allocation: makeUninitSlice;
+    import std.conv: emplace;
+
+    auto ret = series(
+        allocator.makeUninitSlice!(Unqual!K)(length),
+        allocator.makeUninitSlice!(Unqual!V)(length));
+
+    auto it = ret;
+    foreach(kv; aa.byKeyValue)
+    {
+        it._index.emplace(kv.key);
+        it._data._iterator.emplace(kv.value);
+        it.popFront;
+    }
+
+    ret.sort;
+    static if (is(typeof(ret) == typeof(return)))
+        return ret;
+    else
+        return ()@trusted{ return cast(typeof(return)) ret; }();
+}
+
+/// ditto
+Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K]* aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    return makeSeries(allocator, *a);
+}
+
+///
+pure nothrow unittest
+{
+    import std.experimental.allocator;
+    import std.experimental.allocator.building_blocks.region;
+
+    InSituRegion!(1024) allocator;
+    auto aa = [1: 1.5, 3: 3.3, 2: 2.9];
+
+    auto s = (double[int] aa) @nogc @trusted pure nothrow {
+        return allocator.makeSeries(aa);
+    }(aa);
+
+    auto indexArray = s.index.field;
+    auto dataArray = s.data.field;
+    
+    assert(s.index == [1, 2, 3]);
+    assert(s.data == [1.5, 2.9, 3.3]);
+    assert(s.data[s.findIndex(2)] == 2.9);
+
+    allocator.dispose(indexArray);
+    allocator.dispose(dataArray);
 }
 
 /// Returns: packs if `U` is a $(LREF Series) type or null otherwise;
@@ -843,31 +996,122 @@ pure version(mir_test) unittest
     assert(data.iterator is series.data.iterator);
 }
 
-/++
-Merges multiple timeseries into one.
-
-This funcitons allocates using the GC.
-+/
-auto merge(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N)(Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple...)
+/**
+Merges multiple (time) series into one.
+Makes exactly two memory allocations.
+Params: 
+    seriesTuple = variadic static array of composed of series.
+Returns: sorted GC-allocated series.
+See_also $(LREF makeUnionSeries)
+*/
+auto unionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N)(Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple...)
     if (N > 1 && packs.length == 1)
 {
-    import mir.internal.utility: Iota;
-    Slice!(Contiguous, [1], IndexIterator)[N] indeces;
-    foreach (i; Iota!N)
-        indeces[i] = seriesTuple[i].index;
-    return mergeImpl(indeces, seriesTuple);
+    return unionSeriesImplPrivate(seriesTuple);
 }
 
-/// ditto
-private pragma(inline, false)
-auto mergeImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator)(
-    Slice!(Contiguous, [1], IndexIterator)[] indecesTuple,
+///
+@safe pure nothrow unittest
+{
+    import std.datetime.date: Date;
+
+    //////////////////////////////////////
+    // Constructs two time-series.
+    //////////////////////////////////////
+    auto index0 = [1,3,4];
+
+    auto data0 = [1.0, 3, 4];
+    auto series0 = index0.series(data0);
+
+    auto index1 = [1,2,5];
+
+    auto data1 = [10.0, 20, 50];
+    auto series1 = index1.series(data1);
+
+    //////////////////////////////////////
+    // Merges multiple series into one.
+    //////////////////////////////////////
+    auto m0 = unionSeries(series0, series1);
+    auto m1 = unionSeries(series1, series0); // order is matter
+
+    assert(m0.index == m1.index);
+    assert(m0.data == [ 1, 20,  3,  4, 50]);
+    assert(m1.data == [10, 20,  3,  4, 50]);
+}
+
+/**
+Merges multiple (time) series into one.
+Makes exactly two memory allocations.
+
+Params: 
+    allocator = memory allocator
+    seriesTuple = variadic static array of composed of series.
+Returns: sorted manually allocated series.
+See_also $(LREF unionSeries)
+*/
+auto makeUnionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N, Allocator)(auto ref Allocator allocator, Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple...)
+    if (N > 1 && packs.length == 1)
+{
+    return unionSeriesImplPrivate(seriesTuple, allocator);
+}
+
+///
+@system pure nothrow unittest
+{
+    import std.datetime.date: Date;
+    import std.experimental.allocator;
+    import std.experimental.allocator.building_blocks.region;
+
+    //////////////////////////////////////
+    // Constructs two time-series.
+    //////////////////////////////////////
+    auto index0 = [1,3,4];
+
+    auto data0 = [1.0, 3, 4];
+    auto series0 = index0.series(data0);
+
+    auto index1 = [1,2,5];
+
+    auto data1 = [10.0, 20, 50];
+    auto series1 = index1.series(data1);
+
+    //////////////////////////////////////
+    // Merges multiple series into one.
+    //////////////////////////////////////
+
+    InSituRegion!(1024) allocator;
+
+    auto m0 = allocator.makeUnionSeries(series0, series1);
+    auto m1 = allocator.makeUnionSeries(series1, series0); // order is matter
+
+    assert(m0.index == m1.index);
+    assert(m0.data == [ 1, 20,  3,  4, 50]);
+    assert(m1.data == [10, 20,  3,  4, 50]);
+
+    /// series should have the same sizes as after allocation
+    allocator.dispose(m0.index.field);
+    allocator.dispose(m0.data.field);
+    allocator.dispose(m1.index.field);
+    allocator.dispose(m1.data.field);
+}
+
+/**
+Initialize preallocated series using union of multiple (time) series.
+Doesn't make any allocations.
+
+Params: 
+    seriesTuple = dynamic array composed of series.
+    uninitSeries = uninitialized series with exactly required length.
+*/
+pragma(inline, false)
+auto unionSeriesImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator, I, E)(
     Series!(IndexIterator, kind, packs, Iterator)[] seriesTuple,
+    Series!(I*, Contiguous, packs, E*) uninitSeries,
     )
     if (packs.length == 1)
 {
     import mir.internal.utility: Iota;
-    import mir.algorithm.setops: multiwayUnion, unionLength;
+    import mir.algorithm.setops: multiwayUnion;
     import mir.ndslice.allocation: uninitSlice;
     import std.range: walkLength;
     import mir.array.allocation: array;
@@ -878,22 +1122,53 @@ auto mergeImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator)(
 
     enum N = packs[0];
 
+    auto u = seriesTuple.multiwayUnion!"a.index < b.index";
+
+    if(uninitSeries.length) do
+    {
+        auto obs = u.front;
+        emplace(uninitSeries._index, obs.index);
+        static if (packs == [1])
+            emplace(uninitSeries._data._iterator, obs.data);
+        else
+        {
+            each!((ref to, ref from) {
+                cast(void) emplace(()@trusted {return &to;}(), from);
+            })(uninitSeries._data.front, obs.data);
+        }
+        u.popFront;
+        uninitSeries.popFront;
+    }
+    while(uninitSeries.length);
+}
+
+private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N, Allocator...)(ref Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple, ref Allocator allocator)
+    if (N > 1 && packs.length == 1 && Allocator.length <= 1)
+{
+    import mir.algorithm.setops: unionLength;
+    import mir.internal.utility: Iota;
+    import mir.ndslice.allocation: uninitSlice, makeUninitSlice;
+
+    Slice!(Contiguous, [1], IndexIterator)[N] indeces;
+    foreach (i; Iota!N)
+        indeces[i] = seriesTuple[i].index;
+
+    immutable len = indeces[].unionLength; 
+
     alias I = typeof(seriesTuple[0].front.index);
     alias E = typeof(seriesTuple[0].front.data);
     alias R = Series!(I*, Contiguous, packs, E*);
     alias UI = Unqual!I;
     alias UE = Unqual!E;
 
-    immutable len = indecesTuple.unionLength;
-
     static if (N > 1)
     {
-        auto shape = dataSlices[0].shape;
-        shape[0] = index.length;
+        auto shape = seriesTuple[0]._data._lengths;
+        shape[0] = len;
 
-        foreach (ref sl; dataSlices[1 .. $])
+        foreach (ref sl; seriesTuple[1 .. $])
             foreach (i; Iota!(1, packs[0]))
-                if (data[0].shape[i] != sl.shape[i])
+                if (seriesTuple._data[0]._lengths[i] != sl._data._lengths[i])
                     assert(0, "shapes mismatch");
     }
     else
@@ -901,27 +1176,98 @@ auto mergeImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator)(
         alias shape = len;
     }
 
-    auto ret = len.uninitSlice!UI.series(shape.uninitSlice!UE);
+    static if (Allocator.length)
+        auto ret = allocator[0].makeUninitSlice!UI(len).series(allocator[0].makeUninitSlice!UE(shape));
+    else
+        auto ret = len.uninitSlice!UI.series(shape.uninitSlice!UE);
 
-    auto it = ret;
-    auto u = seriesTuple.multiwayUnion!"a.index < b.index";
+    unionSeriesImpl(seriesTuple, ret);
 
-    if(it.length) do
+    return () @trusted {return cast(R) ret; }();
+}
+
+//////////////////// OBJECT.d
+private:
+
+extern (C)
+{
+    // from druntime/src/rt/aaA.d
+
+    // size_t _aaLen(in void* p) pure nothrow @nogc;
+    private void* _aaGetY(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey) pure nothrow;
+    // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
+    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize, const TypeInfo tiValArray) pure nothrow;
+    inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow;
+    void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
+    void _aaClear(void* p) pure nothrow;
+
+    // alias _dg_t = extern(D) int delegate(void*);
+    // int _aaApply(void* aa, size_t keysize, _dg_t dg);
+
+    // alias _dg2_t = extern(D) int delegate(void*, void*);
+    // int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
+
+    private struct AARange { void* impl; size_t idx; }
+    AARange _aaRange(void* aa) pure nothrow @nogc @safe;
+    bool _aaRangeEmpty(AARange r) pure nothrow @nogc @safe;
+    void* _aaRangeFrontKey(AARange r) pure nothrow @nogc @safe;
+    void* _aaRangeFrontValue(AARange r) pure nothrow @nogc @safe;
+    void _aaRangePopFront(ref AARange r) pure nothrow @nogc @safe;
+
+}
+
+auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
+{
+    import core.internal.traits : substInout;
+
+    static struct Result
     {
-        auto obs = u.front;
-        emplace(it._index, obs.index);
-        static if (packs == [1])
-            emplace(it._data._iterator, obs.data);
-        else
-        {
-            each!((ref to, ref from) @trusted {
-                cast(void) emplace(&to, from);
-            })(it._data.front, obs.data);
-        }
-        u.popFront;
-        it.popFront;
-    }
-    while(it.length);
+        AARange r;
 
-    return cast(R) ret;
+    pure nothrow @nogc:
+        @property bool empty() @safe { return _aaRangeEmpty(r); }
+        @property auto front()
+        {
+            static struct Pair
+            {
+                // We save the pointers here so that the Pair we return
+                // won't mutate when Result.popFront is called afterwards.
+                private void* keyp;
+                private void* valp;
+
+                @property ref key() inout
+                {
+                    auto p = (() @trusted => cast(substInout!K*) keyp) ();
+                    return *p;
+                };
+                @property ref value() inout
+                {
+                    auto p = (() @trusted => cast(substInout!V*) valp) ();
+                    return *p;
+                };
+            }
+            return Pair(_aaRangeFrontKey(r),
+                        _aaRangeFrontValue(r));
+        }
+        void popFront() @safe { return _aaRangePopFront(r); }
+        @property Result save() { return this; }
+    }
+
+    return Result(_aaToRange(aa));
+}
+
+auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
+{
+    return (*aa).byKeyValue();
+}
+
+// this should never be made public.
+private AARange _aaToRange(T: V[K], K, V)(ref T aa) pure nothrow @nogc @safe
+{
+    // ensure we are dealing with a genuine AA.
+    static if (is(const(V[K]) == const(T)))
+        alias realAA = aa;
+    else
+        const(V[K]) realAA = aa;
+    return _aaRange(() @trusted { return cast(void*)realAA; } ());
 }

@@ -144,11 +144,16 @@ Unref!(RefTuple!T) unref(V : RefTuple!T, T...)(V value)
 }
 
 /// ditto
-V unref(V)(V value)
+ref V unref(V)(return ref V value)
 {
     return value;
 }
 
+/// ditto
+V unref(V)(V value)
+{
+    return value;
+}
 
 private string joinStrings()(string[] strs)
 {

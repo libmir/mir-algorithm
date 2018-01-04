@@ -169,14 +169,15 @@ template sort(alias less = "a < b")
     static if (__traits(isSame, naryFun!less, less))
     ///
     @optmath Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
-        (Slice!(kind, packs, Iterator) slice)
+        (Slice!(kind, packs, Iterator) slice) @safe
         if (packs.length == 1)
     {
         if (false) // break safety
         {
             import mir.utility : swapStars;
-            swapStars(slice._iterator, slice._iterator);
-            auto l = less(*slice._iterator, *slice._iterator);
+            auto elem = typeof(*slice._iterator).init;
+            elem = elem;
+            auto l = less(elem, elem);
         }
         import mir.ndslice.topology: flattened;
         if (slice.anyEmpty)
