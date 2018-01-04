@@ -21,7 +21,7 @@ import std.traits;
 ///
 @safe version(mir_test) unittest
 {
-    import std.datetime.date: Date;
+    import std.datetime: Date;
     import std.algorithm.mutation: move;
 
     import mir.array.allocation: array;
@@ -624,7 +624,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 /// 2-dimensional data
 @safe pure version(mir_test) unittest
 {
-    import std.datetime.date: Date;
+    import std.datetime: Date;
     import mir.ndslice.topology: canonical, iota;
 
     size_t row_length = 5;
@@ -1058,7 +1058,7 @@ auto unionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t
 ///
 @safe pure nothrow unittest
 {
-    import std.datetime.date: Date;
+    import std.datetime: Date;
 
     //////////////////////////////////////
     // Constructs two time-series.
@@ -1103,7 +1103,7 @@ auto makeUnionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, si
 ///
 @system pure nothrow unittest
 {
-    import std.datetime.date: Date;
+    import std.datetime: Date;
     import std.experimental.allocator;
     import std.experimental.allocator.building_blocks.region;
 
