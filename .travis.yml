@@ -1,12 +1,14 @@
+dist: trusty
 sudo: false
 os:
  - linux
  - osx
 language: d
 d:
- - ldc-1.2.0
  - ldc-1.3.0
  - ldc-1.4.0
+ - ldc-1.5.0
+ - ldc-1.6.0
  - ldc
  - ldc-beta
  - dmd-nightly
@@ -26,7 +28,7 @@ branches:
   only:
     - master
 script:
- - dub test --arch "$ARCH" --build=unittest-cov
- - dub test --arch "$ARCH" --build=unittest-release
+ - travis_wait 30 dub test --arch "$ARCH" --build=unittest-cov
+ - travis_wait 30 dub test --arch "$ARCH" --build=unittest-release
 after_success:
  - bash <(curl -s https://codecov.io/bash)
