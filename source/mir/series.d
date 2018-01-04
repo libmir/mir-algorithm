@@ -40,6 +40,8 @@ import std.traits;
     auto data0 = [1.0, 3, 4];
     auto series0 = index0.series(data0);
 
+    assert(series0.get(Date(2017, 03, 01)) == 3);
+
     auto index1 = [
         Date(2017, 01, 01),
         Date(2017, 02, 01),
@@ -331,6 +333,26 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Index)(Index moment) const
     {
         return this[$ - index.assumeSorted.upperBound!sp(moment).length .. $];
+    }
+
+    /**
+    Gets data for the index.
+    Params:
+        moment = index
+        exc = (lazy, optional) exception to throw if the series does not contains the index.
+    Returns: data that corresponds to the index.
+    Throws:
+        Exception if the series does not contains the index.
+    */
+    auto ref get(Index)(Index moment, lazy Exception exc = null)
+    {
+        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        if (idx < _data._lengths[0] && index[idx] == moment)
+        {
+            return data[idx];
+        }
+        static immutable e = new Exception(Index.stringof ~ "-" ~ typeof(data[idx]).stringof ~ " series does not contain required index." );
+        throw exc ? exc : e;
     }
 
     ///
