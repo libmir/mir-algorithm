@@ -27,7 +27,7 @@ alias GraphSeries(T, I) = Series!(T*, Contiguous, [1], GraphIterator!I);
 Param:
     aaGraph = graph that is represented as associative array
 Returns:
-    A graph series composed of keys (`.index``) and arrays of indeces (`.d`)
+    A graph series composed of keys (`.index`) and arrays of indeces (`.d`)
 Complexity: `O(log(V) (V + E))`
 +/
 GraphSeries!(T, uint) graphSeries(T, Range)(in Range[T] aaGraph)
@@ -62,7 +62,7 @@ GraphSeries!(T, uint) graphSeries(T, Range)(in Range[T] aaGraph)
 }
 
 ///
-@safe pure version(mir_test) unittest
+pure version(mir_test) unittest
 {
     auto gs = [
         "b" : ["a"],

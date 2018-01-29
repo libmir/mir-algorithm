@@ -15,10 +15,12 @@ module mir.graph.tarjan;
 import std.traits;
 
 /++
-Tarjan's strongly connected components algorithm.
+Classic Tarjan's strongly connected components algorithm.
 
 Tarjan's algorithm is an algorithm in graph theory for finding the strongly connected components of a graph.
 It runs in linear time, matching the time bound for alternative methods including Kosaraju's algorithm and the path-based strong component algorithm.
+
+The implementation is loop based. It does not use recursion and does not have stack overflow issues.
 
 Complexity: worst-case `O(|V| + |E|)`.
 
@@ -209,7 +211,7 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
   0 -> 1 -> 2 -> 3 -> 10     9 <---
 ------
 +/
-@safe pure version(mir_test) unittest
+pure version(mir_test) unittest
 {
     import mir.graph.utility;
     import mir.ndslice.algorithm: each;
@@ -244,9 +246,9 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
 }
 
 /++
-Tests that the graph `0 -> 1 -> 2 -> 3 -> 4`` returns 4 components.
+Tests that the graph `0 -> 1 -> 2 -> 3 -> 4` returns 4 components.
 +/
-@safe pure version(mir_test) unittest
+pure version(mir_test) unittest
 {
     import mir.graph.utility;
 
@@ -276,7 +278,7 @@ Tests that the graph `0 -> 1 -> 2 -> 3 -> 4`` returns 4 components.
  1 <- 3 <-> 4 <-- 7 <--(links to self)
 ----
 +/
-@safe pure version(mir_test) unittest
+pure version(mir_test) unittest
 {
     import mir.graph.utility;
     import mir.ndslice.algorithm: each;
@@ -313,7 +315,7 @@ Tests that the graph `0 -> 1 -> 2 -> 3 -> 4`` returns 4 components.
   0
 -----
 +/
-@safe pure version(mir_test) unittest
+pure version(mir_test) unittest
 {
     import mir.graph.utility;
     import mir.ndslice.algorithm: each;
@@ -341,7 +343,7 @@ This test demonstrates a hard to detect bug, where vertices
 were being marked 'off-stack' after they were first visited,
 not when they were actually removed from the stack
 +/
-@safe pure version(mir_test) unittest
+pure version(mir_test) unittest
 {
     import mir.graph.utility;
     import mir.ndslice.algorithm: each;

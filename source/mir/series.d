@@ -1327,7 +1327,11 @@ ref V[K] insert(V, K, IndexIterator, SliceKind kind, size_t[] packs, Iterator)(r
     assert(a.series == series([1, 2, 3, 4], [3.0, 20, 30, 2]));
 }
 
+
+static if (__VERSION__ < 2078)
 //////////////////// OBJECT.d
+{
+
 private:
 
 extern (C)
@@ -1348,7 +1352,8 @@ extern (C)
     // alias _dg2_t = extern(D) int delegate(void*, void*);
     // int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    private struct AARange { void* impl; size_t idx; }
+    // private struct AARange { void* impl; size_t idx; }
+    alias AARange = ReturnType!(object._aaRange);
     AARange _aaRange(void* aa) pure nothrow @nogc @safe;
     bool _aaRangeEmpty(AARange r) pure nothrow @nogc @safe;
     void* _aaRangeFrontKey(AARange r) pure nothrow @nogc @safe;
@@ -1411,4 +1416,6 @@ private AARange _aaToRange(T: V[K], K, V)(ref T aa) pure nothrow @nogc @safe
     else
         const(V[K]) realAA = aa;
     return _aaRange(() @trusted { return cast(void*)realAA; } ());
+}
+
 }
