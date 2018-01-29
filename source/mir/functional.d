@@ -53,6 +53,14 @@ import mir.math.common: optmath;
 @optmath:
 
 /++
+Constructs static array.
++/
+T[N] staticArray(T, size_t N)(T[N] a...)
+{
+    return a;
+}
+
+/++
 Simple wrapper that holds a pointer.
 It is used for as workaround to return multiple auto ref values.
 +/

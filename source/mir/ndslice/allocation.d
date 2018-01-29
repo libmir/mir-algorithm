@@ -54,7 +54,7 @@ Returns:
 ContiguousSlice!(N, T)
     slice(T, size_t N)(size_t[N] lengths...)
 {
-    immutable len = lengthsProduct(lengths);
+    immutable len = lengths.lengthsProduct;
     return new T[len].sliced(lengths);
 }
 
@@ -62,7 +62,7 @@ ContiguousSlice!(N, T)
 ContiguousSlice!(N, T)
     slice(T, size_t N)(size_t[N] lengths, T init)
 {
-    immutable len = lengthsProduct(lengths);
+    immutable len = lengths.lengthsProduct;
     static if (!hasElaborateAssign!T)
     {
         import std.array : uninitializedArray;
@@ -145,6 +145,43 @@ version(mir_test)
 }
 
 /++
+Allocates an size_t array and an bitwise n-dimensional slice over it.
+Params:
+    lengths = List of lengths for each dimension.
+Returns:
+    n-dimensional bitwise slice
+See_also: $(SUBREF topology, bitwise).
++/
+auto bitSlice(size_t N)(size_t[N] lengths...)
+{
+    import mir.ndslice.topology: bitwise;
+    enum elen = size_t.sizeof * 8;
+    immutable len = lengths.lengthsProduct;
+    immutable dlen = (len / elen + (len % elen != 0)) * elen;
+    return new size_t[dlen].sliced.bitwise[0 .. len].sliced(lengths);
+}
+
+/// 1D
+@safe pure version(mir_test) unittest
+{
+    auto bitarray = bitSlice(100); // allocates 16 bytes total
+    assert(bitarray.shape == [100]);
+    assert(bitarray[72] == false);
+    bitarray[72] = true;
+    assert(bitarray[72] == true);
+}
+
+/// 2D
+@safe pure version(mir_test) unittest
+{
+    auto bitmatrix = bitSlice(20, 6); // allocates 16 bytes total
+    assert(bitmatrix.shape == [20, 6]);
+    assert(bitmatrix[3, 4] == false);
+    bitmatrix[3, 4] = true;
+    assert(bitmatrix[3, 4] == true);
+}
+
+/++
 Allocates an uninitialized array and an n-dimensional slice over it.
 Params:
     lengths = list of lengths for each dimension
@@ -153,7 +190,7 @@ Returns:
 +/
 auto uninitSlice(T, size_t N)(size_t[N] lengths...)
 {
-    immutable len = lengthsProduct(lengths);
+    immutable len = lengths.lengthsProduct;
     import std.array : uninitializedArray;
     auto arr = uninitializedArray!(T[])(len);
     return arr.sliced(lengths);
@@ -193,7 +230,7 @@ ContiguousSlice!(N, T)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     import std.experimental.allocator : makeArray;
-    return alloc.makeArray!T(lengthsProduct(lengths)).sliced(lengths);
+    return alloc.makeArray!T(lengths.lengthsProduct).sliced(lengths);
 }
 
 /// ditto
@@ -201,7 +238,7 @@ ContiguousSlice!(N, T)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T init)
 {
     import std.experimental.allocator : makeArray;
-    immutable len = lengthsProduct(lengths);
+    immutable len = lengths.lengthsProduct;
     auto array = alloc.makeArray!T(len, init);
     return array.sliced(lengths);
 }
@@ -268,7 +305,7 @@ ContiguousSlice!(N, T)
 makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
     if (N)
 {
-    if (immutable len = lengthsProduct(lengths))
+    if (immutable len = lengths.lengthsProduct)
     {
         auto mem = alloc.allocate(len * T.sizeof);
         if (mem.length == 0) assert(0);
@@ -477,12 +514,12 @@ Params:
 Returns:
     contiguous uninitialized n-dimensional slice
 See_also:
-    $(MREF stdcSlice), $(MREF stdcFreeSlice)
+    $(LREF stdcSlice), $(LREF stdcFreeSlice)
 +/
 Slice!(Contiguous, [N], T*) stdcUninitSlice(T, size_t N)(size_t[N] lengths...)
 {
     import core.stdc.stdlib: malloc;
-    immutable len = lengthsProduct(lengths);
+    immutable len = lengths.lengthsProduct;
     auto ptr = len ? cast(T*) malloc(len * T.sizeof) : null;
     return ptr.sliced(lengths);
 }
@@ -494,7 +531,7 @@ Params:
 Returns:
     contiguous n-dimensional slice
 See_also:
-    $(MREF stdcUninitSlice), $(MREF stdcFreeSlice)
+    $(LREF stdcUninitSlice), $(LREF stdcFreeSlice)
 +/
 auto stdcSlice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
 {
@@ -510,7 +547,7 @@ Frees memory using `core.stdc.stdlib.free`.
 Params:
     slice = n-dimensional slice
 See_also:
-    $(MREF stdcSlice), $(MREF stdcUninitSlice)
+    $(LREF stdcSlice), $(LREF stdcUninitSlice)
 +/
 void stdcFreeSlice(size_t[] packs, T)(Slice!(Contiguous, packs, T*) slice)
 {

@@ -167,23 +167,32 @@ template sort(alias less = "a < b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!less, less))
-    ///
-    @optmath Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
-        (Slice!(kind, packs, Iterator) slice) @safe
-        if (packs.length == 1)
     {
-        if (false) // break safety
+@optmath:
+        ///
+        Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
+            (Slice!(kind, packs, Iterator) slice) @safe
+            if (packs.length == 1)
         {
-            import mir.utility : swapStars;
-            auto elem = typeof(*slice._iterator).init;
-            elem = elem;
-            auto l = less(elem, elem);
-        }
-        import mir.ndslice.topology: flattened;
-        if (slice.anyEmpty)
+            if (false) // break safety
+            {
+                import mir.utility : swapStars;
+                auto elem = typeof(*slice._iterator).init;
+                elem = elem;
+                auto l = less(elem, elem);
+            }
+            import mir.ndslice.topology: flattened;
+            if (slice.anyEmpty)
+                return slice;
+            slice.flattened.quickSortImpl!less;
             return slice;
-        slice.flattened.quickSortImpl!less;
-        return slice;
+        }
+
+        ///
+        T[] sort(T)(T[] ar)
+        {
+            return ar.sliced.sort.field;
+        }
     }
     else
         alias sort = .sort!(naryFun!less);

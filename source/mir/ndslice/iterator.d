@@ -822,7 +822,7 @@ version(mir_test) unittest
 /++
 Iterates a field using an iterator.
 
-`IndexIterator` is used by TODO.
+`IndexIterator` is used by $(SUBREF topology, indexed).
 +/
 struct IndexIterator(Iterator, Field)
 {
@@ -893,6 +893,40 @@ struct IndexIterator(Iterator, Field)
             else
                 return mixin("_field[_iterator[index]]" ~ op ~ "= value");
         }
+    }
+
+    mixin(std_ops);
+}
+
+/++
+Iterates chunks in a sliceable using an iterator composed of indexes.
+
+Definition:
+----
+auto index = iterator[i];
+auto elem  = sliceable[index[0] .. index[1]];
+----
++/
+struct SubSliceIterator(Iterator, Sliceable)
+{
+    import mir.functional: RefTuple, unref;
+
+@optmath:
+    ///
+    Iterator _iterator;
+    ///
+    Sliceable _sliceable;
+
+    auto ref opUnary(string op : "*")()
+    {
+        auto i = *_iterator;
+        return _sliceable[i[0] .. i[1]];
+    }
+
+    auto ref opIndex(ptrdiff_t index)
+    {
+        auto i = _iterator[index];
+        return _sliceable[i[0] .. i[1]];
     }
 
     mixin(std_ops);

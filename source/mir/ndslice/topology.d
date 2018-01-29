@@ -2260,7 +2260,7 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
-    $(LREF pairwise), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 template map(fun...)
@@ -2456,7 +2456,7 @@ Params:
     slice = ndslice
     callable = callable object, structure, delegate, or function pointer.
 See_Also:
-    $(LREF pairwise), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 @optmath auto vmap(SliceKind kind, size_t[] packs, Iterator, Callable)
@@ -2610,6 +2610,7 @@ Params:
     slice = a slice to create a view on.
 Returns:
     A lazy slice with elements converted to the type `T`.
+See_also: $(LREF map), $(LREF vmap)
 +/
 template as(T)
 {
@@ -2696,6 +2697,82 @@ Slice!(kind, packs, IndexIterator!(Iterator, Field))
     ind[3] += 10; // for index 2
     //                0  1   2  3  4
     assert(source == [1, 2, 13, 4, 5]);
+}
+
+/++
+Maps indexes pairs to subslices.
+Params:
+    indexes = ndslice composed of indexes pairs.
+    sliceable = pointer, array, ndslice, or something sliceable.
+Returns:
+    ndslice composed of subslices.
+See_also: $(LREF pairwise), $(LREF pairwiseMapSubSlices).
++/
+Slice!(kind, packs, SubSliceIterator!(Iterator, Slicable))
+    mapSubSlices(SliceKind kind, size_t[] packs, Iterator, Slicable)(
+        Slice!(kind, packs, Iterator) indexes,
+        Slicable slicable,
+    )
+{
+    return typeof(return)(
+        indexes._lengths,
+        indexes._strides,
+        SubSliceIterator!(Iterator, Slicable)(indexes._iterator, slicable)
+    );
+}
+
+///
+@safe pure version(mir_test) unittest
+{
+    import mir.functional: staticArray;
+    auto subs =[
+            staticArray(2, 4),
+            staticArray(2, 10),
+        ].sliced;
+    auto sliceable = 10.iota;
+
+    auto r = subs.mapSubSlices(sliceable);
+    assert(r == [
+        iota([4 - 2], 2),
+        iota([10 - 2], 2),
+        ]);
+}
+
+/++
+Maps indexes pairs to subslices.
+Params:
+    indexes = ndslice composed of indexes.
+    sliceable = pointer, array, ndslice, or something sliceable.
+Definition:
+-----
+import mir.functional: staticArray;
+return indexes.pairwise!staticArray.mapSubSlices(slicable);
+-----
+Returns:
+    ndslice composed of subslices.
+See_also: $(LREF pairwise), $(LREF mapSubSlices).
++/
+auto pairwiseMapSubSlices(SliceKind kind, Iterator, Slicable)(
+        Slice!(kind, [1], Iterator) indexes,
+        Slicable slicable,
+    )
+{
+    import mir.functional: staticArray;
+    return indexes.pairwise!staticArray.mapSubSlices(slicable);
+}
+
+///
+unittest
+{
+    import mir.functional: staticArray;
+    auto pairwiseIndexes =[2, 4, 10].sliced;
+    auto sliceable = 10.iota;
+
+    auto r = pairwiseIndexes.pairwiseMapSubSlices(sliceable);
+    assert(r == [
+        iota([4 - 2], 2),
+        iota([10 - 4], 4),
+        ]);
 }
 
 /++
@@ -2877,7 +2954,7 @@ Params:
     lag = an integer indicating which lag to use
 Returns: lazy ndslice composed of `fun(a_n, a_n+1)` values.
 
-See_also: $(LREF slide).
+See_also: $(LREF slide), $(LREF mapSubSlices).
 +/
 alias pairwise(alias fun, size_t lag = 1) = slide!(lag + 1, fun);
 
