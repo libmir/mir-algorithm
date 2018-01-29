@@ -4,7 +4,7 @@ Copyright: Copyright © 2018-, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
 
 Macros:
-SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
+SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, graph, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 
@@ -24,9 +24,13 @@ alias Graph(I) = Slice!(Contiguous, [1], GraphIterator!I);
 alias GraphSeries(T, I) = Series!(T*, Contiguous, [1], GraphIterator!I);
 
 /++
+Param:
+    aaGraph = graph that is represented as associative array
+Returns:
+    A graph series composed of keys (`.index``) and arrays of indeces (`.d`)
 Complexity: `O(log(V) (V + E))`
 +/
-GraphSeries!(T, uint) graphSeries(T)(in T[][T] aaGraph)
+GraphSeries!(T, uint) graphSeries(T, Range)(in Range[T] aaGraph)
 {
     import std.array: array;
     auto keys = aaGraph.byKey.array.sliced;
