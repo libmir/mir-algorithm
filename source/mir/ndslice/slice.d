@@ -185,7 +185,7 @@ Returns:
     n-dimensional slice
 +/
 auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
-    if (!isStaticArray!Iterator && !isNarrowString!Iterator && N
+    if (!isStaticArray!Iterator && N
         && !is(Iterator : Slice!(kind, packs, _Iterator), SliceKind kind, size_t[] packs, _Iterator))
 {
     alias C = ImplicitlyUnqual!(typeof(iterator));
