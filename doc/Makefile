@@ -107,15 +107,19 @@ $(DOC_OUTPUT_DIR)/$(call D2HTML,$p) : $(call ADDSOURCE,$p) $(STDDOC) ;\
 IMAGES=images/mir.svg favicon.ico
 
 JAVASCRIPT=$(addsuffix .js, $(addprefix js/, \
-	dlang ddox listanchors run run-main-website jquery-1.7.2.min))
+	codemirror-compressed dlang ddox listanchors run run_examples jquery-1.7.2.min))
 
 STYLES=$(addsuffix .css, $(addprefix css/, \
-	style print custom ))
+	style print custom codemirror))
 
 ALL_FILES = $(addprefix $(DOC_OUTPUT_DIR)/, \
 	$(STYLES) $(IMAGES) $(JAVASCRIPT))
 
 $(DOC_OUTPUT_DIR)/css/custom.css: $(DOC_SOURCE_DIR)/custom.css
+	@mkdir -p $(dir $@)
+	cp $< $@
+
+$(DOC_OUTPUT_DIR)/js/run_examples.js: $(DOC_SOURCE_DIR)/run_examples_custom.js
 	@mkdir -p $(dir $@)
 	cp $< $@
 
