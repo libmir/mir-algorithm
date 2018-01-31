@@ -112,7 +112,7 @@ struct Observation(Index, Data)
     /// Value or ndslice.
     Data data;
     /// An alias for key-value representation.
-    alias value = index;
+    alias value = data;
 }
 
 /// Convenient function for $(LREF Observation) construction.
@@ -208,7 +208,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     /// An alias for key-value representation.
-    alias value = index;
+    alias value = data;
 
     /++
     Special `[] =` index-assign operator for index-series.
