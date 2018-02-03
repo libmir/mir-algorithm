@@ -66,6 +66,7 @@ STDDOC=$(addsuffix .ddoc, ${DLANGORG_MACROS} ${GENERATED}/${LATEST} $(DLANGORG_D
 ${GENERATED}/${LATEST}.ddoc :
 	mkdir -p $(dir $@)
 	echo "LATEST=${LATEST}" >$@
+	echo "LATEST_STABLE=$(shell git tag | grep -vE "(alpha|beta)" | tail -n1 | tr -d v)" >> $@
 
 ${GENERATED}/mir.ddoc : $(DOC_SOURCE_DIR)/gen_modlist.d $(ALGORITHM_DIR)
 	mkdir -p $(dir $@)
