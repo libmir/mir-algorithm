@@ -51,7 +51,9 @@ $(COMMON_HEADERS_DLANG)
 $(EXTRA_HEADERS)
 </head>
 <body id='$(TITLE)' class='$(BODYCLASS)'>
-$(SCRIPT document.body.className += ' have-javascript')
+$(SCRIPT document.body.className += ' have-javascript';
+var currentVersion = "$(LATEST)";
+)
 $(DIVID top, $(DIVC helper, $(DIVC helper expand-container,
     <a href="$(ROOT_DIR)menu.html" title="Menu" class="hamburger expand-toggle"><span>Menu</span></a>
     $(NAVIGATION)
