@@ -3,7 +3,7 @@
 ###########################################################
 
 # tags
-LATEST:=$(git describe --abbrev=0 --tags | tr -d v)
+LATEST:=$(shell git describe --abbrev=0 --tags | tr -d v)
 
 # binaries
 DMD=dmd
