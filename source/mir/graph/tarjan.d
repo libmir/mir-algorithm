@@ -25,9 +25,13 @@ The implementation is loop based. It does not use recursion and does not have st
 Complexity: worst-case `O(|V| + |E|)`.
 
 Params:
-    graph = random access range of random accees ranges of nodes indeces
+    graph = components (ndslice) sorted in the direction of traversal of the graph. Each component is an array of indeces.
 Returns:
     components (ndslice of arrays of indexes)
+
+Note:
+    The implementation returns components sorted in the direction of traversal of the graph.
+    $(NOTE Most of other Tarjan implementations returns reverse order.)
 
 See_also:
     $(SUBREF utility, graph)
@@ -206,22 +210,19 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
 /++
 ------
         4 <- 5 <- 6 -------> 7 -> 8 -> 11
-        \    ^   ^           ^    \
-        v    \   \           \    \
+        |    ^   ^           ^    |
+        v    |   |           |    |
   0 -> 1 -> 2 -> 3 -> 10     9 <---
 ------
 +/
 pure version(mir_test) unittest
 {
     import mir.graph.utility;
-    import mir.ndslice.algorithm: each;
-    import mir.ndslice.sorting: sort;
-    import std.array: array;
 
     GraphSeries!(string, uint) gs = [
         "00": ["01"],
         "01": ["02"],
-        "02": ["03", "05"],
+        "02": ["05", "03"],
         "03": ["06", "10"],
         "04": ["01"],
         "05": ["04"],
@@ -234,15 +235,13 @@ pure version(mir_test) unittest
     ].graphSeries;
 
     auto components = gs.data.tarjan;
-    components.each!sort; // sort indexes in each component
 
-    assert(components.array.sort == [
-		[0u],
-		[1u, 2, 3, 4, 5, 6],
-		[7u, 8, 9],
-		[10u],
-		[11u],
-	]);
+    assert(components == [
+        [0],
+        [1, 2, 5, 4, 3, 6],
+        [10],
+        [7, 8, 9],
+        [11]]);
 }
 
 /++
@@ -262,28 +261,20 @@ pure version(mir_test) unittest
 
     auto scc = gs.data.tarjan;
 
-    assert(scc.length == 5);
-
-    foreach(uint[] component; scc)
-        assert(component.length == 1);
-
     assert(scc == [[0], [1], [2], [3], [4]]);
 }
 
 /++
 ----
  0 <- 2 <-- 5 <--> 6
- \  ^ ^     ^     ^
- v /  \     \     \
- 1 <- 3 <-> 4 <-- 7 <--(links to self)
+ |  ^ ^ ^___       
+ v /  |     \     /\ 
+ 1 <- 3 <-> 4 <-- 7_|
 ----
 +/
 pure version(mir_test) unittest
 {
     import mir.graph.utility;
-    import mir.ndslice.algorithm: each;
-    import mir.ndslice.sorting: sort;
-    import std.array: array;
 
     auto gs = [
         0: [1],
@@ -297,30 +288,26 @@ pure version(mir_test) unittest
     ].graphSeries;
 
     auto components = gs.data.tarjan;
-    components.each!sort; // sort indexes in each component
 
-    assert(components.array.sort == [
-        [0, 1, 2],
-        [3, 4],
+    assert(components == [
+        [7],
         [5, 6],
-        [7]
+        [3, 4],
+        [0, 1, 2],
 	]);
 }
 
 /++
 -----
  2 <-> 1
- \   ^
- v  /
-  0
+ \    ^
+  v /
+   0
 -----
 +/
 pure version(mir_test) unittest
 {
     import mir.graph.utility;
-    import mir.ndslice.algorithm: each;
-    import mir.ndslice.sorting: sort;
-    import std.array: array;
 
     auto gs = [
         0: [1],
@@ -329,7 +316,6 @@ pure version(mir_test) unittest
     ].graphSeries;
 
     auto components = gs.data.tarjan;
-    components.each!sort; // sort indexes in each component
 
     assert(components == [[0, 1, 2]]);
 }
@@ -346,9 +332,6 @@ not when they were actually removed from the stack
 pure version(mir_test) unittest
 {
     import mir.graph.utility;
-    import mir.ndslice.algorithm: each;
-    import mir.ndslice.sorting: sort;
-    import std.array: array;
 
     auto root = 0;
     auto lvl1 = [1,2,3,4,5,6,7,8,9,10];
@@ -364,7 +347,6 @@ pure version(mir_test) unittest
     auto gs = aar.graphSeries;
 
     auto components = gs.data.tarjan;
-    components.each!sort; // sort indexes in each component
 
-    assert(components == [root ~ lvl1 ~ lvl2]);
+    assert(components == [[root] ~ [lvl1[0]] ~ lvl2 ~ lvl1[1 .. $]]);
 }
