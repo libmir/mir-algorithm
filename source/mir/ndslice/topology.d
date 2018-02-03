@@ -668,6 +668,7 @@ Params:
     slice = input slice
 Returns:
     1-dimensional slice composed of diagonal elements
+See_also: $(LREF antidiagonal)
 +/
 Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator) 
     diagonal
@@ -758,20 +759,6 @@ version(mir_test) unittest
     assert(a.diagonal == d);
 }
 
-/// Matrix, antidiagonal
-@safe @nogc pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.dynamic : dropToHypercube, reversed;
-    //  -------
-    // | 0 1 2 |
-    // | 3 4 5 |
-    //  -------
-    //->
-    // | 1 3 |
-    static immutable d = [1, 3];
-    assert(iota(2, 3).universal.dropToHypercube.reversed!1.diagonal == d);
-}
-
 /// 3D, main diagonal
 @safe @nogc pure nothrow version(mir_test) unittest
 {
@@ -842,6 +829,61 @@ version(mir_test) unittest
         .evertPack;
 
     assert(slice == d);
+}
+
+/++
+Returns a 1-dimensional slice over the main antidiagonal of an 2D-dimensional slice.
+`antidiagonal` can be generalized with other selectors such as
+$(LREF blocks) (diagonal blocks) and $(LREF windows) (multi-diagonal slice).
+
+It runs from the top right corner to the bottom left corner.
+
+Pseudo_code:
+------
+auto antidiagonal = slice.dropToHypercube.reversed!1.diagonal;
+------
+
+Params:
+    slice = input slice
+Returns:
+    1-dimensional slice composed of antidiagonal elements.
+See_also: $(LREF diagonal)
++/
+Slice!(Universal, 1 ~ packs[1 .. $], Iterator)
+    antidiagonal
+    (SliceKind kind, size_t[] packs, Iterator)
+    (Slice!(kind, packs, Iterator) slice)
+    if (packs[0] == 2)
+{
+    import mir.ndslice.dynamic : dropToHypercube, reversed;
+    return slice.dropToHypercube.reversed!1.diagonal;
+}
+
+///
+@safe @nogc pure nothrow version(mir_test) unittest
+{
+    //  -----
+    // | 0 1 |
+    // | 2 3 |
+    //  -----
+    //->
+    // | 1 2 |
+    static immutable c = [1, 2];
+    import std.stdio;
+    assert(iota(2, 2).antidiagonal == c);
+}
+
+///
+@safe @nogc pure nothrow version(mir_test) unittest
+{
+    //  -------
+    // | 0 1 2 |
+    // | 3 4 5 |
+    //  -------
+    //->
+    // | 1 3 |
+    static immutable d = [1, 3];
+    assert(iota(2, 3).antidiagonal == d);
 }
 
 /++
@@ -3076,53 +3118,22 @@ auto magic(size_t length)
 @safe pure nothrow
 version(mir_test) unittest
 {
-    auto isMagic(S)(S matrix)
+    bool isMagic(S)(S matrix)
     {
         import mir.math.sum;
-        import mir.ndslice.algorithm: all;
-        import mir.ndslice.allocation: slice;
-        import mir.ndslice.dynamic: transposed, reversed;
-        import mir.ndslice.topology: flattened, universal, diagonal;
-
-        // check shape
-        if (matrix.length == 0)
-            return false;
-        if (matrix.length!0 != matrix.length!1)
-            return false;
-
-        // checks that matrix is composed of consequent elements from interval 1:N^2.
-        auto n2 = matrix.elementsCount;
-        enum bc = size_t.sizeof * 8;
-        auto flags = slice!size_t(n2 / bc + (n2 % bc != 0))
-            .bitwise[0 .. n2];
-        foreach(elem; matrix.flattened)
-        {
-            assert(elem > 0);
-            assert(elem <= n2);
-            flags[elem - 1] = true;
-        }
-        if (!flags.all)
-            return false;
-
-        // calculate magic number
+        import mir.ndslice: magic, byDim, map, repeat, diagonal, antidiagonal;
         auto n = matrix.length;
-        auto c = n * (n * n + 1) / 2;
-
-        // each row sum should equal magic number
-        foreach(row; matrix)
-            if (row.sum != c)
-                return false;
-        // each columns sum should equal magic number
-        foreach(col; matrix.universal.transposed)
-            if (col.sum != c)
-                return false;
-        // each diagonal sum should equal magic number
-        if (matrix.diagonal.sum != c)
-            return false;
-        if (matrix.universal.reversed!0.diagonal.sum != c)
-            return false;
-
-        return true;
+        auto c = n * (n * n + 1) / 2; // magic number
+        return // check shape
+            matrix.length!0 > 0 && matrix.length!0 == matrix.length!1
+            && // each row sum should equal magic number
+            matrix.byDim!0.map!sum == c.repeat(n)
+            && // each columns sum should equal magic number
+            matrix.byDim!1.map!sum == c.repeat(n)
+            && // diagonal sum should equal magic number
+            matrix.diagonal.sum == c
+            && // antodiagonal sum should equal magic number
+            matrix.antidiagonal.sum == c;
     }
 
     assert(isMagic(magic(1)));
