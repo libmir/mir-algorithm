@@ -3121,15 +3121,15 @@ version(mir_test) unittest
     bool isMagic(S)(S matrix)
     {
         import mir.math.sum;
-        import mir.ndslice: magic, byDim, map, repeat, diagonal, antidiagonal;
+        import mir.ndslice: magic, byDim, map, all, diagonal, antidiagonal;
         auto n = matrix.length;
         auto c = n * (n * n + 1) / 2; // magic number
         return // check shape
             matrix.length!0 > 0 && matrix.length!0 == matrix.length!1
             && // each row sum should equal magic number
-            matrix.byDim!0.map!sum == c.repeat(n)
+            matrix.byDim!0.map!sum.all!(a => a == c)
             && // each columns sum should equal magic number
-            matrix.byDim!1.map!sum == c.repeat(n)
+            matrix.byDim!1.map!sum.all!(a => a == c)
             && // diagonal sum should equal magic number
             matrix.diagonal.sum == c
             && // antidiagonal sum should equal magic number
