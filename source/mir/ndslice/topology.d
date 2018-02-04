@@ -3132,7 +3132,7 @@ version(mir_test) unittest
             matrix.byDim!1.map!sum == c.repeat(n)
             && // diagonal sum should equal magic number
             matrix.diagonal.sum == c
-            && // antodiagonal sum should equal magic number
+            && // antidiagonal sum should equal magic number
             matrix.antidiagonal.sum == c;
     }
 
