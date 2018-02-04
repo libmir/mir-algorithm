@@ -348,19 +348,41 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Gets data for the index.
     Params:
         moment = index
+        _default = default value is returned if the series does not contains the index.
+    Returns:
+        data that corresponds to the index or default value.
+    */
+    auto ref get(Index, Value)(Index moment, Value _default) inout
+        if (!is(Value : const(Exception)))
+    {
+        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        return idx < _data._lengths[0] && index[idx] == moment ? data[idx] : _default;
+    }
+
+    /**
+    Gets data for the index.
+    Params:
+        moment = index
         exc = (lazy, optional) exception to throw if the series does not contains the index.
     Returns: data that corresponds to the index.
     Throws:
         Exception if the series does not contains the index.
     */
-    auto ref get(Index)(Index moment, lazy Exception exc = null) inout
+    auto ref get(Index)(Index moment) inout
+    {
+        static immutable defaultExc = new Exception(Unqual!Index.stringof ~ "-" ~ Unqual!(typeof(_data[size_t.init])).stringof ~ " series does not contain required index." );
+        return get(moment, defaultExc);
+    }
+
+    /// ditto
+    auto ref get(Index)(Index moment, lazy const Exception exc) inout
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         if (idx < _data._lengths[0] && index[idx] == moment)
         {
             return data[idx];
         }
-        throw exc ? exc : new Exception(Unqual!Index.stringof ~ "-" ~ Unqual!(typeof(_data[size_t.init])).stringof ~ " series does not contain required index." );
+        throw exc;
     }
 
     ///
