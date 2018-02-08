@@ -27,7 +27,7 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # packages and their modules.
 MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/internal mir/math mir/math/func mir/array mir/interpolate mir/graph
 
-PACKAGE_mir = bitmanip conv functional primitives range series utility graph
+PACKAGE_mir = bitmanip conv functional primitives range series utility
 
 PACKAGE_mir_array = primitives
 PACKAGE_mir_internal = utility
