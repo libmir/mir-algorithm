@@ -486,6 +486,7 @@ struct ZipIterator(Iterators...)
     {
         import std.format;
         import mir.ndslice.topology: iota;
+        import std.meta: staticMap;
         return mixin("ZipIterator!(staticMap!(LightConstOf, Iterators))(%(_iterators[%s].lightConst,%)].lightConst)".format(_iterators.length.iota));
     }
 
@@ -494,6 +495,7 @@ struct ZipIterator(Iterators...)
     {
         import std.format;
         import mir.ndslice.topology: iota;
+        import std.meta: staticMap;
         return mixin("ZipIterator!(staticMap!(LightImmutableOf, Iterators))(%(_iterators[%s].lightImmutable,%)].lightImmutable)".format(_iterators.length.iota));
     }
 
