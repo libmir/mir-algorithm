@@ -22,8 +22,6 @@ import mir.array.primitives;
 import mir.math.common: optmath;
 import mir.ndslice.internal: ConstIfPointer;
 
-@optmath:
-
 /++
 Constructs piecewise cubic hermite interpolating polynomial with nodes on rectilinear grid.
 +/

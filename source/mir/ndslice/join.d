@@ -16,6 +16,10 @@ import mir.primitives;
 import mir.internal.utility;
 import std.traits;
 
+import mir.math.common: optmath;
+
+@optmath:
+
 /++
 Params: Nd-range of Nd-cells
 Returns: Nd-slice composed of joined cells.

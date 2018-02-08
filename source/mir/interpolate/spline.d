@@ -979,8 +979,6 @@ struct SplineKernel(X)
     X w1 = 0;
     X wq = 0;
 
-@optmath:
-
     ///
     this()(X x0, X x1, X x)
     {

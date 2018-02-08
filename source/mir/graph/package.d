@@ -12,6 +12,10 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 
 module mir.graph;
 
+import mir.math.common: optmath;
+
+@optmath:
+
 import mir.series;
 
 import mir.functional: staticArray;

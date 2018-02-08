@@ -9,9 +9,6 @@ ParabolaKernel structure.
 +/
 struct ParabolaKernel(T)
 {
-
-@optmath:
-
     ///
     T a = 0;
     ///

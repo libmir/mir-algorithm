@@ -194,8 +194,6 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
-@optmath:
-
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(Contiguous, [N], F*) _data;
     /// Grid iterators. $(RED For internal use.)

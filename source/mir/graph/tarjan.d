@@ -16,6 +16,11 @@ module mir.graph.tarjan;
 
 import std.traits;
 
+import mir.math.common: optmath;
+
+@optmath:
+
+
 /++
 Classic Tarjan's strongly connected components algorithm.
 
