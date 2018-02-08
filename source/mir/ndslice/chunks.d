@@ -237,6 +237,21 @@ struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
     size_t[dimensions.length] chunkLengths()() @property { return _chunkLengths; }
     /// ditto
     size_t[dimensions.length] _chunkLengths;
+
+    ///
+    auto lightConst()() const @property
+    {
+        import mir.qualifier;
+        return Chunks!(dimensions, kind, packs, LightConstOf!Iterator)(_chunkLengths, _slice.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import mir.qualifier;
+        return Chunks!(dimensions, kind, packs, LightImmutableOf!Iterator)(_chunkLengths, _slice.lightImmutable);
+    }
+
     /++
     Underlying ndslice.
     It always correspond to current chunks state.

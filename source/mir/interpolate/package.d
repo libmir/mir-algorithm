@@ -23,6 +23,9 @@ import std.traits: isInstanceOf;
 import mir.primitives;
 import mir.functional: RefTuple;
 import mir.ndslice.slice: Slice, Contiguous;
+import mir.math.common: optmath;
+
+@optmath:
 
 package ref iter(alias s)() { return s._iterator; };
 package alias GridVector(It) = Slice!(Contiguous, [1], It);

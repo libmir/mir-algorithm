@@ -700,6 +700,21 @@ struct AliasCall(T, string methodName, TemplateArgs...)
 {
     T __this;
     alias __this this;
+
+    ///
+    auto lightConst()() const @property
+    {
+        import mir.qualifier;
+        return AliasCall!(LightConstOf!T, methodName, TemplateArgs)(__this.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import mir.qualifier;
+        return AliasCall!(LightImmutableOf!T, methodName, TemplateArgs)(__this.lightImmutable);
+    }
+
     this()(auto ref T value)
     {
         __this = value;

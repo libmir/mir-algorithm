@@ -485,8 +485,10 @@ version(mir_test) unittest
 // relaxed example
 version(mir_test) unittest
 {
+    import mir.qualifier;
+
     static ContiguousSlice!(3, ubyte) movingWindowByChannel
-    (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(UniversalMatrix!ubyte) filter)
+    (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(LightConstOf!(UniversalMatrix!ubyte)) filter)
     {
         return image
             .pack!1

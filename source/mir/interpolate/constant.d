@@ -13,6 +13,8 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.constant;
 
+@optmath:
+
 ///
 version(mir_test)
 @safe pure unittest
@@ -64,6 +66,8 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
 {
     static if (N > 1) pragma(msg, "Warning: multivariate constant interpolant was not tested.");
 
+@optmath:
+
     private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     private alias GridVectors = Constant!(T, N, GridIterators).GridVectors;
 
@@ -104,6 +108,8 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
 {
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
+
+@optmath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(Contiguous, [N], F*) _data;
