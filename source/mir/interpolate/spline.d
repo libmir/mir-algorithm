@@ -438,6 +438,8 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
+@optmath:
+
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(Contiguous, [N], F[2 ^^ N]*) _data;
     /// Grid iterators. $(RED For internal use.)
@@ -976,6 +978,8 @@ struct SplineKernel(X)
     X w0 = 0;
     X w1 = 0;
     X wq = 0;
+
+@optmath:
 
     ///
     this()(X x0, X x1, X x)

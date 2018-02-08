@@ -281,7 +281,6 @@ unittest
 }
 
 /// Multiple slices, dot product
-//version(none)
 version(mir_test)
 unittest
 {

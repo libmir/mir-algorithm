@@ -22,6 +22,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.ndfield;
 
+import mir.qualifier;
 import mir.internal.utility;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
@@ -64,6 +65,22 @@ struct Cartesian(NdFields...)
     package enum size_t N = M!(NdFields.length);
 
     ///
+    auto lightConst()() const @property
+    {
+        import std.format;
+        import mir.ndslice.topology: iota;
+        return mixin("Cartesian!(staticMap!(LightConstOf, NdFields))(%(_fields[%s].lightConst,%)].lightConst)".format(_fields.length.iota));
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import std.format;
+        import mir.ndslice.topology: iota;
+        return mixin("Cartesian!(staticMap!(LightImmutableOf, NdFields))(%(_fields[%s].lightImmutable,%)].lightImmutable)".format(_fields.length.iota));
+    }
+
+    ///
     size_t length(size_t d = 0)() @property
     {
         foreach(f, ref field; _fields)
@@ -101,7 +118,7 @@ struct Cartesian(NdFields...)
     }
 
     ///
-    auto opIndex()(size_t[N] indexes...)
+    auto opIndex(size_t[N] indexes...)
     {
         import mir.functional : refTuple;
         return mixin("refTuple(" ~ _indexes!(NdFields) ~ ")");
@@ -125,6 +142,22 @@ struct Kronecker(alias fun, NdFields...)
 {
     ///
     NdFields _fields;
+
+    ///
+    auto lightConst()() const @property
+    {
+        import std.format;
+        import mir.ndslice.topology: iota;
+        return mixin("Kronecker!(fun, staticMap!(LightConstOf, NdFields))(%(_fields[%s].lightConst,%)].lightConst)".format(_fields.length.iota));
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import std.format;
+        import mir.ndslice.topology: iota;
+        return mixin("Kronecker!(fun, staticMap!(LightImmutableOf, NdFields))(%(_fields[%s].lightImmutable,%)].lightImmutable)".format(_fields.length.iota));
+    }
 
     private enum N = DimensionCount!(NdFields[$-1]);
 

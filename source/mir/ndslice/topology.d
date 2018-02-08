@@ -106,6 +106,7 @@ import mir.ndslice.iterator;
 import mir.ndslice.ndfield;
 import mir.ndslice.slice;
 import mir.primitives;
+import mir.qualifier;
 
 @optmath:
 
@@ -2507,7 +2508,16 @@ version(mir_test) unittest
     //  -------      |  ---    ---  |
     //                --------------
 
-    struct Callable { double factor; this(double f) {factor = f;} auto opCall(S)(S x) { return x.sum * factor; } }
+    struct Callable
+    {
+        double factor;
+        this(double f) {factor = f;}
+        auto opCall(S)(S x) { return x.sum * factor; }
+
+        auto lightConst()() const @property { return Callable(factor); }
+        auto lightImmutable()() immutable @property { return Callable(factor); }
+    }
+
     auto callable = Callable(0.5);
 
     auto s = iota(2, 3)
@@ -2523,7 +2533,16 @@ version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, zip;
 
-    struct Callable { double factor; this(double f) {factor = f;} auto opCall(S, T)(S x, T y) { return x + y * factor; } }
+    struct Callable
+    {
+        double factor;
+        this(double f) {factor = f;}
+        auto opCall(S, T)(S x, T y) { return x + y * factor; }
+
+        auto lightConst()() const { return Callable(factor); }
+        auto lightImmutable()() immutable { return Callable(factor); }
+    }
+
     auto callable = Callable(10);
 
     // 0 1 2

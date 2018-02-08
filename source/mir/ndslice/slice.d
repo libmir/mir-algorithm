@@ -249,6 +249,9 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
         {
             return index;
         }
+
+        auto lightConst()() const @property { return MyIota(); }
+        auto lightImmutable()() immutable @property { return MyIota(); }
     }
     import mir.ndslice.iterator: FieldIterator;
     alias Iterator = FieldIterator!MyIota;
@@ -422,6 +425,8 @@ Returns the element type of a $(LREF Slice).
 alias DeepElementType(S : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = S.DeepElemType;
 /// ditto
 alias DeepElementType(S : Concatenation!(dim, Slices), size_t dim, Slices...) = S.DeepElemType;
+/// ditto
+alias DeepElementType(S : T[], T) = T;
 
 ///
 version(mir_test) unittest
@@ -774,10 +779,11 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         /// ditto
-        ref toConst()() const @trusted pure nothrow @nogc
+        auto toConst()() const @trusted pure nothrow @nogc
         {
-            pragma(inline, true);
-            return *cast(Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*)*) &this;
+            // pragma(inline, true);
+            alias It = const(Unqual!(PointerTarget!Iterator))*;
+            return Slice!(kind, packs, It)(_lengths, _strides, _iterator);
         }
 
         static if (!is(Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*) == This))
@@ -1490,7 +1496,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     bool anyEmpty()() @safe const
     {
         foreach (i; Iota!(packs[0]))
-            if (_lengths[i] == 0)
+            if (this._lengths[i] == 0)
                 return true;
         return false;
     }

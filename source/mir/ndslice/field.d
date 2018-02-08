@@ -31,6 +31,7 @@ import std.traits;
 import mir.internal.utility: Iota;
 import mir.math.common: optmath;
 import mir.ndslice.internal;
+import mir.qualifier;
 
 @optmath:
 
@@ -49,6 +50,18 @@ struct MapField(Field, alias fun)
 @optmath:
     ///
     Field _field;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return MapField!(LightConstOf!Field, fun)(_field.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return MapField!(LightImmutableOf!Field, fun)(_field.lightImmutable);
+    }
 
     /++
     User defined constructor used by $(LREF mapField).
@@ -114,6 +127,18 @@ struct RepeatField(T)
     ///
     UT _value;
 
+    ///
+    auto lightConst()() const @property
+    {
+        return RepeatField!(const T)(cast(UT) _value);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return RepeatField!(immutable T)(cast(UT) _value);
+    }
+
     auto ref T opIndex()(ptrdiff_t)
     { return cast(T) _value; }
 }
@@ -132,6 +157,18 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
 
     ///
     Field _field;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return BitwiseField!(LightConstOf!Field)(_field.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return BitwiseField!(LightImmutableOf!Field)(_field.lightImmutable);
+    }
 
     bool opIndex()(size_t index)
     {
@@ -177,6 +214,18 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
 
     ///
     Field _field;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return BitpackField!(LightConstOf!Field, pack)(_field.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return BitpackField!(LightImmutableOf!Field, pack)(_field.lightImmutable);
+    }
 
     I opIndex()(size_t index)
     {
@@ -267,6 +316,18 @@ struct ndIotaField(size_t N)
     ///
     size_t[N - 1] _lengths;
 
+    ///
+    auto lightConst()() const @property
+    {
+        return ndIotaField!N(_lengths);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return ndIotaField!N(_lengths);
+    }
+
     size_t[N] opIndex()(size_t index) const
     {
         size_t[N] indexes;
@@ -290,6 +351,18 @@ struct LinspaceField(T)
 
     ///
     T _start = cast(T) 0, _stop = cast(T) 0;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return LinspaceField!T(_length, _start, _stop);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return LinspaceField!T(_length, _start, _stop);
+    }
 
     // no fastmath
     ///
@@ -333,6 +406,18 @@ struct MagicField()
     Should be even.
     +/
     size_t _n;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return MagicField!()(_n);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return MagicField!()(_n);
+    }
 
     ///
     size_t length(size_t dimension = 0)() @property

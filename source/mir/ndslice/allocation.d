@@ -94,7 +94,7 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
         auto result = (() @trusted => slice.shape.uninitSlice!(Unqual!E))();
 
         import mir.ndslice.algorithm: each;
-        each!((ref to, auto ref from) => emplaceRef!E(to, from))(result, slice);
+        each!emplaceRef(result, slice);
 
         return (() @trusted => cast(Slice!(Contiguous, [packs[0]], E*)) result)();
     }
@@ -253,7 +253,7 @@ auto makeSlice(Allocator, SliceKind kind, size_t[] packs, Iterator)
     auto result = allocator.makeUninitSlice!(Unqual!E)(slice.shape);
 
     import mir.ndslice.algorithm: each;
-    each!((ref to, auto ref from) => emplaceRef!E(to, from))(result, slice);
+    each!emplaceRef(result, slice);
 
     return cast(Slice!(Contiguous, [packs[0]], E*)) result;
 }
@@ -538,7 +538,10 @@ auto stdcSlice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     alias T = Unqual!(slice.DeepElemType);
     static assert (!hasElaborateAssign!T, "stdcSlice is not miplemented for slices that have elaborate assign");
     auto ret = stdcUninitSlice!T(slice.shape);
-    ret[] = slice;
+
+    import std.backdoor: emplaceRef;
+    import mir.ndslice.algorithm: each;
+    each!emplaceRef(ret, slice);
     return ret;
 }
 
