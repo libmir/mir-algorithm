@@ -1,4 +1,6 @@
 /++
+Basic routines to work with graphs.
+
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2018-, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
@@ -8,7 +10,7 @@ SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, graph, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 
-module mir.graph.utility;
+module mir.graph;
 
 import mir.series;
 

@@ -25,9 +25,9 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # Packages in mir. Just mention the package name here. The contents of package
 # xy/zz is in variable PACKAGE_xy_zz. This allows automation in iterating
 # packages and their modules.
-MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/internal mir/math mir/math/func mir/array mir/interpolate
+MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/internal mir/math mir/math/func mir/array mir/interpolate mir/tarjan
 
-PACKAGE_mir = bitmanip conv functional primitives range series utility
+PACKAGE_mir = bitmanip conv functional primitives range series utility graph
 
 PACKAGE_mir_array = primitives
 PACKAGE_mir_internal = utility
@@ -35,6 +35,7 @@ PACKAGE_mir_interpolate = package constant linear spline pchip utility
 PACKAGE_mir_math = constant common sum numeric package
 PACKAGE_mir_math_func = expdigamma
 PACKAGE_mir_ndslice_connect = cpp cpython
+PACKAGE_mir_graph = tarjan
 
 PACKAGE_mir_ndslice = \
 	algorithm\
