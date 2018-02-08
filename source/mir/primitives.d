@@ -140,3 +140,23 @@ size_t elementsCount(Range)(Range range)
         return ret;
     }
 }
+
+/++
+Returns the element type of a struct with `.DeepElemType` inner alias or a type of common array.
++/
+template DeepElementType(S)
+    if (is(S == struct) || is(S == class) || is(S == interface))
+{
+    alias DeepElementType = S.DeepElemType;
+}
+
+/// ditto
+alias DeepElementType(S : T[], T) = T;
+
+///
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota;
+    static assert(is(DeepElementType!(Slice!(Universal, [4], const(int)[]))     == const(int)));
+    static assert(is(DeepElementType!(Slice!(Universal, [4], immutable(int)*))  == immutable(int)));
+}

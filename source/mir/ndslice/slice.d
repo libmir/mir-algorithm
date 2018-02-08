@@ -46,6 +46,7 @@ import mir.ndslice.iterator;
 import mir.primitives;
 import mir.utility;
 import mir.qualifier;
+public import mir.primitives: DeepElementType;
 
 @optmath:
 
@@ -419,23 +420,6 @@ auto slicedNdField(ndField)(ndField field)
     return .slicedNdField(field, field.shape);
 }
 
-
-/++
-Returns the element type of a $(LREF Slice).
-+/
-alias DeepElementType(S : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = S.DeepElemType;
-/// ditto
-alias DeepElementType(S : Concatenation!(dim, Slices), size_t dim, Slices...) = S.DeepElemType;
-/// ditto
-alias DeepElementType(S : T[], T) = T;
-
-///
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota;
-    static assert(is(DeepElementType!(Slice!(Universal, [4], const(int)[]))     == const(int)));
-    static assert(is(DeepElementType!(Slice!(Universal, [4], immutable(int)*))  == immutable(int)));
-}
 
 /++
 Presents $(LREF .Slice.structure).

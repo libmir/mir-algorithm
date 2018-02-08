@@ -252,6 +252,8 @@ struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
         return Chunks!(dimensions, kind, packs, LightImmutableOf!Iterator)(_chunkLengths, _slice.lightImmutable);
     }
 
+    alias DeepElemType = Slice!(kind, packs, Iterator);
+
     /++
     Underlying ndslice.
     It always correspond to current chunks state.
