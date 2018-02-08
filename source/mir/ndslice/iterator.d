@@ -1040,6 +1040,18 @@ struct SubSliceIterator(Iterator, Sliceable)
     ///
     Sliceable _sliceable;
 
+    ///
+    auto lightConst()() const @property
+    {
+        return SubSliceIterator!(LightConstOf!Iterator, LightConstOf!Sliceable)(_iterator.lightConst, _sliceable.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return SubSliceIterator!(LightImmutableOf!Iterator, LightImmutableOf!Sliceable)(_iterator.lightImmutable, _sliceable.lightImmutable);
+    }
+
     auto ref opUnary(string op : "*")()
     {
         auto i = *_iterator;

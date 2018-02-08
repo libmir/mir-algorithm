@@ -2484,7 +2484,9 @@ version(mir_test) unittest
 
     static struct Mul {
         double factor; this(double f) { factor = f; } 
-        auto opCall(long x) {return x * factor; }}
+        auto opCall(long x) const {return x * factor; }
+        auto lightConst()() const @property { return Mul(factor); }
+    }
 
     auto callable = Mul(3);
     auto s = iota(2, 3).vmap(callable);

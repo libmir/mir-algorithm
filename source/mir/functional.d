@@ -767,6 +767,8 @@ template aliasCall(string methodName, TemplateArgs...)
 
     static struct S
     {
+        auto lightConst()() const @property { return S(); }
+
         auto fun(size_t ct_param = 1)(size_t rt_param)
         {
             return rt_param + ct_param;

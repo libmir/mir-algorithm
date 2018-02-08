@@ -45,6 +45,7 @@ import mir.ndslice.internal;
 import mir.ndslice.iterator;
 import mir.primitives;
 import mir.utility;
+import mir.qualifier;
 
 @optmath:
 
@@ -764,6 +765,18 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(slice == [[1, 99], [5, 6]]);
     }
 
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return .lightImmutable(this);
+    }
+
+    /// ditto
+    auto lightConst()() const @property
+    {
+        return .lightConst(this);
+    }
+
     static if (isPointer!Iterator)
     {
         private alias ConstThis = Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*);
@@ -772,16 +785,15 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Cast to const and immutable slices in case of underlying range is a pointer.
         +/
-        ref toImmutable()() immutable @trusted pure nothrow @nogc
+        auto toImmutable()() immutable @trusted pure nothrow @nogc
         {
-            pragma(inline, true);
-            return *cast(Slice!(kind, packs, immutable(Unqual!(PointerTarget!Iterator))*)*) &this;
+            alias It = immutable(Unqual!(PointerTarget!Iterator))*;
+            return Slice!(kind, packs, It)(_lengths, _strides, _iterator);
         }
 
         /// ditto
         auto toConst()() const @trusted pure nothrow @nogc
         {
-            // pragma(inline, true);
             alias It = const(Unqual!(PointerTarget!Iterator))*;
             return Slice!(kind, packs, It)(_lengths, _strides, _iterator);
         }
@@ -794,14 +806,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
                 if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
         {
-            return (*cast(Slice!(kind, packs, const(PointerTarget!Iterator)*)*) &this)[indexes];
+            return lightConst[indexes];
         }
 
         /// ditto
         auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
                 if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
         {
-            return (*cast(Slice!(kind, packs, immutable(PointerTarget!Iterator)*)*) &this)[indexes];
+            return lightImmutable[indexes];
         }
 
         static if (doUnittest)
@@ -1690,21 +1702,21 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 return true;
         }
         import mir.ndslice.topology : unpack;
-        if ((cast(This)this).unpack.anyEmpty)
+        if (this.lightConst.unpack.anyEmpty)
                 return true;
         static if (N > 1 && kind == Contiguous && rkind == Contiguous)
         {
             import mir.ndslice.topology : flattened;
-            return opEqualsImpl((cast(This)this).unpack.flattened, rslice.unpack.flattened);
+            return opEqualsImpl(this.lightConst.unpack.flattened, rslice.unpack.flattened);
         }
         else
-            return opEqualsImpl((cast(This)this).unpack, (cast(rslice.This)rslice).unpack);
+            return opEqualsImpl(this.lightConst.unpack, (cast(rslice.This)rslice).unpack);
     }
 
     ///ditto
     bool opEquals(T)(T[] arr) @trusted const
     {
-        auto slice = cast(This)this;
+        auto slice = this.lightConst;
         if (slice.length != arr.length)
             return false;
         if (arr.length) do
