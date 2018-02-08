@@ -277,7 +277,7 @@ pure version(mir_test) unittest
 ----
  0 <- 2 <-- 5 <--> 6
  |  ^ ^ ^___       
- v /  |     \     /\ 
+ v_|  |     |      _ 
  1 <- 3 <-> 4 <-- 7_|
 ----
 +/
@@ -310,9 +310,9 @@ pure version(mir_test) unittest
 /++
 -----
  2 <-> 1
- \    ^
-  v /
-   0
+ |    ^
+ v_0 /
+   
 -----
 +/
 pure version(mir_test) unittest
