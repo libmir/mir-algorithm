@@ -156,6 +156,7 @@ alias DeepElementType(S : T[], T) = T;
 ///
 version(mir_test) unittest
 {
+    import mir.ndslice.slice;
     import mir.ndslice.topology : iota;
     static assert(is(DeepElementType!(Slice!(Universal, [4], const(int)[]))     == const(int)));
     static assert(is(DeepElementType!(Slice!(Universal, [4], immutable(int)*))  == immutable(int)));

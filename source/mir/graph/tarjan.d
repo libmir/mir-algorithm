@@ -219,7 +219,8 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     GraphSeries!(string, uint) gs = [
         "00": ["01"],
@@ -251,7 +252,8 @@ Tests that the graph `0 -> 1 -> 2 -> 3 -> 4` returns 4 components.
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     GraphSeries!(char, uint) gs = [
         'a': ['b'],
@@ -276,7 +278,8 @@ pure version(mir_test) unittest
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     auto gs = [
         0: [1],
@@ -309,7 +312,8 @@ pure version(mir_test) unittest
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     auto gs = [
         0: [1],
@@ -333,7 +337,8 @@ not when they were actually removed from the stack
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     auto root = 0;
     auto lvl1 = [1,2,3,4,5,6,7,8,9,10];

@@ -263,7 +263,7 @@ struct Concatenation(size_t dim, Slices...)
 
     static assert(dim < N);
 
-    package alias DeepElemType = CommonType!(staticMap!(DeepElementType, Slices));
+    alias DeepElemType = CommonType!(staticMap!(DeepElementType, Slices));
 
     /// Length primitive
     size_t length(size_t d = 0)() const @property
