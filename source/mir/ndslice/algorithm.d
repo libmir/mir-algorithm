@@ -57,10 +57,21 @@ private void checkShapesMatch(
 {
     enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);
     enum msgShape = "all slices must have the same shape"  ~ tailErrorMessage!(fun, pfun);
+    enum N = slices[0].shape.length;
     foreach (i, Slice; Slices)
     {
-        static assert (slices[i].shape.length == slices[0].shape.length, msgShape);
-        assert(slices[i].shape == slices[0].shape, msgShape);
+        static if (i == 0)
+            continue;
+        else
+        static if (slices[i].shape.length == N)
+            assert(slices[i].shape == slices[0].shape, msgShape);
+        else
+        {
+            import mir.ndslice.fuse: fuseShape;
+            static assert(slices[i].fuseShape.length >= N);
+            import std.conv;
+            assert(slices[i].fuseShape[0 .. N] == slices[0].shape, msgShape ~ slices[i].fuseShape[0 .. N].to!string ~ slices[0].shape.to!string);
+        }
     }
 }
 
@@ -172,7 +183,7 @@ S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
             seed = mixin("fun(seed, " ~ frontOf!(Slices.length) ~ ")");
         else
             seed = mixin(".reduceImpl!fun(seed," ~ frontOf!(Slices.length) ~ ")");
-        foreach(ref slice; slices)
+        foreach_reverse(ref slice; slices)
             slice.popFront;
     }
     while(!slices[0].empty);
@@ -281,7 +292,6 @@ unittest
 }
 
 /// Multiple slices, dot product
-//version(none)
 version(mir_test)
 unittest
 {
@@ -413,8 +423,8 @@ void eachImpl(alias fun, Slices...)(Slices slices)
             mixin("fun(" ~ frontOf!(Slices.length) ~ ");");
         else
             mixin(".eachImpl!fun(" ~ frontOf!(Slices.length) ~ ");");
-        foreach(ref slice; slices)
-            slice.popFront;
+        foreach_reverse(i; Iota!(Slices.length))
+            slices[i].popFront;
     }
     while(!slices[0].empty);
 }
@@ -1176,7 +1186,7 @@ bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slice
                 return true;
             }
         }
-        foreach(ref slice; slices)
+        foreach_reverse(ref slice; slices)
             slice.popFront;
     }
     while(!slices[0].empty);
@@ -1427,7 +1437,7 @@ size_t anyImpl(alias fun, Slices...)(Slices slices)
             if (mixin("anyImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
                 return true;
         }
-        foreach(ref slice; slices)
+        foreach_reverse(ref slice; slices)
             slice.popFront;
     }
     while(!slices[0].empty);
@@ -1570,7 +1580,7 @@ size_t allImpl(alias fun, Slices...)(Slices slices)
             if (!mixin("allImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
                 return false;
         }
-        foreach(ref slice; slices)
+        foreach_reverse(ref slice; slices)
             slice.popFront;
     }
     while(!slices[0].empty);
@@ -2059,7 +2069,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
         }
         else
             ret += mixin(".countImpl!fun(" ~ frontOf!(Slices.length) ~ ")");
-        foreach(ref slice; slices)
+        foreach_reverse(ref slice; slices)
             slice.popFront;
     }
     while(!slices[0].empty);

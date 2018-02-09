@@ -30,7 +30,7 @@ Creates $(LREF Chunks).
 Params:
     Dimensions = compile time list of dimensions to chunk
     
-See_also: $(SUBREF topology, blocks)
+See_also: $(SUBREF topology, blocks) $(SUBREF fuse, fuseCells)
 +/
 template chunks(Dimensions...)
     if (Dimensions.length)
@@ -237,6 +237,23 @@ struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
     size_t[dimensions.length] chunkLengths()() @property { return _chunkLengths; }
     /// ditto
     size_t[dimensions.length] _chunkLengths;
+
+    ///
+    auto lightConst()() const @property
+    {
+        import mir.qualifier;
+        return Chunks!(dimensions, kind, packs, LightConstOf!Iterator)(_chunkLengths, _slice.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import mir.qualifier;
+        return Chunks!(dimensions, kind, packs, LightImmutableOf!Iterator)(_chunkLengths, _slice.lightImmutable);
+    }
+
+    alias DeepElemType = Slice!(kind, packs, Iterator);
+
     /++
     Underlying ndslice.
     It always correspond to current chunks state.

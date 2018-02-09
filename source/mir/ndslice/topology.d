@@ -106,6 +106,7 @@ import mir.ndslice.iterator;
 import mir.ndslice.ndfield;
 import mir.ndslice.slice;
 import mir.primitives;
+import mir.qualifier;
 
 @optmath:
 
@@ -1463,11 +1464,10 @@ Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator)
     else
     {
         size_t[typeof(return).N] lengths;
-        sizediff_t[0] strides;
         lengths[0] = slice.elementsCount;
         foreach(i; Iota!(1, typeof(return).N))
             lengths[i] = slice._lengths[i - 1 + packs[0]];
-        return typeof(return)(lengths, strides, slice._iterator);
+        return typeof(return)(lengths, sizediff_t[0].init, slice._iterator);
     }
 }
 
@@ -2483,7 +2483,9 @@ version(mir_test) unittest
 
     static struct Mul {
         double factor; this(double f) { factor = f; } 
-        auto opCall(long x) {return x * factor; }}
+        auto opCall(long x) const {return x * factor; }
+        auto lightConst()() const @property { return Mul(factor); }
+    }
 
     auto callable = Mul(3);
     auto s = iota(2, 3).vmap(callable);
@@ -2507,7 +2509,16 @@ version(mir_test) unittest
     //  -------      |  ---    ---  |
     //                --------------
 
-    struct Callable { double factor; this(double f) {factor = f;} auto opCall(S)(S x) { return x.sum * factor; } }
+    struct Callable
+    {
+        double factor;
+        this(double f) {factor = f;}
+        auto opCall(S)(S x) { return x.sum * factor; }
+
+        auto lightConst()() const @property { return Callable(factor); }
+        auto lightImmutable()() immutable @property { return Callable(factor); }
+    }
+
     auto callable = Callable(0.5);
 
     auto s = iota(2, 3)
@@ -2523,7 +2534,16 @@ version(mir_test) unittest
 {
     import mir.ndslice.topology : iota, zip;
 
-    struct Callable { double factor; this(double f) {factor = f;} auto opCall(S, T)(S x, T y) { return x + y * factor; } }
+    struct Callable
+    {
+        double factor;
+        this(double f) {factor = f;}
+        auto opCall(S, T)(S x, T y) { return x + y * factor; }
+
+        auto lightConst()() const { return Callable(factor); }
+        auto lightImmutable()() immutable { return Callable(factor); }
+    }
+
     auto callable = Callable(10);
 
     // 0 1 2

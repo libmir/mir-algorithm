@@ -2,6 +2,7 @@ module mir.interpolate.utility;
 
 import mir.ndslice.slice;
 import std.traits;
+import mir.math.common: optmath;
 
 /++
 ParabolaKernel structure.

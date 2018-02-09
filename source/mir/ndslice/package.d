@@ -463,6 +463,7 @@ public import mir.ndslice.concatenation;
 public import mir.ndslice.chunks;
 public import mir.ndslice.dynamic;
 public import mir.ndslice.field;
+public import mir.ndslice.fuse;
 public import mir.ndslice.iterator;
 public import mir.ndslice.ndfield;
 public import mir.ndslice.slice;
@@ -485,8 +486,10 @@ version(mir_test) unittest
 // relaxed example
 version(mir_test) unittest
 {
+    import mir.qualifier;
+
     static ContiguousSlice!(3, ubyte) movingWindowByChannel
-    (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(UniversalMatrix!ubyte) filter)
+    (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(LightConstOf!(UniversalMatrix!ubyte)) filter)
     {
         return image
             .pack!1

@@ -19,10 +19,10 @@ import std.traits;
 import std.meta: AliasSeq;
 import mir.ndslice.slice;
 import mir.array.primitives;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.internal: ConstIfPointer;
 
-@optmath:
+@fmamath:
 
 /++
 Constructs piecewise cubic hermite interpolating polynomial with nodes on rectilinear grid.
@@ -44,7 +44,7 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
         `points` and `values` must have the same length >= 3
     Returns: $(SUBREF spline, Spline)
     +/
-    Spline!(T, N, GridIterators) pchip(SliceKind ykind, yIterator)(
+    @fmamath Spline!(T, N, GridIterators) pchip(SliceKind ykind, yIterator)(
         GridVectors grid,
         scope Slice!(ykind, [N], yIterator) values) @safe
     {

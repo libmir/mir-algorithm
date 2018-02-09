@@ -238,6 +238,24 @@ struct Concatenation(size_t dim, Slices...)
 {
     @optmath:
 
+    ///
+    auto lightConst()() const @property
+    {
+        import std.format;
+        import mir.qualifier;
+        import mir.ndslice.topology: iota;
+        return mixin("Concatenation!(dim, staticMap!(LightConstOf, Slices))(%(_slices[%s].lightConst,%)].lightConst)".format(_slices.length.iota));
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import std.format;
+        import mir.ndslice.topology: iota;
+        import mir.qualifier;
+        return mixin("Concatenation!(dim, staticMap!(LightImmutableOf, Slices))(%(_slices[%s].lightImmutable,%)].lightImmutable)".format(_slices.length.iota));
+    }
+
     /// Slices and sub-concatenations
     Slices _slices;
 
@@ -245,7 +263,7 @@ struct Concatenation(size_t dim, Slices...)
 
     static assert(dim < N);
 
-    package alias DeepElemType = CommonType!(staticMap!(DeepElementType, Slices));
+    alias DeepElemType = CommonType!(staticMap!(DeepElementType, Slices));
 
     /// Length primitive
     size_t length(size_t d = 0)() const @property

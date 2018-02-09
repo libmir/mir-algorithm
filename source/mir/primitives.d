@@ -68,7 +68,7 @@ enum bool hasShape(R) = is(typeof(
 }
 
 ///
-auto shape(Range)(auto ref Range range)
+auto shape(Range)(auto ref Range range) @property
     if (hasLength!Range || hasShape!Range)
 {
     static if (__traits(hasMember, Range, "shape"))
@@ -98,8 +98,16 @@ template DimensionCount(T)
         enum size_t DimensionCount = 1;
 }
 
+package(mir) bool anyEmptyShape(size_t N)(auto ref in size_t[N] shape) @property
+{
+    foreach (i; Iota!N)
+        if (shape[i] == 0)
+            return true;
+    return false;
+}
+
 ///
-bool anyEmpty(Range)(Range range)
+bool anyEmpty(Range)(Range range) @property
     if (hasShape!Range || __traits(hasMember, Range, "anyEmpty"))
 {
     static if (__traits(hasMember, Range, "anyEmpty"))
@@ -109,11 +117,7 @@ bool anyEmpty(Range)(Range range)
     else
     static if (__traits(hasMember, Range, "shape"))
     {
-        auto shape = range.shape;
-        foreach(i; Iota!(shape.length))
-            if (shape[i] == 0)
-                return true;
-        return false;
+        return anyEmptyShape(range.shape);
     }
     else
     {
@@ -122,7 +126,7 @@ bool anyEmpty(Range)(Range range)
 }
 
 ///
-size_t elementsCount(Range)(Range range)
+size_t elementsCount(Range)(Range range) @property
     if (hasShape!Range || __traits(hasMember, Range, "elementsCount"))
 {
     static if (__traits(hasMember, Range, "elementsCount"))
@@ -139,4 +143,25 @@ size_t elementsCount(Range)(Range range)
         }
         return ret;
     }
+}
+
+/++
+Returns the element type of a struct with `.DeepElemType` inner alias or a type of common array.
++/
+template DeepElementType(S)
+    if (is(S == struct) || is(S == class) || is(S == interface))
+{
+    alias DeepElementType = S.DeepElemType;
+}
+
+/// ditto
+alias DeepElementType(S : T[], T) = T;
+
+///
+version(mir_test) unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.topology : iota;
+    static assert(is(DeepElementType!(Slice!(Universal, [4], const(int)[]))     == const(int)));
+    static assert(is(DeepElementType!(Slice!(Universal, [4], immutable(int)*))  == immutable(int)));
 }

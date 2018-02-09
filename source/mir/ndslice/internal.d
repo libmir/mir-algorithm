@@ -32,6 +32,19 @@ else
 struct RightOp(string op, T)
 {
     T value;
+
+    auto lightConst()() const @property
+    {
+        import mir.qualifier;
+        return LeftOp!(op, LightConstOf!T)(value.lightConst);
+    }
+
+    auto lightImmutable()() immutable @property
+    {
+        import mir.qualifier;
+        return LeftOp!(op, LightImmutableOf!T)(value.lightImmutable);
+    }
+
     this()(auto ref T v) { value = v; }
     auto ref opCall(F)(auto ref F right)
     {
@@ -42,6 +55,19 @@ struct RightOp(string op, T)
 struct LeftOp(string op, T)
 {
     T value;
+
+    auto lightConst()() const @property
+    {
+        import mir.qualifier;
+        return LeftOp!(op, LightConstOf!T)(value.lightConst);
+    }
+
+    auto lightImmutable()() immutable @property
+    {
+        import mir.qualifier;
+        return LeftOp!(op, LightImmutableOf!T)(value.lightImmutable);
+    }
+
     this()(auto ref T v) { value = v; }
     auto ref opCall(F)(auto ref F left)
     {

@@ -26,10 +26,12 @@ import std.meta;
 import mir.array.primitives;
 import mir.functional;
 import mir.internal.utility: Iota;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.ndslice.traits;
+
+@fmamath:
 
 ///
 @safe pure nothrow unittest
@@ -320,8 +322,6 @@ unittest
     // assert(appreq(d[1][1][1], y_x0x1x2));
 }
 
-@optmath:
-
 /++
 Constructs multivariate cubic spline in symmetrical form with nodes on rectilinear grid.
 Result has continues second derivatives throughout the curve / nd-surface.
@@ -437,6 +437,8 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 {
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
+
+@fmamath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(Contiguous, [N], F[2 ^^ N]*) _data;

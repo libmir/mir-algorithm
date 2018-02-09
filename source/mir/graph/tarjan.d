@@ -1,4 +1,6 @@
 /++
+This is a submodule of $(MREF mir,graph).
+
 Tarjan's strongly connected components algorithm.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
@@ -13,6 +15,11 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.graph.tarjan;
 
 import std.traits;
+
+import mir.math.common: optmath;
+
+@optmath:
+
 
 /++
 Classic Tarjan's strongly connected components algorithm.
@@ -217,7 +224,8 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     GraphSeries!(string, uint) gs = [
         "00": ["01"],
@@ -249,7 +257,8 @@ Tests that the graph `0 -> 1 -> 2 -> 3 -> 4` returns 4 components.
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     GraphSeries!(char, uint) gs = [
         'a': ['b'],
@@ -268,13 +277,14 @@ pure version(mir_test) unittest
 ----
  0 <- 2 <-- 5 <--> 6
  |  ^ ^ ^___       
- v /  |     \     /\ 
+ v_|  |     |      _ 
  1 <- 3 <-> 4 <-- 7_|
 ----
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     auto gs = [
         0: [1],
@@ -300,14 +310,15 @@ pure version(mir_test) unittest
 /++
 -----
  2 <-> 1
- \    ^
-  v /
-   0
+ |    ^
+ v_0 /
+   
 -----
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     auto gs = [
         0: [1],
@@ -331,7 +342,8 @@ not when they were actually removed from the stack
 +/
 pure version(mir_test) unittest
 {
-    import mir.graph.utility;
+    import mir.graph;
+    import mir.graph.tarjan;
 
     auto root = 0;
     auto lvl1 = [1,2,3,4,5,6,7,8,9,10];

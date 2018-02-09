@@ -23,6 +23,8 @@ import mir.internal.utility;
 public import mir.interpolate: atInterval;
 import mir.interpolate;
 
+@optmath:
+
 /++
 Constructs multivariate linear interpolant with nodes on rectilinear grid.
 
@@ -42,6 +44,8 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
 {
     private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     private alias GridVectors = Linear!(T, N, GridIterators).GridVectors;
+
+@optmath:
 
     /++
     Params:
@@ -381,6 +385,18 @@ struct LinearKernel(X)
     X step = 0;
     X w0 = 0;
     X w1 = 0;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return LinearKernel!X(step, w0, w1);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return LinearKernel!X(step, w0, w1);
+    }
 
     ///
     this()(X x0, X x1, X x)

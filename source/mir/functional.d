@@ -708,6 +708,21 @@ struct AliasCall(T, string methodName, TemplateArgs...)
 {
     T __this;
     alias __this this;
+
+    ///
+    auto lightConst()() const @property
+    {
+        import mir.qualifier;
+        return AliasCall!(LightConstOf!T, methodName, TemplateArgs)(__this.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import mir.qualifier;
+        return AliasCall!(LightImmutableOf!T, methodName, TemplateArgs)(__this.lightImmutable);
+    }
+
     this()(auto ref T value)
     {
         __this = value;
@@ -752,6 +767,8 @@ template aliasCall(string methodName, TemplateArgs...)
 
     static struct S
     {
+        auto lightConst()() const @property { return S(); }
+
         auto fun(size_t ct_param = 1)(size_t rt_param)
         {
             return rt_param + ct_param;
