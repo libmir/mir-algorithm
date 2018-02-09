@@ -320,8 +320,6 @@ unittest
     // assert(appreq(d[1][1][1], y_x0x1x2));
 }
 
-@optmath:
-
 /++
 Constructs multivariate cubic spline in symmetrical form with nodes on rectilinear grid.
 Result has continues second derivatives throughout the curve / nd-surface.
