@@ -30,7 +30,7 @@ Creates $(LREF Chunks).
 Params:
     Dimensions = compile time list of dimensions to chunk
     
-See_also: $(SUBREF topology, blocks)
+See_also: $(SUBREF topology, blocks) $(SUBREF fuse, fuseCells)
 +/
 template chunks(Dimensions...)
     if (Dimensions.length)

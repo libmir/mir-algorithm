@@ -45,6 +45,7 @@ PACKAGE_mir_ndslice = \
 	dynamic\
 	field\
 	iterator\
+	fuse\
 	mutation\
 	ndfield\
 	package\

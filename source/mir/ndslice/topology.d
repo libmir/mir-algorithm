@@ -1464,11 +1464,10 @@ Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator)
     else
     {
         size_t[typeof(return).N] lengths;
-        sizediff_t[0] strides;
         lengths[0] = slice.elementsCount;
         foreach(i; Iota!(1, typeof(return).N))
             lengths[i] = slice._lengths[i - 1 + packs[0]];
-        return typeof(return)(lengths, strides, slice._iterator);
+        return typeof(return)(lengths, sizediff_t[0].init, slice._iterator);
     }
 }
 

@@ -1491,10 +1491,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     +/
     bool anyEmpty()() @safe const
     {
-        foreach (i; Iota!(packs[0]))
-            if (this._lengths[i] == 0)
-                return true;
-        return false;
+        return _lengths[0 .. packs[0]].anyEmptyShape;
     }
 
     static if (doUnittest)
@@ -2029,6 +2026,10 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(c[1] == *s[1]);
     }
 
+    // auto opIndex(Slices...)(Slices slices) @safe
+    //     if (isIndexedSlice!Slices)
+
+
     /++
     Element-wise operator overloading for scalars.
     Params:
@@ -2135,16 +2136,16 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Assignment of a value of `Slice` type to a $(B fully defined slice).
         +/
-        ref This opIndexAssign(SliceKind rkind, size_t[] rpacks, RIterator, Slices...)(Slice!(rkind, rpacks, RIterator) value, Slices slices)
+        auto opIndexAssign(SliceKind rkind, size_t[] rpacks, RIterator, Slices...)(Slice!(rkind, rpacks, RIterator) value, Slices slices)
             @safe
-            if (isFullPureSlice!Slices)
+            if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
             auto sl = this[slices];
             assert(_checkAssignLengths(sl, value));
             import mir.ndslice.topology: unpack;
             if(!sl.unpack.anyEmpty)
                 sl.opIndexOpAssignImplSlice!""(value);
-            return this;
+            return sl;
         }
 
         static if (doUnittest)
@@ -2243,13 +2244,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Assignment of a regular multidimensional array to a $(B fully defined slice).
         +/
-        ref This opIndexAssign(T, Slices...)(T[] value, Slices slices) @safe
-            if (isFullPureSlice!Slices
+        auto opIndexAssign(T, Slices...)(T[] value, Slices slices) @safe
+            if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && !isDynamicArray!DeepElemType
                 && DynamicArrayDimensionsCount!(T[]) <= typeof(this[slices]).N)
         {
-            this[slices].opIndexOpAssignImplArray!""(value);
-            return this;
+            auto sl = this[slices];
+            sl.opIndexOpAssignImplArray!""(value);
+            return sl;
         }
 
         static if (doUnittest)
@@ -2318,21 +2320,21 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         ///
-        ref This opIndexAssign(T, Slices...)(T concatenation, Slices slices) @safe
-            if (isFullPureSlice!Slices && isConcatenation!T)
+        auto opIndexAssign(T, Slices...)(T concatenation, Slices slices) @safe
+            if ((isFullPureSlice!Slices || isIndexedSlice!Slices) && isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
             static assert(packsOf!(typeof(sl))[0] == concatenation.N);
             sl.opIndexOpAssignImplConcatenation!""(concatenation);
-            return this;
+            return sl;
         }
 
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined slice).
         +/
-        ref This opIndexAssign(T, Slices...)(T value, Slices slices) @safe
-            if (isFullPureSlice!Slices
+        auto opIndexAssign(T, Slices...)(T value, Slices slices) @safe
+            if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !isSlice!T
                 && !isConcatenation!T)
@@ -2341,7 +2343,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             auto sl = this[slices].unpack;
             if(!sl.anyEmpty)
                 sl.opIndexOpAssignImplValue!""(value);
-            return this;
+            return sl;
         }
 
         static if (doUnittest)
@@ -2467,17 +2469,17 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Op Assignment `op=` of a value of `Slice` type to a $(B fully defined slice).
         +/
-        ref This opIndexOpAssign(string op, SliceKind kind, size_t[] rpacks, RIterator, Slices...)
+        auto opIndexOpAssign(string op, SliceKind kind, size_t[] rpacks, RIterator, Slices...)
             (Slice!(kind, rpacks, RIterator) value, Slices slices)
             @safe
-            if (isFullPureSlice!Slices)
+            if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
             auto sl = this[slices];
             assert(_checkAssignLengths(sl, value));
             import mir.ndslice.topology: unpack;
             if(!sl.unpack.anyEmpty)
                 sl.opIndexOpAssignImplSlice!op(value);
-            return this;
+            return sl;
         }
 
         static if (doUnittest)
@@ -2536,14 +2538,15 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Op Assignment `op=` of a regular multidimensional array to a $(B fully defined slice).
         +/
-        ref This opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices)
+        auto opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices)
             @safe
             if (isFullPureSlice!Slices
                 && !isDynamicArray!DeepElemType
                 && DynamicArrayDimensionsCount!(T[]) <= typeof(this[slices]).N)
         {
-            this[slices].opIndexOpAssignImplArray!op(value);
-            return this;
+            auto sl = this[slices];
+            sl.opIndexOpAssignImplArray!op(value);
+            return sl;
         }
 
         static if (doUnittest)
@@ -2609,9 +2612,9 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined slice).
        +/
-        ref This opIndexOpAssign(string op, T, Slices...)(T value, Slices slices)
+        auto opIndexOpAssign(string op, T, Slices...)(T value, Slices slices)
             @safe
-            if (isFullPureSlice!Slices
+            if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElemType)
                 && !isSlice!T
                 && !isConcatenation!T)
@@ -2620,7 +2623,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             auto sl = this[slices].unpack;
             if(!sl.anyEmpty)
                 sl.opIndexOpAssignImplValue!op(value);
-            return this;
+            return sl;
         }
 
         static if (doUnittest)
@@ -2641,15 +2644,15 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         }
 
         ///
-        ref This opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices)
+        auto opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices)
             @safe
-            if (isFullPureSlice!Slices && isConcatenation!T)
+            if ((isFullPureSlice!Slices || isIndexedSlice!Slices) && isConcatenation!T)
         {
             import mir.ndslice.topology : unpack;
             auto sl = this[slices].unpack;
             static assert(packsOf!(typeof(sl))[0] == concatenation.N);
             sl.opIndexOpAssignImplConcatenation!op(concatenation);
-            return this;
+            return sl;
         }
 
         static if (doUnittest)

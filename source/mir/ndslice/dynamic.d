@@ -479,7 +479,7 @@ private enum _transposedCode = q{
     return typeof(slice)(lengths_, strides_[0 .. typeof(slice).S], slice._iterator);
 };
 
-private size_t[N] completeTranspose(size_t N)(size_t[] dimensions)
+package size_t[N] completeTranspose(size_t N)(size_t[] dimensions)
 {
     assert(dimensions.length <= N);
     size_t[N] ctr;
