@@ -761,6 +761,12 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         return .lightConst(this);
     }
 
+    /// ditto
+    auto trustedImmutable()() const @property @trusted
+    {
+        return (cast(immutable) this).lightImmutable;
+    }
+
     static if (isPointer!Iterator)
     {
         private alias ConstThis = Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*);

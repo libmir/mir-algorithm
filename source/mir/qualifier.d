@@ -39,10 +39,15 @@ template LightImmutableOf(T)
     }
 }
 
+@property:
+
 ///
 auto lightConst(SliceKind kind, size_t[] packs, Iterator)(const Slice!(kind, packs, Iterator) e)
 {
-    return Slice!(kind, packs, LightConstOf!Iterator)(e._lengths, e._strides, e._iterator.lightConst);
+    static if (isPointer!Iterator)
+        return Slice!(kind, packs, LightConstOf!Iterator)(e._lengths, e._strides, lightConst(e._iterator));
+    else
+        return Slice!(kind, packs, LightConstOf!Iterator)(e._lengths, e._strides, e._iterator.lightConst);
 }
 
 /// ditto
@@ -54,7 +59,10 @@ auto lightConst(SliceKind kind, size_t[] packs, Iterator)(immutable Slice!(kind,
 /// ditto
 auto lightImmutable(SliceKind kind, size_t[] packs, Iterator)(immutable Slice!(kind, packs, Iterator) e)
 {
-    return Slice!(kind, packs, LightImmutableOf!Iterator)(e._lengths, e._strides, e._iterator.lightImmutable);
+    static if (isPointer!Iterator)
+        return Slice!(kind, packs, LightImmutableOf!Iterator)(e._lengths, e._strides, lightImmutable(e._iterator));
+    else
+        return Slice!(kind, packs, LightImmutableOf!Iterator)(e._lengths, e._strides, e._iterator.lightImmutable);
 }
 
 /// ditto
@@ -112,4 +120,10 @@ auto lightConst(T)(immutable(T)* e)
 auto lightImmutable(T)(immutable(T)* e)
 {
     return e;
+}
+
+/// ditto
+auto trustedImmutable(T)(auto ref const T e) @trusted
+{
+    return (cast(immutable) this).lightImmutable;
 }

@@ -616,13 +616,20 @@ template forward(args...)
 {
     static if (args.length)
     {
-        import std.algorithm.mutation : move;
-
         alias arg = args[0];
         static if (__traits(isRef, arg))
             alias fwd = arg;
         else
-            @optmath @property fwd()(){ return arg.move; }
+            @optmath @property fwd()()
+            {
+                static if (is(arg[0] == struct))
+                {
+                    import std.algorithm.mutation : move;
+                    return arg.move;
+                }
+                else
+                    return arg;
+            }
         alias forward = AliasSeq!(fwd, forward!(args[1..$]));
     }
     else
@@ -769,7 +776,7 @@ template aliasCall(string methodName, TemplateArgs...)
     {
         auto lightConst()() const @property { return S(); }
 
-        auto fun(size_t ct_param = 1)(size_t rt_param)
+        auto fun(size_t ct_param = 1)(size_t rt_param) const
         {
             return rt_param + ct_param;
         }

@@ -48,7 +48,8 @@ template fuse(Dimensions...)
         auto shape = fuseShape(r);
         alias T = FuseElementType!NDRange;
         alias UT = Unqual!T;
-        typeof(return) ret;
+        alias R = typeof(return);
+        Slice!(Contiguous, [fuseDimensionCount!NDRange], UT*) ret;
         static if (Dimensions.length)
         {
             import mir.ndslice.topology: iota;
@@ -73,7 +74,7 @@ template fuse(Dimensions...)
             else
             {
                 ret = shapep.uninitSlice!UT;
-                ret.transposed!InverseDimensions.each!emplaceRef(r);
+                ret.transposed!InverseDimensions.each!(emplaceRef!T)(r);
             }
         }
         else
@@ -86,17 +87,10 @@ template fuse(Dimensions...)
             else
             {
                 ret = shape.uninitSlice!UT;
-                ret.each!emplaceRef(r);
+                ret.each!(emplaceRef!T)(r);
             }
         }
-        static if (is(T == immutable))
-            return (() @trusted => cast(immutable) ret)()[];
-        else
-        static if (is(T == const))
-            return (() @trusted => cast(const) ret)()[];
-        else
-            return ret;
-
+        return R(ret._lengths, ret._strides, (() @trusted => cast(T*)ret._iterator)());
     }
 }
 
@@ -240,14 +234,9 @@ auto fuseCells(S)(S cells)
         import mir.ndslice.allocation: uninitSlice;
         import std.backdoor;
         auto ret = cells.fuseCellsShape.uninitSlice!UT;
-        ret.fuseCellsAssign!emplaceRef = cells;
-        static if (is(T == immutable))
-            return (() @trusted => cast(immutable) ret)()[];
-        else
-        static if (is(T == const))
-            return (() @trusted => cast(const) ret)()[];
-        else
-            return ret;
+        ret.fuseCellsAssign!(emplaceRef!T) = cells;
+        alias R = Slice!(Contiguous, isSlice!(typeof(ret)), T*);
+        return R(ret._lengths, ret._strides, (() @trusted => cast(T*)ret._iterator)());
     }
 }
 
