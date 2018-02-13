@@ -45,7 +45,8 @@ struct RightOp(string op, T)
         return LeftOp!(op, LightImmutableOf!T)(value.lightImmutable);
     }
 
-    this()(auto ref T v) { value = v; }
+    this()(ref T v) { value = v; }
+    this()(T v) { value = v; }
     auto ref opCall(F)(auto ref F right)
     {
         return mixin("value " ~ op ~ " right");
@@ -68,7 +69,8 @@ struct LeftOp(string op, T)
         return LeftOp!(op, LightImmutableOf!T)(value.lightImmutable);
     }
 
-    this()(auto ref T v) { value = v; }
+    this()(ref T v) { value = v; }
+    this()(T v) { value = v; }
     auto ref opCall(F)(auto ref F left)
     {
         return mixin("left " ~ op ~ " value");
