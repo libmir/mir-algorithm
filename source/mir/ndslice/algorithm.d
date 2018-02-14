@@ -2149,7 +2149,9 @@ template eachLower(alias fun)
             function applied.
         +/
         void eachLower(Inputs...)(Inputs inputs)
-            if (Inputs.length)
+            if (((Inputs.length > 1) && 
+                 (isIntegral!(Inputs[$ - 1]))) || 
+                (Inputs.length))
         {
             import mir.ndslice.traits : isMatrix;
 
@@ -2617,7 +2619,9 @@ template eachUpper(alias fun)
             function applied.
         +/
         void eachUpper(Inputs...)(Inputs inputs)
-            if (Inputs.length)
+            if (((Inputs.length > 1) && 
+                 (isIntegral!(Inputs[$ - 1]))) || 
+                (Inputs.length))
         {
             import mir.ndslice.traits : isMatrix;
 
