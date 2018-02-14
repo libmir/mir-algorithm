@@ -2151,10 +2151,7 @@ template eachLower(alias fun)
         void eachLower(Inputs...)(Inputs inputs)
             if (Inputs.length)
         {
-            import std.meta : allSatisfy;
-            import std.traits : isIntegral;
             import mir.ndslice.traits : isMatrix;
-            import mir.ndslice.slice : Slice;
 
             size_t val;
 
@@ -2622,10 +2619,7 @@ template eachUpper(alias fun)
         void eachUpper(Inputs...)(Inputs inputs)
             if (Inputs.length)
         {
-            import std.meta : allSatisfy;
-            import std.traits : isIntegral;
             import mir.ndslice.traits : isMatrix;
-            import mir.ndslice.slice : Slice;
 
             size_t val;
 
@@ -2694,7 +2688,6 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
-    import std.meta: AliasSeq;
 
     pure nothrow
     void test(alias func)()
