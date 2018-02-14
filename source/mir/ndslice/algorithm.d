@@ -2185,10 +2185,7 @@ template eachLower(alias fun)
             if ((n + k) < m)
             {
                 val = m - (n + k);
-                static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
-                else
-                    mixin(".eachImpl!fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
+                mixin(".eachImpl!fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
             }
 
             size_t i;
@@ -2203,10 +2200,7 @@ template eachLower(alias fun)
             do
             {
                 val = i - k + 1;
-                static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ frontSelectFrontOf!(Slices.length, "val") ~ ");");
-                else
-                    mixin(".eachImpl!fun(" ~ frontSelectFrontOf!(Slices.length, "val") ~ ");");
+                mixin(".eachImpl!fun(" ~ frontSelectFrontOf!(Slices.length, "val") ~ ");");
 
                 foreach(ref slice; slices)
                         slice.popFront!0;
@@ -2657,10 +2651,7 @@ template eachUpper(alias fun)
             if (k < 0)
             {
                 val = -k;
-                static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
-                else
-                    mixin(".eachImpl!fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
+                mixin(".eachImpl!fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
 
                 foreach(ref slice; slices)
                     slice.popFrontExactly!0(-k);
@@ -2670,10 +2661,7 @@ template eachUpper(alias fun)
             do
             {
                 val = (n - k) - i;
-                static if (slices[0].shape.length == 1)
-                    mixin("fun(" ~ frontSelectBackOf!(Slices.length, "val") ~ ");");
-                else
-                    mixin(".eachImpl!fun(" ~ frontSelectBackOf!(Slices.length, "val") ~ ");");
+                mixin(".eachImpl!fun(" ~ frontSelectBackOf!(Slices.length, "val") ~ ");");
 
                 foreach(ref slice; slices)
                     slice.popFront;
