@@ -2234,7 +2234,7 @@ version(mir_test) unittest
         //| 4 5 6 |
         //| 7 8 9 |
         auto m = func(iota([3, 3], 1).slice);
-        m.eachLower!((ref a) {a = 0; })(0);
+        m.eachLower!"a = 0"(0);
         assert(m == [
             [0, 2, 3],
             [0, 0, 6],
@@ -2264,7 +2264,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; });
+    m.eachLower!"a = 0";
     assert(m == [
         [1, 2, 3],
         [0, 5, 6],
@@ -2281,7 +2281,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(-1);
+    m.eachLower!"a = 0"(-1);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2298,7 +2298,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(2);
+    m.eachLower!"a = 0"(2);
     assert(m == [
         [1, 2, 3],
         [4, 5, 6],
@@ -2315,7 +2315,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(-2);
+    m.eachLower!"a = 0"(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2332,7 +2332,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(0);
+    m.eachLower!"a = 0"(0);
     assert(m == [
         [0, 2, 3, 4],
         [0, 0, 7, 8],
@@ -2349,7 +2349,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; });
+    m.eachLower!"a = 0";
     assert(m == [
         [1, 2, 3, 4],
         [0, 6, 7, 8],
@@ -2366,7 +2366,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(-1);
+    m.eachLower!"a = 0"(-1);
     assert(m == [
         [0, 0, 3, 4],
         [0, 0, 0, 8],
@@ -2383,7 +2383,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(2);
+    m.eachLower!"a = 0"(2);
     assert(m == [
         [1, 2, 3, 4],
         [5, 6, 7, 8],
@@ -2400,7 +2400,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(-2);
+    m.eachLower!"a = 0"(-2);
     assert(m == [
         [0, 0, 0, 4],
         [0, 0, 0, 0],
@@ -2418,7 +2418,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; })(0);
+    m.eachLower!"a = 0"(0);
     assert(m == [
         [0, 2, 3],
         [0, 0, 6],
@@ -2437,7 +2437,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) {a = 0; });
+    m.eachLower!"a = 0";
     assert(m == [
         [1, 2, 3],
         [0, 5, 6],
@@ -2456,7 +2456,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; })(-1);
+    m.eachLower!"a = 0"(-1);
     assert(m == [
         [0, 0, 3],
         [0, 0, 0],
@@ -2475,7 +2475,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; })(2);
+    m.eachLower!"a = 0"(2);
     assert(m == [
         [1, 2, 3],
         [4, 5, 6],
@@ -2494,7 +2494,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachLower!((ref a) { a = 0; })(-2);
+    m.eachLower!"a = 0"(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2700,7 +2700,7 @@ version(mir_test) unittest
         //| 4 5 6 |
         //| 7 8 9 |
         auto m = func(iota([3, 3], 1).slice);
-        m.eachUpper!((ref a) {a = 0; })(0);
+        m.eachUpper!"a = 0"(0);
         assert(m == [
             [0, 0, 0],
             [4, 0, 0],
@@ -2730,7 +2730,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; });
+    m.eachUpper!"a = 0";
     assert(m == [
         [1, 0, 0],
         [4, 5, 0],
@@ -2747,7 +2747,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(-1);
+    m.eachUpper!"a = 0"(-1);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2764,7 +2764,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(2);
+    m.eachUpper!"a = 0"(2);
     assert(m == [
         [1, 2, 0],
         [4, 5, 6],
@@ -2781,7 +2781,7 @@ version(mir_test) unittest
     //| 4 5 6 |
     //| 7 8 9 |
     auto m = iota([3, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(-2);
+    m.eachUpper!"a = 0"(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2798,7 +2798,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(0);
+    m.eachUpper!"a = 0"(0);
     assert(m == [
         [0, 0, 0, 0],
         [5, 0, 0, 0],
@@ -2815,7 +2815,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; });
+    m.eachUpper!"a = 0";
     assert(m == [
         [1, 0, 0, 0],
         [5, 6, 0, 0],
@@ -2832,7 +2832,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(-1);
+    m.eachUpper!"a = 0"(-1);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2849,7 +2849,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(2);
+    m.eachUpper!"a = 0"(2);
     assert(m == [
         [1, 2, 0, 0],
         [5, 6, 7, 0],
@@ -2866,7 +2866,7 @@ version(mir_test) unittest
     //| 5  6  7  8 |
     //| 9 10 11 12 |
     auto m = iota([3, 4], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(-2);
+    m.eachUpper!"a = 0"(-2);
     assert(m == [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -2884,7 +2884,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(0);
+    m.eachUpper!"a = 0"(0);
     assert(m == [
         [0, 0, 0],
         [4, 0, 0],
@@ -2903,7 +2903,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; });
+    m.eachUpper!"a = 0";
     assert(m == [
         [1, 0, 0],
         [4, 5, 0],
@@ -2922,7 +2922,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(-1);
+    m.eachUpper!"a = 0"(-1);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
@@ -2941,7 +2941,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(2);
+    m.eachUpper!"a = 0"(2);
     assert(m == [
         [1, 2, 0],
         [4, 5, 6],
@@ -2960,7 +2960,7 @@ version(mir_test) unittest
     //|  7  8  9 |
     //| 10 11 12 |
     auto m = iota([4, 3], 1).slice;
-    m.eachUpper!((ref a) {a = 0; })(-2);
+    m.eachUpper!"a = 0"(-2);
     assert(m == [
         [0, 0, 0],
         [0, 0, 0],
