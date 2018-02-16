@@ -2159,7 +2159,7 @@ template eachLower(alias fun)
 
             static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
             {
-                enum sizediff_t k = inputs[$ - 1];
+                sizediff_t k = inputs[$ - 1];
                 alias Slices = Inputs[0..($ - 1)];
                 alias slices = inputs[0..($ - 1)];
             }
@@ -2623,7 +2623,7 @@ template eachUpper(alias fun)
 
             static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
             {
-                enum sizediff_t k = inputs[$ - 1];
+                sizediff_t k = inputs[$ - 1];
                 alias Slices = Inputs[0..($ - 1)];
                 alias slices = inputs[0..($ - 1)];
             }
