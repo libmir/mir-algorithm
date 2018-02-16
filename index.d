@@ -16,7 +16,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,series)★) $(TD Generic series suitable for time-series or semi-immutable ordered maps with CPU cache friendly binary search.))
     $(TR $(TDNW $(MREF mir,container,binaryheap)★) $(TD BetterC rework of `std.container.binaryheap`.))
     $(LEADINGROW Graphs)
-    $(TR $(TDNW $(MREF mir,graph) WIP) $(TD Basic routines to work with graphs))
+    $(TR $(TDNW $(MREF mir,graph)) $(TD Basic routines to work with graphs))
     $(TR $(TDNW $(MREF mir,graph,tarjan)★) $(TD Tarjan's strongly connected components algorithm))
     $(LEADINGROW Interpolation)
     $(TR $(TDNW $(MREF mir,interpolate)★) $(TD Interpolation algorithms))

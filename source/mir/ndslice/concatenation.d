@@ -23,7 +23,7 @@ License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2017-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 
-See_also: $(SUBMODULE fuse)
+See_also: $(SUBMODULE fuse) submodule.
 
 Macros:
 SUBMODULE = $(MREF_ALTTEXT $1, mir, ndslice, $1)
