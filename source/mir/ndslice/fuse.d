@@ -170,7 +170,7 @@ unittest
 
 private template fuseDimensionCount(R)
 {
-    static if (is(typeof(R.init.shape) : size_t[N], size_t N) && (isDynamicArray!R || __traits(hasMember, "front")))
+    static if (is(typeof(R.init.shape) : size_t[N], size_t N) && (isDynamicArray!R || __traits(hasMember, R, "front")))
     {
         import mir.ndslice.topology: repeat;
         enum size_t fuseDimensionCount = N + fuseDimensionCount!(typeof(mixin("R.init" ~ ".front".repeat(N).fuseCells.field)));
