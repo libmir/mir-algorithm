@@ -10,7 +10,7 @@ module mir.combinatorics;
 import std.range.primitives: isRandomAccessRange, hasLength;
 
 ///
-unittest
+version(mir_test) unittest
 {
     import std.algorithm.comparison: equal;
 
@@ -129,7 +129,7 @@ R binomial(R = ulong, T)(T n, T k)
 }
 
 ///
-pure unittest
+pure version(mir_test) unittest
 {
     assert(binomial(5, 2) == 10);
     assert(binomial(6, 4) == 15);
@@ -139,7 +139,7 @@ pure unittest
     assert(binomial!BigInt(1000, 10) == BigInt("263409560461970212832400"));
 }
 
-pure nothrow @safe @nogc unittest
+pure nothrow @safe @nogc version(mir_test) unittest
 {
     assert(binomial(5, 1) == 5);
     assert(binomial(5, 0) == 1);
@@ -154,7 +154,7 @@ pure nothrow @safe @nogc unittest
     assert(binomial!long(5, -3) == 0);
 }
 
-unittest
+version(mir_test) unittest
 {
     import std.bigint;
 
@@ -252,7 +252,7 @@ if (isRandomAccessRange!Range)
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import std.algorithm.comparison: equal;
 
@@ -264,7 +264,7 @@ if (isRandomAccessRange!Range)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import std.algorithm.comparison: equal;
     import std.range: only;
@@ -276,7 +276,7 @@ unittest
     assert(projectionC.equal!equal([['a', 'b'], ['b', 'a']]));
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import std.algorithm.comparison: equal;
     import std.range: dropOne;
@@ -290,7 +290,7 @@ unittest
     assert(projection.front.equal([1, 2]));
 }
 
-@safe nothrow @nogc unittest
+@safe nothrow @nogc version(mir_test) unittest
 {
     import std.algorithm.comparison: equal;
     static perms = 2.permutations;
@@ -443,7 +443,7 @@ struct Permutations
 }
 
 ///
-pure @safe nothrow unittest
+pure @safe nothrow version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
     import std.range : iota;
@@ -465,7 +465,7 @@ pure @safe nothrow unittest
 }
 
 ///
-@nogc unittest
+@nogc version(mir_test) unittest
 {
     import std.algorithm: equal;
     import std.range : iota;
@@ -479,7 +479,7 @@ pure @safe nothrow unittest
     dispose(Mallocator.instance, rp);
 }
 
-pure @safe nothrow unittest
+pure @safe nothrow version(mir_test) unittest
 {
     // is copyable?
     import std.algorithm: equal;
@@ -498,7 +498,7 @@ pure @safe nothrow unittest
 }
 
 version (assert)
-unittest
+version(mir_test) unittest
 {
     // check invalid
     import std.exception: assertThrown;
@@ -656,7 +656,7 @@ public:
 }
 
 ///
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     import std.algorithm: equal;
     import std.range: iota;
@@ -670,7 +670,7 @@ pure nothrow @safe unittest
 }
 
 ///
-@nogc unittest
+@nogc version(mir_test) unittest
 {
     import std.algorithm: equal;
     import std.range: iota;
@@ -685,7 +685,7 @@ pure nothrow @safe unittest
     alloc.dispose(rc);
 }
 
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     import std.algorithm: equal, map;
     import std.array: array;
@@ -717,7 +717,7 @@ pure nothrow @safe unittest
 }
 
 version(assert)
-unittest
+version(mir_test) unittest
 {
     // check invalid
     import std.exception: assertThrown;
@@ -729,7 +729,7 @@ unittest
 }
 
 // length
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     assert(1.cartesianPower(1).length == 1);
     assert(1.cartesianPower(2).length == 1);
@@ -918,7 +918,7 @@ public:
 }
 
 ///
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     import std.algorithm: equal;
     import std.range: iota;
@@ -928,7 +928,7 @@ pure nothrow @safe unittest
 }
 
 ///
-@nogc unittest
+@nogc version(mir_test) unittest
 {
     import std.algorithm: equal;
     import std.range: iota;
@@ -943,7 +943,7 @@ pure nothrow @safe unittest
     alloc.dispose(rc);
 }
 
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     import std.algorithm: equal, map;
     import std.array: array;
@@ -988,7 +988,7 @@ pure nothrow @safe unittest
     assert(iota(1).combinations(1).equal!equal([[0]]));
 }
 
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     // test larger combinations
     import std.algorithm: equal;
@@ -1024,7 +1024,7 @@ pure nothrow @safe unittest
 }
 
 // length
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     assert(1.combinations(1).length == 1);
     assert(1.combinations(2).length == 0);
@@ -1043,7 +1043,7 @@ pure nothrow @safe unittest
 }
 
 version(assert)
-unittest
+version(mir_test) unittest
 {
     // check invalid
     import std.exception: assertThrown;
@@ -1208,7 +1208,7 @@ public:
 }
 
 ///
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     import std.algorithm: equal;
     import std.range: iota;
@@ -1220,7 +1220,7 @@ pure nothrow @safe unittest
 }
 
 ///
-@nogc unittest
+@nogc version(mir_test) unittest
 {
     import std.algorithm: equal;
     import std.range: iota;
@@ -1235,7 +1235,7 @@ pure nothrow @safe unittest
     alloc.dispose(rc);
 }
 
-unittest
+version(mir_test) unittest
 {
     import std.algorithm: equal, map;
     import std.array: array;
@@ -1265,7 +1265,7 @@ unittest
 }
 
 // length
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     assert(1.combinationsRepeat(1).length == 1);
     assert(1.combinationsRepeat(2).length == 1);
@@ -1283,7 +1283,7 @@ pure nothrow @safe unittest
     assert(30.combinationsRepeat(10).length == 635_745_396);
 }
 
-pure nothrow @safe unittest
+pure nothrow @safe version(mir_test) unittest
 {
     // test larger combinations
     import std.algorithm: equal;
@@ -1337,7 +1337,7 @@ pure nothrow @safe unittest
 }
 
 version(assert)
-unittest
+version(mir_test) unittest
 {
     // check invalid
     import std.exception: assertThrown;
