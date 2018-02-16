@@ -183,6 +183,14 @@ $(TR $(TDNW $(SUBMODULE algorithm)
     )
 )
 
+$(TR $(TDNW $(SUBMODULE fuse)
+        $(BR) $(SMALL Fusing (stacking) of rows, columns, or cells into nd-slice.))
+     $(TD
+        $(SUBREF fuse, fuse)
+        $(SUBREF fuse, fuseCells)
+    )
+)
+
 $(TR $(TDNW $(SUBMODULE concatenation)
         $(BR) $(SMALL Concatenation, padding, and algorithms))
      $(TD

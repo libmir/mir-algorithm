@@ -23,6 +23,8 @@ License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2017-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 
+See_also: $(MODULE3 mir.ndslice.fuse)
+
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
