@@ -10,6 +10,8 @@ $(T2 any, Checks if at least one element satisfy to a predicate.)
 $(T2 cmp, Compares two slices.)
 $(T2 count, Counts elements in a slices according to a predicate.)
 $(T2 each, Iterates all elements.)
+$(T2 eachLower, Iterates lower triangle of matrix.)
+$(T2 eachUpper, Iterates upper triangle of matrix.)
 $(T2 eachUploPair, Iterates upper and lower pairs of elements in square matrix.)
 $(T2 equal, Compares two slices for equality.)
 $(T2 find, Finds backward index.)
@@ -558,7 +560,7 @@ for i <= j (default) or i < j (if includeDiagonal is false).
 
 Params:
     fun = A function.
-    includeDiagonal = true if applying function to diagonal, 
+    includeDiagonal = true if applying function to diagonal,
                       false (default) otherwise.
 +/
 template eachUploPair(alias fun, bool includeDiagonal = false)
@@ -2076,6 +2078,30 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     return ret;
 }
 
+private template selectBackOf(size_t N, string input)
+{
+    static if (N == 0)
+        enum selectBackOf = "";
+    else
+    {
+        enum i = N - 1;
+        enum selectBackOf = selectBackOf!(i, input) ~
+                     "slices[" ~ i.stringof ~ "].selectBack!0(" ~ input ~ "), ";
+    }
+}
+
+private template frontSelectFrontOf(size_t N, string input)
+{
+    static if (N == 0)
+        enum frontSelectFrontOf = "";
+    else
+    {
+        enum i = N - 1;
+        enum frontSelectFrontOf = frontSelectFrontOf!(i, input) ~
+            "slices[" ~ i.stringof ~ "].front!0.selectFront!0(" ~ input ~ "), ";
+    }
+}
+
 /++
 Returns: max length across all dimensions.
 +/
@@ -2088,4 +2114,904 @@ size_t maxLength(S)(auto ref S s)
         if (shape[i] > length)
             length = shape[i];
     return length;
+}
+
+/++
+The call `eachLower!(fun)(slice1, ..., sliceN)` evaluates `fun` on the lower
+triangle in `slice1, ..., sliceN` respectively.
+
+`eachLower` allows iterating multiple slices in the lockstep.
+
+Params:
+    fun = A function
+See_Also:
+    This is functionally similar to $(LREF each).
++/
+template eachLower(alias fun)
+{
+    import mir.functional : naryFun;
+
+    static if (__traits(isSame, naryFun!fun, fun))
+    {
+        /++
+        Params:
+            inputs = One or more two-dimensional slices and an optional
+                     integer, `k`.
+
+            The value `k` determines which diagonals will have the function
+            applied:
+            For k = 0, the function is also applied to the main diagonal
+            For k = 1 (default), only the non-main diagonals below the main
+            diagonal will have the function applied.
+            For k > 1, fewer diagonals below the main diagonal will have the
+            function applied.
+            For k < 0, more diagonals above the main diagonal will have the
+            function applied.
+        +/
+        void eachLower(Inputs...)(Inputs inputs)
+            if (((Inputs.length > 1) && 
+                 (isIntegral!(Inputs[$ - 1]))) || 
+                (Inputs.length))
+        {
+            import mir.ndslice.traits : isMatrix;
+
+            size_t val;
+
+            static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
+            {
+                sizediff_t k = inputs[$ - 1];
+                alias Slices = Inputs[0..($ - 1)];
+                alias slices = inputs[0..($ - 1)];
+            }
+            else
+            {
+                enum sizediff_t k = 1;
+                alias Slices = Inputs;
+                alias slices = inputs;
+            }
+
+            static assert (allSatisfy!(isMatrix, Slices),
+                "eachLower: Every slice input must be a two-dimensional slice");
+            slices.checkShapesMatch;
+            if (slices[0].anyEmpty)
+                return;
+
+            foreach(ref slice; slices)
+                assert(!slice.empty);
+
+            immutable(size_t) m = slices[0].length!0;
+            immutable(size_t) n = slices[0].length!1;
+
+            if ((n + k) < m)
+            {
+                val = m - (n + k);
+                mixin(".eachImpl!fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
+            }
+
+            size_t i;
+
+            if (k > 0)
+            {
+                foreach(ref slice; slices)
+                    slice.popFrontExactly!0(k);
+                i = k;
+            }
+
+            do
+            {
+                val = i - k + 1;
+                mixin(".eachImpl!fun(" ~ frontSelectFrontOf!(Slices.length, "val") ~ ");");
+
+                foreach(ref slice; slices)
+                        slice.popFront!0;
+                i++;
+            } while ((i < (n + k)) && (i < m));
+        }
+    }
+    else
+    {
+        alias eachLower = .eachLower!(naryFun!fun);
+    }
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, canonical, universal;
+    import std.meta: AliasSeq;
+
+    pure nothrow
+    void test(alias func)()
+    {
+        //| 1 2 3 |
+        //| 4 5 6 |
+        //| 7 8 9 |
+        auto m = func(iota([3, 3], 1).slice);
+        m.eachLower!"a = 0"(0);
+        assert(m == [
+            [0, 2, 3],
+            [0, 0, 6],
+            [0, 0, 0]]);
+    }
+
+    @safe pure nothrow @nogc
+    T identity(T)(T x)
+    {
+        return x;
+    }
+
+    alias kinds = AliasSeq!(identity, canonical, universal);
+    test!(kinds[0]);
+    test!(kinds[1]);
+    test!(kinds[2]);
+}
+
+///
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachLower!"a = 0";
+    assert(m == [
+        [1, 2, 3],
+        [0, 5, 6],
+        [0, 0, 9]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachLower!"a = 0"(-1);
+    assert(m == [
+        [0, 0, 3],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachLower!"a = 0"(2);
+    assert(m == [
+        [1, 2, 3],
+        [4, 5, 6],
+        [0, 8, 9]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachLower!"a = 0"(-2);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachLower!"a = 0"(0);
+    assert(m == [
+        [0, 2, 3, 4],
+        [0, 0, 7, 8],
+        [0, 0, 0, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachLower!"a = 0";
+    assert(m == [
+        [1, 2, 3, 4],
+        [0, 6, 7, 8],
+        [0, 0, 11, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachLower!"a = 0"(-1);
+    assert(m == [
+        [0, 0, 3, 4],
+        [0, 0, 0, 8],
+        [0, 0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachLower!"a = 0"(2);
+    assert(m == [
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [0, 10, 11, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachLower!"a = 0"(-2);
+    assert(m == [
+        [0, 0, 0, 4],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachLower!"a = 0"(0);
+    assert(m == [
+        [0, 2, 3],
+        [0, 0, 6],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachLower!"a = 0";
+    assert(m == [
+        [1, 2, 3],
+        [0, 5, 6],
+        [0, 0, 9],
+        [0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachLower!"a = 0"(-1);
+    assert(m == [
+        [0, 0, 3],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachLower!"a = 0"(2);
+    assert(m == [
+        [1, 2, 3],
+        [4, 5, 6],
+        [0, 8, 9],
+        [0, 0, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachLower!"a = 0"(-2);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+/// Swap two slices
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.utility : swap;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    //| 6 7 8 |
+    auto a = iota([3, 3]).as!double.slice;
+    //| 10 11 12 |
+    //| 13 14 15 |
+    //| 16 17 18 |
+    auto b = iota([3, 3], 10).as!double.slice;
+
+    eachLower!swap(a, b);
+
+    assert(a == [
+        [ 0,  1, 2],
+        [13,  4, 5],
+        [16, 17, 8]]);
+    assert(b == [
+        [10, 11, 12],
+        [ 3, 14, 15],
+        [ 6,  7, 18]]);
+}
+
+/// Swap two zipped slices
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.utility : swap;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, zip, iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    //| 6 7 8 |
+    auto a = iota([3, 3]).as!double.slice;
+    //| 10 11 12 |
+    //| 13 14 15 |
+    //| 16 17 18 |
+    auto b = iota([3, 3], 10).as!double.slice;
+
+    auto z = zip(a, b);
+
+    z.eachLower!(z => swap(z.a, z.b));
+
+    assert(a == [
+        [ 0,  1, 2],
+        [13,  4, 5],
+        [16, 17, 8]]);
+    assert(b == [
+        [10, 11, 12],
+        [ 3, 14, 15],
+        [ 6,  7, 18]]);
+}
+
+private template frontSelectBackOf(size_t N, string input)
+{
+    static if (N == 0)
+        enum frontSelectBackOf = "";
+    else
+    {
+        enum i = N - 1;
+        enum frontSelectBackOf = frontSelectBackOf!(i, input) ~
+               "slices[" ~ i.stringof ~ "].front.selectBack!0(" ~ input ~ "), ";
+    }
+}
+
+private template selectFrontOf(size_t N, string input)
+{
+    static if (N == 0)
+        enum selectFrontOf = "";
+    else
+    {
+        enum i = N - 1;
+        enum selectFrontOf = selectFrontOf!(i, input) ~
+                    "slices[" ~ i.stringof ~ "].selectFront!0(" ~ input ~ "), ";
+    }
+}
+
+/++
+The call `eachUpper!(fun)(slice1, ..., sliceN)` evaluates `fun` on the upper
+triangle in `slice1, ..., sliceN`, respectively.
+
+`eachUpper` allows iterating multiple slices in the lockstep.
+
+Params:
+    fun = A function
+See_Also:
+    This is functionally similar to $(LREF each).
++/
+template eachUpper(alias fun)
+{
+    import mir.functional: naryFun;
+
+    static if (__traits(isSame, naryFun!fun, fun))
+    {
+        /++
+        Params:
+            inputs = One or more two-dimensional slices and an optional
+                     integer, `k`.
+
+            The value `k` determines which diagonals will have the function
+            applied:
+            For k = 0, the function is also applied to the main diagonal
+            For k = 1 (default), only the non-main diagonals above the main
+            diagonal will have the function applied.
+            For k > 1, fewer diagonals below the main diagonal will have the
+            function applied.
+            For k < 0, more diagonals above the main diagonal will have the
+            function applied.
+        +/
+        void eachUpper(Inputs...)(Inputs inputs)
+            if (((Inputs.length > 1) && 
+                 (isIntegral!(Inputs[$ - 1]))) || 
+                (Inputs.length))
+        {
+            import mir.ndslice.traits : isMatrix;
+
+            size_t val;
+
+            static if ((Inputs.length > 1) && (isIntegral!(Inputs[$ - 1])))
+            {
+                sizediff_t k = inputs[$ - 1];
+                alias Slices = Inputs[0..($ - 1)];
+                alias slices = inputs[0..($ - 1)];
+            }
+            else
+            {
+                enum sizediff_t k = 1;
+                alias Slices = Inputs;
+                alias slices = inputs;
+            }
+
+            static assert (allSatisfy!(isMatrix, Slices),
+                "eachUpper: Every slice input must be a two-dimensional slice");
+            slices.checkShapesMatch;
+            if (slices[0].anyEmpty)
+                return;
+
+            foreach(ref slice; slices)
+                assert(!slice.empty);
+
+            immutable(size_t) m = slices[0].length!0;
+            immutable(size_t) n = slices[0].length!1;
+
+            size_t i;
+
+            if (k < 0)
+            {
+                val = -k;
+                mixin(".eachImpl!fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
+
+                foreach(ref slice; slices)
+                    slice.popFrontExactly!0(-k);
+                i = -k;
+            }
+
+            do
+            {
+                val = (n - k) - i;
+                mixin(".eachImpl!fun(" ~ frontSelectBackOf!(Slices.length, "val") ~ ");");
+
+                foreach(ref slice; slices)
+                    slice.popFront;
+                i++;
+            } while ((i < (n - k)) && (i < m));
+        }
+    }
+    else
+    {
+        alias eachUpper = .eachUpper!(naryFun!fun);
+    }
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota, canonical, universal;
+
+    pure nothrow
+    void test(alias func)()
+    {
+        //| 1 2 3 |
+        //| 4 5 6 |
+        //| 7 8 9 |
+        auto m = func(iota([3, 3], 1).slice);
+        m.eachUpper!"a = 0"(0);
+        assert(m == [
+            [0, 0, 0],
+            [4, 0, 0],
+            [7, 8, 0]]);
+    }
+
+    @safe pure nothrow @nogc
+    T identity(T)(T x)
+    {
+        return x;
+    }
+
+    alias kinds = AliasSeq!(identity, canonical, universal);
+    test!(kinds[0]);
+    test!(kinds[1]);
+    test!(kinds[2]);
+}
+
+///
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpper!"a = 0";
+    assert(m == [
+        [1, 0, 0],
+        [4, 5, 0],
+        [7, 8, 9]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpper!"a = 0"(-1);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [7, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpper!"a = 0"(2);
+    assert(m == [
+        [1, 2, 0],
+        [4, 5, 6],
+        [7, 8, 9]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1 2 3 |
+    //| 4 5 6 |
+    //| 7 8 9 |
+    auto m = iota([3, 3], 1).slice;
+    m.eachUpper!"a = 0"(-2);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpper!"a = 0"(0);
+    assert(m == [
+        [0, 0, 0, 0],
+        [5, 0, 0, 0],
+        [9, 10, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpper!"a = 0";
+    assert(m == [
+        [1, 0, 0, 0],
+        [5, 6, 0, 0],
+        [9, 10, 11, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpper!"a = 0"(-1);
+    assert(m == [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [9, 0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpper!"a = 0"(2);
+    assert(m == [
+        [1, 2, 0, 0],
+        [5, 6, 7, 0],
+        [9, 10, 11, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //| 1  2  3  4 |
+    //| 5  6  7  8 |
+    //| 9 10 11 12 |
+    auto m = iota([3, 4], 1).slice;
+    m.eachUpper!"a = 0"(-2);
+    assert(m == [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpper!"a = 0"(0);
+    assert(m == [
+        [0, 0, 0],
+        [4, 0, 0],
+        [7, 8, 0],
+        [10, 11, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpper!"a = 0";
+    assert(m == [
+        [1, 0, 0],
+        [4, 5, 0],
+        [7, 8, 9],
+        [10, 11, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpper!"a = 0"(-1);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [7, 0, 0],
+        [10, 11, 0]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpper!"a = 0"(2);
+    assert(m == [
+        [1, 2, 0],
+        [4, 5, 6],
+        [7, 8, 9],
+        [10, 11, 12]]);
+}
+
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    //|  1  2  3 |
+    //|  4  5  6 |
+    //|  7  8  9 |
+    //| 10 11 12 |
+    auto m = iota([4, 3], 1).slice;
+    m.eachUpper!"a = 0"(-2);
+    assert(m == [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [10, 0, 0]]);
+}
+
+/// Swap two slices
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.utility : swap;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    //| 6 7 8 |
+    auto a = iota([3, 3]).as!double.slice;
+    //| 10 11 12 |
+    //| 13 14 15 |
+    //| 16 17 18 |
+    auto b = iota([3, 3], 10).as!double.slice;
+
+    eachUpper!swap(a, b);
+
+    assert(a == [
+        [0, 11, 12],
+        [3,  4, 15],
+        [6,  7,  8]]);
+    assert(b == [
+        [10,  1,  2],
+        [13, 14,  5],
+        [16, 17, 18]]);
+}
+
+/// Swap two zipped slices
+pure nothrow
+version(mir_test) unittest
+{
+    import mir.utility : swap;
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : as, zip, iota;
+
+    //| 0 1 2 |
+    //| 3 4 5 |
+    //| 6 7 8 |
+    auto a = iota([3, 3]).as!double.slice;
+    //| 10 11 12 |
+    //| 13 14 15 |
+    //| 16 17 18 |
+    auto b = iota([3, 3], 10).as!double.slice;
+
+    auto z = zip(a, b);
+
+    z.eachUpper!(z => swap(z.a, z.b));
+
+    assert(a == [
+        [0, 11, 12],
+        [3,  4, 15],
+        [6,  7,  8]]);
+    assert(b == [
+        [10,  1,  2],
+        [13, 14,  5],
+        [16, 17, 18]]);
 }
