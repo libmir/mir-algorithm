@@ -16,3 +16,4 @@ mir-algorithm
 mir-algorithm-test-library
 mir-internal
 web
+.DS_*
