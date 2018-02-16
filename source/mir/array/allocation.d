@@ -16,7 +16,7 @@ Copyright: Copyright Andrei Alexandrescu 2008-, Jonathan M Davis 2011-, and Ilya
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
-Authors:   $(HTTP erdani.org, Andrei Alexandrescu), Jonathan M Davis, 
+Authors:   $(HTTP erdani.org, Andrei Alexandrescu) and Jonathan M Davis
 
 Source: $(PHOBOSSRC std/_array.d)
 */
