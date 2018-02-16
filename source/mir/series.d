@@ -124,7 +124,10 @@ auto observation(Index, Data)(Index index, Data data)
 /++
 Plain index series data structure.
 
-`*.index[i]` corresponds to `*.data[i]`.
+`*.index[i]`/`*.key[i]`/`*.time` corresponds to `*.data[i]`/`*.value`.
+
+Index is assumed to be sorted.
+$(LREF sort) can be used to normalise a series.
 +/
 struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 {
