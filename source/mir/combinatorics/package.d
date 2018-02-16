@@ -7,17 +7,28 @@ License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
 */
 module mir.combinatorics;
 
-import std.range.primitives: isRandomAccessRange, hasLength;
+import std.traits;
+import mir.primitives: hasLength;
 
 ///
 version(mir_test) unittest
 {
-    import std.algorithm.comparison: equal;
+    import mir.ndslice.fuse;
 
-    assert([0, 1].permutations.equal!equal([[0, 1], [1, 0]]));
-    assert([0, 1].cartesianPower(2).equal!equal([[0, 0], [0, 1], [1, 0], [1, 1]]));
-    assert([0, 1].combinations(2).equal!equal([[0, 1]]));
-    assert([0, 1].combinationsRepeat(2).equal!equal([[0, 0], [0, 1], [1, 1]]));
+    assert(['a', 'b'].permutations.fuse == [['a', 'b'], ['b', 'a']]);
+    assert(['a', 'b'].cartesianPower(2).fuse == [['a', 'a'], ['a', 'b'], ['b', 'a'], ['b', 'b']]);
+    assert(['a', 'b'].combinations(2).fuse == [['a', 'b']]);
+    assert(['a', 'b'].combinationsRepeat(2).fuse == [['a', 'a'], ['a', 'b'], ['b', 'b']]);
+
+    assert(permutations!ushort(2).fuse == [[0, 1], [1, 0]]);
+    assert(cartesianPower!ushort(2, 2).fuse == [[0, 0], [0, 1], [1, 0], [1, 1]]);
+    assert(combinations!ushort(2, 2).fuse == [[0, 1]]);
+    assert(combinationsRepeat!ushort(2, 2).fuse == [[0, 0], [0, 1], [1, 1]]);
+
+    assert([3, 1].permutations!ubyte.fuse == [[3, 1], [1, 3]]);
+    assert([3, 1].cartesianPower!ubyte(2).fuse == [[3, 3], [3, 1], [1, 3], [1, 1]]);
+    assert([3, 1].combinations!ubyte(2).fuse == [[3, 1]]);
+    assert([3, 1].combinationsRepeat!ubyte(2).fuse == [[3, 3], [3, 1], [1, 1]]);
 }
 
 /**
@@ -193,58 +204,68 @@ See_Also:
     $(LREF combinationsRepeat)
 */
 IndexedRoR!(Collection, Range) indexedRoR(Collection, Range)(Collection c, Range r)
-if (isRandomAccessRange!Range)
+    if (__traits(compiles, Range.init[size_t.init]))
 {
     return IndexedRoR!(Collection, Range)(c, r);
 }
 
 /// ditto
 struct IndexedRoR(Collection, Range)
-if (isRandomAccessRange!Range)
+    if (__traits(compiles, Range.init[size_t.init]))
 {
-    import std.range : indexed, isForwardRange;
-
     private Collection c;
     private Range r;
 
     ///
-    this(Collection collection, Range range)
+    this()(Collection collection, Range range)
     {
         this.c = collection;
         this.r = range;
     }
 
-    ///
-    auto ref front() @property
+    /// Input range primitives
+    auto ref front()() @property
     {
-        return r.indexed(c.front);
+        import mir.ndslice.slice: isSlice, sliced;
+        import mir.ndslice.topology: indexed;
+        import std.traits: ForeachType;
+        static if (isSlice!(ForeachType!Collection))
+            return r.indexed(c.front);
+        else
+            return r.indexed(c.front.sliced);
     }
 
-    ///
+    /// ditto
     void popFront()
     {
         c.popFront;
     }
 
-    ///
-    bool empty() @property const
+    /// ditto
+    bool empty()() @property const
     {
         return c.empty;
     }
 
     static if (hasLength!Collection)
     {
-        ///
-        @property size_t length() const
+        /// ditto
+        @property size_t length()() const
         {
             return c.length;
         }
+
+        /// 
+        @property size_t[2] shape()() const
+        {
+            return c.shape;
+        }
     }
 
-    static if (isForwardRange!Collection)
+    static if (__traits(hasMember, Collection, "save"))
     {
-        ///
-        typeof(this) save() @property
+        /// Forward range primitive. Calls `collection.save`.
+        typeof(this) save()() @property
         {
             return IndexedRoR!(Collection, Range)(c.save, r);
         }
@@ -254,31 +275,31 @@ if (isRandomAccessRange!Range)
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    import std.algorithm.comparison: equal;
+    import mir.ndslice.fuse;
 
     auto perms = 2.permutations;
-    assert(perms.save.equal!equal([[0, 1], [1, 0]]));
+    assert(perms.save.fuse == [[0, 1], [1, 0]]);
 
     auto projection = perms.indexedRoR([1, 2]);
-    assert(projection.equal!equal([[1, 2], [2, 1]]));
+    assert(projection.fuse == [[1, 2], [2, 1]]);
 }
 
 ///
 version(mir_test) unittest
 {
-    import std.algorithm.comparison: equal;
-    import std.range: only;
+    import mir.ndslice.fuse;
+    // import mir.ndslice.topology: only;
 
     auto projectionD = 2.permutations.indexedRoR("ab"d);
-    assert(projectionD.equal!equal([['a', 'b'], ['b', 'a']]));
+    assert(projectionD.fuse == [['a', 'b'], ['b', 'a']]);
 
-    auto projectionC = 2.permutations.indexedRoR(only('a', 'b'));
-    assert(projectionC.equal!equal([['a', 'b'], ['b', 'a']]));
+    // auto projectionC = 2.permutations.indexedRoR(only('a', 'b'));
+    // assert(projectionC.fuse == [['a', 'b'], ['b', 'a']]);
 }
 
 @safe pure nothrow version(mir_test) unittest
 {
-    import std.algorithm.comparison: equal;
+    import mir.ndslice.fuse;
     import std.range: dropOne;
 
     auto perms = 2.permutations;
@@ -286,19 +307,22 @@ version(mir_test) unittest
     assert(projection.length == 2);
 
     // can save
-    assert(projection.save.dropOne.front.equal([2, 1]));
-    assert(projection.front.equal([1, 2]));
+    assert(projection.save.dropOne.front == [2, 1]);
+    assert(projection.front == [1, 2]);
 }
 
 @safe nothrow @nogc version(mir_test) unittest
 {
-    import std.algorithm.comparison: equal;
+    import mir.ndslice.algorithm: all;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.fuse;
     static perms = 2.permutations;
     static immutable projectionArray = [1, 2];
     auto projection = perms.indexedRoR(projectionArray);
 
-    static immutable result = [[1, 2], [2, 1]];
-    assert(projection.equal!equal(result));
+    static immutable result = [1, 2,
+                               2, 1];
+    assert(result.sliced(2, 2).all!"a == b"(projection));
 }
 
 /**
@@ -310,7 +334,7 @@ the number of permutations is `|n|!`.
 
 Params:
     n = number of elements (`|r|`)
-    r = $(REF_ALTTEXT Random access range, isRandomAccessRange, std, range, primitives)
+    r = random access field. A field may not have iteration primitivies.
     alloc = custom Allocator
 
 Returns:
@@ -319,27 +343,29 @@ Returns:
 See_Also:
     $(LREF Permutations)
 */
-Permutations permutations(size_t n) @safe pure nothrow
+Permutations!T permutations(T = uint)(size_t n) @safe pure nothrow
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(n, "must have at least one item");
-    return Permutations(new uint[n-1], new uint[n]);
+    return Permutations!T(new T[n-1], new T[n]);
 }
 
 /// ditto
-IndexedRoR!(Permutations, Range) permutations(Range)(Range r) @safe pure nothrow
-if (isRandomAccessRange!Range)
+IndexedRoR!(Permutations!T, Range) permutations(T = uint, Range)(Range r) @safe pure nothrow
+    if (__traits(compiles, Range.init[size_t.init]))
 {
-    return permutations(r.length).indexedRoR(r);
+    return permutations!T(r.length).indexedRoR(r);
 }
 
 /// ditto
-Permutations makePermutations(Allocator)(auto ref Allocator alloc, size_t n)
+Permutations!T makePermutations(T = uint, Allocator)(auto ref Allocator alloc, size_t n)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(n, "must have at least one item");
     import std.experimental.allocator: makeArray;
-    auto state = alloc.makeArray!uint(n - 1);
-    auto indices = alloc.makeArray!uint(n);
-    return Permutations(state, indices);
+    auto state = alloc.makeArray!T(n - 1);
+    auto indices = alloc.makeArray!T(n);
+    return Permutations!T(state, indices);
 }
 
 /**
@@ -355,9 +381,11 @@ the total number of elements is `n^k`.
 See_Also:
     $(LREF permutations), $(LREF makePermutations)
 */
-struct Permutations
+struct Permutations(T)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    private uint[] indices, state;
+    import mir.ndslice.slice: ContiguousVector;
+    private T[] indices, state;
     private bool _empty;
     private size_t _max_states = 1, _pos;
 
@@ -365,11 +393,11 @@ struct Permutations
     state should have the length of `n - 1`,
     whereas the length of indices should be `n`
     */
-    this(uint[] state, uint[] indices) @safe pure nothrow @nogc
+    this()(T[] state, T[] indices) @safe pure nothrow @nogc
     {
         assert(state.length + 1 == indices.length);
         // iota
-        foreach (uint i, ref index; indices)
+        foreach (T i, ref index; indices)
             index = i;
         state[] = 0;
 
@@ -383,34 +411,32 @@ struct Permutations
             _max_states *= i;
     }
 
-    ///
-    @property const(uint)[] front() @safe pure nothrow @nogc
+    /// Input range primitives
+    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
     {
-        return indices;
+        import mir.ndslice.slice: sliced;
+        return indices.sliced;
     }
 
-    ///
-    void popFront() @safe pure nothrow @nogc
+    /// ditto
+    void popFront()() @safe pure nothrow @nogc
     {
         import std.algorithm.mutation : swapAt;
 
         assert(!empty);
         _pos++;
 
-        for (uint h = 0;;h++)
+        for (T h = 0;;h++)
         {
-            if (h+2 > indices.length)
+            if (h + 2 > indices.length)
             {
                 _empty = true;
                 break;
             }
 
-            if (h & 1)
-                indices.swapAt(0, h+1);
-            else
-                indices.swapAt(state[h], h+1);
+            indices.swapAt((h & 1) ? 0 : state[h], h + 1);
 
-            if (state[h] == h+1)
+            if (state[h] == h + 1)
             {
                 state[h] = 0;
                 continue;
@@ -420,20 +446,26 @@ struct Permutations
         }
     }
 
-    ///
-    @property bool empty() @safe pure nothrow @nogc const
+    /// ditto
+    @property bool empty()() @safe pure nothrow @nogc const
     {
         return _empty;
     }
 
-    ///
-    @property size_t length() @safe pure nothrow @nogc const
+    /// ditto
+    @property size_t length()() @safe pure nothrow @nogc const
     {
         return _max_states - _pos;
     }
 
-    ///
-    @property Permutations save() @safe pure nothrow
+    /// 
+    @property size_t[2] shape()() const
+    {
+        return [length, indices.length];
+    }
+
+    /// Forward range primitive. Allocates using GC.
+    @property Permutations save()() @safe pure nothrow
     {
         typeof(this) c = this;
         c.indices = indices.dup;
@@ -445,8 +477,8 @@ struct Permutations
 ///
 pure @safe nothrow version(mir_test) unittest
 {
-    import std.algorithm.comparison : equal;
-    import std.range : iota;
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology : iota;
 
     auto expectedRes = [[0, 1, 2],
          [1, 0, 2],
@@ -457,37 +489,39 @@ pure @safe nothrow version(mir_test) unittest
 
     auto r = iota(3);
     auto rp = permutations(r.length).indexedRoR(r);
-    assert(rp.equal!equal(expectedRes));
+    assert(rp.fuse == expectedRes);
 
     // direct style
     auto rp2 = iota(3).permutations;
-    assert(rp2.equal!equal(expectedRes));
+    assert(rp2.fuse == expectedRes);
 }
 
 ///
 @nogc version(mir_test) unittest
 {
-    import std.algorithm: equal;
-    import std.range : iota;
+    import mir.ndslice.algorithm: equal;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology : iota;
 
     import std.experimental.allocator.mallocator;
 
-    static immutable expected2 = [[0, 1], [1, 0]];
+    static immutable expected2 = [0, 1, 1, 0];
     auto r = iota(2);
     auto rp = makePermutations(Mallocator.instance, r.length);
-    assert(rp.indexedRoR(r).equal!equal(expected2));
+    assert(expected2.sliced(2, 2).equal(rp.indexedRoR(r)));
     dispose(Mallocator.instance, rp);
 }
 
 pure @safe nothrow version(mir_test) unittest
 {
     // is copyable?
-    import std.algorithm: equal;
-    import std.range: iota, dropOne;
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
+    import std.range: dropOne;
     auto a = iota(2).permutations;
-    assert(a.front.equal([0, 1]));
-    assert(a.save.dropOne.front.equal([1, 0]));
-    assert(a.front.equal([0, 1]));
+    assert(a.front == [0, 1]);
+    assert(a.save.dropOne.front == [1, 0]);
+    assert(a.front == [0, 1]);
 
     // length
     assert(1.permutations.length == 1);
@@ -521,7 +555,7 @@ Params:
 See_Also:
     $(LREF makePermutations)
 */
-void dispose(Allocator)(auto ref Allocator alloc, auto ref Permutations perm)
+void dispose(T, Allocator)(auto ref Allocator alloc, auto ref Permutations!T perm)
 {
     import std.experimental.allocator: dispose;
     dispose(alloc, perm.state);
@@ -538,7 +572,7 @@ the total number of elements is `n^k`.
 
 Params:
     n = number of elements (`|r|`)
-    r = $(REF_ALTTEXT Random access range, isRandomAccessRange, std, range, primitives)
+    r = random access field. A field may not have iteration primitivies.
     repeat = number of repetitions
     alloc = custom Allocator
 
@@ -548,26 +582,28 @@ Returns:
 See_Also:
     $(LREF CartesianPower)
 */
-CartesianPower cartesianPower(size_t n, size_t repeat = 1) @safe pure nothrow
+CartesianPower!T cartesianPower(T = uint)(size_t n, size_t repeat = 1) @safe pure nothrow
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(repeat >= 1, "Invalid number of repetitions");
-    return CartesianPower(n, new uint[repeat]);
+    return CartesianPower!T(n, new T[repeat]);
 }
 
 /// ditto
-IndexedRoR!(CartesianPower, Range) cartesianPower(Range)(Range r, size_t repeat = 1)
-if (isRandomAccessRange!Range)
+IndexedRoR!(CartesianPower!T, Range) cartesianPower(T = uint, Range)(Range r, size_t repeat = 1)
+if (isUnsigned!T && __traits(compiles, Range.init[size_t.init]))
 {
     assert(repeat >= 1, "Invalid number of repetitions");
-    return cartesianPower(r.length, repeat).indexedRoR(r);
+    return cartesianPower!T(r.length, repeat).indexedRoR(r);
 }
 
 /// ditto
-CartesianPower makeCartesianPower(Allocator)(auto ref Allocator alloc, size_t n, size_t repeat)
+CartesianPower!T makeCartesianPower(T = uint, Allocator)(auto ref Allocator alloc, size_t n, size_t repeat)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(repeat >= 1, "Invalid number of repetitions");
     import std.experimental.allocator: makeArray;
-    return CartesianPower(n, alloc.makeArray!uint(repeat));
+    return CartesianPower!T(n, alloc.makeArray!T(repeat));
 }
 
 /**
@@ -581,36 +617,40 @@ the total number of elements is `n^k`.
 See_Also:
     $(LREF cartesianPower), $(LREF makeCartesianPower)
 */
-struct CartesianPower
+struct CartesianPower(T)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
+    import mir.ndslice.slice: ContiguousVector;
 
 private:
-    uint[] _state;
-    uint n;
+    T[] _state;
+    size_t n;
     size_t _max_states, _pos;
 
 public:
 
     /// state should have the length of `repeat`
-    this(size_t n, uint[] state) @safe pure nothrow @nogc
+    this()(size_t n, T[] state) @safe pure nothrow @nogc
     {
         assert(state.length >= 1, "Invalid number of repetitions");
 
         import std.math: pow;
-        this.n = cast(uint) n;
+        this.n = n;
+        assert(n <= T.max);
         this._state = state;
 
         _max_states = pow(n, state.length);
     }
 
-    ///
-    @property const(uint)[] front() @safe pure nothrow @nogc
+    /// Input range primitives
+    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
     {
-        return _state;
+        import mir.ndslice.slice: sliced;
+        return _state.sliced;
     }
 
-    ///
-    void popFront() @safe pure nothrow @nogc
+    /// ditto
+    void popFront()() @safe pure nothrow @nogc
     {
         assert(!empty);
         _pos++;
@@ -634,20 +674,26 @@ public:
         }
     }
 
-    ///
-    @property size_t length() @safe pure nothrow @nogc const
+    /// ditto
+    @property size_t length()() @safe pure nothrow @nogc const
     {
         return _max_states - _pos;
     }
 
-    ///
-    @property bool empty() @safe pure nothrow @nogc const
+    /// ditto
+    @property bool empty()() @safe pure nothrow @nogc const
     {
         return _pos == _max_states;
     }
 
-    ///
-    @property CartesianPower save() @safe pure nothrow
+    /// 
+    @property size_t[2] shape()() const
+    {
+        return [length, _state.length];
+    }
+
+    /// Forward range primitive. Allocates using GC.
+    @property CartesianPower save()() @safe pure nothrow
     {
         typeof(this) c = this;
         c._state = _state.dup;
@@ -658,56 +704,62 @@ public:
 ///
 pure nothrow @safe version(mir_test) unittest
 {
-    import std.algorithm: equal;
-    import std.range: iota;
-    assert(iota(2).cartesianPower.equal!equal([[0], [1]]));
-    assert(iota(2).cartesianPower(2).equal!equal([[0, 0], [0, 1], [1, 0], [1, 1]]));
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
+    assert(iota(2).cartesianPower.fuse == [[0], [1]]);
+    assert(iota(2).cartesianPower(2).fuse == [[0, 0], [0, 1], [1, 0], [1, 1]]);
 
     auto three_nums_two_bins = [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]];
-    assert(iota(3).cartesianPower(2).equal!equal(three_nums_two_bins));
+    assert(iota(3).cartesianPower(2).fuse == three_nums_two_bins);
 
-    assert("AB"d.cartesianPower(2).equal!equal(["AA"d, "AB"d, "BA"d, "BB"d]));
+    assert("AB"d.cartesianPower(2).fuse == ["AA"d, "AB"d, "BA"d, "BB"d]);
 }
 
 ///
 @nogc version(mir_test) unittest
 {
-    import std.algorithm: equal;
-    import std.range: iota;
+    import mir.ndslice.topology: iota;
+    import mir.ndslice.algorithm: equal;
+    import mir.ndslice.slice: sliced;
 
     import std.experimental.allocator.mallocator: Mallocator;
     auto alloc = Mallocator.instance;
 
-    static immutable expected2r2 = [[0, 0], [0, 1], [1, 0], [1, 1]];
+    static immutable expected2r2 = [
+        0, 0,
+        0, 1,
+        1, 0,
+        1, 1];
     auto r = iota(2);
     auto rc = alloc.makeCartesianPower(r.length, 2);
-    assert(rc.indexedRoR(r).equal!equal(expected2r2));
+    assert(expected2r2.sliced(4, 2).equal(rc.indexedRoR(r)));
     alloc.dispose(rc);
 }
 
 pure nothrow @safe version(mir_test) unittest
 {
-    import std.algorithm: equal, map;
-    import std.array: array;
-    import std.range: iota, dropOne;
+    import mir.ndslice.fuse;
+    import mir.array.allocation: array;
+    import mir.ndslice.topology: iota;
+    import std.range: dropOne;
 
     assert(iota(0).cartesianPower.length == 0);
-    assert("AB"d.cartesianPower(3).equal!equal(["AAA"d, "AAB"d, "ABA"d, "ABB"d, "BAA"d, "BAB"d, "BBA"d, "BBB"d]));
+    assert("AB"d.cartesianPower(3).fuse == ["AAA"d, "AAB"d, "ABA"d, "ABB"d, "BAA"d, "BAB"d, "BBA"d, "BBB"d]);
     auto expected = ["AA"d, "AB"d, "AC"d, "AD"d,
                      "BA"d, "BB"d, "BC"d, "BD"d,
                      "CA"d, "CB"d, "CC"d, "CD"d,
                      "DA"d, "DB"d, "DC"d, "DD"d];
-    assert("ABCD"d.cartesianPower(2).equal!equal(expected));
+    assert("ABCD"d.cartesianPower(2).fuse == expected);
     // verify with array too
-    assert("ABCD"d.cartesianPower(2).map!array.array == expected);
+    assert("ABCD"d.cartesianPower(2).fuse == expected);
 
-    assert(iota(2).cartesianPower.front.equal([0]));
+    assert(iota(2).cartesianPower.front == [0]);
 
     // is copyable?
     auto a = iota(2).cartesianPower;
-    assert(a.front.equal([0]));
-    assert(a.save.dropOne.front.equal([1]));
-    assert(a.front.equal([0]));
+    assert(a.front == [0]);
+    assert(a.save.dropOne.front == [1]);
+    assert(a.front == [0]);
 
     // test length shrinking
     auto d = iota(2).cartesianPower;
@@ -756,7 +808,7 @@ Params:
 See_Also:
     $(LREF makeCartesianPower)
 */
-void dispose(Allocator)(auto ref Allocator alloc, auto ref CartesianPower cartesianPower)
+void dispose(T = uint, Allocator)(auto ref Allocator alloc, auto ref CartesianPower!T cartesianPower)
 {
     import std.experimental.allocator: dispose;
     dispose(alloc, cartesianPower._state);
@@ -771,7 +823,7 @@ the number of combinations is `binomial(n, k)`.
 
 Params:
     n = number of elements (`|r|`)
-    r = $(REF_ALTTEXT Random access range, isRandomAccessRange, std, range, primitives)
+    r = random access field. A field may not have iteration primitivies.
     k = number of combinations
     alloc = custom Allocator
 
@@ -781,26 +833,28 @@ Returns:
 See_Also:
     $(LREF Combinations)
 */
-Combinations combinations(size_t n, size_t k = 1) @safe pure nothrow
+Combinations!T combinations(T = uint)(size_t n, size_t k = 1) @safe pure nothrow
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(k >= 1, "Invalid number of combinations");
-    return Combinations(n, new uint[k]);
+    return Combinations!T(n, new T[k]);
 }
 
 /// ditto
-IndexedRoR!(Combinations, Range) combinations(Range)(Range r, uint k = 1)
-if (isRandomAccessRange!Range)
+IndexedRoR!(Combinations!T, Range) combinations(T = uint, Range)(Range r, size_t k = 1)
+if (isUnsigned!T && __traits(compiles, Range.init[size_t.init]))
 {
     assert(k >= 1, "Invalid number of combinations");
-    return combinations(r.length, k).indexedRoR(r);
+    return combinations!T(r.length, k).indexedRoR(r);
 }
 
 /// ditto
-Combinations makeCombinations(Allocator)(auto ref Allocator alloc, size_t n, size_t repeat)
+Combinations!T makeCombinations(T = uint, Allocator)(auto ref Allocator alloc, size_t n, size_t repeat)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(repeat >= 1, "Invalid number of repetitions");
     import std.experimental.allocator: makeArray;
-    return Combinations(cast(uint) n, alloc.makeArray!uint(cast(uint) repeat));
+    return Combinations!T(cast(T) n, alloc.makeArray!T(cast(T) repeat));
 }
 
 /**
@@ -814,59 +868,61 @@ the number of combinations is `binomial(n, k)`.
 See_Also:
     $(LREF combinations), $(LREF makeCombinations)
 */
-struct Combinations
+struct Combinations(T)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
+    import mir.ndslice.slice: ContiguousVector;
 
 private:
-    uint[] state;
-    uint n;
+    T[] state;
+    size_t n;
     size_t max_states, pos;
 
 public:
 
     /// state should have the length of `repeat`
-    this(size_t n, uint[] state) @safe pure nothrow @nogc
+    this()(size_t n, T[] state) @safe pure nothrow @nogc
     {
-        import std.range: iota;
+        import mir.ndslice.topology: iota;
 
-        uint repeatLen = cast(uint) state.length;
-        this.n = cast(uint) n;
-        this.max_states = cast(size_t) binomial(n, repeatLen);
+        assert(state.length <= T.max);
+        this.n = n;
+        assert(n <= T.max);
+        this.max_states = cast(size_t) binomial(n, state.length);
         this.state = state;
 
         // set initial state and calculate max possibilities
         if (n > 0)
         {
             // skip first duplicate
-            if (n > 1 && repeatLen > 1)
+            if (n > 1 && state.length > 1)
             {
-                auto iotaResult = iota(repeatLen);
+                auto iotaResult = iota(state.length);
                 foreach (i, ref el; state)
                 {
-                    el = iotaResult[i];
+                    el = cast(T) iotaResult[i];
                 }
             }
         }
     }
 
-    ///
-    @property const(uint)[] front() @safe pure nothrow @nogc
+    /// Input range primitives
+    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
     {
-        return state;
+        import mir.ndslice.slice: sliced;
+        return state.sliced;
     }
 
-    ///
-    void popFront() @safe pure nothrow @nogc
+    /// ditto
+    void popFront()() @safe pure nothrow @nogc
     {
         assert(!empty);
         pos++;
         // we might have bumped into the end state now
         if (empty) return;
 
-        immutable repeat = cast(uint) state.length;
-
         // Behaves like: do _getNextState();  while (!_state.isStrictlySorted);
-        uint i = repeat - 1;
+        size_t i = state.length - 1;
         /* Go from the back to next settable block
         * - A must block must be lower than it's previous
         * - A state i is not settable if it's maximum height is reached
@@ -879,37 +935,43 @@ public:
         * [0, 1] -> i = 2
         * [0, 2] -> i = 1
         */
-        while (state[i] == n - repeat + i)
+        while (state[i] == n - state.length + i)
         {
             i--;
         }
-        state[i] = state[i] + 1;
+        state[i] = cast(T)(state[i] + 1);
 
         /* Starting from our changed block, we need to take the change back
         * to the end of the state array and update them by their new diff.
         * [0, 1, 4] -> [0, 2, 3]
         * [0, 3, 4] -> [1, 2, 3]
         */
-        for (uint j = i + 1; j < repeat; j++)
+        foreach (j; i + 1 .. state.length)
         {
-            state[j] = state[i] + j - i;
+            state[j] = cast(T)(state[i] + j - i);
         }
     }
 
-    ///
-    @property size_t length() @safe pure nothrow @nogc const
+    /// ditto
+    @property size_t length()() @safe pure nothrow @nogc const
     {
         return max_states - pos;
     }
 
-    ///
-    @property bool empty() @safe pure nothrow @nogc const
+    /// ditto
+    @property bool empty()() @safe pure nothrow @nogc const
     {
         return pos == max_states;
     }
 
-    ///
-    @property Combinations save() @safe pure nothrow
+    /// 
+    @property size_t[2] shape()() const
+    {
+        return [length, state.length];
+    }
+
+    /// Forward range primitive. Allocates using GC.
+    @property Combinations save()() @safe pure nothrow
     {
         typeof(this) c = this;
         c.state = state.dup;
@@ -920,49 +982,54 @@ public:
 ///
 pure nothrow @safe version(mir_test) unittest
 {
-    import std.algorithm: equal;
-    import std.range: iota;
-    assert(iota(3).combinations(2).equal!equal([[0, 1], [0, 2], [1, 2]]));
-    assert("AB"d.combinations(2).equal!equal(["AB"d]));
-    assert("ABC"d.combinations(2).equal!equal(["AB"d, "AC"d, "BC"d]));
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
+    assert(iota(3).combinations(2).fuse == [[0, 1], [0, 2], [1, 2]]);
+    assert("AB"d.combinations(2).fuse == ["AB"d]);
+    assert("ABC"d.combinations(2).fuse == ["AB"d, "AC"d, "BC"d]);
 }
 
 ///
 @nogc version(mir_test) unittest
 {
-    import std.algorithm: equal;
-    import std.range: iota;
+    import mir.ndslice.algorithm: equal;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: iota;
 
     import std.experimental.allocator.mallocator;
     auto alloc = Mallocator.instance;
 
-    static immutable expected3r2 = [[0, 1], [0, 2], [1, 2]];
+    static immutable expected3r2 = [
+        0, 1,
+        0, 2,
+        1, 2];
     auto r = iota(3);
     auto rc = alloc.makeCombinations(r.length, 2);
-    assert(rc.indexedRoR(r).equal!equal(expected3r2));
+    assert(expected3r2.sliced(3, 2).equal(rc.indexedRoR(r)));
     alloc.dispose(rc);
 }
 
 pure nothrow @safe version(mir_test) unittest
 {
-    import std.algorithm: equal, map;
-    import std.array: array;
-    import std.range: iota, dropOne;
+    import mir.ndslice.fuse;
+    import mir.array.allocation: array;
+    import mir.ndslice.topology: iota;
+    import std.range: dropOne;
 
     assert(iota(0).combinations.length == 0);
-    assert(iota(2).combinations.equal!equal([[0], [1]]));
+    assert(iota(2).combinations.fuse == [[0], [1]]);
 
     auto expected = ["AB"d, "AC"d, "AD"d, "BC"d, "BD"d, "CD"d];
-    assert("ABCD"d.combinations(2).equal!equal(expected));
+    assert("ABCD"d.combinations(2).fuse == expected);
     // verify with array too
-    assert("ABCD"d.combinations(2).map!array.array == expected);
-    assert(iota(2).combinations.front.equal([0]));
+    assert("ABCD"d.combinations(2).fuse == expected);
+    assert(iota(2).combinations.front == [0]);
 
     // is copyable?
     auto a = iota(2).combinations;
-    assert(a.front.equal([0]));
-    assert(a.save.dropOne.front.equal([1]));
-    assert(a.front.equal([0]));
+    assert(a.front == [0]);
+    assert(a.save.dropOne.front == [1]);
+    assert(a.front == [0]);
 
     // test length shrinking
     auto d = iota(2).combinations;
@@ -975,43 +1042,43 @@ pure nothrow @safe version(mir_test) unittest
                       [0, 2, 3], [0, 2, 4], [0, 3, 4],
                       [1, 2, 3], [1, 2, 4], [1, 3, 4],
                       [2, 3, 4]];
-    assert(iota(5).combinations(3).equal!equal(expected5));
-    assert(iota(4).combinations(3).equal!equal([[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]));
-    assert(iota(3).combinations(3).equal!equal([[0, 1, 2]]));
+    assert(iota(5).combinations(3).fuse == expected5);
+    assert(iota(4).combinations(3).fuse == [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]);
+    assert(iota(3).combinations(3).fuse == [[0, 1, 2]]);
     assert(iota(2).combinations(3).length == 0);
     assert(iota(1).combinations(3).length == 0);
 
-    assert(iota(3).combinations(2).equal!equal([[0, 1], [0, 2], [1, 2]]));
-    assert(iota(2).combinations(2).equal!equal([[0, 1]]));
+    assert(iota(3).combinations(2).fuse == [[0, 1], [0, 2], [1, 2]]);
+    assert(iota(2).combinations(2).fuse == [[0, 1]]);
     assert(iota(1).combinations(2).length == 0);
 
-    assert(iota(1).combinations(1).equal!equal([[0]]));
+    assert(iota(1).combinations(1).fuse == [[0]]);
 }
 
 pure nothrow @safe version(mir_test) unittest
 {
     // test larger combinations
-    import std.algorithm: equal;
-    import std.range: iota;
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
 
     auto expected6r4 = [[0, 1, 2, 3], [0, 1, 2, 4], [0, 1, 2, 5],
                         [0, 1, 3, 4], [0, 1, 3, 5], [0, 1, 4, 5],
                         [0, 2, 3, 4], [0, 2, 3, 5], [0, 2, 4, 5],
                         [0, 3, 4, 5], [1, 2, 3, 4], [1, 2, 3, 5],
                         [1, 2, 4, 5], [1, 3, 4, 5], [2, 3, 4, 5]];
-    assert(iota(6).combinations(4).equal!equal(expected6r4));
+    assert(iota(6).combinations(4).fuse == expected6r4);
 
     auto expected6r3 = [[0, 1, 2], [0, 1, 3], [0, 1, 4], [0, 1, 5],
                         [0, 2, 3], [0, 2, 4], [0, 2, 5], [0, 3, 4],
                         [0, 3, 5], [0, 4, 5], [1, 2, 3], [1, 2, 4],
                         [1, 2, 5], [1, 3, 4], [1, 3, 5], [1, 4, 5],
                         [2, 3, 4], [2, 3, 5], [2, 4, 5], [3, 4, 5]];
-    assert(iota(6).combinations(3).equal!equal(expected6r3));
+    assert(iota(6).combinations(3).fuse == expected6r3);
 
     auto expected6r2 = [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5],
                         [1, 2], [1, 3], [1, 4], [1, 5], [2, 3],
                         [2, 4], [2, 5], [3, 4], [3, 5], [4, 5]];
-    assert(iota(6).combinations(2).equal!equal(expected6r2));
+    assert(iota(6).combinations(2).fuse == expected6r2);
 
     auto expected7r5 = [[0, 1, 2, 3, 4], [0, 1, 2, 3, 5], [0, 1, 2, 3, 6],
                         [0, 1, 2, 4, 5], [0, 1, 2, 4, 6], [0, 1, 2, 5, 6],
@@ -1020,7 +1087,7 @@ pure nothrow @safe version(mir_test) unittest
                         [0, 2, 3, 5, 6], [0, 2, 4, 5, 6], [0, 3, 4, 5, 6],
                         [1, 2, 3, 4, 5], [1, 2, 3, 4, 6], [1, 2, 3, 5, 6],
                         [1, 2, 4, 5, 6], [1, 3, 4, 5, 6], [2, 3, 4, 5, 6]];
-    assert(iota(7).combinations(5).equal!equal(expected7r5));
+    assert(iota(7).combinations(5).fuse == expected7r5);
 }
 
 // length
@@ -1066,7 +1133,7 @@ Params:
 See_Also:
     $(LREF makeCombinations)
 */
-void dispose(Allocator)(auto ref Allocator alloc, auto ref Combinations combs)
+void dispose(T, Allocator)(auto ref Allocator alloc, auto ref Combinations!T combs)
 {
     import std.experimental.allocator: dispose;
     dispose(alloc, combs.state);
@@ -1084,7 +1151,7 @@ the number of combinations with repeats is `binomial(n + k - 1, k)`.
 
 Params:
     n = number of elements (`|r|`)
-    r = $(REF_ALTTEXT Random access range, isRandomAccessRange, std, range, primitives)
+    r = random access field. A field may not have iteration primitivies.
     k = number of combinations
     alloc = custom Allocator
 
@@ -1094,26 +1161,28 @@ Returns:
 See_Also:
     $(LREF CombinationsRepeat)
 */
-CombinationsRepeat combinationsRepeat(size_t n, size_t k = 1) @safe pure nothrow
+CombinationsRepeat!T combinationsRepeat(T = uint)(size_t n, size_t k = 1) @safe pure nothrow
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(k >= 1, "Invalid number of combinations");
-    return CombinationsRepeat(n, new uint[k]);
+    return CombinationsRepeat!T(n, new T[k]);
 }
 
 /// ditto
-IndexedRoR!(CombinationsRepeat, Range) combinationsRepeat(Range)(Range r, size_t k = 1)
-    if (isRandomAccessRange!Range)
+IndexedRoR!(CombinationsRepeat!T, Range) combinationsRepeat(T = uint, Range)(Range r, size_t k = 1)
+    if (isUnsigned!T && __traits(compiles, Range.init[size_t.init]))
 {
     assert(k >= 1, "Invalid number of combinations");
-    return combinationsRepeat(r.length, k).indexedRoR(r);
+    return combinationsRepeat!T(r.length, k).indexedRoR(r);
 }
 
 /// ditto
-CombinationsRepeat makeCombinationsRepeat(Allocator)(auto ref Allocator alloc, size_t n, size_t repeat)
+CombinationsRepeat!T makeCombinationsRepeat(T = uint, Allocator)(auto ref Allocator alloc, size_t n, size_t repeat)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
     assert(repeat >= 1, "Invalid number of repetitions");
     import std.experimental.allocator: makeArray;
-    return CombinationsRepeat(n, alloc.makeArray!uint(repeat));
+    return CombinationsRepeat!T(n, alloc.makeArray!T(repeat));
 }
 
 /**
@@ -1127,21 +1196,23 @@ the number of combinations with repeats is `binomial(n, k)`.
 See_Also:
     $(LREF combinationsRepeat), $(LREF makeCombinationsRepeat)
 */
-struct CombinationsRepeat
+struct CombinationsRepeat(T)
+    if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
+    import mir.ndslice.slice: ContiguousVector;
 
 private:
-    uint[] state;
-    uint n;
-
+    T[] state;
+    size_t n;
     size_t max_states, pos;
 
 public:
 
     /// state should have the length of `repeat`
-    this(size_t n, uint[] state) @safe pure nothrow @nogc
+    this()(size_t n, T[] state) @safe pure nothrow @nogc
     {
-        this.n = cast(uint) n;
+        this.n = n;
+        assert(n <= T.max);
         this.state = state;
         size_t repeatLen = state.length;
 
@@ -1152,14 +1223,15 @@ public:
         }
     }
 
-    ///
-    @property const(uint)[] front() @safe pure nothrow @nogc
+    /// Input range primitives
+    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
     {
-        return state;
+        import mir.ndslice.slice: sliced;
+        return state.sliced;
     }
 
-    ///
-    void popFront() @safe pure nothrow @nogc
+    /// ditto
+    void popFront()() @safe pure nothrow @nogc
     {
         assert(!empty);
         pos++;
@@ -1174,7 +1246,7 @@ public:
         {
             i--;
         }
-        state[i] = state[i] + 1;
+        state[i] = cast(T)(state[i] + 1);
 
         // if we aren't at the last block, we need to set all blocks
         // to equal the current one
@@ -1186,20 +1258,26 @@ public:
         }
     }
 
-    ///
-    @property size_t length() @safe pure nothrow @nogc const
+    /// ditto
+    @property size_t length()() @safe pure nothrow @nogc const
     {
         return max_states - pos;
     }
 
-    ///
-    @property bool empty() @safe pure nothrow @nogc const
+    /// ditto
+    @property bool empty()() @safe pure nothrow @nogc const
     {
         return pos == max_states;
     }
 
-    ///
-    @property CombinationsRepeat save() @safe pure nothrow
+    /// 
+    @property size_t[2] shape()() const
+    {
+        return [length, state.length];
+    }
+
+    /// Forward range primitive. Allocates using GC.
+    @property CombinationsRepeat save()() @safe pure nothrow
     {
         typeof(this) c = this;
         c.state = state.dup;
@@ -1210,52 +1288,57 @@ public:
 ///
 pure nothrow @safe version(mir_test) unittest
 {
-    import std.algorithm: equal;
-    import std.range: iota;
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
 
-    assert(iota(2).combinationsRepeat.equal!equal([[0], [1]]));
-    assert(iota(2).combinationsRepeat(2).equal!equal([[0, 0], [0, 1], [1, 1]]));
-    assert(iota(3).combinationsRepeat(2).equal!equal([[0, 0], [0, 1], [0, 2], [1, 1], [1, 2], [2, 2]]));
-    assert("AB"d.combinationsRepeat(2).equal!equal(["AA"d, "AB"d,  "BB"d]));
+    assert(iota(2).combinationsRepeat.fuse == [[0], [1]]);
+    assert(iota(2).combinationsRepeat(2).fuse == [[0, 0], [0, 1], [1, 1]]);
+    assert(iota(3).combinationsRepeat(2).fuse == [[0, 0], [0, 1], [0, 2], [1, 1], [1, 2], [2, 2]]);
+    assert("AB"d.combinationsRepeat(2).fuse == ["AA"d, "AB"d,  "BB"d]);
 }
 
 ///
 @nogc version(mir_test) unittest
 {
-    import std.algorithm: equal;
-    import std.range: iota;
+    import mir.ndslice.algorithm: equal;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: iota;
 
     import std.experimental.allocator.mallocator;
     auto alloc = Mallocator.instance;
 
-    static immutable expected3r1 = [[0], [1], [2]];
+    static immutable expected3r1 = [
+        0, 
+        1, 
+        2];
     auto r = iota(3);
     auto rc = alloc.makeCombinationsRepeat(r.length, 1);
-    assert(rc.indexedRoR(r).equal!equal(expected3r1));
+    assert(expected3r1.sliced(3, 1).equal(rc.indexedRoR(r)));
     alloc.dispose(rc);
 }
 
 version(mir_test) unittest
 {
-    import std.algorithm: equal, map;
-    import std.array: array;
-    import std.range: iota, dropOne;
+    import mir.ndslice.fuse;
+    import mir.array.allocation: array;
+    import mir.ndslice.topology: iota;
+    import std.range: dropOne;
 
     assert(iota(0).combinationsRepeat.length == 0);
-    assert("AB"d.combinationsRepeat(3).equal!equal(["AAA"d, "AAB"d, "ABB"d,"BBB"d]));
+    assert("AB"d.combinationsRepeat(3).fuse == ["AAA"d, "AAB"d, "ABB"d,"BBB"d]);
 
     auto expected = ["AA"d, "AB"d, "AC"d, "AD"d, "BB"d, "BC"d, "BD"d, "CC"d, "CD"d, "DD"d];
-    assert("ABCD"d.combinationsRepeat(2).equal!equal(expected));
+    assert("ABCD"d.combinationsRepeat(2).fuse == expected);
     // verify with array too
-    assert("ABCD"d.combinationsRepeat(2).map!array.array == expected);
+    assert("ABCD"d.combinationsRepeat(2).fuse == expected);
 
-    assert(iota(2).combinationsRepeat.front.equal([0]));
+    assert(iota(2).combinationsRepeat.front == [0]);
 
     // is copyable?
     auto a = iota(2).combinationsRepeat;
-    assert(a.front.equal([0]));
-    assert(a.save.dropOne.front.equal([1]));
-    assert(a.front.equal([0]));
+    assert(a.front == [0]);
+    assert(a.save.dropOne.front == [1]);
+    assert(a.front == [0]);
 
     // test length shrinking
     auto d = iota(2).combinationsRepeat;
@@ -1286,26 +1369,26 @@ pure nothrow @safe version(mir_test) unittest
 pure nothrow @safe version(mir_test) unittest
 {
     // test larger combinations
-    import std.algorithm: equal;
-    import std.range: iota;
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
 
     auto expected3r1 = [[0], [1], [2]];
-    assert(iota(3).combinationsRepeat(1).equal!equal(expected3r1));
+    assert(iota(3).combinationsRepeat(1).fuse == expected3r1);
 
     auto expected3r2 = [[0, 0], [0, 1], [0, 2], [1, 1], [1, 2], [2, 2]];
-    assert(iota(3).combinationsRepeat(2).equal!equal(expected3r2));
+    assert(iota(3).combinationsRepeat(2).fuse == expected3r2);
 
     auto expected3r3 = [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 1, 1],
                         [0, 1, 2], [0, 2, 2], [1, 1, 1], [1, 1, 2],
                         [1, 2, 2], [2, 2, 2]];
-    assert(iota(3).combinationsRepeat(3).equal!equal(expected3r3));
+    assert(iota(3).combinationsRepeat(3).fuse == expected3r3);
 
     auto expected3r4 = [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 2],
                         [0, 0, 1, 1], [0, 0, 1, 2], [0, 0, 2, 2],
                         [0, 1, 1, 1], [0, 1, 1, 2], [0, 1, 2, 2],
                         [0, 2, 2, 2], [1, 1, 1, 1], [1, 1, 1, 2],
                         [1, 1, 2, 2], [1, 2, 2, 2], [2, 2, 2, 2]];
-    assert(iota(3).combinationsRepeat(4).equal!equal(expected3r4));
+    assert(iota(3).combinationsRepeat(4).fuse == expected3r4);
 
     auto expected4r3 = [[0, 0, 0], [0, 0, 1], [0, 0, 2],
                         [0, 0, 3], [0, 1, 1], [0, 1, 2],
@@ -1314,12 +1397,12 @@ pure nothrow @safe version(mir_test) unittest
                         [1, 1, 3], [1, 2, 2], [1, 2, 3],
                         [1, 3, 3], [2, 2, 2], [2, 2, 3],
                         [2, 3, 3], [3, 3, 3]];
-    assert(iota(4).combinationsRepeat(3).equal!equal(expected4r3));
+    assert(iota(4).combinationsRepeat(3).fuse == expected4r3);
 
     auto expected4r2 = [[0, 0], [0, 1], [0, 2], [0, 3],
                          [1, 1], [1, 2], [1, 3], [2, 2],
                          [2, 3], [3, 3]];
-    assert(iota(4).combinationsRepeat(2).equal!equal(expected4r2));
+    assert(iota(4).combinationsRepeat(2).fuse == expected4r2);
 
     auto expected5r3 = [[0, 0, 0], [0, 0, 1], [0, 0, 2], [0, 0, 3], [0, 0, 4],
                         [0, 1, 1], [0, 1, 2], [0, 1, 3], [0, 1, 4], [0, 2, 2],
@@ -1328,12 +1411,12 @@ pure nothrow @safe version(mir_test) unittest
                         [1, 2, 3], [1, 2, 4], [1, 3, 3], [1, 3, 4], [1, 4, 4],
                         [2, 2, 2], [2, 2, 3], [2, 2, 4], [2, 3, 3], [2, 3, 4],
                         [2, 4, 4], [3, 3, 3], [3, 3, 4], [3, 4, 4], [4, 4, 4]];
-    assert(iota(5).combinationsRepeat(3).equal!equal(expected5r3));
+    assert(iota(5).combinationsRepeat(3).fuse == expected5r3);
 
     auto expected5r2 = [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4],
                         [1, 1], [1, 2], [1, 3], [1, 4], [2, 2],
                         [2, 3], [2, 4], [3, 3], [3, 4], [4, 4]];
-    assert(iota(5).combinationsRepeat(2).equal!equal(expected5r2));
+    assert(iota(5).combinationsRepeat(2).fuse == expected5r2);
 }
 
 version(assert)
@@ -1360,7 +1443,7 @@ Params:
 See_Also:
     $(LREF makeCombinationsRepeat)
 */
-void dispose(Allocator)(auto ref Allocator alloc, auto ref CombinationsRepeat combs)
+void dispose(T, Allocator)(auto ref Allocator alloc, auto ref CombinationsRepeat!T combs)
 {
     import std.experimental.allocator: dispose;
     dispose(alloc, combs.state);

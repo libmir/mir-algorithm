@@ -10,66 +10,13 @@ $(TR $(TH Function Name) $(TH Description)
     $(TR $(TD $(LREF _array))
         $(TD Returns a copy of the input in a newly allocated dynamic _array.
     ))
-    $(TR $(TD $(LREF appender))
-        $(TD Returns a new $(LREF Appender) or $(LREF RefAppender) initialized with a given _array.
-    ))
-    $(TR $(TD $(LREF assocArray))
-        $(TD Returns a newly allocated associative _array from a range of key/value tuples.
-    ))
-    $(TR $(TD $(LREF byPair))
-        $(TD Construct a range iterating over an associative _array by key/value tuples.
-    ))
-    $(TR $(TD $(LREF insertInPlace))
-        $(TD Inserts into an existing _array at a given position.
-    ))
-    $(TR $(TD $(LREF join))
-        $(TD Concatenates a range of ranges into one _array.
-    ))
-    $(TR $(TD $(LREF minimallyInitializedArray))
-        $(TD Returns a new _array of type $(D T).
-    ))
-    $(TR $(TD $(LREF replace))
-        $(TD Returns a new _array with all occurrences of a certain subrange replaced.
-    ))
-    $(TR $(TD $(LREF replaceFirst))
-        $(TD Returns a new _array with the first occurrence of a certain subrange replaced.
-    ))
-    $(TR $(TD $(LREF replaceInPlace))
-        $(TD Replaces all occurrences of a certain subrange and puts the result into a given _array.
-    ))
-    $(TR $(TD $(LREF replaceInto))
-        $(TD Replaces all occurrences of a certain subrange and puts the result into an output range.
-    ))
-    $(TR $(TD $(LREF replaceLast))
-        $(TD Returns a new _array with the last occurrence of a certain subrange replaced.
-    ))
-    $(TR $(TD $(LREF replaceSlice))
-        $(TD Returns a new _array with a given slice replaced.
-    ))
-    $(TR $(TD $(LREF replicate))
-        $(TD Creates a new _array out of several copies of an input _array or range.
-    ))
-    $(TR $(TD $(LREF sameHead))
-        $(TD Checks if the initial segments of two arrays refer to the same
-        place in memory.
-    ))
-    $(TR $(TD $(LREF sameTail))
-        $(TD Checks if the final segments of two arrays refer to the same place
-        in memory.
-    ))
-    $(TR $(TD $(LREF split))
-        $(TD Eagerly split a range or string into an _array.
-    ))
-    $(TR $(TD $(LREF uninitializedArray))
-        $(TD Returns a new _array of type $(D T) without initializing its elements.
-    ))
 )
 
-Copyright: Copyright Andrei Alexandrescu 2008- and Jonathan M Davis 2011-.
+Copyright: Copyright Andrei Alexandrescu 2008-, Jonathan M Davis 2011-, and Ilya Yaroshenko (Mir rework)  2018-
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 
-Authors:   $(HTTP erdani.org, Andrei Alexandrescu) and Jonathan M Davis
+Authors:   $(HTTP erdani.org, Andrei Alexandrescu), Jonathan M Davis, 
 
 Source: $(PHOBOSSRC std/_array.d)
 */
