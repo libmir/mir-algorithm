@@ -16,7 +16,7 @@ Dlang core library for math, finance and a home for Dlang multidimensional array
  - [API Documentation](http://docs.algorithm.dlang.io)
  - [Scheme of basic API (advanced)](https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg)
  - [Lubeck](https://github.com/kaleidicassociates/lubeck) - Linear Algebra Library for Mir Algorithm
- - [numir](https://github.com/libmir/numir) - mir extension with numpy-like API.
+ - [numir](https://github.com/libmir/numir) - mir extension with numpy-like API
 
 #### Blogs
   - [Mir Blog](http://blog.mir.dlang.io/)
