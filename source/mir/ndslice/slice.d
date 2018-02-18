@@ -767,6 +767,20 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         return (cast(immutable) this).lightImmutable;
     }
 
+    /// ditto
+    auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
+            if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
+    {
+        return .lightConst(this)[indexes];
+    }
+
+    /// ditto
+    auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
+            if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
+    {
+        return .lightImmutable(this)[indexes];
+    }
+
     static if (isPointer!Iterator)
     {
         private alias ConstThis = Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*);
@@ -791,20 +805,6 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         static if (!is(Slice!(kind, packs, const(Unqual!(PointerTarget!Iterator))*) == This))
         /// ditto
         alias toConst this;
-
-        /// ditto
-        auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
-                if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
-        {
-            return lightConst[indexes];
-        }
-
-        /// ditto
-        auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
-                if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
-        {
-            return lightImmutable[indexes];
-        }
 
         static if (doUnittest)
         ///

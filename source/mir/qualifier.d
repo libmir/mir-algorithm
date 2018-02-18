@@ -12,6 +12,45 @@ module mir.qualifier;
 import std.traits;
 import mir.ndslice.slice: SliceKind, Slice, isSlice;
 
+///
+version(mir_test) unittest
+{
+    import mir.math.common;
+    import mir.ndslice; //includes Mir's zip
+    import mir.qualifier;
+
+    //////////////// Native ///////////////
+
+    auto a = slice!double(5, 5);
+    auto b = iota([5, 5]).as!double.slice.lightConst;
+    auto c = magic(5).as!double.slice.trustedImmutable;
+
+    static assert(is(typeof(a) == ContiguousMatrix!double));
+    static assert(is(typeof(b) == ContiguousMatrix!(const double)));
+    static assert(is(typeof(c) == ContiguousMatrix!(immutable double)));
+
+    auto ac = (cast(const) a)[]; //[] calls lightConst
+    auto ai = (cast(immutable) a)[]; //[] calls lightImmutable
+
+    static assert(is(typeof(ac) == ContiguousMatrix!(const double)));
+    static assert(is(typeof(ai) == ContiguousMatrix!(immutable double)));
+
+
+    //////////// Incapsulation ////////////
+
+    // zip, map, vmap, zip, indexed, pairwise, slide
+    // and all other functons from ndslice.topology support
+    // constant propogation
+    auto abc0 = zip(a, b, c);
+    const abc1 = abc0;
+    auto abc2 = abc1[]; //[] calls lightConst
+
+    static assert(is(typeof(abc0) == Slice!(cast(SliceKind)2, [2LU], ZipIterator!(
+                double*,  const(double)*, immutable(double)*))));
+    static assert(is(typeof(abc2) == Slice!(cast(SliceKind)2, [2LU], ZipIterator!(
+        const(double)*, const(double)*, immutable(double)*))));
+}
+
 /++
 +/
 template LightConstOf(T)
