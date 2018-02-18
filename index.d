@@ -36,6 +36,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,array,primitives)) $(TD Array primitives with ndslice-like API))
     $(TR $(TDNW $(MREF mir,array,allocation)) $(TD `std.array` reworked for Mir))
     $(TR $(TDNW $(MREF mir,bitmanip)) $(TD Bit fields manipulations))
+    $(TR $(TDNW $(MREF mir,qualifier)) $(TD Additoinal primitives for const and immutable types))
     $(TR $(TDNW $(MREF mir,conv)) $(TD Conversion utilities))
     $(TR $(TDNW $(MREF mir,functional)) $(TD Functions that manipulate other functions))
     $(TR $(TDNW $(MREF mir,primitives)) $(TD Templates used to check primitives))
