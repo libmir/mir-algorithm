@@ -25,12 +25,13 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # Packages in mir. Just mention the package name here. The contents of package
 # xy/zz is in variable PACKAGE_xy_zz. This allows automation in iterating
 # packages and their modules.
-MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/internal mir/math mir/math/func mir/array mir/interpolate mir/graph mir/combinatorics mir/container
+MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/internal mir/math mir/math/func mir/array mir/interpolate mir/graph mir/combinatorics mir/container mir/algorithm
 
-PACKAGE_mir = bitmanip conv functional primitives range series utility qualifier
+PACKAGE_mir = bitmanip conv functional primitives range series utility qualifier range
 
 PACKAGE_mir_array = primitives
 PACKAGE_mir_combinatorics = package
+PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_container = binaryheap
 PACKAGE_mir_graph = tarjan package
 PACKAGE_mir_internal = utility
