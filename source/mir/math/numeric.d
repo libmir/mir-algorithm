@@ -24,6 +24,7 @@ struct Prod(T)
 	///
 	T x = 0.5f;
 
+	///
 	void put()(T e)
 	{
         int lexp;
@@ -37,6 +38,7 @@ struct Prod(T)
         }
 	}
 
+    ///
     T value()() @property
     {
         if (exp > int.max)
