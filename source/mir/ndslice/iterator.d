@@ -17,6 +17,7 @@ $(T2 SliceIterator, $(SUBREF topology, map) in composition with $(LREF MapIterat
 $(T2 SlideIterator, $(SUBREF topology, diff), $(SUBREF topology, pairwise), and $(SUBREF topology, slide).)
 $(T2 StairsIterator, $(SUBREF topology, stairs))
 $(T2 StrideIterator, $(SUBREF topology, stride))
+$(T2 SubSliceIterator, $(SUBREF topology, mapSubSlices))
 $(T2 ZipIterator, $(SUBREF topology, zip))
 )
 
