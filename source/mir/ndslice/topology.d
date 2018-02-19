@@ -42,7 +42,9 @@ $(T2 bytegroup, Groups existing slice into fixed length chunks and uses them as 
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
+$(T2 mapSubSlices, Maps indexes pairs to subslices.)
 $(T2 pairwise, Pairwise map for vectors.)
+$(T2 pairwiseMapSubSlices, Maps pairwise indexes pairs to subslices.)
 $(T2 retro, Reverses order of iteration for all dimensions.)
 $(T2 slide, Sliding map for vectors.)
 $(T2 stairs, Two functions to pack, unpack, and iterate triangular and symmetric matrix storage.)
@@ -2728,7 +2730,7 @@ Params:
     sliceable = pointer, array, ndslice, or something sliceable.
 Returns:
     ndslice composed of subslices.
-See_also: $(LREF pairwise), $(LREF pairwiseMapSubSlices).
+See_also: $(LREF cut), $(LREF pairwise), $(LREF pairwiseMapSubSlices).
 +/
 Slice!(kind, packs, SubSliceIterator!(Iterator, Slicable))
     mapSubSlices(SliceKind kind, size_t[] packs, Iterator, Slicable)(
