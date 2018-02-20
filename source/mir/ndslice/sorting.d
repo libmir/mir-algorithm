@@ -171,7 +171,7 @@ template sort(alias less = "a < b")
 @optmath:
         ///
         Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
-            (Slice!(kind, packs, Iterator) slice) @safe
+            (Slice!(kind, packs, Iterator) slice)
             if (packs.length == 1)
         {
             if (false) // break safety
