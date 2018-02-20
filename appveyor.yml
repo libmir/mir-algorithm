@@ -2,10 +2,10 @@ platform: x64
 environment:
  matrix:
   - DC: dmd
-    DVersion: 2.078.1
+    DVersion: 2.078.3
     arch: x64
   - DC: dmd
-    DVersion: 2.078.1
+    DVersion: 2.078.3
     arch: x86
   - DC: ldc
     DVersion: '1.7.0'
@@ -58,7 +58,7 @@ install:
             }
         }
   - ps: SetUpDCompiler
-  - powershell -Command Invoke-WebRequest https://code.dlang.org/files/dub-1.0.0-beta.1-windows-x86.zip -OutFile dub.zip
+  - powershell -Command Invoke-WebRequest https://code.dlang.org/files/dub-1.7.2-windows-x86.zip -OutFile dub.zip
   - 7z x dub.zip -odub > nul
   - set PATH=%CD%\%binpath%;%CD%\dub;%PATH%
   - dub --version
