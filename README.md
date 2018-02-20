@@ -25,7 +25,7 @@ Dlang core library for math, finance and a home for Dlang multidimensional array
 #### Example (3 sec)
 ```d
 /+dub.sdl:
-dependency "mir-algorithm" version="~>0.7.0"
+dependency "mir-algorithm" version="~>0.8.0"
 +/
 
 void main()
@@ -50,7 +50,7 @@ void main()
 #### Example (30 sec)
 ```d
 /+dub.sdl:
-dependency "mir-algorithm" version="~>0.7.0"
+dependency "mir-algorithm" version="~>0.8.0"
 +/
 void main()
 {
