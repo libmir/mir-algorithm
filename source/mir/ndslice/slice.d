@@ -2125,7 +2125,15 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                     else
                     {
                         static if (ls.N == 1)
-                            mixin("ls.front " ~ op ~ "= value.front;");
+                        {
+                            static if (op == "^^" && isFloatingPoint!(typeof(ls.front)) && isFloatingPoint!(typeof(value.front)))
+                            {
+                                import mir.math.common: pow;
+                                ls.front = pow(ls.front, value.front);
+                            }
+                            else
+                                mixin("ls.front " ~ op ~ "= value.front;");
+                        }
                         else
                         static if (rpacks == [1])
                             ls.front.opIndexOpAssignImplValue!op(value.front);
@@ -2217,7 +2225,15 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
                 do
                 {
                     static if (ls.N == 1)
-                        mixin("ls.front " ~ op ~ "= value[0];");
+                    {
+                        static if (op == "^^" && isFloatingPoint!(typeof(ls.front)) && isFloatingPoint!(typeof(value[0])))
+                        {
+                            import mir.math.common: pow;
+                            ls.front = pow(ls.front, value[0]);
+                        }
+                        else
+                            mixin("ls.front " ~ op ~ "= value[0];");
+                    }
                     else
                         mixin("ls.front[] " ~ op ~ "= value[0];");
                     value = value[1 .. $];
@@ -2449,7 +2465,14 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
             {
                 return mixin(`t` ~ op ~ `= v`);
             }
-            return mixin (`_iterator[indexStride(_indexes)] ` ~ op ~ `= value`);
+            auto str = indexStride(_indexes);
+            static if (op == "^^" && isFloatingPoint!DeepElemType && isFloatingPoint!(typeof(value)))
+            {
+                import mir.math.common: pow;
+                _iterator[str] = pow(_iterator[str], value);
+            }
+            else
+                return mixin (`_iterator[str] ` ~ op ~ `= value`);
         }
 
         static if (doUnittest)

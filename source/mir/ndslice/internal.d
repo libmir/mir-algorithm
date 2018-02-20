@@ -49,7 +49,15 @@ struct RightOp(string op, T)
     this()(T v) { value = v; }
     auto ref opCall(F)(auto ref F right)
     {
-        return mixin("value " ~ op ~ " right");
+        static if (op == "^^" && isNumeric!T && isFloatingPoint!F)
+        {
+            import mir.math.common: pow;
+            return pow(value, right);
+        }
+        else
+        {
+            return mixin("value " ~ op ~ " right");
+        }
     }
 }
 
@@ -73,7 +81,15 @@ struct LeftOp(string op, T)
     this()(T v) { value = v; }
     auto ref opCall(F)(auto ref F left)
     {
-        return mixin("left " ~ op ~ " value");
+        static if (op == "^^" && isFloatingPoint!T && isNumeric!F)
+        {
+            import mir.math.common: pow;
+            return pow(left, value);
+        }
+        else
+        {
+            return mixin("left " ~ op ~ " value");
+        }
     }
 }
 
