@@ -1986,7 +1986,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         // auto minor = sli.indexed(c);
         auto minor = sli[[0, $ / 2, $ - 1].sliced, [0, $ / 2, $ - 1].sliced];
 
-        minor[] = iota([3, 3], 1);
+        minor[] = iota!int([3, 3], 1);
 
         assert(sli == [
         //   ↓     ↓        ↓︎

@@ -664,7 +664,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     //  6,  7,  8,  9, 10
     // 11, 12, 13, 14, 15
     // 16, 17, 18, 19, 20
-    auto data = iota([index.length, row_length], 1);
+    auto data = iota!int([index.length, row_length], 1);
 
     // canonical and universal ndslices are more flexible then contiguous
     auto series = index.series(data.canonical);
@@ -679,7 +679,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// indexing
     assert(series[1, 4] == observation(Date(2017, 02, 01), 10));
-    assert(series[2] == observation(Date(2017, 03, 01), iota([row_length], 11)));
+    assert(series[2] == observation(Date(2017, 03, 01), iota!int([row_length], 11)));
 
     /// range primitives
     assert(series.length == 4);

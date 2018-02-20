@@ -598,10 +598,53 @@ iota
 }
 
 ///ditto
+Slice!(Contiguous, [N], IotaIterator!sizediff_t)
+iota
+    (size_t N)(size_t[N] lengths, sizediff_t start)
+{
+    import mir.ndslice.slice : sliced;
+    return IotaIterator!sizediff_t(start).sliced(lengths);
+}
+
+///ditto
+Slice!(Contiguous, [N], StrideIterator!(IotaIterator!sizediff_t))
+iota
+    (size_t N)(size_t[N] lengths, sizediff_t start, size_t stride)
+{
+    import mir.ndslice.slice : sliced;
+    return StrideIterator!(IotaIterator!sizediff_t)(stride, IotaIterator!sizediff_t(start)).sliced(lengths);
+}
+
+///ditto
+template iota(I)
+    if (isIntegral!I)
+{
+    ///
+    Slice!(Contiguous, [N], IotaIterator!I)
+    iota
+        (size_t N)(size_t[N] lengths, I start)
+        if (isIntegral!I)
+    {
+        import mir.ndslice.slice : sliced;
+        return IotaIterator!I(start).sliced(lengths);
+    }
+
+    ///ditto
+    Slice!(Contiguous, [N], StrideIterator!(IotaIterator!I))
+    iota
+        (size_t N)(size_t[N] lengths, I start, size_t stride)
+        if (isIntegral!I)
+    {
+        import mir.ndslice.slice : sliced;
+        return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
+    }
+}
+
+///ditto
 Slice!(Contiguous, [N], IotaIterator!I)
 iota
     (I, size_t N)(size_t[N] lengths, I start)
-    if (isIntegral!I || isPointer!I)
+    if (isPointer!I)
 {
     import mir.ndslice.slice : sliced;
     return IotaIterator!I(start).sliced(lengths);
@@ -611,7 +654,7 @@ iota
 Slice!(Contiguous, [N], StrideIterator!(IotaIterator!I))
 iota
     (I, size_t N)(size_t[N] lengths, I start, size_t stride)
-    if (isIntegral!I || isPointer!I)
+    if (isPointer!I)
 {
     import mir.ndslice.slice : sliced;
     return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
