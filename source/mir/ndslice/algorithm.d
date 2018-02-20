@@ -32,7 +32,7 @@ Note, that string lambdas in Mir are `auto ref` functions.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-2018, Ilya Yaroshenko, 2018-, Mir community
-Authors:   Ilya Yaroshenko, John Hall
+Authors:   Ilya Yaroshenko, John Michael Hall
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
