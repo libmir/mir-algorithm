@@ -57,7 +57,7 @@ Params:
     values = `f(x)` values for interpolant
 
 Constraints:
-    `grid`, `values` must have the same length >= 3
+    `grid`, `values` must have the same length >= 1
 
 Returns: $(LREF Constant)
 +/
@@ -159,7 +159,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
         size_t[N] shape;
         foreach(i, ref x; grid)
         {
-            assert(x.length >= 2, "linear interpolant: minimal allowed length for the grid equals 2.");
+            assert(x.length >= 1, "constant interpolant: minimal allowed length for the grid equals 1.");
             shape[i] = x.length;
         }
 
@@ -179,7 +179,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
     {
         foreach(i, ref x; grid)
         {
-            assert(x.length >= 2, "linear interpolant: minimal allowed length for the grid equals 2.");
+            assert(x.length >= 1, "constant interpolant: minimal allowed length for the grid equals 1.");
             assert(values.length!i == x.length, "grid length should mutch to the values length");
         }
 
@@ -237,9 +237,9 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
                 static if (isInterval!(typeof(xs[i])))
                     indexes[i] = xs[i][1];
                 else
-                    indexes[i] = this.findInterval!i(xs[i]);
+                    indexes[i] = _data._lengths[i] > 1 ? this.findInterval!i(xs[i]) : 0;
             }
-            return _data[][indexes];
+            return _data[indexes];
         }
     }
 }
