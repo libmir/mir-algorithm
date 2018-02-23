@@ -164,5 +164,5 @@ auto lightImmutable(T)(immutable(T)* e)
 /// ditto
 auto trustedImmutable(T)(auto ref const T e) @trusted
 {
-    return (cast(immutable) this).lightImmutable;
+    return (cast(immutable) e).lightImmutable;
 }

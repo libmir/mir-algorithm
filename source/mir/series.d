@@ -16,6 +16,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.series;
 
 public import mir.ndslice.slice;
+import mir.qualifier;
 import std.traits;
 
 ///
@@ -175,13 +176,13 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     /// ditto
     auto index()() @property @trusted const
     {
-        return _index.sliced(_data._lengths[0]);
+        return _index.lightConst.sliced(_data._lengths[0]);
     }
 
     /// ditto
     auto index()() @property @trusted immutable
     {
-        return _index.sliced(_data._lengths[0]);
+        return _index.lightImmutable.sliced(_data._lengths[0]);
     }
 
     /// An alias for time-series index.
@@ -557,44 +558,38 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     auto opIndex(Slices...)(Slices slices) const
         if (allSatisfy!(templateOr!(is_Slice, isIndex), Slices))
     {
-        static if (Slices.length == 0)
-        {
-            return index.series(_data[]);
-        }
-        else
-        static if (is_Slice!(Slices[0]))
-        {
-            return index[slices[0]].series(data[slices]);
-        }
-        else
-        {
-            return index[slices[0]].observation(data[slices]);
-        }
+        return lightConst[slices];
     }
 
     /// ditto
     auto opIndex(Slices...)(Slices slices) immutable
         if (allSatisfy!(templateOr!(is_Slice, isIndex), Slices))
     {
-        static if (Slices.length == 0)
-        {
-            return index.series(_data[]);
-        }
-        else
-        static if (is_Slice!(Slices[0]))
-        {
-            return index[slices[0]].series(data[slices]);
-        }
-        else
-        {
-            return index[slices[0]].observation(data[slices]);
-        }
+        return lightImmutable[slices];
     }
 
     /// ditto
     auto save()() @property
     {
         return this;
+    }
+
+    ///
+    auto lightConst()() const @property
+    {
+        return index.series(data);
+    }
+
+    /// ditto
+    auto lightImmutable()() immutable @property
+    {
+        return index.series(data);
+    }
+
+    /// ditto
+    auto trustedImmutable()() const @property @trusted
+    {
+        return (cast(immutable) this)[];
     }
 }
 
