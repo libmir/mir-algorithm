@@ -714,6 +714,7 @@ template reversed(Dimensions...)
 ///ditto
 Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iterator, size_t M)(Slice!(kind, packs, Iterator) _slice, size_t[M] dimensions...)
     @trusted
+    if (M)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
@@ -727,6 +728,12 @@ Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iter
     return slice;
 }
 
+/// ditto
+auto reversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+{
+    return .reversed!0(slice);
+}
+
 ///
 @safe pure nothrow version(mir_test) unittest
 {
@@ -734,6 +741,9 @@ Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iter
 
     auto slice = iota([2, 2], 1);
     assert(slice                    == [[1, 2], [3, 4]]);
+
+    // Default
+    assert(slice.reversed           == [[3, 4], [1, 2]]);
 
     // Template
     assert(slice.reversed! 0        == [[3, 4], [1, 2]]);
