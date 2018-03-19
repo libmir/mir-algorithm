@@ -7,6 +7,7 @@ An ndslice can be created on top of an iterator using $(SUBREF slice, sliced).
 $(BOOKTABLE $(H2 Iterators),
 $(TR $(TH Iterator Name) $(TH Used By))
 $(T2 BytegroupIterator, $(SUBREF topology, bytegroup).)
+$(T2 CachedIterator, $(SUBREF topology, cached), $(SUBREF topology, cachedGC).)
 $(T2 FieldIterator, $(SUBREF slice, slicedField), $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.)
 $(T2 FlattenedIterator, $(SUBREF topology, flattened))
 $(T2 IndexIterator, $(SUBREF topology, indexed))
@@ -37,6 +38,7 @@ import mir.math.common: optmath;
 import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous, isSlice;
 import mir.ndslice.internal;
 import mir.qualifier;
+import std.backdoor;
 
 @optmath:
 
@@ -586,6 +588,106 @@ pure nothrow @nogc version(mir_test) unittest
 
     assert(zip == zip);
     assert(zip - 1 < zip);
+}
+
+///
+struct CachedIterator(Iterator, CacheIterator, FlagIterator)
+{
+    ///
+    Iterator _iterator;
+    ///
+    CacheIterator _caches;
+    ///
+    FlagIterator _flags;
+
+@optmath:
+
+    ///
+    auto lightConst()() const @property
+    {
+        return CachedIterator!(LightConstOf!Iterator, LightConstOf!CacheIterator, LightConstOf!FlagIterator)(
+            _iterator.lightConst,
+            _caches.lightConst,
+            _flags.lightConst,
+            );
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return CachedIterator!(LightImmutableOf!Iterator, LightImmutableOf!CacheIterator, LightImmutableOf!FlagIterator)(
+            _iterator.lightImmutable,
+            _caches.lightImmutable,
+            _flags.lightImmutable,
+            );
+    }
+
+    private alias T = typeof(Iterator.init[0]);
+    private alias UT = Unqual!T;
+
+    auto opUnary(string op : "*")()
+    {
+        if (_expect(!*_flags, false))
+        {
+            *_flags = true;
+            emplaceRef!T(*cast(UT*)&*_caches, *_iterator);
+        }
+        return *_caches;
+    }
+
+    auto opIndex()(ptrdiff_t index)
+    {
+        if (_expect(!_flags[index], false))
+        {
+            _flags[index] = true;
+            emplaceRef!T(*cast(UT*)&(_caches[index]), _iterator[index]);
+        }
+        return _caches[index];
+    }
+
+    auto ref opIndexAssign(T)(auto ref T val, ptrdiff_t index)
+    {
+        _flags[index] = true;
+        return _caches[index] = val;
+    }
+
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    {
+        mixin(op ~ "_iterator;");
+        mixin(op ~ "_caches;");
+        mixin(op ~ "_flags;");
+    }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == "-" || op == "+")
+    {
+        mixin("_iterator" ~ op ~ "= index;");
+        mixin("_caches" ~ op ~ "= index;");
+        mixin("_flags" ~ op ~ "= index;");
+    }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
+    { return (this._iterator - right._iterator) / count; }
+
+    bool opEquals()(ref const typeof(this) right) const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(ref const typeof(this) right) const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
 }
 
 private enum map_primitives = q{

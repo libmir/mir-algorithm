@@ -2307,6 +2307,7 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
+    $(LREF cahced), $(LREF map), $(LREF indexed),
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -2503,6 +2504,7 @@ Params:
     slice = ndslice
     callable = callable object, structure, delegate, or function pointer.
 See_Also:
+    $(LREF cahced), $(LREF map), $(LREF indexed),
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -2666,6 +2668,204 @@ private auto unhideStride
     }
     else
         return slice;
+}
+
+/++
+Creates an ndslice with cached lazyly computed elements.
+Params:
+    original = original ndslice
+    caches = cached values
+    flags = array composed of flags that indicates if values are already computed
+Returns:
+    ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
+See_also: $(LREF cahcedGC), $(LREF map), $(LREF vmap), $(LREF indexed)
++/
+Slice!(kind, packs, CachedIterator!(Iterator, CahceIterator, FlagIterator))
+    cached(SliceKind kind, size_t[] packs, Iterator, CahceIterator, FlagIterator)(
+        Slice!(kind, packs, Iterator) original,
+        Slice!(kind, packs, CahceIterator) caches,
+        Slice!(kind, packs, FlagIterator) flags,
+    )
+{
+    assert(original.unpack.shape == caches.unpack.shape, "caches.unpack.shape should be equal to original.unpack.shape");
+    assert(original.unpack.shape == flags.unpack.shape, "flags.unpack.shape should be equal to original.unpack.shape");
+    return typeof(return)(
+        original._lengths,
+        original._strides,
+        IteratorOf!(typeof(return))(
+            original._iterator,
+            caches._iterator,
+            flags._iterator,
+        ));
+}
+
+///
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology: cached, iota, map;
+    import mir.ndslice.allocation: bitSlice, uninitSlice;
+
+    int[] funCalls;
+
+    auto v = 5.iota!int
+        .map!((i) {
+            funCalls ~= i;
+            return 2 ^^ i;
+        });
+    auto flags = v.length.bitSlice;
+    auto cache = v.length.uninitSlice!int;
+    // cached lazy slice: 1 2 4 8 16
+    auto sl = v.cached(cache, flags);
+
+    assert(funCalls == []);
+    assert(sl[1] == 2); // remember result
+    assert(funCalls == [1]);
+    assert(sl[1] == 2); // reuse result
+    assert(funCalls == [1]);
+
+    assert(sl[0] == 1);
+    assert(funCalls == [1, 0]);
+    funCalls = [];
+
+    // set values directly
+    sl[1 .. 3] = 5;
+    assert(sl[1] == 5);
+    assert(sl[2] == 5);
+    // no function calls
+    assert(funCalls == []);
+}
+
+/// Cache of immutable elements
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.slice: DeepElementType;
+    import mir.ndslice.topology: cached, iota, map, as;
+    import mir.ndslice.allocation: bitSlice, uninitSlice;
+
+    int[] funCalls;
+
+    auto v = 5.iota!int
+        .map!((i) {
+            funCalls ~= i;
+            return 2 ^^ i;
+        })
+        .as!(immutable int);
+    auto flags = v.length.bitSlice;
+    auto cache = v.length.uninitSlice!(immutable int);
+
+    // cached lazy slice: 1 2 4 8 16
+    auto sl = v.cached(cache, flags);
+
+    static assert(is(DeepElementType!(typeof(sl)) == immutable int));
+    
+    assert(funCalls == []);
+    assert(sl[1] == 2); // remember result
+    assert(funCalls == [1]);
+    assert(sl[1] == 2); // reuse result
+    assert(funCalls == [1]);
+
+    assert(sl[0] == 1);
+    assert(funCalls == [1, 0]);
+}
+
+/++
+Creates an ndslice with cached lazyly computed elements.
+Params:
+    original = Contiguous or 1D Universal ndslice.
+Returns:
+    ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
+See_also: $(LREF cahced), $(LREF map), $(LREF vmap), $(LREF indexed)
++/
+Slice!(Contiguous, packs, CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitwiseField!(size_t*))))
+    cachedGC(size_t[] packs, Iterator)(Slice!(Contiguous, packs, Iterator) original) @trusted
+{
+    import mir.ndslice.allocation: bitSlice, slice, uninitSlice;
+    alias C = typeof(Iterator.init[0]);
+    alias UC = Unqual!C;
+    static if (hasElaborateAssign!UC)
+        alias newSlice = slice;
+    else
+        alias newSlice = uninitSlice;
+    return typeof(return)(
+        original._lengths,
+        original._strides,
+        IteratorOf!(typeof(return))(
+            original._iterator,
+            newSlice!C(original._lengths)._iterator,
+            original._lengths.bitSlice._iterator,
+            ));
+}
+
+/// ditto
+auto cachedGC(Iterator)(Slice!(Universal, [1], Iterator) from)
+{
+    return from.flattened.cachedGC;
+}
+
+///
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology: cachedGC, iota, map;
+
+    int[] funCalls;
+
+    // cached lazy slice: 1 2 4 8 16
+    auto sl = 5.iota!int
+        .map!((i) {
+            funCalls ~= i;
+            return 2 ^^ i;
+        })
+        .cachedGC;
+    
+    assert(funCalls == []);
+    assert(sl[1] == 2); // remember result
+    assert(funCalls == [1]);
+    assert(sl[1] == 2); // reuse result
+    assert(funCalls == [1]);
+
+    assert(sl[0] == 1);
+    assert(funCalls == [1, 0]);
+    funCalls = [];
+
+    // set values directly
+    sl[1 .. 3] = 5;
+    assert(sl[1] == 5);
+    assert(sl[2] == 5);
+    // no function calls
+    assert(funCalls == []);
+}
+
+/// Cache of immutable elements
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.slice: DeepElementType;
+    import mir.ndslice.topology: cachedGC, iota, map, as;
+
+    int[] funCalls;
+
+    // cached lazy slice: 1 2 4 8 16
+    auto sl = 5.iota!int
+        .map!((i) {
+            funCalls ~= i;
+            return 2 ^^ i;
+        })
+        .as!(immutable int)
+        .cachedGC;
+
+    static assert(is(DeepElementType!(typeof(sl)) == immutable int));
+    
+    assert(funCalls == []);
+    assert(sl[1] == 2); // remember result
+    assert(funCalls == [1]);
+    assert(sl[1] == 2); // reuse result
+    assert(funCalls == [1]);
+
+    assert(sl[0] == 1);
+    assert(funCalls == [1, 0]);
 }
 
 /++
@@ -3903,7 +4103,8 @@ version(mir_test) unittest
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota, packsOf;
+    import mir.ndslice.slice: packsOf;
+    import mir.ndslice.topology : iota;
     import mir.ndslice.dynamic : strided;
     import mir.ndslice.traits : isContiguousSlice, isCanonicalSlice;
     //  ---------------------
@@ -4289,7 +4490,8 @@ version(mir_test) unittest
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota, packsOf;
+    import mir.ndslice.slice: packsOf;
+    import mir.ndslice.topology : iota;
     import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
                                 isCanonicalSlice;
     //  ---------------------
@@ -4443,7 +4645,8 @@ version(mir_test) unittest
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota, packsOf;
+    import mir.ndslice.slice: packsOf;
+    import mir.ndslice.topology : iota;
     import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
                                 isCanonicalSlice;
     //  ---------------------

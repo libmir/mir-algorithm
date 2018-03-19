@@ -45,7 +45,7 @@ PythonBufferErrorCode fromPythonBuffer(SliceKind kind, size_t[] packs, T)(ref Sl
     if (packs.length == 1 && packs[0] <= PyBuf_max_ndim)
 {
     import core.stdc.string: strcmp;
-    import mir.ndslice.internal: Iota;
+    import mir.internal.utility: Iota;
 
     static if (!(is(T == const) || is(T == immutable)))
         assert(!view.readonly);

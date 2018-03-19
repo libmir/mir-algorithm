@@ -73,7 +73,6 @@ struct MapField(Field, alias fun)
         import mir.functional: RefTuple, unref;
         static if (is(typeof(_field[index]) : RefTuple!K, K...))
         {
-            import mir.ndslice.field: _iotaArgs; 
             auto t = _field[index];
             return mixin("fun(" ~ _iotaArgs!(K.length, "t.expand[", "].unref, ") ~ ")");
         }

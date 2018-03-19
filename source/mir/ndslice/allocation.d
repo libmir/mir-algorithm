@@ -33,6 +33,8 @@ import mir.ndslice.slice;
 import mir.ndslice.internal;
 import mir.ndslice.concatenation;
 import mir.math.common: optmath;
+import mir.ndslice.iterator: FieldIterator;
+import mir.ndslice.field: BitwiseField;
 
 
 deprecated("use uninitSlice instead")
@@ -43,11 +45,11 @@ alias makeUninitializedSlice = makeUninitSlice;
 @optmath:
 
 /++
-Allocates an array and an n-dimensional slice over it.
+Allocates an array and creates an n-dimensional slice over it.
 Params:
     lengths = List of lengths for each dimension.
-    init = Value to initialize with.
-    slice = Slice to copy shape and data from.
+    init = Value to initialize with (optional).
+    slice = Slice to copy shape and data from (optional).
 Returns:
     n-dimensional slice
 +/
@@ -145,14 +147,14 @@ version(mir_test)
 }
 
 /++
-Allocates an size_t array and an bitwise n-dimensional slice over it.
+Allocates a packed n-dimensional bit-array.
 Params:
     lengths = List of lengths for each dimension.
 Returns:
     n-dimensional bitwise slice
 See_also: $(SUBREF topology, bitwise).
 +/
-auto bitSlice(size_t N)(size_t[N] lengths...)
+Slice!(Contiguous, [N], FieldIterator!(BitwiseField!(size_t*))) bitSlice(size_t N)(size_t[N] lengths...)
 {
     import mir.ndslice.topology: bitwise;
     enum elen = size_t.sizeof * 8;
@@ -182,7 +184,7 @@ auto bitSlice(size_t N)(size_t[N] lengths...)
 }
 
 /++
-Allocates an uninitialized array and an n-dimensional slice over it.
+Allocates an uninitialized array and creates an n-dimensional slice over it.
 Params:
     lengths = list of lengths for each dimension
 Returns:
@@ -508,7 +510,7 @@ nothrow unittest
 }
 
 /++
-Allocates an uninitialized array using `core.stdc.stdlib.malloc` and an n-dimensional slice over it.
+Allocates an uninitialized array using `core.stdc.stdlib.malloc` and creates an n-dimensional slice over it.
 Params:
     lengths = list of lengths for each dimension
 Returns:
