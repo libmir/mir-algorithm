@@ -2309,7 +2309,7 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
-    $(LREF cahced), $(LREF map), $(LREF indexed),
+    $(LREF cached), $(LREF map), $(LREF indexed),
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -2506,7 +2506,7 @@ Params:
     slice = ndslice
     callable = callable object, structure, delegate, or function pointer.
 See_Also:
-    $(LREF cahced), $(LREF map), $(LREF indexed),
+    $(LREF cached), $(LREF map), $(LREF indexed),
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -2680,12 +2680,12 @@ Params:
     flags = array composed of flags that indicates if values are already computed
 Returns:
     ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
-See_also: $(LREF cahcedGC), $(LREF map), $(LREF vmap), $(LREF indexed)
+See_also: $(LREF cachedGC), $(LREF map), $(LREF vmap), $(LREF indexed)
 +/
-Slice!(kind, packs, CachedIterator!(Iterator, CahceIterator, FlagIterator))
-    cached(SliceKind kind, size_t[] packs, Iterator, CahceIterator, FlagIterator)(
+Slice!(kind, packs, CachedIterator!(Iterator, CacheIterator, FlagIterator))
+    cached(SliceKind kind, size_t[] packs, Iterator, CacheIterator, FlagIterator)(
         Slice!(kind, packs, Iterator) original,
-        Slice!(kind, packs, CahceIterator) caches,
+        Slice!(kind, packs, CacheIterator) caches,
         Slice!(kind, packs, FlagIterator) flags,
     )
 {
@@ -2778,7 +2778,7 @@ Params:
     original = ND Contiguous or 1D Universal ndslice.
 Returns:
     ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
-See_also: $(LREF cahced), $(LREF map), $(LREF vmap), $(LREF indexed)
+See_also: $(LREF cached), $(LREF map), $(LREF vmap), $(LREF indexed)
 +/
 Slice!(Contiguous, packs, CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitwiseField!(size_t*))))
     cachedGC(size_t[] packs, Iterator)(Slice!(Contiguous, packs, Iterator) original) @trusted
