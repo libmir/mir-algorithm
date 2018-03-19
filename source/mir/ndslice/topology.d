@@ -39,6 +39,8 @@ where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
 $(T2 bytegroup, Groups existing slice into fixed length chunks and uses them as data store for destination type.)
+$(T2 cached, Random access cache. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
+$(T2 cachedGC, Random access cache auto-allocated in GC heap. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
@@ -2671,7 +2673,7 @@ private auto unhideStride
 }
 
 /++
-Creates an ndslice with cached lazyly computed elements.
+Creates a random access cache for lazyly computed elements.
 Params:
     original = original ndslice
     caches = cached values
@@ -2771,9 +2773,9 @@ version(mir_test) unittest
 }
 
 /++
-Creates an ndslice with cached lazyly computed elements.
+Creates a random access cache for lazyly computed elements.
 Params:
-    original = Contiguous or 1D Universal ndslice.
+    original = ND Contiguous or 1D Universal ndslice.
 Returns:
     ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
 See_also: $(LREF cahced), $(LREF map), $(LREF vmap), $(LREF indexed)
