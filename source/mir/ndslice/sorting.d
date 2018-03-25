@@ -24,7 +24,7 @@ Macros:
 module mir.ndslice.sorting;
 
 /// Check if ndslice is sorted, or strictly monotonic.
-version(mir_test) @safe pure unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.algorithm: all;
     import mir.ndslice.slice: sliced;

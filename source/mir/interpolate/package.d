@@ -179,7 +179,7 @@ version(mir_test)
     //     ]));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     import mir.interpolate.linear;
     import mir.ndslice;

@@ -104,7 +104,7 @@ MultiwayMerge!(naryFun!less, RangeOfRanges) multiwayMerge
 }
 
 ///
-@safe nothrow @nogc unittest
+@safe nothrow @nogc version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
 
@@ -156,7 +156,7 @@ auto multiwayUnion(alias less = "a < b", RangeOfRanges)(auto ref RangeOfRanges r
 }
 
 ///
-@system unittest
+@system version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
 

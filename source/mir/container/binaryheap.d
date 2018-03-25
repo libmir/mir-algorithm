@@ -21,7 +21,7 @@ import std.range.primitives: isRandomAccessRange, hasSwappableElements, ElementT
 import std.traits;
 
 ///
-@system nothrow @nogc unittest
+@system nothrow @nogc version(mir_test) unittest
 {
     import mir.ndslice.algorithm : equal;
     import std.range : takeExactly;
@@ -315,7 +315,7 @@ public:
 }
 
 /// Example from "Introduction to Algorithms" Cormen et al, p 146
-@system nothrow unittest
+@system nothrow version(mir_test) unittest
 {
     import mir.ndslice.algorithm : equal;
     int[] a = [ 4, 1, 3, 2, 16, 9, 10, 14, 8, 7 ];
@@ -328,7 +328,7 @@ public:
 
 /// $(D BinaryHeap) implements the standard input range interface, allowing
 /// lazy iteration of the underlying range in descending order.
-@system nothrow unittest
+@system nothrow version(mir_test) unittest
 {
     import mir.ndslice.algorithm : equal;
     import std.range : takeExactly;
@@ -350,7 +350,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
 }
 
 ///
-@system nothrow unittest
+@system nothrow version(mir_test) unittest
 {
     import std.conv : to;
     import std.range.primitives;
@@ -381,7 +381,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
     }
 }
 
-@system nothrow unittest
+@system nothrow version(mir_test) unittest
 {
     // Test range interface.
     import std.range.primitives: isInputRange;
@@ -392,7 +392,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
     assert((&h).equal([16, 14, 10, 9, 8, 7, 4, 3, 2, 1]));
 }
 
-@system nothrow unittest // 15675
+@system nothrow version(mir_test) unittest // 15675
 {
     import std.container.array : Array;
 
@@ -401,7 +401,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
     assert(heap.front == 12);
 }
 
-@system nothrow unittest
+@system nothrow version(mir_test) unittest
 {
     import mir.ndslice.algorithm : equal;
     import std.internal.test.dummyrange;

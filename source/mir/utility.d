@@ -329,7 +329,7 @@ version(D_InlineAsm_X86_64)
 }
 
 version(LDC) {} else version(D_InlineAsm_X86_64)
-@nogc nothrow pure @safe unittest
+@nogc nothrow pure @safe version(mir_test) unittest
 {
     immutable a = 0x93_8d_28_00_0f_50_a5_56;
     immutable b = 0x54_c3_2f_e8_cc_a5_97_10;

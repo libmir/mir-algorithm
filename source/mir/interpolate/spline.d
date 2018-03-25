@@ -34,7 +34,7 @@ import mir.ndslice.traits;
 @fmamath:
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import std.math: approxEqual;
     import mir.ndslice.slice: sliced;
@@ -86,7 +86,7 @@ import mir.ndslice.traits;
 }
 
 ///
-@safe pure unittest
+@safe pure version(mir_test) unittest
 {
     import std.math: approxEqual;
     import mir.ndslice.allocation: uninitSlice;

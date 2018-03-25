@@ -46,7 +46,7 @@ if (isInputRange!Range && is(typeof(naryFun!pred(r.front, r.front)) == bool))
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
     import std.algorithm.mutation : copy;
@@ -136,7 +136,7 @@ struct Uniq(alias pred, Range)
 }
 
 version(none)
-@safe unittest
+@safe version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
     import std.internal.test.dummyrange;
@@ -164,7 +164,7 @@ version(none)
     }
 }
 
-@safe unittest // https://issues.dlang.org/show_bug.cgi?id=17264
+@safe version(mir_test) unittest // https://issues.dlang.org/show_bug.cgi?id=17264
 {
     import std.algorithm.comparison : equal;
 

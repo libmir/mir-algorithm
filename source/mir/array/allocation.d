@@ -128,13 +128,13 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto a = array([1, 2, 3, 4, 5][]);
     assert(a == [ 1, 2, 3, 4, 5 ]);
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.algorithm : equal;
     struct Foo
@@ -145,7 +145,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
     assert(equal(a, [Foo(1), Foo(2), Foo(3), Foo(4), Foo(5)]));
 }
 
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     struct MyRange
     {
@@ -158,14 +158,14 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
     assert(arr.empty);
 }
 
-@system pure nothrow unittest
+@system pure nothrow version(mir_test) unittest
 {
     immutable int[] a = [1, 2, 3, 4];
     auto b = (&a).array;
     assert(b == a);
 }
 
-@system unittest
+@system version(mir_test) unittest
 {
     import mir.ndslice.algorithm : equal;
     struct Foo
@@ -184,7 +184,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
     assert(equal(a, [Foo(1), Foo(2), Foo(3), Foo(4), Foo(5)]));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     // Issue 12315
     static struct Bug12315 { immutable int i; }
@@ -192,7 +192,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
     static assert(bug12315[0].i == 123456789);
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     import mir.ndslice.topology: repeat;
     static struct S{int* p;}
@@ -201,14 +201,14 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 }
 
 ///
-@safe unittest
+@safe version(mir_test) unittest
 {
     assert("Hello D".array == "Hello D");
     assert("Hello D"w.array == "Hello D"w);
     assert("Hello D"d.array == "Hello D"d);
 }
 
-@system unittest
+@system version(mir_test) unittest
 {
     // @system due to array!string
     import std.conv : to;
@@ -270,7 +270,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 }
 
 //Bug# 8233
-@safe unittest
+@safe version(mir_test) unittest
 {
     assert(array("hello world"d) == "hello world"d);
     immutable a = [1, 2, 3, 4, 5];
@@ -298,7 +298,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
     }
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     //9824
     static struct S
@@ -311,7 +311,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 }
 
 // Bugzilla 10220
-@safe unittest
+@safe version(mir_test) unittest
 {
     import mir.ndslice.algorithm : equal;
     import std.exception;
@@ -328,7 +328,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
     assert(equal(r, [S(1), S(1)]));
 }
 
-@safe unittest
+@safe version(mir_test) unittest
 {
     //Turn down infinity:
     static assert(!is(typeof(

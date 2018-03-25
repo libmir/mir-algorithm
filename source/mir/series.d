@@ -257,7 +257,6 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     void opIndexOpAssign(string op, IndexIterator_, SliceKind kind_, size_t[] packs_, Iterator_)
         (Series!(IndexIterator_, kind_, packs_, Iterator_) r)
     {
-        import std.traits: Unqual;
         auto l = this;
         if (r.empty)
             return;
@@ -789,7 +788,7 @@ auto series(K, V)(V[K]* aa)
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto s = [1: 1.5, 3: 3.3, 2: 2.9].series;
     assert(s.index == [1, 2, 3]);
@@ -841,7 +840,7 @@ Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator 
 }
 
 ///
-pure nothrow unittest
+pure nothrow version(mir_test) unittest
 {
     import std.experimental.allocator;
     import std.experimental.allocator.building_blocks.region;
@@ -1062,6 +1061,288 @@ pure version(mir_test) unittest
     assert(data.iterator is series.data.iterator);
 }
 
+/++
+Iterates union using three functions to handle each intersection case separately.
++/
+template troykaGalop(alias lfun, alias cfun, alias rfun)
+{
+    import std.range.primitives: isInputRange;
+
+    /++
+    Params:
+        lfun = binary function that accepts left side key and left side value
+        cfun = trinary function that accepts left side key, left side value, and right side value
+        rfun = binary function that accepts right side key and right side value
+        lhs = left hand series
+        rhs = right hand series
+    +/
+    pragma(inline, false)
+    void troykaGalop(
+        IndIterL, SliceKind kindL, size_t[] packsL, IterL,
+        IndIterR, SliceKind kindR, size_t[] packsR, IterR,
+    )(
+        Series!(IndIterL, kindL, packsL, IterL) lhs,
+        Series!(IndIterR, kindR, packsR, IterR) rhs,
+    )
+    {
+        if (lhs.empty)
+            goto R0;
+        if (rhs.empty)
+            goto L1;
+        for(;;)
+        {
+            if (lhs.index.front < rhs.index.front)
+            {
+                lfun(lhs.index.front, lhs.data.front);
+                lhs.popFront;
+                if (lhs.empty)
+                    goto R1;
+                continue;
+            }
+            else
+            if (lhs.index.front > rhs.index.front)
+            {
+                rfun(rhs.index.front, rhs.data.front);
+                rhs.popFront;
+                if (rhs.empty)
+                    goto L1;
+                continue;
+            }
+            else
+            {
+                cfun(lhs.index.front, lhs.data.front, rhs.data.front);
+                lhs.popFront;
+                rhs.popFront;
+                if (rhs.empty)
+                    goto L0;
+                if (lhs.empty)
+                    goto R1;
+                continue;
+            }
+        }
+
+    L0:
+        if (lhs.empty)
+            return;
+    L1:
+        do
+        {
+            lfun(lhs.index.front, lhs.data.front);
+            lhs.popFront;
+        } while(!lhs.empty);
+        return;
+
+    R0:
+        if (rhs.empty)
+            return;
+    R1:
+        do
+        {
+            rfun(rhs.index.front, rhs.data.front);
+            rhs.popFront;
+        } while(!rhs.empty);
+        return;
+    }
+
+    /++
+    Params:
+        lfun = unary function that accepts left side key
+        cfun = unary function that accepts left side key
+        rfun = unary function that accepts right side key
+        lhs = left hand input range
+        rhs = right hand input range
+    +/
+    pragma(inline, false)
+    void troykaGalop (LeftRange, RightRange)(LeftRange lhs, RightRange rhs)
+        if (isInputRange!LeftRange && isInputRange!RightRange && !isSeries!LeftRange && !isSeries!RightRange)
+    {
+        if (lhs.empty)
+            goto R0;
+        if (rhs.empty)
+            goto L1;
+        for(;;)
+        {
+            if (lhs.front < rhs.front)
+            {
+                lfun(lhs.front);
+                lhs.popFront;
+                if (lhs.empty)
+                    goto R1;
+                continue;
+            }
+            else
+            if (lhs.front > rhs.front)
+            {
+                rfun(rhs.front);
+                rhs.popFront;
+                if (rhs.empty)
+                    goto L1;
+                continue;
+            }
+            else
+            {
+                cfun(lhs.front);
+                lhs.popFront;
+                rhs.popFront;
+                if (rhs.empty)
+                    goto L0;
+                if (lhs.empty)
+                    goto R1;
+                continue;
+            }
+        }
+
+    L0:
+        if (lhs.empty)
+            return;
+    L1:
+        do
+        {
+            lfun(lhs.front);
+            lhs.popFront;
+        } while(!lhs.empty);
+        return;
+
+    R0:
+        if (rhs.empty)
+            return;
+    R1:
+        do
+        {
+            rfun(rhs.front);
+            rhs.popFront;
+        } while(!rhs.empty);
+        return;
+    }
+}
+
+/++
+Constructs union using three functions to handle each intersection case separately.
+Params:
+    lfun = binary function that accepts left side key and left side value
+    cfun = trinary function that accepts left side key, left side value, and right side value
+    rfun = binary function that accepts right side key and right side value
++/
+template troykaSeries(alias lfun, alias cfun, alias rfun)
+{
+    /++
+    Params:
+        lhs = left hand series
+        rhs = right hand series
+    Returns:
+        GC-allocated union series with length equal to $(LREF troykaLength)
+    +/
+    auto troykaSeries
+    (
+        IndexIterL, SliceKind kindL, size_t[] packsL, IterL,
+        IndexIterR, SliceKind kindR, size_t[] packsR, IterR,
+    )(
+        Series!(IndexIterL, kindL, packsL, IterL) lhs,
+        Series!(IndexIterR, kindR, packsR, IterR) rhs,
+    )
+    {
+        alias I = CommonType!(typeof(lhs.index.front), typeof(rhs.index.front));
+        alias E = CommonType!(
+            typeof(lfun(lhs.index.front, lhs.data.front)),
+            typeof(cfun(lhs.index.front, lhs.data.front, rhs.data.front)),
+            typeof(rfun(rhs.index.front, rhs.data.front)),
+        );
+        alias R = Series!(I*, Contiguous, [1], E*);
+        alias UI = Unqual!I;
+        alias UE = Unqual!E;
+        const length = troykaLength(lhs.index, rhs.index);
+        import mir.ndslice.allocation: uninitSlice;
+        auto index = length.uninitSlice!UI;
+        auto data = length.uninitSlice!UE;
+        auto ret = index.series(data);
+        alias algo = troykaSeriesImpl!(lfun, cfun, rfun);
+        algo!(I, E)(lhs, rhs, ret);
+        return (()@trusted => cast(R) ret)();
+    }
+}
+
+///
+version(mir_test) unittest
+{
+    import mir.ndslice;
+    auto a = [1, 2, 3, 9].sliced.series(iota!int([4], 1));
+    auto b = [0, 2, 4, 9].sliced.series(iota!int([4], 1) * 10.0);
+    alias unionAlgorithm = troykaSeries!(
+        (key, left) => left,
+        (key, left, right) => left + right,
+        (key, right) => -right,
+    );
+    auto c = unionAlgorithm(a, b);
+    assert(c.index == [0, 1, 2, 3, 4, 9]);
+    assert(c.data == [-10, 1, 22, 3, -30, 44]);
+}
+
+/++
+Length for Troyka union handlers.
+Params:
+    lhs = left hand side series/range
+    rhs = right hand side series/range
+Returns: Total count of lambda function calls in $(LREF troykaGalop) union handler.
++/
+size_t troykaLength(
+    IndIterL, SliceKind kindL, size_t[] packsL, IterL,
+    IndIterR, SliceKind kindR, size_t[] packsR, IterR,
+)(
+    Series!(IndIterL, kindL, packsL, IterL) lhs,
+    Series!(IndIterR, kindR, packsR, IterR) rhs,
+)
+{
+    return troykaLength(lhs.index, rhs.index);
+}
+
+/// ditto
+size_t troykaLength(LeftRange, RightRange)(LeftRange lhs, RightRange rhs)
+    if (!isSeries!LeftRange && !isSeries!RightRange)
+{
+    size_t length;
+    alias counter = (scope auto ref _) => ++length;
+    troykaGalop!(counter, counter, counter)(lhs, rhs);
+    return length;
+}
+
+///
+template troykaSeriesImpl(alias lfun, alias cfun, alias rfun)
+{
+    ///
+    void troykaSeriesImpl
+    (
+        I, E,
+        IndexIterL, SliceKind kindL, size_t[] packsL, IterL,
+        IndexIterR, SliceKind kindR, size_t[] packsR, IterR,
+        UI, UE,
+    )(
+        Series!(IndexIterL, kindL, packsL, IterL) lhs,
+        Series!(IndexIterR, kindR, packsR, IterR) rhs,
+        Series!(UI*, Contiguous, [1], UE*) uninitSlice,
+    )
+    {
+        import std.backdoor: emplaceRef;
+        troykaGalop!(
+            (auto ref key, auto ref value) {
+                uninitSlice.index.front.emplaceRef!I(key);
+                uninitSlice.data.front.emplaceRef!E(lfun(key, value));
+                uninitSlice.popFront;
+            },
+            (auto ref key, auto ref lvalue, auto ref rvalue) {
+                uninitSlice.index.front.emplaceRef!I(key);
+                uninitSlice.data.front.emplaceRef!E(cfun(key, lvalue, rvalue));
+                uninitSlice.popFront;
+            },
+            (auto ref key, auto ref value) {
+                uninitSlice.index.front.emplaceRef!I(key);
+                uninitSlice.data.front.emplaceRef!E(rfun(key, value));
+                uninitSlice.popFront;
+            },
+            )(lhs, rhs);
+        assert(uninitSlice.length == 0);
+    }
+}
+
 /**
 Merges multiple (time) series into one.
 Makes exactly two memory allocations.
@@ -1077,7 +1358,7 @@ auto unionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import std.datetime: Date;
 
@@ -1122,7 +1403,7 @@ auto makeUnionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, si
 }
 
 ///
-@system pure nothrow unittest
+@system pure nothrow version(mir_test) unittest
 {
     import std.datetime: Date;
     import std.experimental.allocator;
@@ -1170,9 +1451,10 @@ Params:
     uninitSeries = uninitialized series with exactly required length.
 */
 pragma(inline, false)
-auto unionSeriesImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator, I, E)(
+auto unionSeriesImpl(I, E,
+    IndexIterator, SliceKind kind, size_t[] packs, Iterator, UI, UE)(
     Series!(IndexIterator, kind, packs, Iterator)[] seriesTuple,
-    Series!(I*, Contiguous, packs, E*) uninitSeries,
+    Series!(UI*, Contiguous, packs, UE*) uninitSeries,
     )
     if (packs.length == 1)
 {
@@ -1240,7 +1522,7 @@ private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] pack
     else
         auto ret = len.uninitSlice!UI.series(shape.uninitSlice!UE);
 
-    unionSeriesImpl(seriesTuple, ret);
+    unionSeriesImpl!(I, E)(seriesTuple, ret);
 
     return () @trusted {return cast(R) ret; }();
 }
@@ -1263,7 +1545,7 @@ ref V[K] insertOrAssign(V, K, IndexIterator, SliceKind kind, size_t[] packs, Ite
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto a = [1: 3.0, 4: 2.0];
     auto s = series([1, 2, 3], [10, 20, 30]);
@@ -1291,7 +1573,7 @@ ref V[K] insert(V, K, IndexIterator, SliceKind kind, size_t[] packs, Iterator)(r
 }
 
 ///
-@safe pure nothrow unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto a = [1: 3.0, 4: 2.0];
     auto s = series([1, 2, 3], [10, 20, 30]);
