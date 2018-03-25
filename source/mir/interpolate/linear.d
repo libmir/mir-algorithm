@@ -194,7 +194,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
-    /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
+    /// $(RED For internal use.)
     Slice!(Contiguous, [N], F*) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
@@ -258,7 +258,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /++
     +/
-    this()(GridVectors grid, Slice!(Contiguous, [N], const(F)*) values) @trusted nothrow @nogc
+    this()(GridVectors grid, Slice!(Contiguous, [N], immutable(F)*) values) @trusted nothrow @nogc
     {
         import mir.internal.memory;
         import mir.ndslice.topology: iota;
