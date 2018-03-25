@@ -809,9 +809,10 @@ Returns:
 Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
-    immutable size_t length = aa.length;
     import mir.ndslice.allocation: makeUninitSlice;
-    import std.conv: emplace;
+    import std.backdoor: emplaceRef;
+
+    immutable size_t length = aa.length;
 
     auto ret = series(
         allocator.makeUninitSlice!(Unqual!K)(length),
@@ -820,8 +821,8 @@ Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator 
     auto it = ret;
     foreach(kv; aa.byKeyValue)
     {
-        it._index.myEmplace(cast(Unqual!K) kv.key);
-        it._data._iterator.myEmplace(cast(Unqual!V) kv.value);
+        it.index.front.emplaceRef!K(kv.key);
+        it.data.front.emplaceRef!V(kv.value);
         it.popFront;
     }
 
@@ -1160,26 +1161,6 @@ auto makeUnionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, si
     allocator.dispose(m1.data.field);
 }
 
-auto myEmplace(T, U)(T* to, auto ref U from)
-{
-    static if (is(Unqual!U == Unqual!T) && !is(T == struct))
-    {
-        () @trusted { *to = cast(T) from; }();
-        return to;
-    }
-    else
-    static if (!hasElaborateAssign!T && __traits(compiles, *to = from))
-    {
-        () @trusted { *to = from; }();
-        return to;
-    }
-    else
-    {
-        import std.conv: emplace;
-        return emplace(to, from);
-    }
-}
-
 /**
 Initialize preallocated series using union of multiple (time) series.
 Doesn't make any allocations.
@@ -1195,36 +1176,29 @@ auto unionSeriesImpl(IndexIterator, SliceKind kind, size_t[] packs, Iterator, I,
     )
     if (packs.length == 1)
 {
-    import mir.internal.utility: Iota;
+    import std.backdoor: emplaceRef;
     import mir.algorithm.setops: multiwayUnion;
-    import mir.ndslice.allocation: uninitSlice;
-    import std.range: walkLength;
-    import mir.array.allocation: array;
-    import mir.ndslice.topology: map;
-    import std.conv: emplace;
-
-    import std.algorithm.mutation: move;
 
     enum N = packs[0];
+    alias I = DeepElementType!(typeof(uninitSeries.index));
+    alias E = DeepElementType!(typeof(uninitSeries._data));
 
-    auto u = seriesTuple.multiwayUnion!"a.index < b.index";
-
-    if(uninitSeries.length) do
+    if(uninitSeries.length)
     {
-        auto obs = u.front;
-        myEmplace(uninitSeries._index, obs.index);
-        static if (packs == [1])
-            myEmplace(uninitSeries._data._iterator, obs.data);
-        else
+        auto u = seriesTuple.multiwayUnion!"a.index < b.index";
+        do
         {
-            each!((ref to, ref from) {
-                cast(void) myEmplace(()@trusted {return &to;}(), from);
-            })(uninitSeries._data.front, obs.data);
+            auto obs = u.front;
+            emplaceRef!I(uninitSeries.index.front, obs.index);
+            static if (packs == [1])
+                emplaceRef!E(uninitSeries._data.front, obs.data);
+            else
+                each!(emplaceRef!E)(uninitSeries._data.front, obs.data);
+            u.popFront;
+            uninitSeries.popFront;
         }
-        u.popFront;
-        uninitSeries.popFront;
+        while(uninitSeries.length);
     }
-    while(uninitSeries.length);
 }
 
 private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N, Allocator...)(ref Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple, ref Allocator allocator)
