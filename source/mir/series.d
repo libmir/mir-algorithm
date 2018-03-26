@@ -355,7 +355,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Returns:
         data that corresponds to the index or default value.
     */
-    auto ref get(Index, Value)(Index moment, Value _default) inout
+    auto ref get(Index, Value)(Index moment, auto ref Value _default) inout
         if (!is(Value : const(Exception)))
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
