@@ -36,13 +36,13 @@ struct RightOp(string op, T)
     auto lightConst()() const @property
     {
         import mir.qualifier;
-        return LeftOp!(op, LightConstOf!T)(value.lightConst);
+        return RightOp!(op, LightConstOf!T)(value.lightConst);
     }
 
     auto lightImmutable()() immutable @property
     {
         import mir.qualifier;
-        return LeftOp!(op, LightImmutableOf!T)(value.lightImmutable);
+        return RightOp!(op, LightImmutableOf!T)(value.lightImmutable);
     }
 
     this()(ref T v) { value = v; }

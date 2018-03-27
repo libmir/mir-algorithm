@@ -395,12 +395,60 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Returns:
         data that corresponds to the index or default value.
     */
-    auto ref get(Index, Value)(Index moment, auto ref Value _default) inout
+    ref get(Index, Value)(Index moment, return ref Value _default)
         if (!is(Value : const(Exception)))
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         return idx < _data._lengths[0] && index[idx] == moment ? data[idx] : _default;
     }
+
+    /// ditto
+    ref get(Index, Value)(Index moment, return ref Value _default) const
+        if (!is(Value : const(Exception)))
+    {
+        return this[].get(moment, _default);
+    }
+
+    /// ditto
+    ref get(Index, Value)(Index moment, return ref Value _default) immutable
+        if (!is(Value : const(Exception)))
+    {
+        return this[].get(moment, _default);
+    }
+
+    auto get(Index, Value)(Index moment, Value _default)
+        if (!is(Value : const(Exception)))
+    {
+        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        return idx < _data._lengths[0] && index[idx] == moment ? data[idx] : _default;
+    }
+
+    /// ditto
+    auto get(Index, Value)(Index moment, Value _default) const
+        if (!is(Value : const(Exception)))
+    {
+        import mir.functional: forward;
+        return this[].get(moment, forward!_default);
+    }
+
+    /// ditto
+    auto get(Index, Value)(Index moment, Value _default) immutable
+        if (!is(Value : const(Exception)))
+    {
+        import mir.functional: forward;
+        return this[].get(moment, forward!_default);
+    }
+
+    // /// ditto
+    // auto ref get(Index, Value)(Index moment, auto return ref Value _default) immutable
+    //     if (!is(Value : const(Exception)))
+    // {
+    //     return this[].get(moment, _default);
+    // }
+
+
+    private static immutable defaultExc(Index) = new Exception(
+        Unqual!Index.stringof ~ "-" ~ Unqual!Data.stringof ~ " series does not contain required index." );
 
     /**
     Gets data for the index.
@@ -411,14 +459,13 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Throws:
         Exception if the series does not contains the index.
     */
-    auto ref get(Index)(Index moment) inout
+    auto ref get(Index)(Index moment)
     {
-        static immutable defaultExc = new Exception(Unqual!Index.stringof ~ "-" ~ Unqual!(typeof(_data[size_t.init])).stringof ~ " series does not contain required index." );
-        return get(moment, defaultExc);
+        return this.get(moment, defaultExc!Index);
     }
 
     /// ditto
-    auto ref get(Index)(Index moment, lazy const Exception exc) inout
+    auto ref get(Index)(Index moment, lazy const Exception exc)
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         if (idx < _data._lengths[0] && index[idx] == moment)
@@ -426,6 +473,31 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
             return data[idx];
         }
         throw exc;
+    }
+
+    /// ditto
+    auto ref get(Index)(Index moment) const
+    {
+        return this[].get(moment);
+    }
+
+    /// ditto
+    auto ref get(Index)(Index moment, lazy const Exception exc) const
+    {
+        return this[].get(moment, exc);
+    }
+
+
+    /// ditto
+    auto ref get(Index)(Index moment) immutable
+    {
+        return this[].get(moment);
+    }
+
+    /// ditto
+    auto ref get(Index)(Index moment, lazy const Exception exc) immutable
+    {
+        return this[].get(moment, exc);
     }
 
     ///
@@ -437,7 +509,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     static if (packs == [1])
     ///
-    auto opBinaryRight(string op : "in", Index)(Index moment) inout @trusted
+    auto opBinaryRight(string op : "in", Index)(Index moment) const @trusted
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         bool cond = idx < _data._lengths[0] && index[idx] == moment;
@@ -607,7 +679,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return lightImmutable[slices];
     }
 
-    ///
+    /// ditto
     ref opAssign(RIndexIterator, RIterator)(auto ref Series!(RIndexIterator, kind, packs, RIterator) rvalue)
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
@@ -618,6 +690,21 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         this._index = rvalue._index;
     }
 
+    /// ditto
+    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, kind, packs, RIterator) rvalue)
+        if (isAssignable!(IndexIterator, LightConstOf!RIndexIterator) && isAssignable!(Iterator, LightConstOf!RIterator))
+    {
+        return this = rvalue[];
+    }
+
+    /// ditto
+    ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, kind, packs, RIterator) rvalue)
+        if (isAssignable!(IndexIterator, LightImmutableOf!RIndexIterator) && isAssignable!(Iterator, LightImmutableOf!RIterator))
+    {
+        return this = rvalue[];
+    }
+
+    /// ditto
     ref opAssign(typeof(null))
     {
         this = typeof(this)(null);
