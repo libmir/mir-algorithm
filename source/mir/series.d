@@ -153,7 +153,12 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         assert(index.length == data.length, "Series constructor: index and data lengths must be equal.");
         _data = data;
         _index = index._iterator;
+    }
 
+
+    /// Construct from null
+    this()(typeof(null))
+    {
     }
 
     ///
@@ -681,6 +686,22 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     series.popFront!1;
     assert(series.length!1 == 4);
+}
+
+/// Construct from null
+@safe pure nothrow @nogc version(mir_test) unittest
+{
+    import mir.series;
+    alias Map = Series!(string*, Contiguous, [1], double*);
+    Map a = null;
+    auto b = Map(null);
+    assert(a.empty);
+    assert(b.empty);
+
+    auto fun(Map a = null)
+    {
+        
+    }
 }
 
 /// Convenient function for $(LREF Series) construction.

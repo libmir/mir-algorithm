@@ -728,6 +728,85 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
 
     public:
 
+    static if (S == 0)
+    {
+        /// Defined for Contiguous Slice only
+        this()(size_t[N] lengths, in ptrdiff_t[] empty, Iterator iterator)
+        {
+            assert(empty.length == 0);
+            this._lengths = lengths;
+            this._iterator = iterator;
+        }
+
+        /// ditto
+        this()(size_t[N] lengths, Iterator iterator)
+        {
+            this._lengths = lengths;
+            this._iterator = iterator;
+        }
+
+        /// ditto
+        this()(size_t[N] lengths, in ptrdiff_t[] empty, ref Iterator iterator)
+        {
+            assert(empty.length == 0);
+            this._lengths = lengths;
+            this._iterator = iterator;
+        }
+
+        /// ditto
+        this()(size_t[N] lengths, ref Iterator iterator)
+        {
+            this._lengths = lengths;
+            this._iterator = iterator;
+        }
+    }
+
+    version(LDC)
+        private enum classicConstructor = true;
+    else
+        private enum classicConstructor = S > 0;
+
+    static if (classicConstructor)
+    {
+        /// Defined for Canonical and Universal Slices (DMD, GDC, LDC) and for Contiguous Slices (LDC)
+        this()(size_t[N] lengths, ptrdiff_t[S] strides, Iterator iterator)
+        {
+            this._lengths = lengths;
+            this._strides = strides;
+            this._iterator = iterator;
+        }
+
+        /// ditto
+        this()(size_t[N] lengths, ptrdiff_t[S] strides, ref Iterator iterator)
+        {
+            this._lengths = lengths;
+            this._strides = strides;
+            this._iterator = iterator;
+        }
+    }
+
+    /// Construct from null
+    this()(typeof(null))
+    {
+    }
+
+    static if (doUnittest)
+    ///
+    @safe pure version(mir_test) unittest
+    {
+        import mir.ndslice.slice;
+        alias Array = Slice!(Contiguous, [1], double*);
+        Array a = null;
+        auto b = Array(null);
+        assert(a.empty);
+        assert(b.empty);
+
+        auto fun(Array a = null)
+        {
+            
+        }
+    }
+
     static if (doUnittest)
     /// Creates a 2-dimentional slice with custom strides.
     nothrow pure
