@@ -22,13 +22,15 @@ import std.traits;
 ///
 @safe version(mir_test) unittest
 {
-    import std.datetime: Date;
-    import std.algorithm.mutation: move;
+    import mir.ndslice;
+    import mir.series;
 
     import mir.array.allocation: array;
-
     import mir.algorithm.setops: multiwayUnion;
-    import mir.ndslice.allocation: slice;
+
+    import std.datetime: Date;
+    import std.algorithm.mutation: move;
+    import std.exception: assertThrown;
 
     //////////////////////////////////////
     // Constructs two time-series.
@@ -41,7 +43,23 @@ import std.traits;
     auto data0 = [1.0, 3, 4];
     auto series0 = index0.series(data0);
 
-    assert(series0.get(Date(2017, 03, 01)) == 3);
+    // get / getVerbos
+    assert(series0.get(Date(2017, 03, 01)) == 3); 
+    assert(series0.getVerbose(Date(2017, 03, 01)) == 3); 
+
+    // Throws: 'Series double[Date]: Missing required key'
+    assertThrown!Exception(series0.get(Date(2016, 03, 01)));
+    // Throws: 'Series double[Date]: Missing 2016-Mar-01 key'
+    assertThrown!Exception(series0.getVerbose(Date(2016, 03, 01)));
+
+    // tryGet
+    double val;
+    assert(series0.tryGet(Date(2017, 03, 01), val));
+    assert(val == 3);
+    assert(!series0.tryGet(Date(2017, 03, 02), val));
+    assert(val == 3); // val was not changed
+
+
 
     auto index1 = [
         Date(2017, 01, 01),
@@ -439,16 +457,9 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return this[].get(moment, forward!_default);
     }
 
-    // /// ditto
-    // auto ref get(Index, Value)(Index moment, auto return ref Value _default) immutable
-    //     if (!is(Value : const(Exception)))
-    // {
-    //     return this[].get(moment, _default);
-    // }
 
-
-    private static immutable defaultExc(Index) = new Exception(
-        Unqual!Index.stringof ~ "-" ~ Unqual!Data.stringof ~ " series does not contain required index." );
+    private enum defaultMsg() = "Series " ~ Unqual!(this.Data).stringof ~ "[" ~ Unqual!(this.Index).stringof ~ "]: Missing";
+    private static immutable defaultExc() = new Exception(defaultMsg!() ~ " required key");
 
     /**
     Gets data for the index.
@@ -458,10 +469,11 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Returns: data that corresponds to the index.
     Throws:
         Exception if the series does not contains the index.
+    See_also: $(LREF Series.getVerbose), $(LREF Series.tryGet)
     */
     auto ref get(Index)(Index moment)
     {
-        return this.get(moment, defaultExc!Index);
+        return this.get(moment, defaultExc!());
     }
 
     /// ditto
@@ -500,6 +512,33 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return this[].get(moment, exc);
     }
 
+    /**
+    Gets data for the index (verbose exception).
+    Params:
+        moment = index
+    Returns: data that corresponds to the index.
+    Throws:
+        Detailed exception if the series does not contains the index.
+    See_also: $(LREF Series.get), $(LREF Series.tryGet)
+    */
+    auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__)
+    {
+        import std.format: format;
+        return this.get(moment, new Exception(format("%s %s key", defaultMsg!(), moment)));
+    }
+
+    /// ditto
+    auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__) const
+    {
+        return this[].getVerbose(moment, file, line);
+    }
+
+    /// ditto
+    auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__) immutable
+    {
+        return this[].getVerbose(moment, file, line);
+    }
+
     ///
     bool contains(Index)(Index moment) const
     {
@@ -509,7 +548,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     static if (packs == [1])
     ///
-    auto opBinaryRight(string op : "in", Index)(Index moment) const @trusted
+    auto opBinaryRight(string op : "in", Index)(Index moment)
     {
         size_t idx = index.assumeSorted.lowerBound(moment).length;
         bool cond = idx < _data._lengths[0] && index[idx] == moment;
@@ -523,6 +562,42 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         {
             return bool(cond);
         }
+    }
+
+    static if (packs == [1])
+    /// ditto
+    auto opBinaryRight(string op : "in", Index)(Index moment) const
+    {
+        return moment in this[];
+    }
+
+    static if (packs == [1])
+    /// ditto
+    auto opBinaryRight(string op : "in", Index)(Index moment) immutable
+    {
+        return moment in this[];
+    }
+
+    ///
+    bool tryGet(Index, Value)(Index moment, ref Value val)
+    {
+        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        auto cond = idx < _data._lengths[0] && index[idx] == moment;
+        if (cond)
+            val = data[idx];
+        return cond;
+    }
+
+    /// ditto
+    bool tryGet(Index, Value)(Index moment, ref Value val) const
+    {
+        return this[].tryGet(moment, val);
+    }
+
+    /// ditto
+    bool tryGet(Index, Value)(Index moment, ref Value val) immutable
+    {
+        return this[].tryGet(moment, val);
     }
 
     /// ndslice-like primitives
@@ -851,6 +926,9 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 /++
 Convenient function for $(LREF Series) construction.
 See_also: $(LREF assocArray)
+Attention:
+    This overloads do not sort the data.
+    User should call $(LREF directly) if index was not sorted.
 +/
 auto series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     (
@@ -1741,9 +1819,9 @@ private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] pack
     }
 
     static if (Allocator.length)
-        auto ret = allocator[0].makeUninitSlice!UI(len).series(allocator[0].makeUninitSlice!UE(shape));
+        auto ret = (()@trusted => allocator[0].makeUninitSlice!UI(len).series(allocator[0].makeUninitSlice!UE(shape)))();
     else
-        auto ret = len.uninitSlice!UI.series(shape.uninitSlice!UE);
+        auto ret = (()@trusted => len.uninitSlice!UI.series(shape.uninitSlice!UE))();
 
     unionSeriesImpl!(I, E)(seriesTuple, ret);
 
