@@ -2182,6 +2182,116 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         assert(s * s + c == s.map!"a * a".zip(c).map!"a + b");
     }
 
+    /++
+    Duplicates slice.
+    Returns: GC-allocated Contiguous mutable slice.
+    See_also: $(LREF Slice.idup)
+    +/
+    Slice!(Contiguous, [packs[0]], Unqual!DeepElemType*)
+    dup()() @property
+    {
+        if (__ctfe)
+        {
+            import mir.ndslice.topology: flattened;
+            import mir.array.allocation: array;
+            return this.flattened.array.dup.sliced(this.shape);
+        }
+        else
+        {
+            import mir.ndslice.allocation: uninitSlice;
+            import std.backdoor: emplaceRef;
+            alias E = this.DeepElemType;
+
+            auto result = (() @trusted => this.shape.uninitSlice!(Unqual!E))();
+
+            import mir.ndslice.algorithm: each;
+            each!(emplaceRef!(Unqual!E))(result, this);
+
+            return result;
+        }
+    }
+
+    /// ditto
+    Slice!(Contiguous, [packs[0]], immutable(DeepElemType)*)
+    dup()() const @property
+    {
+        this[].dup;
+    }
+
+    /// ditto
+    Slice!(Contiguous, [packs[0]], immutable(DeepElemType)*)
+    dup()() immutable @property
+    {
+        this[].dup;
+    }
+
+    static if (doUnittest)
+    ///
+    @safe pure version(mir_test) unittest
+    {
+        import mir.ndslice;
+        auto x = 3.iota!int;
+        ContiguousVector!(immutable int) imm = x.idup;
+        ContiguousVector!int mut = imm.dup;
+        assert(imm == x);
+        assert(mut == x);
+    }
+
+    /++
+    Duplicates slice.
+    Returns: GC-allocated Contiguous immutable slice.
+    See_also: $(LREF Slice.dup)
+    +/
+    Slice!(Contiguous, [packs[0]], immutable(DeepElemType)*)
+    idup()() @property
+    {
+        if (__ctfe)
+        {
+            import mir.ndslice.topology: flattened;
+            import mir.array.allocation: array;
+            return this.flattened.array.idup.sliced(this.shape);
+        }
+        else
+        {
+            import mir.ndslice.allocation: uninitSlice;
+            import std.backdoor: emplaceRef;
+            alias E = this.DeepElemType;
+
+            auto result = (() @trusted => this.shape.uninitSlice!(Unqual!E))();
+
+            import mir.ndslice.algorithm: each;
+            each!(emplaceRef!(immutable E))(result, this);
+            alias R = typeof(return);
+            return (() @trusted => cast(R) result)();
+        }
+    }
+
+    /// ditto
+    Slice!(Contiguous, [packs[0]], immutable(DeepElemType)*)
+    idup()() const @property
+    {
+        this[].idup;
+    }
+
+    /// ditto
+    Slice!(Contiguous, [packs[0]], immutable(DeepElemType)*)
+    idup()() immutable @property
+    {
+        this[].idup;
+    }
+
+    static if (doUnittest)
+    ///
+    @safe pure version(mir_test) unittest
+    {
+        import mir.ndslice;
+        auto x = 3.iota!int;
+        ContiguousVector!int mut = x.dup;
+        ContiguousVector!(immutable int) imm = mut.idup;
+        assert(imm == x);
+        assert(mut == x);
+    }
+
     static if (isMutable!(PureThis.DeepElemType))
     {
         private void opIndexOpAssignImplSlice(string op, SliceKind rkind, size_t[] rpacks, RIterator)(Slice!(rkind, rpacks, RIterator) value)
