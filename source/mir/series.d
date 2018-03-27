@@ -142,10 +142,16 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     ///
     IndexIterator _index;
 
-    ///
+    /// Index / Key / Time type aliases
     alias Index = typeof(this.front.index);
-    ///
+    /// ditto
+    alias Key = Index;
+    /// ditto
+    alias Time = Index;
+    /// Data / Value type aliases
     alias Data = typeof(this.front.data);
+    /// ditto
+    alias Value = Data;
 
     ///
     this()(Slice!(Contiguous, [1], IndexIterator) index, Slice!(kind, packs, Iterator) data)
@@ -704,7 +710,10 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 }
 
-/// Convenient function for $(LREF Series) construction.
+/++
+Convenient function for $(LREF Series) construction.
+See_also: $(LREF assocArray)
++/
 auto series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     (
         Slice!(Contiguous, [1], IndexIterator) index,
@@ -741,9 +750,10 @@ Constructs a GC-allocated series from an associative array.
 Performs exactly two allocations.
 
 Params:
-    aa == associative array or a pointer to associative array
+    aa = associative array or a pointer to associative array
 Returns:
     sorted GC-allocated series.
+See_also: $(LREF assocArray)
 */
 Series!(K*, Contiguous, [1], V*) series(K, V)(V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
@@ -817,7 +827,7 @@ auto series(K, V)(V[K]* aa)
     assert(s.data[s.findIndex(2)] == 2.9);
 }
 
-/**
+/++
 Constructs a manually allocated series from an associative array.
 Performs exactly two allocations.
 
@@ -825,7 +835,7 @@ Params:
     aa == associative array or a pointer to associative array
 Returns:
     sorted manually allocated series.
-*/
++/
 Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
@@ -882,6 +892,60 @@ pure nothrow version(mir_test) unittest
 
     allocator.dispose(indexArray);
     allocator.dispose(dataArray);
+}
+
+/++
+Returns a newly allocated associative array from a range of key/value tuples.
+
+Params:
+    r = index / time $(LREF Series), may not be sorted
+
+Returns: A newly allocated associative array out of elements of the input
+_series. Returns a null associative
+array reference when given an empty _series.
+
+Duplicates: Associative arrays have unique keys. If r contains duplicate keys,
+then the result will contain the value of the last pair for that key in r.
++/
+auto assocArray(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
+    (Series!(IndexIterator, kind, packs, Iterator) series)
+{
+    alias SK = series.Key;
+    alias SV = series.Value;
+    alias UK = Unqual!SK;
+    alias UV = Unqual!SV;
+    static if (isImplicitlyConvertible!(SK, UK))
+        alias K = UK;
+    else
+        alias K = SK;
+    static if (isImplicitlyConvertible!(SV, UV))
+        alias V = UV;
+    else
+        alias V = SV;
+    static assert(isMutable!V, "mir.series.assocArray: value type must be mutable");
+
+    V[K] aa;
+    if (!series.empty) do
+    {
+        aa[series.key.front] = series.value.front;
+        series.popFront;
+    }
+    while (!series.empty);
+    return aa;
+}
+
+///
+@safe pure version(mir_test) unittest
+{
+    import mir.ndslice; //iota and etc
+    import mir.series;
+
+    auto s = ["c", "a", "b"].series(3.iota!int);
+    assert(s.assocArray == [
+        "c": 0,
+        "a": 1,
+        "b": 2,
+    ]);
 }
 
 /// Returns: packs if `U` is a $(LREF Series) type or null otherwise;
