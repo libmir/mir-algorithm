@@ -123,6 +123,35 @@ auto observation(Index, Data)(Index index, Data data)
 }
 
 /++
+Convinient alias for pointer based 1D $(LREF Series).
++/
+alias SeriesdMap(K, V) = Series!(K*, Contiguous, [1], V*);
+
+///
+version(mir_test) unittest
+{
+    import std.traits;
+    import mir.series;
+
+    static assert (is(SeriesdMap!(string, double) == Series!(string*, Contiguous, [1], double*)));
+
+    /// LHS, RHS
+    static assert (isAssignable!(SeriesdMap!(string, double), typeof(null)));
+
+    static assert (isAssignable!(SeriesdMap!(const string, double), SeriesdMap!(string, double)));
+    static assert (isAssignable!(SeriesdMap!(string, const double), SeriesdMap!(string, double)));
+    static assert (isAssignable!(SeriesdMap!(const string, const double), SeriesdMap!(string, double)));
+
+    static assert (isAssignable!(SeriesdMap!(immutable string, double), SeriesdMap!(immutable string, double)));
+    static assert (isAssignable!(SeriesdMap!(immutable string, const double), SeriesdMap!(immutable string, double)));
+    static assert (isAssignable!(SeriesdMap!(const string, const double), SeriesdMap!(immutable string, double)));
+    static assert (isAssignable!(SeriesdMap!(string, immutable double), SeriesdMap!(string, immutable double)));
+    static assert (isAssignable!(SeriesdMap!(const string, immutable double), SeriesdMap!(string, immutable double)));
+    static assert (isAssignable!(SeriesdMap!(const string, const double), SeriesdMap!(string, immutable double)));
+    // etc
+}
+
+/++
 Plain index series data structure.
 
 `*.index[i]`/`*.key[i]`/`*.time` corresponds to `*.data[i]`/`*.value`.
@@ -578,6 +607,22 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return lightImmutable[slices];
     }
 
+    ///
+    ref opAssign(RIndexIterator, RIterator)(auto ref Series!(RIndexIterator, kind, packs, RIterator) rvalue)
+        if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
+    {
+        this._data._lengths = rvalue._data._lengths;
+        static if (this._data._strides.length)
+            this._data._strides = rvalue._data._strides;
+        this._data._iterator = rvalue._data._iterator;
+        this._index = rvalue._index;
+    }
+
+    ref opAssign(typeof(null))
+    {
+        this = typeof(this)(null);
+    }
+
     /// ditto
     auto save()() @property
     {
@@ -600,6 +645,12 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     auto trustedImmutable()() const @property @trusted
     {
         return (cast(immutable) this)[];
+    }
+
+    ///
+    auto toConst()() const @property
+    {
+        return index.toConst.series(data.toConst);
     }
 }
 
@@ -922,7 +973,7 @@ auto assocArray(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         alias V = UV;
     else
         alias V = SV;
-    static assert(isMutable!V, "mir.series.assocArray: value type must be mutable");
+    static assert(isMutable!V, "mir.series.assocArray: value type ( " ~ V.stringof ~ " ) must be mutable");
 
     V[K] aa;
     if (!series.empty) do
