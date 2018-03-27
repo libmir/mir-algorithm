@@ -123,9 +123,9 @@ auto observation(Index, Data)(Index index, Data data)
 }
 
 /++
-Convinient alias for pointer based 1D $(LREF Series).
+Convinient alias for 1D Contiguous $(LREF Series).
 +/
-alias SeriesdMap(K, V) = Series!(K*, Contiguous, [1], V*);
+alias SeriesMap(K, V) = Series!(K*, Contiguous, [1], V*);
 
 ///
 version(mir_test) unittest
@@ -133,21 +133,21 @@ version(mir_test) unittest
     import std.traits;
     import mir.series;
 
-    static assert (is(SeriesdMap!(string, double) == Series!(string*, Contiguous, [1], double*)));
+    static assert (is(SeriesMap!(string, double) == Series!(string*, Contiguous, [1], double*)));
 
     /// LHS, RHS
-    static assert (isAssignable!(SeriesdMap!(string, double), typeof(null)));
+    static assert (isAssignable!(SeriesMap!(string, double), typeof(null)));
 
-    static assert (isAssignable!(SeriesdMap!(const string, double), SeriesdMap!(string, double)));
-    static assert (isAssignable!(SeriesdMap!(string, const double), SeriesdMap!(string, double)));
-    static assert (isAssignable!(SeriesdMap!(const string, const double), SeriesdMap!(string, double)));
+    static assert (isAssignable!(SeriesMap!(const string, double), SeriesMap!(string, double)));
+    static assert (isAssignable!(SeriesMap!(string, const double), SeriesMap!(string, double)));
+    static assert (isAssignable!(SeriesMap!(const string, const double), SeriesMap!(string, double)));
 
-    static assert (isAssignable!(SeriesdMap!(immutable string, double), SeriesdMap!(immutable string, double)));
-    static assert (isAssignable!(SeriesdMap!(immutable string, const double), SeriesdMap!(immutable string, double)));
-    static assert (isAssignable!(SeriesdMap!(const string, const double), SeriesdMap!(immutable string, double)));
-    static assert (isAssignable!(SeriesdMap!(string, immutable double), SeriesdMap!(string, immutable double)));
-    static assert (isAssignable!(SeriesdMap!(const string, immutable double), SeriesdMap!(string, immutable double)));
-    static assert (isAssignable!(SeriesdMap!(const string, const double), SeriesdMap!(string, immutable double)));
+    static assert (isAssignable!(SeriesMap!(immutable string, double), SeriesMap!(immutable string, double)));
+    static assert (isAssignable!(SeriesMap!(immutable string, const double), SeriesMap!(immutable string, double)));
+    static assert (isAssignable!(SeriesMap!(const string, const double), SeriesMap!(immutable string, double)));
+    static assert (isAssignable!(SeriesMap!(string, immutable double), SeriesMap!(string, immutable double)));
+    static assert (isAssignable!(SeriesMap!(const string, immutable double), SeriesMap!(string, immutable double)));
+    static assert (isAssignable!(SeriesMap!(const string, const double), SeriesMap!(string, immutable double)));
     // etc
 }
 
