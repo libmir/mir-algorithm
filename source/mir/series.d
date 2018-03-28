@@ -19,7 +19,9 @@ public import mir.ndslice.slice;
 import mir.qualifier;
 import std.traits;
 
-///
+/++
+See_also: $(LREF sort), $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
++/
 @safe version(mir_test) unittest
 {
     import mir.ndslice;
@@ -30,7 +32,7 @@ import std.traits;
 
     import std.datetime: Date;
     import std.algorithm.mutation: move;
-    import std.exception: assertThrown;
+    import std.exception: collectExceptionMsg;
 
     //////////////////////////////////////
     // Constructs two time-series.
@@ -64,25 +66,46 @@ import std.traits;
     // get* methods
     //////////////////////////////////////
 
-    // get / getVerbos
-    assert(series0.get(Date(2017, 03, 01)) == 3); 
-    assert(series0.getVerbose(Date(2017, 03, 01)) == 3);    
+    auto refDate = Date(2017, 03, 01);
+    auto missingDate = Date(2016, 03, 01);
 
-    // Throws: 'Series double[Date]: Missing required key'
-    assertThrown!Exception(series0.get(Date(2016, 03, 01)));
-    // Throws: 'Series double[Date]: Missing 2016-Mar-01 key'
-    assertThrown!Exception(series0.getVerbose(Date(2016, 03, 01)));
+    // default value
+    double defaultValue = 100;
+    assert(series0.get(refDate, defaultValue) == 3);
+    assert(series0.get(missingDate, defaultValue) == defaultValue);
+
+    // Exceptions handlers
+    assert(series0.get(refDate) == 3);
+    assert(series0.get(refDate, new Exception("My exception msg")) == 3);
+    assert(series0.getVerbose(refDate) == 3);    
+    assert(series0.getExtraVerbose(refDate, "My exception msg") == 3);    
+
+    assert(collectExceptionMsg!Exception(
+            series0.get(missingDate)
+        ) == "Series double[Date]: Missing required key");
+    
+    assert(collectExceptionMsg!Exception(
+            series0.get(missingDate, new Exception("My exception msg"))
+        ) == "My exception msg");
+    
+    assert(collectExceptionMsg!Exception(
+            series0.getVerbose(missingDate)
+        ) == "Series double[Date]: Missing 2016-Mar-01 key");
+    
+    assert(collectExceptionMsg!Exception(
+            series0.getExtraVerbose(missingDate, "My exception msg")
+        ) == "My exception msg. Series double[Date]: Missing 2016-Mar-01 key");
 
     // assign with get*
-    series0.get(Date(2017, 03, 01)) = 100; 
-    assert(series0.get(Date(2017, 03, 01)) == 100); 
-    series0.get(Date(2017, 03, 01)) = 3; 
+    series0.get(refDate) = 100; 
+    assert(series0.get(refDate) == 100); 
+    series0.get(refDate) = 3; 
 
     // tryGet
     double val;
-    assert(series0.tryGet(Date(2017, 03, 01), val));
+    assert(series0.tryGet(refDate, val));
     assert(val == 3);
-    assert(!series0.tryGet(Date(2017, 03, 02), val));
+    assert(!series0.tryGet(missingDate, val));
     assert(val == 3); // val was not changed
 
     //////////////////////////////////////
@@ -553,6 +576,33 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__) immutable
     {
         return this[].getVerbose(moment, file, line);
+    }
+
+    /**
+    Gets data for the index (extra verbose exception).
+    Params:
+        moment = index
+    Returns: data that corresponds to the index.
+    Throws:
+        Detailed exception if the series does not contains the index.
+    See_also: $(LREF Series.get), $(LREF Series.tryGet)
+    */
+    auto ref getExtraVerbose(Index)(Index moment, string exceptionInto, string file = __FILE__, int line = __LINE__)
+    {
+        import std.format: format;
+        return this.get(moment, new Exception(format("%s. %s %s key", exceptionInto, defaultMsg!(), moment)));
+    }
+
+    /// ditto
+    auto ref getExtraVerbose(Index)(Index moment, string exceptionInto, string file = __FILE__, int line = __LINE__) const
+    {
+        return this[].getExtraVerbose(moment, exceptionInto, file, line);
+    }
+
+    /// ditto
+    auto ref getExtraVerbose(Index)(Index moment, string exceptionInto, string file = __FILE__, int line = __LINE__) immutable
+    {
+        return this[].getExtraVerbose(moment, exceptionInto, file, line);
     }
 
     ///
