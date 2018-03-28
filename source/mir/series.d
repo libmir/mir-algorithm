@@ -631,6 +631,18 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
             return index.zip(data.ipack!1.map!"a");
     }
 
+    /// ditto
+    auto asSlice()() const @property
+    {
+        return this[].asSlice;
+    }
+
+    /// ditto
+    auto asSlice()() immutable @property
+    {
+        return this[].asSlice;
+    }
+
     /// ndslice-like primitives
     bool empty(size_t dimension = 0)() const @property
         if (dimension < packs[0])
