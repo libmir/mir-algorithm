@@ -420,7 +420,6 @@ auto slicedNdField(ndField)(ndField field)
     return .slicedNdField(field, field.shape);
 }
 
-
 /++
 Presents $(LREF .Slice.structure).
 +/
@@ -431,7 +430,6 @@ struct Structure(size_t N)
     ///
     sizediff_t[N] strides;
 }
-
 
 /++
 Presents an n-dimensional view over a range.
@@ -1755,34 +1753,28 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     bool opEquals(SliceKind rkind, size_t[] rpacks, IteratorR)(const Slice!(rkind, rpacks, IteratorR) rslice) @trusted const
         if (rpacks.sum == N)
     {
-        foreach (i; Iota!N)
-            if (this._lengths[i] != rslice._lengths[i])
-                return false;
         static if (
                !hasReference!(typeof(this))
             && !hasReference!(typeof(rslice))
             && __traits(compiles, this._iterator == rslice._iterator)
             )
         {
+            foreach (i; Iota!N)
+                if (this._lengths[i] != rslice._lengths[i])
+                    return false;
             if (this._strides == rslice._strides && this._iterator == rslice._iterator)
                 return true;
         }
+        import mir.ndslice.algorithm : equal;
         import mir.ndslice.topology : unpack;
-        if (this.lightConst.unpack.anyEmpty)
-                return true;
-        static if (N > 1 && kind == Contiguous && rkind == Contiguous)
-        {
-            import mir.ndslice.topology : flattened;
-            return opEqualsImpl(this.lightConst.unpack.flattened, rslice.unpack.flattened);
-        }
-        else
-            return opEqualsImpl(this.lightConst.unpack, (cast(rslice.This)rslice).unpack);
+        return equal(this.lightConst.unpack, rslice.lightConst.unpack);
     }
 
-    ///ditto
+    /// ditto
     bool opEquals(T)(T[] arr) @trusted const
     {
-        auto slice = this.lightConst;
+        import mir.ndslice.topology : unpack;
+        auto slice = this.lightConst.unpack;
         if (slice.length != arr.length)
             return false;
         if (arr.length) do
@@ -3227,29 +3219,6 @@ version(mir_test) unittest
     assert(r[0][1] == 12);
     assert(r[1][0] == 18);
     assert(r[1][1] == 24);
-}
-
-private bool opEqualsImpl
-    (SliceKind lkind, SliceKind rkind, size_t[] packs, LIterator, RIterator)
-    (Slice!(lkind, packs, LIterator) ls, Slice!(rkind, packs, RIterator) rs)
-{
-    do
-    {
-        static if (packs[0] == 1)
-        {
-            if (*ls._iterator != *rs._iterator)
-                return false;
-        }
-        else
-        {
-            if (!opEqualsImpl(ls.front, rs.front))
-                return false;
-        }
-        rs.popFront;
-        ls.popFront;
-    }
-    while (ls._lengths[0]);
-    return true;
 }
 
 private enum bool isType(alias T) = false;

@@ -10,7 +10,7 @@ Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
 
 Macros:
-SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, interpolate, $1)$(NBSP)
+NDSLICE = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.series;
@@ -43,14 +43,40 @@ import std.traits;
     auto data0 = [1.0, 3, 4];
     auto series0 = index0.series(data0);
 
+    auto index1 = [
+        Date(2017, 01, 01),
+        Date(2017, 02, 01),
+        Date(2017, 05, 01)];
+
+    auto data1 = [10.0, 20, 50];
+    auto series1 = index1.series(data1);    
+
+    //////////////////////////////////////
+    // asSlice method
+    //////////////////////////////////////
+    assert(series0
+        .asSlice
+        // ref qualifier is optional
+        .map!((ref key, ref value) => key.month == value)
+        .all);
+
+    //////////////////////////////////////
+    // get* methods
+    //////////////////////////////////////
+
     // get / getVerbos
     assert(series0.get(Date(2017, 03, 01)) == 3); 
-    assert(series0.getVerbose(Date(2017, 03, 01)) == 3); 
+    assert(series0.getVerbose(Date(2017, 03, 01)) == 3);    
 
     // Throws: 'Series double[Date]: Missing required key'
     assertThrown!Exception(series0.get(Date(2016, 03, 01)));
     // Throws: 'Series double[Date]: Missing 2016-Mar-01 key'
     assertThrown!Exception(series0.getVerbose(Date(2016, 03, 01)));
+
+    // assign with get*
+    series0.get(Date(2017, 03, 01)) = 100; 
+    assert(series0.get(Date(2017, 03, 01)) == 100); 
+    series0.get(Date(2017, 03, 01)) = 3; 
 
     // tryGet
     double val;
@@ -58,16 +84,6 @@ import std.traits;
     assert(val == 3);
     assert(!series0.tryGet(Date(2017, 03, 02), val));
     assert(val == 3); // val was not changed
-
-
-
-    auto index1 = [
-        Date(2017, 01, 01),
-        Date(2017, 02, 01),
-        Date(2017, 05, 01)];
-
-    auto data1 = [10.0, 20, 50];
-    auto series1 = index1.series(data1);
 
     //////////////////////////////////////
     // Merges multiple series into one.
@@ -598,6 +614,21 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     bool tryGet(Index, Value)(Index moment, ref Value val) immutable
     {
         return this[].tryGet(moment, val);
+    }
+
+    /++
+    Returns:
+        1D Slice with creared with $(NDSLICE topology, zip) ([0] - key, [1] - value).
+    See_also:
+        $(NDSLICE topology, map) uses multiargument lambdas to handle zipped slices.
+    +/
+    auto asSlice()() @property
+    {
+        import mir.ndslice.topology: zip, map, ipack;
+        static if (packs == [1])
+            return index.zip(data);
+        else
+            return index.zip(data.ipack!1.map!"a");
     }
 
     /// ndslice-like primitives
