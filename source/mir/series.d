@@ -1236,12 +1236,7 @@ auto assocArray(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     static assert(isMutable!V, "mir.series.assocArray: value type ( " ~ V.stringof ~ " ) must be mutable");
 
     V[K] aa;
-    if (!series.empty) do
-    {
-        aa[series.key.front] = series.value.front;
-        series.popFront;
-    }
-    while (!series.empty);
+    aa.insertOrAssign = series;
     return aa;
 }
 
