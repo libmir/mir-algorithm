@@ -251,6 +251,8 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     /// Construct from null
     this()(typeof(null))
     {
+        _data = _data.init;
+        _index = _index.init;
     }
 
     ///
