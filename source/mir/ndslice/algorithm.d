@@ -103,13 +103,13 @@ template allFlattened(args...)
         alias allFlattened = AliasSeq!();
 }
 
-private template areAllContiguousTensors(Slices...)
+private template areAllContiguousSlices(Slices...)
 {
     import mir.ndslice.traits: isContiguousSlice;
      static if (allSatisfy!(isContiguousSlice, Slices))
-        enum areAllContiguousTensors = packsOf!(Slices[0])[0] > 1;
+        enum areAllContiguousSlices = packsOf!(Slices[0])[0] > 1;
      else
-        enum areAllContiguousTensors = false;
+        enum areAllContiguousSlices = false;
 }
 
 version(LDC) {}
@@ -228,7 +228,7 @@ template reduce(alias fun)
         if (Slices.length)
     {
         slices.checkShapesMatch;
-        static if (areAllContiguousTensors!Slices)
+        static if (areAllContiguousSlices!Slices)
         {
             return .reduce!fun(seed, allFlattened!slices);
         }
@@ -249,7 +249,7 @@ template reduce(alias fun)
         if (Slices.length)
     {
         slices.checkShapesMatch;
-        static if (areAllContiguousTensors!Slices)
+        static if (areAllContiguousSlices!Slices)
         {
             return .reduce!fun(seed, allFlattened!slices);
         }
@@ -457,7 +457,7 @@ template each(alias fun)
         if (Slices.length)
     {
         slices.checkShapesMatch;
-        static if (areAllContiguousTensors!Slices)
+        static if (areAllContiguousSlices!Slices)
         {
             .each!fun(allFlattened!slices);
         }
@@ -1468,7 +1468,7 @@ template any(alias pred = "a")
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
-        static if (areAllContiguousTensors!Slices)
+        static if (areAllContiguousSlices!Slices)
         {
             return .any!pred(allFlattened!slices);
         }
@@ -1612,7 +1612,7 @@ template all(alias pred = "a")
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         slices.checkShapesMatch;
-        static if (areAllContiguousTensors!Slices)
+        static if (areAllContiguousSlices!Slices)
         {
             return .all!pred(allFlattened!slices);
         }
@@ -1746,7 +1746,7 @@ template count(alias fun)
             return slices[0].elementsCount;
         }
         else
-        static if (areAllContiguousTensors!Slices)
+        static if (areAllContiguousSlices!Slices)
         {
             return .count!fun(allFlattened!slices);
         }

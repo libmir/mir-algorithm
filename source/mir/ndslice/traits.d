@@ -171,9 +171,9 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : ContiguousTensor;
+    import mir.ndslice.slice : ContiguousSlice;
 
-    alias S6 = ContiguousTensor!(3, ubyte);
+    alias S6 = ContiguousSlice!(3, ubyte);
     
     static assert(!isContiguousVector!S6);
     static assert(!isUniversalVector!S6);
@@ -193,9 +193,9 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : CanonicalTensor;
+    import mir.ndslice.slice : CanonicalSlice;
 
-    alias S7 = CanonicalTensor!(3, real);
+    alias S7 = CanonicalSlice!(3, real);
     
     static assert(!isContiguousVector!S7);
     static assert(!isUniversalVector!S7);
@@ -215,9 +215,9 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : UniversalTensor;
+    import mir.ndslice.slice : UniversalSlice;
 
-    alias S8 = UniversalTensor!(3, long);
+    alias S8 = UniversalSlice!(3, long);
     
     static assert(!isContiguousVector!S8);
     static assert(!isUniversalVector!S8);

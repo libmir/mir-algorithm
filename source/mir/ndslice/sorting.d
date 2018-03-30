@@ -87,47 +87,6 @@ import mir.math.common: optmath;
 
 @optmath:
 
-deprecated(`Use 'yourSlice.pairwise!"a <= b".all' instead. Imports:
-    import mir.ndslice.algorithm: all;
-    import mir.ndslice.topology: pairwise;
-`)
-template isSorted(alias less = "!(a >= b)")
-{
-    import mir.functional: naryFun;
-    static if (__traits(isSame, naryFun!less, less))
-    @optmath bool isSorted(SliceKind kind, size_t[] packs, Iterator)
-        (Slice!(kind, packs, Iterator) slice)
-        if (packs.length == 1)
-    {
-        import mir.functional: reverseArgs, not;
-        import mir.ndslice.algorithm: all;
-        import mir.ndslice.topology: flattened, pairwise;
-        return slice.flattened.pairwise!(not!(reverseArgs!less)).all;
-    }
-    else
-        alias isSorted = .isSorted!(naryFun!less);
-}
-
-deprecated(`Use 'yourSlice.pairwise!"a < b".all' instead. Imports:
-    import mir.ndslice.algorithm: all;
-    import mir.ndslice.topology: pairwise;
-`)
-template isStrictlyMonotonic(alias less = "a < b")
-{
-    import mir.functional: naryFun;
-    static if (__traits(isSame, naryFun!less, less))
-    @optmath bool isStrictlyMonotonic(SliceKind kind, size_t[] packs, Iterator)
-        (Slice!(kind, packs, Iterator) slice)
-        if (packs.length == 1)
-    {
-        import mir.ndslice.algorithm: all;
-        import mir.ndslice.topology: flattened, pairwise;
-        return slice.flattened.pairwise!less.all;
-    }
-    else
-        alias isStrictlyMonotonic = .isStrictlyMonotonic!(naryFun!less);
-}
-
 @safe pure version(mir_test) unittest
 {
     import mir.ndslice.algorithm: all;

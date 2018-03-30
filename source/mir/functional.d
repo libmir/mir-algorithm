@@ -121,9 +121,6 @@ alias Unref(V : RefTuple!T, T...) = RefTuple!(staticMap!(.Unref, T));
 /// ditto
 alias Unref(V) = V;
 
-deprecated("Use 'refTuple' name instead.")
-alias tuple = refTuple;
-
 /++
 Returns: a $(LREF RefTuple) structure.
 

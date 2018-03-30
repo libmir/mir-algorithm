@@ -133,15 +133,6 @@ alias ContiguousSlice (size_t dim, T) = Slice!(Contiguous, [dim], T*);
 alias CanonicalSlice (size_t dim, T) = Slice!(Canonical , [dim], T*);
 /// ditto
 alias UniversalSlice (size_t dim, T) = Slice!(Universal , [dim], T*);
-/// ditto
-deprecated("Please use ContiguousSlice") alias ContiguousTensor(size_t dim, T) = 
-    Slice!(Contiguous, [dim], T*);
-/// ditto
-deprecated("Please use CanonicalSlice") alias CanonicalTensor (size_t dim, T) = 
-    Slice!(Canonical , [dim], T*);
-/// ditto
-deprecated("Please use UniversalSlice") alias UniversalTensor (size_t dim, T) = 
-    Slice!(Universal , [dim], T*);
 
 /// Extracts $(LREF SliceKind).
 enum kindOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = kind;

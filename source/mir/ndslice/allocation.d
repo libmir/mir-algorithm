@@ -36,12 +36,6 @@ import mir.math.common: optmath;
 import mir.ndslice.iterator: FieldIterator;
 import mir.ndslice.field: BitwiseField;
 
-
-deprecated("use uninitSlice instead")
-alias uninitializedSlice = uninitSlice;
-deprecated("use makeUninitSlice instead")
-alias makeUninitializedSlice = makeUninitSlice;
-
 @optmath:
 
 /++

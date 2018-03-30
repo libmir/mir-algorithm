@@ -1692,7 +1692,8 @@ size_t troykaLength(LeftRange, RightRange)(LeftRange lhs, RightRange rhs)
 {
     size_t length;
     alias counter = (scope auto ref _) => ++length;
-    troykaGalop!(counter, counter, counter)(lhs, rhs);
+    alias ccounter = (scope auto ref _l, scope auto ref _r) => ++length;
+    troykaGalop!(counter, ccounter, counter)(lhs, rhs);
     return length;
 }
 

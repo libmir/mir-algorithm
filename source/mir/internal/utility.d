@@ -35,6 +35,3 @@ template isComplex(C)
     || is(Unqual!C == cdouble)
     || is(Unqual!C == cfloat);
 }
-
-deprecated("use mir.math.common: fastmath instead")
-public import mir.math.common: fastmath;

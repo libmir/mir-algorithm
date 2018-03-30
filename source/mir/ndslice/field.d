@@ -94,9 +94,6 @@ struct MapField(Field, alias fun)
     {
         return _field.elementsCount;
     }
-
-    deprecated("this is a misspelling of 'elementsCount'")
-    alias elemenstCount() = elementsCount!();
 }
 
 /++
