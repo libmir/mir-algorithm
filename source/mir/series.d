@@ -1538,7 +1538,7 @@ template troykaGalop(alias lfun, alias cfun, alias rfun)
     /++
     Params:
         lfun = unary function that accepts left side key
-        cfun = unary function that accepts left side key
+        cfun = binary function that accepts left side key and right side key
         rfun = unary function that accepts right side key
         lhs = left hand input range
         rhs = right hand input range
@@ -1572,7 +1572,7 @@ template troykaGalop(alias lfun, alias cfun, alias rfun)
             }
             else
             {
-                cfun(lhs.front);
+                cfun(lhs.front, rhs.front);
                 lhs.popFront;
                 rhs.popFront;
                 if (rhs.empty)
