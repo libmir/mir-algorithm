@@ -21,6 +21,7 @@ Dlang core library for math, finance and a home for Dlang multidimensional array
 #### Blogs
   - [Mir Blog](http://blog.mir.dlang.io/)
   - Shigeki Karita - [D言語で数値計算 mir-algorithm](https://shigekikarita.github.io/blog/2017/09/22/026.html)
+  - Shigeki Karita - [D言語(mir)でNumPyを拡張する](https://qiita.com/ShigekiKarita/items/af84b0ef864608ee1f21) (mir-pybuffer integration)
 
 #### Example (3 sec)
 ```d
