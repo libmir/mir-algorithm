@@ -959,7 +959,12 @@ template minmaxIndex(alias pred = "a < b")
         typeof(return) pret = size_t.max;
         if (!slice.anyEmpty)
         {
-            size_t[2][packs[0]] ret = [slice.shape, slice.shape];
+            auto shape = slice.shape;
+            size_t[2][packs[0]] ret;
+            foreach (i; Iota!(packs[0]))
+            {
+                ret[i][1] = ret[i][0] = shape[i];
+            }
             auto it = slice.map!"a"._iterator;
             Iterator[2] iterator = [it, it];
             minmaxPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
