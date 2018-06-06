@@ -1854,8 +1854,8 @@ auto unionSeriesImpl(I, E,
     import mir.algorithm.setops: multiwayUnion;
 
     enum N = packs[0];
-    alias I = DeepElementType!(typeof(uninitSeries.index));
-    alias E = DeepElementType!(typeof(uninitSeries._data));
+    alias I = DeepElementType!(typeof(seriesTuple[0].index));
+    alias E = DeepElementType!(typeof(seriesTuple[0]._data));
 
     if(uninitSeries.length)
     {
