@@ -220,8 +220,6 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 {
     import std.range: SearchPolicy, assumeSorted;
 
-@optmath:
-
     private enum doUnittest = is(typeof(this) == Series!(int*, Contiguous, [1], double*));
 
     ///
@@ -240,6 +238,8 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     alias Data = typeof(this.front.data);
     /// ditto
     alias Value = Data;
+
+@optmath:
 
     ///
     this()(Slice!(Contiguous, [1], IndexIterator) index, Slice!(kind, packs, Iterator) data)
