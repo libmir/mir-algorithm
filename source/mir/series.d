@@ -222,6 +222,8 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
 @optmath:
 
+    private enum doUnittest = is(typeof(this) == Series!(int*, Contiguous, [1], double*));
+
     ///
     Slice!(kind, packs, Iterator) _data;
 
@@ -313,6 +315,79 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     /// An alias for key-value representation.
     alias value = data;
 
+    static if (packs == [1])
+    ///
+    typeof(this) opBinary(string op : "~")(typeof(this) rhs)
+    {
+        return unionSeries(this, rhs);
+    }
+
+    static if (packs == [1])
+    /// ditto
+    auto opBinary(string op : "~")(const typeof(this) rhs) const
+    {
+        return unionSeries(this[], rhs[]);
+    }
+
+    static if (doUnittest)
+    ///
+    @safe pure nothrow version(mir_test) unittest
+    {
+        import std.datetime: Date;
+
+        //////////////////////////////////////
+        // Constructs two time-series.
+        //////////////////////////////////////
+        auto index0 = [1,3,4];
+        auto data0 = [1.0, 3, 4];
+        auto series0 = index0.series(data0);
+
+        auto index1 = [1,2,5];
+        auto data1 = [10.0, 20, 50];
+        auto series1 = index1.series(data1);
+
+        //////////////////////////////////////
+        // Merges multiple series into one.
+        //////////////////////////////////////
+        // Order is matter.
+        // The first slice has higher priority.
+        auto m0 = series0 ~ series1;
+        auto m1 = series1 ~ series0;
+
+        assert(m0.index == m1.index);
+        assert(m0.data == [ 1, 20,  3,  4, 50]);
+        assert(m1.data == [10, 20,  3,  4, 50]);
+    }
+
+    static if (doUnittest)
+    @safe pure nothrow version(mir_test) unittest
+    {
+        import std.datetime: Date;
+
+        //////////////////////////////////////
+        // Constructs two time-series.
+        //////////////////////////////////////
+        auto index0 = [1,3,4];
+        auto data0 = [1.0, 3, 4];
+        auto series0 = index0.series(data0);
+
+        auto index1 = [1,2,5];
+        auto data1 = [10.0, 20, 50];
+        const series1 = index1.series(data1);
+
+        //////////////////////////////////////
+        // Merges multiple series into one.
+        //////////////////////////////////////
+        // Order is matter.
+        // The first slice has higher priority.
+        auto m0 = series0 ~ series1;
+        auto m1 = series1 ~ series0;
+
+        assert(m0.index == m1.index);
+        assert(m0.data == [ 1, 20,  3,  4, 50]);
+        assert(m1.data == [10, 20,  3,  4, 50]);
+    }
+
     /++
     Special `[] =` index-assign operator for index-series.
     Assigns data from `r` with index intersection.
@@ -328,6 +403,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         opIndexOpAssign!("", IndexIterator_, kind_, packs_, Iterator_)(r);
     }
 
+    static if (doUnittest)
     ///
     version(mir_test) unittest
     {
@@ -398,6 +474,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     End:
     }
 
+    static if (doUnittest)
     ///
     version(mir_test) unittest
     {
@@ -1737,11 +1814,13 @@ template troykaSeriesImpl(alias lfun, alias cfun, alias rfun)
 
 /**
 Merges multiple (time) series into one.
-Makes exactly two memory allocations.
+Makes exactly one memory allocation for two series union
+and two memory allocation for three and more series union.
+
 Params: 
-    seriesTuple = variadic static array of composed of series.
+    seriesTuple = variadic static array of composed of series, each series must be sorted.
 Returns: sorted GC-allocated series.
-See_also $(LREF makeUnionSeries)
+See_also $(LREF Series.opBinary) $(LREF makeUnionSeries)
 */
 auto unionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N)(Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple...)
     if (N > 1 && packs.length == 1)
@@ -1758,31 +1837,68 @@ auto unionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t
     // Constructs two time-series.
     //////////////////////////////////////
     auto index0 = [1,3,4];
-
     auto data0 = [1.0, 3, 4];
     auto series0 = index0.series(data0);
 
     auto index1 = [1,2,5];
-
     auto data1 = [10.0, 20, 50];
     auto series1 = index1.series(data1);
 
     //////////////////////////////////////
     // Merges multiple series into one.
     //////////////////////////////////////
+    // Order is matter.
+    // The first slice has higher priority.
     auto m0 = unionSeries(series0, series1);
-    auto m1 = unionSeries(series1, series0); // order is matter
+    auto m1 = unionSeries(series1, series0);
 
     assert(m0.index == m1.index);
     assert(m0.data == [ 1, 20,  3,  4, 50]);
     assert(m1.data == [10, 20,  3,  4, 50]);
 }
 
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    import std.datetime: Date;
+
+    //////////////////////////////////////
+    // Constructs three time-series.
+    //////////////////////////////////////
+    auto index0 = [1,3,4];
+    auto data0 = [1.0, 3, 4];
+    auto series0 = index0.series(data0);
+
+    auto index1 = [1,2,5];
+    auto data1 = [10.0, 20, 50];
+    auto series1 = index1.series(data1);
+
+    auto index2 = [1, 6];
+    auto data2 = [100.0, 600];
+    auto series2 = index2.series(data2);
+
+    //////////////////////////////////////
+    // Merges multiple series into one.
+    //////////////////////////////////////
+    // Order is matter.
+    // The first slice has higher priority.
+    auto m0 = unionSeries(series0, series1, series2);
+    auto m1 = unionSeries(series1, series0, series2);
+    auto m2 = unionSeries(series2, series0, series1);
+
+    assert(m0.index == m1.index);
+    assert(m0.index == m2.index);
+    assert(m0.data == [  1, 20,  3,  4, 50, 600]);
+    assert(m1.data == [ 10, 20,  3,  4, 50, 600]);
+    assert(m2.data == [100, 20,  3,  4, 50, 600]);
+}
+
 /**
 Merges multiple (time) series into one.
-Makes exactly two memory allocations.
+Makes exactly one memory allocation for two series union
+and exactly two memory allocation for three and more series union.
 
-Params: 
+Params:
     allocator = memory allocator
     seriesTuple = variadic static array of composed of series.
 Returns: sorted manually allocated series.
@@ -1914,7 +2030,19 @@ private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] pack
     else
         auto ret = (()@trusted => len.uninitSlice!UI.series(shape.uninitSlice!UE))();
 
-    unionSeriesImpl!(I, E)(seriesTuple, ret);
+    static if (N == 2) // fast path
+    {
+        alias algo = troykaSeriesImpl!(
+            (auto ref key, auto ref left) => left,
+            (auto ref key, auto ref left, auto ref right) => left,
+            (auto ref key, auto ref right) => right,
+        );
+        algo!(I, E)(seriesTuple[0], seriesTuple[1], ret);
+    }
+    else
+    {
+        unionSeriesImpl!(I, E)(seriesTuple, ret);
+    }
 
     return () @trusted {return cast(R) ret; }();
 }
