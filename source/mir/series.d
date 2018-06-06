@@ -239,6 +239,16 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     /// ditto
     alias Value = Data;
 
+    /// An alias for time-series index.
+    alias time = index;
+    /// An alias for key-value representation.
+    alias key = index;
+    /// An alias for key-value representation.
+    alias value = data;
+
+    private enum defaultMsg() = "Series " ~ Unqual!(this.Data).stringof ~ "[" ~ Unqual!(this.Index).stringof ~ "]: Missing";
+    private static immutable defaultExc() = new Exception(defaultMsg!() ~ " required key");
+
 @optmath:
 
     ///
@@ -286,11 +296,6 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return _index.lightImmutable.sliced(_data._lengths[0]);
     }
 
-    /// An alias for time-series index.
-    alias time = index;
-    /// An alias for key-value representation.
-    alias key = index;
-
     /++
     Data is any ndslice with only one constraints, 
     `data` and `index` lengths should be equal.
@@ -311,9 +316,6 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     {
         return _data[];
     }
-
-    /// An alias for key-value representation.
-    alias value = data;
 
     static if (packs == [1])
     ///
@@ -574,10 +576,6 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         import mir.functional: forward;
         return this[].get(moment, forward!_default);
     }
-
-
-    private enum defaultMsg() = "Series " ~ Unqual!(this.Data).stringof ~ "[" ~ Unqual!(this.Index).stringof ~ "]: Missing";
-    private static immutable defaultExc() = new Exception(defaultMsg!() ~ " required key");
 
     /**
     Gets data for the index.
@@ -2004,8 +2002,8 @@ private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] pack
 
     immutable len = indeces[].unionLength; 
 
-    alias I = typeof(seriesTuple[0].front.index);
-    alias E = typeof(seriesTuple[0].front.data);
+    alias I = typeof(seriesTuple[0].index.front);
+    alias E = typeof(seriesTuple[0].data.front);
     alias R = Series!(I*, Contiguous, packs, E*);
     alias UI = Unqual!I;
     alias UE = Unqual!E;
