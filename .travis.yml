@@ -10,6 +10,7 @@ d:
  - dmd-nightly
  - dmd-beta
  - dmd
+ - gdc
 env:
  - ARCH="x86_64"
 matrix:
