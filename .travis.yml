@@ -22,6 +22,7 @@ matrix:
   allow_failures:
     - {d: dmd-nightly}
     - {d: ldc-beta}
+    - {d: gdc}
 branches:
   only:
     - master
