@@ -722,6 +722,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// Defined for Contiguous Slice only
         this()(size_t[N] lengths, in ptrdiff_t[] empty, Iterator iterator)
         {
+            version(LDC) pragma(inline, true);
             assert(empty.length == 0);
             this._lengths = lengths;
             this._iterator = iterator;
@@ -730,6 +731,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// ditto
         this()(size_t[N] lengths, Iterator iterator)
         {
+            version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._iterator = iterator;
         }
@@ -737,6 +739,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// ditto
         this()(size_t[N] lengths, in ptrdiff_t[] empty, ref Iterator iterator)
         {
+            version(LDC) pragma(inline, true);
             assert(empty.length == 0);
             this._lengths = lengths;
             this._iterator = iterator;
@@ -745,6 +748,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// ditto
         this()(size_t[N] lengths, ref Iterator iterator)
         {
+            version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._iterator = iterator;
         }
@@ -760,6 +764,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// Defined for Canonical and Universal Slices (DMD, GDC, LDC) and for Contiguous Slices (LDC)
         this()(size_t[N] lengths, ptrdiff_t[S] strides, Iterator iterator)
         {
+            version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._strides = strides;
             this._iterator = iterator;
@@ -768,6 +773,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// ditto
         this()(size_t[N] lengths, ptrdiff_t[S] strides, ref Iterator iterator)
         {
+            version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._strides = strides;
             this._iterator = iterator;
@@ -777,6 +783,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
     /// Construct from null
     this()(typeof(null))
     {
+        version(LDC) pragma(inline, true);
     }
 
     static if (doUnittest)
@@ -866,6 +873,7 @@ struct Slice(SliceKind kind, size_t[] packs, Iterator)
         /// ditto
         auto toConst()() const @trusted pure nothrow @nogc
         {
+            version(LDC) pragma(inline, true);
             alias It = const(Unqual!(PointerTarget!Iterator))*;
             return Slice!(kind, packs, It)(_lengths, _strides, _iterator);
         }
