@@ -97,7 +97,6 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
             }
         }
         else
-        static if (isPointer!Range)
         {
             auto it = result;
             foreach(ref f; r)
