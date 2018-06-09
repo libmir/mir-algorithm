@@ -34,21 +34,105 @@ STD = $(TD $(SMALL $0))
 +/
 module mir.ndslice.slice;
 
-import std.traits;
-import std.meta;
-
-import mir.internal.utility: Iota;
-import mir.math.common: optmath;
+import mir.internal.utility : Iota;
+import mir.math.common : optmath;
 import mir.ndslice.concatenation;
 import mir.ndslice.field;
 import mir.ndslice.internal;
 import mir.ndslice.iterator;
 import mir.primitives;
-import mir.utility;
 import mir.qualifier;
+import mir.utility;
+import std.meta;
+import std.traits;
+
 public import mir.primitives: DeepElementType;
 
 @optmath:
+
+/++
+Checks if type T has asSlice property and its returns a slices.
+Aliases itself to a pack 
++/
+template hasAsSlice(T)
+{
+    static if (__traits(hasMember, T, "asSlice"))
+        enum hasAsSlice = isSlice!(typeof(T.init.asSlice));
+    else
+        enum size_t[] hasAsSlice = null; 
+}
+
+///
+unittest
+{
+    import mir.series;
+    static assert(!hasAsSlice!(int[]));
+    static assert(hasAsSlice!(SeriesMap!(int, string)) == [1]);
+}
+
+/++
+Check if $(LREF toConst) function can be called with type T.
++/
+enum isConvertibleToSlice(T) = isSlice!T || isDynamicArray!T || hasAsSlice!T;
+
+///
+unittest
+{
+    import mir.series: SeriesMap;
+    static assert(isConvertibleToSlice!(immutable int[]));
+    static assert(isConvertibleToSlice!(string[]));
+    static assert(isConvertibleToSlice!(SeriesMap!(string, int)));
+    static assert(isConvertibleToSlice!(Slice!(Contiguous, [1], int*)));
+}
+
+/++
+See_also: $(LREF isConvertibleToSlice).
++/
+auto toSlice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) val)
+{
+    return val;
+}
+
+/// ditto
+auto toSlice(SliceKind kind, size_t[] packs, Iterator)(const Slice!(kind, packs, Iterator) val)
+{
+    return val[];
+}
+
+/// ditto
+auto toSlice(SliceKind kind, size_t[] packs, Iterator)(immutable Slice!(kind, packs, Iterator) val)
+{
+    return val[];
+}
+
+/// ditto
+auto toSlice(T)(T[] val)
+{
+    return val.sliced;
+}
+
+/// ditto
+auto toSlice(T)(T val)
+    if (hasAsSlice!T)
+{
+    return val;
+}
+
+///
+template toSlices(args...)
+{
+    static if (args.length)
+    {
+        alias arg = args[0];
+        @optmath @property auto ref slc()()
+        {
+            return toSlice(arg);
+        }
+        alias toSlices = AliasSeq!(slc, toSlices!(args[1..$]));
+    }
+    else
+        alias toSlices = AliasSeq!();
+}
 
 ///
 template isSlice(T)

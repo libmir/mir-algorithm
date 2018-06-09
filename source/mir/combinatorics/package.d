@@ -203,10 +203,10 @@ See_Also:
     $(LREF permutations), $(LREF cartesianPower), $(LREF combinations),
     $(LREF combinationsRepeat)
 */
-IndexedRoR!(Collection, Range) indexedRoR(Collection, Range)(Collection c, Range r)
+IndexedRoR!(Collection, Range) indexedRoR(Collection, Range)(Collection collection, Range range)
     if (__traits(compiles, Range.init[size_t.init]))
 {
-    return IndexedRoR!(Collection, Range)(c, r);
+    return IndexedRoR!(Collection, Range)(collection, range);
 }
 
 /// ditto
@@ -803,7 +803,7 @@ It is assumed the respective entities had been allocated with the same allocator
 
 Params:
     alloc = Custom allocator
-    perm = CartesianPower object
+    cartesianPower = CartesianPower object
 
 See_Also:
     $(LREF makeCartesianPower)
@@ -1133,10 +1133,10 @@ Params:
 See_Also:
     $(LREF makeCombinations)
 */
-void dispose(T, Allocator)(auto ref Allocator alloc, auto ref Combinations!T combs)
+void dispose(T, Allocator)(auto ref Allocator alloc, auto ref Combinations!T perm)
 {
     import std.experimental.allocator: dispose;
-    dispose(alloc, combs.state);
+    dispose(alloc, perm.state);
 }
 
 /**
@@ -1443,8 +1443,8 @@ Params:
 See_Also:
     $(LREF makeCombinationsRepeat)
 */
-void dispose(T, Allocator)(auto ref Allocator alloc, auto ref CombinationsRepeat!T combs)
+void dispose(T, Allocator)(auto ref Allocator alloc, auto ref CombinationsRepeat!T perm)
 {
     import std.experimental.allocator: dispose;
-    dispose(alloc, combs.state);
+    dispose(alloc, perm.state);
 }

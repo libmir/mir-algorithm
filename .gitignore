@@ -17,3 +17,5 @@ mir-algorithm-test-library
 mir-internal
 web
 .DS_*
+docs
+docs.json
