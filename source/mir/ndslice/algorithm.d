@@ -113,6 +113,7 @@ private template areAllContiguousSlices(Slices...)
 }
 
 version(LDC) {}
+else version(GNU) {}
 else version (Windows) {}
 else version (X86_64)
 {
