@@ -18,4 +18,5 @@ mir-internal
 web
 .DS_*
 docs
+*.html
 docs.json
