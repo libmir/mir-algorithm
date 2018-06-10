@@ -306,7 +306,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
         int i;
     }
     auto arr = [S(0), S(1), S(2)];
-    arr.array();
+    arr.array;
 }
 
 // Bugzilla 10220

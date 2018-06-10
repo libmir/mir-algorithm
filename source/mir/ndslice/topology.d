@@ -2037,6 +2037,19 @@ body
     }
 }
 
+/// ditto
+auto stride(T)(T[] array, ptrdiff_t factor)
+{
+    return stride(array.sliced, factor);
+}
+
+/// ditto
+auto stride(T)(auto ref T withAsSlice, ptrdiff_t factor)
+    if (hasAsSlice!T)
+{
+    return stride(withAsSlice.asSlice, factor);
+}
+
 ///
 @safe pure nothrow @nogc version(mir_test) unittest
 {
@@ -2085,6 +2098,19 @@ auto retro
         import mir.ndslice.dynamic: allReversed;
         return slice.allReversed;
     }
+}
+
+/// ditto
+auto retro(T)(T[] array)
+{
+    return retro(array.sliced);
+}
+
+/// ditto
+auto retro(T)(auto ref T withAsSlice)
+    if (hasAsSlice!T)
+{
+    return retro(withAsSlice.asSlice);
 }
 
 ///
@@ -2136,12 +2162,25 @@ auto bitwise
         return Ret(lengths, strides, It(0, BitwiseField!Iterator(slice._iterator)));
 }
 
+/// ditto
+auto bitwise(T)(T[] array)
+{
+    return bitwise(array.sliced);
+}
+
+/// ditto
+auto bitwise(T)(auto ref T withAsSlice)
+    if (hasAsSlice!T)
+{
+    return bitwise(withAsSlice.asSlice);
+}
+
 ///
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
     size_t[10] data;
-    auto bits = data[].sliced.bitwise;
+    auto bits = data[].bitwise;
     assert(bits.length == data.length * size_t.sizeof * 8);
     bits[111] = true;
     assert(bits[111]);
@@ -2215,13 +2254,26 @@ auto bitpack
         return Ret(lengths, strides, It(0, BitpackField!(Iterator, pack)(slice._iterator)));
 }
 
+/// ditto
+auto bitpack(size_t pack, T)(T[] array)
+{
+    return bitpack!pack(array.sliced);
+}
+
+/// ditto
+auto bitpack(size_t pack, T)(auto ref T withAsSlice)
+    if (hasAsSlice!T)
+{
+    return bitpack!pack(withAsSlice.asSlice);
+}
+
 ///
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
     size_t[10] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
-    auto packs = data[].sliced.bitpack!6;
+    auto packs = data[].bitpack!6;
     assert(packs.length == data.length * size_t.sizeof * 8 / 6);
     packs[$ - 1] = 24;
     assert(packs[$ - 1] == 24);
@@ -2256,13 +2308,27 @@ bytegroup
     return Ret(lengths, slice._strides, BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator));
 }
 
+
+/// ditto
+auto bytegroup(size_t pack, DestinationType, T)(T[] array)
+{
+    return bytegroup!(pack, DestinationType)(array.sliced);
+}
+
+/// ditto
+auto bytegroup(size_t pack, DestinationType, T)(auto ref T withAsSlice)
+    if (hasAsSlice!T)
+{
+    return bytegroup!(pack, DestinationType)(withAsSlice.asSlice);
+}
+
 /// 24 bit integers
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
     ubyte[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
-    auto int24ar = data[].sliced.bytegroup!(3, int); // 24 bit integers
+    auto int24ar = data[].bytegroup!(3, int); // 24 bit integers
     assert(int24ar.length == data.length / 3);
 
     enum checkInt = ((1 << 20) - 1);
@@ -2319,8 +2385,10 @@ template map(fun...)
     import mir.functional: adjoin, naryFun, pipe;
     static if (fun.length == 1)
     {
-        static if (__traits(isSame, naryFun!"a", fun[0]))
+        static if (__traits(isSame, naryFun!(fun[0]), fun[0]) && !__traits(isSame, naryFun!"a", fun[0]))
         {
+            alias f = fun[0];
+        @optmath:
             /++
             Params:
                 slice = An input slice.
@@ -2328,6 +2396,39 @@ template map(fun...)
                 a slice with each fun applied to all the elements. If there is more than one
                 fun, the element type will be `Tuple` containing one element for each fun.
             +/
+            auto map(SliceKind kind, size_t[] packs, Iterator)
+                (Slice!(kind, packs, Iterator) slice)
+            {
+                static if (packs.length == 1)
+                {
+                    import mir.ndslice.iterator: mapIterator;
+                    auto iterator = mapIterator!f(slice._iterator);
+                    return Slice!(kind, packs, typeof(iterator))(slice._lengths, slice._strides, iterator);
+                }
+                // Specialization for packed tensors (tensors composed of tensors).
+                else
+                {
+                    return .map!f(.map!(naryFun!"a")(slice));
+                }
+            }
+
+            /// ditto
+            auto map(T)(T[] array)
+            {
+                return map(array.sliced);
+            }
+            
+            /// ditto
+            auto map(T)(auto ref T withAsSlice)
+                if (hasAsSlice!T)
+            {
+                return map(withAsSlice.asSlice);
+            }
+        }
+        else
+        static if (__traits(isSame, naryFun!"a", fun[0]))
+        {
+            ///
             @optmath auto map(SliceKind kind, size_t[] packs, Iterator)
                 (Slice!(kind, packs, Iterator) slice)
             {
@@ -2345,26 +2446,6 @@ template map(fun...)
                     auto strides = cast(ptrdiff_t[It._strides.length]) sl._strides[packs[0] .. packs[0] + It._strides.length];
                     auto it = It(lengths, strides, sl._iterator);
                     return Slice!(Universal, packs[0 .. 1], It)(outerLengths, outerStrides, it);
-                }
-            }
-        }
-        else
-        static if (__traits(isSame, naryFun!(fun[0]), fun[0]))
-        {
-            alias f = fun[0];
-            @optmath auto map(SliceKind kind, size_t[] packs, Iterator)
-                (Slice!(kind, packs, Iterator) slice)
-            {
-                static if (packs.length == 1)
-                {
-                    import mir.ndslice.iterator: mapIterator;
-                    auto iterator = mapIterator!f(slice._iterator);
-                    return Slice!(kind, packs, typeof(iterator))(slice._lengths, slice._strides, iterator);
-                }
-                // Specialization for packed tensors (tensors composed of tensors).
-                else
-                {
-                    return .map!f(.map!(naryFun!"a")(slice));
                 }
             }
         }
@@ -2511,7 +2592,7 @@ See_Also:
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 @optmath auto vmap(SliceKind kind, size_t[] packs, Iterator, Callable)
-    (Slice!(kind, packs, Iterator) slice, Callable callable)
+    (Slice!(kind, packs, Iterator) slice, auto ref Callable callable)
 {
     static if (packs.length == 1)
     {
@@ -2524,6 +2605,19 @@ See_Also:
     {
         return .vmap(slice.map!"a", callable);
     }
+}
+
+/// ditto
+auto vmap(T, Callable)(T[] array, auto ref Callable callable)
+{
+    return vmap(array.sliced, callable);
+}
+
+/// ditto
+auto vmap(T, Callable)(auto ref T withAsSlice, auto ref Callable callable)
+    if (hasAsSlice!T)
+{
+    return vmap(withAsSlice.asSlice, callable);
 }
 
 ///
@@ -2806,6 +2900,13 @@ auto cachedGC(Iterator)(Slice!(Universal, [1], Iterator) from)
     return from.flattened.cachedGC;
 }
 
+/// ditto
+auto cachedGC(T)(auto ref T withAsSlice)
+    if (hasAsSlice!T)
+{
+    return cachedGC(withAsSlice.asSlice);
+}
+
 ///
 @safe pure nothrow
 version(mir_test) unittest
@@ -2897,6 +2998,19 @@ template as(T)
             return map!(to!T)(slice);
         }
     }
+
+    /// ditto
+    auto as(S)(S[] array)
+    {
+        return as(array.sliced);
+    }
+    
+    /// ditto
+    auto as(S)(auto ref S withAsSlice)
+        if (hasAsSlice!S)
+    {
+        return as(withAsSlice.asSlice);
+    }
 }
 
 ///
@@ -2943,7 +3057,7 @@ See_also: `indexed` is similar to $(LREF, vmap), but a field (`[]`) is used inst
 +/
 Slice!(kind, packs, IndexIterator!(Iterator, Field))
     indexed(Field, SliceKind kind, size_t[] packs, Iterator)
-    (Field source, Slice!(kind, packs, Iterator) indexes)
+    (auto ref Field source, Slice!(kind, packs, Iterator) indexes)
 {
     return typeof(return)(
             indexes._lengths,
@@ -2953,11 +3067,24 @@ Slice!(kind, packs, IndexIterator!(Iterator, Field))
                 source));
 }
 
+/// ditto
+auto indexed(Field, S)(auto ref Field source, S[] indexes)
+{
+    return indexed(source, indexes.sliced);
+}
+
+/// ditto
+auto indexed(Field, S)(auto ref Field source, auto ref S indexes)
+    if (hasAsSlice!S)
+{
+    return indexed(source, indexes.asSlice);
+}
+
 ///
 @safe pure nothrow version(mir_test) unittest
 {
     auto source = [1, 2, 3, 4, 5];
-    auto indexes = [4, 3, 1, 2, 0, 4].sliced;
+    auto indexes = [4, 3, 1, 2, 0, 4];
     auto ind = source.indexed(indexes);
     assert(ind == [5, 4, 2, 3, 1, 5]);
     
@@ -2977,17 +3104,30 @@ Returns:
     ndslice composed of subslices.
 See_also: $(LREF cut), $(LREF pairwise), $(LREF pairwiseMapSubSlices).
 +/
-Slice!(kind, packs, SubSliceIterator!(Iterator, Slicable))
-    mapSubSlices(SliceKind kind, size_t[] packs, Iterator, Slicable)(
+Slice!(kind, packs, SubSliceIterator!(Iterator, Sliceable))
+    mapSubSlices(SliceKind kind, size_t[] packs, Iterator, Sliceable)(
         Slice!(kind, packs, Iterator) indexes,
-        Slicable slicable,
+        auto ref Sliceable sliceable,
     )
 {
     return typeof(return)(
         indexes._lengths,
         indexes._strides,
-        SubSliceIterator!(Iterator, Slicable)(indexes._iterator, slicable)
+        SubSliceIterator!(Iterator, Sliceable)(indexes._iterator, sliceable)
     );
+}
+
+/// ditto
+auto mapSubSlices(S, Sliceable)(S[] indexes, auto ref Sliceable sliceable)
+{
+    return mapSubSlices(indexes.sliced, sliceable);
+}
+
+/// ditto
+auto mapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable)
+    if (hasAsSlice!S)
+{
+    return mapSubSlices(indexes.asSlice, sliceable);
 }
 
 ///
@@ -2997,7 +3137,7 @@ Slice!(kind, packs, SubSliceIterator!(Iterator, Slicable))
     auto subs =[
             staticArray(2, 4),
             staticArray(2, 10),
-        ].sliced;
+        ];
     auto sliceable = 10.iota;
 
     auto r = subs.mapSubSlices(sliceable);
@@ -3015,19 +3155,32 @@ Params:
 Definition:
 -----
 import mir.functional: staticArray;
-return indexes.pairwise!staticArray.mapSubSlices(slicable);
+return indexes.pairwise!staticArray.mapSubSlices(sliceable);
 -----
 Returns:
     ndslice composed of subslices.
 See_also: $(LREF pairwise), $(LREF mapSubSlices).
 +/
-auto pairwiseMapSubSlices(SliceKind kind, Iterator, Slicable)(
+auto pairwiseMapSubSlices(SliceKind kind, Iterator, Sliceable)(
         Slice!(kind, [1], Iterator) indexes,
-        Slicable slicable,
+        auto ref Sliceable sliceable,
     )
 {
     import mir.functional: staticArray;
-    return indexes.pairwise!staticArray.mapSubSlices(slicable);
+    return indexes.pairwise!staticArray.mapSubSlices(sliceable);
+}
+
+/// ditto
+auto pairwiseMapSubSlices(S, Sliceable)(S[] indexes, auto ref Sliceable sliceable)
+{
+    return pairwiseMapSubSlices(indexes.sliced, sliceable);
+}
+
+/// ditto
+auto pairwiseMapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable)
+    if (hasAsSlice!S)
+{
+    return pairwiseMapSubSlices(indexes.asSlice, sliceable);
 }
 
 ///
@@ -3055,33 +3208,40 @@ See_also: $(SUBREF slice, Slice.strides).
 +/
 auto zip
     (bool sameStrides = false, Slices...)(Slices slices)
-    if (Slices.length > 1 && allSatisfy!(isSlice, Slices))
+    if (Slices.length > 1 && allSatisfy!(isConvertibleToSlice, Slices))
 {
-    enum packs = packsOf!(Slices[0]);
-    foreach(i, S; Slices[1 .. $])
+    static if (allSatisfy!(isSlice, Slices))
     {
-        static assert(packsOf!S == packs, "zip: all Slices must have the same shape packs");
-        assert(slices[i + 1]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
-        static if (sameStrides)
-            assert(slices[i + 1].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides when unpacked");
-    }
-    static if (!sameStrides && minElem(staticMap!(kindOf, Slices)) != Contiguous)
-    {
-        static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
-        mixin(`return .zip(` ~ _iotaArgs!(Slices.length, "slices[", "].hideStride, ") ~`);`);
+        enum packs = packsOf!(Slices[0]);
+        foreach(i, S; Slices[1 .. $])
+        {
+            static assert(packsOf!S == packs, "zip: all Slices must have the same shape packs");
+            assert(slices[i + 1]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
+            static if (sameStrides)
+                assert(slices[i + 1].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides when unpacked");
+        }
+        static if (!sameStrides && minElem(staticMap!(kindOf, Slices)) != Contiguous)
+        {
+            static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
+            mixin(`return .zip(` ~ _iotaArgs!(Slices.length, "slices[", "].hideStride, ") ~`);`);
+        }
+        else
+        {
+            enum kind = maxElem(staticMap!(kindOf, Slices));
+            alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
+            alias Ret = Slice!(kind, packs, Iterator);
+            size_t[Ret.N] lengths;
+            sizediff_t[Ret.S] strides;
+            foreach (i; Iota!(Ret.N))
+                lengths[i] = slices[0]._lengths[i];
+            foreach (i; Iota!(Ret.S))
+                strides[i] = slices[0]._strides[i];
+            return Ret(lengths, strides, mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")"));
+        }
     }
     else
     {
-        enum kind = maxElem(staticMap!(kindOf, Slices));
-        alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
-        alias Ret = Slice!(kind, packs, Iterator);
-        size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
-        foreach (i; Iota!(Ret.N))
-            lengths[i] = slices[0]._lengths[i];
-        foreach (i; Iota!(Ret.S))
-            strides[i] = slices[0]._strides[i];
-        return Ret(lengths, strides, mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")"));
+        return .zip(toSlices!slices);
     }
 }
 
@@ -3112,7 +3272,7 @@ auto zip
     import mir.ndslice.topology : flattened, iota;
 
     auto alpha = iota!int(4).universal;
-    auto beta = slice!int(4);
+    auto beta = new int[4];
 
     auto m = zip(alpha, beta);
     foreach (e; m)
@@ -3175,13 +3335,14 @@ template slide(size_t params, alias fun)
 
     static if (params > 1 && __traits(isSame, naryFun!fun, fun))
     {
+    @optmath:
         /++
         Params:
             slice = An input slice with first dimension pack equals to one (e.g. 1-dimensional for not packed slices).
         Returns:
             1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
         +/
-        @optmath auto slide(SliceKind kind, size_t[] packs, Iterator)
+        auto slide(SliceKind kind, size_t[] packs, Iterator)
             (Slice!(kind, packs, Iterator) slice)
             if (packs[0] == 1)
         {
@@ -3194,6 +3355,19 @@ template slide(size_t params, alias fun)
                 s._lengths,
                 s._strides,
                 I(s._iterator));
+        }
+
+        /// ditto
+        auto slide(S)(S[] slice)
+        {
+            return slide(slice.sliced);
+        }
+
+        /// ditto
+        auto slide(S)(auto ref S slice)
+            if (hasAsSlice!S)
+        {
+            return slide(slice.asSlice);
         }
     }
     else
@@ -3525,6 +3699,20 @@ auto stairs(string type, Iterator)(Slice!(Contiguous, [1], Iterator) slice, size
             .map!retro
             .retro;
     }
+}
+
+/// ditto
+auto stairs(string type, S)(S[] slice, size_t n)
+    if (type == "+" || type == "-")
+{
+    return stairs!type(slice.sliced, n);
+}
+
+/// ditto
+auto stairs(string type, S)(auto ref S slice, size_t n)
+    if (hasAsSlice!S && (type == "+" || type == "-"))
+{
+    return stairs!type(slice.asSlice, n);
 }
 
 ///
