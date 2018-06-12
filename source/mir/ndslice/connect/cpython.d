@@ -77,6 +77,7 @@ PythonBufferErrorCode fromPythonBuffer(SliceKind kind, size_t[] packs, T)(ref Sl
 ///
 unittest
 {
+    import mir.ndslice.slice : ContiguousMatrix;
     auto bar(ref const Py_buffer view)
     {
         ContiguousMatrix!(const double) mat = void;
@@ -211,10 +212,11 @@ PythonBufferErrorCode toPythonBuffer(SliceKind kind, size_t[] packs, T, size_t N
 ///
 unittest
 {
+    import mir.ndslice.slice : Slice, Structure, Universal;
     Py_buffer bar(Slice!(Universal, [2], double*) slice)
     {
         import core.stdc.stdlib;
-        enum N = slice.N;
+        enum N = 2;
 
         auto structurePtr = cast(Structure!N*) Structure!N.sizeof.malloc;
         if (!structurePtr)
