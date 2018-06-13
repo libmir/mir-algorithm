@@ -115,7 +115,8 @@ unittest
 
 ///
 version(mir_test)
-@safe pure nothrow unittest
+//@safe pure nothrow 
+unittest
 {
     import mir.ndslice.topology: repeat, iota;
 
@@ -145,8 +146,11 @@ version(mir_test)
 
     //Force pair-wise floating point summation on large integers
     import std.math : approxEqual;
+    import std.stdio;
+    debug writefln("%9f", iota([4096], uint.max / 2).sum(0.0));
+    debug writefln("%9f", (uint.max / 2) * 4096.0 + 4096^^2 / 2);
     assert(iota([4096], uint.max / 2).sum(0.0)
-               .approxEqual((uint.max / 2) * 4096.0 + 4096^^2 / 2));
+               .approxEqual((uint.max / 2) * 4096.0 + 4096.0 * 4096.0 / 2));
 }
 
 /// Precise summation
