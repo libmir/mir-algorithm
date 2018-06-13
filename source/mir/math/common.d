@@ -9,6 +9,7 @@ Authors:   Ilya Yaroshenko
 +/
 module mir.math.common;
 
+import std.traits: isFloatingPoint;
 import mir.internal.utility: isComplex;
 
 version(LDC)
@@ -131,96 +132,95 @@ version(LDC)
 
     pragma(LDC_intrinsic, "llvm.sqrt.f#")
     ///
-    T sqrt(T)(in T val);
+    T sqrt(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.sin.f#")
     ///
-    T sin(T)(in T val);
+    T sin(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.cos.f#")
     ///
-    T cos(T)(in T val);
+    T cos(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.powi.f#")
     ///
-    T powi(T)(in T val, int power);
+    T powi(T)(in T val, int power) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.pow.f#")
     ///
-    T pow(T)(in T val, in T power);
+    T pow(T)(in T val, in T power) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.exp.f#")
     ///
-    T exp(T)(in T val);
+    T exp(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.log.f#")
     ///
-    T log(T)(in T val);
+    T log(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.fma.f#")
     ///
-    T fma(T)(T vala, T valb, T valc);
+    T fma(T)(T vala, T valb, T valc) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.fabs.f#")
     ///
-    T fabs(T)(in T val);
+    T fabs(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.floor.f#")
     ///
-    T floor(T)(in T val);
+    T floor(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.exp2.f#")
     ///
-    T exp2(T)(in T val);
+    T exp2(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.log10.f#")
     ///
-    T log10(T)(in T val);
+    T log10(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.log2.f#")
     ///
-    T log2(T)(in T val);
+    T log2(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.ceil.f#")
     ///
-    T ceil(T)(in T val);
+    T ceil(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.trunc.f#")
     ///
-    T trunc(T)(in T val);
+    T trunc(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.rint.f#")
     ///
-    T rint(T)(in T val);
+    T rint(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.nearbyint.f#")
     ///
-    T nearbyint(T)(in T val);
+    T nearbyint(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.copysign.f#")
     ///
-    T copysign(T)(in T mag, in T sgn);
+    T copysign(T)(in T mag, in T sgn) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.round.f#")
     ///
-    T round(T)(in T val);
+    T round(T)(in T val) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.fmuladd.f#")
     ///
-    T fmuladd(T)(in T vala, in T valb, in T valc);
+    T fmuladd(T)(in T vala, in T valb, in T valc) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.minnum.f#")
     ///
-    T fmin(T)(in T vala, in T valb);
+    T fmin(T)(in T vala, in T valb) if (isFloatingPoint!T);
 
     pragma(LDC_intrinsic, "llvm.maxnum.f#")
     ///
-    T fmax(T)(in T vala, in T valb);
+    T fmax(T)(in T vala, in T valb) if (isFloatingPoint!T);
 }
 else
 {
     static import std.math;
-    import std.traits: isFloatingPoint;
     ///
     T sqrt(T)(in T x) if (isFloatingPoint!T) { return std.math.sqrt(x); }
     ///
