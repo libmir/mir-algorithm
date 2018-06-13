@@ -9,6 +9,8 @@ Authors:   Ilya Yaroshenko
 +/
 module mir.math.common;
 
+import mir.internal.utility: isComplex;
+
 version(LDC)
 {
     static import ldc.attributes;
@@ -263,4 +265,17 @@ else
     T fmin(T)(in T x, in T y) if (isFloatingPoint!T) { return std.math.fmin(x, y); }
     ///
     T fmax(T)(in T x, in T y) if (isFloatingPoint!T) { return std.math.fmax(x, y); }
+}
+
+/// Overload for cdouble, cfloat and creal
+@optmath auto fabs(T)(in T x)
+    if (isComplex!T)
+{
+    return x.re * x.re + x.im * x.im;
+}
+
+///
+unittest
+{
+    assert(fabs(3 + 4i) == 25);
 }

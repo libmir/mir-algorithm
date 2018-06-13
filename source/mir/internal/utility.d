@@ -1,8 +1,8 @@
 ///
 module mir.internal.utility;
 
-import std.traits;
-import std.meta;
+import std.traits: Unqual, isFloatingPoint;
+private alias AliasSeq(T...) = T;
 
 ///
 alias Iota(size_t j) = Iota!(0, j);
