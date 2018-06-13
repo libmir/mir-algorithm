@@ -12,5 +12,5 @@ dub ./tests_extractor.d -i source -o out
 # compile the examples
 for file in $(find out -name "*.d") ; do
     echo "Testing: $file"
-    dmd -de -unittest -Isource -c -o- "$file"
+    $DMD -de -unittest -Isource -c -o- "$file"
 done
