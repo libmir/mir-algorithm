@@ -1414,8 +1414,7 @@ version(mir_test) unittest
         throw new Exception("total elements count is different or equals to zero");
     }
 
-    auto sl =
-        .iota!int(3, 4)
+    auto sl = iota!int(3, 4)
         .slice
         .universal
         .reversed!0;
@@ -1631,6 +1630,7 @@ Random access and slicing
 nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
+    import mir.ndslice.slice : sliced;
 
     auto elems = iota(4, 5).slice.flattened;
 
@@ -2326,6 +2326,8 @@ auto bytegroup(size_t pack, DestinationType, T)(auto ref T withAsSlice)
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
+    import mir.ndslice.slice : DeepElementType, sliced;
+
     ubyte[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
     auto int24ar = data[].bytegroup!(3, int); // 24 bit integers
@@ -2346,6 +2348,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
+    import mir.ndslice.slice : DeepElementType, sliced;
     ushort[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
     auto int48ar = data[].sliced.bytegroup!(3, long); // 48 bit integers
@@ -3038,6 +3041,7 @@ template as(T)
 @safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
+    import mir.ndslice.slice : Contiguous, Slice;
 
     Slice!(Contiguous, [2], double*)              matrix = slice!double([2, 2], 0);
     Slice!(Contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
@@ -3187,6 +3191,7 @@ auto pairwiseMapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable s
 unittest
 {
     import mir.functional: staticArray;
+    import mir.ndslice.slice : sliced;
     auto pairwiseIndexes =[2, 4, 10].sliced;
     auto sliceable = 10.iota;
 
@@ -3556,6 +3561,7 @@ template kronecker(alias fun = product)
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
+    import mir.ndslice.slice : sliced;
 
     // eye
     auto a = slice!double([4, 4], 0);
@@ -3593,6 +3599,7 @@ version(mir_test) unittest
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
+    import mir.ndslice.slice : sliced;
 
     auto a = [ 1,  2,
                3,  4].sliced(2, 2);

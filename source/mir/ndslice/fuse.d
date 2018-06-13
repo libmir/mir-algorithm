@@ -104,6 +104,7 @@ unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
+    import mir.ndslice.slice : Contiguous, Slice;
 
     enum ror = [
             [0, 1, 2, 3],
@@ -127,6 +128,7 @@ unittest
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
     import mir.ndslice.dynamic: transposed;
+    import mir.ndslice.slice : Contiguous, Slice;
 
     enum ror = [
         [0, 1, 2, 3],

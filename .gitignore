@@ -20,3 +20,5 @@ web
 docs
 *.html
 docs.json
+out/
+/tests_extractor.d
