@@ -45,6 +45,7 @@ unittest
 version(mir_test)
 unittest
 {
+    import std.traits : isFloatingPoint;
     static struct Quaternion(F)
         if (isFloatingPoint!F)
     {
@@ -250,6 +251,7 @@ version(mir_test)
 unittest
 {
     import core.simd;
+    import std.meta : AliasSeq;
     double2 a = 1, b = 2, c = 3, d = 6;
     with(Summation)
     {

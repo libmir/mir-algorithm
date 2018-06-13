@@ -38,10 +38,10 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
     /++
     Unbounded piecewise spline hermite interpolating polynomial.
     Params:
-        points = `x` values for interpolant
+        grid = `x` values for interpolant
         values = `f(x)` values for interpolant
     Constraints:
-        `points` and `values` must have the same length >= 3
+        `grid` and `values` must have the same length >= 3
     Returns: $(SUBREF spline, Spline)
     +/
     @fmamath Spline!(T, N, GridIterators) pchip(SliceKind ykind, yIterator)(

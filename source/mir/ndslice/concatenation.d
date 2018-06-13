@@ -140,6 +140,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
+    import mir.ndslice.slice : slicedNdField;
 
     // 0, 1, 2
     // 3, 4, 5
@@ -187,6 +188,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
+    import mir.ndslice.slice : slicedNdField;
 
     size_t i;
     auto a = 3.iota;

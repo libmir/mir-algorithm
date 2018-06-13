@@ -31,7 +31,6 @@ Fuses ndrange `r` into GC-allocated ndslice. Can be used to join rows or columns
 
 Params:
     Dimensions = (optional) indexes of dimensions to be brought to the first position
-    r = parallelotope (ndrange) with length/shape and input range primitives.
 Returns:
     ndslice
 +/
@@ -41,7 +40,10 @@ template fuse(Dimensions...)
     static if (!allSatisfy!(isSize_t, Dimensions))
         alias fuse = .fuse!(staticMap!(toSize_t, Dimensions));
     else
-    ///
+    /++
+    Params:
+        r = parallelotope (ndrange) with length/shape and input range primitives.
+    +/
     @optmath Slice!(Contiguous, [fuseDimensionCount!NDRange], FuseElementType!NDRange*) fuse(NDRange)(NDRange r)
         if (hasShape!NDRange)
     {
@@ -102,6 +104,7 @@ unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
+    import mir.ndslice.slice : Contiguous, Slice;
 
     enum ror = [
             [0, 1, 2, 3],
@@ -125,6 +128,7 @@ unittest
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
     import mir.ndslice.dynamic: transposed;
+    import mir.ndslice.slice : Contiguous, Slice;
 
     enum ror = [
         [0, 1, 2, 3],
@@ -211,7 +215,8 @@ private template FuseElementType(NDRange)
 /++
 Fuses `cells` into GC-allocated ndslice.
 
-Params: ndrange of ndcells, ndrange and ndcell should have `shape` and multidimensional input range primivies (`front!d`, `empty!d`, `popFront!d`).
+Params:
+    cells = ndrange of ndcells, ndrange and ndcell should have `shape` and multidimensional input range primivies (`front!d`, `empty!d`, `popFront!d`).
 Returns: ndslice composed of fused cells.
 See_also: $(SUBREF chunks, chunks)
 +/

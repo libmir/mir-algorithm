@@ -1284,7 +1284,7 @@ pure nothrow version(mir_test) unittest
 Returns a newly allocated associative array from a range of key/value tuples.
 
 Params:
-    r = index / time $(LREF Series), may not be sorted
+    series = index / time $(LREF Series), may not be sorted
 
 Returns: A newly allocated associative array out of elements of the input
 _series. Returns a null associative
@@ -1529,6 +1529,10 @@ pure version(mir_test) unittest
 
 /++
 Iterates union using three functions to handle each intersection case separately.
+Params:
+    lfun = binary function that accepts left side key (and left side value)
+    cfun = trinary function that accepts left side key, (left side value,) and right side value
+    rfun = binary function that accepts right side key (and right side value)
 +/
 template troykaGalop(alias lfun, alias cfun, alias rfun)
 {
@@ -1536,9 +1540,6 @@ template troykaGalop(alias lfun, alias cfun, alias rfun)
 
     /++
     Params:
-        lfun = binary function that accepts left side key and left side value
-        cfun = trinary function that accepts left side key, left side value, and right side value
-        rfun = binary function that accepts right side key and right side value
         lhs = left hand series
         rhs = right hand series
     +/
@@ -1612,9 +1613,6 @@ template troykaGalop(alias lfun, alias cfun, alias rfun)
 
     /++
     Params:
-        lfun = unary function that accepts left side key
-        cfun = binary function that accepts left side key and right side key
-        rfun = unary function that accepts right side key
         lhs = left hand input range
         rhs = right hand input range
     +/
