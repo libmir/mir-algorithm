@@ -28,8 +28,8 @@ branches:
     - master
 script:
  - travis_wait 100 dub test --arch "$ARCH"
+ - ./test_examples.sh
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
- - test_examples.sh
 after_success:
  - bash <(curl -s https://codecov.io/bash)
