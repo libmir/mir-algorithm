@@ -640,7 +640,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__)
     {
         import std.format: format;
-        return this.get(moment, new Exception(format("%s %s key", defaultMsg!(), moment)));
+        return this.get(moment, new Exception(format("%s %s key", defaultMsg!(), moment), file, line));
     }
 
     /// ditto
@@ -667,7 +667,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     auto ref getExtraVerbose(Index)(Index moment, string exceptionInto, string file = __FILE__, int line = __LINE__)
     {
         import std.format: format;
-        return this.get(moment, new Exception(format("%s. %s %s key", exceptionInto, defaultMsg!(), moment)));
+        return this.get(moment, new Exception(format("%s. %s %s key", exceptionInto, defaultMsg!(), moment), file, line));
     }
 
     /// ditto
