@@ -997,11 +997,9 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         enum defSpec = "%s" ~ f.keySeparator ~ "%s" ~ f.seqSeparator;
         auto fmtSpec = f.spec == '(' ? f.nested : defSpec;
 
-        size_t i = 0;
-
         if (f.spec == 's')
             put(w, f.seqBefore);
-        for (;;)
+        if (length) for (size_t i = 0;;)
         {
             auto fmt = Spec(fmtSpec);
             fmt.writeUpToNextSpec(w);
