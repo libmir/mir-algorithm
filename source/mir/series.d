@@ -984,6 +984,74 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     {
         return index.toConst.series(data.toConst);
     }
+
+    ///
+    void toString(Writer, Spec)(auto ref Writer w, const ref Spec f) const
+    {
+        import std.format: formatValue, formatElement;
+        import std.range: put;
+
+        if (f.spec != 's' && f.spec != '(')
+            throw new Exception("incompatible format character for Mir Series argument: %" ~ f.spec);
+
+        enum defSpec = "%s" ~ f.keySeparator ~ "%s" ~ f.seqSeparator;
+        auto fmtSpec = f.spec == '(' ? f.nested : defSpec;
+
+        size_t i = 0;
+
+        if (f.spec == 's')
+            put(w, f.seqBefore);
+        for (;;)
+        {
+            auto fmt = Spec(fmtSpec);
+            fmt.writeUpToNextSpec(w);
+            if (f.flDash)
+            {
+                formatValue(w, index[i], fmt);
+                fmt.writeUpToNextSpec(w);
+                formatValue(w, data[i], fmt);
+            }
+            else
+            {
+                formatElement(w, index[i], fmt);
+                fmt.writeUpToNextSpec(w);
+                formatElement(w, data[i], fmt);
+            }
+            if (f.sep !is null)
+            {
+                fmt.writeUpToNextSpec(w);
+                if (++i != length)
+                    put(w, f.sep);
+                else
+                    break;
+            }
+            else
+            {
+                if (++i != length)
+                    fmt.writeUpToNextSpec(w);
+                else
+                    break;
+            }
+        }
+        if (f.spec == 's')
+            put(w, f.seqAfter);
+    }
+
+    version(mir_test)
+    ///
+    unittest
+    {
+        import mir.series: series, sort;
+        auto s = ["b", "a"].series([9, 8]).sort;
+
+        import std.conv : to;
+        assert(s.to!string == `["a":8, "b":9]`);
+
+        import std.format : format;
+        assert("%s".format(s) == `["a":8, "b":9]`);
+        assert("%(%s %s | %)".format(s) == `"a" 8 | "b" 9`);
+        assert("%-(%s,%s\n%)\n".format(s) == "a,8\nb,9\n");
+    }
 }
 
 /// 1-dimensional data
