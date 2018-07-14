@@ -47,12 +47,12 @@ void main()
 }
 ```
 
-[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/on6YTM)
+[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/MV5tPC)
 
 #### Example (30 sec)
 ```d
 /+dub.sdl:
-dependency "mir-algorithm" version="~>0.9.1"
+dependency "mir-algorithm" version="~>1.1.1"
 +/
 void main()
 {
@@ -84,7 +84,7 @@ void main()
 }
 ```
 
-[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/gSlbMb)
+[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/gist/d98bdea7310ad7bd82731fe12ed892ea)
 
 ### Our sponsors
 
