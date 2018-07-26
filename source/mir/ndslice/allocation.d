@@ -203,6 +203,36 @@ version(mir_test)
 }
 
 /++
+Allocates an uninitialized aligned array and creates an n-dimensional slice over it.
+Params:
+    lengths = list of lengths for each dimension
+    alignment = memory alignment (bytes)
+Returns:
+    contiguous uninitialized n-dimensional slice
++/
+auto uninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @system
+{
+    immutable len = lengths.lengthsProduct;
+    import std.array : uninitializedArray;
+    auto barr = uninitializedArray!(byte[])(len * T.sizeof + alignment);
+    size_t offset = alignment + size_t.sizeof * 2 - 1;
+    void* basePtr = uninitializedArray!(byte[])(len * T.sizeof + offset).ptr;
+    void* alignedPtr = cast(void**)((cast(size_t)(basePtr) + offset) & ~(alignment - 1));
+    return (cast(T*) alignedPtr).sliced(lengths);
+}
+
+///
+version(mir_test)
+@system pure nothrow unittest
+{
+    auto tensor = uninitAlignedSlice!double([5, 6, 7], 64);
+    assert(tensor.length == 5);
+    assert(tensor.elementsCount == 5 * 6 * 7);
+    assert(cast(size_t)(tensor.ptr) % 64 == 0);
+    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], double*)));
+}
+
+/++
 Allocates an array through a specified allocator and creates an n-dimensional slice over it.
 See also $(MREF std, experimental, allocator).
 Params:
@@ -571,4 +601,45 @@ unittest
     
     s.stdcFreeSlice;
     t.stdcFreeSlice;
+}
+
+/++
+Allocates an uninitialized aligned array using `core.stdc.stdlib.malloc` and creates an n-dimensional slice over it.
+Params:
+    lengths = list of lengths for each dimension
+    alignment = memory alignment (bytes)
+Returns:
+    contiguous uninitialized n-dimensional slice
++/
+auto stdcUninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @system
+{
+    immutable len = lengths.lengthsProduct;
+    import mir.internal.memory: alignedAllocate;
+    auto arr = (cast(T*)alignedAllocate(len * T.sizeof, alignment))[0 .. len];
+    return arr.sliced(lengths);
+}
+
+///
+version(mir_test)
+@system pure nothrow unittest
+{
+    auto tensor = stdcUninitAlignedSlice!double([5, 6, 7], 64);
+    assert(tensor.length == 5);
+    assert(tensor.elementsCount == 5 * 6 * 7);
+    assert(cast(size_t)(tensor.ptr) % 64 == 0);
+    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], double*)));
+    stdcFreeAlignedSlice(tensor);
+}
+
+/++
+Frees aligned memory allocaged by CRuntime.
+Params:
+    slice = n-dimensional slice
+See_also:
+    $(LREF stdcSlice), $(LREF stdcUninitSlice)
++/
+void stdcFreeAlignedSlice(size_t[] packs, T)(Slice!(Contiguous, packs, T*) slice)
+{
+    import mir.internal.memory: alignedFree;
+    slice._iterator.alignedFree;
 }
