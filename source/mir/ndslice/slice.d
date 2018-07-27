@@ -22,7 +22,6 @@ $(T2 slicedNdField, Creates a slice on top of an ndField.)
 $(T2 kindOf, Extracts $(LREF SliceKind).)
 $(T2 packsOf, Extracts dimension packs from a $(LREF Slice). Alias for $(LREF isSlice).)
 $(T2 isSlice, Extracts dimension packs from a type. Extracts `null` if the template argument is not a `Slice`.)
-$(T2 DeepElementType, Extracts the element type of a $(LREF Slice).)
 $(T2 Structure, A tuple of lengths and strides.)
 )
 

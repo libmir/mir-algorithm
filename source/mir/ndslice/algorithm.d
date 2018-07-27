@@ -408,6 +408,19 @@ unittest
     assert(resT == 3);
 }
 
+/// Dlang Range API support.
+version(mir_test)
+unittest
+{
+    import mir.ndslice.algorithm: each;
+    import std.range: phobos_iota = iota;
+
+    int s;
+    // 0 1 2 3
+    4.phobos_iota.each!(i => s += i);
+    assert(s == 6);
+}
+
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
