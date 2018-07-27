@@ -13,6 +13,7 @@ $(T2 FlattenedIterator, $(SUBREF topology, flattened))
 $(T2 IndexIterator, $(SUBREF topology, indexed))
 $(T2 IotaIterator, $(SUBREF topology, iota))
 $(T2 MapIterator, $(SUBREF topology, map))
+$(T2 MemberIterator, $(SUBREF topology, member))
 $(T2 RetroIterator, $(SUBREF topology, retro))
 $(T2 SliceIterator, $(SUBREF topology, map) in composition with $(LREF MapIterator) for packed slices.)
 $(T2 SlideIterator, $(SUBREF topology, diff), $(SUBREF topology, pairwise), and $(SUBREF topology, slide).)
@@ -862,6 +863,58 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
 
     auto y = bar(data);
     assert(y == result);
+}
+
+/++
+`MemberIterator` is used by $(SUBREF topology, member).
++/
+struct MemberIterator(Iterator, string member)
+{
+@optmath:
+    ///
+    Iterator _iterator;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return MemberIterator!(LightConstOf!Iterator, member)(.lightConst(_iterator));
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return MemberIterator!(LightImmutableOf!Iterator, member)(.lightImmutable(_iterator));
+    }
+
+    auto ref opUnary(string op : "*")()
+    {
+        return __traits(getMember, *_iterator, member);
+    }
+
+    auto ref opIndex()(ptrdiff_t index)
+    {
+        return __traits(getMember, _iterator[index], member);
+    }
+
+    static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
+    {
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index)
+        {
+            return __traits(getMember, _iterator[index], member) = value;
+        }
+
+        auto ref opIndexUnary(string op)(ptrdiff_t index)
+        {
+            return mixin(op ~ "__traits(getMember, _iterator[index], member)");
+        }
+
+        auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
+        {
+            return mixin("__traits(getMember, _iterator[index], member)" ~ op ~ "= value");
+        }
+    }
+
+    mixin(std_ops);
 }
 
 /++

@@ -45,6 +45,7 @@ $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
 $(T2 mapSubSlices, Maps indexes pairs to subslices.)
+$(T2 member, Field (element's member) projection.)
 $(T2 pairwise, Pairwise map for vectors.)
 $(T2 pairwiseMapSubSlices, Maps pairwise indexes pairs to subslices.)
 $(T2 retro, Reverses order of iteration for all dimensions.)
@@ -5290,4 +5291,67 @@ version(mir_test) unittest
     auto slice = iota(3);
     auto x = slice.byDim!0;
     assert(x == slice);
+}
+
+/++
+Field (element's member) projection.
+
+Params:
+    name = element's member name
+Returns:
+    lazy n-dimensional slice of the same shape
+See_also:
+    $(LREF map)
++/
+
+template member(string name)
+    if (name.length)
+{
+    /++
+    Params:
+        slice = n-dimensional slice composed of structs, classes or unions
+    Returns:
+        lazy n-dimensional slice of the same shape
+    +/
+    Slice!(kind, packs, MemberIterator!(Iterator, name)) member(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    {
+        return typeof(return)(slice._lengths, slice._strides, MemberIterator!(Iterator, name)(slice._iterator));
+    }
+}
+
+///
+@safe pure unittest
+{
+    // struct, union or class
+    struct S
+    {
+        // Property support
+        // Getter always must be defined.
+        double _x;
+        double x() @property
+        {
+            return x;
+        }
+        void x(double x) @property
+        {
+            _x = x;
+        } 
+
+        /// Field support
+        double y;
+
+        /// Zero argument function support
+        double f()
+        {
+            return _x * 2;
+        }
+    }
+
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+
+    auto matrix = slice!S(2, 3);
+    matrix.member!"x"[] = [2, 3].iota;
+    matrix.member!"y"[] = matrix.member!"f";
+    assert(matrix.member!"y" == [2, 3].iota * 2);
 }
