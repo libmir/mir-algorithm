@@ -106,7 +106,7 @@ unittest
 	long e;
 	assert(r.prod(e) == reduce!"a * b"(1.0, [c, c, c]));
 	assert(e == 30);
-	assert(r.prod == reduce!"a * b"(1.0, [u, u, u])););
+	assert(r.prod == reduce!"a * b"(1.0, [u, u, u]));
 }
 
 /++
