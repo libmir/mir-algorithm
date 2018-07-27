@@ -3,20 +3,34 @@ This is a submodule of $(MREF mir,ndslice).
 
 It contains allocation utilities.
 
-$(BOOKTABLE $(H2 Transpose operators),
+$(BOOKTABLE $(H2 GC Allocation utilities),
+$(TR $(TH Function Name) $(TH Description))
+$(T2 slice, Allocates a slice using GC.)
+$(T2 shape, Returns a shape of a common n-dimensional array. )
+$(T2 ndarray, Allocates a common n-dimensional array from a slice. )
+$(T2 uninitSlice, Allocates an uninitialized slice using GC. )
+)
+
+$(BOOKTABLE $(H2 Custom allocation utilities),
 $(TR $(TH Function Name) $(TH Description))
 $(T2 makeNdarray, Allocates a common n-dimensional array from a slice using an allocator. )
 $(T2 makeSlice, Allocates a slice using an allocator. )
 $(T2 makeUninitSlice, Allocates an uninitialized slice using an allocator. )
-$(T2 ndarray, Allocates a common n-dimensional array from a slice. )
-$(T2 shape, Returns a shape of a common n-dimensional array. )
-$(T2 slice, Allocates a slice using GC.)
-$(T2 uninitSlice, Allocates an uninitialized slice using GC. )
-$(T2 stdcSlice, Allocates a slice copy using `core.stdc.stdlib.malloc`)
-$(T2 stdcFreeSlice, Frees memory using `core.stdc.stdlib.free`)
-$(T2 stdcUninitSlice, Allocates an uninitialized slice using `core.stdc.stdlib.malloc`.)
 )
 
+$(BOOKTABLE $(H2 CRuntime allocation utilities),
+$(TR $(TH Function Name) $(TH Description))
+$(T2 stdcSlice, Allocates a slice copy using `core.stdc.stdlib.malloc`)
+$(T2 stdcUninitSlice, Allocates an uninitialized slice using `core.stdc.stdlib.malloc`.)
+$(T2 stdcFreeSlice, Frees memory using `core.stdc.stdlib.free`)
+)
+
+$(BOOKTABLE $(H2 Aligned allocation utilities),
+$(TR $(TH Function Name) $(TH Description))
+$(T2 uninitAlignedSlice, Allocates an uninitialized aligned slice using GC. )
+$(T2 stdcUninitAlignedSlice, Allocates an uninitialized aligned slice using CRuntime.)
+$(T2 stdcFreeSlice, Frees memory using CRuntime)
+)
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-, Ilya Yaroshenko
@@ -39,7 +53,7 @@ import mir.ndslice.field: BitwiseField;
 @optmath:
 
 /++
-Allocates an array and creates an n-dimensional slice over it.
+Allocates an an n-dimensional slice.
 Params:
     lengths = List of lengths for each dimension.
     init = Value to initialize with (optional).
@@ -178,7 +192,7 @@ Slice!(Contiguous, [N], FieldIterator!(BitwiseField!(size_t*))) bitSlice(size_t 
 }
 
 /++
-Allocates an uninitialized array and creates an n-dimensional slice over it.
+Allocates an uninitialized an n-dimensional slice.
 Params:
     lengths = list of lengths for each dimension
 Returns:
@@ -203,7 +217,7 @@ version(mir_test)
 }
 
 /++
-Allocates an uninitialized aligned array and creates an n-dimensional slice over it.
+Allocates an uninitialized aligned an n-dimensional slice.
 Params:
     lengths = list of lengths for each dimension
     alignment = memory alignment (bytes)
