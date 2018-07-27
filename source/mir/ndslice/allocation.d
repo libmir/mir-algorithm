@@ -214,11 +214,11 @@ auto uninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @system
 {
     immutable len = lengths.lengthsProduct;
     import std.array : uninitializedArray;
-    auto barr = uninitializedArray!(byte[])(len * T.sizeof + alignment);
-    size_t offset = alignment + size_t.sizeof * 2 - 1;
+    assert((alignment != 0) && ((alignment & (alignment - 1)) == 0), "'alignment' must be a power of two");
+    size_t offset = alignment <= 16 ? 0 : alignment - 1;
     void* basePtr = uninitializedArray!(byte[])(len * T.sizeof + offset).ptr;
-    void* alignedPtr = cast(void**)((cast(size_t)(basePtr) + offset) & ~(alignment - 1));
-    return (cast(T*) alignedPtr).sliced(lengths);
+    T* alignedPtr = cast(T*)((cast(size_t)(basePtr) + offset) & ~offset);
+    return alignedPtr.sliced(lengths);
 }
 
 ///
@@ -226,6 +226,7 @@ version(mir_test)
 @system pure nothrow unittest
 {
     auto tensor = uninitAlignedSlice!double([5, 6, 7], 64);
+    tensor[] = 0;
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
     assert(cast(size_t)(tensor.ptr) % 64 == 0);
