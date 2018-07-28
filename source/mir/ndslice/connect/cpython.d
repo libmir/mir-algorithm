@@ -75,8 +75,9 @@ PythonBufferErrorCode fromPythonBuffer(T, size_t N, Kind kind)(ref Slice!(T*, N,
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
+    import mir.ndslice.slice: Slice;
     auto bar(ref const Py_buffer view)
     {
         Slice!(const(double)*, 2) mat = void;
