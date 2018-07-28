@@ -2016,7 +2016,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     import mir.ndslice.iterator: FieldIterator;
     import mir.ndslice.field: BitwiseField;
     static if (__traits(isSame, fun, naryFun!"a") && 
-        is(S : Slice!(Iterator),
+        is(S : Slice!Iterator,
             Iterator : FieldIterator!BWF,
             BWF : BitwiseField!Field, Field))
     {

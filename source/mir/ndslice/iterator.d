@@ -1644,14 +1644,14 @@ struct StairsIterator(Iterator)
 @optmath:
 
     ///
-    Slice!(Iterator) opUnary(string op : "*")()
+    Slice!Iterator opUnary(string op : "*")()
     {
         import mir.ndslice.slice: sliced;
         return _iterator.sliced(_length);
     }
 
     ///
-    Slice!(Iterator) opIndex()(ptrdiff_t index)
+    Slice!Iterator opIndex()(ptrdiff_t index)
     {
         import mir.ndslice.slice: sliced;
         auto newLength = _length + index;

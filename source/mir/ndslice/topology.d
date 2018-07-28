@@ -3532,7 +3532,7 @@ Returns:
 
 See_also: $(LREF ._stairs.2)
 +/
-auto stairs(string type, Iterator)(Slice!(Iterator) slice, size_t n)
+auto stairs(string type, Iterator)(Slice!Iterator slice, size_t n)
     if (type == "+" || type == "-")
 {
     assert(slice.length == (n + 1) * n / 2, "stairs: slice length must be equal to n * (n + 1) / 2, where n is stairs count.");
