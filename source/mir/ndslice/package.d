@@ -505,16 +505,17 @@ version(mir_test) unittest
 }
 
 // relaxed example
-version(none) version(mir_test) unittest
+version(mir_test) unittest
 {
     import mir.qualifier;
 
-    static ContiguousSlice!(3, ubyte) movingWindowByChannel
-    (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(LightConstOf!(UniversalMatrix!ubyte)) filter)
+    static Slice!(ubyte*, 3) movingWindowByChannel
+    (Slice!(ubyte*, 3, Universal) image, size_t nr, size_t nc, ubyte delegate(LightConstOf!(Slice!(ubyte*, 2, Universal))) filter)
     {
         return image
             .pack!1
             .windows(nr, nc)
+            .unpack
             .unpack
             .transposed!(0, 1, 4)
             .pack!2
@@ -592,7 +593,7 @@ version(none) version(mir_test) unittest
     assert(t1 == iota([6], 12));
 }
 
-pure nothrow version(mir_test2) unittest
+pure nothrow version(mir_test) unittest
 {
     import std.algorithm.comparison : equal;
     import std.range : iota;

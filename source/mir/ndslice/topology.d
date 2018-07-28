@@ -984,9 +984,7 @@ pure nothrow version(mir_test) unittest
         .pack!1
         .evertPack
         .blocks(3)
-        .unpack
-        .unpack
-        .pack!2;
+        .unpack;
 
     int i;
     foreach (block; blocks)
@@ -1118,10 +1116,7 @@ version(mir_test) unittest
         .pack!1
         .evertPack
         .windows(3)
-        .unpack
-        .unpack
-        .pack!2;
-
+        .unpack;
 
     foreach (window; windows)
         window[] += 1;

@@ -152,16 +152,16 @@ PythonBufferErrorCode toPythonBuffer(T, size_t N, Kind kind)(Slice!(T*, N, kind)
     /// ! structure verification ! ///
     static if (kind == Contiguous)
     {
-        // static if (N != 1)
-        // {
-        //     if ((flags & PyBuf_f_contiguous) == PyBuf_f_contiguous)
-        //     {
-        //         import mir.ndslice.dynamic: everted;
-        //         import mir.ndslice.topology: iota;
-        //         if (slice.everted.shape.iota.everted.strides != slice.strides)
-        //             return cannot_create_f_contiguous_buffer;
-        //     }
-        // }
+        static if (N != 1)
+        {
+            if ((flags & PyBuf_f_contiguous) == PyBuf_f_contiguous)
+            {
+                import mir.ndslice.dynamic: everted;
+                import mir.ndslice.topology: iota;
+                if (slice.everted.shape.iota.everted.strides != slice.strides)
+                    return cannot_create_f_contiguous_buffer;
+            }
+        }
     }
     else
     {
@@ -186,33 +186,33 @@ PythonBufferErrorCode toPythonBuffer(T, size_t N, Kind kind)(Slice!(T*, N, kind)
         }
     }
 
-    // /// readonly ///
-    // static if (is(T == const) || is(T == immutable))
-    // {
-    //     if (flags & PyBuf_writable)
-    //         return typeof(return).cannot_create_writable_buffer;
-    //     view.readonly = 1;
-    // }
-    // else
-    //     view.readonly = 0;
+    /// readonly ///
+    static if (is(T == const) || is(T == immutable))
+    {
+        if (flags & PyBuf_writable)
+            return typeof(return).cannot_create_writable_buffer;
+        view.readonly = 1;
+    }
+    else
+        view.readonly = 0;
 
-    // /// format ///
-    // if (flags & PyBuf_format)
-    // {
-    //     enum fmt = pythonBufferFormat!(Unqual!T);
-    //     static if (fmt is null)
-    //         return typeof(return).cannot_create_format_string;
-    //     else
-    //         view.format = cast(char*)fmt.ptr;
-    // }
-    // else
-    //     view.format = null;
+    /// format ///
+    if (flags & PyBuf_format)
+    {
+        enum fmt = pythonBufferFormat!(Unqual!T);
+        static if (fmt is null)
+            return typeof(return).cannot_create_format_string;
+        else
+            view.format = cast(char*)fmt.ptr;
+    }
+    else
+        view.format = null;
     
     return typeof(return).success;
 }
 
 ///
-version(mir_test2) unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : Slice, Structure, Universal;
     Py_buffer bar(Slice!(double*, 2, Universal) slice)
@@ -227,16 +227,16 @@ version(mir_test2) unittest
 
         if (auto error = slice.toPythonBuffer(view, PyBuf_records_ro, *structurePtr))
         {
-            // view = view.init; // null buffer
-            // structurePtr.free;
+            view = view.init; // null buffer
+            structurePtr.free;
         }
         else
         {
-            // assert(cast(sizediff_t*)&structurePtr.lengths == view.shape);
-            // assert(cast(sizediff_t*)&structurePtr.strides == view.strides);
+            assert(cast(sizediff_t*)&structurePtr.lengths == view.shape);
+            assert(cast(sizediff_t*)&structurePtr.strides == view.strides);
         }
 
-        return Py_buffer.init;
+        return view;
     }
 }
 
