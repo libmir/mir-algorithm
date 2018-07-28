@@ -122,7 +122,7 @@ template _iotaArgs(size_t length, string prefix, string suffix)
         enum _iotaArgs = "";
 }
 
-alias _IteratorOf(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator) = Iterator;
+alias _IteratorOf(T : Slice!(Iterator, N, kind), Iterator, size_t N, Kind kind) = Iterator;
 
 E maxElem(E)(E[] arr...)
 {
@@ -150,22 +150,15 @@ size_t sum()(size_t[] packs)
     return s;
 }
 
-size_t[] decDim()(size_t[] packs)
-{
-    packs[0]--;
-    if (packs[0] == 0)
-        packs = packs[1 .. $];
-    return packs;
-}
 
-size_t[] reverse()(size_t[] packs)
+size_t[] reverse()(size_t[] ar)
 {
-    foreach(i, e; packs[0..$/2])
+    foreach(i, e; ar[0..$/2])
     {
-        packs[i] = packs[$ - i - 1];
-        packs[$ - i - 1] = e;
+        ar[i] = ar[$ - i - 1];
+        ar[$ - i - 1] = e;
     }
-    return packs;
+    return ar;
 }
 
 enum indexError(size_t pos, size_t N) =
@@ -187,15 +180,15 @@ _____";
 
 mixin template DimensionsCountCTError()
 {
-    static assert(Dimensions.length <= packs[0],
+    static assert(Dimensions.length <= N,
         "Dimensions list length = " ~ Dimensions.length.stringof
-        ~ " should be less than or equal to packs[0] = " ~ packs[0].stringof
+        ~ " should be less than or equal to N = " ~ N.stringof
         ~ tailErrorMessage!());
 }
 
 enum DimensionsCountRTError = q{
-    assert(dimensions.length <= packs[0],
-        "Dimensions list length should be less than or equal to packs[0] = " ~ packs[0].stringof
+    assert(dimensions.length <= N,
+        "Dimensions list length should be less than or equal to N = " ~ N.stringof
         ~ tailErrorMessage!());
 };
 
@@ -205,9 +198,9 @@ mixin template DimensionCTError()
         "dimension = " ~ dimension.stringof ~ " at position "
         ~ i.stringof ~ " should be greater than or equal to 0"
         ~ tailErrorMessage!());
-    static assert(dimension < packs[0],
+    static assert(dimension < N,
         "dimension = " ~ dimension.stringof ~ " at position "
-        ~ i.stringof ~ " should be less than packs[0] = " ~ packs[0].stringof
+        ~ i.stringof ~ " should be less than N = " ~ N.stringof
         ~ tailErrorMessage!());
     static assert(dimension < slice.S,
         "dimension = " ~ dimension.stringof ~ " at position "
@@ -220,7 +213,7 @@ enum DimensionRTError = q{
     static if (isSigned!(typeof(dimension)))
     assert(dimension >= 0, "dimension should be greater than or equal to 0"
         ~ tailErrorMessage!());
-    assert(dimension < packs[0], "dimension should be less than packs[0] = " ~ packs[0].stringof
+    assert(dimension < N, "dimension should be less than N = " ~ N.stringof
         ~ tailErrorMessage!());
     assert(dimension < slice.S,
         "dimension should be less than " ~ slice.S.stringof ~ ". "

@@ -23,14 +23,14 @@ See also C++ $(HTTPS github.com/libmir/mir-algorithm/blob/master/include/ndslice
 unittest
 {
     // extern(C++, ndslice) - ndslice namespace
-    struct CppSlice(SliceKind kind, int N, Iterator)
+    struct CppSlice(Iterator, size_t N = 1, Kind kind = Contiguous)
     {extern(D):
         ///
-        Slice!(kind, [N], Iterator) _slice;
+        Slice!(Iterator, N, kind) _slice;
         ///
         alias _slice this;
         ///
-        this()(Slice!(kind, [N], Iterator) slice)
+        this()(Slice!(Iterator, N, kind) slice)
         {
             this._slice = slice;
         }
@@ -40,7 +40,7 @@ unittest
 ///
 unittest
 {
-    static extern(C++) void fillEye(CppContiguousMatrix!double matrix)
+    static extern(C++) void fillEye(CppSlice!(double*, 2) matrix)
     {
         import mir.ndslice.topology: diagonal;
         matrix[] = 0;
@@ -54,42 +54,25 @@ unittest
     mat.stdcFreeSlice;
 }
 
-public import mir.ndslice.slice: SliceKind, Universal, Contiguous, Canonical;
+public import mir.ndslice.slice: Kind, Universal, Contiguous, Canonical;
 import mir.ndslice.slice;
 
 /// Converts $(SUBREF _slice, Slice) to appropriate $(LREF CppSlice) type.
-CppSlice!(kind, packs[0], Iterator) cppSlice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+CppSlice!(Iterator, N, kind) cppSlice(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
 {
     return typeof(return)(slice);
 }
 
 /// Wrapper for C++ mangling
-extern(C++, ndslice) struct CppSlice(SliceKind kind, int N, Iterator)
+extern(C++, ndslice) struct CppSlice(Iterator, size_t N = 1, Kind kind = Contiguous)
 {extern(D):
     ///
-    Slice!(kind, [N], Iterator) _slice;
+    Slice!(Iterator, N, kind) _slice;
     ///
     alias _slice this;
     ///
-    this()(Slice!(kind, [N], Iterator) slice)
+    this()(Slice!(Iterator, N, kind) slice)
     {
         this._slice = slice;
     }
 }
-
-/// Aliases
-alias CppContiguousVector (T) = CppContiguousSlice!(1, T);
-/// ditto
-alias CppUniversalVector (T) = CppUniversalSlice!(1, T);
-/// ditto
-alias CppContiguousMatrix (T) = CppContiguousSlice!(2, T);
-/// ditto
-alias CppCanonicalMatrix (T) = CppCanonicalSlice!(2, T);
-/// ditto
-alias CppUniversalMatrix (T) = CppUniversalSlice!(2, T);
-/// ditto
-alias CppContiguousSlice (int dim, T) = CppSlice!(Contiguous, dim, T*);
-/// ditto
-alias CppCanonicalSlice (int dim, T) = CppSlice!(Canonical, dim, T*);
-/// ditto
-alias CppUniversalSlice (int dim, T) = CppSlice!(Universal, dim, T*);

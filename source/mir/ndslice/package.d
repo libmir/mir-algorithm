@@ -92,7 +92,7 @@ $(TR $(TDNW $(SUBMODULE slice) $(BR)
         $(SUBREF slice, sliced)
         $(SUBREF slice, slicedField)
         $(SUBREF slice, slicedNdField)
-        $(SUBREF slice, SliceKind)
+        $(SUBREF slice, Kind)
         $(SUBREF slice, Structure)
         $(SUBREF slice, Universal)
     )
@@ -159,7 +159,6 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
         $(SUBREF topology, stairs)
         $(SUBREF topology, stride)
         $(SUBREF topology, universal)
-        $(SUBREF topology, unpack)
         $(SUBREF topology, unzip)
         $(SUBREF topology, windows)
         $(SUBREF topology, zip)
@@ -344,7 +343,7 @@ Returns:
         where с is the number of channels in the image.
         Dense data layout is guaranteed.
 +/
-Slice!(Contiguous, [3], ubyte*) movingWindowByChannel
+Slice!(ubyte*, 3) movingWindowByChannel
 (Slice!(Universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(Universal, [2], ubyte*)) filter)
 {
         // 0. 3D
@@ -506,7 +505,7 @@ version(mir_test) unittest
 }
 
 // relaxed example
-version(mir_test) unittest
+version(none) version(mir_test) unittest
 {
     import mir.qualifier;
 
@@ -523,7 +522,7 @@ version(mir_test) unittest
             .slice;
     }
 
-    static T median(Iterator, T)(Slice!(Universal, [2], Iterator) sl, T[] buf)
+    static T median(Iterator, T)(Slice!(Iterator,  2, Universal) sl, T[] buf)
     {
         import std.algorithm.sorting : topN;
         // copy sl to the buffer
@@ -593,7 +592,7 @@ version(mir_test) unittest
     assert(t1 == iota([6], 12));
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_test2) unittest
 {
     import std.algorithm.comparison : equal;
     import std.range : iota;
@@ -677,7 +676,7 @@ pure nothrow version(mir_test) unittest
     assert(t1[3] == 200);
     assert(t1[4] == 200);
 
-    t1[] *= t1[];
+    t1[].opIndexOpAssign!"*"(t1);
     assert(t1[3] == 40000);
     assert(t1[4] == 40000);
 

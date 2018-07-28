@@ -129,9 +129,8 @@ template sort(alias less = "a < b")
     {
 @optmath:
         ///
-        Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
-            (Slice!(kind, packs, Iterator) slice)
-            if (packs.length == 1)
+        Slice!(Iterator, N, kind) sort(Iterator, size_t N, Kind kind)
+            (Slice!(Iterator, N, kind) slice)
         {
             if (false) // break safety
             {
@@ -143,7 +142,7 @@ template sort(alias less = "a < b")
             import mir.ndslice.topology: flattened;
             if (slice.anyEmpty)
                 return slice;
-            slice.flattened.quickSortImpl!less;
+            .quickSortImpl!less(slice.flattened);
             return slice;
         }
 
@@ -172,12 +171,12 @@ template sort(alias less = "a < b")
     assert(data.pairwise!"a <= b".all);
 }
 
-void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice) @trusted
+void quickSortImpl(alias less, Iterator)(Slice!Iterator slice) @trusted
 {
     import mir.utility : swap, swapStars;
 
     enum  max_depth = 64;
-    enum naive_est = 1024 / slice.ElemType!0.sizeof;
+    enum naive_est = 1024 / slice.Element!0.sizeof;
     enum size_t naive = 32 > naive_est ? 32 : naive_est;
     //enum size_t naive = 1;
     static assert(naive >= 1);

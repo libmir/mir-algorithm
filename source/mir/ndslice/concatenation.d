@@ -116,11 +116,12 @@ version(mir_test) unittest
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: repeat, iota;
 
+    // 0 0 0
+    auto vector = size_t.init.repeat([3]);
+
     // 1 2 3
     // 4 5 6
     auto matrix = iota([2, 3], 1);
-    // 0 0 0
-    auto vector = size_t.init.repeat([3]);
 
     assert(concatenation(vector, matrix).slice == [
         [0, 0, 0],
@@ -203,7 +204,7 @@ version(mir_test) unittest
     auto d = slice!double(s.length);
     d[] = s;
     assert(d == s.length.iota);
-    d[] += s;
+    d.opIndexOpAssign!"+"(s);
     assert(d == iota([s.length], 0, 2));
 
     // lazy ndslice view
@@ -268,7 +269,7 @@ struct Concatenation(size_t dim, Slices...)
 
     static assert(dim < N);
 
-    alias DeepElemType = CommonType!(staticMap!(DeepElementType, Slices));
+    alias DeepElement = CommonType!(staticMap!(DeepElementType, Slices));
 
     /// Length primitive
     size_t length(size_t d = 0)() const @property
@@ -564,8 +565,7 @@ Params:
 Returns: $(LREF Concatenation)
 See_also: $(LREF ._concatenation) examples.
 +/
-auto padWrap(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
-    if (N == packs[0])
+auto padWrap(string direction = "both", Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
 {
     return .padWrap!([Iota!N], [Repeat!(N, direction)])(s, lengths);
 }
@@ -628,7 +628,7 @@ template padWrap(size_t[] dimensions, string[] directions)
     Returns: $(LREF Concatenation)
     See_also: $(LREF ._concatenation) examples.
     +/
-    auto padWrap(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
+    auto padWrap(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
     {
         enum d = dimensions[$ - 1];
         enum q = directions[$ - 1];
@@ -733,8 +733,7 @@ Params:
 Returns: $(LREF Concatenation)
 See_also: $(LREF ._concatenation) examples.
 +/
-auto padSymmetric(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
-    if (N == packs[0])
+auto padSymmetric(string direction = "both", Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
 {
     return .padSymmetric!([Iota!N], [Repeat!(N, direction)])(s, lengths);
 }
@@ -797,8 +796,7 @@ template padSymmetric(size_t[] dimensions, string[] directions)
     Returns: $(LREF Concatenation)
     See_also: $(LREF ._concatenation) examples.
     +/
-    auto padSymmetric(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
-        if (packs.length == 1)
+    auto padSymmetric(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
     {
         enum d = dimensions[$ - 1];
         enum q = directions[$ - 1];
@@ -815,12 +813,12 @@ template padSymmetric(size_t[] dimensions, string[] directions)
             alias __s = s;
         }
 
-        static if (kind == Universal || d != packs[0] - 1 || packs.length > 1)
+        static if (kind == Universal || d != N - 1)
         {
             auto _s = __s.reversed!d;
         }
         else
-        static if (packs[0] == 1)
+        static if (N == 1)
         {
             import mir.ndslice.topology: retro;
             auto _s = s.retro;
@@ -828,7 +826,7 @@ template padSymmetric(size_t[] dimensions, string[] directions)
         else
         {
             import mir.ndslice.topology: retro;
-            auto _s = __s.retro.reversed!(Iota!d, Iota!(d + 1, packs[0]));
+            auto _s = __s.retro.reversed!(Iota!d, Iota!(d + 1, N));
         }
 
         assert(lengths[$ - 1] <= s.length!d);
@@ -921,8 +919,7 @@ Params:
 Returns: $(LREF Concatenation)
 See_also: $(LREF ._concatenation) examples.
 +/
-auto padEdge(string direction = "both", SliceKind kind, size_t[] packs, Iterator, size_t N)(Slice!(kind, packs, Iterator) s, size_t[N] lengths...)
-    if (N == packs[0])
+auto padEdge(string direction = "both", Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
 {
     return .padEdge!([Iota!N], [Repeat!(N, direction)])(s, lengths);
 }
@@ -985,17 +982,17 @@ template padEdge(size_t[] dimensions, string[] directions)
     Returns: $(LREF Concatenation)
     See_also: $(LREF ._concatenation) examples.
     +/
-    auto padEdge(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) s, size_t[dimensions.length] lengths...)
+    auto padEdge(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
     {
         enum d = dimensions[$ - 1];
         enum q = directions[$ - 1];
 
-        static if (kind == Universal || kind == Canonical && packs.length > 1)
+        static if (kind == Universal)
         {
             alias _s = s;
         }
         else
-        static if (packs.length > 1 || d != packs[0] - 1)
+        static if (d != N - 1)
         {
             import mir.ndslice.topology: canonical;
             auto _s = s.canonical;
@@ -1107,9 +1104,9 @@ template forEachFragment(alias pred)
         Params:
             sl = $(SUBREF slice, Slice)
         +/
-        void forEachFragment(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) sl)
+        void forEachFragment(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) sl)
         {
-            static if (packs[0] == 1)
+            static if (N == 1)
             {
                 pred(sl);
             }
@@ -1177,9 +1174,9 @@ template until(alias pred)
         Params:
             sl = $(SUBREF slice, Slice)
         +/
-        bool until(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) sl)
+        bool until(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) sl)
         {
-            static if (packs[0] == 1)
+            static if (N == 1)
             {
                 pragma(inline, false);
                 alias f = pred;

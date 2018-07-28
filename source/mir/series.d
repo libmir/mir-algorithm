@@ -182,7 +182,7 @@ auto observation(Index, Data)(Index index, Data data)
 /++
 Convinient alias for 1D Contiguous $(LREF Series).
 +/
-alias SeriesMap(K, V) = Series!(K*, Contiguous, [1], V*);
+alias SeriesMap(K, V) = Series!(K*, V*);
 
 ///
 version(mir_test) unittest
@@ -190,7 +190,7 @@ version(mir_test) unittest
     import std.traits;
     import mir.series;
 
-    static assert (is(SeriesMap!(string, double) == Series!(string*, Contiguous, [1], double*)));
+    static assert (is(SeriesMap!(string, double) == Series!(string*, double*)));
 
     /// LHS, RHS
     static assert (isAssignable!(SeriesMap!(string, double), typeof(null)));
@@ -216,14 +216,14 @@ Plain index series data structure.
 Index is assumed to be sorted.
 $(LREF sort) can be used to normalise a series.
 +/
-struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
+struct Series(IndexIterator, Iterator, size_t N = 1, Kind kind = Contiguous)
 {
     import std.range: SearchPolicy, assumeSorted;
 
-    private enum doUnittest = is(typeof(this) == Series!(int*, Contiguous, [1], double*));
+    private enum doUnittest = is(typeof(this) == Series!(int*, double*));
 
     ///
-    Slice!(kind, packs, Iterator) _data;
+    Slice!(Iterator, N, kind) _data;
 
     ///
     IndexIterator _index;
@@ -252,7 +252,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 @optmath:
 
     ///
-    this()(Slice!(Contiguous, [1], IndexIterator) index, Slice!(kind, packs, Iterator) data)
+    this()(Slice!IndexIterator index, Slice!(Iterator, N, kind) data)
     {
         assert(index.length == data.length, "Series constructor: index and data lengths must be equal.");
         _data = data;
@@ -268,7 +268,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     ///
-    bool opEquals(RhsIndexIterator, SliceKind rhsKind, size_t[] rhsPacks, RhsIterator)(Series!(RhsIndexIterator, rhsKind, rhsPacks, RhsIterator) rhs) const
+    bool opEquals(RIndexIterator, RIterator, size_t RN, Kind rkind, )(Series!(RIndexIterator, RIterator, RN, rkind) rhs) const
     {
         return this.index == rhs.index && this.data == rhs.data;
     }
@@ -317,14 +317,12 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return _data[];
     }
 
-    static if (packs == [1])
     ///
     typeof(this) opBinary(string op : "~")(typeof(this) rhs)
     {
         return unionSeries(this, rhs);
     }
 
-    static if (packs == [1])
     /// ditto
     auto opBinary(string op : "~")(const typeof(this) rhs) const
     {
@@ -399,10 +397,10 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Params:
         r = rvalue index-series
     +/
-    void opIndexAssign(IndexIterator_, SliceKind kind_, size_t[] packs_, Iterator_)
-        (Series!(IndexIterator_, kind_, packs_, Iterator_) r)
+    void opIndexAssign(IndexIterator_, Iterator_, size_t N_, Kind kind_)
+        (Series!(IndexIterator_, Iterator_, N_, kind_) r)
     {
-        opIndexOpAssign!("", IndexIterator_, kind_, packs_, Iterator_)(r);
+        opIndexOpAssign!("", IndexIterator_, Iterator_, N_, kind_)(r);
     }
 
     static if (doUnittest)
@@ -431,8 +429,8 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     Params:
         r = rvalue index-series
     +/
-    void opIndexOpAssign(string op, IndexIterator_, SliceKind kind_, size_t[] packs_, Iterator_)
-        (Series!(IndexIterator_, kind_, packs_, Iterator_) r)
+    void opIndexOpAssign(string op, IndexIterator_, Iterator_, size_t N_, Kind kind_)
+        (Series!(IndexIterator_, Iterator_, N_, kind_) r)
     {
         auto l = this;
         if (r.empty)
@@ -453,7 +451,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         if (lf < rf)
             goto L;
     E:
-        static if (packs != [1])
+        static if (N != 1)
             mixin("l.data.front[] " ~ op ~ "= r.data.front;");
         else
             mixin("l.data.front   " ~ op ~ "= r.data.front;");
@@ -689,7 +687,6 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         return idx < _data._lengths[0] && index[idx] == moment;
     }
 
-    static if (packs == [1])
     ///
     auto opBinaryRight(string op : "in", Index)(Index moment)
     {
@@ -707,14 +704,12 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
         }
     }
 
-    static if (packs == [1])
     /// ditto
     auto opBinaryRight(string op : "in", Index)(Index moment) const
     {
         return moment in this[];
     }
 
-    static if (packs == [1])
     /// ditto
     auto opBinaryRight(string op : "in", Index)(Index moment) immutable
     {
@@ -752,7 +747,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     auto asSlice()() @property
     {
         import mir.ndslice.topology: zip, map, ipack;
-        static if (packs == [1])
+        static if (N == 1)
             return index.zip(data);
         else
             return index.zip(data.ipack!1.map!"a");
@@ -772,21 +767,21 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ndslice-like primitives
     bool empty(size_t dimension = 0)() const @property
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         return !length!dimension;
     }
 
     /// ditto
     size_t length(size_t dimension = 0)() const @property
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         return _data.length!dimension;
     }
 
     /// ditto
     auto front(size_t dimension = 0)() @property
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         assert(!empty!dimension);
         static if (dimension)
@@ -801,7 +796,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     auto back(size_t dimension = 0)() @property
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         assert(!empty!dimension);
         static if (dimension)
@@ -816,7 +811,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     void popFront(size_t dimension = 0)() @trusted
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         assert(!empty!dimension);
         static if (dimension == 0)
@@ -826,7 +821,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     void popBack(size_t dimension = 0)()
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         assert(!empty!dimension);
         _data.popBack!dimension;
@@ -834,7 +829,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     void popFrontExactly(size_t dimension = 0)(size_t n) @trusted
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         assert(length!dimension >= n);
         static if (dimension == 0)
@@ -844,7 +839,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     void popBackExactly(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         assert(length!dimension >= n);
         _data.popBackExactly!dimension(n);
@@ -852,7 +847,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     void popFrontN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         auto len = length!dimension;
         n = n <= len ? n : len;
@@ -861,7 +856,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     void popBackN(size_t dimension = 0)(size_t n)
-        if (dimension < packs[0])
+        if (dimension < N)
     {
         auto len = length!dimension;
         n = n <= len ? n : len;
@@ -870,7 +865,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     /// ditto
     _Slice!() opSlice(size_t dimension)(size_t i, size_t j) const
-        if (dimension < packs[0])
+        if (dimension < N)
     in
     {
         assert(i <= j,
@@ -925,7 +920,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref Series!(RIndexIterator, kind, packs, RIterator) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref Series!(RIndexIterator, RIterator, N, kind) rvalue)
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
         this._data._lengths = rvalue._data._lengths;
@@ -936,14 +931,14 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, kind, packs, RIterator) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, RIterator, N, kind) rvalue)
         if (isAssignable!(IndexIterator, LightConstOf!RIndexIterator) && isAssignable!(Iterator, LightConstOf!RIterator))
     {
         return this = rvalue[];
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, kind, packs, RIterator) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, RIterator, N, kind) rvalue)
         if (isAssignable!(IndexIterator, LightImmutableOf!RIndexIterator) && isAssignable!(Iterator, LightImmutableOf!RIterator))
     {
         return this = rvalue[];
@@ -1074,11 +1069,11 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 
     // slicing type deduction for const / immutable series
     static assert(is(typeof(series[]) == 
-        Series!(int*, cast(SliceKind)2, [1LU], double*)));
+        Series!(int*, double*)));
     static assert(is(typeof(cseries[]) == 
-        Series!(const(int)*, cast(SliceKind)2, [1LU], const(double)*)));
+        Series!(const(int)*, const(double)*)));
     static assert(is(typeof((cast(immutable) series)[]) == 
-        Series!(immutable(int)*, cast(SliceKind)2, [1LU], immutable(double)*)));
+        Series!(immutable(int)*, immutable(double)*)));
 
     /// slicing
     auto seriesSlice  = series[1 .. $ - 1];
@@ -1147,7 +1142,7 @@ struct Series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
 @safe pure nothrow @nogc version(mir_test) unittest
 {
     import mir.series;
-    alias Map = Series!(string*, Contiguous, [1], double*);
+    alias Map = Series!(string*, double*);
     Map a = null;
     auto b = Map(null);
     assert(a.empty);
@@ -1166,14 +1161,14 @@ Attention:
     This overloads do not sort the data.
     User should call $(LREF directly) if index was not sorted.
 +/
-auto series(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
+auto series(IndexIterator, Iterator, size_t N, Kind kind)
     (
-        Slice!(Contiguous, [1], IndexIterator) index,
-        Slice!(kind, packs, Iterator) data,
+        Slice!IndexIterator index,
+        Slice!(Iterator, N, kind) data,
     )
 {
     assert(index.length == data.length);
-    return Series!(IndexIterator, kind, packs, Iterator)(index, data);
+    return Series!(IndexIterator, Iterator, N, kind)(index, data);
 }
 
 /// ditto
@@ -1184,14 +1179,14 @@ auto series(Index, Data)(Index[] index, Data[] data)
 }
 
 /// ditto
-auto series(IndexIterator, Data)(Slice!(Contiguous, [1], IndexIterator) index, Data[] data)
+auto series(IndexIterator, Data)(Slice!IndexIterator index, Data[] data)
 {
     assert(index.length == data.length);
     return .series(index, data.sliced);
 }
 
 /// ditto
-auto series(Index, SliceKind kind, size_t[] packs, Iterator)(Index[] index, Slice!(kind, packs, Iterator) data)
+auto series(Index, Iterator, size_t N, Kind kind)(Index[] index, Slice!(Iterator, N, kind) data)
 {
     assert(index.length == data.length);
     return .series(index.sliced, data);
@@ -1207,7 +1202,7 @@ Returns:
     sorted GC-allocated series.
 See_also: $(LREF assocArray)
 */
-Series!(K*, Contiguous, [1], V*) series(K, V)(V[K] aa)
+Series!(K*, V*) series(K, V)(V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
     immutable size_t length = aa.length;
@@ -1250,14 +1245,14 @@ Series!(K*, Contiguous, [1], V*) series(K, V)(V[K] aa)
 }
 
 /// ditto
-Series!(const(K)*, Contiguous, [1], const(V)*) series(K, V)(const V[K] aa)
+Series!(const(K)*, const(V)*) series(K, V)(const V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
     return .series(cast(const(V)[const K]) aa);
 }
 
 /// ditto
-Series!(immutable(K)*, Contiguous, [1], immutable(V)*) series(K, V)(immutable V[K] aa)
+Series!(immutable(K)*, immutable(V)*) series(K, V)(immutable V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
     return .series(cast(immutable(V)[immutable K]) aa);
@@ -1288,7 +1283,7 @@ Params:
 Returns:
     sorted manually allocated series.
 +/
-Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] aa)
+Series!(K*, V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     import mir.ndslice.allocation: makeUninitSlice;
@@ -1316,7 +1311,7 @@ Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator 
 }
 
 /// ditto
-Series!(K*, Contiguous, [1], V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K]* aa)
+Series!(K*, V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K]* aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
     return makeSeries(allocator, *a);
@@ -1359,8 +1354,8 @@ array reference when given an empty _series.
 Duplicates: Associative arrays have unique keys. If r contains duplicate keys,
 then the result will contain the value of the last pair for that key in r.
 +/
-auto assocArray(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
-    (Series!(IndexIterator, kind, packs, Iterator) series)
+auto assocArray(IndexIterator, Iterator, size_t N, Kind kind)
+    (Series!(IndexIterator, Iterator, N, kind) series)
 {
     alias SK = series.Key;
     alias SV = series.Value;
@@ -1395,12 +1390,8 @@ auto assocArray(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
     ]);
 }
 
-/// Returns: packs if `U` is a $(LREF Series) type or null otherwise;
-enum isSeries(U : Series!(IndexIterator, kind, packs, Iterator), IndexIterator, SliceKind kind, size_t[] packs, Iterator) = packs;
-
-/// ditto
-enum isSeries(U) = (size_t[]).init;
-
+/// Returns: true if `U` is a $(LREF Series);
+enum isSeries(U) = is(U : Series!(IndexIterator, Iterator, N, kind), IndexIterator, Iterator, size_t N, Kind kind);
 
 /++
 Finds an index such that `series.index[index] == moment`.
@@ -1411,7 +1402,7 @@ Params:
 Returns:
     `size_t.max` if the series does not contain the moment and appropriate index otherwise.
 +/
-size_t findIndex(IndexIterator, SliceKind kind, size_t[] packs, Iterator, Index)(Series!(IndexIterator, kind, packs, Iterator) series, Index moment)
+size_t findIndex(IndexIterator, Iterator, size_t N, Kind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
 {
     import std.range: assumeSorted;
 
@@ -1443,7 +1434,7 @@ Params:
 Returns:
     `0` if the series does not contain the moment and appropriate backward index otherwise.
 +/
-size_t find(IndexIterator, SliceKind kind, size_t[] packs, Iterator, Index)(Series!(IndexIterator, kind, packs, Iterator) series, Index moment)
+size_t find(IndexIterator, Iterator, size_t N, Kind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
 {
     import std.range: assumeSorted;
 
@@ -1490,10 +1481,10 @@ template sort(alias less = "a < b")
         /++
         One dimensional case.
         +/
-        Series!(IndexIterator, kind, packs, Iterator)
-            sort(IndexIterator, SliceKind kind, size_t[] packs, Iterator)
-            (Series!(IndexIterator, kind, packs, Iterator) series)
-        if (packs == [1])
+        Series!(IndexIterator, Iterator, N, kind)
+            sort(IndexIterator, Iterator, size_t N, Kind kind)
+            (Series!(IndexIterator, Iterator, N, kind) series)
+        if (N == 1)
         {
             import mir.ndslice.sorting: sort;
             import mir.ndslice.topology: zip;
@@ -1505,23 +1496,20 @@ template sort(alias less = "a < b")
         /++
         N-dimensional case. Requires index and data buffers.
         +/
-        Series!(IndexIterator, kind, packs, Iterator)
+        Series!(IndexIterator, Iterator, N, kind)
             sort(
                 IndexIterator,
-                SliceKind kind,
-                size_t[] packs,
                 Iterator,
-                SliceKind sortIndexKind,
+                size_t N,
+                Kind kind,
                 SortIndexIterator,
-                SliceKind dataKind,
                 DataIterator,
                 )
             (
-                Series!(IndexIterator, kind, packs, Iterator) series,
-                Slice!(sortIndexKind, [1], SortIndexIterator) indexBuffer,
-                Slice!(dataKind, [1], DataIterator) dataBuffer,
+                Series!(IndexIterator, Iterator, N, kind) series,
+                Slice!SortIndexIterator indexBuffer,
+                Slice!DataIterator dataBuffer,
             )
-            if (packs.length == 1)
         {
             import mir.ndslice.algorithm: each;
             import mir.ndslice.sorting: sort;
@@ -1611,11 +1599,11 @@ template troykaGalop(alias lfun, alias cfun, alias rfun)
     +/
     pragma(inline, false)
     void troykaGalop(
-        IndIterL, SliceKind kindL, size_t[] packsL, IterL,
-        IndIterR, SliceKind kindR, size_t[] packsR, IterR,
+        IndexIterL, IterL, size_t LN, Kind lkind,
+        IndexIterR, IterR, size_t RN, Kind rkind,
     )(
-        Series!(IndIterL, kindL, packsL, IterL) lhs,
-        Series!(IndIterR, kindR, packsR, IterR) rhs,
+        Series!(IndexIterL, IterL, LN, lkind) lhs,
+        Series!(IndexIterR, IterR, RN, rkind) rhs,
     )
     {
         if (lhs.empty)
@@ -1764,11 +1752,11 @@ template troykaSeries(alias lfun, alias cfun, alias rfun)
     +/
     auto troykaSeries
     (
-        IndexIterL, SliceKind kindL, size_t[] packsL, IterL,
-        IndexIterR, SliceKind kindR, size_t[] packsR, IterR,
+        IndexIterL, IterL, size_t LN, Kind lkind,
+        IndexIterR, IterR, size_t RN, Kind rkind,
     )(
-        Series!(IndexIterL, kindL, packsL, IterL) lhs,
-        Series!(IndexIterR, kindR, packsR, IterR) rhs,
+        Series!(IndexIterL, IterL, LN, lkind) lhs,
+        Series!(IndexIterR, IterR, RN, rkind) rhs,
     )
     {
         alias I = CommonType!(typeof(lhs.index.front), typeof(rhs.index.front));
@@ -1777,7 +1765,7 @@ template troykaSeries(alias lfun, alias cfun, alias rfun)
             typeof(cfun(lhs.index.front, lhs.data.front, rhs.data.front)),
             typeof(rfun(rhs.index.front, rhs.data.front)),
         );
-        alias R = Series!(I*, Contiguous, [1], E*);
+        alias R = Series!(I*, E*);
         alias UI = Unqual!I;
         alias UE = Unqual!E;
         const length = troykaLength(lhs.index, rhs.index);
@@ -1815,11 +1803,11 @@ Params:
 Returns: Total count of lambda function calls in $(LREF troykaGalop) union handler.
 +/
 size_t troykaLength(
-    IndIterL, SliceKind kindL, size_t[] packsL, IterL,
-    IndIterR, SliceKind kindR, size_t[] packsR, IterR,
+    IndexIterL, IterL, size_t LN, Kind lkind,
+    IndexIterR, IterR, size_t RN, Kind rkind,
 )(
-    Series!(IndIterL, kindL, packsL, IterL) lhs,
-    Series!(IndIterR, kindR, packsR, IterR) rhs,
+    Series!(IndexIterL, IterL, LN, lkind) lhs,
+    Series!(IndexIterR, IterR, RN, rkind) rhs,
 )
 {
     return troykaLength(lhs.index, rhs.index);
@@ -1843,13 +1831,13 @@ template troykaSeriesImpl(alias lfun, alias cfun, alias rfun)
     void troykaSeriesImpl
     (
         I, E,
-        IndexIterL, SliceKind kindL, size_t[] packsL, IterL,
-        IndexIterR, SliceKind kindR, size_t[] packsR, IterR,
+        IndexIterL, IterL, size_t LN, Kind lkind,
+        IndexIterR, IterR, size_t RN, Kind rkind,
         UI, UE,
     )(
-        Series!(IndexIterL, kindL, packsL, IterL) lhs,
-        Series!(IndexIterR, kindR, packsR, IterR) rhs,
-        Series!(UI*, Contiguous, [1], UE*) uninitSlice,
+        Series!(IndexIterL, IterL, LN, lkind) lhs,
+        Series!(IndexIterR, IterR, RN, rkind) rhs,
+        Series!(UI*, UE*) uninitSlice,
     )
     {
         import std.backdoor: emplaceRef;
@@ -1884,8 +1872,8 @@ Params:
 Returns: sorted GC-allocated series.
 See_also $(LREF Series.opBinary) $(LREF makeUnionSeries)
 */
-auto unionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N)(Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple...)
-    if (N > 1 && packs.length == 1)
+auto unionSeries(IndexIterator, Iterator, size_t N, Kind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
+    if (C > 1)
 {
     return unionSeriesImplPrivate(seriesTuple);
 }
@@ -1966,8 +1954,8 @@ Params:
 Returns: sorted manually allocated series.
 See_also $(LREF unionSeries)
 */
-auto makeUnionSeries(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N, Allocator)(auto ref Allocator allocator, Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple...)
-    if (N > 1 && packs.length == 1)
+auto makeUnionSeries(IndexIterator, Iterator, size_t N, Kind kind, size_t C, Allocator)(auto ref Allocator allocator, Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
+    if (C > 1)
 {
     return unionSeriesImplPrivate(seriesTuple, allocator);
 }
@@ -2022,16 +2010,15 @@ Params:
 */
 pragma(inline, false)
 auto unionSeriesImpl(I, E,
-    IndexIterator, SliceKind kind, size_t[] packs, Iterator, UI, UE)(
-    Series!(IndexIterator, kind, packs, Iterator)[] seriesTuple,
-    Series!(UI*, Contiguous, packs, UE*) uninitSeries,
+    IndexIterator, Iterator, size_t N, Kind kind, UI, UE)(
+    Series!(IndexIterator, Iterator, N, kind)[] seriesTuple,
+    Series!(UI*, UE*, N) uninitSeries,
     )
-    if (packs.length == 1)
 {
     import std.backdoor: emplaceRef;
     import mir.algorithm.setops: multiwayUnion;
 
-    enum N = packs[0];
+    enum N = N;
     alias I = DeepElementType!(typeof(seriesTuple[0].index));
     alias E = DeepElementType!(typeof(seriesTuple[0]._data));
 
@@ -2042,7 +2029,7 @@ auto unionSeriesImpl(I, E,
         {
             auto obs = u.front;
             emplaceRef!I(uninitSeries.index.front, obs.index);
-            static if (packs == [1])
+            static if (N == 1)
                 emplaceRef!E(uninitSeries._data.front, obs.data);
             else
                 each!(emplaceRef!E)(uninitSeries._data.front, obs.data);
@@ -2053,22 +2040,22 @@ auto unionSeriesImpl(I, E,
     }
 }
 
-private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] packs, Iterator, size_t N, Allocator...)(ref Series!(IndexIterator, kind, packs, Iterator)[N] seriesTuple, ref Allocator allocator)
-    if (N > 1 && packs.length == 1 && Allocator.length <= 1)
+private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, Kind kind, size_t C, Allocator...)(ref Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
+    if (C > 1 && Allocator.length <= 1)
 {
     import mir.algorithm.setops: unionLength;
     import mir.internal.utility: Iota;
     import mir.ndslice.allocation: uninitSlice, makeUninitSlice;
 
-    Slice!(Contiguous, [1], IndexIterator)[N] indeces;
-    foreach (i; Iota!N)
+    Slice!IndexIterator[C] indeces;
+    foreach (i; Iota!C)
         indeces[i] = seriesTuple[i].index;
 
     immutable len = indeces[].unionLength; 
 
     alias I = typeof(seriesTuple[0].index.front);
     alias E = typeof(seriesTuple[0].data.front);
-    alias R = Series!(I*, Contiguous, packs, E*);
+    alias R = Series!(I*, E*, N);
     alias UI = Unqual!I;
     alias UE = Unqual!E;
 
@@ -2078,7 +2065,7 @@ private auto unionSeriesImplPrivate(IndexIterator, SliceKind kind, size_t[] pack
         shape[0] = len;
 
         foreach (ref sl; seriesTuple[1 .. $])
-            foreach (i; Iota!(1, packs[0]))
+            foreach (i; Iota!(1, N))
                 if (seriesTuple._data[0]._lengths[i] != sl._data._lengths[i])
                     assert(0, "shapes mismatch");
     }
@@ -2117,7 +2104,7 @@ Params:
 Returns:
     associative array 
 */
-ref V[K] insertOrAssign(V, K, IndexIterator, SliceKind kind, size_t[] packs, Iterator)(return ref V[K] aa, Series!(IndexIterator, kind, packs, Iterator) series) @property
+ref V[K] insertOrAssign(V, K, IndexIterator, Iterator, size_t N, Kind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
 {
     foreach (i; 0 .. series.length)
     {
@@ -2143,7 +2130,7 @@ Params:
 Returns:
     associative array 
 */
-ref V[K] insert(V, K, IndexIterator, SliceKind kind, size_t[] packs, Iterator)(return ref V[K] aa, Series!(IndexIterator, kind, packs, Iterator) series) @property
+ref V[K] insert(V, K, IndexIterator, Iterator, size_t N, Kind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
 {
     foreach (i; 0 .. series.length)
     {

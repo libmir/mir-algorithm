@@ -80,9 +80,9 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Constant!(T, N, GridIterators) constant(SliceKind ykind, yIterator)(
+    Constant!(T, N, GridIterators) constant(yIterator, Kind ykind)(
         GridVectors grid,
-        scope Slice!(ykind, [1], yIterator) values,
+        scope Slice!(yIterator, 1, ykind) values,
         bool forceCopyValues = false
         ) pure
     {
@@ -112,7 +112,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
 @optmath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
-    Slice!(Contiguous, [N], F*) _data;
+    Slice!(F*, N) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
     ///
@@ -175,7 +175,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
 
     /++
     +/
-    this()(GridVectors grid, Slice!(Contiguous, [N], immutable(F)*) values) @trusted nothrow @nogc
+    this()(GridVectors grid, Slice!(immutable(F)*, N) values) @trusted nothrow @nogc
     {
         foreach(i, ref x; grid)
         {

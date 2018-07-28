@@ -28,7 +28,7 @@ import mir.math.common: optmath;
 @optmath:
 
 package ref iter(alias s)() { return s._iterator; };
-package alias GridVector(It) = Slice!(Contiguous, [1], It);
+package alias GridVector(It) = Slice!It;
 
 package enum bool isInterval(T) = isInstanceOf!(RefTuple, T);
 package enum bool isInterval(alias T) = isInstanceOf!(RefTuple, T);
@@ -75,7 +75,7 @@ template findInterval(size_t dimension = 0)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.interpolate.linear;
@@ -210,7 +210,7 @@ RefTuple!(T, size_t) atInterval(T)(in T value, size_t intervalIndex)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice;
     import mir.interpolate.spline;

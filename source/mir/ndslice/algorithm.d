@@ -107,7 +107,7 @@ private template areAllContiguousSlices(Slices...)
 {
     import mir.ndslice.traits: isContiguousSlice;
      static if (allSatisfy!(isContiguousSlice, Slices))
-        enum areAllContiguousSlices = packsOf!(Slices[0])[0] > 1;
+        enum areAllContiguousSlices = Slices[0].N > 1;
      else
         enum areAllContiguousSlices = false;
 }
@@ -586,8 +586,7 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
         Params:
             matrix = Square matrix.
         +/
-        auto eachUploPair(SliceKind kind, Iterator)
-                                            (Slice!(kind, [2], Iterator) matrix)
+        auto eachUploPair(Iterator, Kind kind)(Slice!(Iterator, 2, kind) matrix)
         in
         {
             assert(matrix.length!0 == matrix.length!1, "matrix must be square.");
@@ -745,7 +744,7 @@ template isSymmetric(alias fun = "a == b")
     Params:
         matrix = 2D ndslice.
     +/
-    bool isSymmetric(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) matrix)
+    bool isSymmetric(Iterator, Kind kind)(Slice!(Iterator, 2, kind) matrix)
     {
         static if (kind == Contiguous)
         {
@@ -786,8 +785,7 @@ unittest
          2, 3].sliced(2, 2).isSymmetric == true);
 }
 
-bool minPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[packs[0]] backwardIndex, ref Iterator iterator, Slice!(kind, packs, Iterator) slice)
-    if (packs.length == 1)
+bool minPosImpl(alias fun, Iterator, size_t N, Kind kind)(ref size_t[N] backwardIndex, ref Iterator iterator, Slice!(Iterator, N, kind) slice)
 {
     auto bis = backwardIndex[0];
     do
@@ -802,7 +800,7 @@ bool minPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[
         }
         else
         {
-            if (minPosImpl!(fun, kind, [packs[0] - 1], Iterator)(backwardIndex[1 .. $], iterator, slice.front))
+            if (minPosImpl!(fun, Iterator, N - 1, kind)(backwardIndex[1 .. $], iterator, slice.front))
             {
                 backwardIndex[0] = slice.length;
             }
@@ -813,8 +811,7 @@ bool minPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[
     return bis != backwardIndex[0];
 }
 
-bool[2] minmaxPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref size_t[2][packs[0]] backwardIndex, ref Iterator[2] iterator, Slice!(kind, packs, Iterator) slice)
-    if (packs.length == 1)
+bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, Kind kind)(ref size_t[2][N] backwardIndex, ref Iterator[2] iterator, Slice!(Iterator, N, kind) slice)
 {
     size_t[2] bis = backwardIndex[0];
     do
@@ -835,7 +832,7 @@ bool[2] minmaxPosImpl(alias fun, SliceKind kind, size_t[] packs, Iterator)(ref s
         }
         else
         {
-            auto r = minmaxPosImpl!(fun, kind, [packs[0] - 1], Iterator)(backwardIndex[1 .. $], iterator, slice.front);
+            auto r = minmaxPosImpl!(fun, Iterator, N - 1, kind)(backwardIndex[1 .. $], iterator, slice.front);
             if (r[0])
             {
                 backwardIndex[0][0] = slice.length;
@@ -876,40 +873,24 @@ template minmaxPos(alias pred = "a < b")
     Returns:
         2 subslices with minimal and maximal `first` elements.
     +/
-    @optmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)[2]
-        minmaxPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)[2]
+        minmaxPos(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
     {
         import mir.ndslice.topology: map;
         typeof(return) pret;
         if (!slice.anyEmpty)
         {
-            size_t[2][packs[0]] ret;
-            auto it = slice.map!"a"._iterator;
+            size_t[2][N] ret;
+            auto it = slice._iterator;
             Iterator[2] iterator = [it, it];
-            minmaxPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
-            foreach (i; Iota!(packs[0]))
+            minmaxPosImpl!(pred, Iterator, N, kind)(ret, iterator, slice);
+            foreach (i; Iota!N)
             {
                 pret[0]._lengths[i] = ret[i][0];
                 pret[1]._lengths[i] = ret[i][1];
             }
-            static if (packs.length > 1)
-            {
-                pret[0]._iterator = iterator[0]._iterator;
-                pret[1]._iterator = iterator[1]._iterator;
-            }
-            else
-            {
-                pret[0]._iterator = iterator[0];
-                pret[1]._iterator = iterator[1];
-            }
-        }
-        static if (packs.length > 1)
-        {
-            foreach (i; Iota!(packs[0], slice.N))
-            {
-                pret[0]._lengths[i] = slice._lengths[i];
-                pret[1]._lengths[i] = slice._lengths[i];
-            }
+            pret[0]._iterator = iterator[0];
+            pret[1]._iterator = iterator[1];
         }
         auto strides = slice.strides;
         foreach(i; Iota!(0, pret[0].S))
@@ -967,22 +948,22 @@ template minmaxIndex(alias pred = "a < b")
     Returns:
         Subslice with minimal (maximal) `first` element.
     +/
-    @optmath size_t[packs[0]][2] minmaxIndex(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath size_t[N][2] minmaxIndex(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
     {
         import mir.ndslice.topology: map;
         typeof(return) pret = size_t.max;
         if (!slice.anyEmpty)
         {
             auto shape = slice.shape;
-            size_t[2][packs[0]] ret;
-            foreach (i; Iota!(packs[0]))
+            size_t[2][N] ret;
+            foreach (i; Iota!N)
             {
                 ret[i][1] = ret[i][0] = shape[i];
             }
-            auto it = slice.map!"a"._iterator;
+            auto it = slice._iterator;
             Iterator[2] iterator = [it, it];
-            minmaxPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
-            foreach (i; Iota!(packs[0]))
+            minmaxPosImpl!(pred, Iterator, N, kind)(ret, iterator, slice);
+            foreach (i; Iota!N)
             {
                 pret[0][i] = slice._lengths[i] - ret[i][0];
                 pret[1][i] = slice._lengths[i] - ret[i][1];
@@ -1035,30 +1016,16 @@ template minPos(alias pred = "a < b")
         Multidimensional backward index such that element is minimal(maximal).
         Backward index equals zeros, if slice is empty.
     +/
-    @optmath Slice!(kind == Contiguous && packs[0] > 1 ? Canonical : kind, packs, Iterator)
-        minPos(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)
+        minPos(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
     {
         typeof(return) ret;
         import mir.ndslice.topology: map;
         if (!slice.anyEmpty)
         {
-            auto iterator = slice.map!"a"._iterator;
-            minPosImpl!(pred, kind, packs, Iterator)(ret._lengths, iterator, slice);
-            static if (packs.length > 1)
-            {
-                ret._iterator = iterator._iterator;
-            }
-            else
-            {
-                ret._iterator = iterator;
-            }
-        }
-        static if (packs.length > 1)
-        {
-            foreach (i; Iota!(packs[0], slice.N))
-            {
-                ret._lengths[i] = slice._lengths[i];
-            }
+            auto iterator = slice._iterator;
+            minPosImpl!(pred, Iterator, N, kind)(ret._lengths, iterator, slice);
+            ret._iterator = iterator;
         }
         auto strides = slice.strides;
         foreach(i; Iota!(0, ret.S))
@@ -1124,16 +1091,16 @@ template minIndex(alias pred = "a < b")
         Multidimensional index such that element is minimal(maximal).
         Index elements equal to `size_t.max`, if slice is empty.
     +/
-    @optmath size_t[packs[0]] minIndex(SliceKind kind, ptrdiff_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath size_t[N] minIndex(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
     {
-        size_t[packs[0]] ret = size_t.max;
+        size_t[N] ret = size_t.max;
         import mir.ndslice.topology: map;
         if (!slice.anyEmpty)
         {
             ret = slice.shape;
-            auto iterator = slice.map!"a"._iterator;
-            minPosImpl!(pred, kind, packs, Iterator)(ret, iterator, slice);
-            foreach (i; Iota!(packs[0]))
+            auto iterator = slice._iterator;
+            minPosImpl!(pred, Iterator, N, kind)(ret, iterator, slice);
+            foreach (i; Iota!N)
                 ret[i] = slice._lengths[i] - ret[i];
         }
         return ret;
@@ -2049,7 +2016,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     import mir.ndslice.iterator: FieldIterator;
     import mir.ndslice.field: BitwiseField;
     static if (__traits(isSame, fun, naryFun!"a") && 
-        is(S : Slice!(Contiguous, [1], Iterator),
+        is(S : Slice!(Iterator),
             Iterator : FieldIterator!BWF,
             BWF : BitwiseField!Field, Field))
     {

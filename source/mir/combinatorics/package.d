@@ -7,6 +7,8 @@ License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
 */
 module mir.combinatorics;
 
+version(none):
+
 import std.traits;
 import mir.primitives: hasLength;
 
@@ -384,7 +386,6 @@ See_Also:
 struct Permutations(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
     private T[] indices, state;
     private bool _empty;
     private size_t _max_states = 1, _pos;
@@ -412,7 +413,7 @@ struct Permutations(T)
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const T) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return indices.sliced;
@@ -620,7 +621,7 @@ See_Also:
 struct CartesianPower(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
+    import mir.ndslice.slice: Slice;
 
 private:
     T[] _state;
@@ -643,7 +644,7 @@ public:
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const T) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return _state.sliced;
@@ -871,7 +872,7 @@ See_Also:
 struct Combinations(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
+    import mir.ndslice.slice: Slice;
 
 private:
     T[] state;
@@ -907,7 +908,7 @@ public:
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const T) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return state.sliced;
@@ -1199,7 +1200,7 @@ See_Also:
 struct CombinationsRepeat(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
+    import mir.ndslice.slice: Slice;
 
 private:
     T[] state;
@@ -1224,7 +1225,7 @@ public:
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const T) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return state.sliced;

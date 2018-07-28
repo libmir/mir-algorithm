@@ -195,6 +195,10 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 {
     import mir.ndslice.topology: repeat;
     static struct S{int* p;}
+    foreach(w; immutable(S).init.repeat(5))
+        {
+            
+        }
     auto a = array(immutable(S).init.repeat(5));
     assert(a.length == 5);
 }

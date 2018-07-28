@@ -98,7 +98,7 @@ Params:
 Returns:
     `true` if the slice can be safely casted to $(SUBREF slice, Contiguous) kind using $(SUBREF topology, assumeContiguous) and false otherwise.
 +/
-bool normalizeStructure(SliceKind kind, size_t[] packs, Iterator)(ref Slice!(kind, packs, Iterator) slice)
+bool normalizeStructure(Iterator, size_t N, Kind kind)(ref Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Contiguous)
     {
@@ -107,31 +107,31 @@ bool normalizeStructure(SliceKind kind, size_t[] packs, Iterator)(ref Slice!(kin
     else
     {
         import mir.utility: min;
-        enum Y = min(slice.S, packs[0]);
+        enum Y = min(slice.S, N);
         foreach(i; Iota!Y)
             if (slice._stride!i < 0)
                 slice = slice.reversed!i;
-        static if (packs[0] == 1)
+        static if (N == 1)
             return slice._stride!0 == 1;
         else
-        static if (packs[0] == 2 && kind == Canonical)
+        static if (N == 2 && kind == Canonical)
         {
             return slice._stride!0 == slice.length!1;
         }
         else
         {
-            import mir.ndslice.sorting: sort;
+            import mir.series: series, sort;
             import mir.ndslice.topology: zip, iota;
-            auto l = slice._lengths[0 .. Y].sliced;
-            auto s = slice._strides[0 .. Y].sliced;
-            zip(l, s).sort!"a.b > b.b";
+            auto l = slice._lengths[0 .. Y];
+            auto s = slice._strides[0 .. Y];
+            s.series(l).sort!"a > b";
             return slice.shape.iota.strides == slice.strides;
         }
     }
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.topology: iota;
 
@@ -180,13 +180,13 @@ See_also: $(LREF everted), $(LREF transposed)
 template swapped(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @optmath auto swapped(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
+    @optmath auto swapped(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
     {
-        static if (kind == Universal || kind == Canonical && dimensionA + 1 < packs.sum && dimensionB + 1 < packs.sum)
+        static if (kind == Universal || kind == Canonical && dimensionA + 1 < N && dimensionB + 1 < N)
         {
             alias slice = _slice;
         }
-        else static if (dimensionA + 1 < packs.sum && dimensionB + 1 < packs.sum)
+        else static if (dimensionA + 1 < N && dimensionB + 1 < N)
         {
             import mir.ndslice.topology: canonical;
             auto slice = _slice.canonical;
@@ -211,18 +211,10 @@ template swapped(size_t dimensionA, size_t dimensionB)
 }
 
 /// ditto
-auto swapped(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, size_t dimensionA, size_t dimensionB)
+auto swapped(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, size_t dimensionA, size_t dimensionB)
 {
-    static if (packs.length > 1)
-    {
-        import mir.ndslice.topology: canonical;
-        auto slice = _slice.canonical;
-    }
-    else
-    {
-        import mir.ndslice.topology: universal;
-        auto slice = _slice.universal;
-    }
+    import mir.ndslice.topology: universal;
+    auto slice = _slice.universal;
     {
         alias dimension = dimensionA;
         mixin (DimensionRTError);
@@ -235,7 +227,7 @@ auto swapped(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Itera
 }
 
 /// ditto
-Slice!(Universal, [2], Iterator) swapped(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) slice)
+Slice!(Iterator, 2, Universal) swapped(Iterator, Kind kind)(Slice!(Iterator, 2, kind) slice)
 {
     return slice.swapped!(0, 1);
 }
@@ -320,13 +312,13 @@ Returns:
 template rotated(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @optmath auto rotated(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, sizediff_t k = 1)
+    @optmath auto rotated(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, sizediff_t k = 1)
     {
-        static if (kind == Universal || kind == Canonical && dimensionA + 1 < packs.sum && dimensionB + 1 < packs.sum)
+        static if (kind == Universal || kind == Canonical && dimensionA + 1 < N && dimensionB + 1 < N)
         {
             alias slice = _slice;
         }
-        else static if (dimensionA + 1 < packs.sum && dimensionB + 1 < packs.sum)
+        else static if (dimensionA + 1 < N && dimensionB + 1 < N)
         {
             import mir.ndslice.topology: canonical;
             auto slice = _slice.canonical;
@@ -351,18 +343,10 @@ template rotated(size_t dimensionA, size_t dimensionB)
 }
 
 /// ditto
-auto rotated(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, size_t dimensionA, size_t dimensionB, sizediff_t k = 1)
+auto rotated(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, size_t dimensionA, size_t dimensionB, sizediff_t k = 1)
 {
-    static if (packs.length > 1)
-    {
-        import mir.ndslice.topology: canonical;
-        auto slice = _slice.canonical;
-    }
-    else
-    {
-        import mir.ndslice.topology: universal;
-        auto slice = _slice.universal;
-    }
+    import mir.ndslice.topology: universal;
+    auto slice = _slice.universal;
     {
         alias dimension = dimensionA;
         mixin (DimensionRTError);
@@ -375,7 +359,7 @@ auto rotated(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Itera
 }
 
 /// ditto
-Slice!(Universal, [2], Iterator) rotated(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) slice, sizediff_t k = 1)
+Slice!(Iterator, 2, Universal) rotated(Iterator, Kind kind)(Slice!(Iterator, 2, kind) slice, sizediff_t k = 1)
 {
     return .rotated!(0, 1)(slice, k);
 }
@@ -427,26 +411,21 @@ Returns:
     n-dimensional slice
 See_also: $(LREF swapped), $(LREF transposed)
 +/
-auto everted(size_t[] packs, SliceKind kind, Iterator)(Slice!(kind, packs, Iterator) _slice)
+auto everted(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
 {
-    static if (kind == Universal || kind == Canonical && packs.length > 1)
+    static if (kind == Universal)
     {
         alias slice = _slice;
-    }
-    else static if (packs.length > 1)
-    {
-        import mir.ndslice.topology: canonical;
-        auto slice = _slice.canonical;
     }
     else
     {
         import mir.ndslice.topology: universal;
         auto slice = _slice.universal;
     }
-    with(slice) foreach (i; Iota!(packs[0] / 2))
+    with(slice) foreach (i; Iota!(N / 2))
     {
-        swap(_lengths[i], _lengths[packs[0] - i - 1]);
-        swap(_strides[i], _strides[packs[0] - i - 1]);
+        swap(_lengths[i], _lengths[N - i - 1]);
+        swap(_strides[i], _strides[N - i - 1]);
     }
     return slice;
 }
@@ -464,13 +443,13 @@ auto everted(size_t[] packs, SliceKind kind, Iterator)(Slice!(kind, packs, Itera
 private enum _transposedCode = q{
     size_t[typeof(slice).N] lengths_;
     ptrdiff_t[max(typeof(slice).S, size_t(1))] strides_;
-    with(slice) foreach (i; Iota!(packs[0]))
+    with(slice) foreach (i; Iota!N)
     {
         lengths_[i] = _lengths[perm[i]];
         static if (i < typeof(slice).S)
             strides_[i] = _strides[perm[i]];
     }
-    with(slice) foreach (i; Iota!(packs[0], slice.N))
+    with(slice) foreach (i; Iota!(N, slice.N))
     {
         lengths_[i] = _lengths[i];
         static if (i < typeof(slice).S)
@@ -514,10 +493,10 @@ template transposed(Dimensions...)
         alias transposed = .transposed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @optmath auto transposed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
+    @optmath auto transposed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
     {
         import mir.ndslice.algorithm: any;
-        enum s = packs.sum;
+        enum s = N;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == s);
         static if (kind == Universal || kind == Canonical && !hasRowStride)
         {
@@ -537,41 +516,34 @@ template transposed(Dimensions...)
         mixin DimensionsCountCTError;
         foreach (i, dimension; Dimensions)
             mixin DimensionCTError;
-        static assert(isValidPartialPermutation!(packs[0])([Dimensions]),
+        static assert(isValidPartialPermutation!(N)([Dimensions]),
             "Failed to complete permutation of dimensions " ~ Dimensions.stringof
             ~ tailErrorMessage!());
-        enum perm = completeTranspose!(packs[0])([Dimensions]);
+        enum perm = completeTranspose!(N)([Dimensions]);
         static assert(perm.isPermutation, __PRETTY_FUNCTION__ ~ ": internal error.");
         mixin (_transposedCode);
     }
 }
 
 ///ditto
-auto transposed(SliceKind kind, size_t[] packs, Iterator, size_t M)(Slice!(kind, packs, Iterator) _slice, size_t[M] dimensions...)
+auto transposed(Iterator, size_t N, Kind kind, size_t M)(Slice!(Iterator, N, kind) _slice, size_t[M] dimensions...)
 {
-    static if (packs.length > 1)
-    {
-        import mir.ndslice.topology: canonical;
-        auto slice = _slice.canonical;
-    }
-    else
-    {
-        import mir.ndslice.topology: universal;
-        auto slice = _slice.universal;
-    }
+    import mir.ndslice.topology: universal;
+    auto slice = _slice.universal;
+
     mixin (DimensionsCountRTError);
     foreach (dimension; dimensions)
         mixin (DimensionRTError);
-    assert(dimensions.isValidPartialPermutation!(packs[0]),
+    assert(dimensions.isValidPartialPermutation!(N),
         "Failed to complete permutation of dimensions."
         ~ tailErrorMessage!());
-    immutable perm = completeTranspose!(packs[0])(dimensions);
+    immutable perm = completeTranspose!(N)(dimensions);
     assert(perm.isPermutation, __PRETTY_FUNCTION__ ~ ": internal error.");
     mixin (_transposedCode);
 }
 
 ///ditto
-Slice!(Universal, [2], Iterator) transposed(SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) slice)
+Slice!(Iterator, 2, Universal) transposed(Iterator, Kind kind)(Slice!(Iterator, 2, kind) slice)
 {
     return .transposed!(1, 0)(slice);
 }
@@ -647,11 +619,11 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(Universal, packs, Iterator) allReversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice)
+Slice!(Iterator, N, Universal) allReversed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
-    foreach (dimension; Iota!(packs[0]))
+    foreach (dimension; Iota!N)
     {
         mixin (_reversedCode);
     }
@@ -684,10 +656,10 @@ template reversed(Dimensions...)
         alias reversed = .reversed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @optmath auto reversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice) @trusted
+    @optmath auto reversed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice) @trusted
     {
         import mir.ndslice.algorithm: any;
-        enum s = packs.sum;
+        enum s = N;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == s);
         static if (kind == Universal || kind == Canonical && !hasRowStride)
         {
@@ -714,7 +686,7 @@ template reversed(Dimensions...)
 }
 
 ///ditto
-Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iterator, size_t M)(Slice!(kind, packs, Iterator) _slice, size_t[M] dimensions...)
+Slice!(Iterator, N, Universal) reversed(Iterator, size_t N, Kind kind, size_t M)(Slice!(Iterator, N, kind) _slice, size_t[M] dimensions...)
     @trusted
     if (M)
 {
@@ -731,7 +703,7 @@ Slice!(Universal, packs, Iterator) reversed(SliceKind kind, size_t[] packs, Iter
 }
 
 /// ditto
-auto reversed(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+auto reversed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
 {
     return .reversed!0(slice);
 }
@@ -839,10 +811,10 @@ template strided(Dimensions...)
         slice = input slice
         factors = list of step extension factors
     +/
-    @optmath auto strided(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
+    @optmath auto strided(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
     {
         import mir.ndslice.algorithm: any;
-        enum s = packs.sum;
+        enum s = N;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == s);
         static if (kind == Universal || kind == Canonical && !hasRowStride)
         {
@@ -870,7 +842,7 @@ template strided(Dimensions...)
 }
 
 ///ditto
-Slice!(Universal, packs, Iterator) strided(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) _slice, size_t dimension, ptrdiff_t factor)
+Slice!(Iterator, N, Universal) strided(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, size_t dimension, ptrdiff_t factor)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
@@ -964,21 +936,21 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(kind, packs, Iterator) dropToHypercube(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+Slice!(Iterator, N, kind) dropToHypercube(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
     if (kind == Canonical || kind == Universal)
 body
 {
     size_t length = slice._lengths[0];
-    foreach (i; Iota!(1, packs[0]))
+    foreach (i; Iota!(1, N))
         if (length > slice._lengths[i])
             length = slice._lengths[i];
-    foreach (i; Iota!(packs[0]))
+    foreach (i; Iota!N)
         slice._lengths[i] = length;
     return slice;
 }
 
 /// ditto
-Slice!(Canonical, packs, Iterator) dropToHypercube(size_t[] packs, Iterator)(Slice!(Contiguous, packs, Iterator) slice)
+Slice!(Iterator, N, Canonical) dropToHypercube(Iterator, size_t N)(Slice!(Iterator, N) slice)
 {
     import mir.ndslice.topology: canonical;
     return slice.canonical.dropToHypercube;

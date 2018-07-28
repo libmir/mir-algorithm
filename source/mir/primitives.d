@@ -92,6 +92,11 @@ version(mir_test) unittest
 ///
 template DimensionCount(T)
 {
+    import mir.ndslice.slice: Slice, Kind;
+    /// Extracts dimension count from a $(LREF Slice). Alias for $(LREF isSlice).
+    static if(is(T : Slice!(Iterator, N, kind), Iterator, size_t N, Kind kind))
+      enum size_t DimensionCount = N;
+    else
     static if (hasShape!T)
         enum size_t DimensionCount = typeof(T.init.shape).length;
     else
@@ -146,14 +151,14 @@ size_t elementsCount(Range)(Range range) @property
 }
 
 /++
-Returns the element type of a struct with `.DeepElemType` inner alias or a type of common array.
-Returns `ForeachType` if struct does not have `.DeepElemType` member.
+Returns the element type of a struct with `.DeepElement` inner alias or a type of common array.
+Returns `ForeachType` if struct does not have `.DeepElement` member.
 +/
 template DeepElementType(S)
     if (is(S == struct) || is(S == class) || is(S == interface))
 {
-    static if (__traits(hasMember, S, "DeepElemType"))
-        alias DeepElementType = S.DeepElemType;
+    static if (__traits(hasMember, S, "DeepElement"))
+        alias DeepElementType = S.DeepElement;
     else
         alias DeepElementType = ForeachType!S;
 }
@@ -167,6 +172,6 @@ version(mir_test) unittest
     import mir.ndslice.slice;
     import std.range: std_iota = iota;
     static assert(is(DeepElementType!(typeof(std_iota(5))) == int));
-    static assert(is(DeepElementType!(Slice!(Universal, [4], const(int)[]))     == const(int)));
-    static assert(is(DeepElementType!(Slice!(Universal, [4], immutable(int)*))  == immutable(int)));
+    static assert(is(DeepElementType!(Slice!(const(int)*, 2))     == const(int)));
+    static assert(is(DeepElementType!(Slice!(immutable(int)*, 2))  == immutable(int)));
 }

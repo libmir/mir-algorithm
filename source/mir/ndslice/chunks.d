@@ -42,8 +42,8 @@ template chunks(Dimensions...)
         chunkLengths = Chunk shape. It must not have a zero length.
     Returns: $(LREF Chunks).
     +/
-    Chunks!([Dimensions], kind == Contiguous && [Dimensions] != [0] ? Canonical : kind, packs, Iterator)
-    chunks(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice, size_t[Dimensions.length] chunkLengths...)
+    Chunks!([Dimensions], Iterator, N, kind == Contiguous && [Dimensions] != [0] ? Canonical : kind)
+    chunks(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice, size_t[Dimensions.length] chunkLengths...)
     {
         static if (kindOf!(typeof(typeof(return).init._slice)) != kind)
         {
@@ -64,7 +64,7 @@ template chunks(Dimensions...)
 }
 
 /// ditto
-Chunks!([0], kind, packs, Iterator) chunks(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice, size_t chunkLength)
+Chunks!([0], Iterator, N, kind) chunks(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice, size_t chunkLength)
 {
     return .chunks!0(slice, chunkLength);
 }
@@ -226,8 +226,7 @@ version(mir_test) unittest
 
 /++
 +/
-struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
-    //if (packs.length == 1)
+struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, Kind kind = Contiguous)
 {
 @optmath:
 
@@ -242,26 +241,26 @@ struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
     auto lightConst()() const @property
     {
         import mir.qualifier;
-        return Chunks!(dimensions, kind, packs, LightConstOf!Iterator)(_chunkLengths, _slice.lightConst);
+        return Chunks!(dimensions, LightConstOf!Iterator, N, kind)(_chunkLengths, _slice.lightConst);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
         import mir.qualifier;
-        return Chunks!(dimensions, kind, packs, LightImmutableOf!Iterator)(_chunkLengths, _slice.lightImmutable);
+        return Chunks!(dimensions, LightImmutableOf!Iterator, N, kind)(_chunkLengths, _slice.lightImmutable);
     }
 
-    alias DeepElemType = Slice!(kind, packs, Iterator);
+    alias DeepElement = Slice!(Iterator, N, kind);
 
     /++
     Underlying ndslice.
     It always correspond to current chunks state.
     Its shape equal to the concatenation of the all chunks.
     +/
-    Slice!(kind, packs, Iterator) slice()() @property { return _slice; }
+    Slice!(Iterator, N, kind) slice()() @property { return _slice; }
     ///
-    Slice!(kind, packs, Iterator) _slice;
+    Slice!(Iterator, N, kind) _slice;
 
     private auto _norm(size_t dimensionIndex = 0)() @property
     {
@@ -283,7 +282,7 @@ struct Chunks(size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator)
             foreach (i, j; AliasSeq!(Iota!dimensionIndex, Iota!(dimensionIndex + 1, dimensions.length)))
                 rcl[i] = _chunkLengths[j];
             enum newDims = dimensions[0 .. dimensionIndex] ~ dimensions[dimensionIndex + 1 .. $];
-            return .Chunks!(newDims, kindOf!(typeof(ret)), packs, Iterator)(rcl, ret);
+            return .Chunks!(newDims, Iterator, N, typeof(ret).kind)(rcl, ret);
         }
     }
 
@@ -549,7 +548,7 @@ Returns:
 +/
 template isChunks(T)
 {
-    static if (is(T : Chunks!(dimensions, kind, packs, Iterator), size_t[] dimensions, SliceKind kind, size_t[] packs, Iterator))
+    static if (is(T : Chunks!(dimensions, Iterator, N, kind), size_t[] dimensions, Iterator, size_t N, Kind kind))
         enum isChunks = dimensions;
     else
         enum isChunks = size_t[].init;

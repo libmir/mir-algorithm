@@ -342,9 +342,9 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(SliceKind ykind, yIterator)(
+    Spline!(T, N, GridIterators) spline(yIterator, Kind ykind)(
         GridVectors grid,
-        scope Slice!(ykind, [N], yIterator) values,
+        scope Slice!(yIterator, N, ykind) values,
         SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
         in T valueOfBoundaryConditions = 0,
         )
@@ -361,9 +361,9 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(SliceKind ykind, yIterator)(
+    Spline!(T, N, GridIterators) spline(yIterator, Kind ykind)(
         GridVectors grid,
-        scope Slice!(ykind, [N], yIterator) values,
+        scope Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T boundaries,
         )
     {
@@ -380,9 +380,9 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(SliceKind ykind, yIterator)(
+    Spline!(T, N, GridIterators) spline(yIterator, Kind ykind)(
         GridVectors grid,
-        scope Slice!(ykind, [N], yIterator) values,
+        scope Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T rBoundary,
         SplineBoundaryCondition!T lBoundary,
         )
@@ -441,7 +441,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 @fmamath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
-    Slice!(Contiguous, [N], F[2 ^^ N]*) _data;
+    Slice!(F[2 ^^ N]*, N) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
 
@@ -498,7 +498,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         this._data = data_ptr.sliced(shape);
         debug
         {
-            this._data[] = F[2 ^^ N].init;
+            this._data.opIndexAssign(F[2 ^^ N].init);
         }
         this._grid = staticMap!(iter, grid);
         this.counter = 1;
@@ -509,14 +509,14 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         auto strides = data.strides;
         foreach (i; Iota!(strides.length))
             strides[i] *= DeepElementType!D.length;
-        return Slice!(Universal, [strides.length], F*)(data.shape, strides, data.iterator.ptr + index);
+        return Slice!(F*, strides.length, Universal)(data.shape, strides, data.iterator.ptr + index);
     }
 
     /++
     Assigns function values to the internal memory.
     $(RED For internal use.)
     +/
-    void _values(SliceKind kind, Iterator)(scope Slice!(kind, [N], Iterator) values) @property @trusted
+    void _values(Kind kind, Iterator)(scope Slice!(Iterator, N, kind) values) @property @trusted
     {
         assert(values.shape == _data.shape, "'values' should have the same shape as the .gridShape");
         pickDataSubslice(_data, 0)[] = values;
@@ -549,7 +549,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /// ditto
     pragma(inline, false)
-    void _computeDerivativesTemp()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, ContiguousVector!F temp) @system nothrow @nogc
+    void _computeDerivativesTemp()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) @system nothrow @nogc
     {
         import mir.internal.memory;
         import mir.ndslice.algorithm: maxLength, each;
@@ -568,12 +568,10 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
             _data
                 .byDim!i
                 .evertPack
-                // .map!"a"
                 .each!((d){
                     enum L = 2 ^^ (N - 1 - i);
                     foreach(l; Iota!L)
                     {
-
                         auto y = pickDataSubslice(d, l);
                         auto s = pickDataSubslice(d, L + l);
                         // debug printf("ptr = %ld, stride = %ld, stride = %ld, d = %ld i = %ld l = %ld\n", d.iterator, d._stride!0, y._stride!0, d.length, i, l);
@@ -790,11 +788,11 @@ Constraints:
     `points`, `values`, and `slopes`, must have the same length > 3;
     `temp` must have length greater or equal to points less minus one.
 +/
-void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
-    scope Slice!(gkind, [1], IP) points,
-    scope Slice!(vkind, [1], IV) values,
-    scope Slice!(skind, [1], IS) slopes,
-    scope Slice!(Contiguous, [1], T*) temp,
+void splineSlopes(F, T, IP, IV, IS, Kind gkind, Kind vkind, Kind skind)(
+    scope Slice!(IP, 1, gkind) points,
+    scope Slice!(IV, 1, vkind) values,
+    scope Slice!(IS, 1, skind) slopes,
+    scope Slice!(T*) temp,
     SplineBoundaryCondition!F lbc,
     SplineBoundaryCondition!F rbc,
     ) @trusted
@@ -815,7 +813,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     auto yd = cast() vd.front;
     auto dd = yd / xd;
 
-    // static if (packs == [2])
+    // static if (N == 2)
     // {
     //     if (slopes.length!1 != values.length!1)
     //         assert(0);
@@ -829,7 +827,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     if (_expect(n == 3 && (rbc.type | lbc.type) == 0, false))
     {
         import mir.interpolate.utility;
-        // static if (packs == [1])
+        // static if (N == 1)
         {
             auto parabola = parabolaKernel(points[0], points[1], points[2], values[0], values[1], values[2]);
             slopes[0] = parabola.withDerivative(points[0])[1];

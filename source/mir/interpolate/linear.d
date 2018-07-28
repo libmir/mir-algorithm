@@ -56,9 +56,9 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 2
     Returns: $(LREF Spline)
     +/
-    Linear!(T, N, GridIterators) linear(SliceKind ykind, yIterator)(
+    Linear!(T, N, GridIterators) linear(yIterator, Kind ykind)(
         GridVectors grid,
-        scope Slice!(ykind, [N], yIterator) values,
+        scope Slice!(yIterator, N, ykind) values,
         bool forceCopyValues = false
         )
     {
@@ -88,7 +88,8 @@ version(mir_test)
     immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
     auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
 
-    auto interpolation = linear!double(x.sliced, y.sliced);
+    alias lll = linear!double;
+    auto interpolation = lll(x.sliced, y.sliced);
 
     auto data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
 
@@ -195,7 +196,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
     /// $(RED For internal use.)
-    Slice!(Contiguous, [N], F*) _data;
+    Slice!(F*, N) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
     ///
@@ -258,7 +259,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /++
     +/
-    this()(GridVectors grid, Slice!(Contiguous, [N], immutable(F)*) values) @trusted nothrow @nogc
+    this()(GridVectors grid, Slice!(immutable(F)*, N) values) @trusted nothrow @nogc
     {
         import mir.internal.memory;
         import mir.ndslice.topology: iota;
