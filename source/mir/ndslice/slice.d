@@ -1828,13 +1828,6 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
     /++
     $(BOLD Fully defined index)
     +/
-    // auto ref opIndex(Indexes...)(Indexes indexes) @safe
-    //     if (isIndexSlice!Indexes)
-    // {
-    //     return this.opIndex!(indexes.length)([indexes]);
-    // }
-
-    // // ditto
     auto ref opIndex(size_t I)(size_t[I] _indexes...) @trusted
         if (I && I <= N)
     {
@@ -2086,10 +2079,6 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
         *s[1] = 3;
         assert(c[1] == *s[1]);
     }
-
-    // auto opIndex(Slices...)(Slices slices) @safe
-    //     if (isIndexedSlice!Slices)
-
 
     /++
     Element-wise operator overloading for scalars.
@@ -2602,13 +2591,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexAssign(T, Indexes...)(auto ref T value, Indexes indexes) @safe
-            if (Indexes.length == N && allSatisfy!(isIndex, Indexes))
-        {
-            return this.opIndexAssign!(T)(value, [indexes]);
-        }
-        /// ditto
-        auto ref opIndexAssign(T)(auto ref T value, size_t[N] _indexes) @trusted
+        auto ref opIndexAssign(T)(auto ref T value, size_t[N] _indexes...) @trusted
         {
             // check assign safety 
             static auto ref fun(ref DeepElement t, ref T v) @safe
