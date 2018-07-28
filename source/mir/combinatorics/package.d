@@ -7,8 +7,6 @@ License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
 */
 module mir.combinatorics;
 
-version(none):
-
 import std.traits;
 import mir.primitives: hasLength;
 
@@ -386,6 +384,8 @@ See_Also:
 struct Permutations(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
+    import mir.ndslice.slice: sliced, Slice;
+
     private T[] indices, state;
     private bool _empty;
     private size_t _max_states = 1, _pos;
@@ -413,7 +413,7 @@ struct Permutations(T)
     }
 
     /// Input range primitives
-    @property Slice!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return indices.sliced;
@@ -644,7 +644,7 @@ public:
     }
 
     /// Input range primitives
-    @property Slice!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return _state.sliced;
@@ -908,7 +908,7 @@ public:
     }
 
     /// Input range primitives
-    @property Slice!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return state.sliced;
@@ -1225,7 +1225,7 @@ public:
     }
 
     /// Input range primitives
-    @property Slice!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return state.sliced;
