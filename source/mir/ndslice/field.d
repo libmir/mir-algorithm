@@ -147,9 +147,9 @@ struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
 {
 @optmath:
     import core.bitop: bsr;
-    package alias E = I;
-    package enum shift = bsr(I.sizeof) + 3;
-    package enum mask = (1 << shift) - 1;
+    package(mir) alias E = I;
+    package(mir) enum shift = bsr(I.sizeof) + 3;
+    package(mir) enum mask = (1 << shift) - 1;
 
     ///
     Field _field;
@@ -204,9 +204,9 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
 {
     //static assert();
 @optmath:
-    package alias E = I;
-    package enum mask = (I(1) << pack) - 1;
-    package enum bits = I.sizeof * 8;
+    package(mir) alias E = I;
+    package(mir) enum mask = (I(1) << pack) - 1;
+    package(mir) enum bits = I.sizeof * 8;
 
     ///
     Field _field;

@@ -165,31 +165,6 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
     )
 )
 
-$(TR $(TDNW $(SUBMODULE algorithm)
-        $(BR) $(SMALL Loop free programming))
-     $(TD
-        $(SUBREF algorithm, all)
-        $(SUBREF algorithm, any)
-        $(SUBREF algorithm, cmp)
-        $(SUBREF algorithm, count)
-        $(SUBREF algorithm, each)
-        $(SUBREF algorithm, eachLower)
-        $(SUBREF algorithm, eachUpper)
-        $(SUBREF algorithm, eachUploPair)
-        $(SUBREF algorithm, equal)
-        $(SUBREF algorithm, find)
-        $(SUBREF algorithm, findIndex)
-        $(SUBREF algorithm, isSymmetric)
-        $(SUBREF algorithm, minPos)
-        $(SUBREF algorithm, minIndex)
-        $(SUBREF algorithm, maxPos)
-        $(SUBREF algorithm, maxIndex)
-        $(SUBREF algorithm, minmaxPos)
-        $(SUBREF algorithm, minmaxIndex)
-        $(SUBREF algorithm, reduce)
-    )
-)
-
 $(TR $(TDNW $(SUBMODULE fuse) $(BR)
     $(SMALL Data fusing (stacking)
         $(BR) See also $(SUBMODULE concatenation) submodule.
@@ -478,7 +453,7 @@ TDNW2 = <td class="donthyphenate nobr" rowspan="2">$0</td>
 */
 module mir.ndslice;
 
-public import mir.ndslice.algorithm;
+public import mir.algorithm.iteration;
 public import mir.ndslice.allocation;
 public import mir.ndslice.concatenation;
 public import mir.ndslice.chunks;

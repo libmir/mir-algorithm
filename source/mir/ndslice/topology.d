@@ -3667,7 +3667,7 @@ version(mir_test) unittest
     auto lower = lowerData.stairs!"+"(n);
     auto upper = upperData.stairs!"-"(n);
     // copy data
-    import mir.ndslice.algorithm: each;
+    import mir.algorithm.iteration: each;
     each!"a[] = b"(lower, inc);
     each!"a[] = b"(upper, dec);
 

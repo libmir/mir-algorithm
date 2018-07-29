@@ -135,7 +135,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 
 @safe pure nothrow version(mir_test) unittest
 {
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     struct Foo
     {
         int a;
@@ -166,7 +166,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 
 @system version(mir_test) unittest
 {
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     struct Foo
     {
         int a;
@@ -312,7 +312,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
 // Bugzilla 10220
 @safe version(mir_test) unittest
 {
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     import std.exception;
     import mir.ndslice.topology: repeat;
 

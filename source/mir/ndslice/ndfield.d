@@ -61,8 +61,8 @@ struct Cartesian(NdFields...)
     ///
     NdFields _fields;
 
-    package enum size_t M(size_t f) = [staticMap!(DimensionCount, NdFields[0..f])].sum;
-    package enum size_t N = M!(NdFields.length);
+    package(mir) enum size_t M(size_t f) = [staticMap!(DimensionCount, NdFields[0..f])].sum;
+    package(mir) enum size_t N = M!(NdFields.length);
 
     ///
     auto lightConst()() const @property

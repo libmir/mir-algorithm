@@ -26,7 +26,7 @@ module mir.ndslice.sorting;
 /// Check if ndslice is sorted, or strictly monotonic.
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.sorting: sort;
     import mir.ndslice.topology: pairwise;
@@ -50,7 +50,7 @@ module mir.ndslice.sorting;
 /// Create index
 version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.sorting: sort;
@@ -67,7 +67,7 @@ version(mir_test) unittest
 /// Schwartzian transform
 version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.sorting: sort;
@@ -89,7 +89,7 @@ import mir.math.common: optmath;
 
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
 
     auto a = [1, 2, 3].sliced;
@@ -106,7 +106,7 @@ import mir.math.common: optmath;
 
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
 
     assert([1, 2, 3][0 .. 0].sliced.pairwise!"a < b".all);
@@ -159,7 +159,7 @@ template sort(alias less = "a < b")
 ///
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.slice;
     import mir.ndslice.sorting: sort;
     import mir.ndslice.topology: pairwise;

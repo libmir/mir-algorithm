@@ -1764,7 +1764,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
             if (this._strides == rslice._strides && this._iterator == rslice._iterator)
                 return true;
         }
-        import mir.ndslice.algorithm : equal;
+        import mir.algorithm.iteration : equal;
         return equal(this.lightConst, rslice.lightConst);
     }
 
@@ -2169,7 +2169,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
 
             auto result = (() @trusted => this.shape.uninitSlice!(Unqual!E))();
 
-            import mir.ndslice.algorithm: each;
+            import mir.algorithm.iteration: each;
             each!(emplaceRef!(Unqual!E))(result, this);
 
             return result;
@@ -2224,7 +2224,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
 
             auto result = (() @trusted => this.shape.uninitSlice!(Unqual!E))();
 
-            import mir.ndslice.algorithm: each;
+            import mir.algorithm.iteration: each;
             each!(emplaceRef!(immutable E))(result, this);
             alias R = typeof(return);
             return (() @trusted => cast(R) result)();

@@ -48,7 +48,7 @@ template fuse(Dimensions...)
         if (hasShape!NDRange)
     {
         import std.backdoor: emplaceRef;
-        import mir.ndslice.algorithm: each;
+        import mir.algorithm.iteration: each;
         import mir.ndslice.allocation;
         auto shape = fuseShape(r);
         alias T = FuseElementType!NDRange;
@@ -327,7 +327,7 @@ private auto fuseCellsEmplaceImpl(alias fun, size_t i, size_t M, Iterator, size_
         assert (to.length!i >= n);
         static if (i + 1 == M)
         {
-            import mir.ndslice.algorithm: each;
+            import mir.algorithm.iteration: each;
             each!fun(to.selectFront!i(n), from);
         }
         else

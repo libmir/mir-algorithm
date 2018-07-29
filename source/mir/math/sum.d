@@ -969,7 +969,7 @@ public:
                 F s0 = 0 + 0fi;
             else
                 F s0 = 0;
-            import mir.ndslice.algorithm: reduce;
+            import mir.algorithm.iteration: reduce;
             s0 = s0.reduce!"a + b"(r);
             s += s0;
         }
@@ -1883,7 +1883,7 @@ private F sumPrecise(Range, F)(Range r, F seed = summationInitValue!F)
         import mir.ndslice.slice: isSlice;
         static if (isSlice!Range)
         {
-            import mir.ndslice.algorithm: each;
+            import mir.algorithm.iteration: each;
             r.each!((auto ref elem)
             {
                 sumRe.put(elem.re);

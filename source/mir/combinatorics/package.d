@@ -313,7 +313,7 @@ version(mir_test) unittest
 
 @safe nothrow @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.fuse;
     static perms = 2.permutations;
@@ -500,7 +500,7 @@ pure @safe nothrow version(mir_test) unittest
 ///
 @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology : iota;
 
@@ -720,7 +720,7 @@ pure nothrow @safe version(mir_test) unittest
 @nogc version(mir_test) unittest
 {
     import mir.ndslice.topology: iota;
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
 
     import std.experimental.allocator.mallocator: Mallocator;
@@ -993,7 +993,7 @@ pure nothrow @safe version(mir_test) unittest
 ///
 @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: iota;
 
@@ -1301,7 +1301,7 @@ pure nothrow @safe version(mir_test) unittest
 ///
 @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: iota;
 

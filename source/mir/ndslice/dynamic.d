@@ -495,7 +495,7 @@ template transposed(Dimensions...)
     ///
     @optmath auto transposed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
     {
-        import mir.ndslice.algorithm: any;
+        import mir.algorithm.iteration: any;
         enum s = N;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == s);
         static if (kind == Universal || kind == Canonical && !hasRowStride)
@@ -658,7 +658,7 @@ template reversed(Dimensions...)
     ///
     @optmath auto reversed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice) @trusted
     {
-        import mir.ndslice.algorithm: any;
+        import mir.algorithm.iteration: any;
         enum s = N;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == s);
         static if (kind == Universal || kind == Canonical && !hasRowStride)
@@ -813,7 +813,7 @@ template strided(Dimensions...)
     +/
     @optmath auto strided(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
     {
-        import mir.ndslice.algorithm: any;
+        import mir.algorithm.iteration: any;
         enum s = N;
         enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == s);
         static if (kind == Universal || kind == Canonical && !hasRowStride)

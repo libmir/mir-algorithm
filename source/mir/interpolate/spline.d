@@ -39,7 +39,7 @@ import mir.ndslice.traits;
     import std.math: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap;
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
 
     auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
     auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
@@ -92,7 +92,7 @@ import mir.ndslice.traits;
     import mir.ndslice.allocation: uninitSlice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap, map;
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.functional: aliasCall;
 
     auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
@@ -534,7 +534,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     void _computeDerivatives()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) @trusted nothrow @nogc
     {
         import mir.internal.memory;
-        import mir.ndslice.algorithm: maxLength;
+        import mir.algorithm.iteration: maxLength;
         auto ml = this._data.maxLength;
         auto temp_ptr = cast(F*) alignedAllocate(F[2 ^^ (N - 1)].sizeof * ml, alignment);
         if (temp_ptr is null)
@@ -552,7 +552,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     void _computeDerivativesTemp()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) @system nothrow @nogc
     {
         import mir.internal.memory;
-        import mir.ndslice.algorithm: maxLength, each;
+        import mir.algorithm.iteration: maxLength, each;
         import mir.ndslice.topology: map, byDim, evertPack;
 
         assert(temp.length >= _data.maxLength);

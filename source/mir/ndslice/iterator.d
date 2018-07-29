@@ -940,7 +940,7 @@ struct BytegroupIterator(Iterator, size_t count, DestinationType)
         return BytegroupIterator!(LightImmutableOf!Iterator, count, DestinationType)(.lightImmutable(_iterator));
     }
 
-    package alias Byte = Unqual!(typeof(_iterator[0]));
+    package(mir) alias Byte = Unqual!(typeof(_iterator[0]));
 
     version(LittleEndian)
         private enum BE = false;

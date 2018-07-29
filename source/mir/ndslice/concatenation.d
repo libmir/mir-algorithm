@@ -89,7 +89,7 @@ Returns: $(LREF Concatenation).
 +/
 auto concatenation(size_t dim = 0, Slices...)(Slices slices)
 {
-    import mir.ndslice.algorithm: reduce;
+    import mir.algorithm.iteration: reduce;
     import mir.utility: min, max; 
     enum NOf(S) = S.N;
     enum NArray = [staticMap!(NOf, Slices)];

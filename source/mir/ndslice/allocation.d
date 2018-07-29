@@ -103,7 +103,7 @@ auto slice(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
 
         auto result = (() @trusted => slice.shape.uninitSlice!(Unqual!E))();
 
-        import mir.ndslice.algorithm: each;
+        import mir.algorithm.iteration: each;
         each!(emplaceRef!E)(result, slice);
 
         return (() @trusted => cast(Slice!(E*, N)) result)();
@@ -293,7 +293,7 @@ auto makeSlice(Allocator, Iterator, size_t N, Kind kind)
 
     auto result = allocator.makeUninitSlice!(Unqual!E)(slice.shape);
 
-    import mir.ndslice.algorithm: each;
+    import mir.algorithm.iteration: each;
     each!(emplaceRef!E)(result, slice);
 
     return cast(Slice!(E*, N)) result;
@@ -305,7 +305,7 @@ version(mir_test)
 {
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.topology: map;
 
     auto sl = Mallocator.instance.makeSlice([2, 3, 4], 10);
@@ -582,7 +582,7 @@ auto stdcSlice(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
     auto ret = stdcUninitSlice!T(slice.shape);
 
     import std.backdoor: emplaceRef;
-    import mir.ndslice.algorithm: each;
+    import mir.algorithm.iteration: each;
     each!(emplaceRef!E)(ret, slice);
     return ret;
 }

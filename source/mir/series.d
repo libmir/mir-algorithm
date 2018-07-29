@@ -1511,7 +1511,7 @@ template sort(alias less = "a < b")
                 Slice!DataIterator dataBuffer,
             )
         {
-            import mir.ndslice.algorithm: each;
+            import mir.algorithm.iteration: each;
             import mir.ndslice.sorting: sort;
             import mir.ndslice.topology: iota, zip, ipack, evertPack;
 
