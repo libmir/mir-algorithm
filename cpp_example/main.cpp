@@ -9,7 +9,7 @@ namespace Space
 
 int main()
 {
-    auto matrix = Space::eye(3);
+    mir_slice<double*, 2> matrix = Space::eye(3);
     Space::printMatrix(matrix);
     std::free(matrix._iterator);
     return 0;
