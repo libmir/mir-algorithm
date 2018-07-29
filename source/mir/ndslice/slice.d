@@ -12,14 +12,14 @@ Authors:   Ilya Yaroshenko
 $(BOOKTABLE $(H2 Definitions),
 $(TR $(TH Name) $(TH Description))
 $(T2 Slice, N-dimensional slice.)
-$(T2 Kind, Kind of $(LREF Slice) enumeration.)
-$(T2 Universal, Alias for $(LREF .Kind.universal).)
-$(T2 Canonical, Alias for $(LREF .Kind.canonical).)
-$(T2 Contiguous, Alias for $(LREF .Kind.contiguous).)
+$(T2 SliceKind, SliceKind of $(LREF Slice) enumeration.)
+$(T2 Universal, Alias for $(LREF .SliceKind.universal).)
+$(T2 Canonical, Alias for $(LREF .SliceKind.canonical).)
+$(T2 Contiguous, Alias for $(LREF .SliceKind.contiguous).)
 $(T2 sliced, Creates a slice on top of an iterator, a pointer, or an array's pointer.)
 $(T2 slicedField, Creates a slice on top of a field, a random access range, or an array.)
 $(T2 slicedNdField, Creates a slice on top of an ndField.)
-$(T2 kindOf, Extracts $(LREF Kind).)
+$(T2 kindOf, Extracts $(LREF SliceKind).)
 $(T2 isSlice, Extracts dimension count from a type. Extracts `null` if the template argument is not a `Slice`.)
 $(T2 Structure, A tuple of lengths and strides.)
 )
@@ -88,19 +88,19 @@ Reurns:
     Ndslice view in the same data.
 See_also: $(LREF isConvertibleToSlice).
 +/
-auto toSlice(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) val)
+auto toSlice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) val)
 {
     return val;
 }
 
 /// ditto
-auto toSlice(Iterator, size_t N, Kind kind)(const Slice!(Iterator, N, kind) val)
+auto toSlice(Iterator, size_t N, SliceKind kind)(const Slice!(Iterator, N, kind) val)
 {
     return val[];
 }
 
 /// ditto
-auto toSlice(Iterator, size_t N, Kind kind)(immutable Slice!(Iterator, N, kind) val)
+auto toSlice(Iterator, size_t N, SliceKind kind)(immutable Slice!(Iterator, N, kind) val)
 {
     return val[];
 }
@@ -137,7 +137,7 @@ template toSlices(args...)
 ///
 template isSlice(T)
 {
-    static if (is(T : Slice!(Iterator, N, kind), Iterator, size_t N, Kind kind))
+    static if (is(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind))
         enum bool isSlice = true;
     else
         enum bool isSlice = false;
@@ -155,14 +155,16 @@ version(mir_test) unittest
 }
 
 /++
-Kind of $(LREF Slice).
+SliceKind of $(LREF Slice).
 See_also:
     $(SUBREF topology, universal),
     $(SUBREF topology, canonical),
     $(SUBREF topology, assumeCanonical),
     $(SUBREF topology, assumeContiguous).
 +/
-enum Kind
+alias SliceKind = mir_slice_kind;
+/// ditto
+enum mir_slice_kind
 {
     /// A slice has strides for all dimensions.
     universal,
@@ -173,29 +175,29 @@ enum Kind
 }
 
 /++
-Alias for $(LREF .Kind.universal).
+Alias for $(LREF .SliceKind.universal).
 
 See_also:
     Internal Binary Representation section in $(LREF Slice).
 +/
-alias Universal = Kind.universal;
+alias Universal = SliceKind.universal;
 /++
-Alias for $(LREF .Kind.canonical).
+Alias for $(LREF .SliceKind.canonical).
 
 See_also:
     Internal Binary Representation section in $(LREF Slice).
 +/
-alias Canonical = Kind.canonical;
+alias Canonical = SliceKind.canonical;
 /++
-Alias for $(LREF .Kind.contiguous).
+Alias for $(LREF .SliceKind.contiguous).
 
 See_also:
     Internal Binary Representation section in $(LREF Slice).
 +/
-alias Contiguous = Kind.contiguous;
+alias Contiguous = SliceKind.contiguous;
 
-/// Extracts $(LREF Kind).
-enum kindOf(T : Slice!(Iterator, N, kind), Iterator, size_t N, Kind kind) = kind;
+/// Extracts $(LREF SliceKind).
+enum kindOf(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind) = kind;
 
 ///
 @safe pure nothrow @nogc
@@ -205,7 +207,7 @@ version(mir_test) unittest
 }
 
 /// Extracts iterator type from a $(LREF Slice).
-alias IteratorOf(T : Slice!(Iterator, N, kind), Iterator, size_t N, Kind kind) = Iterator;
+alias IteratorOf(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind) = Iterator;
 
 private template SkipDimension(size_t dimension, size_t index)
 {
@@ -228,7 +230,7 @@ Returns:
 +/
 auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
     if (!isStaticArray!Iterator && N
-        && !is(Iterator : Slice!(_Iterator, _N, kind), _Iterator, size_t _N, Kind kind))
+        && !is(Iterator : Slice!(_Iterator, _N, kind), _Iterator, size_t _N, SliceKind kind))
 {
     alias C = ImplicitlyUnqual!(typeof(iterator));
     size_t[N] _lengths;
@@ -339,7 +341,7 @@ Returns:
 +/
 Slice!(Iterator, N, kind)
     sliced
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, 1, kind) slice, size_t[N] lengths...)
     if (N)
 {
@@ -607,13 +609,15 @@ Slice!(Universal, N, Iterator)
     Iterator      _iterator
 -------
 +/
-struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
+alias Slice = mir_slice;
+/// ditto
+struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
     if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1))
 {
 @optmath:
 
     ///
-    enum Kind kind = kind_;
+    enum SliceKind kind = kind_;
 
     ///
     enum N = N_;
@@ -1750,7 +1754,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
     /++
     Overloading `==` and `!=`
     +/
-    bool opEquals(IteratorR, Kind rkind)(const Slice!(IteratorR, N, rkind) rslice) @trusted const
+    bool opEquals(IteratorR, SliceKind rkind)(const Slice!(IteratorR, N, rkind) rslice) @trusted const
     {
         static if (
                !hasReference!(typeof(this))
@@ -2129,7 +2133,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
         $(BR)
         Does not allocate neither new slice nor a closure.
     +/
-    auto opBinary(string op, RIterator, size_t RN, Kind rkind) (Slice!(RIterator, RN, rkind) rhs) @nogc
+    auto opBinary(string op, RIterator, size_t RN, SliceKind rkind) (Slice!(RIterator, RN, rkind) rhs) @nogc
         if(N == RN && (kind == Contiguous && rkind == Contiguous || N == 1) && op != "~")
     {
         import mir.ndslice.topology: zip, map;
@@ -2259,7 +2263,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
 
     static if (isMutable!DeepElement)
     {
-        private void opIndexOpAssignImplSlice(string op, RIterator, size_t RN, Kind rkind)(Slice!(RIterator, RN, rkind) value)
+        private void opIndexOpAssignImplSlice(string op, RIterator, size_t RN, SliceKind rkind)(Slice!(RIterator, RN, rkind) value)
             @safe
         {
             static if (N > 1 && RN == N && kind == Contiguous && rkind == Contiguous)
@@ -2315,7 +2319,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
         /++
         Assignment of a value of `Slice` type to a $(B fully defined slice).
         +/
-        auto opIndexAssign(RIterator, size_t RN, Kind rkind, Slices...)(Slice!(RIterator, RN, rkind) value, Slices slices)
+        auto opIndexAssign(RIterator, size_t RN, SliceKind rkind, Slices...)(Slice!(RIterator, RN, rkind) value, Slices slices)
             @safe
             if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
@@ -2664,7 +2668,7 @@ struct Slice(Iterator_, size_t N_ = 1, Kind kind_ = Contiguous)
         /++
         Op Assignment `op=` of a value of `Slice` type to a $(B fully defined slice).
         +/
-        auto opIndexOpAssign(string op, RIterator, Kind rkind, size_t RN, Slices...)
+        auto opIndexOpAssign(string op, RIterator, SliceKind rkind, size_t RN, Slices...)
             (Slice!(RIterator, RN, rkind) value, Slices slices)
             @safe
             if (isFullPureSlice!Slices || isIndexedSlice!Slices)
@@ -3214,7 +3218,7 @@ private enum isStringValue(alias T) = is(typeof(T) : string);
 private bool _checkAssignLengths(
     LIterator, RIterator,
     size_t LN, size_t RN,
-    Kind lkind, Kind rkind,
+    SliceKind lkind, SliceKind rkind,
     )
     (Slice!(LIterator, LN, lkind) ls,
      Slice!(RIterator, RN, rkind) rs)

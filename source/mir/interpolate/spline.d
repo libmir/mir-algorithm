@@ -342,7 +342,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(yIterator, Kind ykind)(
+    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
         GridVectors grid,
         scope Slice!(yIterator, N, ykind) values,
         SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
@@ -361,7 +361,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(yIterator, Kind ykind)(
+    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
         GridVectors grid,
         scope Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T boundaries,
@@ -380,7 +380,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(yIterator, Kind ykind)(
+    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
         GridVectors grid,
         scope Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T rBoundary,
@@ -516,7 +516,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     Assigns function values to the internal memory.
     $(RED For internal use.)
     +/
-    void _values(Kind kind, Iterator)(scope Slice!(Iterator, N, kind) values) @property @trusted
+    void _values(SliceKind kind, Iterator)(scope Slice!(Iterator, N, kind) values) @property @trusted
     {
         assert(values.shape == _data.shape, "'values' should have the same shape as the .gridShape");
         pickDataSubslice(_data, 0)[] = values;
@@ -788,7 +788,7 @@ Constraints:
     `points`, `values`, and `slopes`, must have the same length > 3;
     `temp` must have length greater or equal to points less minus one.
 +/
-void splineSlopes(F, T, IP, IV, IS, Kind gkind, Kind vkind, Kind skind)(
+void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
     scope Slice!(IP, 1, gkind) points,
     scope Slice!(IV, 1, vkind) values,
     scope Slice!(IS, 1, skind) slopes,

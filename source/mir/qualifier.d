@@ -10,7 +10,7 @@ NDSLICE = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
 module mir.qualifier;
 
 import std.traits;
-import mir.ndslice.slice: Kind, Slice, isSlice;
+import mir.ndslice.slice: SliceKind, Slice, isSlice;
 
 ///
 version(mir_test) unittest
@@ -81,7 +81,7 @@ template LightImmutableOf(T)
 @property:
 
 ///
-auto lightConst(Iterator, size_t N, Kind kind)(const Slice!(Iterator, N, kind) e)
+auto lightConst(Iterator, size_t N, SliceKind kind)(const Slice!(Iterator, N, kind) e)
 {
     static if (isPointer!Iterator)
         return Slice!(LightConstOf!Iterator, N, kind)(e._lengths, e._strides, lightConst(e._iterator));
@@ -90,13 +90,13 @@ auto lightConst(Iterator, size_t N, Kind kind)(const Slice!(Iterator, N, kind) e
 }
 
 /// ditto
-auto lightConst(Iterator, size_t N, Kind kind)(immutable Slice!(Iterator, N, kind) e)
+auto lightConst(Iterator, size_t N, SliceKind kind)(immutable Slice!(Iterator, N, kind) e)
 {
     return e.lightImmutable;
 }
 
 /// ditto
-auto lightImmutable(Iterator, size_t N, Kind kind)(immutable Slice!(Iterator, N, kind) e)
+auto lightImmutable(Iterator, size_t N, SliceKind kind)(immutable Slice!(Iterator, N, kind) e)
 {
     static if (isPointer!Iterator)
         return Slice!(LightImmutableOf!Iterator, N, kind)(e._lengths, e._strides, lightImmutable(e._iterator));

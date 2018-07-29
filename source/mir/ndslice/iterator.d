@@ -36,7 +36,7 @@ module mir.ndslice.iterator;
 import std.traits;
 import mir.internal.utility: Iota;
 import mir.math.common: optmath;
-import mir.ndslice.slice: Kind, Slice, Universal, Canonical, Contiguous, isSlice;
+import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous, isSlice;
 import mir.ndslice.internal;
 import mir.qualifier;
 import std.backdoor;
@@ -1233,7 +1233,7 @@ as a multidimensional window at the current position.
 
 `SliceIterator` is used by $(SUBREF topology, map) for packed slices.
 +/
-struct SliceIterator(Iterator, size_t N = 1, Kind kind = Contiguous)
+struct SliceIterator(Iterator, size_t N = 1, SliceKind kind = Contiguous)
 {
 @optmath:
     ///
@@ -1373,7 +1373,7 @@ struct FieldIterator(Field)
     { return this._index - right._index; }
 }
 
-auto FlattenedIterator__map(Iterator, size_t N, Kind kind, alias fun)(ref FlattenedIterator!(Iterator, N, kind) it)
+auto FlattenedIterator__map(Iterator, size_t N, SliceKind kind, alias fun)(ref FlattenedIterator!(Iterator, N, kind) it)
 {
     import mir.ndslice.topology: map;
     auto slice = it._slice.map!fun;
@@ -1394,7 +1394,7 @@ Creates an iterator on top of all elements in a slice.
 
 `FieldIterator` is used by $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.
 +/
-struct FlattenedIterator(Iterator, size_t N, Kind kind)
+struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
     if (N > 1 && (kind == Universal || kind == Canonical))
 {
 @optmath:

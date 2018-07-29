@@ -92,9 +92,9 @@ version(mir_test) unittest
 ///
 template DimensionCount(T)
 {
-    import mir.ndslice.slice: Slice, Kind;
+    import mir.ndslice.slice: Slice, SliceKind;
     /// Extracts dimension count from a $(LREF Slice). Alias for $(LREF isSlice).
-    static if(is(T : Slice!(Iterator, N, kind), Iterator, size_t N, Kind kind))
+    static if(is(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind))
       enum size_t DimensionCount = N;
     else
     static if (hasShape!T)

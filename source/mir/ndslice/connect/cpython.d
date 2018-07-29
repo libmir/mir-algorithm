@@ -29,7 +29,7 @@ Params:
 Returns:
     flags for $(LREF Py_buffer) request.
 +/
-enum int pythonBufferFlags(Kind kind, T) = (kind == Contiguous ? PyBuf_c_contiguous : PyBuf_strides) | (is(T == const) || is (T == immutable) ? PyBuf_records_ro : PyBuf_records);
+enum int pythonBufferFlags(SliceKind kind, T) = (kind == Contiguous ? PyBuf_c_contiguous : PyBuf_strides) | (is(T == const) || is (T == immutable) ? PyBuf_records_ro : PyBuf_records);
 
 /++
 Fills the slice (structure) from the python `view`.
@@ -41,7 +41,7 @@ Params:
 Returns:
     one of the `input_buffer_*` $(LREF PythonBufferErrorCode) on failure and `success` otherwise.
 +/
-PythonBufferErrorCode fromPythonBuffer(T, size_t N, Kind kind)(ref Slice!(T*, N, kind) slice, ref const Py_buffer view) nothrow @nogc @trusted
+PythonBufferErrorCode fromPythonBuffer(T, size_t N, SliceKind kind)(ref Slice!(T*, N, kind) slice, ref const Py_buffer view) nothrow @nogc @trusted
     if (N <= PyBuf_max_ndim)
 {
     import core.stdc.string: strcmp;
@@ -103,7 +103,7 @@ Params:
 Returns:
     one of the `cannot_create_*` $(LREF PythonBufferErrorCode) on failure and `success` otherwise.
 +/
-PythonBufferErrorCode toPythonBuffer(T, size_t N, Kind kind)(Slice!(T*, N, kind) slice, ref Py_buffer view, int flags, ref Structure!N structureBuffer) nothrow @nogc @trusted
+PythonBufferErrorCode toPythonBuffer(T, size_t N, SliceKind kind)(Slice!(T*, N, kind) slice, ref Py_buffer view, int flags, ref Structure!N structureBuffer) nothrow @nogc @trusted
     if (N <= PyBuf_max_ndim)
 {
     structureBuffer.lengths = slice._lengths;

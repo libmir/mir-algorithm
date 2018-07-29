@@ -3,13 +3,13 @@ This is a submodule of $(MREF mir,ndslice).
 
 Selectors create new views and iteration patterns over the same data, without copying.
 
-$(BOOKTABLE $(H2 Kind Selectors),
+$(BOOKTABLE $(H2 SliceKind Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
-$(T2 universal, Converts a slice to universal $(SUBREF slice, Kind).)
-$(T2 canonical, Converts a slice to canonical $(SUBREF slice, Kind).)
-$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, Kind) (unsafe).)
-$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, Kind) (unsafe).)
+$(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
+$(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
+$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind) (unsafe).)
+$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind) (unsafe).)
 
 )
 
@@ -131,7 +131,7 @@ See_also:
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
 +/
-auto universal(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+auto universal(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Universal)
     {
@@ -202,7 +202,7 @@ See_also:
 +/
 Slice!(Iterator, N, N == 1 ? Contiguous : Canonical)
     canonical
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
     if (kind == Contiguous || kind == Canonical)
 {
@@ -249,7 +249,7 @@ See_also:
 +/
 Slice!(Iterator, N, Canonical)
     assumeCanonical
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Contiguous)
@@ -295,7 +295,7 @@ See_also:
 +/
 Slice!(Iterator, N)
     assumeContiguous
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Contiguous)
@@ -334,7 +334,7 @@ Returns:
 See_also: $(LREF ipack)
 +/
 Slice!(SliceIterator!(Iterator, P, P == 1 && kind == Canonical ? Contiguous : kind), N - P, Universal)
-pack(size_t P, Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+pack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     if (P && P < N)
 {
     return slice.ipack!(N - P);
@@ -368,7 +368,7 @@ Params:
 See_also: $(LREF pack)
 +/
 Slice!(SliceIterator!(Iterator, N - P, N - P == 1 && kind == Canonical ? Contiguous : kind), P, Universal)
-ipack(size_t P, Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+ipack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     if (P && P < N)
 {
     alias Ret = typeof(return);
@@ -423,7 +423,7 @@ Returns:
 See_also: $(LREF pack), $(LREF evertPack)
 +/
 Slice!(Iterator, N + M, min(innerKind, Canonical))
-    unpack(Iterator, size_t M, Kind innerKind, size_t N, Kind outerKind)
+    unpack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind)
     (Slice!(SliceIterator!(Iterator, M, innerKind), N, outerKind) slice)
 {
     alias Ret = typeof(return);
@@ -458,7 +458,7 @@ Returns:
 See_also: $(LREF pack), $(LREF unpack)
 +/
 Slice!(SliceIterator!(Iterator, N, outerKind), M, innerKind)
-evertPack(Iterator, size_t M, Kind innerKind, size_t N, Kind outerKind)
+evertPack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind)
     (Slice!(SliceIterator!(Iterator, M, innerKind), N, outerKind) slice)
 {
     return typeof(return)(
@@ -653,7 +653,7 @@ See_also: $(LREF antidiagonal)
 +/
 Slice!(Iterator, 1, N == 1 ? kind : Universal) 
     diagonal
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
 {
     static if (N == 1)
@@ -832,7 +832,7 @@ See_also: $(LREF diagonal)
 +/
 Slice!(Iterator, 1, Universal)
     antidiagonal
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
     if (N == 2)
 {
@@ -884,7 +884,7 @@ See_also: $(SUBREF chunks, ._chunks)
 +/
 Slice!(SliceIterator!(Iterator, N, N == 1 ? Universal : min(kind, Canonical)), N, Universal) 
     blocks
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice, size_t[N] rlengths...)
 in
 {
@@ -1012,7 +1012,7 @@ Returns:
 +/
 Slice!(SliceIterator!(Iterator, N, N == 1 ? kind : min(kind, Canonical)), N, Universal) 
     windows
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice, size_t[N] rlengths...)
 in
 {
@@ -1198,7 +1198,7 @@ Returns:
     reshaped slice
 +/
 Slice!(Iterator, M, kind) reshape
-        (Iterator, size_t N, Kind kind, size_t M)
+        (Iterator, size_t N, SliceKind kind, size_t M)
         (Slice!(Iterator, N, kind) slice, ptrdiff_t[M] rlengths, ref int err)
 {
     static if (kind == Canonical)
@@ -1396,7 +1396,7 @@ Returns:
 +/
 Slice!(FlattenedIterator!(Iterator, N, kind))
     flattened
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
     if (N != 1 && kind != Contiguous)
 {
@@ -1814,7 +1814,7 @@ Slice!(FieldIterator!(RepeatField!T), M, Universal)
 /// ditto
 Slice!(SliceIterator!(Iterator, N, kind), M, Universal)
     repeat
-    (Kind kind, size_t N, Iterator, size_t M)
+    (SliceKind kind, size_t N, Iterator, size_t M)
     (Slice!(Iterator, N, kind) slice, size_t[M] lengths...)
     if (M)
 {
@@ -1894,7 +1894,7 @@ Returns:
 See_also: $(SUBREF dynamic, strided)
 +/
 auto stride
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice, ptrdiff_t factor)
     if (N == 1)
 in
@@ -1943,7 +1943,7 @@ Returns:
 See_also: $(SUBREF dynamic, reversed), $(SUBREF dynamic, allReversed).
 +/
 auto retro
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
     @trusted
 {
@@ -2007,7 +2007,7 @@ Params:
 Returns: A bitwise slice.
 +/
 auto bitwise
-    (Iterator, size_t N, Kind kind, I = typeof(Iterator.init[size_t.init]))
+    (Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
     (Slice!(Iterator, N, kind) slice)
     if (isIntegral!I && (kind == Contiguous || kind == Canonical))
 {
@@ -2098,7 +2098,7 @@ Params:
 Returns: A bitpack slice.
 +/
 auto bitpack
-    (size_t pack, Iterator, size_t N, Kind kind, I = typeof(Iterator.init[size_t.init]))
+    (size_t pack, Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
     (Slice!(Iterator, N, kind) slice)
     if (isIntegral!I && (kind == Contiguous || kind == Canonical) && pack > 1)
 {
@@ -2170,7 +2170,7 @@ Returns: A bytegroup slice.
 +/
 Slice!(BytegroupIterator!(Iterator, group, DestinationType), N, kind)
 bytegroup
-    (size_t group, DestinationType, Iterator, size_t N, Kind kind)
+    (size_t group, DestinationType, Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
     if ((kind == Contiguous || kind == Canonical) && group)
 {
@@ -2272,7 +2272,7 @@ template map(fun...)
                 a slice with each fun applied to all the elements. If there is more than one
                 fun, the element type will be `Tuple` containing one element for each fun.
             +/
-            auto map(Iterator, size_t N, Kind kind)
+            auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
                 import mir.ndslice.iterator: mapIterator;
@@ -2297,7 +2297,7 @@ template map(fun...)
         static if (__traits(isSame, naryFun!"a", fun[0]))
         {
             ///
-            @optmath auto map(Iterator, size_t N, Kind kind)
+            @optmath auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
                 return slice;
@@ -2445,7 +2445,7 @@ See_Also:
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
-@optmath auto vmap(Iterator, size_t N, Kind kind, Callable)
+@optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
     (Slice!(Iterator, N, kind) slice, auto ref Callable callable)
 {
     import mir.ndslice.iterator: VmapIterator;
@@ -2577,7 +2577,7 @@ version(none) version(mir_test) unittest
 }
 
 private auto hideStride
-    (Iterator, Kind kind)
+    (Iterator, SliceKind kind)
     (Slice!(Iterator, 1, kind) slice)
 {
     static if (kind == Universal)
@@ -2590,14 +2590,14 @@ private auto hideStride
 }
 
 private auto unhideStride
-    (Iterator, size_t N, Kind kind)
+    (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
 {
     static if (is(Iterator : StrideIterator!It, It))
     {
         static if (kind == Universal)
         {
-            alias Ret = Kind!(It, N, Universal);
+            alias Ret = SliceKind!(It, N, Universal);
             size_t[Ret.N] lengths;
     sizediff_t[Ret.S] strides;
             foreach(i; Iota!(Ret.N))
@@ -2623,7 +2623,7 @@ Returns:
 See_also: $(LREF cachedGC), $(LREF map), $(LREF vmap), $(LREF indexed)
 +/
 Slice!(CachedIterator!(Iterator, CacheIterator, FlagIterator), N, kind)
-    cached(Iterator, Kind kind, size_t N, CacheIterator, FlagIterator)(
+    cached(Iterator, SliceKind kind, size_t N, CacheIterator, FlagIterator)(
         Slice!(Iterator, N, kind) original,
         Slice!(CacheIterator, N, kind) caches,
         Slice!(FlagIterator, N, kind) flags,
@@ -2831,7 +2831,7 @@ See_also: $(LREF map), $(LREF vmap)
 template as(T)
 {
     ///
-    @optmath auto as(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+    @optmath auto as(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         static if (is(slice.DeepElement == T))
             return slice;
@@ -2903,7 +2903,7 @@ Returns:
 See_also: `indexed` is similar to $(LREF, vmap), but a field (`[]`) is used instead of a function (`()`), and order of arguments is reversed.
 +/
 Slice!(IndexIterator!(Iterator, Field), N, kind)
-    indexed(Field, Iterator, size_t N, Kind kind)
+    indexed(Field, Iterator, size_t N, SliceKind kind)
     (auto ref Field source, Slice!(Iterator, N, kind) indexes)
 {
     return typeof(return)(
@@ -2952,7 +2952,7 @@ Returns:
 See_also: $(LREF cut), $(LREF pairwise), $(LREF pairwiseMapSubSlices).
 +/
 Slice!(SubSliceIterator!(Iterator, Sliceable), N, kind)
-    mapSubSlices(Iterator, size_t N, Kind kind, Sliceable)(
+    mapSubSlices(Iterator, size_t N, SliceKind kind, Sliceable)(
         Slice!(Iterator, N, kind) indexes,
         auto ref Sliceable sliceable,
     )
@@ -3008,7 +3008,7 @@ Returns:
     ndslice composed of subslices.
 See_also: $(LREF pairwise), $(LREF mapSubSlices).
 +/
-auto pairwiseMapSubSlices(Iterator, Kind kind, Sliceable)(
+auto pairwiseMapSubSlices(Iterator, SliceKind kind, Sliceable)(
         Slice!(Iterator, 1, kind) indexes,
         auto ref Sliceable sliceable,
     )
@@ -3137,7 +3137,7 @@ Returns:
     unzipped slice
 +/
 auto unzip
-    (char name, size_t N, Kind kind, Iterators...)
+    (char name, size_t N, SliceKind kind, Iterators...)
     (Slice!(ZipIterator!Iterators, N, kind) slice)
 {
     enum size_t i = name - 'a';
@@ -3190,7 +3190,7 @@ template slide(size_t params, alias fun)
         Returns:
             1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
         +/
-        auto slide(Iterator, size_t N, Kind kind)
+        auto slide(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
             if (N == 1)
         {
@@ -3611,7 +3611,7 @@ Returns:
 
 See_also: $(LREF _stairs) $(SUBREF dynamic, transposed), $(LREF universal)
 +/
-auto stairs(string type, Iterator, Kind kind)(Slice!(Iterator, 2, kind) slice)
+auto stairs(string type, Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) slice)
     if (type == "+" || type == "-")
 {
     assert(slice.length!0 == slice.length!1, "stairs: input slice must be a square matrix.");
@@ -3707,14 +3707,14 @@ template byDim(Dimensions...)
     }
     else
     {
-        import mir.ndslice.slice : Slice, Kind;
+        import mir.ndslice.slice : Slice, SliceKind;
         /++
         Params:
             slice = input slice (may not be 1-dimensional slice)
         Returns:
             n-dimensional slice ipacked to allow iteration by dimension
         +/
-        @optmath auto byDim(Iterator, size_t N, Kind kind)
+        @optmath auto byDim(Iterator, size_t N, SliceKind kind)
                                        (Slice!(Iterator, N, kind) slice)
         {
             import mir.ndslice.topology : ipack;
@@ -4057,7 +4057,7 @@ template member(string name)
     Returns:
         lazy n-dimensional slice of the same shape
     +/
-    Slice!(MemberIterator!(Iterator, name), N, kind) member(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+    Slice!(MemberIterator!(Iterator, name), N, kind) member(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         return typeof(return)(slice._lengths, slice._strides, MemberIterator!(Iterator, name)(slice._iterator));
     }

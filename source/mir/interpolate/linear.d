@@ -56,7 +56,7 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 2
     Returns: $(LREF Spline)
     +/
-    Linear!(T, N, GridIterators) linear(yIterator, Kind ykind)(
+    Linear!(T, N, GridIterators) linear(yIterator, SliceKind ykind)(
         GridVectors grid,
         scope Slice!(yIterator, N, ykind) values,
         bool forceCopyValues = false

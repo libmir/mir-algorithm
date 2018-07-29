@@ -98,7 +98,7 @@ Params:
 Returns:
     `true` if the slice can be safely casted to $(SUBREF slice, Contiguous) kind using $(SUBREF topology, assumeContiguous) and false otherwise.
 +/
-bool normalizeStructure(Iterator, size_t N, Kind kind)(ref Slice!(Iterator, N, kind) slice)
+bool normalizeStructure(Iterator, size_t N, SliceKind kind)(ref Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Contiguous)
     {
@@ -180,7 +180,7 @@ See_also: $(LREF everted), $(LREF transposed)
 template swapped(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @optmath auto swapped(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
+    @optmath auto swapped(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
     {
         static if (kind == Universal || kind == Canonical && dimensionA + 1 < N && dimensionB + 1 < N)
         {
@@ -211,7 +211,7 @@ template swapped(size_t dimensionA, size_t dimensionB)
 }
 
 /// ditto
-auto swapped(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, size_t dimensionA, size_t dimensionB)
+auto swapped(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, size_t dimensionA, size_t dimensionB)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
@@ -227,7 +227,7 @@ auto swapped(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, si
 }
 
 /// ditto
-Slice!(Iterator, 2, Universal) swapped(Iterator, Kind kind)(Slice!(Iterator, 2, kind) slice)
+Slice!(Iterator, 2, Universal) swapped(Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) slice)
 {
     return slice.swapped!(0, 1);
 }
@@ -312,7 +312,7 @@ Returns:
 template rotated(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @optmath auto rotated(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, sizediff_t k = 1)
+    @optmath auto rotated(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, sizediff_t k = 1)
     {
         static if (kind == Universal || kind == Canonical && dimensionA + 1 < N && dimensionB + 1 < N)
         {
@@ -343,7 +343,7 @@ template rotated(size_t dimensionA, size_t dimensionB)
 }
 
 /// ditto
-auto rotated(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, size_t dimensionA, size_t dimensionB, sizediff_t k = 1)
+auto rotated(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, size_t dimensionA, size_t dimensionB, sizediff_t k = 1)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
@@ -359,7 +359,7 @@ auto rotated(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, si
 }
 
 /// ditto
-Slice!(Iterator, 2, Universal) rotated(Iterator, Kind kind)(Slice!(Iterator, 2, kind) slice, sizediff_t k = 1)
+Slice!(Iterator, 2, Universal) rotated(Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) slice, sizediff_t k = 1)
 {
     return .rotated!(0, 1)(slice, k);
 }
@@ -411,7 +411,7 @@ Returns:
     n-dimensional slice
 See_also: $(LREF swapped), $(LREF transposed)
 +/
-auto everted(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
+auto everted(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
 {
     static if (kind == Universal)
     {
@@ -493,7 +493,7 @@ template transposed(Dimensions...)
         alias transposed = .transposed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @optmath auto transposed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
+    @optmath auto transposed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
     {
         import mir.algorithm.iteration: any;
         enum s = N;
@@ -526,7 +526,7 @@ template transposed(Dimensions...)
 }
 
 ///ditto
-auto transposed(Iterator, size_t N, Kind kind, size_t M)(Slice!(Iterator, N, kind) _slice, size_t[M] dimensions...)
+auto transposed(Iterator, size_t N, SliceKind kind, size_t M)(Slice!(Iterator, N, kind) _slice, size_t[M] dimensions...)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
@@ -543,7 +543,7 @@ auto transposed(Iterator, size_t N, Kind kind, size_t M)(Slice!(Iterator, N, kin
 }
 
 ///ditto
-Slice!(Iterator, 2, Universal) transposed(Iterator, Kind kind)(Slice!(Iterator, 2, kind) slice)
+Slice!(Iterator, 2, Universal) transposed(Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) slice)
 {
     return .transposed!(1, 0)(slice);
 }
@@ -619,7 +619,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(Iterator, N, Universal) allReversed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice)
+Slice!(Iterator, N, Universal) allReversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
@@ -656,7 +656,7 @@ template reversed(Dimensions...)
         alias reversed = .reversed!(staticMap!(toSize_t, Dimensions));
     else
     ///
-    @optmath auto reversed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice) @trusted
+    @optmath auto reversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice) @trusted
     {
         import mir.algorithm.iteration: any;
         enum s = N;
@@ -686,7 +686,7 @@ template reversed(Dimensions...)
 }
 
 ///ditto
-Slice!(Iterator, N, Universal) reversed(Iterator, size_t N, Kind kind, size_t M)(Slice!(Iterator, N, kind) _slice, size_t[M] dimensions...)
+Slice!(Iterator, N, Universal) reversed(Iterator, size_t N, SliceKind kind, size_t M)(Slice!(Iterator, N, kind) _slice, size_t[M] dimensions...)
     @trusted
     if (M)
 {
@@ -703,7 +703,7 @@ Slice!(Iterator, N, Universal) reversed(Iterator, size_t N, Kind kind, size_t M)
 }
 
 /// ditto
-auto reversed(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+auto reversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     return .reversed!0(slice);
 }
@@ -811,7 +811,7 @@ template strided(Dimensions...)
         slice = input slice
         factors = list of step extension factors
     +/
-    @optmath auto strided(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
+    @optmath auto strided(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
     {
         import mir.algorithm.iteration: any;
         enum s = N;
@@ -842,7 +842,7 @@ template strided(Dimensions...)
 }
 
 ///ditto
-Slice!(Iterator, N, Universal) strided(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) _slice, size_t dimension, ptrdiff_t factor)
+Slice!(Iterator, N, Universal) strided(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, size_t dimension, ptrdiff_t factor)
 {
     import mir.ndslice.topology: universal;
     auto slice = _slice.universal;
@@ -936,7 +936,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-Slice!(Iterator, N, kind) dropToHypercube(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+Slice!(Iterator, N, kind) dropToHypercube(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     if (kind == Canonical || kind == Universal)
 body
 {

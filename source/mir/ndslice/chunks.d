@@ -43,7 +43,7 @@ template chunks(Dimensions...)
     Returns: $(LREF Chunks).
     +/
     Chunks!([Dimensions], Iterator, N, kind == Contiguous && [Dimensions] != [0] ? Canonical : kind)
-    chunks(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice, size_t[Dimensions.length] chunkLengths...)
+    chunks(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice, size_t[Dimensions.length] chunkLengths...)
     {
         static if (kindOf!(typeof(typeof(return).init._slice)) != kind)
         {
@@ -64,7 +64,7 @@ template chunks(Dimensions...)
 }
 
 /// ditto
-Chunks!([0], Iterator, N, kind) chunks(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice, size_t chunkLength)
+Chunks!([0], Iterator, N, kind) chunks(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice, size_t chunkLength)
 {
     return .chunks!0(slice, chunkLength);
 }
@@ -226,7 +226,7 @@ version(mir_test) unittest
 
 /++
 +/
-struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, Kind kind = Contiguous)
+struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Contiguous)
 {
 @optmath:
 
@@ -548,7 +548,7 @@ Returns:
 +/
 template isChunks(T)
 {
-    static if (is(T : Chunks!(dimensions, Iterator, N, kind), size_t[] dimensions, Iterator, size_t N, Kind kind))
+    static if (is(T : Chunks!(dimensions, Iterator, N, kind), size_t[] dimensions, Iterator, size_t N, SliceKind kind))
         enum isChunks = dimensions;
     else
         enum isChunks = size_t[].init;

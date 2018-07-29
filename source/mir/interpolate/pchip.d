@@ -44,7 +44,7 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
         `grid` and `values` must have the same length >= 3
     Returns: $(SUBREF spline, Spline)
     +/
-    @fmamath Spline!(T, N, GridIterators) pchip(yIterator, Kind ykind)(
+    @fmamath Spline!(T, N, GridIterators) pchip(yIterator, SliceKind ykind)(
         GridVectors grid,
         scope Slice!(yIterator, N, ykind) values) @safe
     {
@@ -129,7 +129,7 @@ Params:
 Constraints:
     `points`, `values`, and `slopes` must have the same length >= 3
 +/
-void pchipSlopes(IG, IV, IS, Kind gkind, Kind vkind, Kind skind)(
+void pchipSlopes(IG, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
     scope Slice!(IG, 1, gkind) points,
     scope Slice!(IV, 1, vkind) values,
     scope Slice!(IS, 1, skind) slopes) @trusted

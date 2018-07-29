@@ -159,7 +159,9 @@ import std.meta;
 Plain index/time observation data structure.
 Observation are used as return tuple for for indexing $(LREF Series).
 +/
-struct Observation(Index, Data)
+alias Observation = mir_observation;
+/// ditto
+struct mir_observation(Index, Data)
 {
     /// Date, date-time, time, or index.
     Index index;
@@ -216,7 +218,9 @@ Plain index series data structure.
 Index is assumed to be sorted.
 $(LREF sort) can be used to normalise a series.
 +/
-struct Series(IndexIterator, Iterator, size_t N = 1, Kind kind = Contiguous)
+alias Series = mir_series;
+/// ditto
+struct mir_series(IndexIterator, Iterator, size_t N = 1, SliceKind kind = Contiguous)
 {
     import std.range: SearchPolicy, assumeSorted;
 
@@ -268,7 +272,7 @@ struct Series(IndexIterator, Iterator, size_t N = 1, Kind kind = Contiguous)
     }
 
     ///
-    bool opEquals(RIndexIterator, RIterator, size_t RN, Kind rkind, )(Series!(RIndexIterator, RIterator, RN, rkind) rhs) const
+    bool opEquals(RIndexIterator, RIterator, size_t RN, SliceKind rkind, )(Series!(RIndexIterator, RIterator, RN, rkind) rhs) const
     {
         return this.index == rhs.index && this.data == rhs.data;
     }
@@ -397,7 +401,7 @@ struct Series(IndexIterator, Iterator, size_t N = 1, Kind kind = Contiguous)
     Params:
         r = rvalue index-series
     +/
-    void opIndexAssign(IndexIterator_, Iterator_, size_t N_, Kind kind_)
+    void opIndexAssign(IndexIterator_, Iterator_, size_t N_, SliceKind kind_)
         (Series!(IndexIterator_, Iterator_, N_, kind_) r)
     {
         opIndexOpAssign!("", IndexIterator_, Iterator_, N_, kind_)(r);
@@ -429,7 +433,7 @@ struct Series(IndexIterator, Iterator, size_t N = 1, Kind kind = Contiguous)
     Params:
         r = rvalue index-series
     +/
-    void opIndexOpAssign(string op, IndexIterator_, Iterator_, size_t N_, Kind kind_)
+    void opIndexOpAssign(string op, IndexIterator_, Iterator_, size_t N_, SliceKind kind_)
         (Series!(IndexIterator_, Iterator_, N_, kind_) r)
     {
         auto l = this;
@@ -1161,7 +1165,7 @@ Attention:
     This overloads do not sort the data.
     User should call $(LREF directly) if index was not sorted.
 +/
-auto series(IndexIterator, Iterator, size_t N, Kind kind)
+auto series(IndexIterator, Iterator, size_t N, SliceKind kind)
     (
         Slice!IndexIterator index,
         Slice!(Iterator, N, kind) data,
@@ -1186,7 +1190,7 @@ auto series(IndexIterator, Data)(Slice!IndexIterator index, Data[] data)
 }
 
 /// ditto
-auto series(Index, Iterator, size_t N, Kind kind)(Index[] index, Slice!(Iterator, N, kind) data)
+auto series(Index, Iterator, size_t N, SliceKind kind)(Index[] index, Slice!(Iterator, N, kind) data)
 {
     assert(index.length == data.length);
     return .series(index.sliced, data);
@@ -1354,7 +1358,7 @@ array reference when given an empty _series.
 Duplicates: Associative arrays have unique keys. If r contains duplicate keys,
 then the result will contain the value of the last pair for that key in r.
 +/
-auto assocArray(IndexIterator, Iterator, size_t N, Kind kind)
+auto assocArray(IndexIterator, Iterator, size_t N, SliceKind kind)
     (Series!(IndexIterator, Iterator, N, kind) series)
 {
     alias SK = series.Key;
@@ -1391,7 +1395,7 @@ auto assocArray(IndexIterator, Iterator, size_t N, Kind kind)
 }
 
 /// Returns: true if `U` is a $(LREF Series);
-enum isSeries(U) = is(U : Series!(IndexIterator, Iterator, N, kind), IndexIterator, Iterator, size_t N, Kind kind);
+enum isSeries(U) = is(U : Series!(IndexIterator, Iterator, N, kind), IndexIterator, Iterator, size_t N, SliceKind kind);
 
 /++
 Finds an index such that `series.index[index] == moment`.
@@ -1402,7 +1406,7 @@ Params:
 Returns:
     `size_t.max` if the series does not contain the moment and appropriate index otherwise.
 +/
-size_t findIndex(IndexIterator, Iterator, size_t N, Kind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
+size_t findIndex(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
 {
     import std.range: assumeSorted;
 
@@ -1434,7 +1438,7 @@ Params:
 Returns:
     `0` if the series does not contain the moment and appropriate backward index otherwise.
 +/
-size_t find(IndexIterator, Iterator, size_t N, Kind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
+size_t find(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
 {
     import std.range: assumeSorted;
 
@@ -1482,7 +1486,7 @@ template sort(alias less = "a < b")
         One dimensional case.
         +/
         Series!(IndexIterator, Iterator, N, kind)
-            sort(IndexIterator, Iterator, size_t N, Kind kind)
+            sort(IndexIterator, Iterator, size_t N, SliceKind kind)
             (Series!(IndexIterator, Iterator, N, kind) series)
         if (N == 1)
         {
@@ -1501,7 +1505,7 @@ template sort(alias less = "a < b")
                 IndexIterator,
                 Iterator,
                 size_t N,
-                Kind kind,
+                SliceKind kind,
                 SortIndexIterator,
                 DataIterator,
                 )
@@ -1599,8 +1603,8 @@ template troykaGalop(alias lfun, alias cfun, alias rfun)
     +/
     pragma(inline, false)
     void troykaGalop(
-        IndexIterL, IterL, size_t LN, Kind lkind,
-        IndexIterR, IterR, size_t RN, Kind rkind,
+        IndexIterL, IterL, size_t LN, SliceKind lkind,
+        IndexIterR, IterR, size_t RN, SliceKind rkind,
     )(
         Series!(IndexIterL, IterL, LN, lkind) lhs,
         Series!(IndexIterR, IterR, RN, rkind) rhs,
@@ -1752,8 +1756,8 @@ template troykaSeries(alias lfun, alias cfun, alias rfun)
     +/
     auto troykaSeries
     (
-        IndexIterL, IterL, size_t LN, Kind lkind,
-        IndexIterR, IterR, size_t RN, Kind rkind,
+        IndexIterL, IterL, size_t LN, SliceKind lkind,
+        IndexIterR, IterR, size_t RN, SliceKind rkind,
     )(
         Series!(IndexIterL, IterL, LN, lkind) lhs,
         Series!(IndexIterR, IterR, RN, rkind) rhs,
@@ -1803,8 +1807,8 @@ Params:
 Returns: Total count of lambda function calls in $(LREF troykaGalop) union handler.
 +/
 size_t troykaLength(
-    IndexIterL, IterL, size_t LN, Kind lkind,
-    IndexIterR, IterR, size_t RN, Kind rkind,
+    IndexIterL, IterL, size_t LN, SliceKind lkind,
+    IndexIterR, IterR, size_t RN, SliceKind rkind,
 )(
     Series!(IndexIterL, IterL, LN, lkind) lhs,
     Series!(IndexIterR, IterR, RN, rkind) rhs,
@@ -1831,8 +1835,8 @@ template troykaSeriesImpl(alias lfun, alias cfun, alias rfun)
     void troykaSeriesImpl
     (
         I, E,
-        IndexIterL, IterL, size_t LN, Kind lkind,
-        IndexIterR, IterR, size_t RN, Kind rkind,
+        IndexIterL, IterL, size_t LN, SliceKind lkind,
+        IndexIterR, IterR, size_t RN, SliceKind rkind,
         UI, UE,
     )(
         Series!(IndexIterL, IterL, LN, lkind) lhs,
@@ -1872,7 +1876,7 @@ Params:
 Returns: sorted GC-allocated series.
 See_also $(LREF Series.opBinary) $(LREF makeUnionSeries)
 */
-auto unionSeries(IndexIterator, Iterator, size_t N, Kind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
+auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
     if (C > 1)
 {
     return unionSeriesImplPrivate(seriesTuple);
@@ -1954,7 +1958,7 @@ Params:
 Returns: sorted manually allocated series.
 See_also $(LREF unionSeries)
 */
-auto makeUnionSeries(IndexIterator, Iterator, size_t N, Kind kind, size_t C, Allocator)(auto ref Allocator allocator, Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
+auto makeUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator)(auto ref Allocator allocator, Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
     if (C > 1)
 {
     return unionSeriesImplPrivate(seriesTuple, allocator);
@@ -2010,7 +2014,7 @@ Params:
 */
 pragma(inline, false)
 auto unionSeriesImpl(I, E,
-    IndexIterator, Iterator, size_t N, Kind kind, UI, UE)(
+    IndexIterator, Iterator, size_t N, SliceKind kind, UI, UE)(
     Series!(IndexIterator, Iterator, N, kind)[] seriesTuple,
     Series!(UI*, UE*, N) uninitSeries,
     )
@@ -2040,7 +2044,7 @@ auto unionSeriesImpl(I, E,
     }
 }
 
-private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, Kind kind, size_t C, Allocator...)(ref Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
+private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(ref Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
     if (C > 1 && Allocator.length <= 1)
 {
     import mir.algorithm.setops: unionLength;
@@ -2104,7 +2108,7 @@ Params:
 Returns:
     associative array 
 */
-ref V[K] insertOrAssign(V, K, IndexIterator, Iterator, size_t N, Kind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
+ref V[K] insertOrAssign(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
 {
     foreach (i; 0 .. series.length)
     {
@@ -2130,7 +2134,7 @@ Params:
 Returns:
     associative array 
 */
-ref V[K] insert(V, K, IndexIterator, Iterator, size_t N, Kind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
+ref V[K] insert(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
 {
     foreach (i; 0 .. series.length)
     {

@@ -565,7 +565,7 @@ Params:
 Returns: $(LREF Concatenation)
 See_also: $(LREF ._concatenation) examples.
 +/
-auto padWrap(string direction = "both", Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
+auto padWrap(string direction = "both", Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
 {
     return .padWrap!([Iota!N], [Repeat!(N, direction)])(s, lengths);
 }
@@ -628,7 +628,7 @@ template padWrap(size_t[] dimensions, string[] directions)
     Returns: $(LREF Concatenation)
     See_also: $(LREF ._concatenation) examples.
     +/
-    auto padWrap(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
+    auto padWrap(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
     {
         enum d = dimensions[$ - 1];
         enum q = directions[$ - 1];
@@ -733,7 +733,7 @@ Params:
 Returns: $(LREF Concatenation)
 See_also: $(LREF ._concatenation) examples.
 +/
-auto padSymmetric(string direction = "both", Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
+auto padSymmetric(string direction = "both", Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
 {
     return .padSymmetric!([Iota!N], [Repeat!(N, direction)])(s, lengths);
 }
@@ -796,7 +796,7 @@ template padSymmetric(size_t[] dimensions, string[] directions)
     Returns: $(LREF Concatenation)
     See_also: $(LREF ._concatenation) examples.
     +/
-    auto padSymmetric(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
+    auto padSymmetric(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
     {
         enum d = dimensions[$ - 1];
         enum q = directions[$ - 1];
@@ -919,7 +919,7 @@ Params:
 Returns: $(LREF Concatenation)
 See_also: $(LREF ._concatenation) examples.
 +/
-auto padEdge(string direction = "both", Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
+auto padEdge(string direction = "both", Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) s, size_t[N] lengths...)
 {
     return .padEdge!([Iota!N], [Repeat!(N, direction)])(s, lengths);
 }
@@ -982,7 +982,7 @@ template padEdge(size_t[] dimensions, string[] directions)
     Returns: $(LREF Concatenation)
     See_also: $(LREF ._concatenation) examples.
     +/
-    auto padEdge(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
+    auto padEdge(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) s, size_t[dimensions.length] lengths...)
     {
         enum d = dimensions[$ - 1];
         enum q = directions[$ - 1];
@@ -1104,7 +1104,7 @@ template forEachFragment(alias pred)
         Params:
             sl = $(SUBREF slice, Slice)
         +/
-        void forEachFragment(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) sl)
+        void forEachFragment(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sl)
         {
             static if (N == 1)
             {
@@ -1174,7 +1174,7 @@ template until(alias pred)
         Params:
             sl = $(SUBREF slice, Slice)
         +/
-        bool until(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) sl)
+        bool until(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sl)
         {
             static if (N == 1)
             {

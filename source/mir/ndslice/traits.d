@@ -30,13 +30,13 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 
 module mir.ndslice.traits;
 
-import mir.ndslice.slice : Slice, Kind, Contiguous, Universal, Canonical;
+import mir.ndslice.slice : Slice, SliceKind, Contiguous, Universal, Canonical;
 
 /// Test if type is a one-dimensional slice.
-enum bool isVector(T) = is(T : Slice!(Iterator, 1, kind), Kind kind, Iterator);
+enum bool isVector(T) = is(T : Slice!(Iterator, 1, kind), SliceKind kind, Iterator);
                                     
 /// Test if type is a two-dimensional slice.
-enum bool isMatrix(T) = is(T : Slice!(Iterator, 2, kind), Kind kind, Iterator);
+enum bool isMatrix(T) = is(T : Slice!(Iterator, 2, kind), SliceKind kind, Iterator);
                                     
 /// Test if type is a contiguous slice.
 enum bool isContiguousSlice(T) = is(T : Slice!(Iterator, N, Contiguous), Iterator, size_t N);

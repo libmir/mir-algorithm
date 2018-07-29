@@ -594,7 +594,7 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
         Params:
             matrix = Square matrix.
         +/
-        auto eachUploPair(Iterator, Kind kind)(Slice!(Iterator, 2, kind) matrix)
+        auto eachUploPair(Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) matrix)
         in
         {
             assert(matrix.length!0 == matrix.length!1, "matrix must be square.");
@@ -752,7 +752,7 @@ template isSymmetric(alias fun = "a == b")
     Params:
         matrix = 2D ndslice.
     +/
-    bool isSymmetric(Iterator, Kind kind)(Slice!(Iterator, 2, kind) matrix)
+    bool isSymmetric(Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) matrix)
     {
         static if (kind == Contiguous)
         {
@@ -793,7 +793,7 @@ unittest
          2, 3].sliced(2, 2).isSymmetric == true);
 }
 
-bool minPosImpl(alias fun, Iterator, size_t N, Kind kind)(ref size_t[N] backwardIndex, ref Iterator iterator, Slice!(Iterator, N, kind) slice)
+bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(ref size_t[N] backwardIndex, ref Iterator iterator, Slice!(Iterator, N, kind) slice)
 {
     auto bis = backwardIndex[0];
     do
@@ -819,7 +819,7 @@ bool minPosImpl(alias fun, Iterator, size_t N, Kind kind)(ref size_t[N] backward
     return bis != backwardIndex[0];
 }
 
-bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, Kind kind)(ref size_t[2][N] backwardIndex, ref Iterator[2] iterator, Slice!(Iterator, N, kind) slice)
+bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(ref size_t[2][N] backwardIndex, ref Iterator[2] iterator, Slice!(Iterator, N, kind) slice)
 {
     size_t[2] bis = backwardIndex[0];
     do
@@ -882,7 +882,7 @@ template minmaxPos(alias pred = "a < b")
         2 subslices with minimal and maximal `first` elements.
     +/
     @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)[2]
-        minmaxPos(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+        minmaxPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         import mir.ndslice.topology: map;
         typeof(return) pret;
@@ -956,7 +956,7 @@ template minmaxIndex(alias pred = "a < b")
     Returns:
         Subslice with minimal (maximal) `first` element.
     +/
-    @optmath size_t[N][2] minmaxIndex(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+    @optmath size_t[N][2] minmaxIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         import mir.ndslice.topology: map;
         typeof(return) pret = size_t.max;
@@ -1025,7 +1025,7 @@ template minPos(alias pred = "a < b")
         Backward index equals zeros, if slice is empty.
     +/
     @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)
-        minPos(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+        minPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         typeof(return) ret;
         import mir.ndslice.topology: map;
@@ -1099,7 +1099,7 @@ template minIndex(alias pred = "a < b")
         Multidimensional index such that element is minimal(maximal).
         Index elements equal to `size_t.max`, if slice is empty.
     +/
-    @optmath size_t[N] minIndex(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+    @optmath size_t[N] minIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         size_t[N] ret = size_t.max;
         import mir.ndslice.topology: map;

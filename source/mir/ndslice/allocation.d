@@ -88,7 +88,7 @@ Slice!(T*, N)
 }
 
 /// ditto
-auto slice(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+auto slice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     if (__ctfe)
     {
@@ -285,7 +285,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
 }
 
 /// ditto
-auto makeSlice(Allocator, Iterator, size_t N, Kind kind)
+auto makeSlice(Allocator, Iterator, size_t N, SliceKind kind)
     (auto ref Allocator allocator, Slice!(Iterator, N, kind) slice)
 {
     import std.backdoor: emplaceRef;
@@ -382,7 +382,7 @@ Params:
 Returns:
     multidimensional D array
 +/
-auto ndarray(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+auto ndarray(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     import  mir.array.allocation : array;
     static if (slice.N == 1)
@@ -415,7 +415,7 @@ Params:
 Returns:
     multidimensional D array
 +/
-auto makeNdarray(T, Allocator, Iterator, size_t N, Kind kind)(auto ref Allocator alloc, Slice!(Iterator, N, kind) slice)
+auto makeNdarray(T, Allocator, Iterator, size_t N, SliceKind kind)(auto ref Allocator alloc, Slice!(Iterator, N, kind) slice)
 {
     import std.experimental.allocator : makeArray;
     static if (slice.N == 1)
@@ -574,7 +574,7 @@ Returns:
 See_also:
     $(LREF stdcUninitSlice), $(LREF stdcFreeSlice)
 +/
-auto stdcSlice(Iterator, size_t N, Kind kind)(Slice!(Iterator, N, kind) slice)
+auto stdcSlice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     alias E = slice.DeepElement;
     alias T = Unqual!E;

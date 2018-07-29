@@ -129,7 +129,7 @@ template sort(alias less = "a < b")
     {
 @optmath:
         ///
-        Slice!(Iterator, N, kind) sort(Iterator, size_t N, Kind kind)
+        Slice!(Iterator, N, kind) sort(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
         {
             if (false) // break safety

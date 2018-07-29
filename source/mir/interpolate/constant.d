@@ -80,7 +80,7 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Constant!(T, N, GridIterators) constant(yIterator, Kind ykind)(
+    Constant!(T, N, GridIterators) constant(yIterator, SliceKind ykind)(
         GridVectors grid,
         scope Slice!(yIterator, 1, ykind) values,
         bool forceCopyValues = false

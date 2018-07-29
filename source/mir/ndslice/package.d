@@ -92,7 +92,7 @@ $(TR $(TDNW $(SUBMODULE slice) $(BR)
         $(SUBREF slice, sliced)
         $(SUBREF slice, slicedField)
         $(SUBREF slice, slicedNdField)
-        $(SUBREF slice, Kind)
+        $(SUBREF slice, SliceKind)
         $(SUBREF slice, Structure)
         $(SUBREF slice, Universal)
     )
@@ -120,7 +120,7 @@ $(TR $(TDNW $(SUBMODULE allocation) $(BR)
 $(TR $(TDNW $(SUBMODULE topology) $(BR)
         $(SMALL Subspace manipulations
             $(BR) Advanced constructors
-            $(BR) Kind conversion utilities))
+            $(BR) SliceKind conversion utilities))
      $(TD
         $(SUBREF topology, as)
         $(SUBREF topology, assumeCanonical)

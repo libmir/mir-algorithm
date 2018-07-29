@@ -270,7 +270,7 @@ auto fuseCells(S)(S cells)
 /+
 TODO docs
 +/
-auto fuseCellsAssign(alias fun = "a = b", Iterator, size_t N, Kind kind, S)(Slice!(Iterator, N, kind) to, S cells)
+auto fuseCellsAssign(alias fun = "a = b", Iterator, size_t N, SliceKind kind, S)(Slice!(Iterator, N, kind) to, S cells)
 {
     assert(to.shape == cells.fuseCellsShape, "'cells.fuseCellsShape' should be equal to 'to.shape'");
 
@@ -309,7 +309,7 @@ size_t[S.init.shape.length] fuseCellsShape(S)(S cells) @property
     return ret;
 }
 
-private auto fuseCellsEmplaceImpl(alias fun, size_t i, size_t M, Iterator, size_t N, Kind kind, S)(Slice!(Iterator, N, kind) to, S cells)
+private auto fuseCellsEmplaceImpl(alias fun, size_t i, size_t M, Iterator, size_t N, SliceKind kind, S)(Slice!(Iterator, N, kind) to, S cells)
 {
     do
     {
