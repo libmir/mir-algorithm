@@ -25,9 +25,9 @@ import mir.ndslice.iterator: SubSliceIterator, SlideIterator;
 ///
 alias GraphIterator(I) = SubSliceIterator!(SlideIterator!(size_t*, 2, staticArray), I*);
 ///
-alias Graph(I) = Slice!(Contiguous, [1], GraphIterator!I);
+alias Graph(I) = Slice!(GraphIterator!I);
 ///
-alias GraphSeries(T, I) = Series!(T*, Contiguous, [1], GraphIterator!I);
+alias GraphSeries(T, I) = Series!(T*, GraphIterator!I);
 
 /++
 Param:

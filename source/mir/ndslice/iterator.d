@@ -940,7 +940,7 @@ struct BytegroupIterator(Iterator, size_t count, DestinationType)
         return BytegroupIterator!(LightImmutableOf!Iterator, count, DestinationType)(.lightImmutable(_iterator));
     }
 
-    package alias Byte = Unqual!(typeof(_iterator[0]));
+    package(mir) alias Byte = Unqual!(typeof(_iterator[0]));
 
     version(LittleEndian)
         private enum BE = false;
@@ -1233,35 +1233,39 @@ as a multidimensional window at the current position.
 
 `SliceIterator` is used by $(SUBREF topology, map) for packed slices.
 +/
-struct SliceIterator(SliceKind kind, size_t[] packs, Iterator)
+struct SliceIterator(Iterator, size_t N = 1, SliceKind kind = Contiguous)
 {
 @optmath:
     ///
-    alias Elem = Slice!(kind, packs, Iterator);
+    alias Element = Slice!(Iterator, N, kind);
     ///
-    size_t[Elem.N] _lengths;
+    size_t[Element.N] _lengths;
     ///
-    ptrdiff_t[Elem.S] _strides;
+    ptrdiff_t[Element.S] _strides;
     ///
     Iterator _iterator;
 
     ///
     auto lightConst()() const @property
     {
-        return SliceIterator!(kind, packs, LightConstOf!Iterator)(_lengths, _strides, _iterator.lightConst);
+        return SliceIterator!(LightConstOf!Iterator, N, kind)(_lengths, _strides, _iterator.lightConst);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return SliceIterator!(kind, packs, LightImmutableOf!Iterator)(_lengths, _strides, _iterator.lightImmutable);
+        return SliceIterator!(LightImmutableOf!Iterator, N, kind)(_lengths, _strides, _iterator.lightImmutable);
     }
 
     auto opUnary(string op : "*")()
-    { return Elem(_lengths, _strides, _iterator); }
+    {
+        return Element(_lengths, _strides, _iterator);
+    }
 
     auto opIndex()(ptrdiff_t index)
-    { return Elem(_lengths, _strides, _iterator + index); }
+    {
+        return Element(_lengths, _strides, _iterator + index);
+    }
 
     mixin(std_ops);
 }
@@ -1369,7 +1373,7 @@ struct FieldIterator(Field)
     { return this._index - right._index; }
 }
 
-auto FlattenedIterator__map(SliceKind kind, size_t[] packs, Iterator, alias fun)(ref FlattenedIterator!(kind, packs, Iterator) it)
+auto FlattenedIterator__map(Iterator, size_t N, SliceKind kind, alias fun)(ref FlattenedIterator!(Iterator, N, kind) it)
 {
     import mir.ndslice.topology: map;
     auto slice = it._slice.map!fun;
@@ -1390,35 +1394,35 @@ Creates an iterator on top of all elements in a slice.
 
 `FieldIterator` is used by $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.
 +/
-struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
-    if (packs[0] > 1 && (kind == Universal || kind == Canonical))
+struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
+    if (N > 1 && (kind == Universal || kind == Canonical))
 {
 @optmath:
     ///
-    ptrdiff_t[packs[0]] _indexes;
+    ptrdiff_t[N] _indexes;
     ///
-    Slice!(kind, packs, Iterator) _slice;
+    Slice!(Iterator, N, kind) _slice;
 
     ///
     auto lightConst()() const @property
     {
-        return FlattenedIterator!(kind, packs, LightConstOf!Iterator)(_indexes, _slice.lightConst);
+        return FlattenedIterator!(LightConstOf!Iterator, N, kind)(_indexes, _slice.lightConst);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return FlattenedIterator!(kind, packs, LightImmutableOf!Iterator)(_indexes, _slice.lightImmutable);
+        return FlattenedIterator!(LightImmutableOf!Iterator, N, kind)(_indexes, _slice.lightImmutable);
     }
 
     ///
-    static alias __map(alias fun) = FlattenedIterator__map!(kind, packs, Iterator, fun);
+    static alias __map(alias fun) = FlattenedIterator__map!(Iterator, N, kind, fun);
 
     private ptrdiff_t getShift()(ptrdiff_t n)
     {
         ptrdiff_t _shift;
         n += _indexes[$ - 1];
-        foreach_reverse (i; Iota!(1, packs[0]))
+        foreach_reverse (i; Iota!(1, N))
         {
             immutable v = n / ptrdiff_t(_slice._lengths[i]);
             n %= ptrdiff_t(_slice._lengths[i]);
@@ -1434,21 +1438,13 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
 
     auto ref opUnary(string op : "*")()
     {
-        static if (packs.length == 1)
-        {
-            return *_slice._iterator;
-        }
-        else
-        {
-            alias M = _slice.DeepElemType.N;
-            return _slice.DeepElemType(_slice._lengths[$ - M .. $], _slice._strides[$ - M .. $], _slice._iterator);
-        }
+        return *_slice._iterator;
     }
 
     void opUnary(string op)()
         if (op == "--" || op == "++")
     {
-        foreach_reverse (i; Iota!(packs[0]))
+        foreach_reverse (i; Iota!N)
         {
             static if (i == _slice.S)
                 mixin(op ~ `_slice._iterator;`);
@@ -1483,39 +1479,21 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
 
     auto ref opIndex()(ptrdiff_t index)
     {
-        static if (packs.length == 1)
-        {
-            return _slice._iterator[getShift(index)];
-        }
-        else
-        {
-            alias M = _slice.DeepElemType.N;
-            return _slice.DeepElemType(_slice._lengths[$ - M .. $], _slice._strides[$ - M .. $], _slice._iterator + getShift(index));
-        }
+        return _slice._iterator[getShift(index)];
     }
 
-    static if (isMutable!(_slice.DeepElemType) && !_slice.hasAccessByRef)
+    static if (isMutable!(_slice.DeepElement) && !_slice.hasAccessByRef)
     ///
     auto opIndexAssign(E)(auto ref E elem, size_t index)
     {
-        static if (packs.length == 1)
-        {
-            return _slice._iterator[getShift(index)] = elem;
-        }
-        else
-        {
-            static assert(0,
-                "flattened.opIndexAssign is not implemented for packed slices."
-                ~ "Use additional empty slicing `flattenedSlice[index][] = value;`"
-                ~ tailErrorMessage());
-        }
+        return _slice._iterator[getShift(index)] = elem;
     }
 
     void opOpAssign(string op : "+")(ptrdiff_t n)
     {
         ptrdiff_t _shift;
         n += _indexes[$ - 1];
-        foreach_reverse (i; Iota!(1, packs[0]))
+        foreach_reverse (i; Iota!(1, N))
         {
             immutable v = n / ptrdiff_t(_slice._lengths[i]);
             n %= ptrdiff_t(_slice._lengths[i]);
@@ -1528,7 +1506,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
         }
         _shift += (n - _indexes[0]) * _slice._strides[0];
         _indexes[0] = n;
-        foreach_reverse (i; Iota!(1, packs[0]))
+        foreach_reverse (i; Iota!(1, N))
         {
             if (_indexes[i] >= 0)
                 break;
@@ -1552,7 +1530,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
     {
         ptrdiff_t ret = this._indexes[0] - right._indexes[0];
-        foreach (i; Iota!(1, packs[0]))
+        foreach (i; Iota!(1, N))
         {
             ret *= _slice._lengths[i];
             ret += this._indexes[i] - right._indexes[i];
@@ -1562,7 +1540,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
 
     bool opEquals()(ref const typeof(this) right) const
     {
-        foreach_reverse (i; Iota!(packs[0]))
+        foreach_reverse (i; Iota!N)
             if (this._indexes[i] != right._indexes[i])
                 return false;
         return true;
@@ -1570,7 +1548,7 @@ struct FlattenedIterator(SliceKind kind, size_t[] packs, Iterator)
 
     ptrdiff_t opCmp()(ref const typeof(this) right) const
     {
-        foreach (i; Iota!(packs[0] - 1))
+        foreach (i; Iota!(N - 1))
             if (auto ret = this._indexes[i] - right._indexes[i])
                 return ret;
         return this._indexes[$ - 1] - right._indexes[$ - 1];
@@ -1666,14 +1644,14 @@ struct StairsIterator(Iterator)
 @optmath:
 
     ///
-    Slice!(Contiguous, [1], Iterator) opUnary(string op : "*")()
+    Slice!Iterator opUnary(string op : "*")()
     {
         import mir.ndslice.slice: sliced;
         return _iterator.sliced(_length);
     }
 
     ///
-    Slice!(Contiguous, [1], Iterator) opIndex()(ptrdiff_t index)
+    Slice!Iterator opIndex()(ptrdiff_t index)
     {
         import mir.ndslice.slice: sliced;
         auto newLength = _length + index;

@@ -313,7 +313,7 @@ version(mir_test) unittest
 
 @safe nothrow @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.fuse;
     static perms = 2.permutations;
@@ -384,7 +384,8 @@ See_Also:
 struct Permutations(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
+    import mir.ndslice.slice: sliced, Slice;
+
     private T[] indices, state;
     private bool _empty;
     private size_t _max_states = 1, _pos;
@@ -412,7 +413,7 @@ struct Permutations(T)
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return indices.sliced;
@@ -499,7 +500,7 @@ pure @safe nothrow version(mir_test) unittest
 ///
 @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology : iota;
 
@@ -620,7 +621,7 @@ See_Also:
 struct CartesianPower(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
+    import mir.ndslice.slice: Slice;
 
 private:
     T[] _state;
@@ -643,7 +644,7 @@ public:
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return _state.sliced;
@@ -719,7 +720,7 @@ pure nothrow @safe version(mir_test) unittest
 @nogc version(mir_test) unittest
 {
     import mir.ndslice.topology: iota;
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
 
     import std.experimental.allocator.mallocator: Mallocator;
@@ -871,7 +872,7 @@ See_Also:
 struct Combinations(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
+    import mir.ndslice.slice: Slice;
 
 private:
     T[] state;
@@ -907,7 +908,7 @@ public:
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return state.sliced;
@@ -992,7 +993,7 @@ pure nothrow @safe version(mir_test) unittest
 ///
 @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: iota;
 
@@ -1199,7 +1200,7 @@ See_Also:
 struct CombinationsRepeat(T)
     if (isUnsigned!T && T.sizeof <= size_t.sizeof)
 {
-    import mir.ndslice.slice: ContiguousVector;
+    import mir.ndslice.slice: Slice;
 
 private:
     T[] state;
@@ -1224,7 +1225,7 @@ public:
     }
 
     /// Input range primitives
-    @property ContiguousVector!(const T) front()() @safe pure nothrow @nogc
+    @property Slice!(const(T)*) front()() @safe pure nothrow @nogc
     {
         import mir.ndslice.slice: sliced;
         return state.sliced;
@@ -1300,7 +1301,7 @@ pure nothrow @safe version(mir_test) unittest
 ///
 @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: equal;
+    import mir.algorithm.iteration: equal;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: iota;
 

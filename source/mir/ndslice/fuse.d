@@ -44,17 +44,17 @@ template fuse(Dimensions...)
     Params:
         r = parallelotope (ndrange) with length/shape and input range primitives.
     +/
-    @optmath Slice!(Contiguous, [fuseDimensionCount!NDRange], FuseElementType!NDRange*) fuse(NDRange)(NDRange r)
+    @optmath Slice!(FuseElementType!NDRange*, fuseDimensionCount!NDRange) fuse(NDRange)(NDRange r)
         if (hasShape!NDRange)
     {
         import std.backdoor: emplaceRef;
-        import mir.ndslice.algorithm: each;
+        import mir.algorithm.iteration: each;
         import mir.ndslice.allocation;
         auto shape = fuseShape(r);
         alias T = FuseElementType!NDRange;
         alias UT = Unqual!T;
         alias R = typeof(return);
-        Slice!(Contiguous, [fuseDimensionCount!NDRange], UT*) ret;
+        Slice!(UT*, fuseDimensionCount!NDRange) ret;
         static if (Dimensions.length)
         {
             import mir.ndslice.topology: iota;
@@ -119,7 +119,7 @@ unittest
     assert(matrix == [3, 4].iota);
     static assert(ror.fuse == [3, 4].iota); // CTFE-able
     // matrix is contiguos
-    static assert(is(typeof(matrix) == Slice!(Contiguous, [2], int*)));
+    static assert(is(typeof(matrix) == Slice!(int*, 2)));
 }
 
 /// Transposed
@@ -147,7 +147,7 @@ unittest
     // TODO: CTFE
     // static assert(ror.fuse!1 == [3, 4].iota.transposed!1); // CTFE-able
     // matrix is contiguos
-    static assert(is(typeof(matrix) == Slice!(Contiguous, [2], int*)));
+    static assert(is(typeof(matrix) == Slice!(int*, 2)));
 }
 
 
@@ -243,7 +243,7 @@ auto fuseCells(S)(S cells)
         import std.backdoor;
         auto ret = cells.fuseCellsShape.uninitSlice!UT;
         ret.fuseCellsAssign!(emplaceRef!T) = cells;
-        alias R = Slice!(Contiguous, isSlice!(typeof(ret)), T*);
+        alias R = Slice!(T*, ret.N);
         return R(ret._lengths, ret._strides, (() @trusted => cast(T*)ret._iterator)());
     }
 }
@@ -270,8 +270,7 @@ auto fuseCells(S)(S cells)
 /+
 TODO docs
 +/
-auto fuseCellsAssign(alias fun = "a = b", SliceKind kind, size_t[] packs, Iterator, S)(Slice!(kind, packs, Iterator) to, S cells)
-    if (packs.length == 1)
+auto fuseCellsAssign(alias fun = "a = b", Iterator, size_t N, SliceKind kind, S)(Slice!(Iterator, N, kind) to, S cells)
 {
     assert(to.shape == cells.fuseCellsShape, "'cells.fuseCellsShape' should be equal to 'to.shape'");
 
@@ -281,9 +280,9 @@ auto fuseCellsAssign(alias fun = "a = b", SliceKind kind, size_t[] packs, Iterat
     import mir.functional: naryFun;
     import mir.ndslice.topology: canonical;
     static if (kind == Contiguous)
-        fuseCellsEmplaceImpl!(naryFun!fun, 0, packs[0])(to.canonical, cells);
+        fuseCellsEmplaceImpl!(naryFun!fun, 0, N)(to.canonical, cells);
     else
-        fuseCellsEmplaceImpl!(naryFun!fun, 0, packs[0])(to, cells);
+        fuseCellsEmplaceImpl!(naryFun!fun, 0, N)(to, cells);
     R: return to;
 }
 
@@ -310,13 +309,12 @@ size_t[S.init.shape.length] fuseCellsShape(S)(S cells) @property
     return ret;
 }
 
-private auto fuseCellsEmplaceImpl(alias fun, size_t i, size_t N, SliceKind kind, size_t[] packs, Iterator, S)(Slice!(kind, packs, Iterator) to, S cells)
-    if (packs.length == 1)
+private auto fuseCellsEmplaceImpl(alias fun, size_t i, size_t M, Iterator, size_t N, SliceKind kind, S)(Slice!(Iterator, N, kind) to, S cells)
 {
     do
     {
         auto from = cells.front;
-        static if (N == 1)
+        static if (M == 1)
         {
             auto n = from.length!i;
         }
@@ -327,9 +325,9 @@ private auto fuseCellsEmplaceImpl(alias fun, size_t i, size_t N, SliceKind kind,
             auto n = mixin(expr).length!i;
         }
         assert (to.length!i >= n);
-        static if (i + 1 == N)
+        static if (i + 1 == M)
         {
-            import mir.ndslice.algorithm: each;
+            import mir.algorithm.iteration: each;
             each!fun(to.selectFront!i(n), from);
         }
         else

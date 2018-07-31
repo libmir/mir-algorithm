@@ -26,7 +26,7 @@ module mir.ndslice.sorting;
 /// Check if ndslice is sorted, or strictly monotonic.
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.sorting: sort;
     import mir.ndslice.topology: pairwise;
@@ -50,7 +50,7 @@ module mir.ndslice.sorting;
 /// Create index
 version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.sorting: sort;
@@ -67,7 +67,7 @@ version(mir_test) unittest
 /// Schwartzian transform
 version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.sorting: sort;
@@ -89,7 +89,7 @@ import mir.math.common: optmath;
 
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
 
     auto a = [1, 2, 3].sliced;
@@ -106,7 +106,7 @@ import mir.math.common: optmath;
 
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
 
     assert([1, 2, 3][0 .. 0].sliced.pairwise!"a < b".all);
@@ -129,9 +129,8 @@ template sort(alias less = "a < b")
     {
 @optmath:
         ///
-        Slice!(kind, packs, Iterator) sort(SliceKind kind, size_t[] packs, Iterator)
-            (Slice!(kind, packs, Iterator) slice)
-            if (packs.length == 1)
+        Slice!(Iterator, N, kind) sort(Iterator, size_t N, SliceKind kind)
+            (Slice!(Iterator, N, kind) slice)
         {
             if (false) // break safety
             {
@@ -143,7 +142,7 @@ template sort(alias less = "a < b")
             import mir.ndslice.topology: flattened;
             if (slice.anyEmpty)
                 return slice;
-            slice.flattened.quickSortImpl!less;
+            .quickSortImpl!less(slice.flattened);
             return slice;
         }
 
@@ -160,7 +159,7 @@ template sort(alias less = "a < b")
 ///
 @safe pure version(mir_test) unittest
 {
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.slice;
     import mir.ndslice.sorting: sort;
     import mir.ndslice.topology: pairwise;
@@ -172,12 +171,12 @@ template sort(alias less = "a < b")
     assert(data.pairwise!"a <= b".all);
 }
 
-void quickSortImpl(alias less, Iterator)(Slice!(Contiguous, [1], Iterator) slice) @trusted
+void quickSortImpl(alias less, Iterator)(Slice!Iterator slice) @trusted
 {
     import mir.utility : swap, swapStars;
 
     enum  max_depth = 64;
-    enum naive_est = 1024 / slice.ElemType!0.sizeof;
+    enum naive_est = 1024 / slice.Element!0.sizeof;
     enum size_t naive = 32 > naive_est ? 32 : naive_est;
     //enum size_t naive = 1;
     static assert(naive >= 1);

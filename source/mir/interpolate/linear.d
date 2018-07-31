@@ -56,9 +56,9 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 2
     Returns: $(LREF Spline)
     +/
-    Linear!(T, N, GridIterators) linear(SliceKind ykind, yIterator)(
+    Linear!(T, N, GridIterators) linear(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(ykind, [N], yIterator) values,
+        scope Slice!(yIterator, N, ykind) values,
         bool forceCopyValues = false
         )
     {
@@ -195,7 +195,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
     /// $(RED For internal use.)
-    Slice!(Contiguous, [N], F*) _data;
+    Slice!(F*, N) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
     ///
@@ -258,7 +258,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /++
     +/
-    this()(GridVectors grid, Slice!(Contiguous, [N], immutable(F)*) values) @trusted nothrow @nogc
+    this()(GridVectors grid, Slice!(immutable(F)*, N) values) @trusted nothrow @nogc
     {
         import mir.internal.memory;
         import mir.ndslice.topology: iota;

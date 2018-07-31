@@ -61,7 +61,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-ContiguousSlice!(N, T)
+Slice!(T*, N)
     slice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengths.lengthsProduct;
@@ -69,7 +69,7 @@ ContiguousSlice!(N, T)
 }
 
 /// ditto
-ContiguousSlice!(N, T)
+Slice!(T*, N)
     slice(T, size_t N)(size_t[N] lengths, T init)
 {
     immutable len = lengths.lengthsProduct;
@@ -88,7 +88,7 @@ ContiguousSlice!(N, T)
 }
 
 /// ditto
-auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+auto slice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     if (__ctfe)
     {
@@ -99,14 +99,14 @@ auto slice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterato
     else
     {
         import std.backdoor: emplaceRef;
-        alias E = slice.DeepElemType;
+        alias E = slice.DeepElement;
 
         auto result = (() @trusted => slice.shape.uninitSlice!(Unqual!E))();
 
-        import mir.ndslice.algorithm: each;
+        import mir.algorithm.iteration: each;
         each!(emplaceRef!E)(result, slice);
 
-        return (() @trusted => cast(Slice!(Contiguous, [packs[0]], E*)) result)();
+        return (() @trusted => cast(Slice!(E*, N)) result)();
     }
 }
 
@@ -117,7 +117,7 @@ version(mir_test)
     auto tensor = slice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(int*, 3)));
 
     // creates duplicate using `slice`
     auto dup = tensor.slice;
@@ -136,13 +136,13 @@ version(mir_test)
 /// ditto
 auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 {
-    alias T = Unqual!(concatenation.DeepElemType);
+    alias T = Unqual!(concatenation.DeepElement);
     static if (hasElaborateAssign!T)
         alias fun = .slice;
     else
         alias fun = .uninitSlice;
     auto ret = (shape)@trusted{ return fun!T(shape);}(concatenation.shape);
-    ret[] = concatenation;
+    ret.opIndexAssign(concatenation);
     return ret;
 }
 
@@ -162,7 +162,7 @@ Returns:
     n-dimensional bitwise slice
 See_also: $(SUBREF topology, bitwise).
 +/
-Slice!(Contiguous, [N], FieldIterator!(BitwiseField!(size_t*))) bitSlice(size_t N)(size_t[N] lengths...)
+Slice!(FieldIterator!(BitwiseField!(size_t*)), N) bitSlice(size_t N)(size_t[N] lengths...)
 {
     import mir.ndslice.topology: bitwise;
     enum elen = size_t.sizeof * 8;
@@ -213,7 +213,7 @@ version(mir_test)
     auto tensor = uninitSlice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], int*)));
+    static assert(is(typeof(tensor) == Slice!(int*, 3)));
 }
 
 /++
@@ -244,7 +244,7 @@ version(mir_test)
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
     assert(cast(size_t)(tensor.ptr) % 64 == 0);
-    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], double*)));
+    static assert(is(typeof(tensor) == Slice!(double*, 3)));
 }
 
 /++
@@ -262,12 +262,12 @@ Note:
 +/
 auto makeSlice(Allocator, size_t N, Iterator)(auto ref Allocator alloc, Slice!(N, Iterator) slice)
 {
-    alias T = Unqual!(slice.DeepElemType);
+    alias T = Unqual!(slice.DeepElement);
     return makeSlice!(T)(alloc, slice);
 }
 
 /// ditto
-ContiguousSlice!(N, T)
+Slice!(T*, N)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
 {
     import std.experimental.allocator : makeArray;
@@ -275,7 +275,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...
 }
 
 /// ditto
-ContiguousSlice!(N, T)
+Slice!(T*, N)
 makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T init)
 {
     import std.experimental.allocator : makeArray;
@@ -285,18 +285,18 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
 }
 
 /// ditto
-auto makeSlice(Allocator, SliceKind kind, size_t[] packs, Iterator)
-    (auto ref Allocator allocator, Slice!(kind, packs, Iterator) slice)
+auto makeSlice(Allocator, Iterator, size_t N, SliceKind kind)
+    (auto ref Allocator allocator, Slice!(Iterator, N, kind) slice)
 {
     import std.backdoor: emplaceRef;
-    alias E = slice.DeepElemType;
+    alias E = slice.DeepElement;
 
     auto result = allocator.makeUninitSlice!(Unqual!E)(slice.shape);
 
-    import mir.ndslice.algorithm: each;
+    import mir.algorithm.iteration: each;
     each!(emplaceRef!E)(result, slice);
 
-    return cast(Slice!(Contiguous, [packs[0]], E*)) result;
+    return cast(Slice!(E*, N)) result;
 }
 
 /// Initialization with default value
@@ -305,7 +305,7 @@ version(mir_test)
 {
     import std.experimental.allocator;
     import std.experimental.allocator.mallocator;
-    import mir.ndslice.algorithm: all;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.topology: map;
 
     auto sl = Mallocator.instance.makeSlice([2, 3, 4], 10);
@@ -342,7 +342,7 @@ Params:
 Returns:
     a structure with fields `array` and `slice`
 +/
-ContiguousSlice!(N, T)
+Slice!(T*, N)
 makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths...)
     if (N)
 {
@@ -382,7 +382,7 @@ Params:
 Returns:
     multidimensional D array
 +/
-auto ndarray(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+auto ndarray(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     import  mir.array.allocation : array;
     static if (slice.N == 1)
@@ -415,7 +415,7 @@ Params:
 Returns:
     multidimensional D array
 +/
-auto makeNdarray(T, Allocator, SliceKind kind, size_t[] packs, Iterator)(auto ref Allocator alloc, Slice!(kind, packs, Iterator) slice)
+auto makeNdarray(T, Allocator, Iterator, size_t N, SliceKind kind)(auto ref Allocator alloc, Slice!(Iterator, N, kind) slice)
 {
     import std.experimental.allocator : makeArray;
     static if (slice.N == 1)
@@ -557,7 +557,7 @@ Returns:
 See_also:
     $(LREF stdcSlice), $(LREF stdcFreeSlice)
 +/
-Slice!(Contiguous, [N], T*) stdcUninitSlice(T, size_t N)(size_t[N] lengths...)
+Slice!(T*, N) stdcUninitSlice(T, size_t N)(size_t[N] lengths...)
 {
     import core.stdc.stdlib: malloc;
     immutable len = lengths.lengthsProduct;
@@ -574,15 +574,15 @@ Returns:
 See_also:
     $(LREF stdcUninitSlice), $(LREF stdcFreeSlice)
 +/
-auto stdcSlice(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+auto stdcSlice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
-    alias E = slice.DeepElemType;
+    alias E = slice.DeepElement;
     alias T = Unqual!E;
     static assert (!hasElaborateAssign!T, "stdcSlice is not miplemented for slices that have elaborate assign");
     auto ret = stdcUninitSlice!T(slice.shape);
 
     import std.backdoor: emplaceRef;
-    import mir.ndslice.algorithm: each;
+    import mir.algorithm.iteration: each;
     each!(emplaceRef!E)(ret, slice);
     return ret;
 }
@@ -594,7 +594,7 @@ Params:
 See_also:
     $(LREF stdcSlice), $(LREF stdcUninitSlice)
 +/
-void stdcFreeSlice(size_t[] packs, T)(Slice!(Contiguous, packs, T*) slice)
+void stdcFreeSlice(T, size_t N)(Slice!(T*, N) slice)
 {
     import core.stdc.stdlib: free;
     slice._iterator.free;
@@ -642,7 +642,7 @@ version(mir_test)
     assert(tensor.length == 5);
     assert(tensor.elementsCount == 5 * 6 * 7);
     assert(cast(size_t)(tensor.ptr) % 64 == 0);
-    static assert(is(typeof(tensor) == Slice!(Contiguous, [3], double*)));
+    static assert(is(typeof(tensor) == Slice!(double*, 3)));
     stdcFreeAlignedSlice(tensor);
 }
 
@@ -653,7 +653,7 @@ Params:
 See_also:
     $(LREF stdcSlice), $(LREF stdcUninitSlice)
 +/
-void stdcFreeAlignedSlice(size_t[] packs, T)(Slice!(Contiguous, packs, T*) slice)
+void stdcFreeAlignedSlice(T, size_t N)(Slice!(T*, N) slice)
 {
     import mir.internal.memory: alignedFree;
     slice._iterator.alignedFree;

@@ -3,7 +3,7 @@ This is a submodule of $(MREF mir,ndslice).
 
 Selectors create new views and iteration patterns over the same data, without copying.
 
-$(BOOKTABLE $(H2 Kind Selectors),
+$(BOOKTABLE $(H2 SliceKind Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
 $(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
@@ -72,19 +72,20 @@ $(TR $(TH Function Name) $(TH Description))
 
 $(T2 pack     , Returns slice of slices.)
 $(T2 ipack    , Returns slice of slices.)
-$(T2 unpack   , Merges all dimension packs.)
+$(T2 unpack   , Merges two hight dimension packs. See also $(SUBREF fuse, fuse).)
 $(T2 evertPack, Reverses dimension packs.)
 $(T2 byDim    , Returns a slice that can be iterated by dimension. Transposes dimensions on top and then packs them.)
 
 )
 
 Subspace selectors serve to generalize and combine other selectors easily.
-For a slice of `Slice!(kind, [N], Iterator)` type `slice.pack!K` creates a slice of
+For a slice of `Slice!(Iterator, N, kind)` type `slice.pack!K` creates a slice of
 slices of `Slice!(kind, [N - K, K], Iterator)` type by packing
 the last `K` dimensions of the top dimension pack,
-and the type of element of $(LREF flattened) is `Slice!(Contiguous, [K], IteratorX)`.
+and the type of element of $(LREF flattened) is `Slice!(Iterator, K)`.
 Another way to use $(LREF pack) is transposition of dimension packs using
-$(LREF evertPack). Examples of use of subspace selectors are available for selectors,
+$(LREF evertPack). 
+Examples of use of subspace selectors are available for selectors,
 $(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementsCount).
 
 
@@ -114,6 +115,7 @@ import mir.ndslice.ndfield;
 import mir.ndslice.slice;
 import mir.primitives;
 import mir.qualifier;
+import mir.utility: min;
 
 @optmath:
 
@@ -129,7 +131,7 @@ See_also:
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
 +/
-auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+auto universal(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Universal)
     {
@@ -142,7 +144,7 @@ auto universal(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     }
     else
     {
-        alias Ret = Slice!(Universal, packs, Iterator);
+        alias Ret = Slice!(Iterator,  N, Universal);
         size_t[Ret.N] lengths;
         sizediff_t[Ret.S] strides;
         foreach (i; Iota!(slice.N))
@@ -198,13 +200,13 @@ See_also:
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
 +/
-Slice!(packs == [1] ? Contiguous : Canonical, packs, Iterator)
+Slice!(Iterator, N, N == 1 ? Contiguous : Canonical)
     canonical
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
     if (kind == Contiguous || kind == Canonical)
 {
-    static if (kind == Canonical || packs == [1])
+    static if (kind == Canonical || N == 1)
         return slice;
     else
     {
@@ -245,10 +247,10 @@ See_also:
     $(LREF canonical),
     $(LREF assumeContiguous).
 +/
-Slice!(Canonical, packs, Iterator)
+Slice!(Iterator, N, Canonical)
     assumeCanonical
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Contiguous)
         return slice.canonical;
@@ -291,10 +293,10 @@ See_also:
     $(LREF canonical),
     $(LREF assumeCanonical).
 +/
-Slice!(Contiguous, packs, Iterator)
+Slice!(Iterator, N)
     assumeContiguous
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
 {
     static if (kind == Contiguous)
         return slice;
@@ -321,25 +323,21 @@ version(mir_test) unittest
 
 /++
 Creates a packed slice, i.e. slice of slices.
-Packs the last `p` dimensions of the first pack.
-The function does not carry out any calculations, it simply returns the same
-binary data presented differently.
+Packs the last `P` dimensions.
+The function does not allocate any data.
 
 Params:
-    p = size of dimension pack
+    P = size of dimension pack
     slice = a slice to pack
 Returns:
-    `slice.pack!p` returns `Slice!(kind, [packs[0] - p, p] ~ packs[1 .. $], Iterator)`
+    `slice.pack!p` returns `Slice!(kind, [N - p, p], Iterator)`
 See_also: $(LREF ipack)
 +/
-Slice!(kind, [packs[0] - p, p] ~ packs[1 .. $], Iterator)
-pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
-    if (p)
+Slice!(SliceIterator!(Iterator, P, P == 1 && kind == Canonical ? Contiguous : kind), N - P, Universal)
+pack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    if (P && P < N)
 {
-    static assert(p < packs[0], "pack = " ~ p.stringof
-                ~ " should be less than packs[0] = "~ packs[0].stringof
-                ~ tailErrorMessage!());
-    return typeof(return)(slice._lengths, slice._strides, slice._iterator);
+    return slice.ipack!(N - P);
 }
 
 ///
@@ -354,32 +352,46 @@ pack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Ite
     static immutable res2 = [5, 6];
     assert(b.shape == res1);
     assert(b[0, 0].shape == res2);
-    assert(a == b);
+    assert(a == b.unpack);
+    assert(a.pack!2 == b);
     static assert(is(typeof(b) == typeof(a.pack!2)));
-    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!sizediff_t)));
 }
 
 /++
 Creates a packed slice, i.e. slice of slices.
-Packs the first `p` dimensions of the first pack.
-The function does not carry out any calculations, it simply returns the same
-binary data presented differently.
+Packs the last `N - P` dimensions.
+The function does not allocate any data.
 
 Params:
-    p = size of dimension pack
+    + = size of dimension pack
     slice = a slice to pack
-Returns:
-    `slice.ipack!p` returns `Slice!(kind, [p, packs[0] - p] ~ packs[1 .. $], Iterator)`
 See_also: $(LREF pack)
 +/
-Slice!(kind, [p, packs[0] - p] ~ packs[1 .. $], Iterator)
-ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
-    if (p)
+Slice!(SliceIterator!(Iterator, N - P, N - P == 1 && kind == Canonical ? Contiguous : kind), P, Universal)
+ipack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    if (P && P < N)
 {
-    static assert(p < packs[0], "pack = " ~ p.stringof
-                ~ " should be less than packs[0] = "~ packs[0].stringof
-                ~ tailErrorMessage!());
-    return typeof(return)(slice._lengths, slice._strides, slice._iterator);
+    alias Ret = typeof(return);
+    alias It = Ret.Iterator;
+    alias EN = It.Element.N;
+    alias ES = It.Element.S;
+    auto sl = slice.universal;
+    static if (It.Element.kind == Contiguous)
+        return Ret(
+            cast(   size_t[P]) sl._lengths[0 .. P],
+            cast(ptrdiff_t[P]) sl._strides[0 .. P],
+            It(
+                cast(size_t[EN]) sl._lengths[P .. $],
+                sizediff_t[0].init,
+                sl._iterator));
+    else
+    return Ret(
+        cast(   size_t[P]) sl._lengths[0 .. P],
+        cast(ptrdiff_t[P]) sl._strides[0 .. P],
+        It(
+            cast(   size_t[EN]) sl._lengths[P .. $],
+            cast(ptrdiff_t[ES]) sl._strides[P .. $ - (It.Element.kind == Canonical)],
+            sl._iterator));
 }
 
 ///
@@ -394,69 +406,44 @@ ipack(size_t p, SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, It
     static immutable res2 = [5, 6];
     assert(b.shape == res1);
     assert(b[0, 0].shape == res2);
-    assert(a == b);
+    assert(a.ipack!2 == b);
     static assert(is(typeof(b) == typeof(a.ipack!2)));
-    static assert(is(typeof(b) == Slice!(Contiguous, [2, 2], IotaIterator!sizediff_t)));
-}
-
-@safe @nogc pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.slice;
-    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
-    auto b = a.pack!2.pack!3;
-    auto c = b[1, 2, 3, 4];
-    auto d = c[5, 6, 7];
-    auto e = d[8, 9];
-    auto g = a[1, 2, 3, 4, 5, 6, 7, 8, 9];
-    assert(e == g);
-    assert(a == b);
-    assert(c == a[1, 2, 3, 4]);
-    static assert(is(typeof(b) == typeof(a.pack!2.pack!3)));
-    static assert(is(typeof(b) == Slice!(Contiguous, [4, 3, 2], IotaIterator!sizediff_t)));
-    static assert(is(typeof(c) == Slice!(Contiguous, [3, 2], IotaIterator!sizediff_t)));
-    static assert(is(typeof(d) == Slice!(Contiguous, [2], IotaIterator!sizediff_t)));
-    static assert(is(typeof(e) == sizediff_t));
-}
-
-@safe @nogc pure nothrow version(mir_test) unittest
-{
-    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
-    auto b = a.pack!2.pack!3;
-    static assert(b.shape.length == 4);
-    static assert(b.strides.length == 4);
-    static assert(b
-        .flattened.front
-        .shape.length == 3);
-    static assert(b
-        .flattened.front
-        .flattened.front
-        .shape.length == 2);
-    // test save
-    b.flattened.save.popFront;
-    static assert(b
-        .flattened.front
-        .shape.length == 3);
 }
 
 /++
 Unpacks a packed slice.
 
-The function does not carry out any calculations, it simply returns the same
-binary data presented differently.
+The functions does not allocate any data.
 
 Params:
     slice = packed slice
 Returns:
-    unpacked slice
+    unpacked slice, that is a view on the same data.
 
 See_also: $(LREF pack), $(LREF evertPack)
 +/
-Slice!(kind, [packs.sum], Iterator) unpack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+Slice!(Iterator, N + M, min(innerKind, Canonical))
+    unpack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind)
+    (Slice!(SliceIterator!(Iterator, M, innerKind), N, outerKind) slice)
 {
-    static if (packs.length == 1)
-        return slice;
-    else
-        return typeof(return)(slice._lengths, slice._strides, slice._iterator);
+    alias Ret = typeof(return);
+    size_t[N + M] lengths;
+    sizediff_t[Ret.S] strides;
+    auto outerStrides = slice.strides;
+    auto innerStrides = Slice!(Iterator, M, innerKind)(
+        slice._iterator._lengths,
+        slice._iterator._strides,
+        slice._iterator._iterator,
+        ).strides;
+    foreach(i; Iota!N)
+        lengths[i] = slice._lengths[i];
+    foreach(i; Iota!N)
+        strides[i] = outerStrides[i];
+    foreach(i; Iota!M)
+        lengths[N + i] = slice._iterator._lengths[i];
+    foreach(i; Iota!(Ret.S - N))
+        strides[N + i] = innerStrides[i];
+    return Ret(lengths, strides, slice._iterator._iterator);
 }
 
 /++
@@ -470,40 +457,17 @@ Returns:
 
 See_also: $(LREF pack), $(LREF unpack)
 +/
-Slice!(Universal, reverse(packs), Iterator)
-//auto
-evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
-    if (packs.length > 1)
+Slice!(SliceIterator!(Iterator, N, outerKind), M, innerKind)
+evertPack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind)
+    (Slice!(SliceIterator!(Iterator, M, innerKind), N, outerKind) slice)
 {
-    static if (kind != Universal)
-    {
-        return slice.universal.evertPack;
-    }
-    else
-    {
-        alias Ret = typeof(return);
-        size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
-        alias C = Snowball!(aliasSeqOf!packs);
-        alias D = Reverse!(Snowball!(aliasSeqOf!(reverse(packs))));
-        foreach (i, _; Iota!(packs.length))
-        {
-            foreach (j; Iota!(0, C[i + 1] - C[i]))
-            {
-                lengths[j + D[i + 1]] = slice._lengths[j + C[i]];
-                strides[j + D[i + 1]] = slice._strides[j + C[i]];
-            }
-        }
-        return Ret(lengths, strides, slice._iterator);
-    }
-}
-
-///
-Slice!(kind, packs, Iterator) 
-evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
-    if (packs.length == 1)
-{
-    return slice;
+    return typeof(return)(
+        slice._iterator._lengths,
+        slice._iterator._strides,
+        typeof(return).Iterator(
+            slice._lengths,
+            slice._strides,
+            slice._iterator._iterator));
 }
 
 ///
@@ -523,49 +487,15 @@ evertPack(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    import mir.ndslice.slice;
-    import mir.ndslice.dynamic : transposed;
-    auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11).universal;
-    auto b = a
-        .pack!2
-        .pack!3
-        .evertPack;
-    auto c = b[8, 9];
-    auto d = c[5, 6, 7];
-    auto e = d[1, 2, 3, 4];
-    auto g = a[1, 2, 3, 4, 5, 6, 7, 8, 9];
-    assert(e == g);
-    assert(a == b.evertPack);
-    assert(c == a.transposed!(7, 8, 4, 5, 6)[8, 9]);
-    static assert(is(typeof(b) == Slice!(Universal, [2, 3, 4], IotaIterator!sizediff_t)));
-    static assert(is(typeof(c) == Slice!(Universal, [3, 4], IotaIterator!sizediff_t)));
-    static assert(is(typeof(d) == Slice!(Universal, [4], IotaIterator!sizediff_t)));
-    static assert(is(typeof(e) == sizediff_t));
-}
-
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.slice;
-    import mir.ndslice.allocation;
-    static assert(is(typeof(slice!int(20)
-        .evertPack)
-         == Slice!(Contiguous, [1], int*)));
-    static assert(is(typeof(slice!int(20)
-        .sliced(20)
-        .evertPack())
-         == Slice!(Contiguous, [1], int*)));
-    static assert(is(typeof(slice!int(6)
-        .sliced(1,2,3)
-        .sliced(3)
-        .evertPack()
-        )
-         == Slice!(Universal, [2, 1], int*)));
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: slice;
     static assert(is(typeof(
         slice!int(6)
-        .universal
-        .sliced(1,2,3)
-        .evertPack)
-         == Slice!(Universal, [3], int*)));
+            .sliced(1,2,3)
+            .pack!1
+            .evertPack()
+        )
+         == Slice!(SliceIterator!(int*, 2, Universal), 1)));
 }
 
 
@@ -575,7 +505,7 @@ version(mir_test) unittest
 {
     auto a = iota(3, 4, 5, 6, 7, 8, 9, 10, 11);
     auto b = a.pack!2.unpack;
-    static assert(is(typeof(a) == typeof(b)));
+    static assert(is(typeof(a.canonical) == typeof(b)));
     assert(a == b);
 }
 
@@ -591,7 +521,7 @@ Returns:
     n-dimensional slice composed of indexes
 See_also: $(LREF ndiota)
 +/
-Slice!(Contiguous, [N], IotaIterator!I)
+Slice!(IotaIterator!I, N)
 iota
     (I = sizediff_t, size_t N)(size_t[N] lengths...)
     if (isIntegral!I)
@@ -601,7 +531,7 @@ iota
 }
 
 ///ditto
-Slice!(Contiguous, [N], IotaIterator!sizediff_t)
+Slice!(IotaIterator!sizediff_t, N)
 iota
     (size_t N)(size_t[N] lengths, sizediff_t start)
 {
@@ -610,7 +540,7 @@ iota
 }
 
 ///ditto
-Slice!(Contiguous, [N], StrideIterator!(IotaIterator!sizediff_t))
+Slice!(StrideIterator!(IotaIterator!sizediff_t), N)
 iota
     (size_t N)(size_t[N] lengths, sizediff_t start, size_t stride)
 {
@@ -623,7 +553,7 @@ template iota(I)
     if (isIntegral!I)
 {
     ///
-    Slice!(Contiguous, [N], IotaIterator!I)
+    Slice!(IotaIterator!I, N)
     iota
         (size_t N)(size_t[N] lengths, I start)
         if (isIntegral!I)
@@ -633,7 +563,7 @@ template iota(I)
     }
 
     ///ditto
-    Slice!(Contiguous, [N], StrideIterator!(IotaIterator!I))
+    Slice!(StrideIterator!(IotaIterator!I), N)
     iota
         (size_t N)(size_t[N] lengths, I start, size_t stride)
         if (isIntegral!I)
@@ -644,7 +574,7 @@ template iota(I)
 }
 
 ///ditto
-Slice!(Contiguous, [N], IotaIterator!I)
+Slice!(IotaIterator!I, N)
 iota
     (I, size_t N)(size_t[N] lengths, I start)
     if (isPointer!I)
@@ -654,7 +584,7 @@ iota
 }
 
 ///ditto
-Slice!(Contiguous, [N], StrideIterator!(IotaIterator!I))
+Slice!(StrideIterator!(IotaIterator!I), N)
 iota
     (I, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (isPointer!I)
@@ -721,12 +651,12 @@ Returns:
     1-dimensional slice composed of diagonal elements
 See_also: $(LREF antidiagonal)
 +/
-Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator) 
+Slice!(Iterator, 1, N == 1 ? kind : Universal) 
     diagonal
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
 {
-    static if (packs[0] == 1)
+    static if (N == 1)
     {
         return slice;
     }
@@ -736,17 +666,17 @@ Slice!(packs[0] == 1 ? kind : Universal, 1 ~ packs[1 .. $], Iterator)
         size_t[Ret.N] lengths;
         sizediff_t[Ret.S] strides;
         lengths[0] = slice._lengths[0];
-        foreach (i; Iota!(1, packs[0]))
+        foreach (i; Iota!(1, N))
             if (lengths[0] > slice._lengths[i])
                 lengths[0] = slice._lengths[i];
         foreach (i; Iota!(1, Ret.N))
-            lengths[i] = slice._lengths[i + packs[0] - 1];
-        auto rstrides = slice.unpack.strides;
+            lengths[i] = slice._lengths[i + N - 1];
+        auto rstrides = slice.strides;
         strides[0] = rstrides[0];
-        foreach (i; Iota!(1, packs[0]))
+        foreach (i; Iota!(1, N))
             strides[0] += rstrides[i];
         foreach (i; Iota!(1, Ret.S))
-            strides[i] = rstrides[i + packs[0] - 1];
+            strides[i] = rstrides[i + N - 1];
         return Ret(lengths, strides, slice._iterator);
     }
 }
@@ -900,11 +830,11 @@ Returns:
     1-dimensional slice composed of antidiagonal elements.
 See_also: $(LREF diagonal)
 +/
-Slice!(Universal, 1 ~ packs[1 .. $], Iterator)
+Slice!(Iterator, 1, Universal)
     antidiagonal
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
-    if (packs[0] == 2)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
+    if (N == 2)
 {
     import mir.ndslice.dynamic : dropToHypercube, reversed;
     return slice.dropToHypercube.reversed!1.diagonal;
@@ -952,11 +882,10 @@ Returns:
 
 See_also: $(SUBREF chunks, ._chunks)
 +/
-Slice!(kind == Contiguous ? Canonical : kind, packs[0] ~ packs, Iterator) 
+Slice!(SliceIterator!(Iterator, N, N == 1 ? Universal : min(kind, Canonical)), N, Universal) 
     blocks
-    (SliceKind kind, size_t[] packs, Iterator, size_t N)
-    (Slice!(kind, packs, Iterator) slice, size_t[N] rlengths...)
-        if (packs[0] == N)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice, size_t[N] rlengths...)
 in
 {
     foreach (i, length; rlengths)
@@ -965,30 +894,24 @@ in
 }
 body
 {
-    alias Ret = typeof(return);
-    size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
-    foreach (dimension; Iota!(packs[0]))
-    {
+    size_t[N] lengths;
+    sizediff_t[N] strides;
+    foreach (dimension; Iota!N)
         lengths[dimension] = slice._lengths[dimension] / rlengths[dimension];
-        lengths[dimension + packs[0]] = rlengths[dimension];
-    }
-    foreach (dimension; Iota!(packs[0], slice.N))
+    auto rstrides = slice.strides;
+    foreach (i; Iota!N)
     {
-        lengths[dimension + packs[0]] = slice._lengths[dimension];
+        strides[i] = rstrides[i];
+        if (lengths[i]) //do not remove `if (...)`
+            strides[i] *= rlengths[i];
     }
-    auto rstrides = slice.unpack.strides;
-    foreach (dimension; Iota!(packs[0]))
-    {
-        strides[dimension] = rstrides[dimension];
-        if (lengths[dimension]) //do not remove `if (...)`
-            strides[dimension] *= rlengths[dimension];
-    }
-    foreach (dimension; Iota!(packs[0], Ret.S))
-    {
-        strides[dimension] = rstrides[dimension - packs[0]];
-    }
-    return Ret(lengths, strides, slice._iterator);
+    return typeof(return)(
+        lengths,
+        strides,
+        typeof(return).Iterator(
+            rlengths,
+            rstrides[0 .. typeof(return).DeepElement.S],
+            slice._iterator));
 }
 
 ///
@@ -1061,8 +984,7 @@ pure nothrow version(mir_test) unittest
         .pack!1
         .evertPack
         .blocks(3)
-        .unpack
-        .pack!2;
+        .unpack;
 
     int i;
     foreach (block; blocks)
@@ -1088,11 +1010,10 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(kind == Contiguous ? Canonical : kind, packs[0] ~ packs, Iterator) 
+Slice!(SliceIterator!(Iterator, N, N == 1 ? kind : min(kind, Canonical)), N, Universal) 
     windows
-    (SliceKind kind, size_t[] packs, Iterator, size_t N)
-    (Slice!(kind, packs, Iterator) slice, size_t[N] rlengths...)
-        if (packs[0] == N)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice, size_t[N] rlengths...)
 in
 {
     foreach (i, length; rlengths)
@@ -1101,29 +1022,18 @@ in
 }
 body
 {
-    alias Ret = typeof(return);
-    size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
-    foreach (dimension; Iota!(0, packs[0]))
-    {
+    size_t[N] lengths;
+    foreach (dimension; Iota!N)
         lengths[dimension] = slice._lengths[dimension] >= rlengths[dimension] ?
-                                  slice._lengths[dimension] - rlengths[dimension] + 1: 0;
-        lengths[dimension + packs[0]] = rlengths[dimension];
-    }
-    foreach (dimension; Iota!(packs[0], slice.N))
-    {
-        lengths[dimension + packs[0]] = slice._lengths[dimension];
-    }
-    auto rstrides = slice.unpack.strides;
-    foreach (dimension; Iota!(packs[0]))
-    {
-        strides[dimension] = rstrides[dimension];
-    }
-    foreach (dimension; Iota!(packs[0], Ret.S))
-    {
-        strides[dimension] = rstrides[dimension - packs[0]];
-    }
-    return Ret(lengths, strides, slice._iterator);
+            slice._lengths[dimension] - rlengths[dimension] + 1 : 0;
+    auto rstrides = slice.strides;
+    return typeof(return)(
+        lengths,
+        rstrides,
+        typeof(return).Iterator(
+            rlengths,
+            rstrides[0 .. typeof(return).DeepElement.S],
+            slice._iterator));
 }
 
 ///
@@ -1206,9 +1116,7 @@ version(mir_test) unittest
         .pack!1
         .evertPack
         .windows(3)
-        .unpack
-        .pack!2;
-
+        .unpack;
 
     foreach (window; windows)
         window[] += 1;
@@ -1289,13 +1197,13 @@ Params:
 Returns:
     reshaped slice
 +/
-Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
-        (SliceKind kind, size_t[] packs, Iterator, size_t M)
-        (Slice!(kind, packs, Iterator) slice, ptrdiff_t[M] rlengths, ref int err)
+Slice!(Iterator, M, kind) reshape
+        (Iterator, size_t N, SliceKind kind, size_t M)
+        (Slice!(Iterator, N, kind) slice, ptrdiff_t[M] rlengths, ref int err)
 {
     static if (kind == Canonical)
     {
-        auto r = slice.universal.reshape(err);
+        auto r = slice.universal.reshape(rlengths, err);
         assert(err || r._strides[$-1] == 1);
         r._strides[$-1] = 1;
         return r.assumeCanonical;
@@ -1331,7 +1239,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
         }
         static if (kind == Universal)
         {
-            for (size_t oi, ni, oj, nj; oi < packs[0] && ni < M; oi = oj, ni = nj)
+            for (size_t oi, ni, oj, nj; oi < N && ni < M; oi = oj, ni = nj)
             {
                 size_t op = slice._lengths[oj++];
                 size_t np =        lengths[nj++];
@@ -1345,7 +1253,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
                     if (op == np)
                         break;
                 }
-                while (oj < packs[0] && slice._lengths[oj] == 1) oj++;
+                while (oj < N && slice._lengths[oj] == 1) oj++;
                 while (nj < M        &&        lengths[nj] == 1) nj++;
 
                 for (size_t l = oi, r = oi + 1; r < oj; r++)
@@ -1358,7 +1266,7 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
                         }
                         l = r;
                     }
-                assert((oi == packs[0]) == (ni == M));
+                assert((oi == N) == (ni == M));
 
                 strides[nj - 1] = slice._strides[oj - 1];
                 foreach_reverse (i; ni .. nj - 1)
@@ -1366,10 +1274,10 @@ Slice!(kind, M ~ packs[1 .. $], Iterator) reshape
             }
         }
         foreach (i; Iota!(M, Ret.N))
-            lengths[i] = slice._lengths[i + packs[0] - M];
+            lengths[i] = slice._lengths[i + N - M];
         static if (M < Ret.S)
         foreach (i; Iota!(M, Ret.S))
-            strides[i] = slice._strides[i + packs[0] - M];
+            strides[i] = slice._strides[i + N - M];
         err = 0;
         return Ret(lengths, strides, slice._iterator);
     R:
@@ -1486,27 +1394,27 @@ Params:
 Returns:
     contiguous 1-dimensional slice of elements of the `slice`
 +/
-Slice!(Contiguous, [1], FlattenedIterator!(kind, packs, Iterator))
+Slice!(FlattenedIterator!(Iterator, N, kind))
     flattened
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
-    if (packs[0] != 1 && kind != Contiguous)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
+    if (N != 1 && kind != Contiguous)
 {
     alias Ret = typeof(return);
     size_t[Ret.N] lengths;
     sizediff_t[Ret.S] strides;
     sizediff_t[typeof(return)._iterator._indexes.length] indexes;
     lengths[0] = slice.elementsCount;
-    return Ret(lengths, strides, FlattenedIterator!(kind, packs, Iterator)(indexes, slice));
+    return Ret(lengths, strides, FlattenedIterator!(Iterator, N, kind)(indexes, slice));
 }
 
 /// ditto
-Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator) 
+Slice!Iterator
     flattened
-    (size_t[] packs, Iterator)
-    (Slice!(Contiguous, packs, Iterator) slice)
+    (Iterator, size_t N)
+    (Slice!(Iterator, N) slice)
 {
-    static if (packs == [1])
+    static if (N == 1)
     {
         return slice;
     }
@@ -1514,43 +1422,17 @@ Slice!(Contiguous, 1 ~ packs[1 .. $], Iterator)
     {
         size_t[typeof(return).N] lengths;
         lengths[0] = slice.elementsCount;
-        foreach(i; Iota!(1, typeof(return).N))
-            lengths[i] = slice._lengths[i - 1 + packs[0]];
         return typeof(return)(lengths, sizediff_t[0].init, slice._iterator);
     }
 }
 
 /// ditto
-Slice!(Contiguous, [1], StrideIterator!Iterator) 
+Slice!(StrideIterator!Iterator) 
     flattened
     (Iterator)
-    (Slice!(Universal, [1], Iterator) slice)
+    (Slice!(Iterator,  1, Universal) slice)
 {
     return slice.hideStride;
-}
-
-/// ditto
-Slice!(Contiguous, [1], StrideIterator!(SliceIterator!(packs[1 .. $].sum == 1 && kind == Canonical ? Contiguous : kind, packs[1 .. $], Iterator)))
-    flattened
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
-    if (packs[0] == 1 && kind != Contiguous && packs.length > 1)
-{
-    alias Ret = typeof(return);
-    size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
-    lengths[0] = slice._lengths[0];
-    enum ret_mixin = q{
-        Ret(lengths, strides, typeof(Ret._iterator)(slice._strides[0], typeof(Ret._iterator._iterator)(
-        slice._lengths[1 .. Ret._iterator._iterator.Elem.N + 1],
-        slice._strides[1 .. Ret._iterator._iterator.Elem.S + 1],
-        slice._iterator)));
-    };
-    version (LDC_LLVM_400)
-        //Workaround to allow compilation with LDC 1.2.0.
-        mixin ("Ret ret = "~ret_mixin~" return ret;");
-    else
-        mixin ("return "~ret_mixin);
 }
 
 version(mir_test) unittest
@@ -1752,11 +1634,11 @@ version(mir_test) unittest
 {
     import std.range.primitives;
     import mir.ndslice.allocation;
-    alias A = typeof(iota(2, 5).sliced(1, 1, 1, 1));
+    alias A = typeof(iota(1, 2, 3, 4).pack!1);
     static assert(isRandomAccessRange!A);
     static assert(hasLength!A);
     static assert(hasSlicing!A);
-    alias B = typeof(slice!double(2, 5).sliced(1, 1, 1, 1));
+    alias B = typeof(slice!int(1, 2, 3, 4).pack!3);
     static assert(isRandomAccessRange!B);
     static assert(hasLength!B);
     static assert(hasSlicing!B);
@@ -1781,7 +1663,7 @@ Returns:
     `N`-dimensional slice composed of indexes
 See_also: $(LREF iota)
 +/
-Slice!(Contiguous, [N], FieldIterator!(ndIotaField!N))
+Slice!(FieldIterator!(ndIotaField!N), N)
     ndiota
     (size_t N)
     (size_t[N] lengths...)
@@ -1915,42 +1797,34 @@ version(mir_test) unittest
 Returns a slice with identical elements.
 `RepeatSlice` stores only single value.
 Params:
-    rlengths = list of dimension lengths
+    lengths = list of dimension lengths
 Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 +/
-Slice!(Contiguous, [M], FieldIterator!(RepeatField!T))
-    repeat(T, size_t M)(T value, size_t[M] rlengths...)
-    if (M && !is(T : Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator))
+Slice!(FieldIterator!(RepeatField!T), M, Universal)
+    repeat(T, size_t M)(T value, size_t[M] lengths...)
+    if (M && !isSlice!T)
 {
-    alias Ret = typeof(return);
-    size_t[Ret.N] lengths;
-    auto strides = sizediff_t[Ret.S].init;
-    foreach (i; Iota!M)
-        lengths[i] = rlengths[i];
-    return Ret(lengths, strides, FieldIterator!(RepeatField!T)(0, RepeatField!T(cast(RepeatField!T.UT) value)));
+    return typeof(return)(
+        lengths,
+        sizediff_t[M].init,
+        typeof(return).Iterator(0, RepeatField!T(cast(RepeatField!T.UT) value)));
 }
 
 /// ditto
-Slice!(kind == Contiguous ? Canonical : kind, M ~ packs, Iterator)
+Slice!(SliceIterator!(Iterator, N, kind), M, Universal)
     repeat
-    (SliceKind kind, size_t[] packs, Iterator, size_t M)
-    (Slice!(kind, packs, Iterator) slice, size_t[M] rlengths...)
+    (SliceKind kind, size_t N, Iterator, size_t M)
+    (Slice!(Iterator, N, kind) slice, size_t[M] lengths...)
     if (M)
 {
-    alias Ret = typeof(return);
-    size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
-    foreach (i; Iota!M)
-        lengths[i] = rlengths[i];
-    foreach (i; Iota!(slice.N))
-        lengths[M + i] = slice._lengths[i];
-    foreach (i; Iota!M)
-        strides[i] = 0;
-    auto rstrides = slice.unpack.strides;
-    foreach (i; Iota!(M, Ret.S))
-        strides[i] = rstrides[i - M];
-    return Ret(lengths, strides, slice._iterator);
+    return typeof(return)(
+        lengths,
+        sizediff_t[M].init,
+        typeof(return).Iterator(
+            slice._lengths,
+            slice._strides,
+            slice._iterator));
 }
 
 ///
@@ -2020,9 +1894,9 @@ Returns:
 See_also: $(SUBREF dynamic, strided)
 +/
 auto stride
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice, ptrdiff_t factor)
-    if (packs == [1])
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice, ptrdiff_t factor)
+    if (N == 1)
 in
 {
     assert (factor > 0, "factor must be positive.");
@@ -2069,10 +1943,9 @@ Returns:
 See_also: $(SUBREF dynamic, reversed), $(SUBREF dynamic, allReversed).
 +/
 auto retro
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
     @trusted
-    if (packs.length == 1)
 {
     static if (kind == Contiguous || kind == Canonical)
     {
@@ -2084,14 +1957,13 @@ auto retro
             strides[i] = slice._strides[i];
         static if (is(Iterator : RetroIterator!It, It))
         {
-            alias Ret = Slice!(kind, packs, It);
+            alias Ret = Slice!(It, N, kind);
             return Ret(lengths, strides, slice._iterator._iterator - slice.lastIndex);
         }
         else
         {
-            alias Ret = Slice!(kind, packs, RetroIterator!Iterator);
+            alias Ret = Slice!(RetroIterator!Iterator, N, kind);
             return Ret(lengths, strides, RetroIterator!Iterator(slice._iterator + slice.lastIndex));
-
         }
     }
     else
@@ -2135,8 +2007,8 @@ Params:
 Returns: A bitwise slice.
 +/
 auto bitwise
-    (SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
-    (Slice!(kind, packs, Iterator) slice)
+    (Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
+    (Slice!(Iterator, N, kind) slice)
     if (isIntegral!I && (kind == Contiguous || kind == Canonical))
 {
     static if (is(Iterator : FieldIterator!Field, Field))
@@ -2149,7 +2021,7 @@ auto bitwise
         enum simplified = false;
         alias It = FieldIterator!(BitwiseField!Iterator);
     }
-    alias Ret = Slice!(kind, packs, It);
+    alias Ret = Slice!(It, N, kind);
     size_t[Ret.N] lengths;
     sizediff_t[Ret.S] strides;
     foreach(i; Iota!(Ret.N))
@@ -2226,8 +2098,8 @@ Params:
 Returns: A bitpack slice.
 +/
 auto bitpack
-    (size_t pack, SliceKind kind, size_t[] packs, Iterator, I = typeof(Iterator.init[size_t.init]))
-    (Slice!(kind, packs, Iterator) slice)
+    (size_t pack, Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
+    (Slice!(Iterator, N, kind) slice)
     if (isIntegral!I && (kind == Contiguous || kind == Canonical) && pack > 1)
 {
     static if (is(Iterator : FieldIterator!Field, Field) && I.sizeof * 8 % pack == 0)
@@ -2240,7 +2112,7 @@ auto bitpack
         enum simplified = false;
         alias It = FieldIterator!(BitpackField!(Iterator, pack));
     }
-    alias Ret = Slice!(kind, packs, It);
+    alias Ret = Slice!(It, N, kind);
     size_t[Ret.N] lengths;
     sizediff_t[Ret.S] strides;
     foreach(i; Iota!(Ret.N))
@@ -2296,10 +2168,10 @@ Params:
     slice = a contiguous or canonical slice.
 Returns: A bytegroup slice.
 +/
-Slice!(kind, packs, BytegroupIterator!(Iterator, group, DestinationType))
+Slice!(BytegroupIterator!(Iterator, group, DestinationType), N, kind)
 bytegroup
-    (size_t group, DestinationType, SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
+    (size_t group, DestinationType, Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
     if ((kind == Contiguous || kind == Canonical) && group)
 {
     alias Ret = typeof(return);
@@ -2400,20 +2272,12 @@ template map(fun...)
                 a slice with each fun applied to all the elements. If there is more than one
                 fun, the element type will be `Tuple` containing one element for each fun.
             +/
-            auto map(SliceKind kind, size_t[] packs, Iterator)
-                (Slice!(kind, packs, Iterator) slice)
+            auto map(Iterator, size_t N, SliceKind kind)
+                (Slice!(Iterator, N, kind) slice)
             {
-                static if (packs.length == 1)
-                {
-                    import mir.ndslice.iterator: mapIterator;
-                    auto iterator = mapIterator!f(slice._iterator);
-                    return Slice!(kind, packs, typeof(iterator))(slice._lengths, slice._strides, iterator);
-                }
-                // Specialization for packed tensors (tensors composed of tensors).
-                else
-                {
-                    return .map!f(.map!(naryFun!"a")(slice));
-                }
+                import mir.ndslice.iterator: mapIterator;
+                auto iterator = mapIterator!f(slice._iterator);
+                return Slice!(typeof(iterator), N, kind)(slice._lengths, slice._strides, iterator);
             }
 
             /// ditto
@@ -2433,24 +2297,10 @@ template map(fun...)
         static if (__traits(isSame, naryFun!"a", fun[0]))
         {
             ///
-            @optmath auto map(SliceKind kind, size_t[] packs, Iterator)
-                (Slice!(kind, packs, Iterator) slice)
+            @optmath auto map(Iterator, size_t N, SliceKind kind)
+                (Slice!(Iterator, N, kind) slice)
             {
-                static if (packs.length == 1)
-                {
-                    return slice;
-                }
-                else
-                {
-                    alias It = SliceIterator!(TemplateArgsOf!(slice.DeepElemType));
-                    auto sl = slice.universal;
-                    auto outerLengths = cast(size_t[packs[0]]) sl._lengths[0 .. packs[0]];
-                    auto outerStrides = cast(ptrdiff_t[packs[0]]) sl._strides[0 .. packs[0]];
-                    auto lengths = cast(size_t[It._lengths.length]) sl._lengths[packs[0] .. packs[0] + It._lengths.length];
-                    auto strides = cast(ptrdiff_t[It._strides.length]) sl._strides[packs[0] .. packs[0] + It._strides.length];
-                    auto it = It(lengths, strides, sl._iterator);
-                    return Slice!(Universal, packs[0 .. 1], It)(outerLengths, outerStrides, it);
-                }
+                return slice;
             }
         }
         else alias map = .map!(naryFun!fun);
@@ -2595,20 +2445,12 @@ See_Also:
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
-@optmath auto vmap(SliceKind kind, size_t[] packs, Iterator, Callable)
-    (Slice!(kind, packs, Iterator) slice, auto ref Callable callable)
+@optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
+    (Slice!(Iterator, N, kind) slice, auto ref Callable callable)
 {
-    static if (packs.length == 1)
-    {
-        import mir.ndslice.iterator: VmapIterator;
-        alias It = VmapIterator!(Iterator, Callable);
-        return Slice!(kind, packs, It)(slice._lengths, slice._strides, It(slice._iterator, callable));
-    }
-    // Specialization for packed tensors (tensors composed of tensors).
-    else
-    {
-        return .vmap(slice.map!"a", callable);
-    }
+    import mir.ndslice.iterator: VmapIterator;
+    alias It = VmapIterator!(Iterator, Callable);
+    return Slice!(It, N, kind)(slice._lengths, slice._strides, It(slice._iterator, callable));
 }
 
 /// ditto
@@ -2735,11 +2577,11 @@ version(none) version(mir_test) unittest
 }
 
 private auto hideStride
-    (SliceKind kind, Iterator)
-    (Slice!(kind, [1], Iterator) slice)
+    (Iterator, SliceKind kind)
+    (Slice!(Iterator, 1, kind) slice)
 {
     static if (kind == Universal)
-        return Slice!(Contiguous, [1], StrideIterator!Iterator)(
+        return Slice!(StrideIterator!Iterator)(
             slice._lengths,
             sizediff_t[0].init,
             StrideIterator!Iterator(slice._strides[0], slice._iterator));
@@ -2748,14 +2590,14 @@ private auto hideStride
 }
 
 private auto unhideStride
-    (SliceKind kind, size_t[] packs, Iterator)
-    (Slice!(kind, packs, Iterator) slice)
+    (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
 {
     static if (is(Iterator : StrideIterator!It, It))
     {
         static if (kind == Universal)
         {
-            alias Ret = SliceKind!(Universal, packs, It);
+            alias Ret = SliceKind!(It, N, Universal);
             size_t[Ret.N] lengths;
     sizediff_t[Ret.S] strides;
             foreach(i; Iota!(Ret.N))
@@ -2780,15 +2622,15 @@ Returns:
     ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
 See_also: $(LREF cachedGC), $(LREF map), $(LREF vmap), $(LREF indexed)
 +/
-Slice!(kind, packs, CachedIterator!(Iterator, CacheIterator, FlagIterator))
-    cached(SliceKind kind, size_t[] packs, Iterator, CacheIterator, FlagIterator)(
-        Slice!(kind, packs, Iterator) original,
-        Slice!(kind, packs, CacheIterator) caches,
-        Slice!(kind, packs, FlagIterator) flags,
+Slice!(CachedIterator!(Iterator, CacheIterator, FlagIterator), N, kind)
+    cached(Iterator, SliceKind kind, size_t N, CacheIterator, FlagIterator)(
+        Slice!(Iterator, N, kind) original,
+        Slice!(CacheIterator, N, kind) caches,
+        Slice!(FlagIterator, N, kind) flags,
     )
 {
-    assert(original.unpack.shape == caches.unpack.shape, "caches.unpack.shape should be equal to original.unpack.shape");
-    assert(original.unpack.shape == flags.unpack.shape, "flags.unpack.shape should be equal to original.unpack.shape");
+    assert(original.shape == caches.shape, "caches.shape should be equal to original.shape");
+    assert(original.shape == flags.shape, "flags.shape should be equal to original.shape");
     return typeof(return)(
         original._lengths,
         original._strides,
@@ -2878,8 +2720,8 @@ Returns:
     ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
 See_also: $(LREF cached), $(LREF map), $(LREF vmap), $(LREF indexed)
 +/
-Slice!(Contiguous, packs, CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitwiseField!(size_t*))))
-    cachedGC(size_t[] packs, Iterator)(Slice!(Contiguous, packs, Iterator) original) @trusted
+Slice!(CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitwiseField!(size_t*))), N)
+    cachedGC(Iterator, size_t N)(Slice!(Iterator, N) original) @trusted
 {
     import mir.ndslice.allocation: bitSlice, slice, uninitSlice;
     alias C = typeof(Iterator.init[0]);
@@ -2899,7 +2741,7 @@ Slice!(Contiguous, packs, CachedIterator!(Iterator, typeof(Iterator.init[0])*, F
 }
 
 /// ditto
-auto cachedGC(Iterator)(Slice!(Universal, [1], Iterator) from)
+auto cachedGC(Iterator)(Slice!(Iterator,  1, Universal) from)
 {
     return from.flattened.cachedGC;
 }
@@ -2989,9 +2831,9 @@ See_also: $(LREF map), $(LREF vmap)
 template as(T)
 {
     ///
-    @optmath auto as(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    @optmath auto as(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        static if (is(slice.DeepElemType == T))
+        static if (is(slice.DeepElement == T))
             return slice;
         else
         static if (isPointer!Iterator && is(const(Unqual!(typeof(Iterator.init[0]))) == T))
@@ -3035,7 +2877,7 @@ template as(T)
              [0, 1]]);
 
     /// allocate new slice composed of strings
-    Slice!(Contiguous, [2], int*) stringMatrix = stringMatrixView.slice;
+    Slice!(int*, 2) stringMatrix = stringMatrixView.slice;
 }
 
 /// Special behavior for pointers to a constant data.
@@ -3044,8 +2886,8 @@ template as(T)
     import mir.ndslice.allocation : slice;
     import mir.ndslice.slice : Contiguous, Slice;
 
-    Slice!(Contiguous, [2], double*)              matrix = slice!double([2, 2], 0);
-    Slice!(Contiguous, [2], const(double)*) const_matrix = matrix.as!(const double);
+    Slice!(double*, 2)              matrix = slice!double([2, 2], 0);
+    Slice!(const(double)*, 2) const_matrix = matrix.as!(const double);
 }
 
 /++
@@ -3060,9 +2902,9 @@ Returns:
 
 See_also: `indexed` is similar to $(LREF, vmap), but a field (`[]`) is used instead of a function (`()`), and order of arguments is reversed.
 +/
-Slice!(kind, packs, IndexIterator!(Iterator, Field))
-    indexed(Field, SliceKind kind, size_t[] packs, Iterator)
-    (auto ref Field source, Slice!(kind, packs, Iterator) indexes)
+Slice!(IndexIterator!(Iterator, Field), N, kind)
+    indexed(Field, Iterator, size_t N, SliceKind kind)
+    (auto ref Field source, Slice!(Iterator, N, kind) indexes)
 {
     return typeof(return)(
             indexes._lengths,
@@ -3109,9 +2951,9 @@ Returns:
     ndslice composed of subslices.
 See_also: $(LREF cut), $(LREF pairwise), $(LREF pairwiseMapSubSlices).
 +/
-Slice!(kind, packs, SubSliceIterator!(Iterator, Sliceable))
-    mapSubSlices(SliceKind kind, size_t[] packs, Iterator, Sliceable)(
-        Slice!(kind, packs, Iterator) indexes,
+Slice!(SubSliceIterator!(Iterator, Sliceable), N, kind)
+    mapSubSlices(Iterator, size_t N, SliceKind kind, Sliceable)(
+        Slice!(Iterator, N, kind) indexes,
         auto ref Sliceable sliceable,
     )
 {
@@ -3166,8 +3008,8 @@ Returns:
     ndslice composed of subslices.
 See_also: $(LREF pairwise), $(LREF mapSubSlices).
 +/
-auto pairwiseMapSubSlices(SliceKind kind, Iterator, Sliceable)(
-        Slice!(kind, [1], Iterator) indexes,
+auto pairwiseMapSubSlices(Iterator, SliceKind kind, Sliceable)(
+        Slice!(Iterator, 1, kind) indexes,
         auto ref Sliceable sliceable,
     )
 {
@@ -3218,24 +3060,24 @@ auto zip
 {
     static if (allSatisfy!(isSlice, Slices))
     {
-        enum packs = packsOf!(Slices[0]);
+        enum N = Slices[0].N;
         foreach(i, S; Slices[1 .. $])
         {
-            static assert(packsOf!S == packs, "zip: all Slices must have the same shape packs");
+            static assert(S.N == N, "zip: all Slices must have the same dimension count");
             assert(slices[i + 1]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
             static if (sameStrides)
-                assert(slices[i + 1].unpack.strides == slices[0].unpack.strides, "zip: all slices must have the same strides when unpacked");
+                assert(slices[i + 1].strides == slices[0].strides, "zip: all slices must have the same strides when unpacked");
         }
         static if (!sameStrides && minElem(staticMap!(kindOf, Slices)) != Contiguous)
         {
-            static assert(packs == [1], "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
+            static assert(N == 1, "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
             mixin(`return .zip(` ~ _iotaArgs!(Slices.length, "slices[", "].hideStride, ") ~`);`);
         }
         else
         {
             enum kind = maxElem(staticMap!(kindOf, Slices));
             alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
-            alias Ret = Slice!(kind, packs, Iterator);
+            alias Ret = Slice!(Iterator, N, kind);
             size_t[Ret.N] lengths;
             sizediff_t[Ret.S] strides;
             foreach (i; Iota!(Ret.N))
@@ -3295,12 +3137,12 @@ Returns:
     unzipped slice
 +/
 auto unzip
-    (char name, SliceKind kind, size_t[] packs, Iterator : ZipIterator!Iterators, Iterators...)
-    (Slice!(kind, packs, Iterator) slice)
+    (char name, size_t N, SliceKind kind, Iterators...)
+    (Slice!(ZipIterator!Iterators, N, kind) slice)
 {
     enum size_t i = name - 'a';
     static assert(i < Iterators.length, `unzip: constraint: size_t(name - 'a') < Iterators.length`);
-    return Slice!(kind, packs, Iterators[i])(slice._lengths, slice._strides, slice._iterator._iterators[i]).unhideStride;
+    return Slice!(Iterators[i], N, kind)(slice._lengths, slice._strides, slice._iterator._iterators[i]).unhideStride;
 }
 
 ///
@@ -3348,16 +3190,16 @@ template slide(size_t params, alias fun)
         Returns:
             1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
         +/
-        auto slide(SliceKind kind, size_t[] packs, Iterator)
-            (Slice!(kind, packs, Iterator) slice)
-            if (packs[0] == 1)
+        auto slide(Iterator, size_t N, SliceKind kind)
+            (Slice!(Iterator, N, kind) slice)
+            if (N == 1)
         {
             auto s = slice.map!"a".flattened;
             s._lengths[0] -= params - 1;
             if (cast(sizediff_t)s._lengths[0] < 0)
                 s._lengths[0] = 0;
             alias I = SlideIterator!(_IteratorOf!(typeof(s)), params, fun);
-            return Slice!(Contiguous, [1], I)(
+            return Slice!(I)(
                 s._lengths,
                 s._strides,
                 I(s._iterator));
@@ -3690,7 +3532,7 @@ Returns:
 
 See_also: $(LREF ._stairs.2)
 +/
-auto stairs(string type, Iterator)(Slice!(Contiguous, [1], Iterator) slice, size_t n)
+auto stairs(string type, Iterator)(Slice!Iterator slice, size_t n)
     if (type == "+" || type == "-")
 {
     assert(slice.length == (n + 1) * n / 2, "stairs: slice length must be equal to n * (n + 1) / 2, where n is stairs count.");
@@ -3769,7 +3611,7 @@ Returns:
 
 See_also: $(LREF _stairs) $(SUBREF dynamic, transposed), $(LREF universal)
 +/
-auto stairs(string type, SliceKind kind, Iterator)(Slice!(kind, [2], Iterator) slice)
+auto stairs(string type, Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) slice)
     if (type == "+" || type == "-")
 {
     assert(slice.length!0 == slice.length!1, "stairs: input slice must be a square matrix.");
@@ -3825,7 +3667,7 @@ version(mir_test) unittest
     auto lower = lowerData.stairs!"+"(n);
     auto upper = upperData.stairs!"-"(n);
     // copy data
-    import mir.ndslice.algorithm: each;
+    import mir.algorithm.iteration: each;
     each!"a[] = b"(lower, inc);
     each!"a[] = b"(upper, dec);
 
@@ -3834,1105 +3676,6 @@ version(mir_test) unittest
 
     assert(lowerData == [0, 3, 4, 6, 7, 8]);
     assert(upperData == [0, 1, 2, 4, 5, 8]);
-}
-
-/// Transposed adjusted to ignore dim=0 and include universal
-private template adjTransposed(Dimensions...)
-    if (Dimensions.length)
-{
-    import mir.ndslice.slice : Slice, SliceKind;
-    import mir.ndslice.internal : isSize_t, toSize_t;
-    import std.meta : allSatisfy, staticMap;
-   
-    static if (!allSatisfy!(isSize_t, Dimensions))
-        alias adjTransposed = .adjTransposed!(staticMap!(toSize_t, Dimensions));
-    else
-    ///
-    @optmath auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
-                                           (Slice!(kind, packs, Iterator) slice)
-    {
-        import mir.ndslice.topology : ipack;
-        import mir.ndslice.internal : DimensionsCountCTError, DimensionCTError;
-        import mir.internal.utility : Iota;
-
-        mixin DimensionsCountCTError;
-
-        static if (Dimensions == Iota!(Dimensions.length))
-        {
-            return slice;
-        }
-        else static if (Dimensions[0] + 1 < packs[0] || packs.length > 1)
-        {
-            import mir.ndslice.topology : canonical;
-            import mir.ndslice.dynamic : transposed;
-            
-            return slice.canonical.transposed!Dimensions;
-        } 
-        else
-        {
-            import mir.ndslice.topology : universal;
-            import mir.ndslice.dynamic : transposed;
-
-            return slice.universal.transposed!Dimensions;
-        }
-    }
-}
-
-///
-private auto adjTransposed(SliceKind kind, size_t[] packs, Iterator)
-                                        (Slice!(kind, packs, Iterator) slice)
-{
-    return slice.adjTransposed!0;
-}
-
-// 1-dimensional slice support
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota;
-    import mir.ndslice.traits : isContiguousSlice;
-    //  -------
-    // | 0 1 2 |
-    //  -------
-    auto slice = iota(3);
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isContiguousSlice!(typeof(x)));
-}
-
-// 2-dimensional slice support
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota;
-    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice;
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto slice = iota(3, 4);
-    //->
-    // | 3 4 |
-    //->
-    // | 4 3 |
-    size_t[2] shape34 = [3, 4];
-    size_t[2] shape43 = [4, 3];
-    
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isContiguousSlice!(typeof(x)));
-    assert(x.shape == shape34);
-    assert(x.front == iota(4));
-    x.popFront;
-    assert(x.front == iota([4], 4));
-    
-    //  ---------
-    // | 0  4  8 |
-    // | 1  5  9 |
-    // | 2  6 10 |
-    // | 3  7 11 |
-    //  ---------
-    auto y = slice.adjTransposed!1;
-    assert(isUniversalSlice!(typeof(y)));
-    assert(y.shape == shape43);
-    assert(y.front == iota([3], 0, 4));
-    y.popFront;
-    assert(y.front == iota([3], 1, 4));
-}
-
-// 3-dimensional slice support, N-dimensional also supported
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, universal, flattened, reshape;
-    import mir.ndslice.dynamic : strided, transposed;
-    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
-                                isCanonicalSlice;
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 |
-    // | 15 16 17 18 19 |
-    //  - - - - - - - -
-    // | 20 21 22 23 24 |
-    // | 25 26 27 28 29 |
-    // | 30 31 32 33 34 |
-    // | 35 36 37 38 39 |
-    //  - - - - - - - -
-    // | 40 41 42 43 44 |
-    // | 45 46 47 48 49 |
-    // | 50 51 52 53 54 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto slice = iota(3, 4, 5);
-    //->
-    // | 3 4 5 |
-    //->
-    // | 4 3 5 |
-    //->
-    // | 5 3 4 |
-    //->
-    // | 5 4 3 |
-    //->
-    // | 4 5 |
-    //->
-    // | 3 5 |
-    //->
-    // | 3 4 |
-    //->
-    // | 4 3 |
-    size_t[3] shape345 = [3, 4, 5];
-    size_t[3] shape435 = [4, 3, 5];
-    size_t[3] shape534 = [5, 3, 4];
-    size_t[3] shape543 = [5, 4, 3];
-    size_t[2] shape45 = [4, 5];
-    size_t[2] shape35 = [3, 5];
-    size_t[2] shape34 = [3, 4];
-    size_t[2] shape43 = [4, 3];
-
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 |
-    // | 15 16 17 18 19 |
-    //  - - - - - - - -
-    // | 20 21 22 23 24 |
-    // | 25 26 27 28 29 |
-    // | 30 31 32 33 34 |
-    // | 35 36 37 38 39 |
-    //  - - - - - - - -
-    // | 40 41 42 43 44 |
-    // | 45 46 47 48 49 |
-    // | 50 51 52 53 54 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isContiguousSlice!(typeof(x)));
-    assert(x.shape == shape345);
-    assert(x.front.shape == shape45);
-    assert(x.front == iota([4, 5]));
-    x.popFront;
-    assert(x.front == iota([4, 5], (4 * 5)));
-    
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // | 20 21 22 23 24 |
-    // | 40 41 42 43 44 |
-    //  - - - - - - - -
-    // |  5  6  7  8  9 |
-    // | 25 26 27 28 29 |
-    // | 45 46 47 48 49 |
-    //  - - - - - - - -
-    // | 10 11 12 13 14 |
-    // | 30 31 32 33 34 |
-    // | 50 51 52 53 54 |
-    //  - - - - - - - -
-    // | 15 16 17 18 19 |
-    // | 35 36 37 38 39 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto y = slice.adjTransposed!1;
-    assert(isCanonicalSlice!(typeof(y)));
-    assert(y.shape == shape435);
-    assert(y.front.shape == shape35);
-    int err;
-    assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
-    y.popFront;
-    assert(y.front.front == iota([5], 5));
-    
-    //  -------------
-    // |  0  5 10 15 |
-    // | 20 25 30 35 |
-    // | 40 45 50 55 |
-    //  - - - - - - -
-    // |  1  6 11 16 |
-    // | 21 26 31 36 |
-    // | 41 46 51 56 |
-    //  - - - - - - -
-    // |  2  7 12 17 |
-    // | 22 27 32 37 |
-    // | 42 47 52 57 |
-    //  - - - - - - -
-    // |  3  8 13 18 |
-    // | 23 28 33 38 |
-    // | 43 48 53 58 |
-    //  - - - - - - -
-    // |  4  9 14 19 |
-    // | 24 29 34 39 |
-    // | 44 49 54 59 |
-    //  -------------
-    auto z = slice.adjTransposed!2;
-    assert(isUniversalSlice!(typeof(z)));
-    assert(z.shape == shape534);
-    assert(z.front.shape == shape34);
-    assert(z.front == iota([3, 4], 0, 5));
-    z.popFront;
-    assert(z.front.front == iota([4], 1, 5));
-
-    //  ----------
-    // |  0 20 40 |
-    // |  5 25 45 |
-    // | 10 30 50 |
-    // | 15 35 55 |
-    //  - - - - -
-    // |  1 21 41 |
-    // |  6 26 46 |
-    // | 11 31 51 |
-    // | 16 36 56 |
-    //  - - - - -
-    // |  2 22 42 |
-    // |  7 27 47 |
-    // | 12 32 52 |
-    // | 17 37 57 |
-    //  - - - - -
-    // |  3 23 43 |
-    // |  8 28 48 |
-    // | 13 33 53 |
-    // | 18 38 58 |
-    //  - - - - -
-    // |  4 24 44 |
-    // |  9 29 49 |
-    // | 14 34 54 |
-    // | 19 39 59 |
-    //  ----------
-    auto a = slice.adjTransposed!(2, 1);
-    assert(isUniversalSlice!(typeof(a)));
-    assert(a.shape == shape543);
-    assert(a.front.shape == shape43);
-    assert(a.front == iota([3, 4], 0, 5).universal.transposed!1);
-    a.popFront;
-    assert(a.front.front == iota([3], 1, 20));
-}
-
-// Ensure works on canonical
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, canonical;
-    import mir.ndslice.traits : isUniversalSlice, isCanonicalSlice;
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto slice = iota(3, 4).canonical;
-    //->
-    // | 3 4 |
-    //->
-    // | 4 3 |
-    size_t[2] shape34 = [3, 4];
-    size_t[2] shape43 = [4, 3];
-    
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isCanonicalSlice!(typeof(x)));
-    assert(x.shape == shape34);
-    assert(x.front == iota(4));
-    x.popFront;
-    assert(x.front == iota([4], 4));
-    
-    //  ---------
-    // | 0  4  8 |
-    // | 1  5  9 |
-    // | 2  6 10 |
-    // | 3  7 11 |
-    //  ---------
-    auto y = slice.adjTransposed!1;
-    assert(isUniversalSlice!(typeof(y)));
-    assert(y.shape == shape43);
-    assert(y.front == iota([3], 0, 4));
-    y.popFront;
-    assert(y.front == iota([3], 1, 4));
-}
-
-// Ensure works on universal
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, universal;
-    import mir.ndslice.traits : isUniversalSlice;
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto slice = iota(3, 4).universal;
-    //->
-    // | 3 4 |
-    //->
-    // | 4 3 |
-    size_t[2] shape34 = [3, 4];
-    size_t[2] shape43 = [4, 3];
-    
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isUniversalSlice!(typeof(x)));
-    assert(x.shape == shape34);
-    assert(x.front == iota(4));
-    x.popFront;
-    assert(x.front == iota([4], 4));
-    
-    //  ---------
-    // | 0  4  8 |
-    // | 1  5  9 |
-    // | 2  6 10 |
-    // | 3  7 11 |
-    //  ---------
-    auto y = slice.adjTransposed!1;
-    assert(isUniversalSlice!(typeof(y)));
-    assert(y.shape == shape43);
-    assert(y.front == iota([3], 0, 4));
-    y.popFront;
-    assert(y.front == iota([3], 1, 4));
-}
-
-// Ensure works on canonical packed slice
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, universal, flattened, reshape;
-    import mir.ndslice.dynamic : strided;
-    import mir.ndslice.traits : isCanonicalSlice;
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 |
-    // | 15 16 17 18 19 |
-    //  - - - - - - - -
-    // | 20 21 22 23 24 |
-    // | 25 26 27 28 29 |
-    // | 30 31 32 33 34 |
-    // | 35 36 37 38 39 |
-    //  - - - - - - - -
-    // | 40 41 42 43 44 |
-    // | 45 46 47 48 49 |
-    // | 50 51 52 53 54 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto slice = iota(3, 4, 5).canonical.pack!1;
-    //->
-    // | 3 4 |
-    //->
-    // | 4 3 |
-    //->
-    // | 2 1 |
-    //->
-    // | 4 |
-    //->
-    // | 3 |
-    size_t[2] shape34 = [3, 4];
-    size_t[2] shape43 = [4, 3];
-    size_t[2] shape21 = [2, 1];
-    size_t[1] shape4 = [4];
-    size_t[1] shape3 = [3];
-
-    assert(packsOf!(typeof(slice)) == shape21);
-
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 |
-    // | 15 16 17 18 19 |
-    //  - - - - - - - -
-    // | 20 21 22 23 24 |
-    // | 25 26 27 28 29 |
-    // | 30 31 32 33 34 |
-    // | 35 36 37 38 39 |
-    //  - - - - - - - -
-    // | 40 41 42 43 44 |
-    // | 45 46 47 48 49 |
-    // | 50 51 52 53 54 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isCanonicalSlice!(typeof(x)));
-    assert(x.shape == shape34);
-    assert(x.front.shape == shape4);
-    assert(x.front == iota([4, 5]));
-    x.popFront;
-    assert(x.front == iota([4, 5], (4 * 5)));
-    
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // | 20 21 22 23 24 |
-    // | 40 41 42 43 44 |
-    //  - - - - - - - -
-    // |  5  6  7  8  9 |
-    // | 25 26 27 28 29 |
-    // | 45 46 47 48 49 |
-    //  - - - - - - - -
-    // | 10 11 12 13 14 |
-    // | 30 31 32 33 34 |
-    // | 50 51 52 53 54 |
-    //  - - - - - - - -
-    // | 15 16 17 18 19 |
-    // | 35 36 37 38 39 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto y = slice.adjTransposed!1;
-    assert(isCanonicalSlice!(typeof(y)));
-    assert(y.shape == shape43);
-    assert(y.front.shape == shape3);
-    int err;
-    assert(y.front == slice.universal.strided!1(4).unpack.reshape([3, -1], err));
-    y.popFront;
-    assert(y.front.front == iota([5], 5));
-}
-
-// Ensure works on contiguous pack!1 slice
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.slice: packsOf;
-    import mir.ndslice.topology : iota;
-    import mir.ndslice.dynamic : strided;
-    import mir.ndslice.traits : isContiguousSlice, isCanonicalSlice;
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto slice = iota(2, 3, 4, 5).pack!1;
-    //->
-    // | 2 3 4 |
-    //->
-    // | 3 2 4 |
-    //->
-    // | 4 2 3 |
-    //->
-    // | 4 3 2 |
-    //->
-    // | 3 4 2 |
-    //->
-    // | 2 4 3 |
-    //->
-    // | 3 4 |
-    //->
-    // | 2 4 |
-    //->
-    // | 3 1 |
-    //->
-    // | 2 3 |
-    //->
-    // | 4 2 |
-    //->
-    // | 4 3 |
-    size_t[3] shape234 = [2, 3, 4];
-    size_t[3] shape324 = [3, 2, 4];
-    size_t[3] shape423 = [4, 2, 3];
-    size_t[3] shape432 = [4, 3, 2];
-    size_t[3] shape342 = [3, 4, 2];
-    size_t[3] shape243 = [2, 4, 3];
-    size_t[2] shape34 = [3, 4];
-    size_t[2] shape24 = [2, 4];
-    size_t[2] shape31 = [3, 1];
-    size_t[2] shape23 = [2, 3];
-    size_t[2] shape32 = [3, 2];
-    size_t[2] shape42 = [4, 2];
-    size_t[2] shape43 = [4, 3];
-
-    assert(packsOf!(typeof(slice)) == shape31);
-    
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isContiguousSlice!(typeof(x)));
-    assert(x.shape == shape234);
-    assert(x.front.shape == shape34);
-    assert(x.front == iota(3, 4, 5));
-    x.popFront;
-    assert(x.front == iota([3, 4, 5], (3 * 4 * 5)));
-    
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto y = slice.adjTransposed!1;
-    assert(isCanonicalSlice!(typeof(y)));
-    assert(y.shape == shape324);
-    assert(y.front.shape == shape24);
-    assert(y.front.front == iota([4, 5]));
-    y.popFront;
-    assert(y.front.front == iota([4, 5], (4 * 5)));
-    
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |  20  21  22  23  24 |
-    // |  40  41  42  43  44 |
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  80  81  82  83  84 |
-    // | 100 101 102 103 104 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |   5   6   7   8   9 |
-    // |  25  26  27  28  29 |
-    // |  45  46  47  48  49 |
-    //  - - - - - - - - - - -
-    // |  65  66  67  68  69 |
-    // |  85  86  87  88  89 |
-    // | 105 106 107 108 109 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  10  11  12  13  14 |
-    // |  30  31  32  33  34 |
-    // |  70  71  72  73  74 |
-    //  - - - - - - - - - - -
-    // |  70  71  72  73  74 |
-    // |  90  91  92  93  94 |
-    // | 110 111 112 113 114 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  15  16  17  18  19 |
-    // |  35  36  37  38  39 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    // |  75  76  77  78  79 |
-    // |  95  96  97  98  99 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto z = slice.adjTransposed!2;
-    assert(isCanonicalSlice!(typeof(z)));
-    assert(z.shape == shape423);
-    assert(z.front.shape == shape23);
-    int err;
-    assert(z.front.front == 
-             slice.front.universal.strided!1(4).unpack.reshape([3, -1], err));
-    z.popFront;
-    assert(z.front.front == slice
-                                .front
-                                .universal
-                                .strided!1(4)
-                                .unpack.
-                                reshape([3, -1], err)
-                                .map!(a => a + 5));
-                                
-    auto a = slice.adjTransposed!(0, 1);
-    assert(a == slice);
-    
-    //see y
-    auto b = slice.adjTransposed!(1, 0);
-    auto yAlt = slice.adjTransposed!1; //y, but y has been popFronted
-    assert(isCanonicalSlice!(typeof(b)));
-    assert(b.shape == yAlt.shape);
-    assert(b.front.shape == yAlt.front.shape);
-    assert(b.front == yAlt.front);
-    b.popFront;
-    yAlt.popFront;
-    assert(b.front == yAlt.front);
-    
-    //see z
-    auto c = slice.adjTransposed!(2, 0);
-    auto zAlt = slice.adjTransposed!2; //z, but z has been popFronted
-    assert(isCanonicalSlice!(typeof(c)));
-    assert(c.shape == zAlt.shape);
-    assert(c.front.shape == zAlt.front.shape);
-    assert(c.front == zAlt.front);
-    c.popFront;
-    zAlt.popFront;
-    assert(c.front == zAlt.front);
-    
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |  60  61  62  63  64 |
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  80  81  82  83  84 |
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // | 100 101 102 103 104 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |   5   6   7   8   9 |
-    // |  65  66  67  68  69 |
-    //  - - - - - - - - - - -
-    // |  25  26  27  28  29 |
-    // |  85  86  87  88  89 |
-    //  - - - - - - - - - - -
-    // |  45  46  47  48  49 |
-    // | 105 106 107 108 109 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  10  11  12  13  14 |
-    // |  70  71  72  73  74 |
-    //  - - - - - - - - - - -
-    // |  30  31  32  33  34 |
-    // |  90  91  92  93  94 |
-    //  - - - - - - - - - - -
-    // |  50  51  52  53  54 |
-    // | 110 111 112 113 114 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  15  16  17  18  19 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    // |  35  36  37  38  39 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    // |  55  56  57  58  59 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto d = slice.adjTransposed!(2, 1);
-    assert(isCanonicalSlice!(typeof(d)));
-    assert(d.shape == shape432);
-    assert(d.front.shape == shape32);
-    assert(d.front.front[0] == iota(5));
-    assert(d.front.front[1] == iota([5], 60));
-    d.popFront;
-    assert(d.front.front[0] == iota([5], 5));
-    assert(d.front.front[1] == iota([5], 65));
-    
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |  60  61  62  63  64 |
-    //  - - - - - - - - - - -
-    // |   5   6   7   8   9 |
-    // |  65  66  67  68  69 |
-    //  - - - - - - - - - - -
-    // |  10  11  12  13  14 |
-    // |  70  71  72  73  74 |
-    //  - - - - - - - - - - -
-    // |  15  16  17  18  19 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  80  81  82  83  84 |
-    //  - - - - - - - - - - -
-    // |  25  26  27  28  29 |
-    // |  85  86  87  88  89 |
-    //  - - - - - - - - - - -
-    // |  30  31  32  33  34 |
-    // |  90  91  92  93  94 |
-    //  - - - - - - - - - - -
-    // |  35  36  37  38  39 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // | 100 101 102 103 104 |
-    //  - - - - - - - - - - -
-    // |  45  46  47  48  49 |
-    // | 105 106 107 108 109 |
-    //  - - - - - - - - - - -
-    // |  50  51  52  53  54 |
-    // | 110 111 112 113 114 |
-    //  - - - - - - - - - - -
-    // |  55  56  57  58  59 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto e = slice.adjTransposed!(1, 2);
-    assert(isCanonicalSlice!(typeof(e)));
-    assert(e.shape == shape342);
-    assert(e.front.shape == shape42);
-    assert(e.front.front[0] == iota(5));
-    assert(e.front.front[1] == iota([5], 60));
-    e.popFront;
-    assert(e.front.front[0] == iota([5], 20));
-    assert(e.front.front[1] == iota([5], 80));
-    
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |  20  21  22  23  24 |
-    // |  40  41  42  43  44 |
-    //  - - - - - - - - - - -
-    // |   5   6   7   8   9 |
-    // |  25  26  27  28  29 |
-    // |  45  46  47  48  49 |
-    //  - - - - - - - - - - -
-    // |  10  11  12  13  14 |
-    // |  30  31  32  33  34 |
-    // |  70  71  72  73  74 |
-    //  - - - - - - - - - - -
-    // |  15  16  17  18  19 |
-    // |  35  36  37  38  39 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  80  81  82  83  84 |
-    // | 100 101 102 103 104 |
-    //  - - - - - - - - - - -
-    // |  65  66  67  68  69 |
-    // |  85  86  87  88  89 |
-    // | 105 106 107 108 109 |
-    //  - - - - - - - - - - -
-    // |  70  71  72  73  74 |
-    // |  90  91  92  93  94 |
-    // | 110 111 112 113 114 |
-    //  - - - - - - - - - - -
-    // |  75  76  77  78  79 |
-    // |  95  96  97  98  99 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto f = slice.adjTransposed!(0, 2);
-    assert(isCanonicalSlice!(typeof(f)));
-    assert(f.shape == shape243);
-    assert(f.front.shape == shape43);
-    assert(f.front.front[0] == iota(5));
-    assert(f.front.front[1] == iota([5], 20));
-    assert(f.front.front[2] == iota([5], 40));
-    f.popFront;
-    assert(f.front.front[0] == iota([5], 60));
-    assert(f.front.front[1] == iota([5], 80));
-    assert(f.front.front[2] == iota([5], 100));
-}
-
-
-// Ensure works on contiguous pack!2 slice
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.slice: packsOf;
-    import mir.ndslice.topology : iota;
-    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
-                                isCanonicalSlice;
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto slice = iota(2, 3, 4, 5).pack!2;
-    //->
-    // | 2 3 |
-    //->
-    // | 3 2 |
-    //->
-    // | 2 2 |
-    //->
-    // | 3 |
-    //->
-    // | 2 |
-    size_t[2] shape23 = [2, 3];
-    size_t[2] shape32 = [3, 2];
-    size_t[2] shape22 = [2, 2];
-    size_t[1] shape3 = [3];
-    size_t[1] shape2 = [2];
-    
-    assert(packsOf!(typeof(slice)) == shape22);
-
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto x = slice.adjTransposed;
-    assert(x == slice);
-    assert(isContiguousSlice!(typeof(x)));
-    assert(x.shape == shape23);
-    assert(x.front.shape == shape3);
-    assert(x.front == iota(3, 4, 5));
-    x.popFront;
-    assert(x.front == iota([3, 4, 5], (3 * 4 * 5)));
-    
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto y = slice.adjTransposed!1;
-    assert(isCanonicalSlice!(typeof(y)));
-    assert(y.shape == shape32);
-    assert(y.front.shape == shape2);
-    assert(y.front.front == iota([4, 5]));
-    y.popFront;
-    assert(y.front.front == iota([4, 5], (4 * 5)));
-    
-    auto z = slice.adjTransposed!(0, 1);
-    assert(z == slice);
-    
-    auto a = slice.adjTransposed!(1, 0);
-    auto yAlt = slice.adjTransposed!1; //y, but y has been popFronted
-    assert(isCanonicalSlice!(typeof(a)));
-    assert(a.shape == yAlt.shape);
-    assert(a.front.shape == yAlt.front.shape);
-    assert(a.front == yAlt.front);
-    a.popFront;
-    yAlt.popFront;
-    assert(a.front == yAlt.front);
-}
-
-// Ensure works on contiguous pack!3 slice
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.slice: packsOf;
-    import mir.ndslice.topology : iota;
-    import mir.ndslice.traits : isContiguousSlice, isUniversalSlice, 
-                                isCanonicalSlice;
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto slice = iota(2, 3, 4, 5).pack!3;
-    //->
-    // | 3 4 5 |
-    //->
-    // | 1 3 |
-    //->
-    // | 2 |
-    size_t[3] shape345 = [3, 4, 5];
-    size_t[2] shape13 = [1, 3];
-    size_t[1] shape2 = [2];
-    
-    assert(packsOf!(typeof(slice)) == shape13);
-
-    //  ---------------------
-    // |   0   1   2   3   4 |
-    // |   5   6   7   8   9 |
-    // |  10  11  12  13  14 |
-    // |  15  16  17  18  19 |
-    //  - - - - - - - - - - -
-    // |  20  21  22  23  24 |
-    // |  25  26  27  28  29 |
-    // |  30  31  32  33  34 |
-    // |  35  36  37  38  39 |
-    //  - - - - - - - - - - -
-    // |  40  41  42  43  44 |
-    // |  45  46  47  48  49 |
-    // |  50  51  52  53  54 |
-    // |  55  56  57  58  59 |
-    //  - - - - - - - - - - -
-    //  - - - - - - - - - - -
-    // |  60  61  62  63  64 |
-    // |  65  66  67  68  69 |
-    // |  70  71  72  73  74 |
-    // |  75  76  77  78  79 |
-    //  - - - - - - - - - - -
-    // |  80  81  82  83  84 |
-    // |  85  86  87  88  89 |
-    // |  90  91  92  93  94 |
-    // |  95  96  97  98  99 |
-    //  - - - - - - - - - - -
-    // | 100 101 102 103 104 |
-    // | 105 106 107 108 109 |
-    // | 110 111 112 113 114 |
-    // | 115 116 117 118 119 |
-    //  ---------------------
-    auto x = slice.adjTransposed;
-
-    assert(x == slice);
-    assert(isContiguousSlice!(typeof(x)));
-    assert(x.shape == shape2);
-    assert(x.front.shape == shape345);
-    assert(x.front == iota(3, 4, 5));
-    x.popFront;
-    assert(x.front == iota([3, 4, 5], (3 * 4 * 5)));
 }
 
 /++
@@ -4971,327 +3714,328 @@ template byDim(Dimensions...)
         Returns:
             n-dimensional slice ipacked to allow iteration by dimension
         +/
-        @optmath auto byDim(SliceKind kind, size_t[] packs, Iterator)
-                                       (Slice!(kind, packs, Iterator) slice)
+        @optmath auto byDim(Iterator, size_t N, SliceKind kind)
+                                       (Slice!(Iterator, N, kind) slice)
         {
             import mir.ndslice.topology : ipack;
             import mir.ndslice.internal : DimensionsCountCTError;
             
             mixin DimensionsCountCTError;
             
-            static if (packs == [1])
+            static if (N == 1)
             {
                 return slice;
             }
             else
             {
+                import mir.ndslice.dynamic: transposed;
                 return slice
-                            .adjTransposed!Dimensions
+                            .transposed!Dimensions
                             .ipack!(Dimensions.length);
             }
         }
     }
 }
 
-/// 2-dimensional slice support
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota;
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto slice = iota(3, 4);
-    //->
-    // | 3 |
-    //->
-    // | 4 |
-    size_t[1] shape3 = [3];
-    size_t[1] shape4 = [4];
+// /// 2-dimensional slice support
+// @safe @nogc pure nothrow
+// version(mir_test) unittest
+// {
+//     import mir.ndslice.topology : iota;
+//     //  ------------
+//     // | 0  1  2  3 |
+//     // | 4  5  6  7 |
+//     // | 8  9 10 11 |
+//     //  ------------
+//     auto slice = iota(3, 4);
+//     //->
+//     // | 3 |
+//     //->
+//     // | 4 |
+//     size_t[1] shape3 = [3];
+//     size_t[1] shape4 = [4];
     
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto x = slice.byDim!0;
-    assert(x.shape == shape3);
-    assert(x.front.shape == shape4);
-    assert(x.front == iota(4));
-    x.popFront;
-    assert(x.front == iota([4], 4));
+//     //  ------------
+//     // | 0  1  2  3 |
+//     // | 4  5  6  7 |
+//     // | 8  9 10 11 |
+//     //  ------------
+//     auto x = slice.byDim!0;
+//     assert(x.shape == shape3);
+//     assert(x.front.shape == shape4);
+//     assert(x.front == iota(4));
+//     x.popFront;
+//     assert(x.front == iota([4], 4));
     
-    //  ---------
-    // | 0  4  8 |
-    // | 1  5  9 |
-    // | 2  6 10 |
-    // | 3  7 11 |
-    //  ---------
-    auto y = slice.byDim!1;
-    assert(y.shape == shape4);
-    assert(y.front.shape == shape3);
-    assert(y.front == iota([3], 0, 4));
-    y.popFront;
-    assert(y.front == iota([3], 1, 4));
-}
+//     //  ---------
+//     // | 0  4  8 |
+//     // | 1  5  9 |
+//     // | 2  6 10 |
+//     // | 3  7 11 |
+//     //  ---------
+//     auto y = slice.byDim!1;
+//     assert(y.shape == shape4);
+//     assert(y.front.shape == shape3);
+//     assert(y.front == iota([3], 0, 4));
+//     y.popFront;
+//     assert(y.front == iota([3], 1, 4));
+// }
 
-/// 3-dimensional slice support, N-dimensional also supported
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, universal, flattened, reshape;
-    import mir.ndslice.dynamic : strided, transposed;
-    //  ----------------
-    // | 0   1  2  3  4 |
-    // | 5   6  7  8  9 |
-    // | 10 11 12 13 14 |
-    // | 15 16 17 18 19 |
-    //  - - - - - - - -
-    // | 20 21 22 23 24 |
-    // | 25 26 27 28 29 |
-    // | 30 31 32 33 34 |
-    // | 35 36 37 38 39 |
-    //  - - - - - - - -
-    // | 40 41 42 43 44 |
-    // | 45 46 47 48 49 |
-    // | 50 51 52 53 54 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto slice = iota(3, 4, 5);
-    //->
-    // | 4 5 |
-    //->
-    // | 3 5 |
-    //->
-    // | 3 4 |
-    //->
-    // | 5 4 |
-    //->
-    // | 3 |
-    //->
-    // | 4 |
-    //->
-    // | 5 |
-    size_t[2] shape45 = [4, 5];
-    size_t[2] shape35 = [3, 5];
-    size_t[2] shape34 = [3, 4];
-    size_t[2] shape54 = [5, 4];
-    size_t[1] shape3 = [3];
-    size_t[1] shape4 = [4];
-    size_t[1] shape5 = [5];
+// /// 3-dimensional slice support, N-dimensional also supported
+// @safe @nogc pure nothrow
+// version(mir_test) unittest
+// {
+//     import mir.ndslice.topology : iota, universal, flattened, reshape;
+//     import mir.ndslice.dynamic : strided, transposed;
+//     //  ----------------
+//     // | 0   1  2  3  4 |
+//     // | 5   6  7  8  9 |
+//     // | 10 11 12 13 14 |
+//     // | 15 16 17 18 19 |
+//     //  - - - - - - - -
+//     // | 20 21 22 23 24 |
+//     // | 25 26 27 28 29 |
+//     // | 30 31 32 33 34 |
+//     // | 35 36 37 38 39 |
+//     //  - - - - - - - -
+//     // | 40 41 42 43 44 |
+//     // | 45 46 47 48 49 |
+//     // | 50 51 52 53 54 |
+//     // | 55 56 57 58 59 |
+//     //  ----------------
+//     auto slice = iota(3, 4, 5);
+//     //->
+//     // | 4 5 |
+//     //->
+//     // | 3 5 |
+//     //->
+//     // | 3 4 |
+//     //->
+//     // | 5 4 |
+//     //->
+//     // | 3 |
+//     //->
+//     // | 4 |
+//     //->
+//     // | 5 |
+//     size_t[2] shape45 = [4, 5];
+//     size_t[2] shape35 = [3, 5];
+//     size_t[2] shape34 = [3, 4];
+//     size_t[2] shape54 = [5, 4];
+//     size_t[1] shape3 = [3];
+//     size_t[1] shape4 = [4];
+//     size_t[1] shape5 = [5];
     
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // |  5  6  7  8  9 |
-    // | 10 11 12 13 14 |
-    // | 15 16 17 18 19 |
-    //  - - - - - - - -
-    // | 20 21 22 23 24 |
-    // | 25 26 27 28 29 |
-    // | 30 31 32 33 34 |
-    // | 35 36 37 38 39 |
-    //  - - - - - - - -
-    // | 40 41 42 43 44 |
-    // | 45 46 47 48 49 |
-    // | 50 51 52 53 54 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto x = slice.byDim!0;
-    assert(x.shape == shape3);
-    assert(x.front.shape == shape45);
-    assert(x.front == iota([4, 5]));
-    x.popFront;
-    assert(x.front == iota([4, 5], (4 * 5)));
+//     //  ----------------
+//     // |  0  1  2  3  4 |
+//     // |  5  6  7  8  9 |
+//     // | 10 11 12 13 14 |
+//     // | 15 16 17 18 19 |
+//     //  - - - - - - - -
+//     // | 20 21 22 23 24 |
+//     // | 25 26 27 28 29 |
+//     // | 30 31 32 33 34 |
+//     // | 35 36 37 38 39 |
+//     //  - - - - - - - -
+//     // | 40 41 42 43 44 |
+//     // | 45 46 47 48 49 |
+//     // | 50 51 52 53 54 |
+//     // | 55 56 57 58 59 |
+//     //  ----------------
+//     auto x = slice.byDim!0;
+//     assert(x.shape == shape3);
+//     assert(x.front.shape == shape45);
+//     assert(x.front == iota([4, 5]));
+//     x.popFront;
+//     assert(x.front == iota([4, 5], (4 * 5)));
     
-    //  ----------------
-    // |  0  1  2  3  4 |
-    // | 20 21 22 23 24 |
-    // | 40 41 42 43 44 |
-    //  - - - - - - - -
-    // |  5  6  7  8  9 |
-    // | 25 26 27 28 29 |
-    // | 45 46 47 48 49 |
-    //  - - - - - - - -
-    // | 10 11 12 13 14 |
-    // | 30 31 32 33 34 |
-    // | 50 51 52 53 54 |
-    //  - - - - - - - -
-    // | 15 16 17 18 19 |
-    // | 35 36 37 38 39 |
-    // | 55 56 57 58 59 |
-    //  ----------------
-    auto y = slice.byDim!1;
-    assert(y.shape == shape4);
-    assert(y.front.shape == shape35);
-    int err;
-    assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
-    y.popFront;
-    assert(y.front.front == iota([5], 5));
+//     //  ----------------
+//     // |  0  1  2  3  4 |
+//     // | 20 21 22 23 24 |
+//     // | 40 41 42 43 44 |
+//     //  - - - - - - - -
+//     // |  5  6  7  8  9 |
+//     // | 25 26 27 28 29 |
+//     // | 45 46 47 48 49 |
+//     //  - - - - - - - -
+//     // | 10 11 12 13 14 |
+//     // | 30 31 32 33 34 |
+//     // | 50 51 52 53 54 |
+//     //  - - - - - - - -
+//     // | 15 16 17 18 19 |
+//     // | 35 36 37 38 39 |
+//     // | 55 56 57 58 59 |
+//     //  ----------------
+//     auto y = slice.byDim!1;
+//     assert(y.shape == shape4);
+//     assert(y.front.shape == shape35);
+//     int err;
+//     assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
+//     y.popFront;
+//     assert(y.front.front == iota([5], 5));
     
-    //  -------------
-    // |  0  5 10 15 |
-    // | 20 25 30 35 |
-    // | 40 45 50 55 |
-    //  - - - - - - -
-    // |  1  6 11 16 |
-    // | 21 26 31 36 |
-    // | 41 46 51 56 |
-    //  - - - - - - -
-    // |  2  7 12 17 |
-    // | 22 27 32 37 |
-    // | 42 47 52 57 |
-    //  - - - - - - -
-    // |  3  8 13 18 |
-    // | 23 28 33 38 |
-    // | 43 48 53 58 |
-    //  - - - - - - -
-    // |  4  9 14 19 |
-    // | 24 29 34 39 |
-    // | 44 49 54 59 |
-    //  -------------
-    auto z = slice.byDim!2;
-    assert(z.shape == shape5);
-    assert(z.front.shape == shape34);
-    assert(z.front == iota([3, 4], 0, 5));
-    z.popFront;
-    assert(z.front.front == iota([4], 1, 5));
+//     //  -------------
+//     // |  0  5 10 15 |
+//     // | 20 25 30 35 |
+//     // | 40 45 50 55 |
+//     //  - - - - - - -
+//     // |  1  6 11 16 |
+//     // | 21 26 31 36 |
+//     // | 41 46 51 56 |
+//     //  - - - - - - -
+//     // |  2  7 12 17 |
+//     // | 22 27 32 37 |
+//     // | 42 47 52 57 |
+//     //  - - - - - - -
+//     // |  3  8 13 18 |
+//     // | 23 28 33 38 |
+//     // | 43 48 53 58 |
+//     //  - - - - - - -
+//     // |  4  9 14 19 |
+//     // | 24 29 34 39 |
+//     // | 44 49 54 59 |
+//     //  -------------
+//     auto z = slice.byDim!2;
+//     assert(z.shape == shape5);
+//     assert(z.front.shape == shape34);
+//     assert(z.front == iota([3, 4], 0, 5));
+//     z.popFront;
+//     assert(z.front.front == iota([4], 1, 5));
 
-    //  ----------
-    // |  0 20 40 |
-    // |  5 25 45 |
-    // | 10 30 50 |
-    // | 15 35 55 |
-    //  - - - - -
-    // |  1 21 41 |
-    // |  6 26 46 |
-    // | 11 31 51 |
-    // | 16 36 56 |
-    //  - - - - -
-    // |  2 22 42 |
-    // |  7 27 47 |
-    // | 12 32 52 |
-    // | 17 37 57 |
-    //  - - - - -
-    // |  3 23 43 |
-    // |  8 28 48 |
-    // | 13 33 53 |
-    // | 18 38 58 |
-    //  - - - - -
-    // |  4 24 44 |
-    // |  9 29 49 |
-    // | 14 34 54 |
-    // | 19 39 59 |
-    //  ----------
-    auto a = slice.byDim!(2, 1);
-    assert(a.shape == shape54);
-    assert(a.front.shape == shape4);
-    assert(a.front == iota([3, 4], 0, 5).universal.transposed!1);
-    a.popFront;
-    assert(a.front.front == iota([3], 1, 20));
-}
+//     //  ----------
+//     // |  0 20 40 |
+//     // |  5 25 45 |
+//     // | 10 30 50 |
+//     // | 15 35 55 |
+//     //  - - - - -
+//     // |  1 21 41 |
+//     // |  6 26 46 |
+//     // | 11 31 51 |
+//     // | 16 36 56 |
+//     //  - - - - -
+//     // |  2 22 42 |
+//     // |  7 27 47 |
+//     // | 12 32 52 |
+//     // | 17 37 57 |
+//     //  - - - - -
+//     // |  3 23 43 |
+//     // |  8 28 48 |
+//     // | 13 33 53 |
+//     // | 18 38 58 |
+//     //  - - - - -
+//     // |  4 24 44 |
+//     // |  9 29 49 |
+//     // | 14 34 54 |
+//     // | 19 39 59 |
+//     //  ----------
+//     auto a = slice.byDim!(2, 1);
+//     assert(a.shape == shape54);
+//     assert(a.front.shape == shape4);
+//     assert(a.front == iota([3, 4], 0, 5).universal.transposed!1);
+//     a.popFront;
+//     assert(a.front.front == iota([3], 1, 20));
+// }
 
-// Ensure works on canonical
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, canonical;
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto slice = iota(3, 4).canonical;
-    //->
-    // | 3 |
-    //->
-    // | 4 |
-    size_t[1] shape3 = [3];
-    size_t[1] shape4 = [4];
+// // Ensure works on canonical
+// @safe @nogc pure nothrow
+// version(mir_test) unittest
+// {
+//     import mir.ndslice.topology : iota, canonical;
+//     //  ------------
+//     // | 0  1  2  3 |
+//     // | 4  5  6  7 |
+//     // | 8  9 10 11 |
+//     //  ------------
+//     auto slice = iota(3, 4).canonical;
+//     //->
+//     // | 3 |
+//     //->
+//     // | 4 |
+//     size_t[1] shape3 = [3];
+//     size_t[1] shape4 = [4];
     
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto x = slice.byDim!0;
-    assert(x.shape == shape3);
-    assert(x.front.shape == shape4);
-    assert(x.front == iota(4));
-    x.popFront;
-    assert(x.front == iota([4], 4));
+//     //  ------------
+//     // | 0  1  2  3 |
+//     // | 4  5  6  7 |
+//     // | 8  9 10 11 |
+//     //  ------------
+//     auto x = slice.byDim!0;
+//     assert(x.shape == shape3);
+//     assert(x.front.shape == shape4);
+//     assert(x.front == iota(4));
+//     x.popFront;
+//     assert(x.front == iota([4], 4));
     
-    //  ---------
-    // | 0  4  8 |
-    // | 1  5  9 |
-    // | 2  6 10 |
-    // | 3  7 11 |
-    //  ---------
-    auto y = slice.byDim!1;
-    assert(y.shape == shape4);
-    assert(y.front.shape == shape3);
-    assert(y.front == iota([3], 0, 4));
-    y.popFront;
-    assert(y.front == iota([3], 1, 4));
-}
+//     //  ---------
+//     // | 0  4  8 |
+//     // | 1  5  9 |
+//     // | 2  6 10 |
+//     // | 3  7 11 |
+//     //  ---------
+//     auto y = slice.byDim!1;
+//     assert(y.shape == shape4);
+//     assert(y.front.shape == shape3);
+//     assert(y.front == iota([3], 0, 4));
+//     y.popFront;
+//     assert(y.front == iota([3], 1, 4));
+// }
 
-// Ensure works on universal
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota, universal;
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto slice = iota(3, 4).universal;
-    //->
-    // | 3 |
-    //->
-    // | 4 |
-    size_t[1] shape3 = [3];
-    size_t[1] shape4 = [4];
+// // Ensure works on universal
+// @safe @nogc pure nothrow
+// version(mir_test) unittest
+// {
+//     import mir.ndslice.topology : iota, universal;
+//     //  ------------
+//     // | 0  1  2  3 |
+//     // | 4  5  6  7 |
+//     // | 8  9 10 11 |
+//     //  ------------
+//     auto slice = iota(3, 4).universal;
+//     //->
+//     // | 3 |
+//     //->
+//     // | 4 |
+//     size_t[1] shape3 = [3];
+//     size_t[1] shape4 = [4];
 
-    //  ------------
-    // | 0  1  2  3 |
-    // | 4  5  6  7 |
-    // | 8  9 10 11 |
-    //  ------------
-    auto x = slice.byDim!0;
-    assert(x.shape == shape3);
-    assert(x.front.shape == shape4);
-    assert(x.front == iota(4));
-    x.popFront;
-    assert(x.front == iota([4], 4));
+//     //  ------------
+//     // | 0  1  2  3 |
+//     // | 4  5  6  7 |
+//     // | 8  9 10 11 |
+//     //  ------------
+//     auto x = slice.byDim!0;
+//     assert(x.shape == shape3);
+//     assert(x.front.shape == shape4);
+//     assert(x.front == iota(4));
+//     x.popFront;
+//     assert(x.front == iota([4], 4));
     
-    //  ---------
-    // | 0  4  8 |
-    // | 1  5  9 |
-    // | 2  6 10 |
-    // | 3  7 11 |
-    //  ---------
-    auto y = slice.byDim!1;
-    assert(y.shape == shape4);
-    assert(y.front.shape == shape3);
-    assert(y.front == iota([3], 0, 4));
-    y.popFront;
-    assert(y.front == iota([3], 1, 4));
-}
+//     //  ---------
+//     // | 0  4  8 |
+//     // | 1  5  9 |
+//     // | 2  6 10 |
+//     // | 3  7 11 |
+//     //  ---------
+//     auto y = slice.byDim!1;
+//     assert(y.shape == shape4);
+//     assert(y.front.shape == shape3);
+//     assert(y.front == iota([3], 0, 4));
+//     y.popFront;
+//     assert(y.front == iota([3], 1, 4));
+// }
 
-// 1-dimensional slice support
-@safe @nogc pure nothrow
-version(mir_test) unittest
-{
-    import mir.ndslice.topology : iota;
-    //  -------
-    // | 0 1 2 |
-    //  -------
-    auto slice = iota(3);
-    auto x = slice.byDim!0;
-    assert(x == slice);
-}
+// // 1-dimensional slice support
+// @safe @nogc pure nothrow
+// version(mir_test) unittest
+// {
+//     import mir.ndslice.topology : iota;
+//     //  -------
+//     // | 0 1 2 |
+//     //  -------
+//     auto slice = iota(3);
+//     auto x = slice.byDim!0;
+//     assert(x == slice);
+// }
 
 /++
 Field (element's member) projection.
@@ -5313,7 +4057,7 @@ template member(string name)
     Returns:
         lazy n-dimensional slice of the same shape
     +/
-    Slice!(kind, packs, MemberIterator!(Iterator, name)) member(SliceKind kind, size_t[] packs, Iterator)(Slice!(kind, packs, Iterator) slice)
+    Slice!(MemberIterator!(Iterator, name), N, kind) member(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         return typeof(return)(slice._lengths, slice._strides, MemberIterator!(Iterator, name)(slice._iterator));
     }

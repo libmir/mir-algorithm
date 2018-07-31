@@ -58,7 +58,7 @@ Compute the product of the input range $(D r) using separate exponent accumulati
 Unqual!(DeepElementType!Range) prod(Range)(Range r, ref long exp)
 	if (isFloatingPoint!(DeepElementType!Range))
 {
-    import mir.ndslice.algorithm: each;
+    import mir.algorithm.iteration: each;
     Prod!(typeof(return)) prod;
     r.each!(e => prod.put(e));
     exp = prod.exp;
@@ -94,7 +94,7 @@ unittest
 {
     import mir.math.numeric: prod;
     import mir.ndslice.slice: sliced;
-    import mir.ndslice.algorithm: reduce;
+    import mir.algorithm.iteration: reduce;
 
 	enum l = 2.0 ^^ (double.max_exp - 1);
 	enum s = 2.0 ^^ -(double.max_exp - 1);

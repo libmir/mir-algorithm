@@ -33,42 +33,42 @@ module mir.ndslice.traits;
 import mir.ndslice.slice : Slice, SliceKind, Contiguous, Universal, Canonical;
 
 /// Test if type is a one-dimensional slice.
-enum bool isVector(T) = is(T : Slice!(kind, [1], Iterator), SliceKind kind, Iterator);
+enum bool isVector(T) = is(T : Slice!(Iterator, 1, kind), SliceKind kind, Iterator);
                                     
 /// Test if type is a two-dimensional slice.
-enum bool isMatrix(T) = is(T : Slice!(kind, [2], Iterator), SliceKind kind, Iterator);
+enum bool isMatrix(T) = is(T : Slice!(Iterator, 2, kind), SliceKind kind, Iterator);
                                     
 /// Test if type is a contiguous slice.
-enum bool isContiguousSlice(T) = is(T : Slice!(Contiguous, packs, Iterator), size_t[] packs, Iterator);
+enum bool isContiguousSlice(T) = is(T : Slice!(Iterator, N, Contiguous), Iterator, size_t N);
                                             
 /// Test if type is a canonical slice.
-enum bool isCanonicalSlice(T) = is(T : Slice!(Canonical, packs, Iterator), size_t[] packs, Iterator);
+enum bool isCanonicalSlice(T) = is(T : Slice!(Iterator, N, Canonical), Iterator, size_t N);
                                             
 /// Test if type is a universal slice.
-enum bool isUniversalSlice(T) = is(T : Slice!(Universal, packs, Iterator), size_t[] packs, Iterator);
+enum bool isUniversalSlice(T) = is(T : Slice!(Iterator,  N, Universal), Iterator, size_t N);
                                             
 /// Test if type is a contiguous one-dimensional slice.
-enum bool isContiguousVector(T) = is(T : Slice!(Contiguous, [1], Iterator), Iterator);
+enum bool isContiguousVector(T) = is(T : Slice!(Iterator, 1, Contiguous), Iterator);
                                                     
 /// Test if type is a universal one-dimensional slice.
-enum bool isUniversalVector(T) = is(T : Slice!(Universal, [1], Iterator), Iterator);
+enum bool isUniversalVector(T) = is(T : Slice!(Iterator,  1, Universal), Iterator);
                                                     
 /// Test if type is a contiguous two-dimensional slice.
-enum bool isContiguousMatrix(T) = is(T : Slice!(Contiguous, [2], Iterator), Iterator);
+enum bool isContiguousMatrix(T) = is(T : Slice!(Iterator, 2, Contiguous), Iterator);
                                                     
 /// Test if type is a canonical two-dimensional slice.
-enum bool isCanonicalMatrix(T) = is(T : Slice!(Canonical, [2], Iterator), Iterator);
+enum bool isCanonicalMatrix(T) = is(T : Slice!(Iterator,  2, Canonical), Iterator);
                                                     
 /// Test if type is a universal two-dimensional slice.
-enum bool isUniversalMatrix(T) = is(T : Slice!(Universal, [2], Iterator), Iterator);
+enum bool isUniversalMatrix(T) = is(T : Slice!(Iterator,  2, Universal), Iterator);
 
 ///
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : ContiguousVector;
+    import mir.ndslice.slice : Slice;
 
-    alias S1 = ContiguousVector!int;
+    alias S1 = Slice!(int*);
     static assert(isContiguousVector!S1);
     static assert(!isUniversalVector!S1);
     
@@ -87,9 +87,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : UniversalVector;
-
-    alias S2 = UniversalVector!float;
+    alias S2 = Slice!(float*, 1, Universal);
     static assert(!isContiguousVector!S2);
     static assert(isUniversalVector!S2);
     
@@ -108,9 +106,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : ContiguousMatrix;
-
-    alias S3 = ContiguousMatrix!byte;
+    alias S3 = Slice!(byte*, 2);
     static assert(!isContiguousVector!S3);
     static assert(!isUniversalVector!S3);
     
@@ -129,9 +125,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : CanonicalMatrix;
-
-    alias S4 = CanonicalMatrix!uint;
+    alias S4 = Slice!(int*, 2, Canonical);
     static assert(!isContiguousVector!S4);
     static assert(!isUniversalVector!S4);
     
@@ -150,9 +144,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : UniversalMatrix;
-
-    alias S5 = UniversalMatrix!double;
+    alias S5 = Slice!(int*, 2, Universal);
     static assert(!isContiguousVector!S5);
     static assert(!isUniversalVector!S5);
     
@@ -171,9 +163,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : ContiguousSlice;
-
-    alias S6 = ContiguousSlice!(3, ubyte);
+    alias S6 = Slice!(int*, 3);
     
     static assert(!isContiguousVector!S6);
     static assert(!isUniversalVector!S6);
@@ -193,10 +183,8 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : CanonicalSlice;
+    alias S7 = Slice!(int*, 3, Canonical);
 
-    alias S7 = CanonicalSlice!(3, real);
-    
     static assert(!isContiguousVector!S7);
     static assert(!isUniversalVector!S7);
     
@@ -215,9 +203,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc 
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : UniversalSlice;
-
-    alias S8 = UniversalSlice!(3, long);
+    alias S8 = Slice!(int*, 3, Universal);
     
     static assert(!isContiguousVector!S8);
     static assert(!isUniversalVector!S8);

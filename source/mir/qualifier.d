@@ -25,15 +25,15 @@ version(mir_test) unittest
     auto b = iota([5, 5]).as!double.slice.lightConst;
     auto c = magic(5).as!double.slice.trustedImmutable;
 
-    static assert(is(typeof(a) == ContiguousMatrix!double));
-    static assert(is(typeof(b) == ContiguousMatrix!(const double)));
-    static assert(is(typeof(c) == ContiguousMatrix!(immutable double)));
+    static assert(is(typeof(a) == Slice!(double*, 2)));
+    static assert(is(typeof(b) == Slice!(const(double)*, 2)));
+    static assert(is(typeof(c) == Slice!(immutable(double)*, 2)));
 
     auto ac = (cast(const) a)[]; //[] calls lightConst
     auto ai = (cast(immutable) a)[]; //[] calls lightImmutable
 
-    static assert(is(typeof(ac) == ContiguousMatrix!(const double)));
-    static assert(is(typeof(ai) == ContiguousMatrix!(immutable double)));
+    static assert(is(typeof(ac) == Slice!(const(double)*, 2)));
+    static assert(is(typeof(ai) == Slice!(immutable(double)*, 2)));
 
 
     //////////// Incapsulation ////////////
@@ -45,10 +45,10 @@ version(mir_test) unittest
     const abc1 = abc0;
     auto abc2 = abc1[]; //[] calls lightConst
 
-    static assert(is(typeof(abc0) == Slice!(cast(SliceKind)2, [2LU], ZipIterator!(
-                double*,  const(double)*, immutable(double)*))));
-    static assert(is(typeof(abc2) == Slice!(cast(SliceKind)2, [2LU], ZipIterator!(
-        const(double)*, const(double)*, immutable(double)*))));
+    static assert(is(typeof(abc0) == Slice!(ZipIterator!(
+                double*,  const(double)*, immutable(double)*), 2)));
+    static assert(is(typeof(abc2) == Slice!(ZipIterator!(
+        const(double)*, const(double)*, immutable(double)*), 2)));
 }
 
 /++
@@ -81,27 +81,27 @@ template LightImmutableOf(T)
 @property:
 
 ///
-auto lightConst(SliceKind kind, size_t[] packs, Iterator)(const Slice!(kind, packs, Iterator) e)
+auto lightConst(Iterator, size_t N, SliceKind kind)(const Slice!(Iterator, N, kind) e)
 {
     static if (isPointer!Iterator)
-        return Slice!(kind, packs, LightConstOf!Iterator)(e._lengths, e._strides, lightConst(e._iterator));
+        return Slice!(LightConstOf!Iterator, N, kind)(e._lengths, e._strides, lightConst(e._iterator));
     else
-        return Slice!(kind, packs, LightConstOf!Iterator)(e._lengths, e._strides, e._iterator.lightConst);
+        return Slice!(LightConstOf!Iterator, N, kind)(e._lengths, e._strides, e._iterator.lightConst);
 }
 
 /// ditto
-auto lightConst(SliceKind kind, size_t[] packs, Iterator)(immutable Slice!(kind, packs, Iterator) e)
+auto lightConst(Iterator, size_t N, SliceKind kind)(immutable Slice!(Iterator, N, kind) e)
 {
     return e.lightImmutable;
 }
 
 /// ditto
-auto lightImmutable(SliceKind kind, size_t[] packs, Iterator)(immutable Slice!(kind, packs, Iterator) e)
+auto lightImmutable(Iterator, size_t N, SliceKind kind)(immutable Slice!(Iterator, N, kind) e)
 {
     static if (isPointer!Iterator)
-        return Slice!(kind, packs, LightImmutableOf!Iterator)(e._lengths, e._strides, lightImmutable(e._iterator));
+        return Slice!(LightImmutableOf!Iterator, N, kind)(e._lengths, e._strides, lightImmutable(e._iterator));
     else
-        return Slice!(kind, packs, LightImmutableOf!Iterator)(e._lengths, e._strides, e._iterator.lightImmutable);
+        return Slice!(LightImmutableOf!Iterator, N, kind)(e._lengths, e._strides, e._iterator.lightImmutable);
 }
 
 /// ditto

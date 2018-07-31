@@ -950,15 +950,9 @@ public:
     import mir.ndslice.slice;
 
     /// ditto
-    void put(Range: Slice!(kind, packs, Iterator), SliceKind kind, size_t[] packs, Iterator)(Range r)
+    void put(Range: Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind)(Range r)
     {
-        static if (packs.length > 1)
-        {
-            import mir.ndslice.topology: unpack;
-            this.put(r.unpack);
-        }
-        else
-        static if (packs[0] > 1 && kind == Contiguous)
+        static if (N > 1 && kind == Contiguous)
         {
             import mir.ndslice.topology: flattened;
             this.put(r.flattened);
@@ -969,13 +963,13 @@ public:
             this.put(r.iterator[0 .. r.length]);
         }
         else
-        static if (summation == Summation.fast && packs[0] == 1)
+        static if (summation == Summation.fast && N == 1)
         {
             static if (isComplex!T)
                 F s0 = 0 + 0fi;
             else
                 F s0 = 0;
-            import mir.ndslice.algorithm: reduce;
+            import mir.algorithm.iteration: reduce;
             s0 = s0.reduce!"a + b"(r);
             s += s0;
         }
@@ -1889,7 +1883,7 @@ private F sumPrecise(Range, F)(Range r, F seed = summationInitValue!F)
         import mir.ndslice.slice: isSlice;
         static if (isSlice!Range)
         {
-            import mir.ndslice.algorithm: each;
+            import mir.algorithm.iteration: each;
             r.each!((auto ref elem)
             {
                 sumRe.put(elem.re);
@@ -1973,7 +1967,7 @@ private template sumType(Range)
 {
     import mir.ndslice.slice: isSlice, DeepElementType;
     static if (isSlice!Range)
-        alias T = Unqual!(DeepElementType!(Range.PureThis));
+        alias T = Unqual!(DeepElementType!(Range.This));
     else
         alias T = Unqual!(ForeachType!Range);
     alias sumType = typeof(T.init + T.init);
@@ -2044,9 +2038,6 @@ unittest
     assert(c.universal.transposed!3.sum == s);
     assert(d.universal.sum == s);
 
-    assert(a.pack!2.sum!"fast" == s);
-    assert(c.pack!2.sum!"fast" == s);
-
     assert(a.sum!"fast" == s);
     assert(b.sum!"fast" == s);
     assert(c.sum!(float, "fast") == s);
@@ -2062,6 +2053,4 @@ unittest
     assert(c.universal.transposed!3.sum!"fast" == s);
     assert(d.universal.sum!"fast" == s);
 
-    assert(a.pack!2.sum!"fast" == s);
-    assert(c.pack!2.sum!"fast" == s);
 }

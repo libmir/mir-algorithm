@@ -23,7 +23,7 @@ import std.traits;
 ///
 @system nothrow @nogc version(mir_test) unittest
 {
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     import std.range : takeExactly;
     static a = [4, 7, 3, 1, 5], b = [7, 5, 4];
     auto maxHeap = a.heapify;
@@ -317,7 +317,7 @@ public:
 /// Example from "Introduction to Algorithms" Cormen et al, p 146
 @system nothrow version(mir_test) unittest
 {
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     int[] a = [ 4, 1, 3, 2, 16, 9, 10, 14, 8, 7 ];
     auto h = heapify(a);
     // largest element
@@ -330,7 +330,7 @@ public:
 /// lazy iteration of the underlying range in descending order.
 @system nothrow version(mir_test) unittest
 {
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     import std.range : takeExactly;
     int[] a = [4, 1, 3, 2, 16, 9, 10, 14, 8, 7];
     auto heap = heapify(a);
@@ -385,7 +385,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
 {
     // Test range interface.
     import std.range.primitives: isInputRange;
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     int[] a = [4, 1, 3, 2, 16, 9, 10, 14, 8, 7];
     auto h = heapify(a);
     static assert(isInputRange!(typeof(h)));
@@ -403,7 +403,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
 
 @system nothrow version(mir_test) unittest
 {
-    import mir.ndslice.algorithm : equal;
+    import mir.algorithm.iteration : equal;
     import std.internal.test.dummyrange;
 
     alias RefRange = DummyRange!(ReturnBy.Reference, Length.Yes, RangeType.Random);

@@ -41,8 +41,8 @@ Params:
 Returns:
     one of the `input_buffer_*` $(LREF PythonBufferErrorCode) on failure and `success` otherwise.
 +/
-PythonBufferErrorCode fromPythonBuffer(SliceKind kind, size_t[] packs, T)(ref Slice!(kind, packs, T*) slice, ref const Py_buffer view) nothrow @nogc @trusted
-    if (packs.length == 1 && packs[0] <= PyBuf_max_ndim)
+PythonBufferErrorCode fromPythonBuffer(T, size_t N, SliceKind kind)(ref Slice!(T*, N, kind) slice, ref const Py_buffer view) nothrow @nogc @trusted
+    if (N <= PyBuf_max_ndim)
 {
     import core.stdc.string: strcmp;
     import mir.internal.utility: Iota;
@@ -59,7 +59,7 @@ PythonBufferErrorCode fromPythonBuffer(SliceKind kind, size_t[] packs, T)(ref Sl
         return typeof(return).input_buffer_itemsize_mismatch;
     if (pythonBufferFormat!(Unqual!T).ptr.strcmp(view.format))
         return typeof(return).input_buffer_format_mismatch;
-    if (kind == Canonical && view.strides[packs[0] - 1] != T.sizeof)
+    if (kind == Canonical && view.strides[N - 1] != T.sizeof)
         return typeof(return).input_buffer_strides_mismatch;
 
     foreach(i; Iota!N)
@@ -75,12 +75,12 @@ PythonBufferErrorCode fromPythonBuffer(SliceKind kind, size_t[] packs, T)(ref Sl
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
-    import mir.ndslice.slice : ContiguousMatrix;
+    import mir.ndslice.slice: Slice;
     auto bar(ref const Py_buffer view)
     {
-        ContiguousMatrix!(const double) mat = void;
+        Slice!(const(double)*, 2) mat = void;
         if (auto error = mat.fromPythonBuffer(view))
         {
             mat = mat.init; // has null pointer
@@ -103,11 +103,14 @@ Params:
 Returns:
     one of the `cannot_create_*` $(LREF PythonBufferErrorCode) on failure and `success` otherwise.
 +/
-PythonBufferErrorCode toPythonBuffer(SliceKind kind, size_t[] packs, T, size_t N)(Slice!(kind, packs, T*) slice, ref Py_buffer view, int flags, ref Structure!N structureBuffer) nothrow @nogc @trusted
-    if (packs == [N] && N <= PyBuf_max_ndim)
+PythonBufferErrorCode toPythonBuffer(T, size_t N, SliceKind kind)(Slice!(T*, N, kind) slice, ref Py_buffer view, int flags, ref Structure!N structureBuffer) nothrow @nogc @trusted
+    if (N <= PyBuf_max_ndim)
 {
     structureBuffer.lengths = slice._lengths;
     structureBuffer.strides = slice.strides;
+
+    foreach(ref stride; structureBuffer.strides)
+        stride *= T.sizeof;
 
     /////////////////////
     /// always filled ///
@@ -130,7 +133,7 @@ PythonBufferErrorCode toPythonBuffer(SliceKind kind, size_t[] packs, T, size_t N
         view.shape = cast(sizediff_t*) structureBuffer.lengths.ptr;
         /// strides ///
         if ((flags & PyBuf_strides) == PyBuf_strides)
-            view.strides = cast(sizediff_t*) structureBuffer.strides;
+            view.strides = cast(sizediff_t*) structureBuffer.strides.ptr;
         else
         {
             view.strides = null;
@@ -150,7 +153,7 @@ PythonBufferErrorCode toPythonBuffer(SliceKind kind, size_t[] packs, T, size_t N
     /// ! structure verification ! ///
     static if (kind == Contiguous)
     {
-        static if (packs[0] != 1)
+        static if (N != 1)
         {
             if ((flags & PyBuf_f_contiguous) == PyBuf_f_contiguous)
             {
@@ -210,10 +213,10 @@ PythonBufferErrorCode toPythonBuffer(SliceKind kind, size_t[] packs, T, size_t N
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.slice : Slice, Structure, Universal;
-    Py_buffer bar(Slice!(Universal, [2], double*) slice)
+    Py_buffer bar(Slice!(double*, 2, Universal) slice)
     {
         import core.stdc.stdlib;
         enum N = 2;

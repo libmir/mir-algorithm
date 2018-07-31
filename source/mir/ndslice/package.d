@@ -120,7 +120,7 @@ $(TR $(TDNW $(SUBMODULE allocation) $(BR)
 $(TR $(TDNW $(SUBMODULE topology) $(BR)
         $(SMALL Subspace manipulations
             $(BR) Advanced constructors
-            $(BR) Kind conversion utilities))
+            $(BR) SliceKind conversion utilities))
      $(TD
         $(SUBREF topology, as)
         $(SUBREF topology, assumeCanonical)
@@ -159,35 +159,9 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
         $(SUBREF topology, stairs)
         $(SUBREF topology, stride)
         $(SUBREF topology, universal)
-        $(SUBREF topology, unpack)
         $(SUBREF topology, unzip)
         $(SUBREF topology, windows)
         $(SUBREF topology, zip)
-    )
-)
-
-$(TR $(TDNW $(SUBMODULE algorithm)
-        $(BR) $(SMALL Loop free programming))
-     $(TD
-        $(SUBREF algorithm, all)
-        $(SUBREF algorithm, any)
-        $(SUBREF algorithm, cmp)
-        $(SUBREF algorithm, count)
-        $(SUBREF algorithm, each)
-        $(SUBREF algorithm, eachLower)
-        $(SUBREF algorithm, eachUpper)
-        $(SUBREF algorithm, eachUploPair)
-        $(SUBREF algorithm, equal)
-        $(SUBREF algorithm, find)
-        $(SUBREF algorithm, findIndex)
-        $(SUBREF algorithm, isSymmetric)
-        $(SUBREF algorithm, minPos)
-        $(SUBREF algorithm, minIndex)
-        $(SUBREF algorithm, maxPos)
-        $(SUBREF algorithm, maxIndex)
-        $(SUBREF algorithm, minmaxPos)
-        $(SUBREF algorithm, minmaxIndex)
-        $(SUBREF algorithm, reduce)
     )
 )
 
@@ -344,7 +318,7 @@ Returns:
         where с is the number of channels in the image.
         Dense data layout is guaranteed.
 +/
-Slice!(Contiguous, [3], ubyte*) movingWindowByChannel
+Slice!(ubyte*, 3) movingWindowByChannel
 (Slice!(Universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(Universal, [2], ubyte*)) filter)
 {
         // 0. 3D
@@ -479,7 +453,7 @@ TDNW2 = <td class="donthyphenate nobr" rowspan="2">$0</td>
 */
 module mir.ndslice;
 
-public import mir.ndslice.algorithm;
+public import mir.algorithm.iteration;
 public import mir.ndslice.allocation;
 public import mir.ndslice.concatenation;
 public import mir.ndslice.chunks;
@@ -510,12 +484,13 @@ version(mir_test) unittest
 {
     import mir.qualifier;
 
-    static ContiguousSlice!(3, ubyte) movingWindowByChannel
-    (UniversalSlice!(3, ubyte) image, size_t nr, size_t nc, ubyte delegate(LightConstOf!(UniversalMatrix!ubyte)) filter)
+    static Slice!(ubyte*, 3) movingWindowByChannel
+    (Slice!(ubyte*, 3, Universal) image, size_t nr, size_t nc, ubyte delegate(LightConstOf!(Slice!(ubyte*, 2, Universal))) filter)
     {
         return image
             .pack!1
             .windows(nr, nc)
+            .unpack
             .unpack
             .transposed!(0, 1, 4)
             .pack!2
@@ -523,7 +498,7 @@ version(mir_test) unittest
             .slice;
     }
 
-    static T median(Iterator, T)(Slice!(Universal, [2], Iterator) sl, T[] buf)
+    static T median(Iterator, T)(Slice!(Iterator,  2, Universal) sl, T[] buf)
     {
         import std.algorithm.sorting : topN;
         // copy sl to the buffer
@@ -677,7 +652,7 @@ pure nothrow version(mir_test) unittest
     assert(t1[3] == 200);
     assert(t1[4] == 200);
 
-    t1[] *= t1[];
+    t1[].opIndexOpAssign!"*"(t1);
     assert(t1[3] == 40000);
     assert(t1[4] == 40000);
 
