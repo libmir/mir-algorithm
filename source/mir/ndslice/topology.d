@@ -3731,305 +3731,305 @@ template byDim(Dimensions...)
     }
 }
 
-// /// 2-dimensional slice support
-// @safe @nogc pure nothrow
-// version(mir_test) unittest
-// {
-//     import mir.ndslice.topology : iota;
-//     //  ------------
-//     // | 0  1  2  3 |
-//     // | 4  5  6  7 |
-//     // | 8  9 10 11 |
-//     //  ------------
-//     auto slice = iota(3, 4);
-//     //->
-//     // | 3 |
-//     //->
-//     // | 4 |
-//     size_t[1] shape3 = [3];
-//     size_t[1] shape4 = [4];
+/// 2-dimensional slice support
+@safe @nogc pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota;
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto slice = iota(3, 4);
+    //->
+    // | 3 |
+    //->
+    // | 4 |
+    size_t[1] shape3 = [3];
+    size_t[1] shape4 = [4];
     
-//     //  ------------
-//     // | 0  1  2  3 |
-//     // | 4  5  6  7 |
-//     // | 8  9 10 11 |
-//     //  ------------
-//     auto x = slice.byDim!0;
-//     assert(x.shape == shape3);
-//     assert(x.front.shape == shape4);
-//     assert(x.front == iota(4));
-//     x.popFront;
-//     assert(x.front == iota([4], 4));
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto x = slice.byDim!0;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape4);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
     
-//     //  ---------
-//     // | 0  4  8 |
-//     // | 1  5  9 |
-//     // | 2  6 10 |
-//     // | 3  7 11 |
-//     //  ---------
-//     auto y = slice.byDim!1;
-//     assert(y.shape == shape4);
-//     assert(y.front.shape == shape3);
-//     assert(y.front == iota([3], 0, 4));
-//     y.popFront;
-//     assert(y.front == iota([3], 1, 4));
-// }
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape3);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
 
-// /// 3-dimensional slice support, N-dimensional also supported
-// @safe @nogc pure nothrow
-// version(mir_test) unittest
-// {
-//     import mir.ndslice.topology : iota, universal, flattened, reshape;
-//     import mir.ndslice.dynamic : strided, transposed;
-//     //  ----------------
-//     // | 0   1  2  3  4 |
-//     // | 5   6  7  8  9 |
-//     // | 10 11 12 13 14 |
-//     // | 15 16 17 18 19 |
-//     //  - - - - - - - -
-//     // | 20 21 22 23 24 |
-//     // | 25 26 27 28 29 |
-//     // | 30 31 32 33 34 |
-//     // | 35 36 37 38 39 |
-//     //  - - - - - - - -
-//     // | 40 41 42 43 44 |
-//     // | 45 46 47 48 49 |
-//     // | 50 51 52 53 54 |
-//     // | 55 56 57 58 59 |
-//     //  ----------------
-//     auto slice = iota(3, 4, 5);
-//     //->
-//     // | 4 5 |
-//     //->
-//     // | 3 5 |
-//     //->
-//     // | 3 4 |
-//     //->
-//     // | 5 4 |
-//     //->
-//     // | 3 |
-//     //->
-//     // | 4 |
-//     //->
-//     // | 5 |
-//     size_t[2] shape45 = [4, 5];
-//     size_t[2] shape35 = [3, 5];
-//     size_t[2] shape34 = [3, 4];
-//     size_t[2] shape54 = [5, 4];
-//     size_t[1] shape3 = [3];
-//     size_t[1] shape4 = [4];
-//     size_t[1] shape5 = [5];
+/// 3-dimensional slice support, N-dimensional also supported
+@safe @nogc pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota, universal, flattened, reshape;
+    import mir.ndslice.dynamic : strided, transposed;
+    //  ----------------
+    // | 0   1  2  3  4 |
+    // | 5   6  7  8  9 |
+    // | 10 11 12 13 14 |
+    // | 15 16 17 18 19 |
+    //  - - - - - - - -
+    // | 20 21 22 23 24 |
+    // | 25 26 27 28 29 |
+    // | 30 31 32 33 34 |
+    // | 35 36 37 38 39 |
+    //  - - - - - - - -
+    // | 40 41 42 43 44 |
+    // | 45 46 47 48 49 |
+    // | 50 51 52 53 54 |
+    // | 55 56 57 58 59 |
+    //  ----------------
+    auto slice = iota(3, 4, 5);
+    //->
+    // | 4 5 |
+    //->
+    // | 3 5 |
+    //->
+    // | 3 4 |
+    //->
+    // | 5 4 |
+    //->
+    // | 3 |
+    //->
+    // | 4 |
+    //->
+    // | 5 |
+    size_t[2] shape45 = [4, 5];
+    size_t[2] shape35 = [3, 5];
+    size_t[2] shape34 = [3, 4];
+    size_t[2] shape54 = [5, 4];
+    size_t[1] shape3 = [3];
+    size_t[1] shape4 = [4];
+    size_t[1] shape5 = [5];
     
-//     //  ----------------
-//     // |  0  1  2  3  4 |
-//     // |  5  6  7  8  9 |
-//     // | 10 11 12 13 14 |
-//     // | 15 16 17 18 19 |
-//     //  - - - - - - - -
-//     // | 20 21 22 23 24 |
-//     // | 25 26 27 28 29 |
-//     // | 30 31 32 33 34 |
-//     // | 35 36 37 38 39 |
-//     //  - - - - - - - -
-//     // | 40 41 42 43 44 |
-//     // | 45 46 47 48 49 |
-//     // | 50 51 52 53 54 |
-//     // | 55 56 57 58 59 |
-//     //  ----------------
-//     auto x = slice.byDim!0;
-//     assert(x.shape == shape3);
-//     assert(x.front.shape == shape45);
-//     assert(x.front == iota([4, 5]));
-//     x.popFront;
-//     assert(x.front == iota([4, 5], (4 * 5)));
+    //  ----------------
+    // |  0  1  2  3  4 |
+    // |  5  6  7  8  9 |
+    // | 10 11 12 13 14 |
+    // | 15 16 17 18 19 |
+    //  - - - - - - - -
+    // | 20 21 22 23 24 |
+    // | 25 26 27 28 29 |
+    // | 30 31 32 33 34 |
+    // | 35 36 37 38 39 |
+    //  - - - - - - - -
+    // | 40 41 42 43 44 |
+    // | 45 46 47 48 49 |
+    // | 50 51 52 53 54 |
+    // | 55 56 57 58 59 |
+    //  ----------------
+    auto x = slice.byDim!0;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape45);
+    assert(x.front == iota([4, 5]));
+    x.popFront;
+    assert(x.front == iota([4, 5], (4 * 5)));
     
-//     //  ----------------
-//     // |  0  1  2  3  4 |
-//     // | 20 21 22 23 24 |
-//     // | 40 41 42 43 44 |
-//     //  - - - - - - - -
-//     // |  5  6  7  8  9 |
-//     // | 25 26 27 28 29 |
-//     // | 45 46 47 48 49 |
-//     //  - - - - - - - -
-//     // | 10 11 12 13 14 |
-//     // | 30 31 32 33 34 |
-//     // | 50 51 52 53 54 |
-//     //  - - - - - - - -
-//     // | 15 16 17 18 19 |
-//     // | 35 36 37 38 39 |
-//     // | 55 56 57 58 59 |
-//     //  ----------------
-//     auto y = slice.byDim!1;
-//     assert(y.shape == shape4);
-//     assert(y.front.shape == shape35);
-//     int err;
-//     assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
-//     y.popFront;
-//     assert(y.front.front == iota([5], 5));
+    //  ----------------
+    // |  0  1  2  3  4 |
+    // | 20 21 22 23 24 |
+    // | 40 41 42 43 44 |
+    //  - - - - - - - -
+    // |  5  6  7  8  9 |
+    // | 25 26 27 28 29 |
+    // | 45 46 47 48 49 |
+    //  - - - - - - - -
+    // | 10 11 12 13 14 |
+    // | 30 31 32 33 34 |
+    // | 50 51 52 53 54 |
+    //  - - - - - - - -
+    // | 15 16 17 18 19 |
+    // | 35 36 37 38 39 |
+    // | 55 56 57 58 59 |
+    //  ----------------
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape35);
+    int err;
+    assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
+    y.popFront;
+    assert(y.front.front == iota([5], 5));
     
-//     //  -------------
-//     // |  0  5 10 15 |
-//     // | 20 25 30 35 |
-//     // | 40 45 50 55 |
-//     //  - - - - - - -
-//     // |  1  6 11 16 |
-//     // | 21 26 31 36 |
-//     // | 41 46 51 56 |
-//     //  - - - - - - -
-//     // |  2  7 12 17 |
-//     // | 22 27 32 37 |
-//     // | 42 47 52 57 |
-//     //  - - - - - - -
-//     // |  3  8 13 18 |
-//     // | 23 28 33 38 |
-//     // | 43 48 53 58 |
-//     //  - - - - - - -
-//     // |  4  9 14 19 |
-//     // | 24 29 34 39 |
-//     // | 44 49 54 59 |
-//     //  -------------
-//     auto z = slice.byDim!2;
-//     assert(z.shape == shape5);
-//     assert(z.front.shape == shape34);
-//     assert(z.front == iota([3, 4], 0, 5));
-//     z.popFront;
-//     assert(z.front.front == iota([4], 1, 5));
+    //  -------------
+    // |  0  5 10 15 |
+    // | 20 25 30 35 |
+    // | 40 45 50 55 |
+    //  - - - - - - -
+    // |  1  6 11 16 |
+    // | 21 26 31 36 |
+    // | 41 46 51 56 |
+    //  - - - - - - -
+    // |  2  7 12 17 |
+    // | 22 27 32 37 |
+    // | 42 47 52 57 |
+    //  - - - - - - -
+    // |  3  8 13 18 |
+    // | 23 28 33 38 |
+    // | 43 48 53 58 |
+    //  - - - - - - -
+    // |  4  9 14 19 |
+    // | 24 29 34 39 |
+    // | 44 49 54 59 |
+    //  -------------
+    auto z = slice.byDim!2;
+    assert(z.shape == shape5);
+    assert(z.front.shape == shape34);
+    assert(z.front == iota([3, 4], 0, 5));
+    z.popFront;
+    assert(z.front.front == iota([4], 1, 5));
 
-//     //  ----------
-//     // |  0 20 40 |
-//     // |  5 25 45 |
-//     // | 10 30 50 |
-//     // | 15 35 55 |
-//     //  - - - - -
-//     // |  1 21 41 |
-//     // |  6 26 46 |
-//     // | 11 31 51 |
-//     // | 16 36 56 |
-//     //  - - - - -
-//     // |  2 22 42 |
-//     // |  7 27 47 |
-//     // | 12 32 52 |
-//     // | 17 37 57 |
-//     //  - - - - -
-//     // |  3 23 43 |
-//     // |  8 28 48 |
-//     // | 13 33 53 |
-//     // | 18 38 58 |
-//     //  - - - - -
-//     // |  4 24 44 |
-//     // |  9 29 49 |
-//     // | 14 34 54 |
-//     // | 19 39 59 |
-//     //  ----------
-//     auto a = slice.byDim!(2, 1);
-//     assert(a.shape == shape54);
-//     assert(a.front.shape == shape4);
-//     assert(a.front == iota([3, 4], 0, 5).universal.transposed!1);
-//     a.popFront;
-//     assert(a.front.front == iota([3], 1, 20));
-// }
+    //  ----------
+    // |  0 20 40 |
+    // |  5 25 45 |
+    // | 10 30 50 |
+    // | 15 35 55 |
+    //  - - - - -
+    // |  1 21 41 |
+    // |  6 26 46 |
+    // | 11 31 51 |
+    // | 16 36 56 |
+    //  - - - - -
+    // |  2 22 42 |
+    // |  7 27 47 |
+    // | 12 32 52 |
+    // | 17 37 57 |
+    //  - - - - -
+    // |  3 23 43 |
+    // |  8 28 48 |
+    // | 13 33 53 |
+    // | 18 38 58 |
+    //  - - - - -
+    // |  4 24 44 |
+    // |  9 29 49 |
+    // | 14 34 54 |
+    // | 19 39 59 |
+    //  ----------
+    auto a = slice.byDim!(2, 1);
+    assert(a.shape == shape54);
+    assert(a.front.shape == shape4);
+    assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed!1);
+    a.popFront;
+    assert(a.front.front == iota([3], 1, 20));
+}
 
-// // Ensure works on canonical
-// @safe @nogc pure nothrow
-// version(mir_test) unittest
-// {
-//     import mir.ndslice.topology : iota, canonical;
-//     //  ------------
-//     // | 0  1  2  3 |
-//     // | 4  5  6  7 |
-//     // | 8  9 10 11 |
-//     //  ------------
-//     auto slice = iota(3, 4).canonical;
-//     //->
-//     // | 3 |
-//     //->
-//     // | 4 |
-//     size_t[1] shape3 = [3];
-//     size_t[1] shape4 = [4];
+// Ensure works on canonical
+@safe @nogc pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota, canonical;
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto slice = iota(3, 4).canonical;
+    //->
+    // | 3 |
+    //->
+    // | 4 |
+    size_t[1] shape3 = [3];
+    size_t[1] shape4 = [4];
     
-//     //  ------------
-//     // | 0  1  2  3 |
-//     // | 4  5  6  7 |
-//     // | 8  9 10 11 |
-//     //  ------------
-//     auto x = slice.byDim!0;
-//     assert(x.shape == shape3);
-//     assert(x.front.shape == shape4);
-//     assert(x.front == iota(4));
-//     x.popFront;
-//     assert(x.front == iota([4], 4));
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto x = slice.byDim!0;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape4);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
     
-//     //  ---------
-//     // | 0  4  8 |
-//     // | 1  5  9 |
-//     // | 2  6 10 |
-//     // | 3  7 11 |
-//     //  ---------
-//     auto y = slice.byDim!1;
-//     assert(y.shape == shape4);
-//     assert(y.front.shape == shape3);
-//     assert(y.front == iota([3], 0, 4));
-//     y.popFront;
-//     assert(y.front == iota([3], 1, 4));
-// }
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape3);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
 
-// // Ensure works on universal
-// @safe @nogc pure nothrow
-// version(mir_test) unittest
-// {
-//     import mir.ndslice.topology : iota, universal;
-//     //  ------------
-//     // | 0  1  2  3 |
-//     // | 4  5  6  7 |
-//     // | 8  9 10 11 |
-//     //  ------------
-//     auto slice = iota(3, 4).universal;
-//     //->
-//     // | 3 |
-//     //->
-//     // | 4 |
-//     size_t[1] shape3 = [3];
-//     size_t[1] shape4 = [4];
+// Ensure works on universal
+@safe @nogc pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota, universal;
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto slice = iota(3, 4).universal;
+    //->
+    // | 3 |
+    //->
+    // | 4 |
+    size_t[1] shape3 = [3];
+    size_t[1] shape4 = [4];
 
-//     //  ------------
-//     // | 0  1  2  3 |
-//     // | 4  5  6  7 |
-//     // | 8  9 10 11 |
-//     //  ------------
-//     auto x = slice.byDim!0;
-//     assert(x.shape == shape3);
-//     assert(x.front.shape == shape4);
-//     assert(x.front == iota(4));
-//     x.popFront;
-//     assert(x.front == iota([4], 4));
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto x = slice.byDim!0;
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape4);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
     
-//     //  ---------
-//     // | 0  4  8 |
-//     // | 1  5  9 |
-//     // | 2  6 10 |
-//     // | 3  7 11 |
-//     //  ---------
-//     auto y = slice.byDim!1;
-//     assert(y.shape == shape4);
-//     assert(y.front.shape == shape3);
-//     assert(y.front == iota([3], 0, 4));
-//     y.popFront;
-//     assert(y.front == iota([3], 1, 4));
-// }
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
+    auto y = slice.byDim!1;
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape3);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
 
-// // 1-dimensional slice support
-// @safe @nogc pure nothrow
-// version(mir_test) unittest
-// {
-//     import mir.ndslice.topology : iota;
-//     //  -------
-//     // | 0 1 2 |
-//     //  -------
-//     auto slice = iota(3);
-//     auto x = slice.byDim!0;
-//     assert(x == slice);
-// }
+// 1-dimensional slice support
+@safe @nogc pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota;
+    //  -------
+    // | 0 1 2 |
+    //  -------
+    auto slice = iota(3);
+    auto x = slice.byDim!0;
+    assert(x == slice);
+}
 
 /++
 Field (element's member) projection.
