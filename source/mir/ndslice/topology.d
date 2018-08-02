@@ -3532,27 +3532,19 @@ Returns:
 
 See_also: $(LREF ._stairs.2)
 +/
-auto stairs(string type, Iterator)(Slice!Iterator slice, size_t n)
+Slice!(StairsIterator!(Iterator, type)) stairs(string type, Iterator)(Slice!Iterator slice, size_t n)
     if (type == "+" || type == "-")
 {
     assert(slice.length == (n + 1) * n / 2, "stairs: slice length must be equal to n * (n + 1) / 2, where n is stairs count.");
     static if (type == "+")
-    {
-        return StairsIterator!Iterator(1, slice._iterator)
-            .sliced(n);
-    }
+        size_t length = 1;
     else
-    {
-        auto it = slice.retro._iterator;
-        return StairsIterator!(typeof(it))(1, it)
-            .sliced(n)
-            .map!retro
-            .retro;
-    }
+        size_t length = n;
+    return StairsIterator!(Iterator, type)(length, slice._iterator).sliced(n);
 }
 
 /// ditto
-auto stairs(string type, S)(S[] slice, size_t n)
+Slice!(StairsIterator!(S*, type))  stairs(string type, S)(S[] slice, size_t n)
     if (type == "+" || type == "-")
 {
     return stairs!type(slice.sliced, n);
@@ -3580,6 +3572,7 @@ version(mir_test) unittest
         [3, 4, 5],
         [6, 7, 8, 9],
         [10, 11, 12, 13, 14]]);
+    assert(inc[1 .. $][2] == [6, 7, 8, 9]);
 
     assert(dec == [
         [0, 1, 2, 3, 4],
@@ -3587,6 +3580,7 @@ version(mir_test) unittest
             [9, 10, 11],
                [12, 13],
                    [14]]);
+    assert(dec[1 .. $][2] == [12, 13]);
 
     static assert(is(typeof(inc.front) == typeof(pck)));
     static assert(is(typeof(dec.front) == typeof(pck)));

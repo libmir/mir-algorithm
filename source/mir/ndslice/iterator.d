@@ -1621,10 +1621,11 @@ version(mir_test) unittest
 /++
 `StairsIterator` is used by $(SUBREF topology, stairs).
 +/
-struct StairsIterator(Iterator)
+struct StairsIterator(Iterator, string direction)
+    if (direction == "+" || direction == "-")
 {
     ///
-    size_t _length = 1;
+    size_t _length;
 
     ///
     Iterator _iterator;
@@ -1632,13 +1633,13 @@ struct StairsIterator(Iterator)
     ///
     auto lightConst()() const @property
     {
-        return StairsIterator!(LightConstOf!Iterator)(_length, _iterator.lightConst);
+        return StairsIterator!(LightConstOf!Iterator, direction)(_length, _iterator.lightConst);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return StairsIterator!(LightImmutableOf!Iterator)(_length, _iterator.lightImmutable);
+        return StairsIterator!(LightImmutableOf!Iterator, direction)(_length, _iterator.lightImmutable);
     }
 
 @optmath:
@@ -1654,9 +1655,17 @@ struct StairsIterator(Iterator)
     Slice!Iterator opIndex()(ptrdiff_t index)
     {
         import mir.ndslice.slice: sliced;
-        auto newLength = _length + index;
+        static if (direction == "+")
+        {
+            auto newLength = _length + index;
+            auto shift = ptrdiff_t(_length + newLength - 1) * index / 2;
+        }
+        else
+        {
+            auto newLength = _length - index;
+            auto shift = ptrdiff_t(_length + newLength + 1) * index / 2;
+        }
         assert(ptrdiff_t(newLength) >= 0);
-        auto shift = ptrdiff_t(_length + newLength - 1) * index / 2;
         return (_iterator + shift).sliced(newLength);
     }
 
@@ -1666,12 +1675,18 @@ struct StairsIterator(Iterator)
         static if (op == "++")
         {
             _iterator += _length;
-            ++_length;
+            static if (direction == "+")
+                ++_length;
+            else
+                --_length;
         }
         else
         {
             assert(_length);
-            --_length;
+            static if (direction == "+")
+                --_length;
+            else
+                ++_length;
             _iterator -= _length;
         }
     }
@@ -1679,11 +1694,20 @@ struct StairsIterator(Iterator)
     void opOpAssign(string op)(ptrdiff_t index)
         if (op == "-" || op == "+")
     {
-        auto newLength = mixin("_length " ~ op ~ " index");
+        static if (op == direction)
+            auto newLength = _length + index;
+        else
+            auto newLength = _length - index;
+        static if (direction == "+")
+            auto shift = ptrdiff_t(_length + newLength - 1) * index / 2;
+        else
+            auto shift = ptrdiff_t(_length + newLength + 1) * index / 2;
         assert(ptrdiff_t(newLength) >= 0);
-        auto shift = ptrdiff_t(_length + newLength - 1) * index / 2;
         _length = newLength;
-        mixin("_iterator " ~ op ~ "= shift;");
+        static if (op == "+")
+            _iterator += shift;
+        else
+            _iterator -= shift;
     }
 
     auto opBinary(string op)(ptrdiff_t index)
@@ -1695,13 +1719,18 @@ struct StairsIterator(Iterator)
     }
 
     ptrdiff_t opBinary(string op : "-")(auto ref const typeof(this) right) const
-    { return this._length - right._length; }
+    {
+        static if (direction == "+")
+            return this._length - right._length;
+        else
+            return right._length - this._length;
+    }
 
     bool opEquals()(ref const typeof(this) right) const
     { return this._length == right._length; }
 
     ptrdiff_t opCmp()(ref const typeof(this) right) const
-    { return this._length - right._length; }
+    { return this - right; }
 }
 
 ///
@@ -1712,7 +1741,7 @@ version(mir_test) unittest
     // 3 4 5
     // 6 7 8 9
     // 10 11 12 13 14
-    auto it = StairsIterator!(IotaIterator!size_t)(1, IotaIterator!size_t());
+    auto it = StairsIterator!(IotaIterator!size_t, "+")(1, IotaIterator!size_t());
     assert(*it == [0]);
     assert(it[4] == [10, 11, 12, 13, 14]);
     assert(*(it + 4) == [10, 11, 12, 13, 14]);
@@ -1724,7 +1753,33 @@ version(mir_test) unittest
     assert(*(it - 3) == [1, 2]);
     assert(it + 1 > it);
     assert(it + 1 - 1 == it);
-    assert(it + 3 - it == 3);
+    assert(it - 3 - it == -3);
     --it;
     assert(*it == [6, 7, 8, 9]);
+}
+
+///
+version(mir_test) unittest
+{
+    // [0, 1, 2, 3, 4],
+    //    [5, 6, 7, 8],
+    //     [9, 10, 11],
+    //        [12, 13],
+    //            [14]]);
+
+    auto it = StairsIterator!(IotaIterator!size_t, "-")(5, IotaIterator!size_t());
+    assert(*it == [0, 1, 2, 3, 4]);
+    assert(it[4] == [14]);
+    assert(*(it + 4) == [14]);
+    ++it;
+    assert(*it == [5, 6, 7, 8]);
+    it += 3;
+    assert(*it == [14]);
+    assert(it[-3] == [5, 6, 7, 8]);
+    assert(*(it - 3) == [5, 6, 7, 8]);
+    assert(it + 1 > it);
+    assert(it + 1 - 1 == it);
+    assert(it - 3 - it == -3);
+    --it;
+    assert(*it == [12, 13]);
 }
