@@ -2,18 +2,7 @@ project('mir-algorithm', 'd', version : '2.0.0')
 
 pversion = meson.project_version()
 name = meson.project_name()
-uname = 'mir_algorithm'
 vname = name + '-' + pversion
-dc = meson.get_compiler('d')
-dversion_arg = ''
-if dc.get_id() == 'llvm'
-    dversion_arg = '-d-version'
-elif dc.get_id() == 'gnu'
-    dversion_arg = '-fversion'
-else
-    dversion_arg = '-version'
-endif
-add_global_arguments([dversion_arg + '=Have_' + uname], language : 'd')
 
 the_src = [
     'source/mir/algorithm/iteration.d',
