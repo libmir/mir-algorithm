@@ -1,11 +1,12 @@
 language: d
 dist: trusty
-sudo: required
+sudo: false
 os:
  - linux
  - osx
 packages:
   - pkg-config
+  - gcc-multilib
 d:
  - ldc
  - ldc-beta
@@ -36,12 +37,11 @@ install:
 before_script:
   - export PATH=$PATH:$PWD/.ntmp
 script:
- - travis_wait 100 dub test --arch "$ARCH"
+#  - travis_wait 100 dub test --arch "$ARCH"
+ - meson build && cd build && meson configure -Ddefault_library=static && ninja -j4 && ninja -j4 test -v # TODO: 32bit meson test
  - ./test_examples.sh
- - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
- - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
- - meson build && ninja -j8 -C build # TODO: 32bit meson test
- - ninja -j8 -C build test -v
+#  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
+#  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)
