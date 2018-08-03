@@ -1,17 +1,6 @@
-project('mir-algorithm', 'd', version : '2.0.0')
+project('mir-algorithm', 'd', version : '2.0.0', license: 'BSL-1.0')
 
-
-install_subdir('include/',
-    strip_directory :true,
-    install_dir: 'include/',
-)
-
-install_subdir('source/',
-    strip_directory : true,
-    install_dir: 'include/d/' + meson.project_name(),
-)
-
-mir_algorithm_dir = include_directories('source/')
+mir_algorithm_dir = include_directories('source/', 'include/')
 
 mir_algorithm_src = [
     'source/mir/algorithm/iteration.d',
@@ -64,6 +53,18 @@ mir_algorithm_src = [
     'source/std/backdoor.d',
 ]
 
+mir_algorithm_lib = library(meson.project_name(),
+    mir_algorithm_src,
+    include_directories: mir_algorithm_dir,
+    install: true,
+    version: meson.project_version(),
+)
+
+mir_algorithm_dep = declare_dependency(
+    link_with: [mir_algorithm_lib],
+    include_directories: mir_algorithm_dir,
+)
+
 mir_algorithm_test_exe = executable(meson.project_name() + '-test',
     mir_algorithm_src,
     include_directories: mir_algorithm_dir,
@@ -72,13 +73,14 @@ mir_algorithm_test_exe = executable(meson.project_name() + '-test',
     link_args: '-main',
 )
 
-test(meson.project_name() + '-test', mir_algorithm_test_exe)
+install_subdir('include/',
+    strip_directory :true,
+    install_dir: 'include/',
+)
 
-mir_algorithm_lib = library(meson.project_name(),
-    mir_algorithm_src,
-    include_directories: mir_algorithm_dir,
-    install: true,
-    version: meson.project_version(),
+install_subdir('source/',
+    strip_directory : true,
+    install_dir: 'include/d/' + meson.project_name(),
 )
 
 import('pkgconfig').generate(
@@ -88,3 +90,5 @@ import('pkgconfig').generate(
     libraries: [mir_algorithm_lib],
     version: meson.project_version(),
 )
+
+test(meson.project_name() + '-test', mir_algorithm_test_exe)
