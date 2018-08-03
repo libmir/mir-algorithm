@@ -159,8 +159,6 @@ import std.meta;
 Plain index/time observation data structure.
 Observation are used as return tuple for for indexing $(LREF Series).
 +/
-alias Observation = mir_observation;
-/// ditto
 struct mir_observation(Index, Data)
 {
     /// Date, date-time, time, or index.
@@ -174,6 +172,9 @@ struct mir_observation(Index, Data)
     /// An alias for key-value representation.
     alias value = data;
 }
+
+/// ditto
+alias Observation = mir_observation;
 
 /// Convenient function for $(LREF Observation) construction.
 auto observation(Index, Data)(Index index, Data data)
@@ -218,8 +219,6 @@ Plain index series data structure.
 Index is assumed to be sorted.
 $(LREF sort) can be used to normalise a series.
 +/
-alias Series = mir_series;
-/// ditto
 struct mir_series(IndexIterator, Iterator, size_t N = 1, SliceKind kind = Contiguous)
 {
     import std.range: SearchPolicy, assumeSorted;
@@ -1050,6 +1049,9 @@ struct mir_series(IndexIterator, Iterator, size_t N = 1, SliceKind kind = Contig
         assert("%-(%s,%s\n%)\n".format(s) == "a,8\nb,9\n");
     }
 }
+
+/// ditto
+alias Series = mir_series;
 
 /// 1-dimensional data
 @safe pure version(mir_test) unittest
