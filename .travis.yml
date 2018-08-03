@@ -1,16 +1,20 @@
+language: d
 dist: trusty
 sudo: required
 os:
  - linux
  - osx
-language: d
+packages:
+  - pkg-config
 d:
  - ldc
  - ldc-beta
  - dmd-nightly
  - dmd-beta
  - dmd
- - gdc
+branches:
+  only:
+    - master
 env:
  - ARCH="x86_64"
 matrix:
@@ -23,13 +27,21 @@ matrix:
     - {d: dmd-nightly}
     - {d: ldc-beta}
     - {d: gdc}
-branches:
-  only:
-    - master
+install:
+  - pyenv global system 3.6
+  - pip3 install 'meson>=0.45'
+  - mkdir .ntmp
+  - curl -L https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip -o .ntmp/ninja-linux.zip
+  - unzip .ntmp/ninja-linux.zip -d .ntmp
+before_script:
+  - export PATH=$PATH:$PWD/.ntmp
 script:
  - travis_wait 100 dub test --arch "$ARCH"
  - ./test_examples.sh
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
+ - meson build && ninja -j8 -C build # TODO: 32bit meson test
+ - ninja -j8 -C build test -v
+
 after_success:
  - bash <(curl -s https://codecov.io/bash)

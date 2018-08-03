@@ -1,10 +1,19 @@
 project('mir-algorithm', 'd', version : '2.0.0')
 
-pversion = meson.project_version()
-name = meson.project_name()
-vname = name + '-' + pversion
 
-the_src = [
+install_subdir('include/',
+    strip_directory :true,
+    install_dir: 'include/',
+)
+
+install_subdir('source/',
+    strip_directory : true,
+    install_dir: 'include/d/' + meson.project_name(),
+)
+
+mir_algorithm_dir = include_directories('source/')
+
+mir_algorithm_src = [
     'source/mir/algorithm/iteration.d',
     'source/mir/algorithm/setops.d',
     'source/mir/array/allocation.d',
@@ -55,27 +64,27 @@ the_src = [
     'source/std/backdoor.d',
 ]
 
-mir_algorithm_lib = library(name,
-    [the_src],
+mir_algorithm_test_exe = executable(meson.project_name() + '-test',
+    mir_algorithm_src,
+    include_directories: mir_algorithm_dir,
+    d_unittest: true,
+    d_module_versions: ['mir_test'],
+    link_args: '-main',
+)
+
+test(meson.project_name() + '-test', mir_algorithm_test_exe)
+
+mir_algorithm_lib = library(meson.project_name(),
+    mir_algorithm_src,
+    include_directories: mir_algorithm_dir,
     install: true,
-    version: pversion,
-    include_directories: [include_directories('source')],
-)
-
-install_subdir('include/',
-    strip_directory :true,
-    install_dir: 'include/',
-)
-
-install_subdir('source/',
-    strip_directory : true,
-    install_dir: 'include/d/' + vname,
+    version: meson.project_version(),
 )
 
 import('pkgconfig').generate(
-    name: name,
-    description: 'Mir Algorithm - Dlang Core Library for math and finance.',
-    subdirs: 'd/' + vname,
+    name: meson.project_name(),
+    description: 'Mir Algorithm - Dlang Core Library for Math and Finance.',
+    subdirs: 'd/' + meson.project_name(),
     libraries: [mir_algorithm_lib],
-    version: pversion,
+    version: meson.project_version(),
 )
