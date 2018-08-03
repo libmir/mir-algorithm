@@ -1,9 +1,6 @@
 language: d
 dist: trusty
 sudo: false
-os:
- - linux
- - osx
 packages:
   - pkg-config
 d:
