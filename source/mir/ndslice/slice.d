@@ -609,8 +609,6 @@ Slice!(Universal, N, Iterator)
     Iterator      _iterator
 -------
 +/
-alias Slice = mir_slice;
-/// ditto
 struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
     if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1))
 {
@@ -747,7 +745,7 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
         }
     }
 
-    public:
+public:
 
     static if (S == 0)
     {
@@ -2963,6 +2961,9 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
         }
     }
 }
+
+/// ditto
+alias Slice = mir_slice;
 
 /++
 Slicing, indexing, and arithmetic operations.
