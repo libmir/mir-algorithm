@@ -22,3 +22,5 @@ docs
 docs.json
 out/
 /tests_extractor.d
+build/
+files
