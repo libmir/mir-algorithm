@@ -37,8 +37,8 @@ before_script:
   - export PATH=$PATH:$PWD/.ntmp
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
- - meson build && cd build && meson configure -Ddefault_library=static && ninja -j4 && ninja -j4 test -v # TODO: 32bit meson test
  - ./test_examples.sh
+ - meson build && cd build && meson configure -Ddefault_library=static && ninja -j4 && ninja -j4 test -v # TODO: 32bit meson test
 #  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
 #  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
