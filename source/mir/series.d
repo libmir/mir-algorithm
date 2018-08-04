@@ -179,13 +179,13 @@ alias Observation = mir_observation;
 /// Convenient function for $(LREF Observation) construction.
 auto observation(Index, Data)(Index index, Data data)
 {
-    return Observation!(Index, Data)(index, data);
+    return mir_observation!(Index, Data)(index, data);
 }
 
 /++
 Convinient alias for 1D Contiguous $(LREF Series).
 +/
-alias SeriesMap(K, V) = Series!(K*, V*);
+alias SeriesMap(K, V) = mir_series!(K*, V*);
 
 ///
 version(mir_test) unittest
@@ -219,11 +219,23 @@ Plain index series data structure.
 Index is assumed to be sorted.
 $(LREF sort) can be used to normalise a series.
 +/
-struct mir_series(IndexIterator, Iterator, size_t N = 1, SliceKind kind = Contiguous)
+struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
 {
     import std.range: SearchPolicy, assumeSorted;
 
     private enum doUnittest = is(typeof(this) == Series!(int*, double*));
+
+    ///
+    alias IndexIterator = IndexIterator_;
+
+    ///
+    alias Iterator = Iterator_;
+
+    ///
+    enum size_t N = N_;
+
+    ///
+    enum SliceKind kind = kind_;
 
     ///
     Slice!(Iterator, N, kind) _data;
