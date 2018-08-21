@@ -13,6 +13,7 @@ $(T2 LinspaceField, $(SUBREF topology, linspace))
 $(T2 MagicField, $(SUBREF topology, magic))
 $(T2 MapField, $(SUBREF topology, map))
 $(T2 ndIotaField, $(SUBREF topology, ndiota))
+$(T2 OrthogonalReduceField, $(SUBREF topology, orthogonalReduceField))
 $(T2 RepeatField, $(SUBREF topology, repeat))
 )
 
@@ -302,6 +303,47 @@ unittest
     assert(packed[2] == 5);
 }
 
+///
+struct OrthogonalReduceField(FieldsIterator, alias fun)
+{
+    import mir.ndslice.slice: Slice;
+
+@optmath:
+    /// non empty slice
+
+    Slice!FieldsIterator _fields;
+
+    ///
+    auto lightConst()() const @property
+    {
+        auto fields = _fields.lightConst;
+        return OrthogonalReduceField!(fields.Iterator, fun)(fields);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        auto fields = _fields.lightImmutable;
+        return OrthogonalReduceField!(fields.Iterator, fun)(fields);
+    }
+
+    /// `r = fun(r, fields[i][index]);` reduction by `i`
+    auto opIndex()(size_t index) const
+    {
+        assert(_fields.length);
+        auto fields = _fields.lightConst;
+        Unqual!(typeof(fun(fields.front[index], fields.front[index]))) r = fields.front[index];
+        for(;;)
+        {
+            fields.popFront;
+            if (fields.empty)
+                break;
+            r = fun(r, fields.front[index]);
+        }
+        return r;
+    }
+}
+
 /++
 `ndIotaField` is used by $(SUBREF topology, ndiota).
 +/
@@ -324,6 +366,7 @@ struct ndIotaField(size_t N)
         return ndIotaField!N(_lengths);
     }
 
+    ///
     size_t[N] opIndex()(size_t index) const
     {
         size_t[N] indexes;

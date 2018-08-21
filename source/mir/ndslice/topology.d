@@ -38,6 +38,7 @@ $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
+$(T2 bitwiseField, Bitwise field over an unsigned integral field.)
 $(T2 bytegroup, Groups existing slice into fixed length chunks and uses them as data store for destination type.)
 $(T2 cached, Random access cache. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
 $(T2 cachedGC, Random access cache auto-allocated in GC heap. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
@@ -46,6 +47,7 @@ $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
 $(T2 mapSubSlices, Maps indexes pairs to subslices.)
 $(T2 member, Field (element's member) projection.)
+$(T2 orthogonalReduceField, Functional deep-element wise reduce of a slice composed of fields or iterators.)
 $(T2 pairwise, Pairwise map for vectors.)
 $(T2 pairwiseMapSubSlices, Maps pairwise indexes pairs to subslices.)
 $(T2 retro, Reverses order of iteration for all dimensions.)
@@ -2088,6 +2090,18 @@ version(mir_test) unittest
 }
 
 /++
+Bitwise field over an integral field.
+Params:
+    field = an integral field.
+Returns: A bitwise field.
++/
+auto bitwiseField(Field)(Field field)
+    if (isIntegral!(typeof(Field.init[size_t.init])))
+{
+    return BitwiseField!Field(field);
+}
+
+/++
 Bitpack slice over an integral slice.
 
 Bitpack is used to represent unsigned integer slice with fewer number of bits in integer binary representation.
@@ -2275,7 +2289,6 @@ template map(fun...)
             auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
-                import mir.ndslice.iterator: mapIterator;
                 auto iterator = mapIterator!f(slice._iterator);
                 return Slice!(typeof(iterator), N, kind)(slice._lengths, slice._strides, iterator);
             }
@@ -2448,7 +2461,6 @@ See_Also:
 @optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
     (Slice!(Iterator, N, kind) slice, auto ref Callable callable)
 {
-    import mir.ndslice.iterator: VmapIterator;
     alias It = VmapIterator!(Iterator, Callable);
     return Slice!(It, N, kind)(slice._lengths, slice._strides, It(slice._iterator, callable));
 }
@@ -4092,4 +4104,77 @@ template member(string name)
     matrix.member!"x"[] = [2, 3].iota;
     matrix.member!"y"[] = matrix.member!"f";
     assert(matrix.member!"y" == [2, 3].iota * 2);
+}
+
+
+version(D_Exceptions)
+private immutable orthogonalReduceFieldException = new Exception("orthogonalReduceField: Slice composed of fields must not be empty");
+
+/++
+Functional deep-element wise reduce of a slice composed of fields or iterators.
++/
+template orthogonalReduceField(alias fun)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    {
+    @optmath:
+        /++
+        Params:
+            slice = Non empty input slice composed of fields or iterators.
+        Returns:
+            a lazy field with each element of which is reduced value of element of the same index of all iterators.
+        +/
+        OrthogonalReduceField!(Iterator, fun) orthogonalReduceField(Iterator)(Slice!Iterator slice)
+        {
+            if (_expect(slice.empty, false))
+            {
+                version(D_Exceptions)
+                    return orthogonalReduceFieldException;
+                else
+                    assert(0);
+            }
+            return typeof(return)(slice);
+        }
+
+        /// ditto
+        auto orthogonalReduceField(T)(T[] array)
+        {
+            return orthogonalReduceField(array.sliced);
+        }
+        
+        /// ditto
+        auto orthogonalReduceField(T)(auto ref T withAsSlice)
+            if (hasAsSlice!T)
+        {
+            return orthogonalReduceField(withAsSlice.asSlice);
+        }
+    }
+    else alias orthogonalReduceField = .orthogonalReduceField!(naryFun!fun);
+}
+
+/// bit array operations
+unittest
+{
+    import mir.ndslice.allocation: bitSlice;
+    import mir.ndslice.dynamic: strided;
+    import mir.ndslice.topology: iota, orthogonalReduceField;
+    auto len = 100;
+    auto a = len.bitSlice;
+    auto b = len.bitSlice;
+    auto c = len.bitSlice;
+    a[len.iota.strided!0(7)][] = true;
+    b[len.iota.strided!0(11)][] = true;
+    c[len.iota.strided!0(13)][] = true;
+
+    // this is valid since bitslices above are oroginal slices of allocated memory.
+    auto and = [
+            a.iterator._field._field, // get raw data pointers
+            b.iterator._field._field,
+            c.iterator._field._field]
+        .orthogonalReduceField!"a & b" // operation on size_t
+        .bitwiseField
+        .slicedField(len);
+
+    assert(and == (a & b & c));
 }
