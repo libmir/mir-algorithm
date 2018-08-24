@@ -4156,6 +4156,7 @@ template orthogonalReduceField(alias fun)
 /// bit array operations
 unittest
 {
+    import mir.ndslice.slice: slicedField;
     import mir.ndslice.allocation: bitSlice;
     import mir.ndslice.dynamic: strided;
     import mir.ndslice.topology: iota, orthogonalReduceField;
