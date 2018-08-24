@@ -4106,7 +4106,6 @@ template member(string name)
     assert(matrix.member!"y" == [2, 3].iota * 2);
 }
 
-
 version(D_Exceptions)
 private immutable orthogonalReduceFieldException = new Exception("orthogonalReduceField: Slice composed of fields must not be empty");
 
@@ -4130,7 +4129,7 @@ template orthogonalReduceField(alias fun)
             if (_expect(slice.empty, false))
             {
                 version(D_Exceptions)
-                    return orthogonalReduceFieldException;
+                    throw orthogonalReduceFieldException;
                 else
                     assert(0);
             }
