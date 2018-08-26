@@ -1716,7 +1716,7 @@ Params:
     fun = A predicate.
 
 Optimization:
-    `count!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology).
+    `count!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 +/
 template count(alias fun)
 {
@@ -2022,38 +2022,64 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     alias S = Slices[0];
     import mir.functional: naryFun;
     import mir.ndslice.iterator: FieldIterator;
-    import mir.ndslice.field: BitwiseField;
+    import mir.ndslice.field: BitField;
     static if (__traits(isSame, fun, naryFun!"a") && 
         is(S : Slice!Iterator,
-            Iterator : FieldIterator!BWF,
-            BWF : BitwiseField!Field, Field))
+            Iterator : FieldIterator!(BitField!Field), Field))
     {
+        pragma(msg, Slices);
         version(LDC)
             import ldc.intrinsics: ctpop = llvm_ctpop;
         else
             import core.bitop: ctpop = popcnt;
         auto index = slices[0]._iterator._index;
-        auto field = slices[0]._iterator._field;
+        auto field = slices[0]._iterator._field._field;
+        enum mask = slices[0]._iterator._field.mask;
+        alias E = slices[0]._iterator._field.E;
+        enum shift = slices[0]._iterator._field.shift;
         auto length = slices[0]._lengths[0];
-        while (length && (index & field.mask))
+        auto localIndex = index & mask;
+        auto globalIndex = index >>> shift;
+            import std.stdio;
+        if (localIndex)
         {
-            if (field[index])
-                ret++;
-            index++;
-            length--;
+            ret = cast(typeof(ret)) (field[globalIndex] >>> localIndex);
+            debug writeln(ret);
+
+            sizediff_t rlen = E.sizeof * 8 - length;
+            if (rlen >= sizediff_t(localIndex))
+            {
+                ret = cast(typeof(ret)) ctpop(ret << rlen);
+                return ret;
+            }
+            debug writeln(ret);
+            length -= localIndex;
+            debug
+            {
+                writeln("ret = ", ret);
+                writeln("rlen = ", rlen);
+                writeln("localIndex = ", localIndex);
+                writeln("globalIndex = ", globalIndex);
+                writeln("length = ", length);
+            }
+            if (sizediff_t(length) <= 0)
+                return ret;
+            globalIndex++;
         }
-        auto j = index >> field.shift;
-        foreach(i; size_t(j) .. (length >> field.shift) + j)
-            ret += cast(typeof(ret)) ctpop(field._field[i]);
-        index += length & ~field.mask;
-        length &= field.mask;
-        while(length)
+        auto globalEnd = (length >>> shift) + globalIndex;
+            debug writeln(ret);
+            debug writeln("globalEnd = ", globalEnd);
+        if (globalIndex < globalEnd) do
+            ret += cast(typeof(ret)) ctpop(field[globalIndex++]);
+        while (globalIndex < globalEnd);
+            debug writeln(ret);
+        length &= mask;
+        if (length)
         {
-            if (field[index])
-                ret++;
-            index++;
-            length--;
+            sizediff_t rlen = E.sizeof * 8 - length;
+            ret += cast(typeof(ret)) ctpop(field[globalEnd] << rlen);
         }
+            debug writeln(ret);
     }
     else
     do

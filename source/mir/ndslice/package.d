@@ -238,7 +238,7 @@ $(TR $(TDNW $(SUBMODULE field)
         $(BR) $(SMALL Declarations))
      $(TD
         $(SUBREF field, BitpackField)
-        $(SUBREF field, BitwiseField)
+        $(SUBREF field, BitField)
         $(SUBREF field, LinspaceField)
         $(SUBREF field, MagicField)
         $(SUBREF field, MapField)

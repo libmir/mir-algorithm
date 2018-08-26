@@ -38,7 +38,6 @@ $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
-$(T2 bitwiseField, Bitwise field over an unsigned integral field.)
 $(T2 bytegroup, Groups existing slice into fixed length chunks and uses them as data store for destination type.)
 $(T2 cached, Random access cache. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
 $(T2 cachedGC, Random access cache auto-allocated in GC heap. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
@@ -2016,12 +2015,12 @@ auto bitwise
     static if (is(Iterator : FieldIterator!Field, Field))
     {
         enum simplified = true;
-        alias It = FieldIterator!(BitwiseField!Field);
+        alias It = FieldIterator!(BitField!Field);
     }
     else
     {
         enum simplified = false;
-        alias It = FieldIterator!(BitwiseField!Iterator);
+        alias It = FieldIterator!(BitField!Iterator);
     }
     alias Ret = Slice!(It, N, kind);
     size_t[Ret.N] lengths;
@@ -2032,9 +2031,9 @@ auto bitwise
     foreach(i; Iota!(Ret.S))
         strides[i] = slice._strides[i];
     static if (simplified)
-        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8, BitwiseField!Field(slice._iterator._field)));
+        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field)));
     else
-        return Ret(lengths, strides, It(0, BitwiseField!Iterator(slice._iterator)));
+        return Ret(lengths, strides, It(0, BitField!Iterator(slice._iterator)));
 }
 
 /// ditto
@@ -2098,7 +2097,7 @@ Returns: A bitwise field.
 auto bitwiseField(Field)(Field field)
     if (isIntegral!(typeof(Field.init[size_t.init])))
 {
-    return BitwiseField!Field(field);
+    return BitField!Field(field);
 }
 
 /++
@@ -2265,7 +2264,7 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
-    $(LREF cached), $(LREF map), $(LREF indexed),
+    $(LREF cached), $(LREF vmap), $(LREF indexed),
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -2289,8 +2288,7 @@ template map(fun...)
             auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
-                auto iterator = mapIterator!f(slice._iterator);
-                return Slice!(typeof(iterator), N, kind)(slice._lengths, slice._strides, iterator);
+                return Slice!(typeof(_mapIterator!f(slice._iterator)), N, kind)(slice._lengths, slice._strides, _mapIterator!f(slice._iterator));
             }
 
             /// ditto
@@ -2732,7 +2730,7 @@ Returns:
     ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
 See_also: $(LREF cached), $(LREF map), $(LREF vmap), $(LREF indexed)
 +/
-Slice!(CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitwiseField!(size_t*))), N)
+Slice!(CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitField!(size_t*))), N)
     cachedGC(Iterator, size_t N)(Slice!(Iterator, N) original) @trusted
 {
     import mir.ndslice.allocation: bitSlice, slice, uninitSlice;
