@@ -289,7 +289,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
         int i;
     }
 
-    import std.meta: AliasSeq;
+    alias AliasSeq(T...) = T;
     foreach (T; AliasSeq!(S, const S, immutable S))
     {
         auto arr = [T(1), T(2), T(3), T(4)];

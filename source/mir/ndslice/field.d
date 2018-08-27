@@ -33,15 +33,13 @@ import mir.internal.utility: Iota;
 import mir.math.common: optmath;
 import mir.ndslice.internal;
 import mir.qualifier;
-import std.traits;
-import std.meta: anySatisfy;
 
 @optmath:
 
 package template ZeroShiftField(T)
 {
     static if (hasZeroShiftFieldMember!T)
-        alias ZeroShiftField = ReturnType!(typeof((T a) { return a.assumeZeroShiftField; }));
+        alias ZeroShiftField = typeof(T.init.assumeZeroShiftField());
     else
         alias ZeroShiftField = T;
 }
@@ -238,6 +236,7 @@ struct ZipField(Fields...)
 {
 @optmath:
     import mir.functional: RefTuple, Ref;
+    import std.meta: anySatisfy;
 
     ///
     Fields _fields;
@@ -292,6 +291,8 @@ struct ZipField(Fields...)
 +/
 struct RepeatField(T)
 {
+    import std.traits: Unqual;
+
 @optmath:
     static if (is(T == class) || is(T == interface) || is(T : Unqual!T) && is(Unqual!T : T))
         ///
@@ -319,7 +320,7 @@ struct RepeatField(T)
     { return cast(T) _value; }
 }
 
-auto BitwiseField__map(Field, I, alias fun)(BitField!(Field, I) field)
+auto BitField__map(Field, I, alias fun)(BitField!(Field, I) field)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, fun, naryFun!"~a"))
@@ -337,12 +338,12 @@ auto BitwiseField__map(Field, I, alias fun)(BitField!(Field, I) field)
 `BitField` is used by $(SUBREF topology, bitwise).
 +/
 struct BitField(Field, I = typeof(Field.init[size_t.init]))
-    if (isUnsigned!I)
+    if (__traits(isUnsigned, I))
 {
 @optmath:
-    import core.bitop: bsr;
+    import mir.bitop: ctlz;
     package(mir) alias E = I;
-    package(mir) enum shift = bsr(I.sizeof) + 3;
+    package(mir) enum shift = ctlz(I.sizeof) + 3;
     package(mir) enum mask = (1 << shift) - 1;
 
     ///
@@ -371,7 +372,7 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
     }
 
     /// ditto
-    alias __map(alias fun) = BitwiseField__map!(Field, I, fun);
+    alias __map(alias fun) = BitField__map!(Field, I, fun);
 
     ///
     auto lightConst()() const @property
@@ -387,19 +388,14 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
 
     bool opIndex()(size_t index)
     {
-        return ((_field[index >>> shift] & (I(1) << (index & mask)))) != 0;
+        import mir.bitop: bt;
+        return bt(_field, index) != 0;
     }
 
     bool opIndexAssign()(bool value, size_t index)
     {
-        auto m = I(1) << (index & mask);
-        index >>>= shift;
-        Unqual!I e = _field[index];
-        if (value)
-            e |= m;
-        else
-            e &= ~m;
-        _field[index] = e;
+        import mir.bitop: bta;
+        bta(_field, index, value);
         return value;
     }
 
@@ -426,7 +422,7 @@ version(mir_test) unittest
 `BitpackField` is used by $(SUBREF topology, bitpack).
 +/
 struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
-    if (isUnsigned!I)
+    if (__traits(isUnsigned, I))
 {
     //static assert();
 @optmath:
@@ -466,6 +462,7 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
 
     I opIndexAssign()(I value, size_t index)
     {
+        import std.traits: Unsigned;
         assert(cast(Unsigned!I)value <= mask);
         index *= pack;
         size_t start = index % bits;
@@ -562,6 +559,7 @@ struct OrthogonalReduceField(FieldsIterator, alias fun)
     /// `r = fun(r, fields[i][index]);` reduction by `i`
     auto opIndex()(size_t index) const
     {
+        import std.traits: Unqual;
         assert(_fields.length);
         auto fields = _fields.lightConst;
         Unqual!(typeof(fun(fields.front[index], fields.front[index]))) r = fields.front[index];

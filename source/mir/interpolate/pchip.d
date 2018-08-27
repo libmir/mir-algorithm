@@ -16,7 +16,7 @@ module mir.interpolate.pchip;
 public import mir.interpolate.spline: Spline;
 
 import std.traits;
-import std.meta: AliasSeq;
+private alias AliasSeq(T...) = T;
 import mir.ndslice.slice;
 import mir.array.primitives;
 import mir.math.common: fmamath;

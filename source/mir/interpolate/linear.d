@@ -14,7 +14,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.interpolate.linear;
 
 import std.traits;
-import std.meta: AliasSeq, staticMap;
+private alias AliasSeq(T...) = T;
 import mir.array.primitives;
 import mir.ndslice.slice;
 import mir.math.common: optmath;
@@ -191,6 +191,7 @@ Multivariate linear interpolant with nodes on rectilinear grid.
 struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
+    import std.meta: staticMap;
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 

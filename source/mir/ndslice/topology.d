@@ -104,7 +104,6 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 +/
 module mir.ndslice.topology;
 
-import std.traits;
 import std.meta;
 
 import mir.internal.utility;
@@ -525,7 +524,7 @@ See_also: $(LREF ndiota)
 Slice!(IotaIterator!I, N)
 iota
     (I = sizediff_t, size_t N)(size_t[N] lengths...)
-    if (isIntegral!I)
+    if (__traits(isIntegral, I))
 {
     import mir.ndslice.slice : sliced;
     return IotaIterator!I(I.init).sliced(lengths);
@@ -551,13 +550,13 @@ iota
 
 ///ditto
 template iota(I)
-    if (isIntegral!I)
+    if (__traits(isIntegral, I))
 {
     ///
     Slice!(IotaIterator!I, N)
     iota
         (size_t N)(size_t[N] lengths, I start)
-        if (isIntegral!I)
+        if (__traits(isIntegral, I))
     {
         import mir.ndslice.slice : sliced;
         return IotaIterator!I(start).sliced(lengths);
@@ -567,7 +566,7 @@ template iota(I)
     Slice!(StrideIterator!(IotaIterator!I), N)
     iota
         (size_t N)(size_t[N] lengths, I start, size_t stride)
-        if (isIntegral!I)
+        if (__traits(isIntegral, I))
     {
         import mir.ndslice.slice : sliced;
         return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
@@ -578,7 +577,7 @@ template iota(I)
 Slice!(IotaIterator!I, N)
 iota
     (I, size_t N)(size_t[N] lengths, I start)
-    if (isPointer!I)
+    if (is(I P : P*))
 {
     import mir.ndslice.slice : sliced;
     return IotaIterator!I(start).sliced(lengths);
@@ -588,7 +587,7 @@ iota
 Slice!(StrideIterator!(IotaIterator!I), N)
 iota
     (I, size_t N)(size_t[N] lengths, I start, size_t stride)
-    if (isPointer!I)
+    if (is(I P : P*))
 {
     import mir.ndslice.slice : sliced;
     return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
@@ -2010,7 +2009,7 @@ Returns: A bitwise slice.
 auto bitwise
     (Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
     (Slice!(Iterator, N, kind) slice)
-    if (isIntegral!I && (kind == Contiguous || kind == Canonical))
+    if (__traits(isIntegral, I) && (kind == Contiguous || kind == Canonical))
 {
     static if (is(Iterator : FieldIterator!Field, Field))
     {
@@ -2095,7 +2094,7 @@ Params:
 Returns: A bitwise field.
 +/
 auto bitwiseField(Field)(Field field)
-    if (isIntegral!(typeof(Field.init[size_t.init])))
+    if (__traits(isIntegral, typeof(Field.init[size_t.init])))
 {
     return BitField!Field(field);
 }
@@ -2113,7 +2112,7 @@ Returns: A bitpack slice.
 auto bitpack
     (size_t pack, Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
     (Slice!(Iterator, N, kind) slice)
-    if (isIntegral!I && (kind == Contiguous || kind == Canonical) && pack > 1)
+    if (__traits(isIntegral, I) && (kind == Contiguous || kind == Canonical) && pack > 1)
 {
     static if (is(Iterator : FieldIterator!Field, Field) && I.sizeof * 8 % pack == 0)
     {
@@ -2733,6 +2732,7 @@ See_also: $(LREF cached), $(LREF map), $(LREF vmap), $(LREF indexed)
 Slice!(CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitField!(size_t*))), N)
     cachedGC(Iterator, size_t N)(Slice!(Iterator, N) original) @trusted
 {
+    import std.traits: hasElaborateAssign, Unqual;
     import mir.ndslice.allocation: bitSlice, slice, uninitSlice;
     alias C = typeof(Iterator.init[0]);
     alias UC = Unqual!C;
@@ -2846,7 +2846,7 @@ template as(T)
         static if (is(slice.DeepElement == T))
             return slice;
         else
-        static if (isPointer!Iterator && is(const(Unqual!(typeof(Iterator.init[0]))) == T))
+        static if (is(Iterator : T*))
             return slice.toConst;
         else
         {

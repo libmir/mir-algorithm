@@ -40,7 +40,6 @@ import mir.ndslice.internal;
 import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous, isSlice;
 import mir.qualifier;
 import std.backdoor;
-import std.meta: anySatisfy;
 import std.traits;
 
 private static immutable assumeZeroShiftExceptionMsg = "*.assumeZeroShiftField: shift is not zero!";
@@ -435,7 +434,7 @@ struct StrideIterator(Iterator)
 
 package template _zip_types(Iterators...)
 {
-    import std.meta: AliasSeq;
+    alias AliasSeq(T...) = T;
     static if (Iterators.length)
     {
         enum i = Iterators.length - 1;
@@ -563,6 +562,7 @@ struct ZipIterator(Iterators...)
             return this._iterators[0].opCmp(right._iterators[0]);
     }
 
+    import std.meta: anySatisfy;
     static if (anySatisfy!(hasZeroShiftFieldMember, Iterators))
     /// Defined if at least one of `Iterators` has member `assumeZeroShiftField`.
     auto assumeZeroShiftField() @property
