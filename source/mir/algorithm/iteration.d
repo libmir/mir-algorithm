@@ -59,7 +59,7 @@ import std.traits;
 @optmath:
 
 
-/++
+/+
 Bitslice representation for accelerated bitwise algorithm.
 1-dimensional contiguousitslice can be split into three chunks: head bits, body chunks, and tail bits.
 
@@ -70,64 +70,197 @@ struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
 {
     ///
     alias U = typeof(I + 1u);
-    /// head bits (first `headLength` bits are valid).
-    U headBits;
-    /// tail bits (first `tailLength` bits are valid).
-    U tailBits;
+    /// body bits chunks
+    static if (isIterator!Field)
+        Slice!Field bodyChunks;
+    else
+        Slice!(SlicedField!Field) bodyChunks;
     /// head length
-    int  headLength;
+    int headLength;
     /// tail length
     int tailLength;
-    /// body bits chunks
-    Slice!Field bodyChunks;
 
-@fastmath @property const:
+@fastmath:
 
-    ///
+    this(Slice!(SliceField!(BitField!(Field, I))) slice)
+    {
+        enum mask = (1 << I.sizeof * 8) - 1;
+        size_t length = slice.length;
+        size_t index = slice._iterator._field._index;
+        if (auto hlen = index & mask)
+        {
+            auto l = I.sizeof * 8 - hlen;
+            if (l > length)
+            {
+                // central problem
+                headLength = -cast(int) length;
+                tailLength = cast(int) hlen;
+            }
+            else
+            {
+                headLength = cast(uint) l;
+                length -= l;
+                index += l;
+            }
+        }
+        tailLength = cast(int) (length & mask);
+        length >>= I.sizeof * 8;
+        index >>= I.sizeof * 8;
+        bodyChunks._lengths[0] = length;
+        static if (isIterator!Field)
+        {
+            bodyChunks._iterator = slice._iterator._field._field;
+            bodyChunks._iterator += index;
+        }
+        else
+        {
+            bodyChunks._iterator._index = index;
+            bodyChunks._iterator._field = slice._iterator._field._field;
+        }
+    }
+
+const:
+
+    bool isCentralProblem()
+    {
+        return headLength < 0;
+    }
+
+    U centralBits()
+    {
+        assert(isCentralProblem);
+        return *bodyChunks._iterator.lightConst >>> tailLength;
+    }
+
+    uint centralLength()
+    {
+        assert(isCentralProblem);
+        return -headLength;
+    }
+
+    /// head bits (last `headLength` bits are valid).
+    U headBits()
+    {
+        assert(!isCentralProblem);
+        if (headLength == 0)
+            return U.init;
+        static if (isIterator!Field)
+            return bodyChunks._iterator.lightConst[-1];
+        else
+            return bodyChunks._iterator._field.lightConst[bodyChunks._iterator._index - 1];
+    }
+
+    /// tail bits (first `tailLength` bits are valid).
+    U tailBits()
+    {
+        assert(!isCentralProblem);
+        if (tailLength == 0)
+            return U.init;
+        static if (isIterator!Field)
+            return bodyChunks._iterator.lightConst[bodyChunks.length];
+        else
+            return bodyChunks._iterator._field.lightConst[bodyChunks._iterator._index + bodyChunks.length];
+    }
+
+    U negCentralMask()
+    {
+        return U.max << centralLength;
+    }
+
     U negHeadMask()
     {
         return U.max << headLength;
     }
 
-    ///
     U negTailMask()
     {
         return U.max << tailLength;
     }
 
-    ///
-    U headBitsWithRemainingZeros()
+    U negCentralMaskS()
     {
-        return headBits & ~negHeadMask;
+        return U.max >> centralLength;
     }
 
-    ///
+    U negHeadMaskS()
+    {
+        return U.max >> headLength;
+    }
+
+    U negTailMaskS()
+    {
+        return U.max >> tailLength;
+    }
+
+    U centralBitsWithRemainingZeros()
+    {
+        return centralBits & ~negCentralMask;
+    }
+
+    U centralBitsWithRemainingZerosS()
+    {
+        return centralBits << (U.sizeof * 8 - centralLength);
+    }
+
+    U headBitsWithRemainingZeros()
+    {
+        return headBits >>> (I.sizeof * 8 - headLength);
+    }
+
+    U headBitsWithRemainingZerosS()
+    {
+        static if (U.sizeof > I.sizeof)
+            return (headBits << (U.sizeof - I.sizeof) * 8) & ~negTailMaskS;
+        else
+            return headBits & ~negTailMaskS;
+    }
+
     U tailBitsWithRemainingZeros()
     {
         return tailBits & ~negTailMask;
     }
 
-    ///
-    U headBitsWithRemainingOnes()
+    U tailBitsWithRemainingZerosS()
     {
-        return headBits | negHeadMask;
+        return tailBits << (U.sizeof * 8 - tailLength);
     }
 
-    ///
+    U centralBitsWithRemainingOnes()
+    {
+        return centralBits | negCentralMask;
+    }
+
+    U centralBitsWithRemainingOnesS()
+    {
+        return centralBitsWithRemainingZerosS | negCentralMaskS;
+    }
+
+    U headBitsWithRemainingOnes()
+    {
+        return headBitsWithRemainingZeros | negHeadMask;
+    }
+
+    U headBitsWithRemainingOnesS()
+    {
+        return headBitsWithRemainingZerosS | negHeadMaskS;
+    }
+
     U tailBitsWithRemainingOnes()
     {
         return tailBits | negTailMask;
     }
 
-    ///
+    U tailBitsWithRemainingOnesS()
+    {
+        return tailBitsWithRemainingZerosS | negTailMaskS;
+    }
+
     size_t ctpop()
     {
         import mir.bitop: ctpop;
         size_t ret;
         if (headLength)
             ret = cast(size_t) headBitsWithRemainingZeros.ctpop;
-        if (tailBits)
-            ret += cast(size_t) tailBitsWithRemainingZeros.ctpop;
         if (bodyChunks.length)
         {
             auto bc = bodyChunks.lightConst;
@@ -138,13 +271,16 @@ struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
             }
             while(bodyChunks.length);
         }
+        if (tailBits)
+            ret += cast(size_t) tailBitsWithRemainingZeros.ctpop;
         return false;
     }
 
-    ///
     bool any()
     {
-        if ((headBitsWithRemainingZeros | tailBitsWithRemainingZeros) != 0)
+        if (isCentralProblem)
+            return centralBitsWithRemainingZeros != 0;
+        if (headBitsWithRemainingZeros != 0)
             return true;
         if (bodyChunks.length)
         {
@@ -157,14 +293,17 @@ struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
             }
             while(bc.length);
         }
+        if (tailBitsWithRemainingZeros != 0)
+            return true;
         return false;
     }
 
-    ///
     bool all()
     {
+        if (isCentralProblem)
+            return centralBitsWithRemainingOnes != U.max;
         size_t ret;
-        if ((headBitsWithRemainingOnes & tailBitsWithRemainingOnes) != U.max)
+        if (headBitsWithRemainingOnes != U.max)
             return false;
         if (bodyChunks.length)
         {
@@ -177,14 +316,174 @@ struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
             }
             while(bc.length);
         }
+        if (tailBitsWithRemainingOnes != U.max)
+            return false;
         return true;
     }
 
-    // ///
-    // size_t findUntil()
-    // {
-        
-    // }
+    size_t cttz()
+    {
+        U v;
+        size_t ret;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingOnes;
+            if (v)
+                goto R;
+            ret = centralLength;
+            goto L;
+        }
+        v = headBitsWithRemainingOnes;
+        if (v)
+            goto R;
+        ret = headLength;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.front;
+                if (v)
+                    goto R;
+                ret += I.sizeof * 8;
+                bc.popFront;
+            }
+            while(bc.length);
+        }
+        v = tailBitsWithRemainingOnes;
+        if (v)
+            goto R;
+        ret += tailLength;
+        goto L;
+    R:
+        ret += v.cttz;
+    L:
+        return ret;
+    }
+
+    size_t ctlz()
+    {
+        U v;
+        size_t ret;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingOnes;
+            if (v)
+                goto R;
+            ret = centralLength;
+            goto L;
+        }
+        v = tailBitsWithRemainingOnesS;
+        if (v)
+            goto R;
+        ret = tailLength;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.back;
+                if (v)
+                    goto R;
+                ret += I.sizeof * 8;
+                bc.popBack;
+            }
+            while(bc.length);
+        }
+        v = headBitsWithRemainingOnesS;
+        if (v)
+            goto R;
+        ret += headLength;
+        goto L;
+    R:
+        ret += v.ctlz;
+    L:
+        return ret;
+    }
+
+    sizediff_t nBitsToCount(size_t count)
+    {
+        if (count == 0)
+            return count;
+        U v, cnt;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingOnes;
+            goto E;
+        }
+        v = headBitsWithRemainingOnes;
+        cnt = v.ctpop;
+        size_t ret;
+        if (cnt >= count)
+            goto R;
+        ret += headLength;
+        count -= cast(size_t) cnt;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.front;
+                cnt = v.ctpop;
+                if (cnt >= count)
+                    goto R;
+                ret += I.sizeof * 8;
+                count -= cast(size_t) cnt;
+                bc.popFront;
+            }
+            while(bc.length);
+        }
+        v = tailBitsWithRemainingOnes;
+    E:
+        cnt = v.ctpop;
+        if (cnt >= count)
+            goto R;
+        return -1;
+    R:
+        return ret + v.nTrailingBitsToCount(count);
+    }
+
+    sizediff_t retroNBitsToCount(size_t count)
+    {
+        if (count == 0)
+            return count;
+        U v, cnt;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingOnesS;
+            goto E;
+        }
+        v = tailBitsWithRemainingOnesS;
+        cnt = v.ctpop;
+        size_t ret;
+        if (cnt >= count)
+            goto R;
+        ret += tailLength;
+        count -= cast(size_t) cnt;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.back;
+                cnt = v.ctpop;
+                if (cnt >= count)
+                    goto R;
+                ret += I.sizeof * 8;
+                count -= cast(size_t) cnt;
+                bc.popBack;
+            }
+            while(bc.length);
+        }
+        v = headBitsWithRemainingOnesS;
+    E:
+        cnt = v.ctpop;
+        if (cnt >= count)
+            goto R;
+        return -1;
+    R:
+        return ret + v.nLeadingBitsToCount(count);
+    }
 }
 
 /++
@@ -2197,11 +2496,9 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     import mir.functional: naryFun;
     import mir.ndslice.iterator: FieldIterator;
     import mir.ndslice.field: BitField;
-    static if (__traits(isSame, fun, naryFun!"a") && 
-        is(S : Slice!Iterator,
-            Iterator : FieldIterator!(BitField!Field), Field))
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        //
+        // return ;
     }
     else
     do

@@ -344,7 +344,6 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
     import mir.bitop: ctlz;
     package(mir) alias E = I;
     package(mir) enum shift = ctlz(I.sizeof) + 3;
-    package(mir) enum mask = (1 << shift) - 1;
 
     ///
     Field _field;
