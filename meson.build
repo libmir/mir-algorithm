@@ -8,6 +8,7 @@ mir_algorithm_src = [
     'source/mir/array/allocation.d',
     'source/mir/array/primitives.d',
     'source/mir/bitmanip.d',
+    'source/mir/bitop.d',
     'source/mir/combinatorics/package.d',
     'source/mir/container/binaryheap.d',
     'source/mir/conv.d',
