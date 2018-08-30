@@ -132,7 +132,7 @@ struct MapField(Field, alias _fun)
 /++
 `VmapField` is used by $(SUBREF topology, map).
 +/
-struct VmapField(Field)
+struct VmapField(Field, Fun)
 {
 @optmath:
     ///
@@ -224,7 +224,7 @@ auto _vmapField(Field, Fun)(Field field, Fun fun)
     static if (__traits(hasMember, Field, "__vmap"))
         return Field.__vmap(field, fun);
     else
-        return VmapField!Field(field, fun);
+        return VmapField!(Field, Fun)(field, fun);
 }
 
 /++
