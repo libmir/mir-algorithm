@@ -42,7 +42,7 @@ import mir.qualifier;
 import std.backdoor;
 import std.traits;
 
-private static immutable assumeZeroShiftExceptionMsg = "*.assumeZeroShiftField: shift is not zero!";
+private static immutable assumeZeroShiftExceptionMsg = "*.assumeFieldsHaveZeroShift: shift is not zero!";
 version(D_Exceptions)
     private static immutable assumeZeroShiftException = new Exception(assumeZeroShiftExceptionMsg);
 
@@ -564,8 +564,8 @@ struct ZipIterator(Iterators...)
 
     import std.meta: anySatisfy;
     static if (anySatisfy!(hasZeroShiftFieldMember, Iterators))
-    /// Defined if at least one of `Iterators` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if at least one of `Iterators` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
         import std.meta: staticMap;
         alias _fields = _iterators;
@@ -800,9 +800,9 @@ struct VmapIterator(Iterator, Fun)
 
     static if (hasZeroShiftFieldMember!Iterator)
     ///
-    auto assumeZeroShiftField() @property
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return _vmapField(_iterator.assumeZeroShiftField, _fun);
+        return _vmapField(_iterator.assumeFieldsHaveZeroShift, _fun);
     }
 }
 
@@ -841,9 +841,9 @@ struct MapIterator(Iterator, alias _fun)
 
     static if (hasZeroShiftFieldMember!Iterator)
     ///
-    auto assumeZeroShiftField() @property
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return _mapField!_fun(_iterator.assumeZeroShiftField);
+        return _mapField!_fun(_iterator.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -1412,7 +1412,7 @@ struct FieldIterator(Field)
     { return this._index - right._index; }
 
     ///
-    auto assumeZeroShiftField() @property
+    auto assumeFieldsHaveZeroShift() @property
     {
         if (_expect(_index != 0, false))
         {
@@ -1422,7 +1422,7 @@ struct FieldIterator(Field)
                 assert(0, assumeZeroShiftExceptionMsg);
         }
         static if (hasZeroShiftFieldMember!Field)
-            return _field.assumeZeroShiftField;
+            return _field.assumeFieldsHaveZeroShift;
         else
             return _field;
     }

@@ -322,6 +322,15 @@ version(mir_test) unittest
 }
 
 /++
++/
+auto assumeFieldsHaveZeroShift(Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
+    if (__traits(hasMember, Iterator, "assumeFieldsHaveZeroShift"))
+{
+    return slice._iterator.assumeFieldsHaveZeroShift.slicedField(slice._lengths);
+}
+
+/++
 Creates a packed slice, i.e. slice of slices.
 Packs the last `P` dimensions.
 The function does not allocate any data.

@@ -39,12 +39,12 @@ import mir.qualifier;
 package template ZeroShiftField(T)
 {
     static if (hasZeroShiftFieldMember!T)
-        alias ZeroShiftField = typeof(T.init.assumeZeroShiftField());
+        alias ZeroShiftField = typeof(T.init.assumeFieldsHaveZeroShift());
     else
         alias ZeroShiftField = T;
 }
 
-package enum hasZeroShiftFieldMember(T) = __traits(hasMember, T, "assumeZeroShiftField");
+package enum hasZeroShiftFieldMember(T) = __traits(hasMember, T, "assumeFieldsHaveZeroShift");
 
 package auto applyAssumeZeroShift(Types...)()
 {
@@ -52,7 +52,7 @@ package auto applyAssumeZeroShift(Types...)()
     string str;
     foreach(i, T; Types)
         static if (hasZeroShiftFieldMember!T)
-            str ~= "_fields[" ~ i.stringof ~ "].assumeZeroShiftField, ";
+            str ~= "_fields[" ~ i.stringof ~ "].assumeFieldsHaveZeroShift, ";
         else
             str ~= "_fields[" ~ i.stringof ~ "], ";
     return str;
@@ -122,10 +122,10 @@ struct MapField(Field, alias _fun)
     }
 
     static if (hasZeroShiftFieldMember!Field)
-    /// Defined if `Field` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return _mapField!_fun(_field.assumeZeroShiftField);
+        return _mapField!_fun(_field.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -183,10 +183,10 @@ struct VmapField(Field)
     }
 
     static if (hasZeroShiftFieldMember!Field)
-    /// Defined if `Field` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return _vmapField(_field.assumeZeroShiftField, _fun);
+        return _vmapField(_field.assumeFieldsHaveZeroShift, _fun);
     }
 }
 
@@ -279,8 +279,8 @@ struct ZipField(Fields...)
     }
 
     static if (anySatisfy!(hasZeroShiftFieldMember, Fields))
-    /// Defined if at least one of `Fields` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if at least one of `Fields` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
         import std.meta: staticMap;
         return mixin("ZipField!(staticMap!(ZeroShiftField, Fields))(" ~ applyAssumeZeroShift!Fields ~ ")");
@@ -386,10 +386,10 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
     }
 
     static if (hasZeroShiftFieldMember!Field)
-    /// Defined if `Field` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return BitField!(ZeroShiftField!Field, I)(_field.assumeZeroShiftField);
+        return BitField!(ZeroShiftField!Field, I)(_field.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -479,10 +479,10 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
     }
 
     static if (hasZeroShiftFieldMember!Field)
-    /// Defined if `Field` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return BitpackField!(ZeroShiftField!Field, pack, I)(_field.assumeZeroShiftField);
+        return BitpackField!(ZeroShiftField!Field, pack, I)(_field.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -616,10 +616,10 @@ struct CycleField(Field)
     }
 
     static if (hasZeroShiftFieldMember!Field)
-    /// Defined if `Field` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return CycleField!(ZeroShiftField!Field)(_length, _field.assumeZeroShiftField);
+        return CycleField!(ZeroShiftField!Field)(_length, _field.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -664,10 +664,10 @@ struct CycleField(Field, size_t length)
     }
 
     static if (hasZeroShiftFieldMember!Field)
-    /// Defined if `Field` has member `assumeZeroShiftField`.
-    auto assumeZeroShiftField() @property
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
     {
-        return CycleField!(ZeroShiftField!Field, _length)(_field.assumeZeroShiftField);
+        return CycleField!(ZeroShiftField!Field, _length)(_field.assumeFieldsHaveZeroShift);
     }
 }
 

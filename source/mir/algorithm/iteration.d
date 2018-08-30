@@ -1929,7 +1929,7 @@ size_t anyImpl(alias fun, Slices...)(Slices slices)
     else
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
     {
-        pragma(msg, S);
+        // pragma(msg, S);
         import mir.ndslice.topology: retro;
         return .anyImpl!fun(slices[0].retro);
     }
@@ -2086,7 +2086,7 @@ size_t allImpl(alias fun, Slices...)(Slices slices)
     else
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
     {
-        pragma(msg, S);
+        // pragma(msg, S);
         import mir.ndslice.topology: retro;
         return .allImpl!fun(slices[0].retro);
     }
@@ -2344,17 +2344,17 @@ unittest
 unittest
 {
     import mir.ndslice.allocation: slice;
-    // import mir.ndslice.topology: bitwise, assumeZeroShiftField;
+    import mir.ndslice.topology: bitwise, assumeFieldsHaveZeroShift;
     auto sl = slice!uint([6]).bitwise;
     auto slb = slice!ubyte([6]).bitwise;
     slb[4] = true;
     auto d = slb[4];
-    // auto c = assumeZeroShiftField(slb & ~slb);
+    auto c = assumeFieldsHaveZeroShift(slb & ~slb);
     // pragma(msg, typeof(c));
     assert(!sl.any);
     assert((~sl).all);
-    pragma(msg, typeof(~slb));
-    pragma(msg, typeof(~slb));
+    // pragma(msg, typeof(~slb));
+    // pragma(msg, typeof(~slb));
     // assert(sl.findIndex);
 }
 
@@ -2579,7 +2579,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     else
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
     {
-        pragma(msg, S);
+        // pragma(msg, S);
         import mir.ndslice.topology: retro;
         ret = .countImpl!fun(slices[0].retro);
     }
