@@ -1885,6 +1885,74 @@ version(mir_test) unittest
 }
 
 /++
+Cycle creates 1-dimensional slice over the range.
++/
+auto cycle(Field)(Field field, size_t loopLength, size_t length)
+    if (!isSlice!Field && !is(Field : T[], T))
+{
+    return CycleField!Field(loopLength, field).slicedField(length);
+}
+
+/// ditto
+auto cycle(size_t loopLength, Field)(Field field, size_t length)
+    if (!isSlice!Field && !is(Field : T[], T))
+{
+    static assert(loopLength);
+    return CycleField!(Field, loopLength)(field).slicedField(length);
+}
+
+/// ditto
+auto cycle(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice, size_t length)
+{
+    assert(slice.length);
+    static if (kind == Universal)
+        return slice.hideStride.cycle(length);
+    else
+        return CycleField!Iterator(slice._lengths[0], slice._iterator).slicedField(length);
+}
+
+/// ditto
+auto cycle(size_t loopLength, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice, size_t length)
+{
+    static assert(loopLength);
+    assert(loopLength <= slice.length);
+    static if (kind == Universal)
+        return slice.hideStride.cycle!loopLength(length);
+    else
+        return CycleField!(Iterator, loopLength)(slice._iterator).slicedField(length);
+}
+ 
+/// ditto
+auto cycle(T)(T[] array, size_t length)
+{
+    return cycle(array.sliced, length);
+}
+
+/// ditto
+auto cycle(size_t loopLength, T)(T[] array, size_t length)
+{
+    return cycle!loopLength(array.sliced, length);
+}
+
+
+/// ditto
+auto cycle(size_t loopLength, T)(auto ref T withAsSlice, size_t length)
+    if (hasAsSlice!T)
+{
+    return cycle!loopLength(withAsSlice.asSlice, length);
+}
+
+///
+unittest
+{
+    auto slice = iota(3);
+    assert(slice.cycle(7) == [0, 1, 2, 0, 1, 2, 0]);
+    assert(slice.cycle!2(7) == [0, 1, 0, 1, 0, 1, 0]);
+    assert([0, 1, 2].cycle(7) == [0, 1, 2, 0, 1, 2, 0]);
+    assert([4, 3, 2, 1].cycle!4(7) == [4, 3, 2, 1, 4, 3, 2]);
+}
+
+/++
 Strides 1-dimensional slice.
 Params:
     slice = 1-dimensional unpacked slice.
@@ -2093,10 +2161,10 @@ Params:
     field = an integral field.
 Returns: A bitwise field.
 +/
-auto bitwiseField(Field)(Field field)
-    if (__traits(isIntegral, typeof(Field.init[size_t.init])))
+auto bitwiseField(Field, I = typeof(Field.init[size_t.init]))(Field field)
+    if (__traits(isUnsigned, I))
 {
-    return BitField!Field(field);
+    return BitField!(Field, I)(field);
 }
 
 /++

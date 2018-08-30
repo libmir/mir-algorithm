@@ -68,6 +68,12 @@ Bitslice can have head bits because it has slicing and the zero bit may not be a
 struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
     if (__traits(isUnsigned, I))
 {
+    import mir.bitop;
+    import mir.qualifier: lightConst;
+    import mir.ndslice.traits: isIterator;
+    import mir.ndslice.iterator: FieldIterator;
+    import mir.ndslice.field: BitField;
+
     ///
     alias U = typeof(I + 1u);
     /// body bits chunks
@@ -80,13 +86,14 @@ struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
     /// tail length
     int tailLength;
 
-@fastmath:
+@optmath:
 
-    this(Slice!(SliceField!(BitField!(Field, I))) slice)
+    this(Slice!(FieldIterator!(BitField!(Field, I))) slice)
     {
-        enum mask = (1 << I.sizeof * 8) - 1;
+        enum mask = bitShiftMask!I;
+        enum shift = bitElemShift!I;
         size_t length = slice.length;
-        size_t index = slice._iterator._field._index;
+        size_t index = slice._iterator._index;
         if (auto hlen = index & mask)
         {
             auto l = I.sizeof * 8 - hlen;
@@ -104,8 +111,8 @@ struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
             }
         }
         tailLength = cast(int) (length & mask);
-        length >>= I.sizeof * 8;
-        index >>= I.sizeof * 8;
+        length >>= shift;
+        index >>= shift;
         bodyChunks._lengths[0] = length;
         static if (isIterator!Field)
         {
@@ -258,6 +265,8 @@ const:
     size_t ctpop()
     {
         import mir.bitop: ctpop;
+        if (isCentralProblem)
+            return centralBitsWithRemainingZeros.ctpop;
         size_t ret;
         if (headLength)
             ret = cast(size_t) headBitsWithRemainingZeros.ctpop;
@@ -266,14 +275,14 @@ const:
             auto bc = bodyChunks.lightConst;
             do
             {
-                ret += cast(size_t) bodyChunks.front.ctpop;
-                bodyChunks.popFront;
+                ret += cast(size_t) bc.front.ctpop;
+                bc.popFront;
             }
-            while(bodyChunks.length);
+            while(bc.length);
         }
         if (tailBits)
             ret += cast(size_t) tailBitsWithRemainingZeros.ctpop;
-        return false;
+        return ret;
     }
 
     bool any()
@@ -403,6 +412,7 @@ const:
 
     sizediff_t nBitsToCount(size_t count)
     {
+        size_t ret;
         if (count == 0)
             return count;
         U v, cnt;
@@ -413,7 +423,6 @@ const:
         }
         v = headBitsWithRemainingOnes;
         cnt = v.ctpop;
-        size_t ret;
         if (cnt >= count)
             goto R;
         ret += headLength;
@@ -447,6 +456,7 @@ const:
     {
         if (count == 0)
             return count;
+        size_t ret;
         U v, cnt;
         if (isCentralProblem)
         {
@@ -455,7 +465,6 @@ const:
         }
         v = tailBitsWithRemainingOnesS;
         cnt = v.ctpop;
-        size_t ret;
         if (cnt >= count)
             goto R;
         ret += tailLength;
@@ -1637,29 +1646,48 @@ unittest
 bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slices slices)
     if (Slices.length)
 {
-    do
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        static if (slices[0].shape.length == 1)
-        {
-            if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
-            {
-                backwardIndex[0] = slices[0].length;
-                return true;
-            }
-        }
-        else
-        {
-            if (mixin("findImpl!fun(backwardIndex[1 .. $], " ~ frontOf!(Slices.length) ~ ")"))
-            {
-                backwardIndex[0] = slices[0].length;
-                return true;
-            }
-        }
-        foreach_reverse(ref slice; slices)
-            slice.popFront;
+        auto cnt = BitSliceAccelerator!(Field, I)(slices[0]).cttz;
+        if (cnt = -1)
+            return false;
+        backwardIndex[0] = slices[0].length - cnt;
     }
-    while(!slices[0].empty);
-    return false;
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        import mir.ndslice.topology: retro;
+        auto cnt = BitSliceAccelerator!(Field, I)(slices[0].retro).ctlz;
+        if (cnt = -1)
+            return false;
+        backwardIndex[0] = slices[0].length - cnt;
+    }
+    else
+    {
+        do
+        {
+            static if (slices[0].shape.length == 1)
+            {
+                if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                {
+                    backwardIndex[0] = slices[0].length;
+                    return true;
+                }
+            }
+            else
+            {
+                if (mixin("findImpl!fun(backwardIndex[1 .. $], " ~ frontOf!(Slices.length) ~ ")"))
+                {
+                    backwardIndex[0] = slices[0].length;
+                    return true;
+                }
+            }
+            foreach_reverse(ref slice; slices)
+                slice.popFront;
+        }
+        while(!slices[0].empty);
+        return false;
+    }
 }
 
 /++
@@ -1894,23 +1922,37 @@ version(mir_test) unittest
 size_t anyImpl(alias fun, Slices...)(Slices slices)
     if (Slices.length)
 {
-    do
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        static if (slices[0].shape.length == 1)
-        {
-            if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return true;
-        }
-        else
-        {
-            if (mixin("anyImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return true;
-        }
-        foreach_reverse(ref slice; slices)
-            slice.popFront;
+        return BitSliceAccelerator!(Field, I)(slices[0]).any;
     }
-    while(!slices[0].empty);
-    return false;
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        pragma(msg, S);
+        import mir.ndslice.topology: retro;
+        return .anyImpl!fun(slices[0].retro);
+    }
+    else
+    {
+        do
+        {
+            static if (slices[0].shape.length == 1)
+            {
+                if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return true;
+            }
+            else
+            {
+                if (mixin("anyImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return true;
+            }
+            foreach_reverse(ref slice; slices)
+                slice.popFront;
+        }
+        while(!slices[0].empty);
+        return false;
+    }
 }
 
 /++
@@ -2037,23 +2079,37 @@ version(mir_test) unittest
 size_t allImpl(alias fun, Slices...)(Slices slices)
     if (Slices.length)
 {
-    do
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        static if (slices[0].shape.length == 1)
-        {
-            if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return false;
-        }
-        else
-        {
-            if (!mixin("allImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return false;
-        }
-        foreach_reverse(ref slice; slices)
-            slice.popFront;
+        return BitSliceAccelerator!(Field, I)(slices[0]).all;
     }
-    while(!slices[0].empty);
-    return true;
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        pragma(msg, S);
+        import mir.ndslice.topology: retro;
+        return .allImpl!fun(slices[0].retro);
+    }
+    else
+    {
+        do
+        {
+            static if (slices[0].shape.length == 1)
+            {
+                if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return false;
+            }
+            else
+            {
+                if (!mixin("allImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return false;
+            }
+            foreach_reverse(ref slice; slices)
+                slice.popFront;
+        }
+        while(!slices[0].empty);
+        return true;
+    }
 }
 
 /++
@@ -2261,25 +2317,45 @@ unittest
 version(mir_test)
 unittest
 {
-    import mir.ndslice.topology: iota, bitwise;
+    import mir.ndslice.topology: retro, iota, bitwise;
     import mir.ndslice.allocation: slice;
 
     //| 0 1 2 |
     //| 3 4 5 |
     auto sl = iota!size_t(2, 3).bitwise;
 
-    // assert(sl.count!"true" == 6 * size_t.sizeof * 8);
+    assert(sl.count!"true" == 6 * size_t.sizeof * 8);
 
-    // // accelerated
-    // assert(sl.count!"a" == 7);
-    // assert(sl.slice.count!"a" == 7);
+    assert(sl.slice.count!"a" == 7);
 
-    // auto sl2 = iota!ubyte([6], 128).bitwise;
-    // assert(sl2.count!"a" == 13);
-    // assert(sl2[4 .. $].count!"a" == 13);
-    // assert(sl2[4 .. $ - 1].count!"a" == 12);
-    // assert(sl2[4 .. $ - 1].count!"a" == 12);
-    // assert(sl2[41 .. $ - 1].count!"a" == 1);
+    // accelerated
+    assert(sl.count!"a" == 7);
+    assert(sl.retro.count!"a" == 7);
+
+    auto sl2 = iota!ubyte([6], 128).bitwise;
+    // accelerated
+    assert(sl2.count!"a" == 13);
+    assert(sl2[4 .. $].count!"a" == 13);
+    assert(sl2[4 .. $ - 1].count!"a" == 12);
+    assert(sl2[4 .. $ - 1].count!"a" == 12);
+    assert(sl2[41 .. $ - 1].count!"a" == 1);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    // import mir.ndslice.topology: bitwise, assumeZeroShiftField;
+    auto sl = slice!uint([6]).bitwise;
+    auto slb = slice!ubyte([6]).bitwise;
+    slb[4] = true;
+    auto d = slb[4];
+    // auto c = assumeZeroShiftField(slb & ~slb);
+    // pragma(msg, typeof(c));
+    assert(!sl.any);
+    assert((~sl).all);
+    pragma(msg, typeof(~slb));
+    pragma(msg, typeof(~slb));
+    // assert(sl.findIndex);
 }
 
 /++
@@ -2494,11 +2570,18 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     size_t ret;
     alias S = Slices[0];
     import mir.functional: naryFun;
-    import mir.ndslice.iterator: FieldIterator;
+    import mir.ndslice.iterator: FieldIterator, RetroIterator;
     import mir.ndslice.field: BitField;
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        // return ;
+        ret = BitSliceAccelerator!(Field, I)(slices[0]).ctpop;
+    }
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        pragma(msg, S);
+        import mir.ndslice.topology: retro;
+        ret = .countImpl!fun(slices[0].retro);
     }
     else
     do

@@ -802,7 +802,7 @@ struct VmapIterator(Iterator, Fun)
     ///
     auto assumeZeroShiftField() @property
     {
-        return _mapField(_iterator.assumeZeroShiftField, _fun);
+        return _vmapField(_iterator.assumeZeroShiftField, _fun);
     }
 }
 

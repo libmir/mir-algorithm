@@ -203,10 +203,11 @@ auto _mapField(alias fun, Field)(Field field)
         __traits(isSame, fun, naryFun!"a | b") ||
         __traits(isSame, fun, naryFun!"a ^ b") ||
         __traits(isSame, fun, naryFun!"a & b")) &&
-        is(Field : ZipField!(BitField!LeftField, BitField!RightField), LeftField, RightField))
+        is(Field : ZipField!(BitField!(LeftField, I), BitField!(RightField, I)), LeftField, RightField, I))
     {
         import mir.ndslice.topology: bitwiseField;
-        return ZipField!(LeftField, RightField)(field._fields[0]._field, field._fields[1]._field)._mapField!fun.bitwiseField;
+        auto f = ZipField!(LeftField, RightField)(field._fields[0]._field, field._fields[1]._field)._mapField!fun;
+        return f.bitwiseField!(typeof(f), I);
     }
     else
     static if (__traits(hasMember, Field, "__map"))
@@ -320,20 +321,6 @@ struct RepeatField(T)
     { return cast(T) _value; }
 }
 
-auto BitField__map(Field, I, alias fun)(BitField!(Field, I) field)
-{
-    import mir.functional: naryFun;
-    static if (__traits(isSame, fun, naryFun!"~a"))
-    {
-        import mir.ndslice.topology: bitwiseField;
-        return _mapField!fun(field).bitwiseField;
-    }
-    else
-    {
-        return field;
-    }
-}
-
 /++
 `BitField` is used by $(SUBREF topology, bitwise).
 +/
@@ -388,13 +375,13 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
     bool opIndex()(size_t index)
     {
         import mir.bitop: bt;
-        return bt(_field, index) != 0;
+        return bt!(Field, I)(_field, index) != 0;
     }
 
     bool opIndexAssign()(bool value, size_t index)
     {
         import mir.bitop: bta;
-        bta(_field, index, value);
+        bta!(Field, I)(_field, index, value);
         return value;
     }
 
@@ -415,6 +402,21 @@ version(mir_test) unittest
     f[123] = true;
     f++;
     assert(f[122]);
+}
+
+auto BitField__map(Field, I, alias fun)(BitField!(Field, I) field)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, fun, naryFun!"~a"))
+    {
+        import mir.ndslice.topology: bitwiseField;
+        auto f = _mapField!fun(field._field);
+        return f.bitwiseField!(typeof(f), I);
+    }
+    else
+    {
+        return field;
+    }
 }
 
 /++
@@ -556,7 +558,7 @@ struct OrthogonalReduceField(FieldsIterator, alias fun)
     }
 
     /// `r = fun(r, fields[i][index]);` reduction by `i`
-    auto opIndex()(size_t index) const
+    auto opIndex()(size_t index)
     {
         import std.traits: Unqual;
         assert(_fields.length);
@@ -588,18 +590,18 @@ struct CycleField(Field)
     auto lightConst()() const @property
     {
         auto field = _field.lightConst;
-        return CycleField!(field.Iterator)(_length, field);
+        return CycleField!(typeof(field))(_length, field);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
         auto field = _field.lightImmutable;
-        return CycleField!(field.Iterator)(_length, field);
+        return CycleField!(typeof(field))(_length, field);
     }
 
     ///
-    auto ref opIndex()(size_t index) const
+    auto ref opIndex()(size_t index)
     {
         return _field[index % _length];
     }
@@ -636,18 +638,18 @@ struct CycleField(Field, size_t length)
     auto lightConst()() const @property
     {
         auto field = _field.lightConst;
-        return CycleField!(field.Iterator, _length)(field);
+        return CycleField!(typeof(field), _length)(field);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
         auto field = _field.lightImmutable;
-        return CycleField!(field.Iterator, _length)(field);
+        return CycleField!(typeof(field), _length)(field);
     }
 
     ///
-    auto ref opIndex()(size_t index) const
+    auto ref opIndex()(size_t index)
     {
         return _field[index % _length];
     }
@@ -686,7 +688,7 @@ struct ndIotaField(size_t N)
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightImmutable()() const @property
     {
         return ndIotaField!N(_lengths);
     }
@@ -723,14 +725,14 @@ struct LinspaceField(T)
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightImmutable()() const @property
     {
         return LinspaceField!T(_length, _start, _stop);
     }
 
     // no fastmath
     ///
-    T opIndex()(sizediff_t index)
+    T opIndex()(sizediff_t index) const
     {
         sizediff_t d = _length - 1;
         auto v = typeof(T.init.re)(d - index);
@@ -745,13 +747,13 @@ struct LinspaceField(T)
 @optmath:
 
     ///
-    size_t length()() @property
+    size_t length()() const @property
     {
         return _length;
     }
 
     ///
-    size_t[1] shape(size_t dimension = 0)() @property @nogc
+    size_t[1] shape(size_t dimension = 0)() const @property @nogc
         if (dimension == 0)
     {
         return [_length];
@@ -778,26 +780,26 @@ struct MagicField()
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightImmutable()() const @property
     {
         return MagicField!()(_n);
     }
 
     ///
-    size_t length(size_t dimension = 0)() @property
+    size_t length(size_t dimension = 0)() const @property
         if(dimension <= 2)
     {
         return _n * _n;
     }
 
     ///
-    size_t[1] shape()() @property @nogc
+    size_t[1] shape()() const @property @nogc
     {
         return [_n * _n];
     }
 
     ///
-    size_t opIndex()(size_t index)
+    size_t opIndex()(size_t index) const
     {
         auto d = index / _n;
         auto m = index % _n;
