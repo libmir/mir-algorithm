@@ -49,7 +49,9 @@ import mir.array.primitives;
 import mir.functional: naryFun;
 import mir.internal.utility;
 import mir.math.common: optmath;
+import mir.ndslice.field: BitField;
 import mir.ndslice.internal;
+import mir.ndslice.iterator: FieldIterator, RetroIterator;
 import mir.ndslice.slice;
 import mir.primitives;
 import std.meta;
@@ -65,7 +67,7 @@ Bitslice representation for accelerated bitwise algorithm.
 
 Bitslice can have head bits because it has slicing and the zero bit may not be aligned to the zero of a body chunk.
 +/
-struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
+private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
     if (__traits(isUnsigned, I))
 {
     import mir.bitop;
@@ -412,21 +414,26 @@ const:
 
     sizediff_t nBitsToCount(size_t count)
     {
+        import std.stdio;
         size_t ret;
         if (count == 0)
             return count;
         U v, cnt;
         if (isCentralProblem)
         {
-            v = centralBitsWithRemainingOnes;
+            v = centralBitsWithRemainingZeros;
             goto E;
         }
-        v = headBitsWithRemainingOnes;
+        v = headBitsWithRemainingZeros;
         cnt = v.ctpop;
+        writefln("v = %s at line %s", v, __LINE__);
+        writefln("cnt = %s at line %s", cnt, __LINE__);
         if (cnt >= count)
             goto R;
         ret += headLength;
         count -= cast(size_t) cnt;
+        writefln("v = %s at line %s", v, __LINE__);
+        writefln("cnt = %s at line %s", cnt, __LINE__);
         if (bodyChunks.length)
         {
             auto bc = bodyChunks.lightConst;
@@ -442,9 +449,11 @@ const:
             }
             while(bc.length);
         }
-        v = tailBitsWithRemainingOnes;
+        v = tailBitsWithRemainingZeros;
     E:
         cnt = v.ctpop;
+        writefln("v = %s at line %s", v, __LINE__);
+        writefln("cnt = %s at line %s", cnt, __LINE__);
         if (cnt >= count)
             goto R;
         return -1;
@@ -460,10 +469,10 @@ const:
         U v, cnt;
         if (isCentralProblem)
         {
-            v = centralBitsWithRemainingOnesS;
+            v = centralBitsWithRemainingZerosS;
             goto E;
         }
-        v = tailBitsWithRemainingOnesS;
+        v = tailBitsWithRemainingZerosS;
         cnt = v.ctpop;
         if (cnt >= count)
             goto R;
@@ -484,7 +493,7 @@ const:
             }
             while(bc.length);
         }
-        v = headBitsWithRemainingOnesS;
+        v = headBitsWithRemainingZerosS;
     E:
         cnt = v.ctpop;
         if (cnt >= count)
@@ -496,49 +505,32 @@ const:
 }
 
 /++
-Constructs $(LREF BitSliceAccelerator).
 +/
-BitSliceAccelerator!(Field, I) acceleratedBitSliceRepresentation(Field, I)(Slice!(FieldIterator!(BitField!(Field, I))) bits)
+sizediff_t nBitsToCount(Field, I)(Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
 {
-    typeof(return) ret;
+    return BitSliceAccelerator!(Field, I)(bitSlice).nBitsToCount(count);
+}
 
-    alias E = typeof(I.init + 1u);
+///ditto
+sizediff_t nBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))) bitSlice, size_t count)
+{
+    import mir.ndslice.topology: retro;
+    return BitSliceAccelerator!(Field, I)(bitSlice.retro).retroNBitsToCount(count);
+}
 
-    enum mask = bits._iterator._field.mask;
-    enum shift = bits._iterator._field.shift;
-
-    auto index = bits._iterator._index;
-    auto field = bits._iterator._field._field;
-    auto length = bits._lengths[0];
-    auto localIndex = index & mask;
-    auto globalIndex = index >>> shift;
-    if (localIndex)
-    {
-        ret.headBits = (field[globalIndex] >>> localIndex);
-
-        sizediff_t rlen = E.sizeof * 8 - length;
-        if (rlen >= sizediff_t(localIndex))
-        {
-            ret = (ret.headBits << rlen >>> rlen);
-            goto R;
-        }
-        length -= localIndex;
-        if (sizediff_t(length) <= 0)
-            goto R;
-        globalIndex++;
-    }
-    auto globalEnd = (length >>> shift) + globalIndex;
-    if (globalIndex < globalEnd) do
-        ret += ctpop(field[globalIndex++]);
-    while (globalIndex < globalEnd);
-    length &= mask;
-    if (length)
-    {
-        sizediff_t rlen = E.sizeof * 8 - length;
-        ret += ctpop(field[globalEnd] << rlen);
-    }
-R:
-    return ret;
+///
+unittest
+{
+    import std.stdio;
+    import mir.ndslice.allocation: bitSlice;
+    import mir.ndslice.topology: retro;
+    auto s = bitSlice(1000);
+    s[50] = true;
+    s[100] = true;
+    s[200] = true;
+    s[300] = true;
+    s[400] = true;
+    assert(s.retro.nBitsToCount(4) == 900);
 }
 
 private void checkShapesMatch(
