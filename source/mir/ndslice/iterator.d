@@ -33,13 +33,18 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.iterator;
 
-import std.traits;
 import mir.internal.utility: Iota;
 import mir.math.common: optmath;
-import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous, isSlice;
+import mir.ndslice.field;
 import mir.ndslice.internal;
+import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous, isSlice;
 import mir.qualifier;
 import std.backdoor;
+import std.traits;
+
+private static immutable assumeZeroShiftExceptionMsg = "*.assumeFieldsHaveZeroShift: shift is not zero!";
+version(D_Exceptions)
+    private static immutable assumeZeroShiftException = new Exception(assumeZeroShiftExceptionMsg);
 
 @optmath:
 
@@ -84,7 +89,6 @@ struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {
 @optmath:
-
 
     ///
     I _index;
@@ -196,7 +200,7 @@ pure nothrow @nogc version(mir_test) unittest
 
 auto RetroIterator__map(Iterator, alias fun)(ref RetroIterator!Iterator it)
 {
-    auto iterator = it._iterator.mapIterator!fun;
+    auto iterator = it._iterator._mapIterator!fun;
     return RetroIterator!(typeof(iterator))(iterator);
 }
 
@@ -313,7 +317,7 @@ struct RetroIterator(Iterator)
 
 auto StrideIterator__map(Iterator, alias fun)(ref StrideIterator!Iterator it)
 {
-    auto iterator = it._iterator.mapIterator!fun;
+    auto iterator = it._iterator._mapIterator!fun;
     return StrideIterator!(typeof(iterator))(it._stride, iterator);
 }
 
@@ -428,30 +432,31 @@ struct StrideIterator(Iterator)
     assert(*stride == *iota);
 }
 
-private template _zip_types(Iterators...)
+package template _zip_types(Iterators...)
 {
-    import std.meta: AliasSeq;
+    alias AliasSeq(T...) = T;
     static if (Iterators.length)
     {
         enum i = Iterators.length - 1;
-        static if (__traits(compiles, &*Iterators[i].init))
+        alias T = typeof(Iterators[i].init[sizediff_t.init]);
+        static if (__traits(compiles, &Iterators[i].init[sizediff_t.init]))
         {
             import mir.functional: Ref;
-            alias _zip_types = AliasSeq!(_zip_types!(Iterators[0 .. i]), Ref!(typeof(*Iterators[i].init)));
+            alias _zip_types = AliasSeq!(_zip_types!(Iterators[0 .. i]), Ref!T);
         }
         else
-            alias _zip_types = AliasSeq!(_zip_types!(Iterators[0 .. i]), typeof(*Iterators[i].init));
+            alias _zip_types = AliasSeq!(_zip_types!(Iterators[0 .. i]), T);
     }
     else
         alias _zip_types = AliasSeq!();
 }
 
-private template _zip_fronts(Iterators...)
+package template _zip_fronts(Iterators...)
 {
     static if (Iterators.length)
     {
         enum i = Iterators.length - 1;
-        static if (__traits(compiles, &*Iterators[i].init))
+        static if (__traits(compiles, &Iterators[i].init[sizediff_t.init]))
             enum _zip_fronts = _zip_fronts!(Iterators[0 .. i]) ~ "Ref!(typeof(*Iterators[" ~ i.stringof ~ "].init))(*_iterators[" ~ i.stringof ~ "]), ";
         else
             enum _zip_fronts = _zip_fronts!(Iterators[0 .. i]) ~ "*_iterators[" ~ i.stringof ~ "], ";
@@ -460,13 +465,13 @@ private template _zip_fronts(Iterators...)
         enum _zip_fronts = "";
 }
 
-private template _zip_index(Iterators...)
+package template _zip_index(Iterators...)
 {
     static if (Iterators.length)
     {
         enum i = Iterators.length - 1;
-        static if (__traits(compiles, &*Iterators[i].init))
-            enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "Ref!(typeof(*Iterators[" ~ i.stringof ~ "].init))(_iterators[" ~ i.stringof ~ "][index]), ";
+        static if (__traits(compiles, &Iterators[i].init[sizediff_t.init]))
+            enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "Ref!(typeof(_iterators[" ~ i.stringof ~ "][index]))(_iterators[" ~ i.stringof ~ "][index]), ";
         else
             enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "_iterators[" ~ i.stringof ~ "][index], ";
     }
@@ -521,7 +526,7 @@ struct ZipIterator(Iterators...)
     auto opIndexAssign(Types...)(RefTuple!(Types) value, ptrdiff_t index)
         if (Types.length == Iterators.length)
     {
-        foreach(i, val; value.expand)
+        foreach(i, ref val; value.expand)
         {
             _iterators[i][index] = val;
         }
@@ -555,6 +560,16 @@ struct ZipIterator(Iterators...)
             return this._iterators[0] - right._iterators[0];
         else
             return this._iterators[0].opCmp(right._iterators[0]);
+    }
+
+    import std.meta: anySatisfy;
+    static if (anySatisfy!(hasZeroShiftFieldMember, Iterators))
+    /// Defined if at least one of `Iterators` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        import std.meta: staticMap;
+        alias _fields = _iterators;
+        return mixin("ZipField!(staticMap!(ZeroShiftField, Iterators))(" ~ applyAssumeZeroShift!Iterators ~ ")");
     }
 }
 
@@ -702,10 +717,10 @@ private enum map_primitives = q{
         static if (is(typeof(*_iterator) : RefTuple!T, T...))
         {
             auto t = *_iterator;
-            return mixin("fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
         }
         else
-            return fun(*_iterator);
+            return _fun(*_iterator);
     }
 
     auto ref opIndex()(ptrdiff_t index)
@@ -713,10 +728,10 @@ private enum map_primitives = q{
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
             auto t = _iterator[index];
-            return mixin("fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
         }
         else
-            return fun(_iterator[index]);
+            return _fun(_iterator[index]);
     }
 
     static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
@@ -726,10 +741,10 @@ private enum map_primitives = q{
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ") = value");
+                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ") = value");
             }
             else
-                return fun(_iterator[index]) = value;
+                return _fun(_iterator[index]) = value;
         }
 
         auto ref opIndexUnary(string op)(ptrdiff_t index)
@@ -737,10 +752,10 @@ private enum map_primitives = q{
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin(op ~ "fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+                return mixin(op ~ "_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
             }
             else
-                return mixin(op ~ "fun(_iterator[index])");
+                return mixin(op ~ "_fun(_iterator[index])");
         }
 
         auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
@@ -748,10 +763,10 @@ private enum map_primitives = q{
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")" ~ op ~ "= value");
+                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")" ~ op ~ "= value");
             }
             else
-                return mixin("fun(_iterator[index])" ~ op ~ "= value");
+                return mixin("_fun(_iterator[index])" ~ op ~ "= value");
         }
     }
 };
@@ -764,24 +779,31 @@ struct VmapIterator(Iterator, Fun)
 @optmath:
 
     ///
+    Iterator _iterator;
+    ///
+    Fun _fun;
+
+    ///
     auto lightConst()() const @property
     {
-        return VmapIterator!(LightConstOf!Iterator, LightConstOf!Fun)(.lightConst(_iterator), .lightConst(fun));
+        return VmapIterator!(LightConstOf!Iterator, LightConstOf!Fun)(.lightConst(_iterator), .lightConst(_fun));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return VmapIterator!(LightImmutableOf!Iterator, LightImmutableOf!Fun)(.lightImmutable(_iterator), .lightImmutable(fun));
+        return VmapIterator!(LightImmutableOf!Iterator, LightImmutableOf!Fun)(.lightImmutable(_iterator), .lightImmutable(_fun));
     }
-
-    ///
-    Iterator _iterator;
-    ///
-    Fun fun;
 
     mixin(map_primitives);
     mixin(std_ops);
+
+    static if (hasZeroShiftFieldMember!Iterator)
+    ///
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return _vmapField(_iterator.assumeFieldsHaveZeroShift, _fun);
+    }
 }
 
 auto MapIterator__map(Iterator, alias fun0, alias fun)(ref MapIterator!(Iterator, fun0) it)
@@ -792,7 +814,7 @@ auto MapIterator__map(Iterator, alias fun0, alias fun)(ref MapIterator!(Iterator
 /++
 `MapIterator` is used by $(SUBREF topology, map).
 +/
-struct MapIterator(Iterator, alias fun)
+struct MapIterator(Iterator, alias _fun)
 {
 @optmath:
     ///
@@ -801,27 +823,34 @@ struct MapIterator(Iterator, alias fun)
     ///
     auto lightConst()() const @property
     {
-        return MapIterator!(LightConstOf!Iterator, fun)(.lightConst(_iterator));
+        return MapIterator!(LightConstOf!Iterator, _fun)(.lightConst(_iterator));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return MapIterator!(LightImmutableOf!Iterator, fun)(.lightImmutable(_iterator));
+        return MapIterator!(LightImmutableOf!Iterator, _fun)(.lightImmutable(_iterator));
     }
 
     import mir.functional: pipe;
     ///
-    static alias __map(alias fun1) = MapIterator__map!(Iterator, fun, pipe!(fun, fun1));
+    static alias __map(alias fun1) = MapIterator__map!(Iterator, _fun, pipe!(_fun, fun1));
 
     mixin(map_primitives);
     mixin(std_ops);
+
+    static if (hasZeroShiftFieldMember!Iterator)
+    ///
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return _mapField!_fun(_iterator.assumeFieldsHaveZeroShift);
+    }
 }
 
-/++
+/+
 Creates a mapped iterator. Uses `__map` if possible.
 +/
-auto mapIterator(alias fun, Iterator)(Iterator iterator)
+auto _mapIterator(alias fun, Iterator)(Iterator iterator)
 {
     static if (__traits(hasMember, Iterator, "__map"))
     {
@@ -835,6 +864,18 @@ auto mapIterator(alias fun, Iterator)(Iterator iterator)
         else
             return Iterator.__map!fun(iterator);
     }
+    else
+       return MapIterator!(Iterator, fun)(iterator);
+}
+
+
+/+
+Creates a mapped iterator. Uses `__vmap` if possible.
++/
+auto _vmapIterator(Iterator, Fun)(Iterator iterator, Fun fun)
+{
+    static if (__traits(hasMember, Iterator, "__vmap"))
+        return Iterator.__vmap(iterator, fun);
     else
        return MapIterator!(Iterator, fun)(iterator);
 }
@@ -926,7 +967,6 @@ struct BytegroupIterator(Iterator, size_t count, DestinationType)
 @optmath:
     ///
     Iterator _iterator;
-
 
     ///
     auto lightConst()() const @property
@@ -1074,8 +1114,7 @@ version(mir_test) unittest
 
 auto IndexIterator__map(Iterator, Field, alias fun)(ref IndexIterator!(Iterator, Field) it)
 {
-    import mir.ndslice.field: mapField;
-    auto field = it._field.mapField!fun;
+    auto field = it._field._mapField!fun;
     return IndexIterator!(Iterator, typeof(field))(it._iterator, field);
 }
 
@@ -1272,8 +1311,8 @@ struct SliceIterator(Iterator, size_t N = 1, SliceKind kind = Contiguous)
 
 public auto FieldIterator__map(Field, alias fun)(ref FieldIterator!(Field) it)
 {
-    import mir.ndslice.field: mapField;
-    auto field = it._field.mapField!fun;
+    import mir.ndslice.field: _mapField;
+    auto field = it._field._mapField!fun;
     return FieldIterator!(typeof(field))(it._index, field);
 }
 
@@ -1371,6 +1410,22 @@ struct FieldIterator(Field)
 
     ptrdiff_t opCmp()(ref const typeof(this) right) const
     { return this._index - right._index; }
+
+    ///
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        if (_expect(_index != 0, false))
+        {
+            version (D_Exceptions)
+                throw assumeZeroShiftException;
+            else
+                assert(0, assumeZeroShiftExceptionMsg);
+        }
+        static if (hasZeroShiftFieldMember!Field)
+            return _field.assumeFieldsHaveZeroShift;
+        else
+            return _field;
+    }
 }
 
 auto FlattenedIterator__map(Iterator, size_t N, SliceKind kind, alias fun)(ref FlattenedIterator!(Iterator, N, kind) it)

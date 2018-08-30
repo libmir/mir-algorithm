@@ -219,3 +219,22 @@ version(mir_test) unittest
     static assert(!isCanonicalSlice!S8);
     static assert(isUniversalSlice!S8);
 }
+
+///
+template isIterator(T)
+{
+    enum isIterator = __traits(compiles, (T a, T b)
+    {
+        sizediff_t diff = a - b;
+        ++a;
+        ++b;
+        --a;
+        --b;
+        auto t = a[sizediff_t(3)];
+        b = a + sizediff_t(3);
+        b = a - sizediff_t(3);
+        a += sizediff_t(3);
+        a -= sizediff_t(3);
+        return *a;
+    });
+}

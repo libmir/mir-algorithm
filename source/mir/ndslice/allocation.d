@@ -48,7 +48,7 @@ import mir.ndslice.internal;
 import mir.ndslice.concatenation;
 import mir.math.common: optmath;
 import mir.ndslice.iterator: FieldIterator;
-import mir.ndslice.field: BitwiseField;
+import mir.ndslice.field: BitField;
 
 @optmath:
 
@@ -162,7 +162,7 @@ Returns:
     n-dimensional bitwise slice
 See_also: $(SUBREF topology, bitwise).
 +/
-Slice!(FieldIterator!(BitwiseField!(size_t*)), N) bitSlice(size_t N)(size_t[N] lengths...)
+Slice!(FieldIterator!(BitField!(size_t*)), N) bitSlice(size_t N)(size_t[N] lengths...)
 {
     import mir.ndslice.topology: bitwise;
     enum elen = size_t.sizeof * 8;

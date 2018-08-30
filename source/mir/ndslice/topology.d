@@ -38,7 +38,6 @@ $(T2 as, Convenience function that creates a lazy view,
 where each element of the original slice is converted to a type `T`.)
 $(T2 bitpack, Bitpack slice over an unsigned integral slice.)
 $(T2 bitwise, Bitwise slice over an unsigned integral slice.)
-$(T2 bitwiseField, Bitwise field over an unsigned integral field.)
 $(T2 bytegroup, Groups existing slice into fixed length chunks and uses them as data store for destination type.)
 $(T2 cached, Random access cache. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
 $(T2 cachedGC, Random access cache auto-allocated in GC heap. It is usefull in combiation with $(LREF map) and $(LREF vmap).)
@@ -105,7 +104,6 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 +/
 module mir.ndslice.topology;
 
-import std.traits;
 import std.meta;
 
 import mir.internal.utility;
@@ -324,6 +322,15 @@ version(mir_test) unittest
 }
 
 /++
++/
+auto assumeFieldsHaveZeroShift(Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, N, kind) slice)
+    if (__traits(hasMember, Iterator, "assumeFieldsHaveZeroShift"))
+{
+    return slice._iterator.assumeFieldsHaveZeroShift.slicedField(slice._lengths);
+}
+
+/++
 Creates a packed slice, i.e. slice of slices.
 Packs the last `P` dimensions.
 The function does not allocate any data.
@@ -526,7 +533,7 @@ See_also: $(LREF ndiota)
 Slice!(IotaIterator!I, N)
 iota
     (I = sizediff_t, size_t N)(size_t[N] lengths...)
-    if (isIntegral!I)
+    if (__traits(isIntegral, I))
 {
     import mir.ndslice.slice : sliced;
     return IotaIterator!I(I.init).sliced(lengths);
@@ -552,13 +559,13 @@ iota
 
 ///ditto
 template iota(I)
-    if (isIntegral!I)
+    if (__traits(isIntegral, I))
 {
     ///
     Slice!(IotaIterator!I, N)
     iota
         (size_t N)(size_t[N] lengths, I start)
-        if (isIntegral!I)
+        if (__traits(isIntegral, I))
     {
         import mir.ndslice.slice : sliced;
         return IotaIterator!I(start).sliced(lengths);
@@ -568,7 +575,7 @@ template iota(I)
     Slice!(StrideIterator!(IotaIterator!I), N)
     iota
         (size_t N)(size_t[N] lengths, I start, size_t stride)
-        if (isIntegral!I)
+        if (__traits(isIntegral, I))
     {
         import mir.ndslice.slice : sliced;
         return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
@@ -579,7 +586,7 @@ template iota(I)
 Slice!(IotaIterator!I, N)
 iota
     (I, size_t N)(size_t[N] lengths, I start)
-    if (isPointer!I)
+    if (is(I P : P*))
 {
     import mir.ndslice.slice : sliced;
     return IotaIterator!I(start).sliced(lengths);
@@ -589,7 +596,7 @@ iota
 Slice!(StrideIterator!(IotaIterator!I), N)
 iota
     (I, size_t N)(size_t[N] lengths, I start, size_t stride)
-    if (isPointer!I)
+    if (is(I P : P*))
 {
     import mir.ndslice.slice : sliced;
     return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
@@ -1887,6 +1894,74 @@ version(mir_test) unittest
 }
 
 /++
+Cycle creates 1-dimensional slice over the range.
++/
+auto cycle(Field)(Field field, size_t loopLength, size_t length)
+    if (!isSlice!Field && !is(Field : T[], T))
+{
+    return CycleField!Field(loopLength, field).slicedField(length);
+}
+
+/// ditto
+auto cycle(size_t loopLength, Field)(Field field, size_t length)
+    if (!isSlice!Field && !is(Field : T[], T))
+{
+    static assert(loopLength);
+    return CycleField!(Field, loopLength)(field).slicedField(length);
+}
+
+/// ditto
+auto cycle(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice, size_t length)
+{
+    assert(slice.length);
+    static if (kind == Universal)
+        return slice.hideStride.cycle(length);
+    else
+        return CycleField!Iterator(slice._lengths[0], slice._iterator).slicedField(length);
+}
+
+/// ditto
+auto cycle(size_t loopLength, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice, size_t length)
+{
+    static assert(loopLength);
+    assert(loopLength <= slice.length);
+    static if (kind == Universal)
+        return slice.hideStride.cycle!loopLength(length);
+    else
+        return CycleField!(Iterator, loopLength)(slice._iterator).slicedField(length);
+}
+ 
+/// ditto
+auto cycle(T)(T[] array, size_t length)
+{
+    return cycle(array.sliced, length);
+}
+
+/// ditto
+auto cycle(size_t loopLength, T)(T[] array, size_t length)
+{
+    return cycle!loopLength(array.sliced, length);
+}
+
+
+/// ditto
+auto cycle(size_t loopLength, T)(auto ref T withAsSlice, size_t length)
+    if (hasAsSlice!T)
+{
+    return cycle!loopLength(withAsSlice.asSlice, length);
+}
+
+///
+unittest
+{
+    auto slice = iota(3);
+    assert(slice.cycle(7) == [0, 1, 2, 0, 1, 2, 0]);
+    assert(slice.cycle!2(7) == [0, 1, 0, 1, 0, 1, 0]);
+    assert([0, 1, 2].cycle(7) == [0, 1, 2, 0, 1, 2, 0]);
+    assert([4, 3, 2, 1].cycle!4(7) == [4, 3, 2, 1, 4, 3, 2]);
+}
+
+/++
 Strides 1-dimensional slice.
 Params:
     slice = 1-dimensional unpacked slice.
@@ -2011,17 +2086,17 @@ Returns: A bitwise slice.
 auto bitwise
     (Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
     (Slice!(Iterator, N, kind) slice)
-    if (isIntegral!I && (kind == Contiguous || kind == Canonical))
+    if (__traits(isIntegral, I) && (kind == Contiguous || kind == Canonical))
 {
     static if (is(Iterator : FieldIterator!Field, Field))
     {
         enum simplified = true;
-        alias It = FieldIterator!(BitwiseField!Field);
+        alias It = FieldIterator!(BitField!Field);
     }
     else
     {
         enum simplified = false;
-        alias It = FieldIterator!(BitwiseField!Iterator);
+        alias It = FieldIterator!(BitField!Iterator);
     }
     alias Ret = Slice!(It, N, kind);
     size_t[Ret.N] lengths;
@@ -2032,9 +2107,9 @@ auto bitwise
     foreach(i; Iota!(Ret.S))
         strides[i] = slice._strides[i];
     static if (simplified)
-        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8, BitwiseField!Field(slice._iterator._field)));
+        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field)));
     else
-        return Ret(lengths, strides, It(0, BitwiseField!Iterator(slice._iterator)));
+        return Ret(lengths, strides, It(0, BitField!Iterator(slice._iterator)));
 }
 
 /// ditto
@@ -2095,10 +2170,10 @@ Params:
     field = an integral field.
 Returns: A bitwise field.
 +/
-auto bitwiseField(Field)(Field field)
-    if (isIntegral!(typeof(Field.init[size_t.init])))
+auto bitwiseField(Field, I = typeof(Field.init[size_t.init]))(Field field)
+    if (__traits(isUnsigned, I))
 {
-    return BitwiseField!Field(field);
+    return BitField!(Field, I)(field);
 }
 
 /++
@@ -2114,7 +2189,7 @@ Returns: A bitpack slice.
 auto bitpack
     (size_t pack, Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
     (Slice!(Iterator, N, kind) slice)
-    if (isIntegral!I && (kind == Contiguous || kind == Canonical) && pack > 1)
+    if (__traits(isIntegral, I) && (kind == Contiguous || kind == Canonical) && pack > 1)
 {
     static if (is(Iterator : FieldIterator!Field, Field) && I.sizeof * 8 % pack == 0)
     {
@@ -2265,7 +2340,7 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
-    $(LREF cached), $(LREF map), $(LREF indexed),
+    $(LREF cached), $(LREF vmap), $(LREF indexed),
     $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -2289,8 +2364,7 @@ template map(fun...)
             auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
-                auto iterator = mapIterator!f(slice._iterator);
-                return Slice!(typeof(iterator), N, kind)(slice._lengths, slice._strides, iterator);
+                return Slice!(typeof(_mapIterator!f(slice._iterator)), N, kind)(slice._lengths, slice._strides, _mapIterator!f(slice._iterator));
             }
 
             /// ditto
@@ -2732,9 +2806,10 @@ Returns:
     ndslice, which is internally composed of three ndslices: `original`, allocated cache and allocated bit-ndslice.
 See_also: $(LREF cached), $(LREF map), $(LREF vmap), $(LREF indexed)
 +/
-Slice!(CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitwiseField!(size_t*))), N)
+Slice!(CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitField!(size_t*))), N)
     cachedGC(Iterator, size_t N)(Slice!(Iterator, N) original) @trusted
 {
+    import std.traits: hasElaborateAssign, Unqual;
     import mir.ndslice.allocation: bitSlice, slice, uninitSlice;
     alias C = typeof(Iterator.init[0]);
     alias UC = Unqual!C;
@@ -2848,7 +2923,7 @@ template as(T)
         static if (is(slice.DeepElement == T))
             return slice;
         else
-        static if (isPointer!Iterator && is(const(Unqual!(typeof(Iterator.init[0]))) == T))
+        static if (is(Iterator : T*))
             return slice.toConst;
         else
         {

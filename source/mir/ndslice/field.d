@@ -8,10 +8,11 @@ An ndslice can be created on top of a field using $(SUBREF slice, slicedField).
 $(BOOKTABLE $(H2 Fields),
 $(TR $(TH Field Name) $(TH Used By))
 $(T2 BitpackField, $(SUBREF topology, bitpack))
-$(T2 BitwiseField, $(SUBREF topology, bitwise))
+$(T2 BitField, $(SUBREF topology, bitwise))
+$(T2 CycleField, $(SUBREF topology, cycle) (2 kinds))
 $(T2 LinspaceField, $(SUBREF topology, linspace))
 $(T2 MagicField, $(SUBREF topology, magic))
-$(T2 MapField, $(SUBREF topology, map))
+$(T2 MapField, $(SUBREF topology, map) and $(SUBREF topology, mapField))
 $(T2 ndIotaField, $(SUBREF topology, ndiota))
 $(T2 OrthogonalReduceField, $(SUBREF topology, orthogonalReduceField))
 $(T2 RepeatField, $(SUBREF topology, repeat))
@@ -28,13 +29,34 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.field;
 
-import std.traits;
 import mir.internal.utility: Iota;
 import mir.math.common: optmath;
 import mir.ndslice.internal;
 import mir.qualifier;
 
 @optmath:
+
+package template ZeroShiftField(T)
+{
+    static if (hasZeroShiftFieldMember!T)
+        alias ZeroShiftField = typeof(T.init.assumeFieldsHaveZeroShift());
+    else
+        alias ZeroShiftField = T;
+}
+
+package enum hasZeroShiftFieldMember(T) = __traits(hasMember, T, "assumeFieldsHaveZeroShift");
+
+package auto applyAssumeZeroShift(Types...)()
+{
+    import mir.ndslice.topology;
+    string str;
+    foreach(i, T; Types)
+        static if (hasZeroShiftFieldMember!T)
+            str ~= "_fields[" ~ i.stringof ~ "].assumeFieldsHaveZeroShift, ";
+        else
+            str ~= "_fields[" ~ i.stringof ~ "], ";
+    return str;
+}
 
 auto MapField__map(Field, alias fun, alias fun1)(ref MapField!(Field, fun) f)
 {
@@ -46,7 +68,7 @@ auto MapField__map(Field, alias fun, alias fun1)(ref MapField!(Field, fun) f)
 /++
 `MapField` is used by $(SUBREF topology, map).
 +/
-struct MapField(Field, alias fun)
+struct MapField(Field, alias _fun)
 {
 @optmath:
     ///
@@ -55,19 +77,19 @@ struct MapField(Field, alias fun)
     ///
     auto lightConst()() const @property
     {
-        return MapField!(LightConstOf!Field, fun)(_field.lightConst);
+        return MapField!(LightConstOf!Field, _fun)(_field.lightConst);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return MapField!(LightImmutableOf!Field, fun)(_field.lightImmutable);
+        return MapField!(LightImmutableOf!Field, _fun)(_field.lightImmutable);
     }
 
     /++
     User defined constructor used by $(LREF mapField).
     +/
-    static alias __map(alias fun1) = MapField__map!(Field, fun, fun1);
+    static alias __map(alias fun1) = MapField__map!(Field, _fun, fun1);
 
     auto ref opIndex(T...)(auto ref T index)
     {
@@ -75,37 +97,194 @@ struct MapField(Field, alias fun)
         static if (is(typeof(_field[index]) : RefTuple!K, K...))
         {
             auto t = _field[index];
-            return mixin("fun(" ~ _iotaArgs!(K.length, "t.expand[", "].unref, ") ~ ")");
+            return mixin("_fun(" ~ _iotaArgs!(K.length, "t.expand[", "].unref, ") ~ ")");
         }
         else
-            return fun(_field[index]);
+            return _fun(_field[index]);
     }
 
+    static if (__traits(hasMember, Field, "length"))
     auto length()() @property
     {
         return _field.length;
     }
 
+    static if (__traits(hasMember, Field, "shape"))
     auto shape()() @property
     {
         return _field.shape;
     }
 
+    static if (__traits(hasMember, Field, "elementsCount"))
     auto elementsCount()() @property
     {
         return _field.elementsCount;
     }
+
+    static if (hasZeroShiftFieldMember!Field)
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return _mapField!_fun(_field.assumeFieldsHaveZeroShift);
+    }
 }
 
 /++
+`VmapField` is used by $(SUBREF topology, map).
++/
+struct VmapField(Field)
+{
+@optmath:
+    ///
+    Field _field;
+    ///
+    Fun _fun;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return VmapField!(LightConstOf!Field, _fun)(_field.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return VmapField!(LightImmutableOf!Field, _fun)(_field.lightImmutable);
+    }
+
+    auto ref opIndex(T...)(auto ref T index)
+    {
+        import mir.functional: RefTuple, unref;
+        static if (is(typeof(_field[index]) : RefTuple!K, K...))
+        {
+            auto t = _field[index];
+            return mixin("_fun(" ~ _iotaArgs!(K.length, "t.expand[", "].unref, ") ~ ")");
+        }
+        else
+            return _fun(_field[index]);
+    }
+
+    static if (__traits(hasMember, Field, "length"))
+    auto length()() @property
+    {
+        return _field.length;
+    }
+
+    static if (__traits(hasMember, Field, "shape"))
+    auto shape()() @property
+    {
+        return _field.shape;
+    }
+
+    static if (__traits(hasMember, Field, "elementsCount"))
+    auto elementsCount()() @property
+    {
+        return _field.elementsCount;
+    }
+
+    static if (hasZeroShiftFieldMember!Field)
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return _vmapField(_field.assumeFieldsHaveZeroShift, _fun);
+    }
+}
+
+/+
 Creates a mapped field. Uses `__map` if possible.
 +/
-auto mapField(alias fun, Field)(Field field)
+auto _mapField(alias fun, Field)(Field field)
 {
+    import mir.functional: naryFun;
+    static if ((
+        __traits(isSame, fun, naryFun!"a|b") ||
+        __traits(isSame, fun, naryFun!"a^b") ||
+        __traits(isSame, fun, naryFun!"a&b") ||
+        __traits(isSame, fun, naryFun!"a | b") ||
+        __traits(isSame, fun, naryFun!"a ^ b") ||
+        __traits(isSame, fun, naryFun!"a & b")) &&
+        is(Field : ZipField!(BitField!(LeftField, I), BitField!(RightField, I)), LeftField, RightField, I))
+    {
+        import mir.ndslice.topology: bitwiseField;
+        auto f = ZipField!(LeftField, RightField)(field._fields[0]._field, field._fields[1]._field)._mapField!fun;
+        return f.bitwiseField!(typeof(f), I);
+    }
+    else
     static if (__traits(hasMember, Field, "__map"))
         return Field.__map!fun(field);
     else
         return MapField!(Field, fun)(field);
+}
+
+/+
+Creates a mapped field. Uses `__vmap` if possible.
++/
+auto _vmapField(Field, Fun)(Field field, Fun fun)
+{
+    static if (__traits(hasMember, Field, "__vmap"))
+        return Field.__vmap(field, fun);
+    else
+        return VmapField!Field(field, fun);
+}
+
+/++
+Iterates multiple fields in lockstep.
+
+`ZipField` is used by $(SUBREF topology, zipFields).
++/
+struct ZipField(Fields...)
+    if (Fields.length > 1)
+{
+@optmath:
+    import mir.functional: RefTuple, Ref;
+    import std.meta: anySatisfy;
+
+    ///
+    Fields _fields;
+
+    ///
+    auto lightConst()() const @property
+    {
+        import std.format;
+        import mir.ndslice.topology: iota;
+        import std.meta: staticMap;
+        return mixin("ZipField!(staticMap!(LightConstOf, Fields))(%(_fields[%s].lightConst,%)].lightConst)".format(_fields.length.iota));
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        import std.format;
+        import mir.ndslice.topology: iota;
+        import std.meta: staticMap;
+        return mixin("ZipField!(staticMap!(LightImmutableOf, Fields))(%(_fields[%s].lightImmutable,%)].lightImmutable)".format(_fields.length.iota));
+    }
+
+    auto opIndex()(ptrdiff_t index)
+    {
+        alias Iterators = Fields;
+        alias _iterators = _fields;
+        import mir.ndslice.iterator: _zip_types, _zip_index;
+        return mixin("RefTuple!(_zip_types!Fields)(" ~ _zip_index!Fields ~ ")");
+    }
+
+    auto opIndexAssign(Types...)(RefTuple!(Types) value, ptrdiff_t index)
+        if (Types.length == Fields.length)
+    {
+        foreach(i, ref val; value.expand)
+        {
+            _fields[i][index] = val;
+        }
+        return opIndex(index);
+    }
+
+    static if (anySatisfy!(hasZeroShiftFieldMember, Fields))
+    /// Defined if at least one of `Fields` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        import std.meta: staticMap;
+        return mixin("ZipField!(staticMap!(ZeroShiftField, Fields))(" ~ applyAssumeZeroShift!Fields ~ ")");
+    }
 }
 
 /++
@@ -113,6 +292,8 @@ auto mapField(alias fun, Field)(Field field)
 +/
 struct RepeatField(T)
 {
+    import std.traits: Unqual;
+
 @optmath:
     static if (is(T == class) || is(T == interface) || is(T : Unqual!T) && is(Unqual!T : T))
         ///
@@ -141,48 +322,74 @@ struct RepeatField(T)
 }
 
 /++
-`BitwiseField` is used by $(SUBREF topology, bitwise).
+`BitField` is used by $(SUBREF topology, bitwise).
 +/
-struct BitwiseField(Field, I = typeof(Field.init[size_t.init]))
-    if (isUnsigned!I)
+struct BitField(Field, I = typeof(Field.init[size_t.init]))
+    if (__traits(isUnsigned, I))
 {
 @optmath:
-    import core.bitop: bsr;
+    import mir.bitop: ctlz;
     package(mir) alias E = I;
-    package(mir) enum shift = bsr(I.sizeof) + 3;
-    package(mir) enum mask = (1 << shift) - 1;
+    package(mir) enum shift = ctlz(I.sizeof) + 3;
 
     ///
     Field _field;
 
+    /// optimization for bitwise operations
+    auto __vmap(Fun : LeftOp!(op, bool), string op)(Fun fun)
+        if (op == "|" || op == "&" || op == "^")
+    {
+        import mir.ndslice.topology: bitwiseField;
+        return _vmapField(_field, RightOp!(op, I)(I(0) - fun.value)).bitwiseField;
+    }
+
+    /// ditto
+    auto __vmap(Fun : RightOp!(op, bool), string op)(Fun fun)
+        if (op == "|" || op == "&" || op == "^")
+    {
+        import mir.ndslice.topology: bitwiseField;
+        return _vmapField(_field, RightOp!(op, I)(I(0) - fun.value)).bitwiseField;
+    }
+
+    /// ditto
+    auto __vmap(Fun)(Fun fun)
+    {
+        return VmapField!(typeof(this), Fun)(this, fun);
+    }
+
+    /// ditto
+    alias __map(alias fun) = BitField__map!(Field, I, fun);
+
     ///
     auto lightConst()() const @property
     {
-        return BitwiseField!(LightConstOf!Field)(_field.lightConst);
+        return BitField!(LightConstOf!Field)(_field.lightConst);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return BitwiseField!(LightImmutableOf!Field)(_field.lightImmutable);
+        return BitField!(LightImmutableOf!Field)(_field.lightImmutable);
     }
 
     bool opIndex()(size_t index)
     {
-        return ((_field[index >>> shift] & (I(1) << (index & mask)))) != 0;
+        import mir.bitop: bt;
+        return bt!(Field, I)(_field, index) != 0;
     }
 
     bool opIndexAssign()(bool value, size_t index)
     {
-        auto m = I(1) << (index & mask);
-        index >>= shift;
-        Unqual!I e = _field[index];
-        if (value)
-            e |= m;
-        else
-            e &= ~m;
-        _field[index] = e;
+        import mir.bitop: bta;
+        bta!(Field, I)(_field, index, value);
         return value;
+    }
+
+    static if (hasZeroShiftFieldMember!Field)
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return BitField!(ZeroShiftField!Field, I)(_field.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -191,17 +398,32 @@ version(mir_test) unittest
 {
 	import mir.ndslice.iterator: FieldIterator;
     ushort[10] data;
-    auto f = FieldIterator!(BitwiseField!(ushort*))(0, BitwiseField!(ushort*)(data.ptr));
+    auto f = FieldIterator!(BitField!(ushort*))(0, BitField!(ushort*)(data.ptr));
     f[123] = true;
     f++;
     assert(f[122]);
+}
+
+auto BitField__map(Field, I, alias fun)(BitField!(Field, I) field)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, fun, naryFun!"~a"))
+    {
+        import mir.ndslice.topology: bitwiseField;
+        auto f = _mapField!fun(field._field);
+        return f.bitwiseField!(typeof(f), I);
+    }
+    else
+    {
+        return field;
+    }
 }
 
 /++
 `BitpackField` is used by $(SUBREF topology, bitpack).
 +/
 struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
-    if (isUnsigned!I)
+    if (__traits(isUnsigned, I))
 {
     //static assert();
 @optmath:
@@ -241,6 +463,7 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
 
     I opIndexAssign()(I value, size_t index)
     {
+        import std.traits: Unsigned;
         assert(cast(Unsigned!I)value <= mask);
         index *= pack;
         size_t start = index % bits;
@@ -253,6 +476,13 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
                 _field[index + 1] = cast(I)((_field[index + 1] & ~((I(1) << end) - 1)) ^ (value >>> (pack - end)));
         }
         return value;
+    }
+
+    static if (hasZeroShiftFieldMember!Field)
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return BitpackField!(ZeroShiftField!Field, pack, I)(_field.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -328,8 +558,9 @@ struct OrthogonalReduceField(FieldsIterator, alias fun)
     }
 
     /// `r = fun(r, fields[i][index]);` reduction by `i`
-    auto opIndex()(size_t index) const
+    auto opIndex()(size_t index)
     {
+        import std.traits: Unqual;
         assert(_fields.length);
         auto fields = _fields.lightConst;
         Unqual!(typeof(fun(fields.front[index], fields.front[index]))) r = fields.front[index];
@@ -341,6 +572,102 @@ struct OrthogonalReduceField(FieldsIterator, alias fun)
             r = fun(r, fields.front[index]);
         }
         return r;
+    }
+}
+
+///
+struct CycleField(Field)
+{
+    import mir.ndslice.slice: Slice;
+
+@optmath:
+    /// Cycle length
+    size_t _length;
+    ///
+    Field _field;
+
+    ///
+    auto lightConst()() const @property
+    {
+        auto field = _field.lightConst;
+        return CycleField!(typeof(field))(_length, field);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        auto field = _field.lightImmutable;
+        return CycleField!(typeof(field))(_length, field);
+    }
+
+    ///
+    auto ref opIndex()(size_t index)
+    {
+        return _field[index % _length];
+    }
+
+    ///
+    static if (!__traits(compiles, &opIndex(size_t.init)))
+    {
+        auto ref opIndexAssign(T)(auto ref T value, size_t index)
+        {
+            return _field[index % _length] = value;
+        }
+    }
+
+    static if (hasZeroShiftFieldMember!Field)
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return CycleField!(ZeroShiftField!Field)(_length, _field.assumeFieldsHaveZeroShift);
+    }
+}
+
+///
+struct CycleField(Field, size_t length)
+{
+    import mir.ndslice.slice: Slice;
+
+@optmath:
+    /// Cycle length
+    enum _length = length;
+    ///
+    Field _field;
+
+    ///
+    auto lightConst()() const @property
+    {
+        auto field = _field.lightConst;
+        return CycleField!(typeof(field), _length)(field);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        auto field = _field.lightImmutable;
+        return CycleField!(typeof(field), _length)(field);
+    }
+
+    ///
+    auto ref opIndex()(size_t index)
+    {
+        return _field[index % _length];
+    }
+
+    ///
+    static if (!__traits(compiles, &opIndex(size_t.init)))
+    {
+        auto ref opIndexAssign(T)(auto ref T value, size_t index)
+        {
+            return _field[index % _length] = value;
+        }
+    }
+
+    static if (hasZeroShiftFieldMember!Field)
+    /// Defined if `Field` has member `assumeFieldsHaveZeroShift`.
+    auto assumeFieldsHaveZeroShift() @property
+    {
+        return CycleField!(ZeroShiftField!Field, _length)(_field.assumeFieldsHaveZeroShift);
     }
 }
 
@@ -361,7 +688,7 @@ struct ndIotaField(size_t N)
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightImmutable()() const @property
     {
         return ndIotaField!N(_lengths);
     }
@@ -398,14 +725,14 @@ struct LinspaceField(T)
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightImmutable()() const @property
     {
         return LinspaceField!T(_length, _start, _stop);
     }
 
     // no fastmath
     ///
-    T opIndex()(sizediff_t index)
+    T opIndex()(sizediff_t index) const
     {
         sizediff_t d = _length - 1;
         auto v = typeof(T.init.re)(d - index);
@@ -420,13 +747,13 @@ struct LinspaceField(T)
 @optmath:
 
     ///
-    size_t length()() @property
+    size_t length()() const @property
     {
         return _length;
     }
 
     ///
-    size_t[1] shape(size_t dimension = 0)() @property @nogc
+    size_t[1] shape(size_t dimension = 0)() const @property @nogc
         if (dimension == 0)
     {
         return [_length];
@@ -453,26 +780,26 @@ struct MagicField()
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightImmutable()() const @property
     {
         return MagicField!()(_n);
     }
 
     ///
-    size_t length(size_t dimension = 0)() @property
+    size_t length(size_t dimension = 0)() const @property
         if(dimension <= 2)
     {
         return _n * _n;
     }
 
     ///
-    size_t[1] shape()() @property @nogc
+    size_t[1] shape()() const @property @nogc
     {
         return [_n * _n];
     }
 
     ///
-    size_t opIndex()(size_t index)
+    size_t opIndex()(size_t index) const
     {
         auto d = index / _n;
         auto m = index % _n;

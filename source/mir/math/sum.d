@@ -264,7 +264,7 @@ unittest
 }
 
 import std.traits;
-import std.meta: AliasSeq;
+private alias AliasSeq(T...) = T;
 import mir.internal.utility: Iota, isComplex;
 
 private template chainSeq(size_t n)
@@ -874,10 +874,10 @@ public:
         else
         static if (summation == Summation.pairwise)
         {
-            import core.bitop : bsf;
+            import mir.bitop: cttz;
             ++counter;
             partials[index] = n;
-            foreach (_; 0 .. bsf(counter))
+            foreach (_; 0 .. cttz(counter))
             {
                 immutable newIndex = index - 1;
                 partials[newIndex] += partials[index];

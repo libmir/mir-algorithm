@@ -9,14 +9,13 @@ Authors:   Ilya Yaroshenko
 +/
 module mir.math.common;
 
-import std.traits: isFloatingPoint;
-import mir.internal.utility: isComplex;
+import mir.internal.utility: isComplex, isFloatingPoint;
 
 version(LDC)
 {
     static import ldc.attributes;
 
-    import std.meta: AliasSeq;
+    private alias AliasSeq(T...) = T;
 
     /++
     Functions attribute, an alias for `AliasSeq!(llvmFastMathFlag("contract"));`.

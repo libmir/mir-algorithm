@@ -49,7 +49,9 @@ import mir.array.primitives;
 import mir.functional: naryFun;
 import mir.internal.utility;
 import mir.math.common: optmath;
+import mir.ndslice.field: BitField;
 import mir.ndslice.internal;
+import mir.ndslice.iterator: FieldIterator, RetroIterator;
 import mir.ndslice.slice;
 import mir.primitives;
 import std.meta;
@@ -58,6 +60,478 @@ import std.traits;
 
 @optmath:
 
+
+/+
+Bitslice representation for accelerated bitwise algorithm.
+1-dimensional contiguousitslice can be split into three chunks: head bits, body chunks, and tail bits.
+
+Bitslice can have head bits because it has slicing and the zero bit may not be aligned to the zero of a body chunk.
++/
+private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
+    if (__traits(isUnsigned, I))
+{
+    import mir.bitop;
+    import mir.qualifier: lightConst;
+    import mir.ndslice.traits: isIterator;
+    import mir.ndslice.iterator: FieldIterator;
+    import mir.ndslice.field: BitField;
+
+    ///
+    alias U = typeof(I + 1u);
+    /// body bits chunks
+    static if (isIterator!Field)
+        Slice!Field bodyChunks;
+    else
+        Slice!(SlicedField!Field) bodyChunks;
+    /// head length
+    int headLength;
+    /// tail length
+    int tailLength;
+
+@optmath:
+
+    this(Slice!(FieldIterator!(BitField!(Field, I))) slice)
+    {
+        enum mask = bitShiftMask!I;
+        enum shift = bitElemShift!I;
+        size_t length = slice.length;
+        size_t index = slice._iterator._index;
+        if (auto hlen = index & mask)
+        {
+            auto l = I.sizeof * 8 - hlen;
+            if (l > length)
+            {
+                // central problem
+                headLength = -cast(int) length;
+                tailLength = cast(int) hlen;
+            }
+            else
+            {
+                headLength = cast(uint) l;
+                length -= l;
+                index += l;
+            }
+        }
+        tailLength = cast(int) (length & mask);
+        length >>= shift;
+        index >>= shift;
+        bodyChunks._lengths[0] = length;
+        static if (isIterator!Field)
+        {
+            bodyChunks._iterator = slice._iterator._field._field;
+            bodyChunks._iterator += index;
+        }
+        else
+        {
+            bodyChunks._iterator._index = index;
+            bodyChunks._iterator._field = slice._iterator._field._field;
+        }
+    }
+
+const:
+
+    bool isCentralProblem()
+    {
+        return headLength < 0;
+    }
+
+    U centralBits()
+    {
+        assert(isCentralProblem);
+        return *bodyChunks._iterator.lightConst >>> tailLength;
+    }
+
+    uint centralLength()
+    {
+        assert(isCentralProblem);
+        return -headLength;
+    }
+
+    /// head bits (last `headLength` bits are valid).
+    U headBits()
+    {
+        assert(!isCentralProblem);
+        if (headLength == 0)
+            return U.init;
+        static if (isIterator!Field)
+            return bodyChunks._iterator.lightConst[-1];
+        else
+            return bodyChunks._iterator._field.lightConst[bodyChunks._iterator._index - 1];
+    }
+
+    /// tail bits (first `tailLength` bits are valid).
+    U tailBits()
+    {
+        assert(!isCentralProblem);
+        if (tailLength == 0)
+            return U.init;
+        static if (isIterator!Field)
+            return bodyChunks._iterator.lightConst[bodyChunks.length];
+        else
+            return bodyChunks._iterator._field.lightConst[bodyChunks._iterator._index + bodyChunks.length];
+    }
+
+    U negCentralMask()
+    {
+        return U.max << centralLength;
+    }
+
+    U negHeadMask()
+    {
+        return U.max << headLength;
+    }
+
+    U negTailMask()
+    {
+        return U.max << tailLength;
+    }
+
+    U negCentralMaskS()
+    {
+        return U.max >> centralLength;
+    }
+
+    U negHeadMaskS()
+    {
+        return U.max >> headLength;
+    }
+
+    U negTailMaskS()
+    {
+        return U.max >> tailLength;
+    }
+
+    U centralBitsWithRemainingZeros()
+    {
+        return centralBits & ~negCentralMask;
+    }
+
+    U centralBitsWithRemainingZerosS()
+    {
+        return centralBits << (U.sizeof * 8 - centralLength);
+    }
+
+    U headBitsWithRemainingZeros()
+    {
+        return headBits >>> (I.sizeof * 8 - headLength);
+    }
+
+    U headBitsWithRemainingZerosS()
+    {
+        static if (U.sizeof > I.sizeof)
+            return (headBits << (U.sizeof - I.sizeof) * 8) & ~negTailMaskS;
+        else
+            return headBits & ~negTailMaskS;
+    }
+
+    U tailBitsWithRemainingZeros()
+    {
+        return tailBits & ~negTailMask;
+    }
+
+    U tailBitsWithRemainingZerosS()
+    {
+        return tailBits << (U.sizeof * 8 - tailLength);
+    }
+
+    U centralBitsWithRemainingOnes()
+    {
+        return centralBits | negCentralMask;
+    }
+
+    U centralBitsWithRemainingOnesS()
+    {
+        return centralBitsWithRemainingZerosS | negCentralMaskS;
+    }
+
+    U headBitsWithRemainingOnes()
+    {
+        return headBitsWithRemainingZeros | negHeadMask;
+    }
+
+    U headBitsWithRemainingOnesS()
+    {
+        return headBitsWithRemainingZerosS | negHeadMaskS;
+    }
+
+    U tailBitsWithRemainingOnes()
+    {
+        return tailBits | negTailMask;
+    }
+
+    U tailBitsWithRemainingOnesS()
+    {
+        return tailBitsWithRemainingZerosS | negTailMaskS;
+    }
+
+    size_t ctpop()
+    {
+        import mir.bitop: ctpop;
+        if (isCentralProblem)
+            return centralBitsWithRemainingZeros.ctpop;
+        size_t ret;
+        if (headLength)
+            ret = cast(size_t) headBitsWithRemainingZeros.ctpop;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                ret += cast(size_t) bc.front.ctpop;
+                bc.popFront;
+            }
+            while(bc.length);
+        }
+        if (tailBits)
+            ret += cast(size_t) tailBitsWithRemainingZeros.ctpop;
+        return ret;
+    }
+
+    bool any()
+    {
+        if (isCentralProblem)
+            return centralBitsWithRemainingZeros != 0;
+        if (headBitsWithRemainingZeros != 0)
+            return true;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                if (bc.front != 0)
+                    return true;
+                bc.popFront;
+            }
+            while(bc.length);
+        }
+        if (tailBitsWithRemainingZeros != 0)
+            return true;
+        return false;
+    }
+
+    bool all()
+    {
+        if (isCentralProblem)
+            return centralBitsWithRemainingOnes != U.max;
+        size_t ret;
+        if (headBitsWithRemainingOnes != U.max)
+            return false;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                if (bc.front != I.max)
+                    return false;
+                bc.popFront;
+            }
+            while(bc.length);
+        }
+        if (tailBitsWithRemainingOnes != U.max)
+            return false;
+        return true;
+    }
+
+    size_t cttz()
+    {
+        U v;
+        size_t ret;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingOnes;
+            if (v)
+                goto R;
+            ret = centralLength;
+            goto L;
+        }
+        v = headBitsWithRemainingOnes;
+        if (v)
+            goto R;
+        ret = headLength;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.front;
+                if (v)
+                    goto R;
+                ret += I.sizeof * 8;
+                bc.popFront;
+            }
+            while(bc.length);
+        }
+        v = tailBitsWithRemainingOnes;
+        if (v)
+            goto R;
+        ret += tailLength;
+        goto L;
+    R:
+        ret += v.cttz;
+    L:
+        return ret;
+    }
+
+    size_t ctlz()
+    {
+        U v;
+        size_t ret;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingOnes;
+            if (v)
+                goto R;
+            ret = centralLength;
+            goto L;
+        }
+        v = tailBitsWithRemainingOnesS;
+        if (v)
+            goto R;
+        ret = tailLength;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.back;
+                if (v)
+                    goto R;
+                ret += I.sizeof * 8;
+                bc.popBack;
+            }
+            while(bc.length);
+        }
+        v = headBitsWithRemainingOnesS;
+        if (v)
+            goto R;
+        ret += headLength;
+        goto L;
+    R:
+        ret += v.ctlz;
+    L:
+        return ret;
+    }
+
+    sizediff_t nBitsToCount(size_t count)
+    {
+        import std.stdio;
+        size_t ret;
+        if (count == 0)
+            return count;
+        U v, cnt;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingZeros;
+            goto E;
+        }
+        v = headBitsWithRemainingZeros;
+        cnt = v.ctpop;
+        writefln("v = %s at line %s", v, __LINE__);
+        writefln("cnt = %s at line %s", cnt, __LINE__);
+        if (cnt >= count)
+            goto R;
+        ret += headLength;
+        count -= cast(size_t) cnt;
+        writefln("v = %s at line %s", v, __LINE__);
+        writefln("cnt = %s at line %s", cnt, __LINE__);
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.front;
+                cnt = v.ctpop;
+                if (cnt >= count)
+                    goto R;
+                ret += I.sizeof * 8;
+                count -= cast(size_t) cnt;
+                bc.popFront;
+            }
+            while(bc.length);
+        }
+        v = tailBitsWithRemainingZeros;
+    E:
+        cnt = v.ctpop;
+        writefln("v = %s at line %s", v, __LINE__);
+        writefln("cnt = %s at line %s", cnt, __LINE__);
+        if (cnt >= count)
+            goto R;
+        return -1;
+    R:
+        return ret + v.nTrailingBitsToCount(count);
+    }
+
+    sizediff_t retroNBitsToCount(size_t count)
+    {
+        if (count == 0)
+            return count;
+        size_t ret;
+        U v, cnt;
+        if (isCentralProblem)
+        {
+            v = centralBitsWithRemainingZerosS;
+            goto E;
+        }
+        v = tailBitsWithRemainingZerosS;
+        cnt = v.ctpop;
+        if (cnt >= count)
+            goto R;
+        ret += tailLength;
+        count -= cast(size_t) cnt;
+        if (bodyChunks.length)
+        {
+            auto bc = bodyChunks.lightConst;
+            do
+            {
+                v = bc.back;
+                cnt = v.ctpop;
+                if (cnt >= count)
+                    goto R;
+                ret += I.sizeof * 8;
+                count -= cast(size_t) cnt;
+                bc.popBack;
+            }
+            while(bc.length);
+        }
+        v = headBitsWithRemainingZerosS;
+    E:
+        cnt = v.ctpop;
+        if (cnt >= count)
+            goto R;
+        return -1;
+    R:
+        return ret + v.nLeadingBitsToCount(count);
+    }
+}
+
+/++
++/
+sizediff_t nBitsToCount(Field, I)(Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
+{
+    return BitSliceAccelerator!(Field, I)(bitSlice).nBitsToCount(count);
+}
+
+///ditto
+sizediff_t nBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))) bitSlice, size_t count)
+{
+    import mir.ndslice.topology: retro;
+    return BitSliceAccelerator!(Field, I)(bitSlice.retro).retroNBitsToCount(count);
+}
+
+///
+unittest
+{
+    import std.stdio;
+    import mir.ndslice.allocation: bitSlice;
+    import mir.ndslice.topology: retro;
+    auto s = bitSlice(1000);
+    s[50] = true;
+    s[100] = true;
+    s[200] = true;
+    s[300] = true;
+    s[400] = true;
+    assert(s.retro.nBitsToCount(4) == 900);
+}
 
 private void checkShapesMatch(
     string fun = __FUNCTION__,
@@ -1164,29 +1638,48 @@ unittest
 bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slices slices)
     if (Slices.length)
 {
-    do
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        static if (slices[0].shape.length == 1)
-        {
-            if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
-            {
-                backwardIndex[0] = slices[0].length;
-                return true;
-            }
-        }
-        else
-        {
-            if (mixin("findImpl!fun(backwardIndex[1 .. $], " ~ frontOf!(Slices.length) ~ ")"))
-            {
-                backwardIndex[0] = slices[0].length;
-                return true;
-            }
-        }
-        foreach_reverse(ref slice; slices)
-            slice.popFront;
+        auto cnt = BitSliceAccelerator!(Field, I)(slices[0]).cttz;
+        if (cnt = -1)
+            return false;
+        backwardIndex[0] = slices[0].length - cnt;
     }
-    while(!slices[0].empty);
-    return false;
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        import mir.ndslice.topology: retro;
+        auto cnt = BitSliceAccelerator!(Field, I)(slices[0].retro).ctlz;
+        if (cnt = -1)
+            return false;
+        backwardIndex[0] = slices[0].length - cnt;
+    }
+    else
+    {
+        do
+        {
+            static if (slices[0].shape.length == 1)
+            {
+                if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                {
+                    backwardIndex[0] = slices[0].length;
+                    return true;
+                }
+            }
+            else
+            {
+                if (mixin("findImpl!fun(backwardIndex[1 .. $], " ~ frontOf!(Slices.length) ~ ")"))
+                {
+                    backwardIndex[0] = slices[0].length;
+                    return true;
+                }
+            }
+            foreach_reverse(ref slice; slices)
+                slice.popFront;
+        }
+        while(!slices[0].empty);
+        return false;
+    }
 }
 
 /++
@@ -1421,23 +1914,37 @@ version(mir_test) unittest
 size_t anyImpl(alias fun, Slices...)(Slices slices)
     if (Slices.length)
 {
-    do
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        static if (slices[0].shape.length == 1)
-        {
-            if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return true;
-        }
-        else
-        {
-            if (mixin("anyImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return true;
-        }
-        foreach_reverse(ref slice; slices)
-            slice.popFront;
+        return BitSliceAccelerator!(Field, I)(slices[0]).any;
     }
-    while(!slices[0].empty);
-    return false;
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        // pragma(msg, S);
+        import mir.ndslice.topology: retro;
+        return .anyImpl!fun(slices[0].retro);
+    }
+    else
+    {
+        do
+        {
+            static if (slices[0].shape.length == 1)
+            {
+                if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return true;
+            }
+            else
+            {
+                if (mixin("anyImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return true;
+            }
+            foreach_reverse(ref slice; slices)
+                slice.popFront;
+        }
+        while(!slices[0].empty);
+        return false;
+    }
 }
 
 /++
@@ -1564,23 +2071,37 @@ version(mir_test) unittest
 size_t allImpl(alias fun, Slices...)(Slices slices)
     if (Slices.length)
 {
-    do
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        static if (slices[0].shape.length == 1)
-        {
-            if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return false;
-        }
-        else
-        {
-            if (!mixin("allImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
-                return false;
-        }
-        foreach_reverse(ref slice; slices)
-            slice.popFront;
+        return BitSliceAccelerator!(Field, I)(slices[0]).all;
     }
-    while(!slices[0].empty);
-    return true;
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        // pragma(msg, S);
+        import mir.ndslice.topology: retro;
+        return .allImpl!fun(slices[0].retro);
+    }
+    else
+    {
+        do
+        {
+            static if (slices[0].shape.length == 1)
+            {
+                if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return false;
+            }
+            else
+            {
+                if (!mixin("allImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
+                    return false;
+            }
+            foreach_reverse(ref slice; slices)
+                slice.popFront;
+        }
+        while(!slices[0].empty);
+        return true;
+    }
 }
 
 /++
@@ -1716,7 +2237,7 @@ Params:
     fun = A predicate.
 
 Optimization:
-    `count!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology).
+    `count!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 +/
 template count(alias fun)
 {
@@ -1788,7 +2309,7 @@ unittest
 version(mir_test)
 unittest
 {
-    import mir.ndslice.topology: iota, bitwise;
+    import mir.ndslice.topology: retro, iota, bitwise;
     import mir.ndslice.allocation: slice;
 
     //| 0 1 2 |
@@ -1797,16 +2318,36 @@ unittest
 
     assert(sl.count!"true" == 6 * size_t.sizeof * 8);
 
-    // accelerated
-    assert(sl.count!"a" == 7);
     assert(sl.slice.count!"a" == 7);
 
+    // accelerated
+    assert(sl.count!"a" == 7);
+    assert(sl.retro.count!"a" == 7);
+
     auto sl2 = iota!ubyte([6], 128).bitwise;
+    // accelerated
     assert(sl2.count!"a" == 13);
     assert(sl2[4 .. $].count!"a" == 13);
     assert(sl2[4 .. $ - 1].count!"a" == 12);
     assert(sl2[4 .. $ - 1].count!"a" == 12);
     assert(sl2[41 .. $ - 1].count!"a" == 1);
+}
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: bitwise, assumeFieldsHaveZeroShift;
+    auto sl = slice!uint([6]).bitwise;
+    auto slb = slice!ubyte([6]).bitwise;
+    slb[4] = true;
+    auto d = slb[4];
+    auto c = assumeFieldsHaveZeroShift(slb & ~slb);
+    // pragma(msg, typeof(c));
+    assert(!sl.any);
+    assert((~sl).all);
+    // pragma(msg, typeof(~slb));
+    // pragma(msg, typeof(~slb));
+    // assert(sl.findIndex);
 }
 
 /++
@@ -2021,39 +2562,18 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     size_t ret;
     alias S = Slices[0];
     import mir.functional: naryFun;
-    import mir.ndslice.iterator: FieldIterator;
-    import mir.ndslice.field: BitwiseField;
-    static if (__traits(isSame, fun, naryFun!"a") && 
-        is(S : Slice!Iterator,
-            Iterator : FieldIterator!BWF,
-            BWF : BitwiseField!Field, Field))
+    import mir.ndslice.iterator: FieldIterator, RetroIterator;
+    import mir.ndslice.field: BitField;
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        version(LDC)
-            import ldc.intrinsics: ctpop = llvm_ctpop;
-        else
-            import core.bitop: ctpop = popcnt;
-        auto index = slices[0]._iterator._index;
-        auto field = slices[0]._iterator._field;
-        auto length = slices[0]._lengths[0];
-        while (length && (index & field.mask))
-        {
-            if (field[index])
-                ret++;
-            index++;
-            length--;
-        }
-        auto j = index >> field.shift;
-        foreach(i; size_t(j) .. (length >> field.shift) + j)
-            ret += cast(typeof(ret)) ctpop(field._field[i]);
-        index += length & ~field.mask;
-        length &= field.mask;
-        while(length)
-        {
-            if (field[index])
-                ret++;
-            index++;
-            length--;
-        }
+        ret = BitSliceAccelerator!(Field, I)(slices[0]).ctpop;
+    }
+    else
+    static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
+    {
+        // pragma(msg, S);
+        import mir.ndslice.topology: retro;
+        ret = .countImpl!fun(slices[0].retro);
     }
     else
     do
@@ -2213,7 +2733,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota, canonical, universal;
-    import std.meta: AliasSeq;
+    alias AliasSeq(T...) = T;
 
     pure nothrow
     void test(alias func)()
@@ -3062,7 +3582,7 @@ struct Uniq(alias pred, Range)
 
     // this()(auto ref Range input)
     // {
-    //     import std.meta: AliasSeq;
+    //     alias AliasSeq(T...) = T;
     //     import mir.functional: forward;
     //     AliasSeq!_input = forward!input;
     // }

@@ -1,7 +1,6 @@
 ///
 module mir.internal.utility;
 
-import std.traits: Unqual, isFloatingPoint;
 private alias AliasSeq(T...) = T;
 
 ///
@@ -19,7 +18,7 @@ template Iota(size_t i, size_t j)
 
 ///
 template realType(C)
-    if (isFloatingPoint!C || isComplex!C)
+    if (__traits(isFloating, C) || isComplex!C)
 {
     static if (isComplex!C)
         alias realType = typeof(Unqual!C.init.re);
@@ -28,10 +27,19 @@ template realType(C)
 }
 
 ///
-template isComplex(C)
-{
-    enum bool isComplex
-     = is(Unqual!C == creal)
-    || is(Unqual!C == cdouble)
-    || is(Unqual!C == cfloat);
-}
+enum isComplex(C : creal) = true;
+/// ditto
+enum isComplex(C : cdouble) = true;
+/// ditto
+enum isComplex(C : cfloat) = true;
+/// ditto
+enum isComplex(C) = false;
+
+///
+enum isFloatingPoint(C : real) = true;
+/// ditto
+enum isFloatingPoint(C : double) = true;
+/// ditto
+enum isFloatingPoint(C : float) = true;
+/// ditto
+enum isFloatingPoint(C) = false;
