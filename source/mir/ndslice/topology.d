@@ -4142,6 +4142,19 @@ template member(string name)
     {
         return typeof(return)(slice._lengths, slice._strides, MemberIterator!(Iterator, name)(slice._iterator));
     }
+
+    /// ditto
+    Slice!(MemberIterator!(T*, name)) member(T)(T[] array)
+    {
+        return typeof(return)(array.length, sizediff_t[0].init, MemberIterator!(T*, name)(array.ptr));
+    }
+
+    /// ditto
+    auto member(T)(auto ref T withAsSlice)
+        if (hasAsSlice!T)
+    {
+        return member!name(withAsSlice.asSlice);
+    }
 }
 
 ///
@@ -4181,9 +4194,6 @@ template member(string name)
     assert(matrix.member!"y" == [2, 3].iota * 2);
 }
 
-version(D_Exceptions)
-private immutable orthogonalReduceFieldException = new Exception("orthogonalReduceField: Slice composed of fields must not be empty");
-
 /++
 Functional deep-element wise reduce of a slice composed of fields or iterators.
 +/
@@ -4199,29 +4209,22 @@ template orthogonalReduceField(alias fun)
         Returns:
             a lazy field with each element of which is reduced value of element of the same index of all iterators.
         +/
-        OrthogonalReduceField!(Iterator, fun) orthogonalReduceField(Iterator)(Slice!Iterator slice)
+        OrthogonalReduceField!(Iterator, fun, I) orthogonalReduceField(I, Iterator)(I initialValue, Slice!Iterator slice)
         {
-            if (_expect(slice.empty, false))
-            {
-                version(D_Exceptions)
-                    throw orthogonalReduceFieldException;
-                else
-                    assert(0);
-            }
-            return typeof(return)(slice);
+            return typeof(return)(slice, initialValue);
         }
 
         /// ditto
-        auto orthogonalReduceField(T)(T[] array)
+        OrthogonalReduceField!(T*, fun, I) orthogonalReduceField(I, T)(I initialValue, T[] array)
         {
-            return orthogonalReduceField(array.sliced);
+            return orthogonalReduceField(initialValue, array.sliced);
         }
         
         /// ditto
-        auto orthogonalReduceField(T)(auto ref T withAsSlice)
+        auto orthogonalReduceField(I, T)(I initialValue, auto ref T withAsSlice)
             if (hasAsSlice!T)
         {
-            return orthogonalReduceField(withAsSlice.asSlice);
+            return orthogonalReduceField(initialValue, withAsSlice.asSlice);
         }
     }
     else alias orthogonalReduceField = .orthogonalReduceField!(naryFun!fun);
@@ -4243,11 +4246,12 @@ unittest
     c[len.iota.strided!0(13)][] = true;
 
     // this is valid since bitslices above are oroginal slices of allocated memory.
-    auto and = [
+    auto and = 
+        orthogonalReduceField!"a & b"(size_t.max, [
             a.iterator._field._field, // get raw data pointers
             b.iterator._field._field,
-            c.iterator._field._field]
-        .orthogonalReduceField!"a & b" // operation on size_t
+            c.iterator._field._field,
+        ]) // operation on size_t
         .bitwiseField
         .slicedField(len);
 

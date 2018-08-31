@@ -534,7 +534,7 @@ unittest
 }
 
 ///
-struct OrthogonalReduceField(FieldsIterator, alias fun)
+struct OrthogonalReduceField(FieldsIterator, alias fun, T)
 {
     import mir.ndslice.slice: Slice;
 
@@ -544,17 +544,20 @@ struct OrthogonalReduceField(FieldsIterator, alias fun)
     Slice!FieldsIterator _fields;
 
     ///
+    T _initialValue;
+
+    ///
     auto lightConst()() const @property
     {
         auto fields = _fields.lightConst;
-        return OrthogonalReduceField!(fields.Iterator, fun)(fields);
+        return OrthogonalReduceField!(fields.Iterator, fun, T)(fields, _initialValue);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
         auto fields = _fields.lightImmutable;
-        return OrthogonalReduceField!(fields.Iterator, fun)(fields);
+        return OrthogonalReduceField!(fields.Iterator, fun, T)(fields, _initialValue);
     }
 
     /// `r = fun(r, fields[i][index]);` reduction by `i`
@@ -562,15 +565,14 @@ struct OrthogonalReduceField(FieldsIterator, alias fun)
     {
         import std.traits: Unqual;
         assert(_fields.length);
-        auto fields = _fields.lightConst;
-        Unqual!(typeof(fun(fields.front[index], fields.front[index]))) r = fields.front[index];
-        for(;;)
+        auto fields = _fields;
+        T r = _initialValue;
+        if (!fields.empty) do
         {
+            r = cast(T) fun(r, fields.front[index]);
             fields.popFront;
-            if (fields.empty)
-                break;
-            r = fun(r, fields.front[index]);
         }
+        while(!fields.empty);
         return r;
     }
 }
