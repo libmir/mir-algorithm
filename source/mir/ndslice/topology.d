@@ -4146,14 +4146,14 @@ template member(string name)
     /// ditto
     Slice!(MemberIterator!(T*, name)) member(T)(T[] array)
     {
-        return member!name(array.sliced);
+        return member(array.sliced);
     }
 
     /// ditto
     auto member(T)(auto ref T withAsSlice)
         if (hasAsSlice!T)
     {
-        return member!name(withAsSlice.asSlice);
+        return member(withAsSlice.asSlice);
     }
 }
 
