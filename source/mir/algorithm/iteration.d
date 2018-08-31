@@ -414,7 +414,6 @@ const:
 
     sizediff_t nBitsToCount(size_t count)
     {
-        import std.stdio;
         size_t ret;
         if (count == 0)
             return count;
@@ -426,14 +425,10 @@ const:
         }
         v = headBitsWithRemainingZeros;
         cnt = v.ctpop;
-        writefln("v = %s at line %s", v, __LINE__);
-        writefln("cnt = %s at line %s", cnt, __LINE__);
         if (cnt >= count)
             goto R;
         ret += headLength;
         count -= cast(size_t) cnt;
-        writefln("v = %s at line %s", v, __LINE__);
-        writefln("cnt = %s at line %s", cnt, __LINE__);
         if (bodyChunks.length)
         {
             auto bc = bodyChunks.lightConst;
@@ -452,8 +447,6 @@ const:
         v = tailBitsWithRemainingZeros;
     E:
         cnt = v.ctpop;
-        writefln("v = %s at line %s", v, __LINE__);
-        writefln("cnt = %s at line %s", cnt, __LINE__);
         if (cnt >= count)
             goto R;
         return -1;
@@ -519,7 +512,7 @@ sizediff_t nBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!
 }
 
 ///
-unittest
+pure unittest
 {
     import std.stdio;
     import mir.ndslice.allocation: bitSlice;
@@ -530,6 +523,7 @@ unittest
     s[200] = true;
     s[300] = true;
     s[400] = true;
+    assert(s.nBitsToCount(4) == 301);
     assert(s.retro.nBitsToCount(4) == 900);
 }
 
