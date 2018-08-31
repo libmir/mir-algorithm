@@ -82,7 +82,7 @@ private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
     static if (isIterator!Field)
         Slice!Field bodyChunks;
     else
-        Slice!(SlicedField!Field) bodyChunks;
+        Slice!(FieldIterator!Field) bodyChunks;
     /// head length
     int headLength;
     /// tail length
