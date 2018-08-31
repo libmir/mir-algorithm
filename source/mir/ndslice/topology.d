@@ -4146,7 +4146,7 @@ template member(string name)
     /// ditto
     Slice!(MemberIterator!(T*, name)) member(T)(T[] array)
     {
-        return typeof(return)(array.length, sizediff_t[0].init, MemberIterator!(T*, name)(array.ptr));
+        return typeof(return)([array.length], sizediff_t[0].init, MemberIterator!(T*, name)(array.ptr));
     }
 
     /// ditto
