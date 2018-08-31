@@ -146,7 +146,7 @@ auto universal(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sli
     {
         alias Ret = Slice!(Iterator,  N, Universal);
         size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
+        auto strides = sizediff_t[Ret.S].init;
         foreach (i; Iota!(slice.N))
             lengths[i] = slice._lengths[i];
         static if (kind == Canonical)
@@ -212,7 +212,7 @@ Slice!(Iterator, N, N == 1 ? Contiguous : Canonical)
     {
         alias Ret = typeof(return);
         size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
+        auto strides = sizediff_t[Ret.S].init;
         foreach (i; Iota!(slice.N))
             lengths[i] = slice._lengths[i];
         ptrdiff_t ball = 1;
@@ -261,7 +261,7 @@ Slice!(Iterator, N, Canonical)
     {
         alias Ret = typeof(return);
         size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
+        auto strides = sizediff_t[Ret.S].init;
         foreach (i; Iota!(slice.N))
             lengths[i] = slice._lengths[i];
         foreach (i; Iota!(Ret.S))
@@ -304,7 +304,7 @@ Slice!(Iterator, N)
     {
         alias Ret = typeof(return);
         size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
+        auto strides = sizediff_t[Ret.S].init;
         foreach (i; Iota!(slice.N))
             lengths[i] = slice._lengths[i];
         return Ret(lengths, strides, slice._iterator);
@@ -437,7 +437,7 @@ Slice!(Iterator, N + M, min(innerKind, Canonical))
 {
     alias Ret = typeof(return);
     size_t[N + M] lengths;
-    sizediff_t[Ret.S] strides;
+    auto strides = sizediff_t[Ret.S].init;
     auto outerStrides = slice.strides;
     auto innerStrides = Slice!(Iterator, M, innerKind)(
         slice._iterator._lengths,
@@ -673,7 +673,7 @@ Slice!(Iterator, 1, N == 1 ? kind : Universal)
     {
         alias Ret = typeof(return);
         size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
+        auto strides = sizediff_t[Ret.S].init;
         lengths[0] = slice._lengths[0];
         foreach (i; Iota!(1, N))
             if (lengths[0] > slice._lengths[i])
@@ -1221,7 +1221,7 @@ Slice!(Iterator, M, kind) reshape
     {
         alias Ret = typeof(return);
         size_t[Ret.N] lengths;
-        sizediff_t[Ret.S] strides;
+        auto strides = sizediff_t[Ret.S].init;
         foreach (i; Iota!M)
             lengths[i] = rlengths[i];
 
@@ -1411,7 +1411,7 @@ Slice!(FlattenedIterator!(Iterator, N, kind))
 {
     alias Ret = typeof(return);
     size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
+    auto strides = sizediff_t[Ret.S].init;
     sizediff_t[typeof(return)._iterator._indexes.length] indexes;
     lengths[0] = slice.elementsCount;
     return Ret(lengths, strides, FlattenedIterator!(Iterator, N, kind)(indexes, slice));
@@ -2100,7 +2100,7 @@ auto bitwise
     }
     alias Ret = Slice!(It, N, kind);
     size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
+    auto strides = sizediff_t[Ret.S].init;
     foreach(i; Iota!(Ret.N))
         lengths[i] = slice._lengths[i];
     lengths[$ - 1] *= I.sizeof * 8;
@@ -2203,7 +2203,7 @@ auto bitpack
     }
     alias Ret = Slice!(It, N, kind);
     size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
+    auto strides = sizediff_t[Ret.S].init;
     foreach(i; Iota!(Ret.N))
         lengths[i] = slice._lengths[i];
     lengths[$ - 1] *= I.sizeof * 8;
@@ -2685,7 +2685,7 @@ private auto unhideStride
         {
             alias Ret = SliceKind!(It, N, Universal);
             size_t[Ret.N] lengths;
-    sizediff_t[Ret.S] strides;
+            auto strides = sizediff_t[Ret.S].init;
             foreach(i; Iota!(Ret.N))
                 lengths[i] = slice._lengths[i];
             foreach(i; Iota!(Ret.S))
@@ -3166,7 +3166,7 @@ auto zip
             alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
             alias Ret = Slice!(Iterator, N, kind);
             size_t[Ret.N] lengths;
-            sizediff_t[Ret.S] strides;
+            auto strides = sizediff_t[Ret.S].init;
             foreach (i; Iota!(Ret.N))
                 lengths[i] = slices[0]._lengths[i];
             foreach (i; Iota!(Ret.S))
