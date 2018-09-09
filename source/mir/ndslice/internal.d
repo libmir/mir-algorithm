@@ -1,7 +1,7 @@
 module mir.ndslice.internal;
 
 import mir.array.primitives;
-import mir.internal.utility;
+import mir.internal.utility : isFloatingPoint, Iota;
 import mir.math.common: optmath;
 import mir.ndslice.slice;
 import std.meta;
