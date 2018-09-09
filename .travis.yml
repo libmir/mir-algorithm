@@ -29,7 +29,8 @@ install:
     - sudo chmod 755 /usr/local/bin/ninja
     - sudo add-apt-repository -y ppa:deadsnakes/ppa
     - sudo apt-get -y update
-    - sudo apt-get -y install python3.6 python3.6-pip
+    - sudo apt-get -y install python3.6
+    - curl https://bootstrap.pypa.io/get-pip.py | python3.6 --user
     - sudo pip3 install meson
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
