@@ -7,8 +7,8 @@ An ndslice can be created on top of a field using $(SUBREF slice, slicedField).
 
 $(BOOKTABLE $(H2 Fields),
 $(TR $(TH Field Name) $(TH Used By))
-$(T2 BitpackField, $(SUBREF topology, bitpack))
 $(T2 BitField, $(SUBREF topology, bitwise))
+$(T2 BitpackField, $(SUBREF topology, bitpack))
 $(T2 CycleField, $(SUBREF topology, cycle) (2 kinds))
 $(T2 LinspaceField, $(SUBREF topology, linspace))
 $(T2 MagicField, $(SUBREF topology, magic))

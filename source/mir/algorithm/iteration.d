@@ -12,8 +12,8 @@ $(T2 cmp, Compares two slices.)
 $(T2 count, Counts elements in a slices according to a predicate.)
 $(T2 each, Iterates all elements.)
 $(T2 eachLower, Iterates lower triangle of matrix.)
-$(T2 eachUpper, Iterates upper triangle of matrix.)
 $(T2 eachUploPair, Iterates upper and lower pairs of elements in square matrix.)
+$(T2 eachUpper, Iterates upper triangle of matrix.)
 $(T2 equal, Compares two slices for equality.)
 $(T2 find, Finds backward index.)
 $(T2 findIndex, Finds index.)
@@ -24,6 +24,7 @@ $(T2 minIndex, Finds index of the minimum.)
 $(T2 minmaxIndex, Finds indexes of the minimum and the maximum.)
 $(T2 minmaxPos, Finds backward indexes of the minimum and the maximum.)
 $(T2 minPos, Finds backward index of the minimum.)
+$(T2 nBitsToCount, Сount bits until set bit count is reached.)
 $(T2 reduce, Accumulates all elements.)
 $(T2 uniq, Iterates over the unique elements in a range, which is assumed sorted.)
 )
@@ -498,6 +499,8 @@ const:
 }
 
 /++
+Сount bits until set bit count is reached. Works with ndslices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
+Returns: bit count if set bit count is reached or `-1` otherwise.
 +/
 sizediff_t nBitsToCount(Field, I)(Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
 {
@@ -1686,6 +1689,8 @@ Params:
 See_also:
     $(LREF find),
     $(LREF any).
+Optimization:
+    `findIndex!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 +/
 template findIndex(alias pred)
 {
@@ -1774,6 +1779,9 @@ See_also:
     $(LREF findIndex),
     $(LREF any),
     $(REF Slice.backward, mir,ndslice,slice).
+
+Optimization:
+    `find!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 +/
 template find(alias pred)
 {
@@ -1946,6 +1954,8 @@ Like $(LREF find), but only returns whether or not the search was successful.
 
 Params:
     pred = The predicate.
+Optimization:
+    `any!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 +/
 template any(alias pred = "a")
 {
@@ -2103,7 +2113,8 @@ Checks if all of the elements verify `pred`.
 
 Params:
     pred = The predicate.
-
+Optimization:
+    `all!"a"` has accelerated specialization for slices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 +/
 template all(alias pred = "a")
 {

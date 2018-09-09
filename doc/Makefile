@@ -29,7 +29,7 @@ MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/internal mir/math mir/mat
 
 PACKAGE_mir = bitmanip bitop conv functional primitives range series utility qualifier range
 
-PACKAGE_mir_array = primitives
+PACKAGE_mir_array = allocation primitives
 PACKAGE_mir_combinatorics = package
 PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_container = binaryheap

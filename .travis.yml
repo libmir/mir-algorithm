@@ -1,6 +1,5 @@
 language: d
-dist: trusty
-sudo: false
+sudo: required
 packages:
   - pkg-config
 d:
@@ -15,28 +14,29 @@ branches:
 env:
  - ARCH="x86_64"
 matrix:
-  # include:
-  #   - {os: linux, d: ldc-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-  #   - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-  #   - {os: linux, d: dmd-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-  #   - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+  include:
+    - {os: linux, d: ldc-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: dmd-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
   allow_failures:
     - {d: dmd-nightly}
     - {d: ldc-beta}
     - {d: gdc}
 install:
-  - pyenv global system 3.6
-  - pip3 install 'meson>=0.45'
-  - mkdir .ntmp
-  - curl -L https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip -o .ntmp/ninja-linux.zip
-  - unzip .ntmp/ninja-linux.zip -d .ntmp
-before_script:
-  - export PATH=$PATH:$PWD/.ntmp
+    - curl -L "https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-linux.zip" -o ninja-linux.zip
+    - sudo unzip ninja-linux.zip -d /usr/local/bin
+    - sudo chmod 755 /usr/local/bin/ninja
+    - sudo add-apt-repository -y ppa:deadsnakes/ppa
+    - sudo apt-get -y update
+    - sudo apt-get -y install python3.6
+    - curl https://bootstrap.pypa.io/get-pip.py | sudo python3.6
+    - sudo pip3 install meson
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
+ - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - ./test_examples.sh
  - meson build && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
-#  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
 #  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
 after_success:
