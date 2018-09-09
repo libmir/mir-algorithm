@@ -27,8 +27,8 @@ install:
     - curl -L "https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-linux.zip" -o ninja-linux.zip
     - sudo unzip ninja-linux.zip -d /usr/local/bin
     - sudo chmod 755 /usr/local/bin/ninja
-    - sudo add-apt-repository ppa:deadsnakes/ppa
-    - sudo apt-get update
+    - sudo add-apt-repository -y ppa:deadsnakes/ppa
+    - sudo apt-get -y update
     - sudo apt-get -y install python3.6 python3-pip
     - sudo pip3 install meson
 script:
