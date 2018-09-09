@@ -2263,7 +2263,7 @@ template count(alias fun)
         slices.checkShapesMatch;
         static if (__traits(isSame, fun, naryFun!"true"))
         {
-            return slices[0].elementsCount;
+            return slices[0].elementCount;
         }
         else
         static if (areAllContiguousSlices!Slices)

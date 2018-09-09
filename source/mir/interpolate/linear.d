@@ -247,7 +247,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
             shape[i] = x.length;
         }
 
-        auto data_ptr = cast(F*) (alignedAllocate(F.sizeof * shape.iota.elementsCount + alignment, alignment) + alignment);
+        auto data_ptr = cast(F*) (alignedAllocate(F.sizeof * shape.iota.elementCount + alignment, alignment) + alignment);
         if(data_ptr is null)
             assert(0, "No memory");
 

@@ -491,7 +491,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
             //     "].length should be equal to values.length!" ~ i.stringof ~ ".");
         }
 
-        auto data_ptr = cast(F[2 ^^ N]*) (alignedAllocate(F[2 ^^ N].sizeof * shape.iota.elementsCount + alignment, alignment) + alignment);
+        auto data_ptr = cast(F[2 ^^ N]*) (alignedAllocate(F[2 ^^ N].sizeof * shape.iota.elementCount + alignment, alignment) + alignment);
         if(data_ptr is null)
             assert(0);
 

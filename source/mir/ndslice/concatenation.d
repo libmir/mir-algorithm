@@ -288,13 +288,16 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// Total elements count in the concatenation.
-    size_t elementsCount()() const @property
+    size_t elementCount()() const @property
     {
         size_t count = 1;
         foreach(i; Iota!N)
             count *= length!i;
         return count;
     }
+
+    deprecated("use elementCount instead")
+    alias elementsCount = elementCount;
 
     /// Shape of the concatenation.
     size_t[N] shape()() const @property

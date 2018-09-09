@@ -90,7 +90,7 @@ and the type of element of $(LREF flattened) is `Slice!(Iterator, K)`.
 Another way to use $(LREF pack) is transposition of dimension packs using
 $(LREF evertPack). 
 Examples of use of subspace selectors are available for selectors,
-$(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementsCount).
+$(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementCount).
 
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
@@ -1229,8 +1229,8 @@ Slice!(Iterator, M, kind) reshape
             lengths[i] = rlengths[i];
 
         /// Code size optimization
-        immutable size_t eco = slice.elementsCount;
-        size_t ecn = lengths[0 .. rlengths.length].iota.elementsCount;
+        immutable size_t eco = slice.elementCount;
+        size_t ecn = lengths[0 .. rlengths.length].iota.elementCount;
         if (eco == 0)
         {
             err = ReshapeError.empty;
@@ -1416,7 +1416,7 @@ Slice!(FlattenedIterator!(Iterator, N, kind))
     size_t[Ret.N] lengths;
     auto strides = sizediff_t[Ret.S].init;
     sizediff_t[typeof(return)._iterator._indexes.length] indexes;
-    lengths[0] = slice.elementsCount;
+    lengths[0] = slice.elementCount;
     return Ret(lengths, strides, FlattenedIterator!(Iterator, N, kind)(indexes, slice));
 }
 
@@ -1433,7 +1433,7 @@ Slice!Iterator
     else
     {
         size_t[typeof(return).N] lengths;
-        lengths[0] = slice.elementsCount;
+        lengths[0] = slice.elementCount;
         return typeof(return)(lengths, sizediff_t[0].init, slice._iterator);
     }
 }
@@ -1619,7 +1619,7 @@ nothrow version(mir_test) unittest
         static assert(hasLength!S);
     }
 
-    assert(elems0.length == slice0.elementsCount);
+    assert(elems0.length == slice0.elementCount);
     assert(elems1.length == 5 * 4 * 3);
 
     auto elems2 = elems1;
@@ -1634,9 +1634,9 @@ nothrow version(mir_test) unittest
     assert(elems2.empty);
 
     elems0.popFront();
-    elems0.popFrontExactly(slice0.elementsCount - 14);
+    elems0.popFrontExactly(slice0.elementCount - 14);
     assert(elems0.length == 13);
-    assert(elems0 == range[slice0.elementsCount - 13 .. slice0.elementsCount]);
+    assert(elems0 == range[slice0.elementCount - 13 .. slice0.elementCount]);
 
     foreach (elem; elems0) {}
 }

@@ -198,4 +198,8 @@ unittest
 }
 
 ///
-alias elementsCount = length;
+alias elementCount = length;
+
+deprecated("use elementCount instead")
+alias elementsCount = elementCount;
+

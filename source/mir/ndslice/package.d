@@ -412,7 +412,7 @@ void main(string[] args)
             name.stripExtension ~ "_filtered.png",
             ret.length!1,
             ret.length!0,
-            (&ret[0, 0, 0])[0 .. ret.elementsCount]);
+            (&ret[0, 0, 0])[0 .. ret.elementCount]);
     }
 }
 -------

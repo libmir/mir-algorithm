@@ -117,7 +117,7 @@ PythonBufferErrorCode toPythonBuffer(T, size_t N, SliceKind kind)(Slice!(T*, N, 
     /////////////////////
     view.buf = slice._iterator;
     // skip view.obj
-    view.len = slice.elementsCount * T.sizeof;
+    view.len = slice.elementCount * T.sizeof;
     view.itemsize = T.sizeof;
     view.ndim = N;
     view.internal = null;

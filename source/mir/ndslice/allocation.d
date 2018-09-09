@@ -116,7 +116,7 @@ version(mir_test)
 {
     auto tensor = slice!int(5, 6, 7);
     assert(tensor.length == 5);
-    assert(tensor.elementsCount == 5 * 6 * 7);
+    assert(tensor.elementCount == 5 * 6 * 7);
     static assert(is(typeof(tensor) == Slice!(int*, 3)));
 
     // creates duplicate using `slice`
@@ -129,7 +129,7 @@ version(mir_test)
 @safe pure nothrow unittest
 {
     auto tensor = slice([2, 3], 5);
-    assert(tensor.elementsCount == 2 * 3);
+    assert(tensor.elementCount == 2 * 3);
     assert(tensor[1, 1] == 5);
 }
 
@@ -212,7 +212,7 @@ version(mir_test)
 {
     auto tensor = uninitSlice!int(5, 6, 7);
     assert(tensor.length == 5);
-    assert(tensor.elementsCount == 5 * 6 * 7);
+    assert(tensor.elementCount == 5 * 6 * 7);
     static assert(is(typeof(tensor) == Slice!(int*, 3)));
 }
 
@@ -242,7 +242,7 @@ version(mir_test)
     auto tensor = uninitAlignedSlice!double([5, 6, 7], 64);
     tensor[] = 0;
     assert(tensor.length == 5);
-    assert(tensor.elementsCount == 5 * 6 * 7);
+    assert(tensor.elementCount == 5 * 6 * 7);
     assert(cast(size_t)(tensor.ptr) % 64 == 0);
     static assert(is(typeof(tensor) == Slice!(double*, 3)));
 }
@@ -370,7 +370,7 @@ version(mir_test)
     auto ar = sl.field;
     assert(ar.ptr is sl.iterator);
     assert(ar.length           == 24);
-    assert(sl.elementsCount    == 24);
+    assert(sl.elementCount    == 24);
 
     Mallocator.instance.dispose(ar);
 }
@@ -640,7 +640,7 @@ version(mir_test)
 {
     auto tensor = stdcUninitAlignedSlice!double([5, 6, 7], 64);
     assert(tensor.length == 5);
-    assert(tensor.elementsCount == 5 * 6 * 7);
+    assert(tensor.elementCount == 5 * 6 * 7);
     assert(cast(size_t)(tensor.ptr) % 64 == 0);
     static assert(is(typeof(tensor) == Slice!(double*, 3)));
     stdcFreeAlignedSlice(tensor);
