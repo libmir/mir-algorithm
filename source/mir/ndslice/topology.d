@@ -16,12 +16,15 @@ $(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind)
 $(BOOKTABLE $(H2 Sequence Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
-$(T2 repeat, Slice with identical values)
+$(T2 cycle, Cycle repeates 1-dimensional field/range/array/slice in a fixed length 1-dimensional slice)
 $(T2 iota, Contiguous Slice with initial flattened (contiguous) index.)
-$(T2 ndiota, Contiguous Slice with initial multidimensional index.)
 $(T2 linspace, Evenly spaced numbers over a specified interval.)
 $(T2 magic, Magic square.)
+$(T2 ndiota, Contiguous Slice with initial multidimensional index.)
+$(T2 repeat, Slice with identical values)
 )
+
+.
 
 $(BOOKTABLE $(H2 Products),
 $(TR $(TH Function Name) $(TH Description))
@@ -1894,7 +1897,7 @@ version(mir_test) unittest
 }
 
 /++
-Cycle creates 1-dimensional slice over the range.
+Cycle repeates 1-dimensional field/range/array/slice in a fixed length 1-dimensional slice.
 +/
 auto cycle(Field)(Field field, size_t loopLength, size_t length)
     if (!isSlice!Field && !is(Field : T[], T))

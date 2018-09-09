@@ -1,6 +1,6 @@
 language: d
 dist: trusty
-sudo: false
+sudo: true
 packages:
   - pkg-config
 d:
@@ -15,11 +15,11 @@ branches:
 env:
  - ARCH="x86_64"
 matrix:
-  # include:
-  #   - {os: linux, d: ldc-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-  #   - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-  #   - {os: linux, d: dmd-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-  #   - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+  include:
+    - {os: linux, d: ldc-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: dmd-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
   allow_failures:
     - {d: dmd-nightly}
     - {d: ldc-beta}
@@ -34,9 +34,9 @@ before_script:
   - export PATH=$PATH:$PWD/.ntmp
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
+ - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - ./test_examples.sh
  - meson build && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
-#  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
 #  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
 after_success:
