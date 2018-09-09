@@ -1,5 +1,5 @@
 language: d
-sudo: true
+sudo: required
 packages:
   - pkg-config
 d:
@@ -24,13 +24,10 @@ matrix:
     - {d: ldc-beta}
     - {d: gdc}
 install:
-  - pyenv global system 3.6
-  - pip3 install 'meson>=0.45'
-  - mkdir .ntmp
-  - curl -L https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip -o .ntmp/ninja-linux.zip
-  - unzip .ntmp/ninja-linux.zip -d .ntmp
-before_script:
-  - export PATH=$PATH:$PWD/.ntmp
+    - curl -L "https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-linux.zip" -o ninja-linux.zip
+    - sudo unzip ninja-linux.zip -d /usr/local/bin
+    - sudo chmod 755 /usr/local/bin/ninja
+    - pip3 install meson
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
