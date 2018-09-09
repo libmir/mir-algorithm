@@ -30,7 +30,7 @@ install:
     - sudo add-apt-repository -y ppa:deadsnakes/ppa
     - sudo apt-get -y update
     - sudo apt-get -y install python3.6
-    - curl https://bootstrap.pypa.io/get-pip.py | python3.6 --user
+    - curl https://bootstrap.pypa.io/get-pip.py | sudo python3.6
     - sudo pip3 install meson
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
