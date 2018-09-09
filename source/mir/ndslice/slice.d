@@ -2120,6 +2120,18 @@ public:
         assert(2 * s == iota([4], 0, 2));
     }
 
+    static if (doUnittest)
+    ///
+    @safe pure nothrow @nogc version(mir_test) unittest
+    {
+        import mir.ndslice.topology;
+
+        // 0 1 2 3
+        auto s = iota([4]);
+        // 0 1 4 9
+        assert(s ^^ 2.0 == iota([4]).map!"a ^^ 2.0");
+    }
+
     /++
     Element-wise operator overloading for slices.
     Params:
