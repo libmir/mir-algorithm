@@ -27,7 +27,7 @@ install:
     - curl -L "https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-linux.zip" -o ninja-linux.zip
     - sudo unzip ninja-linux.zip -d /usr/local/bin
     - sudo chmod 755 /usr/local/bin/ninja
-    - sudo install pip3
+    - sudo apt-get install pip3
     - pip3 install meson
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
