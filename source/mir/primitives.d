@@ -131,10 +131,10 @@ bool anyEmpty(Range)(Range range) @property
 }
 
 ///
-size_t elementsCount(Range)(Range range) @property
-    if (hasShape!Range || __traits(hasMember, Range, "elementsCount"))
+size_t elementCount(Range)(Range range) @property
+    if (hasShape!Range || __traits(hasMember, Range, "elementCount"))
 {
-    static if (__traits(hasMember, Range, "elementsCount"))
+    static if (__traits(hasMember, Range, "elementCount"))
     {
         return range;
     }
@@ -149,6 +149,10 @@ size_t elementsCount(Range)(Range range) @property
         return ret;
     }
 }
+
+deprecated("use elementCount instead")
+alias elementsCount = elementCount;
+
 
 /++
 Returns the element type of a struct with `.DeepElement` inner alias or a type of common array.

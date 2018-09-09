@@ -115,10 +115,10 @@ struct MapField(Field, alias _fun)
         return _field.shape;
     }
 
-    static if (__traits(hasMember, Field, "elementsCount"))
-    auto elementsCount()() @property
+    static if (__traits(hasMember, Field, "elementCount"))
+    auto elementCount()() @property
     {
-        return _field.elementsCount;
+        return _field.elementCount;
     }
 
     static if (hasZeroShiftFieldMember!Field)
@@ -176,10 +176,10 @@ struct VmapField(Field, Fun)
         return _field.shape;
     }
 
-    static if (__traits(hasMember, Field, "elementsCount"))
-    auto elementsCount()() @property
+    static if (__traits(hasMember, Field, "elementCount"))
+    auto elementCount()() @property
     {
-        return _field.elementsCount;
+        return _field.elementCount;
     }
 
     static if (hasZeroShiftFieldMember!Field)

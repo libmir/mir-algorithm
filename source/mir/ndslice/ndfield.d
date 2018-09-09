@@ -109,11 +109,11 @@ struct Cartesian(NdFields...)
     }
 
     ///
-    size_t elementsCount()() @property
+    size_t elementCount()() @property
     {
         size_t ret = 1;
         foreach (ref field; _fields)
-            ret *= field.elementsCount;
+            ret *= field.elementCount;
         ret;
     }
 
@@ -205,11 +205,11 @@ struct Kronecker(alias fun, NdFields...)
     }
 
     ///
-    size_t elementsCount()() @property
+    size_t elementCount()() @property
     {
         size_t ret = 1;
         foreach (ref field; _fields)
-            ret *= field.elementsCount;
+            ret *= field.elementCount;
         ret;
     }
 

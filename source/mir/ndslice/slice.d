@@ -1007,9 +1007,9 @@ public:
     auto field()() @trusted @property
     {
         static assert(kind == Contiguous, "Slice.field is defined only for contiguous slices. Slice kind is " ~ kind.stringof);
-        static if (is(typeof(_iterator[size_t(0) .. elementsCount])))
+        static if (is(typeof(_iterator[size_t(0) .. elementCount])))
         {
-            return _iterator[size_t(0) .. elementsCount];
+            return _iterator[size_t(0) .. elementCount];
         }
         else
         {
@@ -1485,7 +1485,7 @@ public:
     {
         static if (kind == Contiguous)
         {
-            return elementsCount - 1;
+            return elementCount - 1;
         }
         else
         {
@@ -1621,7 +1621,7 @@ public:
     /++
     Returns: Total number of elements in a slice
     +/
-    size_t elementsCount() @safe const
+    size_t elementCount()() @safe const
     {
         size_t len = 1;
         foreach (i; Iota!N)
@@ -1629,12 +1629,15 @@ public:
         return len;
     }
 
+    deprecated("use elementCount instead")
+    alias elementsCount = elementCount;
+
     static if (doUnittest)
     /// Regular slice
     @safe @nogc pure nothrow version(mir_test) unittest
     {
         import mir.ndslice.topology : iota;
-        assert(iota(3, 4, 5).elementsCount == 60);
+        assert(iota(3, 4, 5).elementCount == 60);
     }
 
 
@@ -1645,9 +1648,9 @@ public:
         import mir.ndslice.topology : pack, evertPack, iota;
         auto slice = iota(3, 4, 5, 6, 7, 8);
         auto p = slice.pack!2;
-        assert(p.elementsCount == 360);
-        assert(p[0, 0, 0, 0].elementsCount == 56);
-        assert(p.evertPack.elementsCount == 56);
+        assert(p.elementCount == 360);
+        assert(p[0, 0, 0, 0].elementCount == 56);
+        assert(p.evertPack.elementCount == 56);
     }
 
     /++
