@@ -564,7 +564,6 @@ struct OrthogonalReduceField(FieldsIterator, alias fun, T)
     auto opIndex()(size_t index)
     {
         import std.traits: Unqual;
-        assert(_fields.length);
         auto fields = _fields;
         T r = _initialValue;
         if (!fields.empty) do

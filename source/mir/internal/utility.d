@@ -20,6 +20,7 @@ template Iota(size_t i, size_t j)
 template realType(C)
     if (__traits(isFloating, C) || isComplex!C)
 {
+    import std.traits: Unqual;
     static if (isComplex!C)
         alias realType = typeof(Unqual!C.init.re);
     else
