@@ -32,7 +32,7 @@
 			"targetType": "sourceLibrary"
 		}
 	],
-	"description": "Multidimensional arrays (ndslice), ranges, iterators, and algorithms for Dlang",
+	"description": "Dlang Core Library",
 	"copyright": "Copyright © 2016 - 2018, Ilya Yaroshenko; Copyright © 2017 - 2018, Symmetry Investments Group and Kaleidic Associates Advisory Limited; Copyright 2016 - 2018 © Digital Mars and Phobos Authors; (see information per file)",
 	"license": "BSL-1.0"
 }
