@@ -26,7 +26,7 @@ $(BOOKTABLE ,
     $(LEADINGROW Combinatrorics)
     $(TR $(TDNW $(MREF mir,combinatorics)★) $(TD Combinations, combinations with repeats, cartesian power, permutations.))
     $(LEADINGROW Interconnection with other languages)
-    $(TR $(TDNW $(MREF mir,ndslice,connect,cpp)) $(TD Definitions suitable for `extern(C++)` functions))
+
     $(TR $(TDNW $(MREF mir,ndslice,connect,cpython)) $(TD Utilities for $(HTTPS docs.python.org/3/c-api/buffer.html, Python Buffer Protocol)))
     $(LEADINGROW Math)
     $(TR $(TDNW $(MREF mir,math)) $(TD Package))
