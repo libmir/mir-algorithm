@@ -98,71 +98,68 @@ auto lightConst(Iterator, size_t N, SliceKind kind)(immutable Slice!(Iterator, N
 /// ditto
 auto lightImmutable(Iterator, size_t N, SliceKind kind)(immutable Slice!(Iterator, N, kind) e)
 {
-    static if (isPointer!Iterator)
-        return Slice!(LightImmutableOf!Iterator, N, kind)(e._lengths, e._strides, lightImmutable(e._iterator));
-    else
-        return Slice!(LightImmutableOf!Iterator, N, kind)(e._lengths, e._strides, e._iterator.lightImmutable);
+    return Slice!(LightImmutableOf!Iterator, N, kind)(e._lengths, e._strides, .lightImmutable(e._iterator));
 }
 
 /// ditto
 auto lightImmutable(T)(auto ref immutable T v)
-    if (!is(T : P*, P) && hasMember!(T, "lightImmutable") &&  !isImplicitlyConvertible!(immutable T, T) && !isSlice!T)
+    if (!is(T : P*, P) && __traits(hasMember, immutable T, "lightImmutable") && !isSlice!T)
 {
-    return __traits(getMember, v, "lightImmutable");
+    return v.lightImmutable();
 }
 
 ///
 auto lightConst(T)(auto ref const T v)
-    if (!is(T : P*, P) && hasMember!(T, "lightConst") &&  !isImplicitlyConvertible!(const T, T) && !isSlice!T)
+    if (!is(T : P*, P) && __traits(hasMember, const T, "lightConst") && !isSlice!T)
 {
-    return __traits(getMember, v, "lightConst")();
+    return v.lightConst();
 }
 
 ///
 auto lightConst(T)(auto ref immutable T v)
-    if (!is(T : P*, P) && hasMember!(T, "lightConst") &&  !isImplicitlyConvertible!(immutable T, T) && !isSlice!T)
+    if (!is(T : P*, P) && __traits(hasMember, immutable T, "lightConst") && !isSlice!T)
 {
-    return __traits(getMember, v, "lightConst")();
+    return v.lightConst();
 }
 
 /// ditto
 T lightConst(T)(auto ref const T e)
-    if (isImplicitlyConvertible!(const T, T) && !isSlice!T)
+    if (isImplicitlyConvertible!(const T, T) && !__traits(hasMember, const T, "lightConst") && !isSlice!T)
 {
     return e;
 }
 
 /// ditto
 T lightConst(T)(auto ref immutable T e)
-    if (isImplicitlyConvertible!(immutable T, T) && !isSlice!T)
+    if (isImplicitlyConvertible!(immutable T, T) && !__traits(hasMember, immutable T, "lightConst") && !isSlice!T)
 {
     return e;
 }
 
 /// ditto
 T lightImmutable(T)(auto ref immutable T e)
-    if (isImplicitlyConvertible!(immutable T, T) && !isSlice!T)
+    if (isImplicitlyConvertible!(immutable T, T) && !__traits(hasMember, immutable T, "lightImmutable") && !isSlice!T)
 {
     return e;
 }
 
-/// ditto
-auto lightConst(T)(const(T)[] e)
-{
-    return e;
-}
+// /// ditto
+// auto lightConst(T)(const(T)[] e)
+// {
+//     return e;
+// }
 
-/// ditto
-auto lightConst(T)(immutable(T)[] e)
-{
-    return e;
-}
+// /// ditto
+// auto lightConst(T)(immutable(T)[] e)
+// {
+//     return e;
+// }
 
-/// ditto
-auto lightImmutable(T)(immutable(T)[] e)
-{
-    return e;
-}
+// /// ditto
+// auto lightImmutable(T)(immutable(T)[] e)
+// {
+//     return e;
+// }
 
 /// ditto
 auto lightConst(T)(const(T)* e)
@@ -185,5 +182,5 @@ auto lightImmutable(T)(immutable(T)* e)
 /// ditto
 auto trustedImmutable(T)(auto ref const T e) @trusted
 {
-    return (cast(immutable) e).lightImmutable;
+    return lightImmutable(* cast(immutable) &e);
 }

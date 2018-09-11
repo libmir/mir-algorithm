@@ -227,13 +227,13 @@ struct RetroIterator(Iterator)
     ///
     auto lightConst()() const @property
     {
-        return RetroIterator!(LightConstOf!Iterator)(.lightConst(_iterator));
+        return RetroIterator!(LightConstOf!Iterator)(mir.qualifier.lightConst(_iterator));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return RetroIterator!(LightImmutableOf!Iterator)(.lightImmutable(_iterator));
+        return RetroIterator!(LightImmutableOf!Iterator)(mir.qualifier.lightImmutable(_iterator));
     }
 
     ///
@@ -346,13 +346,13 @@ struct StrideIterator(Iterator)
     ///
     auto lightConst()() const @property
     {
-        return StrideIterator!(LightConstOf!Iterator)(_stride, _iterator.lightConst);
+        return StrideIterator!(LightConstOf!Iterator)(_stride, .lightConst(_iterator));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return StrideIterator!(LightImmutableOf!Iterator)(_stride, _iterator.lightImmutable);
+        return StrideIterator!(LightImmutableOf!Iterator)(_stride, .lightImmutable(_iterator));
     }
 
     ///
@@ -498,7 +498,9 @@ struct ZipIterator(Iterators...)
         import std.format;
         import mir.ndslice.topology: iota;
         import std.meta: staticMap;
-        return mixin("ZipIterator!(staticMap!(LightConstOf, Iterators))(%(_iterators[%s].lightConst,%)].lightConst)".format(_iterators.length.iota));
+        alias Ret = ZipIterator!(staticMap!(LightConstOf, Iterators));
+        enum ret = "Ret(%(.lightConst(_iterators[%s]),%)]))".format(_iterators.length.iota);
+        return mixin(ret);
     }
 
     ///
@@ -507,7 +509,9 @@ struct ZipIterator(Iterators...)
         import std.format;
         import mir.ndslice.topology: iota;
         import std.meta: staticMap;
-        return mixin("ZipIterator!(staticMap!(LightImmutableOf, Iterators))(%(_iterators[%s].lightImmutable,%)].lightImmutable)".format(_iterators.length.iota));
+        alias Ret = ZipIterator!(staticMap!(LightImmutableOf, Iterators));
+        enum ret = "Ret(%(.lightImmutable(_iterators[%s]),%)]))".format(_iterators.length.iota);
+        return mixin(ret);
     }
 
     auto opUnary(string op : "*")()
@@ -624,7 +628,7 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
     auto lightConst()() const @property
     {
         return CachedIterator!(LightConstOf!Iterator, LightConstOf!CacheIterator, LightConstOf!FlagIterator)(
-            _iterator.lightConst,
+            .lightConst(_iterator),
             _caches.lightConst,
             _flags.lightConst,
             );
@@ -634,7 +638,7 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
     auto lightImmutable()() immutable @property
     {
         return CachedIterator!(LightImmutableOf!Iterator, LightImmutableOf!CacheIterator, LightImmutableOf!FlagIterator)(
-            _iterator.lightImmutable,
+            .lightImmutable(_iterator),
             _caches.lightImmutable,
             _flags.lightImmutable,
             );
@@ -1147,7 +1151,7 @@ struct IndexIterator(Iterator, Field)
     ///
     auto lightConst()() const @property
     {
-        return IndexIterator!(LightConstOf!Iterator, LightConstOf!Field)(.lightConst(_iterator), _field.lightConst);
+        return IndexIterator!(LightConstOf!Iterator, LightConstOf!Field)(.lightConst(_iterator), .lightConst(_field));
     }
 
     ///
@@ -1287,13 +1291,13 @@ struct SliceIterator(Iterator, size_t N = 1, SliceKind kind = Contiguous)
     ///
     auto lightConst()() const @property
     {
-        return SliceIterator!(LightConstOf!Iterator, N, kind)(_lengths, _strides, _iterator.lightConst);
+        return SliceIterator!(LightConstOf!Iterator, N, kind)(_lengths, _strides, .lightConst(_iterator));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return SliceIterator!(LightImmutableOf!Iterator, N, kind)(_lengths, _strides, _iterator.lightImmutable);
+        return SliceIterator!(LightImmutableOf!Iterator, N, kind)(_lengths, _strides, .lightImmutable(_iterator));
     }
 
     auto opUnary(string op : "*")()
@@ -1341,13 +1345,13 @@ struct FieldIterator(Field)
     ///
     auto lightConst()() const @property
     {
-        return FieldIterator!(LightConstOf!Field)(_index, _field.lightConst);
+        return FieldIterator!(LightConstOf!Field)(_index, .lightConst(_field));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return FieldIterator!(LightImmutableOf!Field)(_index, _field.lightImmutable);
+        return FieldIterator!(LightImmutableOf!Field)(_index, .lightImmutable(_field));
     }
 
     ///
@@ -1688,13 +1692,13 @@ struct StairsIterator(Iterator, string direction)
     ///
     auto lightConst()() const @property
     {
-        return StairsIterator!(LightConstOf!Iterator, direction)(_length, _iterator.lightConst);
+        return StairsIterator!(LightConstOf!Iterator, direction)(_length, .lightConst(_iterator));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return StairsIterator!(LightImmutableOf!Iterator, direction)(_length, _iterator.lightImmutable);
+        return StairsIterator!(LightImmutableOf!Iterator, direction)(_length, .lightImmutable(_iterator));
     }
 
 @optmath:
