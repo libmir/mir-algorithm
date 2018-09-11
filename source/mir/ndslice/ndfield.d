@@ -84,8 +84,14 @@ struct Cartesian(NdFields...)
     size_t length(size_t d = 0)() @property
     {
         foreach(f, ref field; _fields)
-            static if (M!(f + 1) > d)
-                return field.length!(d - M!f);
+            static if (M!f <= d && M!(f + 1) > d)
+            {
+                enum d = d - M!f;
+                static if (d)
+                    return field.length!(d - M!f);
+                else
+                    return field.length;
+            }
     }
 
     ///
@@ -114,7 +120,7 @@ struct Cartesian(NdFields...)
         size_t ret = 1;
         foreach (ref field; _fields)
             ret *= field.elementCount;
-        ret;
+        return ret;
     }
 
     ///

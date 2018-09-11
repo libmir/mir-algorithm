@@ -3578,18 +3578,19 @@ auto magic(size_t length)
 @safe pure nothrow
 version(mir_test) unittest
 {
+    import mir.math.sum;
+    import mir.ndslice: slice, magic, byDim, map, as, repeat, diagonal, antidiagonal;
+
     bool isMagic(S)(S matrix)
     {
-        import mir.math.sum;
-        import mir.ndslice: magic, byDim, map, all, diagonal, antidiagonal;
         auto n = matrix.length;
         auto c = n * (n * n + 1) / 2; // magic number
         return // check shape
             matrix.length!0 > 0 && matrix.length!0 == matrix.length!1
             && // each row sum should equal magic number
-            matrix.byDim!0.map!sum.all!(a => a == c)
+            matrix.byDim!0.map!sum == c.repeat(n)
             && // each columns sum should equal magic number
-            matrix.byDim!1.map!sum.all!(a => a == c)
+            matrix.byDim!1.map!sum == c.repeat(n)
             && // diagonal sum should equal magic number
             matrix.diagonal.sum == c
             && // antidiagonal sum should equal magic number
@@ -3600,6 +3601,7 @@ version(mir_test) unittest
     assert(!isMagic(magic(2))); // 2x2 magic square does not exist
     foreach(n; 3 .. 24)
         assert(isMagic(magic(n)));
+    assert(isMagic(magic(3).as!double.slice));
 }
 
 /++

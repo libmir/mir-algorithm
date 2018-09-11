@@ -77,13 +77,13 @@ struct MapField(Field, alias _fun)
     ///
     auto lightConst()() const @property
     {
-        return MapField!(LightConstOf!Field, _fun)(_field.lightConst);
+        return MapField!(LightConstOf!Field, _fun)(.lightConst(_field));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return MapField!(LightImmutableOf!Field, _fun)(_field.lightImmutable);
+        return MapField!(LightImmutableOf!Field, _fun)(.lightImmutable(_field));
     }
 
     /++
@@ -104,19 +104,19 @@ struct MapField(Field, alias _fun)
     }
 
     static if (__traits(hasMember, Field, "length"))
-    auto length()() @property
+    auto length() @property
     {
         return _field.length;
     }
 
     static if (__traits(hasMember, Field, "shape"))
-    auto shape()() @property
+    auto shape() @property
     {
         return _field.shape;
     }
 
     static if (__traits(hasMember, Field, "elementCount"))
-    auto elementCount()() @property
+    auto elementCount() @property
     {
         return _field.elementCount;
     }
@@ -143,13 +143,13 @@ struct VmapField(Field, Fun)
     ///
     auto lightConst()() const @property
     {
-        return VmapField!(LightConstOf!Field, _fun)(_field.lightConst);
+        return VmapField!(LightConstOf!Field, _fun)(.lightConst(_field));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return VmapField!(LightImmutableOf!Field, _fun)(_field.lightImmutable);
+        return VmapField!(LightImmutableOf!Field, _fun)(.lightImmutable(_field));
     }
 
     auto ref opIndex(T...)(auto ref T index)
@@ -165,19 +165,19 @@ struct VmapField(Field, Fun)
     }
 
     static if (__traits(hasMember, Field, "length"))
-    auto length()() @property
+    auto length() @property
     {
         return _field.length;
     }
 
     static if (__traits(hasMember, Field, "shape"))
-    auto shape()() @property
+    auto shape() @property
     {
         return _field.shape;
     }
 
     static if (__traits(hasMember, Field, "elementCount"))
-    auto elementCount()() @property
+    auto elementCount() @property
     {
         return _field.elementCount;
     }
@@ -324,7 +324,7 @@ struct RepeatField(T)
 /++
 `BitField` is used by $(SUBREF topology, bitwise).
 +/
-struct BitField(Field, I = typeof(Field.init[size_t.init]))
+struct BitField(Field, I = typeof(cast()Field.init[size_t.init]))
     if (__traits(isUnsigned, I))
 {
 @optmath:
@@ -363,13 +363,13 @@ struct BitField(Field, I = typeof(Field.init[size_t.init]))
     ///
     auto lightConst()() const @property
     {
-        return BitField!(LightConstOf!Field)(_field.lightConst);
+        return BitField!(LightConstOf!Field, I)(mir.qualifier.lightConst(_field));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return BitField!(LightImmutableOf!Field)(_field.lightImmutable);
+        return BitField!(LightImmutableOf!Field, I)(mir.qualifier.lightImmutable(_field));
     }
 
     bool opIndex()(size_t index)
@@ -422,7 +422,7 @@ auto BitField__map(Field, I, alias fun)(BitField!(Field, I) field)
 /++
 `BitpackField` is used by $(SUBREF topology, bitpack).
 +/
-struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
+struct BitpackField(Field, uint pack, I = typeof(cast()Field.init[size_t.init]))
     if (__traits(isUnsigned, I))
 {
     //static assert();
@@ -437,13 +437,13 @@ struct BitpackField(Field, uint pack, I = typeof(Field.init[size_t.init]))
     ///
     auto lightConst()() const @property
     {
-        return BitpackField!(LightConstOf!Field, pack)(_field.lightConst);
+        return BitpackField!(LightConstOf!Field, pack)(.lightConst(_field));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return BitpackField!(LightImmutableOf!Field, pack)(_field.lightImmutable);
+        return BitpackField!(LightImmutableOf!Field, pack)(.lightImmutable(_field));
     }
 
     I opIndex()(size_t index)
@@ -590,14 +590,14 @@ struct CycleField(Field)
     ///
     auto lightConst()() const @property
     {
-        auto field = _field.lightConst;
+        auto field = .lightConst(_field);
         return CycleField!(typeof(field))(_length, field);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        auto field = _field.lightImmutable;
+        auto field = .lightImmutable(_field);
         return CycleField!(typeof(field))(_length, field);
     }
 
@@ -638,14 +638,14 @@ struct CycleField(Field, size_t length)
     ///
     auto lightConst()() const @property
     {
-        auto field = _field.lightConst;
+        auto field = .lightConst(_field);
         return CycleField!(typeof(field), _length)(field);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        auto field = _field.lightImmutable;
+        auto field = .lightImmutable(_field);
         return CycleField!(typeof(field), _length)(field);
     }
 
@@ -748,7 +748,7 @@ struct LinspaceField(T)
 @optmath:
 
     ///
-    size_t length()() const @property
+    size_t length() const @property
     {
         return _length;
     }
@@ -770,7 +770,6 @@ struct MagicField()
 
     /++
     Magic Square size.
-    Should be even.
     +/
     size_t _n;
 
@@ -794,7 +793,7 @@ struct MagicField()
     }
 
     ///
-    size_t[1] shape()() const @property @nogc
+    size_t[1] shape() const @property @nogc
     {
         return [_n * _n];
     }
