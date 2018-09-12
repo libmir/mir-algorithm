@@ -143,23 +143,23 @@ T lightImmutable(T)(auto ref immutable T e)
     return e;
 }
 
-// /// ditto
-// auto lightConst(T)(const(T)[] e)
-// {
-//     return e;
-// }
+/// ditto
+auto lightConst(T)(const(T)[] e)
+{
+    return e;
+}
 
-// /// ditto
-// auto lightConst(T)(immutable(T)[] e)
-// {
-//     return e;
-// }
+/// ditto
+auto lightConst(T)(immutable(T)[] e)
+{
+    return e;
+}
 
-// /// ditto
-// auto lightImmutable(T)(immutable(T)[] e)
-// {
-//     return e;
-// }
+/// ditto
+auto lightImmutable(T)(immutable(T)[] e)
+{
+    return e;
+}
 
 /// ditto
 auto lightConst(T)(const(T)* e)
