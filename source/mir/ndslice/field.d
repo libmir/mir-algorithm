@@ -865,3 +865,93 @@ struct MagicField()
         }
     }
 }
+
+/++
+`SparseField` to represent `Sparse`.
++/
+struct SparseField(T)
+{
+    ///
+    T[size_t] table;
+
+    ///
+    auto lightConst()() const @trusted
+    {
+        return SparseField!(const T)(cast(const(T)[size_t])table);
+    }
+
+    ///
+    auto lightImmutable()() immutable @trusted
+    {
+        return SparseField!(immutable T)(cast(immutable(T)[size_t])table);
+    }
+
+    ///
+    T opIndex()(size_t index)
+    {
+        import std.traits: isScalarType;
+        static if (isScalarType!T)
+            return table.get(index, cast(T)0);
+        else
+            return table.get(index, null);
+    }
+
+    ///
+    T opIndexAssign()(T value, size_t index)
+    {
+        import std.traits: isScalarType;
+        static if (isScalarType!T)
+        {
+            if (value != 0)
+                table[index] = value;
+            else
+                table.remove(index);
+        }
+        else
+        {
+            if (value !is null)
+                table[index] = value;
+            else
+                table.remove(index);
+        }
+        return value;
+    }
+
+    ///
+    T opIndexUnary(string op)(size_t index)
+        if (op == `++` || op == `--`)
+    {
+        import std.traits: isScalarType;
+        mixin (`auto value = ` ~ op ~ `table[index];`);
+        static if (isScalarType!T)
+        {
+            if (value == 0)
+                table.remove(index);
+        }
+        else
+        {
+            if (value is null)
+                table.remove(index);
+        }
+        return value;
+    }
+
+    ///
+    T opIndexOpAssign(string op)(T value, size_t index)
+        if (op == `+` || op == `-`)
+    {
+        import std.traits: isScalarType;
+        mixin (`value = table[index] ` ~ op ~ `= value;`); // this works
+        static if (isScalarType!T)
+        {
+            if (value == 0)
+                table.remove(index);
+        }
+        else
+        {
+            if (value is null)
+                table.remove(index);
+        }
+        return value;
+    }
+}
