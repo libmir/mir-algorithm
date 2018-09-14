@@ -551,8 +551,7 @@ private void checkShapesMatch(
         {
             import mir.ndslice.fuse: fuseShape;
             static assert(slices[i].fuseShape.length >= N);
-            import std.conv;
-            assert(slices[i].fuseShape[0 .. N] == slices[0].shape, msgShape ~ slices[i].fuseShape[0 .. N].to!string ~ slices[0].shape.to!string);
+            assert(slices[i].fuseShape[0 .. N] == slices[0].shape, msgShape);
         }
     }
 }
@@ -2056,7 +2055,6 @@ version(mir_test) unittest
 pure nothrow
 version(mir_test) unittest
 {
-    import std.conv : to;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
 
@@ -2210,7 +2208,6 @@ version(mir_test) unittest
 pure nothrow
 version(mir_test) unittest
 {
-    import std.conv : to;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
 
