@@ -537,6 +537,7 @@ private void checkShapesMatch(
     string pfun = __PRETTY_FUNCTION__,
     Slices...)
     (Slices slices)
+    if (Slices.length > 1)
 {
     enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);
     enum msgShape = "all slices must have the same shape"  ~ tailErrorMessage!(fun, pfun);
@@ -663,7 +664,7 @@ S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {
     do
     {
-        static if (slices[0].shape.length == 1)
+        static if (DimensionCount!(Slices[0]) == 1)
             seed = mixin("fun(seed, " ~ frontOf!(Slices.length) ~ ")");
         else
             seed = mixin(".reduceImpl!fun(seed," ~ frontOf!(Slices.length) ~ ")");
@@ -709,7 +710,8 @@ template reduce(alias fun)
     @optmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .reduce!fun(seed, allFlattened!slices);
@@ -730,7 +732,8 @@ template reduce(alias fun)
     @optmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .reduce!fun(seed, allFlattened!slices);
@@ -916,7 +919,7 @@ void eachImpl(alias fun, Slices...)(Slices slices)
         assert(!slice.empty);
     do
     {
-        static if (slices[0].shape.length == 1)
+        static if (DimensionCount!(Slices[0]) == 1)
             mixin("fun(" ~ frontOf!(Slices.length) ~ ");");
         else
             mixin(".eachImpl!fun(" ~ frontOf!(Slices.length) ~ ");");
@@ -951,7 +954,8 @@ template each(alias fun)
     @optmath auto each(Slices...)(Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             .each!fun(allFlattened!slices);
@@ -1657,7 +1661,7 @@ bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slice
     {
         do
         {
-            static if (slices[0].shape.length == 1)
+            static if (DimensionCount!(Slices[0]) == 1)
             {
                 if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                 {
@@ -1710,7 +1714,8 @@ template findIndex(alias pred)
     @optmath size_t[DimensionCount!(Slices[0])] findIndex(Slices...)(Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         typeof(return) ret = -1;
         auto lengths = slices[0].shape;
         if (!slices[0].anyEmpty && findImpl!pred(ret, slices))
@@ -1801,7 +1806,8 @@ template find(alias pred)
     @optmath size_t[DimensionCount!(Slices[0])] find(Slices...)(Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         typeof(return) ret;
         if (!slices[0].anyEmpty)
             findImpl!pred(ret, slices);
@@ -1933,7 +1939,7 @@ size_t anyImpl(alias fun, Slices...)(Slices slices)
     {
         do
         {
-            static if (slices[0].shape.length == 1)
+            static if (DimensionCount!(Slices[0]) == 1)
             {
                 if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                     return true;
@@ -1974,7 +1980,8 @@ template any(alias pred = "a")
     @optmath bool any(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .any!pred(allFlattened!slices);
@@ -2092,7 +2099,7 @@ size_t allImpl(alias fun, Slices...)(Slices slices)
     {
         do
         {
-            static if (slices[0].shape.length == 1)
+            static if (DimensionCount!(Slices[0]) == 1)
             {
                 if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                     return false;
@@ -2133,7 +2140,8 @@ template all(alias pred = "a")
     @optmath bool all(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .all!pred(allFlattened!slices);
@@ -2262,7 +2270,8 @@ template count(alias fun)
     @optmath size_t count(Slices...)(Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (__traits(isSame, fun, naryFun!"true"))
         {
             return slices[0].elementCount;
@@ -2585,7 +2594,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     else
     do
     {
-        static if (slices[0].shape.length == 1)
+        static if (DimensionCount!(Slices[0]) == 1)
         {
             if(mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                 ret++;
@@ -2693,7 +2702,8 @@ template eachLower(alias fun)
 
             static assert (allSatisfy!(isMatrix, Slices),
                 "eachLower: Every slice input must be a two-dimensional slice");
-            slices.checkShapesMatch;
+            static if (Slices.length > 1)
+                slices.checkShapesMatch;
             if (slices[0].anyEmpty)
                 return;
 
@@ -3157,7 +3167,8 @@ template eachUpper(alias fun)
 
             static assert (allSatisfy!(isMatrix, Slices),
                 "eachUpper: Every slice input must be a two-dimensional slice");
-            slices.checkShapesMatch;
+            static if (Slices.length > 1)
+                slices.checkShapesMatch;
             if (slices[0].anyEmpty)
                 return;
 

@@ -100,7 +100,7 @@ template DimensionCount(T)
     static if (hasShape!T)
         enum size_t DimensionCount = typeof(T.init.shape).length;
     else
-        enum size_t DimensionCount = 1;
+        enum size_t DimensionCount = __traits(hasMember, T, "front") && __traits(hasMember, T, "empty") && __traits(hasMember, T, "popFront");
 }
 
 package(mir) bool anyEmptyShape(size_t N)(auto ref in size_t[N] shape) @property
@@ -113,7 +113,7 @@ package(mir) bool anyEmptyShape(size_t N)(auto ref in size_t[N] shape) @property
 
 ///
 bool anyEmpty(Range)(Range range) @property
-    if (hasShape!Range || __traits(hasMember, Range, "anyEmpty"))
+    if (__traits(hasMember, Range, "anyEmpty") || __traits(hasMember, Range, "empty") || hasShape!Range)
 {
     static if (__traits(hasMember, Range, "anyEmpty"))
     {
@@ -125,8 +125,13 @@ bool anyEmpty(Range)(Range range) @property
         return anyEmptyShape(range.shape);
     }
     else
+    static if (__traits(hasMember, Range, "empty"))
     {
         return range.empty;
+    }
+    else
+    {
+        return range.length == 0;
     }
 }
 
