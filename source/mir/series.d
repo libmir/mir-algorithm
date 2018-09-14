@@ -1220,7 +1220,7 @@ Returns:
     sorted GC-allocated series.
 See_also: $(LREF assocArray)
 */
-Series!(K*, V*) series(K, V)(V[K] aa)
+Series!(RK*, RV*) series(K, V, RK = K, RV = V)(V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
     immutable size_t length = aa.length;
@@ -1229,8 +1229,8 @@ Series!(K*, V*) series(K, V)(V[K] aa)
     {
         if (__ctfe)
         {
-            K[] keys;
-            V[] values;
+            RK[] keys;
+            RV[] values;
             foreach(kv; aa.byKeyValue)
             {
                 keys ~= kv.key;
@@ -1263,17 +1263,17 @@ Series!(K*, V*) series(K, V)(V[K] aa)
 }
 
 /// ditto
-Series!(const(K)*, const(V)*) series(K, V)(const V[K] aa)
+Series!(RK*, RV*) series(K, V, RK = const K, RV = const V)(const V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series(cast(const(V)[const K]) aa);
+    return .series!(K, V, RK, RV)(cast(const(V)[const K]) aa);
 }
 
 /// ditto
-Series!(immutable(K)*, immutable(V)*) series(K, V)(immutable V[K] aa)
+Series!(RK*, RV*)  series( K, V, RK = immutable K, RV = immutable V)(const V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series(cast(immutable(V)[immutable K]) aa);
+    return .series!(K, V, RK, RV)(cast(immutable(V)[immutable K]) aa);
 }
 
 /// ditto

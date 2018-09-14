@@ -8,6 +8,7 @@ $(BOOKTABLE $(H2 Iterators),
 $(TR $(TH Iterator Name) $(TH Used By))
 $(T2 BytegroupIterator, $(SUBREF topology, bytegroup).)
 $(T2 CachedIterator, $(SUBREF topology, cached), $(SUBREF topology, cachedGC).)
+$(T2 ChopIterator, $(SUBREF topology, chopped))
 $(T2 FieldIterator, $(SUBREF slice, slicedField), $(SUBREF topology, bitwise), $(SUBREF topology, ndiota), and others.)
 $(T2 FlattenedIterator, $(SUBREF topology, flattened))
 $(T2 IndexIterator, $(SUBREF topology, indexed))
@@ -19,7 +20,7 @@ $(T2 SliceIterator, $(SUBREF topology, map) in composition with $(LREF MapIterat
 $(T2 SlideIterator, $(SUBREF topology, diff), $(SUBREF topology, pairwise), and $(SUBREF topology, slide).)
 $(T2 StairsIterator, $(SUBREF topology, stairs))
 $(T2 StrideIterator, $(SUBREF topology, stride))
-$(T2 SubSliceIterator, $(SUBREF topology, mapSubSlices))
+$(T2 SubSliceIterator, $(SUBREF topology, subSlices))
 $(T2 ZipIterator, $(SUBREF topology, zip))
 )
 
@@ -1235,8 +1236,6 @@ auto elem  = sliceable[index[0] .. index[1]];
 +/
 struct SubSliceIterator(Iterator, Sliceable)
 {
-    import mir.functional: RefTuple, unref;
-
 @optmath:
     ///
     Iterator _iterator;
@@ -1265,6 +1264,47 @@ struct SubSliceIterator(Iterator, Sliceable)
     {
         auto i = _iterator[index];
         return _sliceable[i[0] .. i[1]];
+    }
+
+    mixin(std_ops);
+}
+
+/++
+Iterates chunks in a sliceable using an iterator composed of indexes stored consequently.
+
+Definition:
+----
+auto elem  = _sliceable[_iterator[index] .. _iterator[index + 1]];
+----
++/
+struct ChopIterator(Iterator, Sliceable)
+{
+@optmath:
+    ///
+    Iterator _iterator;
+    ///
+    Sliceable _sliceable;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return ChopIterator!(LightConstOf!Iterator, LightConstOf!Sliceable)(.lightConst(_iterator), _sliceable.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return ChopIterator!(LightImmutableOf!Iterator, LightImmutableOf!Sliceable)(.lightImmutable(_iterator), _sliceable.lightImmutable);
+    }
+
+    auto ref opUnary(string op : "*")()
+    {
+        return _sliceable[*_iterator .. _iterator[1]];
+    }
+
+    auto ref opIndex(ptrdiff_t index)
+    {
+        return _sliceable[_iterator[index] .. _iterator[index + 1]];
     }
 
     mixin(std_ops);

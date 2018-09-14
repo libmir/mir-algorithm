@@ -209,9 +209,8 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
     }
     pairwiseIndex[$ - 1] = cast(I) graph.length;
 
-    import mir.ndslice.slice: sliced;
-    import mir.ndslice.topology: pairwiseMapSubSlices;
-    return pairwiseIndex.sliced.pairwiseMapSubSlices(()@trusted {return stack.ptr; }());
+    import mir.ndslice.topology: chopped;
+    return (()@trusted {return stack.ptr; }()).chopped(pairwiseIndex);
 }
 
 /++
