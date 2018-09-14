@@ -352,7 +352,6 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
 ///
 @system nothrow version(mir_test) unittest
 {
-    import std.conv : to;
     import std.range.primitives;
     {
         // example from "Introduction to Algorithms" Cormen et al., p 146
