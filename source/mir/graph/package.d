@@ -38,7 +38,7 @@ GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aa
     import mir.array.allocation: array;
     import mir.ndslice.sorting;
     import mir.ndslice;
-    auto keys = aaGraph.byKey.array;
+    auto keys = aaGraph.byKey.array.sliced;
     sort(keys);
     size_t dataLength;
     foreach (ref v; aaGraph)
@@ -49,13 +49,13 @@ GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aa
 
     foreach (i; 0 .. keys.length)
     {
-        components[i] = dataIndex;
+        components[i] = cast(J) dataIndex;
         foreach(ref elem; aaGraph[keys[i]])
         {
             import std.range: assumeSorted;
             auto index = keys.assumeSorted.lowerBound(elem).length;
             assert(index < keys.length, "graphSeries: aaGraph should contains keys for all vertixes");
-            data[dataIndex++] = cast(uint) index;
+            data[dataIndex++] = cast(I) index;
         }
     }
     components[keys.length] = dataIndex; 
