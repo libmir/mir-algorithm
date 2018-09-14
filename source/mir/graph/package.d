@@ -17,17 +17,14 @@ import mir.math.common: optmath;
 @optmath:
 
 import mir.series;
-
-import mir.functional: staticArray;
-
-import mir.ndslice.iterator: SubSliceIterator, SlideIterator;
+import mir.ndslice.iterator: ChopIterator;
 
 ///
-alias GraphIterator(I) = SubSliceIterator!(SlideIterator!(size_t*, 2, staticArray), I*);
+alias GraphIterator(I = uint, J = size_t) = ChopIterator!(size_t*, uint*);
 ///
-alias Graph(I) = Slice!(GraphIterator!I);
+alias Graph(I = uint, J = size_t) = Slice!(GraphIterator!(I, J));
 ///
-alias GraphSeries(T, I) = Series!(T*, GraphIterator!I);
+alias GraphSeries(T, I = uint, J = size_t) = Series!(T*, GraphIterator!(I, J));
 
 /++
 Param:
@@ -36,20 +33,19 @@ Returns:
     A graph series composed of keys (sorted `.index`) and arrays of indeces (`.data`)
 Complexity: `O(log(V) (V + E))`
 +/
-GraphSeries!(T, uint) graphSeries(T, Range)(in Range[T] aaGraph)
+GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aaGraph)
 {
-    import std.array: array;
-    auto keys = aaGraph.byKey.array.sliced;
+    import mir.array.allocation: array;
     import mir.ndslice.sorting;
     import mir.ndslice;
+    auto keys = aaGraph.byKey.array;
     sort(keys);
     size_t dataLength;
     foreach (ref v; aaGraph)
         dataLength += v.length;
-    auto data = uninitSlice!uint(dataLength);
-    auto components = uninitSlice!size_t(keys.length + 1);
+    auto data = uninitSlice!I(dataLength);
+    auto components = uninitSlice!J(keys.length + 1);
     size_t dataIndex;
-    // size_t componentIndex;
 
     foreach (i; 0 .. keys.length)
     {
@@ -63,8 +59,8 @@ GraphSeries!(T, uint) graphSeries(T, Range)(in Range[T] aaGraph)
         }
     }
     components[keys.length] = dataIndex; 
-
-    return keys.series(components.pairwiseMapSubSlices(()@trusted {return data.ptr; }()));
+    auto sliceable = (() @trusted => data.ptr)();
+    return keys.series(sliceable.chopped(components));
 }
 
 ///
