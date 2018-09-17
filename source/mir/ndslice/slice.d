@@ -609,7 +609,7 @@ Slice!(Universal, N, Iterator)
     Iterator      _iterator
 -------
 +/
-struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
+struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels...)
     if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1))
 {
 @optmath:
