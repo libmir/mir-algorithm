@@ -29,7 +29,7 @@ $(BOOKTABLE $(H2 Aligned allocation utilities),
 $(TR $(TH Function Name) $(TH Description))
 $(T2 uninitAlignedSlice, Allocates an uninitialized aligned slice using GC. )
 $(T2 stdcUninitAlignedSlice, Allocates an uninitialized aligned slice using CRuntime.)
-$(T2 stdcFreeSlice, Frees memory using CRuntime)
+$(T2 stdcFreeAlignedSlice, Frees memory using CRuntime)
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
