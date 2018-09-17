@@ -16,7 +16,9 @@ $(T2 MapField, $(SUBREF topology, map) and $(SUBREF topology, mapField))
 $(T2 ndIotaField, $(SUBREF topology, ndiota))
 $(T2 OrthogonalReduceField, $(SUBREF topology, orthogonalReduceField))
 $(T2 RepeatField, $(SUBREF topology, repeat))
+$(T2 SparseField, Used for mutable DOK sparse matrixes )
 )
+
 
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
