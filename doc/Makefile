@@ -41,7 +41,6 @@ PACKAGE_mir_math_func = expdigamma
 PACKAGE_mir_ndslice_connect = cpython
 
 PACKAGE_mir_ndslice = \
-	algorithm\
 	allocation\
 	chunks\
 	concatenation\
