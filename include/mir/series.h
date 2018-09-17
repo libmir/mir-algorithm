@@ -13,7 +13,7 @@ struct mir_observation
 template <
     typename IndexIterator,
     typename Iterator,
-    size_t N = 1,
+    mir_size_t N = 1,
     mir_slice_kind kind = mir_slice_kind::contiguous
 >
 struct mir_series
