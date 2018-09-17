@@ -47,7 +47,7 @@ $(T2 cachedGC, Random access cache auto-allocated in GC heap. It is usefull in c
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
-$(T2 mapSubSlices, Maps indexes pairs to subslices.)
+$(T2 subSlices, Maps indexes pairs to subslices.)
 $(T2 member, Field (element's member) projection.)
 $(T2 orthogonalReduceField, Functional deep-element wise reduce of a slice composed of fields or iterators.)
 $(T2 pairwise, Pairwise map for vectors.)
@@ -119,6 +119,9 @@ import mir.ndslice.slice;
 import mir.primitives;
 import mir.qualifier;
 import mir.utility: min;
+
+private immutable choppedExceptionMsg = "bounds passed to chopped are out of sliceable bounds.";
+version (D_Exceptions) private immutable choppedException = new Exception(choppedExceptionMsg);
 
 @optmath:
 
@@ -2344,7 +2347,7 @@ Params:
     fun = One or more functions.
 See_Also:
     $(LREF cached), $(LREF vmap), $(LREF indexed),
-    $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 template map(fun...)
@@ -2532,7 +2535,7 @@ Params:
     callable = callable object, structure, delegate, or function pointer.
 See_Also:
     $(LREF cached), $(LREF map), $(LREF indexed),
-    $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 @optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
@@ -3035,36 +3038,36 @@ auto indexed(Field, S)(auto ref Field source, auto ref S indexes)
 /++
 Maps indexes pairs to subslices.
 Params:
-    indexes = ndslice composed of indexes pairs.
-    sliceable = pointer, array, ndslice, or something sliceable.
+    sliceable = pointer, array, ndslice, series, or something sliceable with `[a .. b]`.
+    slices = ndslice composed of indexes pairs.
 Returns:
     ndslice composed of subslices.
-See_also: $(LREF cut), $(LREF pairwise), $(LREF pairwiseMapSubSlices).
+See_also: $(LREF chopped), $(LREF pairwise).
 +/
 Slice!(SubSliceIterator!(Iterator, Sliceable), N, kind)
-    mapSubSlices(Iterator, size_t N, SliceKind kind, Sliceable)(
-        Slice!(Iterator, N, kind) indexes,
+    subSlices(Iterator, size_t N, SliceKind kind, Sliceable)(
         auto ref Sliceable sliceable,
+        Slice!(Iterator, N, kind) slices,
     )
 {
     return typeof(return)(
-        indexes._lengths,
-        indexes._strides,
-        SubSliceIterator!(Iterator, Sliceable)(indexes._iterator, sliceable)
+        slices._lengths,
+        slices._strides,
+        SubSliceIterator!(Iterator, Sliceable)(slices._iterator, sliceable)
     );
 }
 
 /// ditto
-auto mapSubSlices(S, Sliceable)(S[] indexes, auto ref Sliceable sliceable)
+auto subSlices(S, Sliceable)(auto ref Sliceable sliceable, S[] slices)
 {
-    return mapSubSlices(indexes.sliced, sliceable);
+    return subSlices(sliceable, slices.sliced);
 }
 
 /// ditto
-auto mapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable)
+auto subSlices(S, Sliceable)(auto ref Sliceable sliceable, auto ref S slices)
     if (hasAsSlice!S)
 {
-    return mapSubSlices(indexes.asSlice, sliceable);
+    return subSlices(sliceable, slices.asSlice);
 }
 
 ///
@@ -3077,7 +3080,7 @@ auto mapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable
         ];
     auto sliceable = 10.iota;
 
-    auto r = subs.mapSubSlices(sliceable);
+    auto r = sliceable.subSlices(subs);
     assert(r == [
         iota([4 - 2], 2),
         iota([10 - 2], 2),
@@ -3087,48 +3090,61 @@ auto mapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable
 /++
 Maps indexes pairs to subslices.
 Params:
-    indexes = ndslice composed of indexes.
-    sliceable = pointer, array, ndslice, or something sliceable.
-Definition:
------
-import mir.functional: staticArray;
-return indexes.pairwise!staticArray.mapSubSlices(sliceable);
------
+    bounds = ndslice composed of consequent (`a_i <= a_(i+1)`) pairwise index bounds.
+    sliceable = pointer, array, ndslice, series, or something sliceable with `[a_i .. a_(i+1)]`.
 Returns:
     ndslice composed of subslices.
-See_also: $(LREF pairwise), $(LREF mapSubSlices).
+See_also: $(LREF pairwise), $(LREF subSlices).
 +/
-auto pairwiseMapSubSlices(Iterator, SliceKind kind, Sliceable)(
-        Slice!(Iterator, 1, kind) indexes,
+Slice!(ChopIterator!(Iterator, Sliceable)) chopped(Iterator, Sliceable)(
         auto ref Sliceable sliceable,
+        Slice!Iterator bounds,
     )
+in
 {
-    import mir.functional: staticArray;
-    return indexes.pairwise!staticArray.mapSubSlices(sliceable);
+    debug(mir)
+        foreach(b; bounds.pairwise!"a <= b")
+            assert(b);
+}
+do {
+
+    sizediff_t length = bounds._lengths[0] <= 1 ? 0 : bounds._lengths[0] - 1;
+    static if (hasLength!Sliceable)
+    {
+        if (length && bounds[length - 1] > sliceable.length)
+        {
+            version (D_Exceptions)
+                throw choppedException;
+            else
+               assert(0, choppedExceptionMsg);
+        }
+    }
+
+    return typeof(return)([size_t(length)], ChopIterator!(Iterator, Sliceable)(bounds._iterator, sliceable));
 }
 
 /// ditto
-auto pairwiseMapSubSlices(S, Sliceable)(S[] indexes, auto ref Sliceable sliceable)
+auto chopped(S, Sliceable)(auto ref Sliceable sliceable, S[] bounds)
 {
-    return pairwiseMapSubSlices(indexes.sliced, sliceable);
+    return chopped(sliceable, bounds.sliced);
 }
 
 /// ditto
-auto pairwiseMapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable)
+auto chopped(S, Sliceable)(auto ref Sliceable sliceable, auto ref S bounds)
     if (hasAsSlice!S)
 {
-    return pairwiseMapSubSlices(indexes.asSlice, sliceable);
+    return chopped(sliceable, bounds.asSlice);
 }
 
 ///
-unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.functional: staticArray;
     import mir.ndslice.slice : sliced;
     auto pairwiseIndexes =[2, 4, 10].sliced;
     auto sliceable = 10.iota;
 
-    auto r = pairwiseIndexes.pairwiseMapSubSlices(sliceable);
+    auto r = sliceable.chopped(pairwiseIndexes);
     assert(r == [
         iota([4 - 2], 2),
         iota([10 - 4], 4),
@@ -3285,9 +3301,11 @@ template slide(size_t params, alias fun)
             if (N == 1)
         {
             auto s = slice.map!"a".flattened;
-            s._lengths[0] -= params - 1;
-            if (cast(sizediff_t)s._lengths[0] < 0)
+            if (cast(sizediff_t)s._lengths[0] < sizediff_t(params - 1))
                 s._lengths[0] = 0;
+            else
+                s._lengths[0] -= params - 1;
+
             alias I = SlideIterator!(_IteratorOf!(typeof(s)), params, fun);
             return Slice!(I)(
                 s._lengths,
@@ -3335,7 +3353,7 @@ Params:
     lag = an integer indicating which lag to use
 Returns: lazy ndslice composed of `fun(a_n, a_n+1)` values.
 
-See_also: $(LREF slide), $(LREF mapSubSlices).
+See_also: $(LREF slide), $(LREF subSlices).
 +/
 alias pairwise(alias fun, size_t lag = 1) = slide!(lag + 1, fun);
 

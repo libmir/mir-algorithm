@@ -441,6 +441,32 @@ auto slicedNdField(ndField)(ndField field)
 }
 
 /++
+Combination of coordinate(s) and value.
++/
+struct CoordinateValue(T, size_t N = 1)
+{
+    ///
+    size_t[N] index;
+
+    ///
+    T value;
+
+    ///
+    sizediff_t opCmp()(auto ref const typeof(this) rht) const
+    {
+        return cmpCoo(this.index, rht.index);
+    }
+}
+
+private sizediff_t cmpCoo(size_t N)(const auto ref size_t[N] a, const auto ref size_t[N] b)
+{
+    foreach (i; Iota!(0, N))
+        if (auto d = a[i] - b[i])
+            return d;
+    return 0;
+}
+
+/++
 Presents $(LREF .Slice.structure).
 +/
 struct Structure(size_t N)
