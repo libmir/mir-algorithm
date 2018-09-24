@@ -1708,17 +1708,20 @@ template findIndex(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath size_t[DimensionCount!(Slices[0])] findIndex(Slices...)(Slices slices)
+    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) findIndex(Slices...)(Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
             slices.checkShapesMatch;
-        typeof(return) ret = -1;
+        size_t[DimensionCount!(Slices[0])] ret = -1;
         auto lengths = slices[0].shape;
         if (!slices[0].anyEmpty && findImpl!pred(ret, slices))
-            foreach (i; Iota!(typeof(return).length))
+            foreach (i; Iota!(DimensionCount!(Slices[0])))
                 ret[i] = lengths[i] - ret[i];
-        return ret;
+        static if (DimensionCount!(Slices[0]) > 1)
+            return ret;
+        else
+            return ret[0];
     }
     else
         alias findIndex = .findIndex!(naryFun!pred);
@@ -1731,10 +1734,12 @@ unittest
     import std.range : iota;
     // 0 1 2 3 4 5
     auto sl = iota(5);
-    size_t index = sl.findIndex!"a == 3"[0];
+    size_t index = sl.findIndex!"a == 3";
 
     assert(index == 3);
     assert(sl[index] == 3);
+
+    assert(sl.findIndex!(a => a == 8) == size_t.max);
 }
 
 ///
@@ -1745,7 +1750,7 @@ version(mir_test) unittest
     // 0 1 2
     // 3 4 5
     auto sl = iota(2, 3);
-    size_t[2] index = sl.findIndex!"a == 3";
+    size_t[2] index = sl.findIndex!(a => a == 3);
 
     assert(sl[index] == 3);
 
@@ -1800,15 +1805,18 @@ template find(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath size_t[DimensionCount!(Slices[0])] find(Slices...)(Slices slices)
-        if (Slices.length)
+    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) find(Slices...)(auto ref Slices slices)
+        if (Slices.length && allSatisfy!(hasShape, Slices))
     {
         static if (Slices.length > 1)
             slices.checkShapesMatch;
-        typeof(return) ret;
+        size_t[DimensionCount!(Slices[0])] ret;
         if (!slices[0].anyEmpty)
             findImpl!pred(ret, slices);
-        return ret;
+        static if (DimensionCount!(Slices[0]) > 1)
+            return ret;
+        else
+            return ret[0];
     }
     else
         alias find = .find!(naryFun!pred);
@@ -1821,7 +1829,7 @@ unittest
     import std.range : iota;
 
     auto sl = iota(10);
-    size_t index = sl.find!"a == 3"[0];
+    size_t index = sl.find!"a == 3";
 
     assert(sl[$ - index] == 3);
 }
@@ -1836,6 +1844,7 @@ version(mir_test) unittest
     auto sl = iota(2, 3);
     size_t[2] bi = sl.find!"a == 3";
     assert(sl.backward(bi) == 3);
+    assert(sl[$ - bi[0], $ - bi[1]] == 3);
 
     bi = sl.find!"a == 6";
     assert(bi[0] == 0);
