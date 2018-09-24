@@ -105,6 +105,7 @@ private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
                 // central problem
                 headLength = -cast(int) length;
                 tailLength = cast(int) hlen;
+                goto F;
             }
             else
             {
@@ -114,6 +115,7 @@ private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
             }
         }
         tailLength = cast(int) (length & mask);
+    F:
         length >>= shift;
         index >>= shift;
         bodyChunks._lengths[0] = length;

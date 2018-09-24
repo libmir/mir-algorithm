@@ -24,3 +24,4 @@ out/
 /tests_extractor.d
 build/
 files
+mir-algorithm.lib
