@@ -23,25 +23,11 @@ module mir.bitmanip;
 
 import std.traits;
 
-private string myToString()(ulong n)
+private string normString()(string str)
 {
-    UnsignedStringBuf buf;
-    auto s = unsignedToTempString(n, buf);
-    return s ~ (n > uint.max ? "UL" : "U");
-}
-
-private alias UnsignedStringBuf = char[20];
-
-private string unsignedToTempString()(ulong value, char[] buf, uint radix = 10) @safe
-{
-    size_t i = buf.length;
-    do
-    {
-        ubyte x = cast(ubyte)(value % radix);
-        value = value / radix;
-        buf[--i] = cast(char)((x < 10) ? x + '0' : x - 10 + 'a');
-    } while (value);
-    return buf[i .. $].idup;
+    // if (str.length && (str[$-1] == 'U' || str[$-1] == 'u')) str = str[0 .. $-1];
+    // if (str.length && (str[$-1] == 'L' || str[$-1] == 'l')) str = str[0 .. $-1];
+    return str;
 }
 
 private template createAccessors(
@@ -66,7 +52,7 @@ private template createAccessors(
         static if (T.min < 0)
         {
             enum long minVal = -(1uL << (len - 1));
-            enum ulong maxVal = (1uL << (len - 1)) - 1;
+            enum long maxVal = (1uL << (len - 1)) - 1;
             alias UT = Unsigned!(T);
             enum UT extendSign = cast(UT)~((~0uL) >> (64 - len));
         }
@@ -83,22 +69,22 @@ private template createAccessors(
             enum result =
             // getter
                 "@property bool " ~ name ~ "()() @safe pure nothrow @nogc const { return "
-                ~"("~store~" & "~myToString(maskAllElse)~") != 0;}\n"
+                ~"("~store~" & "~ maskAllElse.stringof ~") != 0;}\n"
             // setter
                 ~"@property void " ~ name ~ "()(bool v) @safe pure nothrow @nogc { "
-                ~"if (v) "~store~" |= "~myToString(maskAllElse)~";"
-                ~"else "~store~" &= cast(typeof("~store~"))(-1-cast(typeof("~store~"))"~myToString(maskAllElse)~");}\n";
+                ~"if (v) "~store~" |= "~ maskAllElse.stringof ~";"
+                ~"else "~store~" &= cast(typeof("~store~"))(-1-cast(typeof("~store~"))"~ maskAllElse.stringof ~");}\n";
         }
         else
         {
             // getter
-            enum result = "@property "~T.stringof~" "~name~"()() @safe pure nothrow @nogc const { auto result = "
-                ~"("~store~" & "
-                ~ myToString(maskAllElse) ~ ") >>"
-                ~ myToString(offset) ~ ";"
+            enum result = "@property "~T.stringof~" "~name~"()() @safe pure nothrow @nogc const { ulong result = "
+                ~"(ulong("~store~") & "
+                ~  maskAllElse.stringof  ~ ") >>"
+                ~  offset.stringof  ~ ";"
                 ~ (T.min < 0
-                   ? "if (result >= " ~ myToString(signBitCheck)
-                   ~ ") result |= " ~ myToString(extendSign) ~ ";"
+                   ? "if (result >= " ~  signBitCheck.stringof 
+                   ~ ") result |= " ~  extendSign.stringof  ~ ";"
                    : "")
                 ~ " return cast("~T.stringof~") result;}\n"
             // setter
@@ -106,14 +92,14 @@ private template createAccessors(
                 ~"assert(v >= "~name~`_min, "Value is smaller than the minimum value of bitfield '`~name~`'"); `
                 ~"assert(v <= "~name~`_max, "Value is greater than the maximum value of bitfield '`~name~`'"); `
                 ~store~" = cast(typeof("~store~"))"
-                ~" (("~store~" & (-1-cast(typeof("~store~"))"~myToString(maskAllElse)~"))"
-                ~" | ((cast(typeof("~store~")) v << "~myToString(offset)~")"
-                ~" & "~myToString(maskAllElse)~"));}\n"
+                ~" (("~store~" & (-1-cast(typeof("~store~"))"~ maskAllElse.stringof ~"))"
+                ~" | ((cast(typeof("~store~")) v << "~ offset.stringof ~")"
+                ~" & "~ maskAllElse.stringof ~"));}\n"
             // constants
                 ~"enum "~T.stringof~" "~name~"_min = cast("~T.stringof~")"
-                ~myToString(minVal)~"; "
+                ~ (minVal == minVal.min && minVal.min < 0 ? "long.min" : minVal.stringof) ~"; "
                 ~" enum "~T.stringof~" "~name~"_max = cast("~T.stringof~")"
-                ~myToString(maxVal)~"; ";
+                ~ maxVal.stringof ~"; ";
         }
     }
 }
@@ -179,17 +165,18 @@ private template createReferenceAccessor(string store, T, ulong bits, string nam
         ~ "" ~ store ~ "_ptr = cast(void*) v;}\n";
 
     enum mask = (1UL << bits) - 1;
+    enum maskInv = ~mask;
     // getter
     enum ref_accessor = "@property "~T.stringof~" "~name~"()() @trusted pure nothrow @nogc const { auto result = "
-        ~ "("~store~" & "~myToString(~mask)~"); "
+        ~ "("~store~" & "~ maskInv.stringof ~"); "
         ~ "return cast("~T.stringof~") cast(void*) result;}\n"
     // setter
         ~"@property void "~name~"()("~T.stringof~" v) @trusted pure nothrow @nogc { "
-        ~"assert(((cast(typeof("~store~")) cast(void*) v) & "~myToString(mask)
+        ~"assert(((cast(typeof("~store~")) cast(void*) v) & "~ mask.stringof 
         ~`) == 0, "Value not properly aligned for '`~name~`'"); `
         ~store~" = cast(typeof("~store~"))"
-        ~" (("~store~" & (cast(typeof("~store~")) "~myToString(mask)~"))"
-        ~" | ((cast(typeof("~store~")) cast(void*) v) & (cast(typeof("~store~")) "~myToString(~mask)~")));}\n";
+        ~" (("~store~" & (cast(typeof("~store~")) "~ mask.stringof ~"))"
+        ~" | ((cast(typeof("~store~")) cast(void*) v) & (cast(typeof("~store~")) "~ maskInv.stringof ~")));}\n";
 
     enum result = storage ~ storage_accessor ~ ref_accessor;
 }
