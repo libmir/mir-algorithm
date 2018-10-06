@@ -8,13 +8,13 @@ module mir.internal.memory;
 pure nothrow @nogc extern(C)
 {
     ///
-    void*   malloc(size_t size);
+    void*   malloc(size_t size) @safe;
     ///
-    void*   calloc(size_t nmemb, size_t size);
+    void*   calloc(size_t nmemb, size_t size) @safe;
     ///
-    void*   realloc(void* ptr, size_t size);
+    void*   realloc(void* ptr, size_t size) @system;
     ///
-    void    free(void* ptr);
+    void    free(void* ptr) @system;
 }
 
 pure:

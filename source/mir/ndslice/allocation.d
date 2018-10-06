@@ -559,7 +559,7 @@ See_also:
 +/
 Slice!(T*, N) stdcUninitSlice(T, size_t N)(size_t[N] lengths...)
 {
-    import core.stdc.stdlib: malloc;
+    import mir.internal.memory: malloc;
     immutable len = lengths.lengthsProduct;
     auto ptr = len ? cast(T*) malloc(len * T.sizeof) : null;
     return ptr.sliced(lengths);
@@ -596,7 +596,7 @@ See_also:
 +/
 void stdcFreeSlice(T, size_t N)(Slice!(T*, N) slice)
 {
-    import core.stdc.stdlib: free;
+    import mir.internal.memory: free;
     slice._iterator.free;
 }
 
