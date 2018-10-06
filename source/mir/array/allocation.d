@@ -23,7 +23,7 @@ Source: $(PHOBOSSRC std/_array.d)
 module mir.array.allocation;
 
 import mir.functional;
-import mir.array.primitives;
+import mir.primitives;
 
 import std.traits;
 import std.range.primitives: isInfinite, isInputRange;

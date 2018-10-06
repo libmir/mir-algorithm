@@ -14,7 +14,7 @@ Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Ya
 */
 module mir.container.binaryheap;
 
-import mir.array.primitives;
+import mir.primitives;
 import mir.primitives;
 
 import std.range.primitives: isRandomAccessRange, hasSwappableElements, ElementType;
