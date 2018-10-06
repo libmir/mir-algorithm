@@ -883,19 +883,21 @@ public:
     ///
     auto lightImmutable()() immutable @property
     {
-        return .lightImmutable(this);
+        import mir.qualifier: lightImmutable;
+        return Slice!(LightImmutableOf!Iterator, N, kind)(_lengths, _strides, lightImmutable(_iterator));
     }
 
     /// ditto
     auto lightConst()() const @property
     {
-        return .lightConst(this);
+        import mir.qualifier: lightConst;
+        return Slice!(LightConstOf!Iterator, N, kind)(_lengths, _strides, lightConst(_iterator));
     }
 
     /// ditto
-    auto trustedImmutable()() const @property @trusted
+    auto lightConst()() immutable @property
     {
-        return (cast(immutable) this).lightImmutable;
+        return this.lightImmutable;
     }
 
     /// ditto

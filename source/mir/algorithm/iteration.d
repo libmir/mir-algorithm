@@ -46,7 +46,7 @@ Macros:
  */
 module mir.algorithm.iteration;
 
-import mir.array.primitives;
+import mir.primitives;
 import mir.functional: naryFun;
 import mir.internal.utility;
 import mir.math.common: optmath;

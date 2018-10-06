@@ -15,7 +15,7 @@ module mir.interpolate.linear;
 
 import std.traits;
 private alias AliasSeq(T...) = T;
-import mir.array.primitives;
+import mir.primitives;
 import mir.ndslice.slice;
 import mir.math.common: optmath;
 import mir.internal.utility;
