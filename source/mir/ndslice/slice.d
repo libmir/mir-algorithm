@@ -635,8 +635,8 @@ Slice!(Universal, N, Iterator)
     Iterator      _iterator
 -------
 +/
-struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
-    if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1))
+struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_...)
+    if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1) && Labels_.length <= N_)
 {
 @optmath:
 
@@ -644,10 +644,13 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
     enum SliceKind kind = kind_;
 
     ///
-    enum N = N_;
+    enum size_t N = N_;
 
     ///
-    enum S = kind == Universal ? N : kind == Canonical ? N - 1 : 0;
+    enum size_t S = kind == Universal ? N : kind == Canonical ? N - 1 : 0;
+
+    ///
+    enum size_t L = Labels_.length;
 
     ///
     alias Iterator = Iterator_;
@@ -657,6 +660,9 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
 
     ///
     alias DeepElement = typeof(Iterator.init[size_t.init]);
+
+    ///
+    alias Labels = Labels_;
 
     ///
     template Element(size_t dimension)
@@ -713,6 +719,8 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
     public ptrdiff_t[S] _strides;
     ///
     public Iterator _iterator;
+    ///
+    public Labels _labels;
 
     sizediff_t backIndex(size_t dimension = 0)() @safe @property const
         if (dimension < N)
@@ -776,7 +784,7 @@ public:
     static if (S == 0)
     {
         /// Defined for Contiguous Slice only
-        this()(size_t[N] lengths, in ptrdiff_t[] empty, Iterator iterator)
+        this()(size_t[N] lengths, in ptrdiff_t[] empty, Iterator iterator, Labels labels)
         {
             version(LDC) pragma(inline, true);
             assert(empty.length == 0);
@@ -785,7 +793,7 @@ public:
         }
 
         /// ditto
-        this()(size_t[N] lengths, Iterator iterator)
+        this()(size_t[N] lengths, Iterator iterator, Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
@@ -793,7 +801,7 @@ public:
         }
 
         /// ditto
-        this()(size_t[N] lengths, in ptrdiff_t[] empty, ref Iterator iterator)
+        this()(size_t[N] lengths, in ptrdiff_t[] empty, ref Iterator iterator, ref Labels labels)
         {
             version(LDC) pragma(inline, true);
             assert(empty.length == 0);
@@ -802,7 +810,7 @@ public:
         }
 
         /// ditto
-        this()(size_t[N] lengths, ref Iterator iterator)
+        this()(size_t[N] lengths, ref Iterator iterator, ref Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
@@ -818,21 +826,23 @@ public:
     static if (classicConstructor)
     {
         /// Defined for Canonical and Universal Slices (DMD, GDC, LDC) and for Contiguous Slices (LDC)
-        this()(size_t[N] lengths, ptrdiff_t[S] strides, Iterator iterator)
+        this()(size_t[N] lengths, ptrdiff_t[S] strides, Iterator iterator, Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._strides = strides;
             this._iterator = iterator;
+            this._labels = labels;
         }
 
         /// ditto
-        this()(size_t[N] lengths, ptrdiff_t[S] strides, ref Iterator iterator)
+        this()(size_t[N] lengths, ptrdiff_t[S] strides, ref Iterator iterator, ref Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._strides = strides;
             this._iterator = iterator;
+            this._labels = labels;
         }
     }
 
@@ -904,14 +914,14 @@ public:
     auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
     {
-        return .lightConst(this)[indexes];
+        return this.lightConst[indexes];
     }
 
     /// ditto
     auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
     {
-        return .lightImmutable(this)[indexes];
+        return this.lightImmutable[indexes];
     }
 
     static if (isPointer!Iterator)
@@ -1014,9 +1024,17 @@ public:
     Returns:
         Iterator (pointer) to the $(LREF Slice.first) element.
     +/
-    auto iterator()() inout  @property
+    auto iterator()() inout @property
     {
         return _iterator;
+    }
+
+    /++
+    +/
+    auto label(size_t dimension)() @trusted inout @property
+        if (dimension <= L)
+    {
+        return label.sliced(_lengths[dimension]);
     }
 
     static if (kind == Contiguous && isPointer!Iterator)
