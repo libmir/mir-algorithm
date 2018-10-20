@@ -3137,11 +3137,11 @@ auto chopped(S, Sliceable)(auto ref Sliceable sliceable, auto ref S bounds)
 }
 
 ///
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.functional: staticArray;
     import mir.ndslice.slice : sliced;
-    auto pairwiseIndexes =[2, 4, 10].sliced;
+    auto pairwiseIndexes = [2, 4, 10].sliced;
     auto sliceable = 10.iota;
 
     auto r = sliceable.chopped(pairwiseIndexes);

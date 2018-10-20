@@ -1264,14 +1264,14 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
 Series!(RK*, RV*) series(K, V, RK = const K, RV = const V)(const V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series!(K, V, RK, RV)(cast(const(V)[const K]) aa);
+    return .series!(K, V, RK, RV)(cast(V[K]) aa);
 }
 
 /// ditto
-Series!(RK*, RV*)  series( K, V, RK = immutable K, RV = immutable V)(const V[K] aa)
+Series!(RK*, RV*)  series( K, V, RK = immutable K, RV = immutable V)(immutable V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series!(K, V, RK, RV)(cast(immutable(V)[immutable K]) aa);
+    return .series!(K, V, RK, RV)(cast(V[K]) aa);
 }
 
 /// ditto
@@ -1288,6 +1288,16 @@ auto series(K, V)(V[K]* aa)
     assert(s.index == [1, 2, 3]);
     assert(s.data == [1.5, 20.9, 3.3]);
     assert(s.data[s.findIndex(2)] == 20.9);
+}
+
+pure nothrow version(mir_test) unittest
+{
+    alias ed = immutable double;
+    immutable aa = [1: 1.5, 3: 3.3, 2: 2.9];
+    auto s = aa.series;
+    assert(s.index == [1, 2, 3]);
+    assert(s.data == [1.5, 2.9, 3.3]);
+    assert(s.data[s.findIndex(2)] == 2.9);
 }
 
 /++
