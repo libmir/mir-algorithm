@@ -147,7 +147,7 @@ public:
     /++
     Returns the _length of the heap.
     +/
-    @property size_t length()()
+    @property size_t length()() const scope
     {
         return _length;
     }
@@ -155,7 +155,7 @@ public:
     /++
     Returns $(D true) if the heap is _empty, $(D false) otherwise.
     +/
-    @property bool empty()()
+    @property bool empty()() const scope
     {
         return !length;
     }
@@ -165,7 +165,7 @@ public:
     underlying store (if the store is a range) or the _capacity of the
     underlying store (if the store is a container).
     +/
-    @property size_t capacity()()
+    @property size_t capacity()() const scope
     {
         static if (is(typeof(_store.capacity) : size_t))
         {

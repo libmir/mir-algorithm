@@ -536,7 +536,7 @@ private void checkShapesMatch(
     string fun = __FUNCTION__,
     string pfun = __PRETTY_FUNCTION__,
     Slices...)
-    (Slices slices)
+    (ref const Slices slices)
     if (Slices.length > 1)
 {
     enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);

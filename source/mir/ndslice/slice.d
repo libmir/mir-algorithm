@@ -452,13 +452,13 @@ struct CoordinateValue(T, size_t N = 1)
     T value;
 
     ///
-    sizediff_t opCmp()(auto ref const typeof(this) rht) const
+    sizediff_t opCmp()(scope auto ref const typeof(this) rht) const
     {
         return cmpCoo(this.index, rht.index);
     }
 }
 
-private sizediff_t cmpCoo(size_t N)(const auto ref size_t[N] a, const auto ref size_t[N] b)
+private sizediff_t cmpCoo(size_t N)(scope const auto ref size_t[N] a, scope const auto ref size_t[N] b)
 {
     foreach (i; Iota!(0, N))
         if (auto d = a[i] - b[i])
@@ -1087,7 +1087,7 @@ public:
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    size_t[N] shape()() @safe @property const
+    size_t[N] shape()() @trusted @property const scope
     {
         return _lengths[0 .. N];
     }
@@ -1114,7 +1114,7 @@ public:
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    ptrdiff_t[N] strides()() @safe @property const
+    ptrdiff_t[N] strides()() @trusted @property const scope
     {
         static if (N <= S)
             return _strides[0 .. N];
@@ -1321,7 +1321,7 @@ public:
     /++
     Multidimensional input range primitive.
     +/
-    bool empty(size_t dimension = 0)() @safe @property const
+    bool empty(size_t dimension = 0)() @safe @property const scope
         if (dimension < N)
     {
         return _lengths[dimension] == 0;
@@ -1329,14 +1329,14 @@ public:
 
     ///ditto
     static if (N == 1)
-    auto ref Element!dimension front(size_t dimension = 0)() @trusted @property
+    auto ref Element!dimension front(size_t dimension = 0)() @trusted @property scope return
         if (dimension < N)
     {
         assert(!empty!dimension);
         return *_iterator;
     }
     else
-    auto ref Element!dimension front(size_t dimension = 0)() @property
+    Element!dimension front(size_t dimension = 0)() @safe @property
         if (dimension < N)
     {
         size_t[typeof(return).N] lengths_;
@@ -1435,7 +1435,7 @@ public:
     }
 
     ///ditto
-    void popFront(size_t dimension = 0)() @trusted
+    void popFront(size_t dimension = 0)() @trusted scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
@@ -1450,7 +1450,7 @@ public:
     }
 
     ///ditto
-    void popBack(size_t dimension = 0)() @safe
+    void popBack(size_t dimension = 0)() @safe scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
@@ -1458,7 +1458,7 @@ public:
     }
 
     ///ditto
-    void popFrontExactly(size_t dimension = 0)(size_t n) @trusted
+    void popFrontExactly(size_t dimension = 0)(size_t n) @trusted scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(n <= _lengths[dimension],
@@ -1468,7 +1468,7 @@ public:
     }
 
     ///ditto
-    void popBackExactly(size_t dimension = 0)(size_t n) @safe
+    void popBackExactly(size_t dimension = 0)(size_t n) @safe scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(n <= _lengths[dimension],
@@ -1477,14 +1477,14 @@ public:
     }
 
     ///ditto
-    void popFrontN(size_t dimension = 0)(size_t n) @trusted
+    void popFrontN(size_t dimension = 0)(size_t n) @trusted scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         popFrontExactly!dimension(min(n, _lengths[dimension]));
     }
 
     ///ditto
-    void popBackN(size_t dimension = 0)(size_t n) @safe
+    void popBackN(size_t dimension = 0)(size_t n) @safe scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         popBackExactly!dimension(min(n, _lengths[dimension]));
@@ -1605,7 +1605,7 @@ public:
     /+
     Returns: `true` if for any dimension of completely unpacked slice the length equals to `0`, and `false` otherwise.
     +/
-    private bool anyRUEmpty()() @safe const
+    private bool anyRUEmpty()() @trusted const scope
     {
         static if (isInstanceOf!(SliceIterator, Iterator))
         {
@@ -1620,7 +1620,7 @@ public:
     /++
     Returns: `true` if for any dimension the length equals to `0`, and `false` otherwise.
     +/
-    bool anyEmpty()() @safe const
+    bool anyEmpty()() @trusted const scope
     {
         return _lengths[0 .. N].anyEmptyShape;
     }
@@ -2023,7 +2023,7 @@ public:
     /++
     $(BOLD Indexed slice.)
     +/
-    auto opIndex(Slices...)(Slices slices) @safe
+    auto opIndex(Slices...)(Slices slices)
         if (isIndexedSlice!Slices)
     {
         import mir.ndslice.topology: indexed, cartesian, map;
