@@ -1087,7 +1087,7 @@ public:
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    size_t[N] shape()() @trusted @property const scope
+    size_t[N] shape()() @trusted @property const
     {
         return _lengths[0 .. N];
     }
@@ -1114,7 +1114,7 @@ public:
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    ptrdiff_t[N] strides()() @trusted @property const scope
+    ptrdiff_t[N] strides()() @trusted @property const
     {
         static if (N <= S)
             return _strides[0 .. N];
@@ -1321,7 +1321,7 @@ public:
     /++
     Multidimensional input range primitive.
     +/
-    bool empty(size_t dimension = 0)() @safe @property const scope
+    bool empty(size_t dimension = 0)() @safe @property const
         if (dimension < N)
     {
         return _lengths[dimension] == 0;
@@ -1329,7 +1329,7 @@ public:
 
     ///ditto
     static if (N == 1)
-    auto ref Element!dimension front(size_t dimension = 0)() @trusted @property scope return
+    auto ref Element!dimension front(size_t dimension = 0)() @trusted @property
         if (dimension < N)
     {
         assert(!empty!dimension);
@@ -1605,7 +1605,7 @@ public:
     /+
     Returns: `true` if for any dimension of completely unpacked slice the length equals to `0`, and `false` otherwise.
     +/
-    private bool anyRUEmpty()() @trusted const scope
+    private bool anyRUEmpty()() @trusted const
     {
         static if (isInstanceOf!(SliceIterator, Iterator))
         {
@@ -1620,7 +1620,7 @@ public:
     /++
     Returns: `true` if for any dimension the length equals to `0`, and `false` otherwise.
     +/
-    bool anyEmpty()() @trusted const scope
+    bool anyEmpty()() @trusted const
     {
         return _lengths[0 .. N].anyEmptyShape;
     }
