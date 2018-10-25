@@ -44,7 +44,7 @@ duplicate in between calls).
  */
 struct MultiwayMerge(alias less, RangeOfRanges)
 {
-    import mir.array.primitives;
+    import mir.primitives;
     import mir.container.binaryheap;
     import std.range.primitives: ElementType;
 

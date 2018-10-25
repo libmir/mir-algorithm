@@ -47,7 +47,7 @@ $(T2 cachedGC, Random access cache auto-allocated in GC heap. It is usefull in c
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
-$(T2 mapSubSlices, Maps indexes pairs to subslices.)
+$(T2 subSlices, Maps indexes pairs to subslices.)
 $(T2 member, Field (element's member) projection.)
 $(T2 orthogonalReduceField, Functional deep-element wise reduce of a slice composed of fields or iterators.)
 $(T2 pairwise, Pairwise map for vectors.)
@@ -119,6 +119,9 @@ import mir.ndslice.slice;
 import mir.primitives;
 import mir.qualifier;
 import mir.utility: min;
+
+private immutable choppedExceptionMsg = "bounds passed to chopped are out of sliceable bounds.";
+version (D_Exceptions) private immutable choppedException = new Exception(choppedExceptionMsg);
 
 @optmath:
 
@@ -888,7 +891,7 @@ For overlapped blocks, combine $(LREF windows) with $(SUBREF dynamic, strided).
 Params:
     N = dimension count
     slice = slice to be split into blocks
-    rlengths = dimensions of block, residual blocks are ignored
+    rlengths_ = dimensions of block, residual blocks are ignored
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 
@@ -897,16 +900,17 @@ See_also: $(SUBREF chunks, ._chunks)
 Slice!(SliceIterator!(Iterator, N, N == 1 ? Universal : min(kind, Canonical)), N, Universal) 
     blocks
     (Iterator, size_t N, SliceKind kind)
-    (Slice!(Iterator, N, kind) slice, size_t[N] rlengths...)
+    (Slice!(Iterator, N, kind) slice, size_t[N] rlengths_...)
 in
 {
-    foreach (i, length; rlengths)
+    foreach (i, length; rlengths_)
         assert(length > 0, "length of dimension = " ~ i.stringof ~ " must be positive"
             ~ tailErrorMessage!());
 }
 body
 {
     size_t[N] lengths;
+    size_t[N] rlengths = rlengths_;
     sizediff_t[N] strides;
     foreach (dimension; Iota!N)
         lengths[dimension] = slice._lengths[dimension] / rlengths[dimension];
@@ -1948,7 +1952,7 @@ auto cycle(size_t loopLength, T)(T[] array, size_t length)
 
 
 /// ditto
-auto cycle(size_t loopLength, T)(auto ref T withAsSlice, size_t length)
+auto cycle(size_t loopLength, T)(T withAsSlice, size_t length)
     if (hasAsSlice!T)
 {
     return cycle!loopLength(withAsSlice.asSlice, length);
@@ -1999,7 +2003,7 @@ auto stride(T)(T[] array, ptrdiff_t factor)
 }
 
 /// ditto
-auto stride(T)(auto ref T withAsSlice, ptrdiff_t factor)
+auto stride(T)(T withAsSlice, ptrdiff_t factor)
     if (hasAsSlice!T)
 {
     return stride(withAsSlice.asSlice, factor);
@@ -2060,7 +2064,7 @@ auto retro(T)(T[] array)
 }
 
 /// ditto
-auto retro(T)(auto ref T withAsSlice)
+auto retro(T)(T withAsSlice)
     if (hasAsSlice!T)
 {
     return retro(withAsSlice.asSlice);
@@ -2122,7 +2126,7 @@ auto bitwise(T)(T[] array)
 }
 
 /// ditto
-auto bitwise(T)(auto ref T withAsSlice)
+auto bitwise(T)(T withAsSlice)
     if (hasAsSlice!T)
 {
     return bitwise(withAsSlice.asSlice);
@@ -2226,7 +2230,7 @@ auto bitpack(size_t pack, T)(T[] array)
 }
 
 /// ditto
-auto bitpack(size_t pack, T)(auto ref T withAsSlice)
+auto bitpack(size_t pack, T)(T withAsSlice)
     if (hasAsSlice!T)
 {
     return bitpack!pack(withAsSlice.asSlice);
@@ -2281,7 +2285,7 @@ auto bytegroup(size_t pack, DestinationType, T)(T[] array)
 }
 
 /// ditto
-auto bytegroup(size_t pack, DestinationType, T)(auto ref T withAsSlice)
+auto bytegroup(size_t pack, DestinationType, T)(T withAsSlice)
     if (hasAsSlice!T)
 {
     return bytegroup!(pack, DestinationType)(withAsSlice.asSlice);
@@ -2344,7 +2348,7 @@ Params:
     fun = One or more functions.
 See_Also:
     $(LREF cached), $(LREF vmap), $(LREF indexed),
-    $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 template map(fun...)
@@ -2377,7 +2381,7 @@ template map(fun...)
             }
             
             /// ditto
-            auto map(T)(auto ref T withAsSlice)
+            auto map(T)(T withAsSlice)
                 if (hasAsSlice!T)
             {
                 return map(withAsSlice.asSlice);
@@ -2532,24 +2536,24 @@ Params:
     callable = callable object, structure, delegate, or function pointer.
 See_Also:
     $(LREF cached), $(LREF map), $(LREF indexed),
-    $(LREF pairwise), $(LREF mapSubSlices), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip), 
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 @optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
-    (Slice!(Iterator, N, kind) slice, auto ref Callable callable)
+    (Slice!(Iterator, N, kind) slice, auto ref return Callable callable) @safe
 {
     alias It = VmapIterator!(Iterator, Callable);
     return Slice!(It, N, kind)(slice._lengths, slice._strides, It(slice._iterator, callable));
 }
 
 /// ditto
-auto vmap(T, Callable)(T[] array, auto ref Callable callable)
+auto vmap(T, Callable)(T[] array, auto ref return Callable callable)
 {
     return vmap(array.sliced, callable);
 }
 
 /// ditto
-auto vmap(T, Callable)(auto ref T withAsSlice, auto ref Callable callable)
+auto vmap(T, Callable)(T withAsSlice, auto ref return Callable callable)
     if (hasAsSlice!T)
 {
     return vmap(withAsSlice.asSlice, callable);
@@ -2837,7 +2841,7 @@ auto cachedGC(Iterator)(Slice!(Iterator,  1, Universal) from)
 }
 
 /// ditto
-auto cachedGC(T)(auto ref T withAsSlice)
+auto cachedGC(T)(T withAsSlice)
     if (hasAsSlice!T)
 {
     return cachedGC(withAsSlice.asSlice);
@@ -2942,7 +2946,7 @@ template as(T)
     }
     
     /// ditto
-    auto as(S)(auto ref S withAsSlice)
+    auto as(S)(S withAsSlice)
         if (hasAsSlice!S)
     {
         return as(withAsSlice.asSlice);
@@ -2994,7 +2998,7 @@ See_also: `indexed` is similar to $(LREF, vmap), but a field (`[]`) is used inst
 +/
 Slice!(IndexIterator!(Iterator, Field), N, kind)
     indexed(Field, Iterator, size_t N, SliceKind kind)
-    (auto ref Field source, Slice!(Iterator, N, kind) indexes)
+    (Field source, Slice!(Iterator, N, kind) indexes)
 {
     return typeof(return)(
             indexes._lengths,
@@ -3005,13 +3009,13 @@ Slice!(IndexIterator!(Iterator, Field), N, kind)
 }
 
 /// ditto
-auto indexed(Field, S)(auto ref Field source, S[] indexes)
+auto indexed(Field, S)(Field source, S[] indexes)
 {
     return indexed(source, indexes.sliced);
 }
 
 /// ditto
-auto indexed(Field, S)(auto ref Field source, auto ref S indexes)
+auto indexed(Field, S)(Field source, S indexes)
     if (hasAsSlice!S)
 {
     return indexed(source, indexes.asSlice);
@@ -3035,36 +3039,36 @@ auto indexed(Field, S)(auto ref Field source, auto ref S indexes)
 /++
 Maps indexes pairs to subslices.
 Params:
-    indexes = ndslice composed of indexes pairs.
-    sliceable = pointer, array, ndslice, or something sliceable.
+    sliceable = pointer, array, ndslice, series, or something sliceable with `[a .. b]`.
+    slices = ndslice composed of indexes pairs.
 Returns:
     ndslice composed of subslices.
-See_also: $(LREF cut), $(LREF pairwise), $(LREF pairwiseMapSubSlices).
+See_also: $(LREF chopped), $(LREF pairwise).
 +/
 Slice!(SubSliceIterator!(Iterator, Sliceable), N, kind)
-    mapSubSlices(Iterator, size_t N, SliceKind kind, Sliceable)(
-        Slice!(Iterator, N, kind) indexes,
+    subSlices(Iterator, size_t N, SliceKind kind, Sliceable)(
         auto ref Sliceable sliceable,
+        Slice!(Iterator, N, kind) slices,
     )
 {
     return typeof(return)(
-        indexes._lengths,
-        indexes._strides,
-        SubSliceIterator!(Iterator, Sliceable)(indexes._iterator, sliceable)
+        slices._lengths,
+        slices._strides,
+        SubSliceIterator!(Iterator, Sliceable)(slices._iterator, sliceable)
     );
 }
 
 /// ditto
-auto mapSubSlices(S, Sliceable)(S[] indexes, auto ref Sliceable sliceable)
+auto subSlices(S, Sliceable)(Sliceable sliceable, S[] slices)
 {
-    return mapSubSlices(indexes.sliced, sliceable);
+    return subSlices(sliceable, slices.sliced);
 }
 
 /// ditto
-auto mapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable)
+auto subSlices(S, Sliceable)(Sliceable sliceable, S slices)
     if (hasAsSlice!S)
 {
-    return mapSubSlices(indexes.asSlice, sliceable);
+    return subSlices(sliceable, slices.asSlice);
 }
 
 ///
@@ -3077,7 +3081,7 @@ auto mapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable
         ];
     auto sliceable = 10.iota;
 
-    auto r = subs.mapSubSlices(sliceable);
+    auto r = sliceable.subSlices(subs);
     assert(r == [
         iota([4 - 2], 2),
         iota([10 - 2], 2),
@@ -3087,48 +3091,61 @@ auto mapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable
 /++
 Maps indexes pairs to subslices.
 Params:
-    indexes = ndslice composed of indexes.
-    sliceable = pointer, array, ndslice, or something sliceable.
-Definition:
------
-import mir.functional: staticArray;
-return indexes.pairwise!staticArray.mapSubSlices(sliceable);
------
+    bounds = ndslice composed of consequent (`a_i <= a_(i+1)`) pairwise index bounds.
+    sliceable = pointer, array, ndslice, series, or something sliceable with `[a_i .. a_(i+1)]`.
 Returns:
     ndslice composed of subslices.
-See_also: $(LREF pairwise), $(LREF mapSubSlices).
+See_also: $(LREF pairwise), $(LREF subSlices).
 +/
-auto pairwiseMapSubSlices(Iterator, SliceKind kind, Sliceable)(
-        Slice!(Iterator, 1, kind) indexes,
+Slice!(ChopIterator!(Iterator, Sliceable)) chopped(Iterator, Sliceable)(
         auto ref Sliceable sliceable,
+        Slice!Iterator bounds,
     )
+in
 {
-    import mir.functional: staticArray;
-    return indexes.pairwise!staticArray.mapSubSlices(sliceable);
+    debug(mir)
+        foreach(b; bounds.pairwise!"a <= b")
+            assert(b);
+}
+do {
+
+    sizediff_t length = bounds._lengths[0] <= 1 ? 0 : bounds._lengths[0] - 1;
+    static if (hasLength!Sliceable)
+    {
+        if (length && bounds[length - 1] > sliceable.length)
+        {
+            version (D_Exceptions)
+                throw choppedException;
+            else
+               assert(0, choppedExceptionMsg);
+        }
+    }
+
+    return typeof(return)([size_t(length)], ChopIterator!(Iterator, Sliceable)(bounds._iterator, sliceable));
 }
 
 /// ditto
-auto pairwiseMapSubSlices(S, Sliceable)(S[] indexes, auto ref Sliceable sliceable)
+auto chopped(S, Sliceable)(Sliceable sliceable, S[] bounds)
 {
-    return pairwiseMapSubSlices(indexes.sliced, sliceable);
+    return chopped(sliceable, bounds.sliced);
 }
 
 /// ditto
-auto pairwiseMapSubSlices(S, Sliceable)(auto ref S indexes, auto ref Sliceable sliceable)
+auto chopped(S, Sliceable)(Sliceable sliceable, S bounds)
     if (hasAsSlice!S)
 {
-    return pairwiseMapSubSlices(indexes.asSlice, sliceable);
+    return chopped(sliceable, bounds.asSlice);
 }
 
 ///
-unittest
+@safe pure version(mir_test) unittest
 {
     import mir.functional: staticArray;
     import mir.ndslice.slice : sliced;
-    auto pairwiseIndexes =[2, 4, 10].sliced;
+    auto pairwiseIndexes = [2, 4, 10].sliced;
     auto sliceable = 10.iota;
 
-    auto r = pairwiseIndexes.pairwiseMapSubSlices(sliceable);
+    auto r = sliceable.chopped(pairwiseIndexes);
     assert(r == [
         iota([4 - 2], 2),
         iota([10 - 4], 4),
@@ -3285,9 +3302,11 @@ template slide(size_t params, alias fun)
             if (N == 1)
         {
             auto s = slice.map!"a".flattened;
-            s._lengths[0] -= params - 1;
-            if (cast(sizediff_t)s._lengths[0] < 0)
+            if (cast(sizediff_t)s._lengths[0] < sizediff_t(params - 1))
                 s._lengths[0] = 0;
+            else
+                s._lengths[0] -= params - 1;
+
             alias I = SlideIterator!(_IteratorOf!(typeof(s)), params, fun);
             return Slice!(I)(
                 s._lengths,
@@ -3302,7 +3321,7 @@ template slide(size_t params, alias fun)
         }
 
         /// ditto
-        auto slide(S)(auto ref S slice)
+        auto slide(S)(S slice)
             if (hasAsSlice!S)
         {
             return slide(slice.asSlice);
@@ -3335,7 +3354,7 @@ Params:
     lag = an integer indicating which lag to use
 Returns: lazy ndslice composed of `fun(a_n, a_n+1)` values.
 
-See_also: $(LREF slide), $(LREF mapSubSlices).
+See_also: $(LREF slide), $(LREF subSlices).
 +/
 alias pairwise(alias fun, size_t lag = 1) = slide!(lag + 1, fun);
 
@@ -3643,7 +3662,7 @@ Slice!(StairsIterator!(S*, type))  stairs(string type, S)(S[] slice, size_t n)
 }
 
 /// ditto
-auto stairs(string type, S)(auto ref S slice, size_t n)
+auto stairs(string type, S)(S slice, size_t n)
     if (hasAsSlice!S && (type == "+" || type == "-"))
 {
     return stairs!type(slice.asSlice, n);
@@ -4155,7 +4174,7 @@ template member(string name)
     }
 
     /// ditto
-    auto member(T)(auto ref T withAsSlice)
+    auto member(T)(T withAsSlice)
         if (hasAsSlice!T)
     {
         return member(withAsSlice.asSlice);
@@ -4226,7 +4245,7 @@ template orthogonalReduceField(alias fun)
         }
         
         /// ditto
-        auto orthogonalReduceField(I, T)(I initialValue, auto ref T withAsSlice)
+        auto orthogonalReduceField(I, T)(I initialValue, T withAsSlice)
             if (hasAsSlice!T)
         {
             return orthogonalReduceField(initialValue, withAsSlice.asSlice);

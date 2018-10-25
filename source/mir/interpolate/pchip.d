@@ -18,7 +18,7 @@ public import mir.interpolate.spline: Spline;
 import std.traits;
 private alias AliasSeq(T...) = T;
 import mir.ndslice.slice;
-import mir.array.primitives;
+import mir.primitives;
 import mir.math.common: fmamath;
 import mir.ndslice.internal: ConstIfPointer;
 

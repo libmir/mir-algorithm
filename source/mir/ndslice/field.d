@@ -16,7 +16,9 @@ $(T2 MapField, $(SUBREF topology, map) and $(SUBREF topology, mapField))
 $(T2 ndIotaField, $(SUBREF topology, ndiota))
 $(T2 OrthogonalReduceField, $(SUBREF topology, orthogonalReduceField))
 $(T2 RepeatField, $(SUBREF topology, repeat))
+$(T2 SparseField, Used for mutable DOK sparse matrixes )
 )
+
 
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
@@ -863,5 +865,95 @@ struct MagicField()
             auto c = (n * n - index + 2 * d) % n;
             return r * n + c + 1 + shift;
         }
+    }
+}
+
+/++
+`SparseField` is used to represent Sparse ndarrays in mutable DOK format.
++/
+struct SparseField(T)
+{
+    ///
+    T[size_t] _table;
+
+    ///
+    auto lightConst()() const @trusted
+    {
+        return SparseField!(const T)(cast(const(T)[size_t])_table);
+    }
+
+    ///
+    auto lightImmutable()() immutable @trusted
+    {
+        return SparseField!(immutable T)(cast(immutable(T)[size_t])_table);
+    }
+
+    ///
+    T opIndex()(size_t index)
+    {
+        import std.traits: isScalarType;
+        static if (isScalarType!T)
+            return _table.get(index, cast(T)0);
+        else
+            return _table.get(index, null);
+    }
+
+    ///
+    T opIndexAssign()(T value, size_t index)
+    {
+        import std.traits: isScalarType;
+        static if (isScalarType!T)
+        {
+            if (value != 0)
+                _table[index] = value;
+            else
+                _table.remove(index);
+        }
+        else
+        {
+            if (value !is null)
+                _table[index] = value;
+            else
+                _table.remove(index);
+        }
+        return value;
+    }
+
+    ///
+    T opIndexUnary(string op)(size_t index)
+        if (op == `++` || op == `--`)
+    {
+        import std.traits: isScalarType;
+        mixin (`auto value = ` ~ op ~ `_table[index];`);
+        static if (isScalarType!T)
+        {
+            if (value == 0)
+                _table.remove(index);
+        }
+        else
+        {
+            if (value is null)
+                _table.remove(index);
+        }
+        return value;
+    }
+
+    ///
+    T opIndexOpAssign(string op)(T value, size_t index)
+        if (op == `+` || op == `-`)
+    {
+        import std.traits: isScalarType;
+        mixin (`value = _table[index] ` ~ op ~ `= value;`); // this works
+        static if (isScalarType!T)
+        {
+            if (value == 0)
+                _table.remove(index);
+        }
+        else
+        {
+            if (value is null)
+                _table.remove(index);
+        }
+        return value;
     }
 }

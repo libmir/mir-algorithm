@@ -23,7 +23,7 @@ import mir.interpolate: Repeat;
 
 import std.traits;
 import std.meta;
-import mir.array.primitives;
+import mir.primitives;
 import mir.functional;
 import mir.internal.utility: Iota;
 import mir.math.common: fmamath;

@@ -46,7 +46,7 @@ Macros:
  */
 module mir.algorithm.iteration;
 
-import mir.array.primitives;
+import mir.primitives;
 import mir.functional: naryFun;
 import mir.internal.utility;
 import mir.math.common: optmath;
@@ -536,7 +536,8 @@ private void checkShapesMatch(
     string fun = __FUNCTION__,
     string pfun = __PRETTY_FUNCTION__,
     Slices...)
-    (Slices slices)
+    (ref const Slices slices)
+    if (Slices.length > 1)
 {
     enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);
     enum msgShape = "all slices must have the same shape"  ~ tailErrorMessage!(fun, pfun);
@@ -552,8 +553,7 @@ private void checkShapesMatch(
         {
             import mir.ndslice.fuse: fuseShape;
             static assert(slices[i].fuseShape.length >= N);
-            import std.conv;
-            assert(slices[i].fuseShape[0 .. N] == slices[0].shape, msgShape ~ slices[i].fuseShape[0 .. N].to!string ~ slices[0].shape.to!string);
+            assert(slices[i].fuseShape[0 .. N] == slices[0].shape, msgShape);
         }
     }
 }
@@ -663,7 +663,7 @@ S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {
     do
     {
-        static if (slices[0].shape.length == 1)
+        static if (DimensionCount!(Slices[0]) == 1)
             seed = mixin("fun(seed, " ~ frontOf!(Slices.length) ~ ")");
         else
             seed = mixin(".reduceImpl!fun(seed," ~ frontOf!(Slices.length) ~ ")");
@@ -709,7 +709,8 @@ template reduce(alias fun)
     @optmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .reduce!fun(seed, allFlattened!slices);
@@ -730,7 +731,8 @@ template reduce(alias fun)
     @optmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .reduce!fun(seed, allFlattened!slices);
@@ -916,7 +918,7 @@ void eachImpl(alias fun, Slices...)(Slices slices)
         assert(!slice.empty);
     do
     {
-        static if (slices[0].shape.length == 1)
+        static if (DimensionCount!(Slices[0]) == 1)
             mixin("fun(" ~ frontOf!(Slices.length) ~ ");");
         else
             mixin(".eachImpl!fun(" ~ frontOf!(Slices.length) ~ ");");
@@ -951,7 +953,8 @@ template each(alias fun)
     @optmath auto each(Slices...)(Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             .each!fun(allFlattened!slices);
@@ -1657,7 +1660,7 @@ bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slice
     {
         do
         {
-            static if (slices[0].shape.length == 1)
+            static if (DimensionCount!(Slices[0]) == 1)
             {
                 if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                 {
@@ -1707,16 +1710,20 @@ template findIndex(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath size_t[DimensionCount!(Slices[0])] findIndex(Slices...)(Slices slices)
+    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) findIndex(Slices...)(Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
-        typeof(return) ret = -1;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
+        size_t[DimensionCount!(Slices[0])] ret = -1;
         auto lengths = slices[0].shape;
         if (!slices[0].anyEmpty && findImpl!pred(ret, slices))
-            foreach (i; Iota!(typeof(return).length))
+            foreach (i; Iota!(DimensionCount!(Slices[0])))
                 ret[i] = lengths[i] - ret[i];
-        return ret;
+        static if (DimensionCount!(Slices[0]) > 1)
+            return ret;
+        else
+            return ret[0];
     }
     else
         alias findIndex = .findIndex!(naryFun!pred);
@@ -1729,10 +1736,12 @@ unittest
     import std.range : iota;
     // 0 1 2 3 4 5
     auto sl = iota(5);
-    size_t index = sl.findIndex!"a == 3"[0];
+    size_t index = sl.findIndex!"a == 3";
 
     assert(index == 3);
     assert(sl[index] == 3);
+
+    assert(sl.findIndex!(a => a == 8) == size_t.max);
 }
 
 ///
@@ -1743,7 +1752,7 @@ version(mir_test) unittest
     // 0 1 2
     // 3 4 5
     auto sl = iota(2, 3);
-    size_t[2] index = sl.findIndex!"a == 3";
+    size_t[2] index = sl.findIndex!(a => a == 3);
 
     assert(sl[index] == 3);
 
@@ -1798,14 +1807,18 @@ template find(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath size_t[DimensionCount!(Slices[0])] find(Slices...)(Slices slices)
-        if (Slices.length)
+    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) find(Slices...)(auto ref Slices slices)
+        if (Slices.length && allSatisfy!(hasShape, Slices))
     {
-        slices.checkShapesMatch;
-        typeof(return) ret;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
+        size_t[DimensionCount!(Slices[0])] ret;
         if (!slices[0].anyEmpty)
             findImpl!pred(ret, slices);
-        return ret;
+        static if (DimensionCount!(Slices[0]) > 1)
+            return ret;
+        else
+            return ret[0];
     }
     else
         alias find = .find!(naryFun!pred);
@@ -1818,7 +1831,7 @@ unittest
     import std.range : iota;
 
     auto sl = iota(10);
-    size_t index = sl.find!"a == 3"[0];
+    size_t index = sl.find!"a == 3";
 
     assert(sl[$ - index] == 3);
 }
@@ -1833,6 +1846,7 @@ version(mir_test) unittest
     auto sl = iota(2, 3);
     size_t[2] bi = sl.find!"a == 3";
     assert(sl.backward(bi) == 3);
+    assert(sl[$ - bi[0], $ - bi[1]] == 3);
 
     bi = sl.find!"a == 6";
     assert(bi[0] == 0);
@@ -1933,7 +1947,7 @@ size_t anyImpl(alias fun, Slices...)(Slices slices)
     {
         do
         {
-            static if (slices[0].shape.length == 1)
+            static if (DimensionCount!(Slices[0]) == 1)
             {
                 if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                     return true;
@@ -1974,7 +1988,8 @@ template any(alias pred = "a")
     @optmath bool any(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .any!pred(allFlattened!slices);
@@ -2051,7 +2066,6 @@ version(mir_test) unittest
 pure nothrow
 version(mir_test) unittest
 {
-    import std.conv : to;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
 
@@ -2092,7 +2106,7 @@ size_t allImpl(alias fun, Slices...)(Slices slices)
     {
         do
         {
-            static if (slices[0].shape.length == 1)
+            static if (DimensionCount!(Slices[0]) == 1)
             {
                 if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                     return false;
@@ -2133,7 +2147,8 @@ template all(alias pred = "a")
     @optmath bool all(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
             return .all!pred(allFlattened!slices);
@@ -2204,7 +2219,6 @@ version(mir_test) unittest
 pure nothrow
 version(mir_test) unittest
 {
-    import std.conv : to;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
 
@@ -2262,7 +2276,8 @@ template count(alias fun)
     @optmath size_t count(Slices...)(Slices slices)
         if (Slices.length)
     {
-        slices.checkShapesMatch;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
         static if (__traits(isSame, fun, naryFun!"true"))
         {
             return slices[0].elementCount;
@@ -2585,7 +2600,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     else
     do
     {
-        static if (slices[0].shape.length == 1)
+        static if (DimensionCount!(Slices[0]) == 1)
         {
             if(mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
                 ret++;
@@ -2693,7 +2708,8 @@ template eachLower(alias fun)
 
             static assert (allSatisfy!(isMatrix, Slices),
                 "eachLower: Every slice input must be a two-dimensional slice");
-            slices.checkShapesMatch;
+            static if (Slices.length > 1)
+                slices.checkShapesMatch;
             if (slices[0].anyEmpty)
                 return;
 
@@ -3157,7 +3173,8 @@ template eachUpper(alias fun)
 
             static assert (allSatisfy!(isMatrix, Slices),
                 "eachUpper: Every slice input must be a two-dimensional slice");
-            slices.checkShapesMatch;
+            static if (Slices.length > 1)
+                slices.checkShapesMatch;
             if (slices[0].anyEmpty)
                 return;
 

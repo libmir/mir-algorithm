@@ -41,7 +41,7 @@ version(mir_test)
 
 import std.traits;
 import std.meta: AliasSeq, staticMap;
-import mir.array.primitives;
+import mir.primitives;
 import mir.ndslice.slice;
 import mir.internal.utility;
 import mir.math.common: optmath;

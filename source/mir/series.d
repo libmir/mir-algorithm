@@ -1220,40 +1220,38 @@ Returns:
     sorted GC-allocated series.
 See_also: $(LREF assocArray)
 */
-Series!(K*, V*) series(K, V)(V[K] aa)
+Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    immutable size_t length = aa.length;
+    import mir.conv: to;
+    const size_t length = aa.length;
     alias R = typeof(return);
-    auto ret = ()
+    Series!(Unqual!K*, Unqual!V*) ret;
+    if (__ctfe)
     {
-        if (__ctfe)
+        Unqual!K[] keys;
+        Unqual!V[] values;
+        foreach(kv; aa.byKeyValue)
         {
-            K[] keys;
-            V[] values;
-            foreach(kv; aa.byKeyValue)
-            {
-                keys ~= kv.key;
-                values ~= kv.value;
-            }
-            return (()=>.series(cast(Unqual!K[])keys, cast(Unqual!V[])values))();
+            keys ~= kv.key.to!K;
+            values ~= kv.value.to!V;
         }
-        else
-        {
-            import mir.ndslice.allocation: uninitSlice;
+        ret = series(keys, values);
+    }
+    else
+    {
+        import mir.ndslice.allocation: uninitSlice;
 
-            auto ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
-            auto it = ret;
-            foreach(kv; aa.byKeyValue)
-            {
-                import std.backdoor: emplaceRef;
-                emplaceRef!K(it.index.front, kv.key);
-                emplaceRef!V(it._data.front, kv.value);
-                it.popFront;
-            }
-            return ret;
+        ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
+        auto it = ret;
+        foreach(kv; aa.byKeyValue)
+        {
+            import std.backdoor: emplaceRef;
+            emplaceRef!K(it.index.front, kv.key.to!K);
+            emplaceRef!V(it._data.front, kv.value.to!V);
+            it.popFront;
         }
-    }();
+    }
 
     ret.sort;
     static if (is(typeof(ret) == typeof(return)))
@@ -1263,17 +1261,17 @@ Series!(K*, V*) series(K, V)(V[K] aa)
 }
 
 /// ditto
-Series!(const(K)*, const(V)*) series(K, V)(const V[K] aa)
+Series!(RK*, RV*) series(K, V, RK = const K, RV = const V)(const V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series(cast(const(V)[const K]) aa);
+    return .series!(K, V, RK, RV)(cast(V[K]) aa);
 }
 
 /// ditto
-Series!(immutable(K)*, immutable(V)*) series(K, V)(immutable V[K] aa)
+Series!(RK*, RV*)  series( K, V, RK = immutable K, RV = immutable V)(immutable V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series(cast(immutable(V)[immutable K]) aa);
+    return .series!(K, V, RK, RV)(cast(V[K]) aa);
 }
 
 /// ditto
@@ -1286,7 +1284,17 @@ auto series(K, V)(V[K]* aa)
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    auto s = [1: 1.5, 3: 3.3, 2: 2.9].series;
+    auto s = [1: 1.5, 3: 3.3, 2: 20.9].series;
+    assert(s.index == [1, 2, 3]);
+    assert(s.data == [1.5, 20.9, 3.3]);
+    assert(s.data[s.findIndex(2)] == 20.9);
+}
+
+pure nothrow version(mir_test) unittest
+{
+    alias ed = immutable double;
+    immutable aa = [1: 1.5, 3: 3.3, 2: 2.9];
+    auto s = aa.series;
     assert(s.index == [1, 2, 3]);
     assert(s.data == [1.5, 2.9, 3.3]);
     assert(s.data[s.findIndex(2)] == 2.9);

@@ -15,6 +15,7 @@ DOC_OUTPUT_DIR=web
 DOC_SOURCE_DIR=doc
 GENERATED=.generated
 ALGORITHM_DIR=source
+CORE_DIR=mir-core/source
 DLANGORG_DIR=$(DOC_SOURCE_DIR)/dlang.org
 ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 
@@ -25,23 +26,21 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # Packages in mir. Just mention the package name here. The contents of package
 # xy/zz is in variable PACKAGE_xy_zz. This allows automation in iterating
 # packages and their modules.
-MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/internal mir/math mir/math/func mir/array mir/interpolate mir/graph mir/combinatorics mir/container mir/algorithm
+MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/math mir/math/func mir/array mir/interpolate mir/graph mir/combinatorics mir/container mir/algorithm
 
-PACKAGE_mir = bitmanip bitop conv functional primitives range series utility qualifier range
+PACKAGE_mir = range series
 
-PACKAGE_mir_array = allocation primitives
+PACKAGE_mir_array = allocation
 PACKAGE_mir_combinatorics = package
 PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_container = binaryheap
 PACKAGE_mir_graph = tarjan package
-PACKAGE_mir_internal = utility
 PACKAGE_mir_interpolate = package constant linear spline pchip utility
-PACKAGE_mir_math = constant common sum numeric package
+PACKAGE_mir_math = sum numeric
 PACKAGE_mir_math_func = expdigamma
 PACKAGE_mir_ndslice_connect = cpython
 
 PACKAGE_mir_ndslice = \
-	algorithm\
 	allocation\
 	chunks\
 	concatenation\
@@ -104,7 +103,7 @@ ADDSOURCE=$(if $(subst index.d,,$1),$(ALGORITHM_DIR)/$1,$1)
 # ../web/phobos/std_conv.html : std/conv.d $(STDDOC) ; ...
 $(foreach p,$(SRC_DOCUMENTABLES),$(eval \
 $(DOC_OUTPUT_DIR)/$(call D2HTML,$p) : $(call ADDSOURCE,$p) $(STDDOC) ;\
-  $(DDOC) $(STDDOC) -I$(ALGORITHM_DIR) -Df$$@ $$<))
+  $(DDOC) $(STDDOC) -I$(ALGORITHM_DIR) -I$(CORE_DIR)  -Df$$@ $$<))
 
 ###########################################################
 # Setup all other resources needed by dlang.org

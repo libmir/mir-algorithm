@@ -441,6 +441,32 @@ auto slicedNdField(ndField)(ndField field)
 }
 
 /++
+Combination of coordinate(s) and value.
++/
+struct CoordinateValue(T, size_t N = 1)
+{
+    ///
+    size_t[N] index;
+
+    ///
+    T value;
+
+    ///
+    sizediff_t opCmp()(scope auto ref const typeof(this) rht) const
+    {
+        return cmpCoo(this.index, rht.index);
+    }
+}
+
+private sizediff_t cmpCoo(size_t N)(scope const auto ref size_t[N] a, scope const auto ref size_t[N] b)
+{
+    foreach (i; Iota!(0, N))
+        if (auto d = a[i] - b[i])
+            return d;
+    return 0;
+}
+
+/++
 Presents $(LREF .Slice.structure).
 +/
 struct Structure(size_t N)
@@ -609,8 +635,8 @@ Slice!(Universal, N, Iterator)
     Iterator      _iterator
 -------
 +/
-struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
-    if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1))
+struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_...)
+    if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1) && Labels_.length <= N_)
 {
 @optmath:
 
@@ -618,10 +644,13 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
     enum SliceKind kind = kind_;
 
     ///
-    enum N = N_;
+    enum size_t N = N_;
 
     ///
-    enum S = kind == Universal ? N : kind == Canonical ? N - 1 : 0;
+    enum size_t S = kind == Universal ? N : kind == Canonical ? N - 1 : 0;
+
+    ///
+    enum size_t L = Labels_.length;
 
     ///
     alias Iterator = Iterator_;
@@ -631,6 +660,9 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
 
     ///
     alias DeepElement = typeof(Iterator.init[size_t.init]);
+
+    ///
+    alias Labels = Labels_;
 
     ///
     template Element(size_t dimension)
@@ -687,6 +719,8 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
     public ptrdiff_t[S] _strides;
     ///
     public Iterator _iterator;
+    ///
+    public Labels _labels;
 
     sizediff_t backIndex(size_t dimension = 0)() @safe @property const
         if (dimension < N)
@@ -750,7 +784,7 @@ public:
     static if (S == 0)
     {
         /// Defined for Contiguous Slice only
-        this()(size_t[N] lengths, in ptrdiff_t[] empty, Iterator iterator)
+        this()(size_t[N] lengths, in ptrdiff_t[] empty, Iterator iterator, Labels labels)
         {
             version(LDC) pragma(inline, true);
             assert(empty.length == 0);
@@ -759,7 +793,7 @@ public:
         }
 
         /// ditto
-        this()(size_t[N] lengths, Iterator iterator)
+        this()(size_t[N] lengths, Iterator iterator, Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
@@ -767,7 +801,7 @@ public:
         }
 
         /// ditto
-        this()(size_t[N] lengths, in ptrdiff_t[] empty, ref Iterator iterator)
+        this()(size_t[N] lengths, in ptrdiff_t[] empty, ref Iterator iterator, ref Labels labels)
         {
             version(LDC) pragma(inline, true);
             assert(empty.length == 0);
@@ -776,7 +810,7 @@ public:
         }
 
         /// ditto
-        this()(size_t[N] lengths, ref Iterator iterator)
+        this()(size_t[N] lengths, ref Iterator iterator, ref Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
@@ -792,21 +826,23 @@ public:
     static if (classicConstructor)
     {
         /// Defined for Canonical and Universal Slices (DMD, GDC, LDC) and for Contiguous Slices (LDC)
-        this()(size_t[N] lengths, ptrdiff_t[S] strides, Iterator iterator)
+        this()(size_t[N] lengths, ptrdiff_t[S] strides, Iterator iterator, Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._strides = strides;
             this._iterator = iterator;
+            this._labels = labels;
         }
 
         /// ditto
-        this()(size_t[N] lengths, ptrdiff_t[S] strides, ref Iterator iterator)
+        this()(size_t[N] lengths, ptrdiff_t[S] strides, ref Iterator iterator, ref Labels labels)
         {
             version(LDC) pragma(inline, true);
             this._lengths = lengths;
             this._strides = strides;
             this._iterator = iterator;
+            this._labels = labels;
         }
     }
 
@@ -857,33 +893,35 @@ public:
     ///
     auto lightImmutable()() immutable @property
     {
-        return .lightImmutable(this);
+        import mir.qualifier: lightImmutable;
+        return Slice!(LightImmutableOf!Iterator, N, kind)(_lengths, _strides, lightImmutable(_iterator));
     }
 
     /// ditto
     auto lightConst()() const @property
     {
-        return .lightConst(this);
+        import mir.qualifier: lightConst;
+        return Slice!(LightConstOf!Iterator, N, kind)(_lengths, _strides, lightConst(_iterator));
     }
 
     /// ditto
-    auto trustedImmutable()() const @property @trusted
+    auto lightConst()() immutable @property
     {
-        return (cast(immutable) this).lightImmutable;
+        return this.lightImmutable;
     }
 
     /// ditto
     auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
     {
-        return .lightConst(this)[indexes];
+        return this.lightConst[indexes];
     }
 
     /// ditto
     auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
     {
-        return .lightImmutable(this)[indexes];
+        return this.lightImmutable[indexes];
     }
 
     static if (isPointer!Iterator)
@@ -986,9 +1024,17 @@ public:
     Returns:
         Iterator (pointer) to the $(LREF Slice.first) element.
     +/
-    auto iterator()() inout  @property
+    auto iterator()() inout @property
     {
         return _iterator;
+    }
+
+    /++
+    +/
+    auto label(size_t dimension)() @trusted inout @property
+        if (dimension <= L)
+    {
+        return label.sliced(_lengths[dimension]);
     }
 
     static if (kind == Contiguous && isPointer!Iterator)
@@ -1041,7 +1087,7 @@ public:
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    size_t[N] shape()() @safe @property const
+    size_t[N] shape()() @trusted @property const scope
     {
         return _lengths[0 .. N];
     }
@@ -1068,7 +1114,7 @@ public:
     Returns: static array of lengths
     See_also: $(LREF .Slice.structure)
     +/
-    ptrdiff_t[N] strides()() @safe @property const
+    ptrdiff_t[N] strides()() @trusted @property const scope
     {
         static if (N <= S)
             return _strides[0 .. N];
@@ -1275,7 +1321,7 @@ public:
     /++
     Multidimensional input range primitive.
     +/
-    bool empty(size_t dimension = 0)() @safe @property const
+    bool empty(size_t dimension = 0)() @safe @property const scope
         if (dimension < N)
     {
         return _lengths[dimension] == 0;
@@ -1283,14 +1329,14 @@ public:
 
     ///ditto
     static if (N == 1)
-    auto ref Element!dimension front(size_t dimension = 0)() @trusted @property
+    auto ref Element!dimension front(size_t dimension = 0)() @trusted @property scope return
         if (dimension < N)
     {
         assert(!empty!dimension);
         return *_iterator;
     }
     else
-    auto ref Element!dimension front(size_t dimension = 0)() @property
+    Element!dimension front(size_t dimension = 0)() @safe @property
         if (dimension < N)
     {
         size_t[typeof(return).N] lengths_;
@@ -1389,7 +1435,7 @@ public:
     }
 
     ///ditto
-    void popFront(size_t dimension = 0)() @trusted
+    void popFront(size_t dimension = 0)() @trusted scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
@@ -1404,7 +1450,7 @@ public:
     }
 
     ///ditto
-    void popBack(size_t dimension = 0)() @safe
+    void popBack(size_t dimension = 0)() @safe scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
@@ -1412,7 +1458,7 @@ public:
     }
 
     ///ditto
-    void popFrontExactly(size_t dimension = 0)(size_t n) @trusted
+    void popFrontExactly(size_t dimension = 0)(size_t n) @trusted scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(n <= _lengths[dimension],
@@ -1422,7 +1468,7 @@ public:
     }
 
     ///ditto
-    void popBackExactly(size_t dimension = 0)(size_t n) @safe
+    void popBackExactly(size_t dimension = 0)(size_t n) @safe scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(n <= _lengths[dimension],
@@ -1431,14 +1477,14 @@ public:
     }
 
     ///ditto
-    void popFrontN(size_t dimension = 0)(size_t n) @trusted
+    void popFrontN(size_t dimension = 0)(size_t n) @trusted scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         popFrontExactly!dimension(min(n, _lengths[dimension]));
     }
 
     ///ditto
-    void popBackN(size_t dimension = 0)(size_t n) @safe
+    void popBackN(size_t dimension = 0)(size_t n) @safe scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         popBackExactly!dimension(min(n, _lengths[dimension]));
@@ -1559,7 +1605,7 @@ public:
     /+
     Returns: `true` if for any dimension of completely unpacked slice the length equals to `0`, and `false` otherwise.
     +/
-    private bool anyRUEmpty()() @safe const
+    private bool anyRUEmpty()() @trusted const scope
     {
         static if (isInstanceOf!(SliceIterator, Iterator))
         {
@@ -1574,7 +1620,7 @@ public:
     /++
     Returns: `true` if for any dimension the length equals to `0`, and `false` otherwise.
     +/
-    bool anyEmpty()() @safe const
+    bool anyEmpty()() @trusted const scope
     {
         return _lengths[0 .. N].anyEmptyShape;
     }
@@ -1977,7 +2023,7 @@ public:
     /++
     $(BOLD Indexed slice.)
     +/
-    auto opIndex(Slices...)(Slices slices) @safe
+    auto opIndex(Slices...)(Slices slices)
         if (isIndexedSlice!Slices)
     {
         import mir.ndslice.topology: indexed, cartesian, map;

@@ -14,7 +14,7 @@ Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Ya
 */
 module mir.container.binaryheap;
 
-import mir.array.primitives;
+import mir.primitives;
 import mir.primitives;
 
 import std.range.primitives: isRandomAccessRange, hasSwappableElements, ElementType;
@@ -147,7 +147,7 @@ public:
     /++
     Returns the _length of the heap.
     +/
-    @property size_t length()()
+    @property size_t length()() const scope
     {
         return _length;
     }
@@ -155,7 +155,7 @@ public:
     /++
     Returns $(D true) if the heap is _empty, $(D false) otherwise.
     +/
-    @property bool empty()()
+    @property bool empty()() const scope
     {
         return !length;
     }
@@ -165,7 +165,7 @@ public:
     underlying store (if the store is a range) or the _capacity of the
     underlying store (if the store is a container).
     +/
-    @property size_t capacity()()
+    @property size_t capacity()() const scope
     {
         static if (is(typeof(_store.capacity) : size_t))
         {
@@ -352,7 +352,6 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
 ///
 @system nothrow version(mir_test) unittest
 {
-    import std.conv : to;
     import std.range.primitives;
     {
         // example from "Introduction to Algorithms" Cormen et al., p 146
