@@ -81,7 +81,7 @@ struct Cartesian(NdFields...)
     }
 
     ///
-    size_t length(size_t d = 0)() @property
+    size_t length(size_t d = 0)() const @property
     {
         foreach(f, ref field; _fields)
             static if (M!f <= d && M!(f + 1) > d)
@@ -95,7 +95,7 @@ struct Cartesian(NdFields...)
     }
 
     ///
-    size_t[N] shape()() @property
+    size_t[N] shape()() const @property
     {
         typeof(return) ret;
         foreach(f, ref field; _fields)
@@ -115,7 +115,7 @@ struct Cartesian(NdFields...)
     }
 
     ///
-    size_t elementCount()() @property
+    size_t elementCount()() const @property
     {
         size_t ret = 1;
         foreach (ref field; _fields)
@@ -168,7 +168,7 @@ struct Kronecker(alias fun, NdFields...)
     private enum N = DimensionCount!(NdFields[$-1]);
 
     ///
-    size_t length(size_t d = 0)() @property
+    size_t length(size_t d = 0)() const @property
     {
         static if (d == 0)
         {
@@ -187,7 +187,7 @@ struct Kronecker(alias fun, NdFields...)
 
     
     ///
-    size_t[N] shape()() @property
+    size_t[N] shape()() const @property
     {
         static if (N > 1)
         {
@@ -211,7 +211,7 @@ struct Kronecker(alias fun, NdFields...)
     }
 
     ///
-    size_t elementCount()() @property
+    size_t elementCount()() const @property
     {
         size_t ret = 1;
         foreach (ref field; _fields)

@@ -117,7 +117,7 @@ struct Interp1(Range, Interpolant)
 
     static if (hasLength!Range)
     /// Length (optional)
-    size_t length()() @property  { return _range.length; }
+    size_t length()() const @property  { return _range.length; }
     /// Save primitive (optional)
     auto save()() @property
     {

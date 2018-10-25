@@ -106,19 +106,19 @@ struct MapField(Field, alias _fun)
     }
 
     static if (__traits(hasMember, Field, "length"))
-    auto length() @property
+    auto length() const @property
     {
         return _field.length;
     }
 
     static if (__traits(hasMember, Field, "shape"))
-    auto shape() @property
+    auto shape() const @property
     {
         return _field.shape;
     }
 
     static if (__traits(hasMember, Field, "elementCount"))
-    auto elementCount() @property
+    auto elementCount() const @property
     {
         return _field.elementCount;
     }
@@ -167,19 +167,19 @@ struct VmapField(Field, Fun)
     }
 
     static if (__traits(hasMember, Field, "length"))
-    auto length() @property
+    auto length() const @property
     {
         return _field.length;
     }
 
     static if (__traits(hasMember, Field, "shape"))
-    auto shape() @property
+    auto shape() const @property
     {
         return _field.shape;
     }
 
     static if (__traits(hasMember, Field, "elementCount"))
-    auto elementCount() @property
+    auto elementCount()const @property
     {
         return _field.elementCount;
     }
