@@ -891,7 +891,7 @@ For overlapped blocks, combine $(LREF windows) with $(SUBREF dynamic, strided).
 Params:
     N = dimension count
     slice = slice to be split into blocks
-    rlengths = dimensions of block, residual blocks are ignored
+    rlengths_ = dimensions of block, residual blocks are ignored
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 
