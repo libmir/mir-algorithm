@@ -5,11 +5,9 @@ authors "Ilya Yaroshenko" "Sebastian Wilzbach" "John Michael Hall"
 copyright "Copyright © 2016 - 2018, Ilya Yaroshenko; see also information per file."
 license "BSL-1.0"
 
-dependency "mir-core" path="../mir-core"
+dependency "mir-core" version=">=0.0.0 <1.0.0"
 
 buildType "unittest" {
 	buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_test"
 }
-
-dflags "-dip25" "-dip1008"
