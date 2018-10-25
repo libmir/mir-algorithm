@@ -27,7 +27,7 @@ Dlang core library for math, finance and a home for Dlang multidimensional array
 #### Example (3 sec)
 ```d
 /+dub.sdl:
-dependency "mir-algorithm" version="~>0.9.1"
+dependency "mir-algorithm" version="~>2.0.0"
 +/
 
 void main()
@@ -47,12 +47,12 @@ void main()
 }
 ```
 
-[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/MV5tPC)
+[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/Lmd70U)
 
 #### Example (30 sec)
 ```d
 /+dub.sdl:
-dependency "mir-algorithm" version="~>1.1.1"
+dependency "mir-algorithm" version="~>2.0.0"
 +/
 void main()
 {
@@ -84,7 +84,7 @@ void main()
 }
 ```
 
-[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/gist/d98bdea7310ad7bd82731fe12ed892ea)
+[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/juePet)
 
 ### Our sponsors
 
