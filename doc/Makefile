@@ -15,7 +15,7 @@ DOC_OUTPUT_DIR=web
 DOC_SOURCE_DIR=doc
 GENERATED=.generated
 ALGORITHM_DIR=source
-CORE_DIR=mir-algorithm/source
+CORE_DIR=mir-core/source
 DLANGORG_DIR=$(DOC_SOURCE_DIR)/dlang.org
 ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 
