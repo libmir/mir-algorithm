@@ -17,17 +17,7 @@ template ConstIfPointer(T)
         alias ConstIfPointer = T;
 }
 
-version(LDC)
-{
-    public import ldc.intrinsics: _expect = llvm_expect;
-}
-else
-{
-    T _expect(T)(T val, T expected_val) if (__traits(isIntegral, T))
-    {
-        return val;
-    }
-}
+public import mir.utility: _expect;
 
 struct RightOp(string op, T)
 {
