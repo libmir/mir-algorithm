@@ -2227,7 +2227,7 @@ public:
         else
         {
             import mir.ndslice.allocation: uninitSlice;
-            import std.backdoor: emplaceRef;
+            import mir.conv: emplaceRef;
             alias E = this.DeepElement;
 
             auto result = (() @trusted => this.shape.uninitSlice!(Unqual!E))();
@@ -2282,7 +2282,7 @@ public:
         else
         {
             import mir.ndslice.allocation: uninitSlice;
-            import std.backdoor: emplaceRef;
+            import mir.conv: emplaceRef;
             alias E = this.DeepElement;
 
             auto result = (() @trusted => this.shape.uninitSlice!(Unqual!E))();

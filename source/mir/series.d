@@ -1246,7 +1246,7 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
         auto it = ret;
         foreach(kv; aa.byKeyValue)
         {
-            import std.backdoor: emplaceRef;
+            import mir.conv: emplaceRef;
             emplaceRef!K(it.index.front, kv.key.to!K);
             emplaceRef!V(it._data.front, kv.value.to!V);
             it.popFront;
@@ -1313,7 +1313,7 @@ Series!(K*, V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] a
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     import mir.ndslice.allocation: makeUninitSlice;
-    import std.backdoor: emplaceRef;
+    import mir.conv: emplaceRef;
 
     immutable size_t length = aa.length;
 
@@ -1866,7 +1866,7 @@ template troykaSeriesImpl(alias lfun, alias cfun, alias rfun)
         Series!(UI*, UE*) uninitSlice,
     )
     {
-        import std.backdoor: emplaceRef;
+        import mir.conv: emplaceRef;
         troykaGalop!(
             (auto ref key, auto ref value) {
                 uninitSlice.index.front.emplaceRef!I(key);
@@ -2041,7 +2041,7 @@ auto unionSeriesImpl(I, E,
     Series!(UI*, UE*, N) uninitSeries,
     )
 {
-    import std.backdoor: emplaceRef;
+    import mir.conv: emplaceRef;
     import mir.algorithm.setops: multiwayUnion;
 
     enum N = N;

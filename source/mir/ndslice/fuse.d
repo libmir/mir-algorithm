@@ -47,7 +47,7 @@ template fuse(Dimensions...)
     @optmath Slice!(FuseElementType!NDRange*, fuseDimensionCount!NDRange) fuse(NDRange)(NDRange r)
         if (hasShape!NDRange)
     {
-        import std.backdoor: emplaceRef;
+        import mir.conv: emplaceRef;
         import mir.algorithm.iteration: each;
         import mir.ndslice.allocation;
         auto shape = fuseShape(r);
@@ -240,7 +240,7 @@ auto fuseCells(S)(S cells)
     else
     {
         import mir.ndslice.allocation: uninitSlice;
-        import std.backdoor;
+        import mir.conv;
         auto ret = cells.fuseCellsShape.uninitSlice!UT;
         ret.fuseCellsAssign!(emplaceRef!T) = cells;
         alias R = Slice!(T*, ret.N);

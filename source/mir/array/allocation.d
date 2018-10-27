@@ -73,7 +73,7 @@ if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!R
         if (length == 0)
             return null;
 
-        import std.backdoor : emplaceRef;
+        import mir.conv : emplaceRef;
         import std.array: uninitializedArray;
 
         auto result = (() @trusted => uninitializedArray!(Unqual!E[])(length))();

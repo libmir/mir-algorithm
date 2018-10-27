@@ -98,7 +98,7 @@ auto slice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     }
     else
     {
-        import std.backdoor: emplaceRef;
+        import mir.conv: emplaceRef;
         alias E = slice.DeepElement;
 
         auto result = (() @trusted => slice.shape.uninitSlice!(Unqual!E))();
@@ -288,7 +288,7 @@ makeSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] lengths, T
 auto makeSlice(Allocator, Iterator, size_t N, SliceKind kind)
     (auto ref Allocator allocator, Slice!(Iterator, N, kind) slice)
 {
-    import std.backdoor: emplaceRef;
+    import mir.conv: emplaceRef;
     alias E = slice.DeepElement;
 
     auto result = allocator.makeUninitSlice!(Unqual!E)(slice.shape);
@@ -581,7 +581,7 @@ auto stdcSlice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sli
     static assert (!hasElaborateAssign!T, "stdcSlice is not miplemented for slices that have elaborate assign");
     auto ret = stdcUninitSlice!T(slice.shape);
 
-    import std.backdoor: emplaceRef;
+    import mir.conv: emplaceRef;
     import mir.algorithm.iteration: each;
     each!(emplaceRef!E)(ret, slice);
     return ret;

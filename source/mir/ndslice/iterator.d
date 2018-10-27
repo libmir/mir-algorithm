@@ -40,7 +40,7 @@ import mir.ndslice.field;
 import mir.ndslice.internal;
 import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous, isSlice;
 import mir.qualifier;
-import std.backdoor;
+import mir.conv;
 import std.traits;
 
 private static immutable assumeZeroShiftExceptionMsg = "*.assumeFieldsHaveZeroShift: shift is not zero!";
