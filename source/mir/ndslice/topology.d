@@ -2396,6 +2396,19 @@ template map(fun...)
             {
                 return slice;
             }
+
+            /// ditto
+            auto map(T)(T[] array)
+            {
+                return array.sliced;
+            }
+            
+            /// ditto
+            auto map(T)(T withAsSlice)
+                if (hasAsSlice!T)
+            {
+                return withAsSlice.asSlice;
+            }
         }
         else alias map = .map!(naryFun!fun);
     }
