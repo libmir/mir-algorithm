@@ -722,20 +722,20 @@ struct LinspaceField(T)
     T _start = cast(T) 0, _stop = cast(T) 0;
 
     ///
-    auto lightConst()() const @property
+    auto lightConst()() scope const @property
     {
         return LinspaceField!T(_length, _start, _stop);
     }
 
     ///
-    auto lightImmutable()() const @property
+    auto lightImmutable()() scope const @property
     {
         return LinspaceField!T(_length, _start, _stop);
     }
 
     // no fastmath
     ///
-    T opIndex()(sizediff_t index) const
+    T opIndex()(sizediff_t index) scope const
     {
         sizediff_t d = _length - 1;
         auto v = typeof(T.init.re)(d - index);
@@ -750,13 +750,13 @@ struct LinspaceField(T)
 @optmath:
 
     ///
-    size_t length() const @property
+    size_t length() scope const @property
     {
         return _length;
     }
 
     ///
-    size_t[1] shape(size_t dimension = 0)() const @property @nogc
+    size_t[1] shape(size_t dimension = 0)() scope const @property @nogc
         if (dimension == 0)
     {
         return [_length];
@@ -776,32 +776,32 @@ struct MagicField()
     size_t _n;
 
     ///
-    auto lightConst()() const @property
+    auto lightConst()() scope const @property
     {
         return MagicField!()(_n);
     }
 
     ///
-    auto lightImmutable()() const @property
+    auto lightImmutable()() scope const @property
     {
         return MagicField!()(_n);
     }
 
     ///
-    size_t length(size_t dimension = 0)() const @property
+    size_t length(size_t dimension = 0)() scope const @property
         if(dimension <= 2)
     {
         return _n * _n;
     }
 
     ///
-    size_t[1] shape() const @property @nogc
+    size_t[1] shape() scope const @property @nogc
     {
         return [_n * _n];
     }
 
     ///
-    size_t opIndex()(size_t index) const
+    size_t opIndex()(size_t index) scope const
     {
         auto d = index / _n;
         auto m = index % _n;

@@ -622,16 +622,14 @@ iota
 }
 
 ///
-pure nothrow
+pure nothrow @nogc
 version(mir_test) unittest
 {
     int[6] data;
     auto slice = iota([2, 3], data.ptr);
-    auto array =
-        [[data.ptr + 0, data.ptr + 1, data.ptr + 2],
-         [data.ptr + 3, data.ptr + 4, data.ptr + 5]];
-
-    assert(slice == array);
+    assert(slice[0, 0] == data.ptr);
+    assert(slice[0, 1] == data.ptr + 1);
+    assert(slice[1, 0] == data.ptr + 3);
 }
 
 ///
@@ -2553,20 +2551,23 @@ See_Also:
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 @optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
-    (Slice!(Iterator, N, kind) slice, auto ref return Callable callable) @safe
+    (
+        Slice!(Iterator, N, kind) slice,
+        Callable callable,
+    )
 {
     alias It = VmapIterator!(Iterator, Callable);
     return Slice!(It, N, kind)(slice._lengths, slice._strides, It(slice._iterator, callable));
 }
 
 /// ditto
-auto vmap(T, Callable)(T[] array, auto ref return Callable callable)
+auto vmap(T, Callable)(T[] array, Callable callable)
 {
     return vmap(array.sliced, callable);
 }
 
 /// ditto
-auto vmap(T, Callable)(T withAsSlice, auto ref return Callable callable)
+auto vmap(T, Callable)(T withAsSlice, Callable callable)
     if (hasAsSlice!T)
 {
     return vmap(withAsSlice.asSlice, callable);
@@ -3060,7 +3061,7 @@ See_also: $(LREF chopped), $(LREF pairwise).
 +/
 Slice!(SubSliceIterator!(Iterator, Sliceable), N, kind)
     subSlices(Iterator, size_t N, SliceKind kind, Sliceable)(
-        auto ref Sliceable sliceable,
+        Sliceable sliceable,
         Slice!(Iterator, N, kind) slices,
     )
 {
@@ -3111,7 +3112,7 @@ Returns:
 See_also: $(LREF pairwise), $(LREF subSlices).
 +/
 Slice!(ChopIterator!(Iterator, Sliceable)) chopped(Iterator, Sliceable)(
-        auto ref Sliceable sliceable,
+        Sliceable sliceable,
         Slice!Iterator bounds,
     )
 in
@@ -3134,7 +3135,7 @@ do {
         }
     }
 
-    return typeof(return)([size_t(length)], ChopIterator!(Iterator, Sliceable)(bounds._iterator, sliceable));
+    return typeof(return)([size_t(length)], sizediff_t[0].init, ChopIterator!(Iterator, Sliceable)(bounds._iterator, sliceable));
 }
 
 /// ditto
