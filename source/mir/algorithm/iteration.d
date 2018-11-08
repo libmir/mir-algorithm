@@ -536,7 +536,7 @@ private void checkShapesMatch(
     string fun = __FUNCTION__,
     string pfun = __PRETTY_FUNCTION__,
     Slices...)
-    (ref const Slices slices)
+    (scope ref const Slices slices)
     if (Slices.length > 1)
 {
     enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);
@@ -569,19 +569,14 @@ template frontOf(size_t N)
     }
 }
 
-template allFlattened(args...)
+template allFlattened(size_t N)
+ if (N)
 {
-    static if (args.length)
-    {
-        alias arg = args[0];
-        @optmath @property fwd()(){
-            import mir.ndslice.topology: flattened;
-            return arg.flattened;
-        }
-        alias allFlattened = AliasSeq!(fwd, allFlattened!(args[1..$]));
-    }
+    enum  i = N - 1;
+    static if (i)
+        enum allFlattened = .allFlattened!i ~ ("slices[" ~ i.stringof ~ "].flattened, ");
     else
-        alias allFlattened = AliasSeq!();
+        enum allFlattened = "slices[" ~ i.stringof ~ "].flattened, ";
 }
 
 private template areAllContiguousSlices(Slices...)
@@ -713,7 +708,8 @@ template reduce(alias fun)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .reduce!fun(seed, allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.reduce!fun(seed, ` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -735,7 +731,8 @@ template reduce(alias fun)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .reduce!fun(seed, allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.reduce!fun(seed, ` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -957,7 +954,8 @@ template each(alias fun)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            .each!fun(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            mixin(`.each!fun(` ~ allFlattened!(Slices.length) ~`);`);
         }
         else
         {
@@ -1992,7 +1990,8 @@ template any(alias pred = "a")
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .any!pred(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.any!pred(` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -2151,7 +2150,8 @@ template all(alias pred = "a")
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .all!pred(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.all!pred(` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -2285,7 +2285,8 @@ template count(alias fun)
         else
         static if (areAllContiguousSlices!Slices)
         {
-            return .count!fun(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.count!fun(` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
