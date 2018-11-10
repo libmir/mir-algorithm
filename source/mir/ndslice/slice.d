@@ -345,7 +345,7 @@ Slice!(Iterator, N, kind)
     (Slice!(Iterator, 1, kind) slice, size_t[N] lengths...)
     if (N)
 {
-    typeof(return)._Structure structure;
+    auto structure = typeof(return)._Structure.init;
     structure[0] = lengths;
     static if (kind != Contiguous)
     {
@@ -1418,7 +1418,7 @@ public:
         if (dimension < N)
     {
         assert(!empty!dimension);
-        typeof(return)._Structure structure_;
+        auto structure_ = typeof(return)._Structure.init;
 
         foreach (i; Iota!(typeof(return).N))
         {
@@ -1981,7 +1981,7 @@ public:
             else
                 enum K = Canonical;
             alias Ret = Slice!(Iterator, N - F, K);
-            Ret._Structure structure_;
+            auto structure_ = Ret._Structure.init;
 
             enum bool shrink = kind == Canonical && slices.length == N;
             static if (shrink)
