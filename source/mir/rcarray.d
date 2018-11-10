@@ -179,6 +179,7 @@ struct mir_rcarray(T)
     /++
     Params:
         length = array length
+        alignment = alignment, must be power of 2
         deallocate = Flag, never deallocates memory if `false`.
     +/
     this(size_t length, uint alignment = T.alignof, bool deallocate = true) scope @trusted @nogc
@@ -324,6 +325,7 @@ Thread safe reference counting iterator.
 +/
 struct mir_rci(T)
 {
+    ///
     T* _iterator;
 
     // private inout(T)* _iterator() inout @trusted pure nothrow @nogc scope
@@ -396,20 +398,36 @@ struct mir_rci(T)
 /// ditto
 alias RCI = mir_rci;
 
-unittest
+///
+@nogc unittest
 {
     import mir.ndslice;
+    import mir.rcarray;
+    auto array = mir_rcarray!double(10);
+    auto slice = array.asSlice;
+    static assert(is(typeof(slice) == Slice!(RCI!double)));
+    auto matrix = slice.sliced(2, 5);
+    static assert(is(typeof(matrix) == Slice!(RCI!double, 2)));
+    array[7] = 44;
+    assert(matrix[1, 2] == 44);
+}
+
+///
+@nogc unittest
+{
+    import mir.ndslice;
+    import mir.rcarray;
 
     alias rcvec = Slice!(RCI!double);
 
     RCI!double a, b;
-    auto c = a - b;
+    size_t c = a - b;
 
     void foo(scope ref rcvec x, scope ref rcvec y)
     {
         x[] = y[];
         x[1] = y[1];
-        x[1 .. $] = y[1 .. $];
+        x[1 .. $] += y[1 .. $];
         x = x.save;
     }
 }

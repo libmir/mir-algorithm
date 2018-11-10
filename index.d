@@ -16,6 +16,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,algorithm,setops)) $(TD Mir & BetterC rework of Phobos.))
     $(TR $(TDNW $(MREF mir,algorithm,iteration)) $(TD Mir & BetterC rework of Phobos.))
     $(LEADINGROW Containers)
+    $(TR $(TDNW $(MREF mir,rcarray)) $(TD Thread safe reference count array and the iterator to adopt it to ndslice.))
     $(TR $(TDNW $(MREF mir,series)★) $(TD Generic series suitable for time-series or semi-immutable ordered maps with CPU cache friendly binary search.))
     $(TR $(TDNW $(MREF mir,container,binaryheap)★) $(TD Mir & BetterC rework of Phobos.))
     $(LEADINGROW Graphs)
