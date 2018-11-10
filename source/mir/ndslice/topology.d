@@ -1225,7 +1225,7 @@ Slice!(Iterator, M, kind) reshape
     else
     {
         alias Ret = typeof(return);
-        Ret._Structure structure;
+        auto structure = Ret._Structure.init;
         alias lengths = structure[0];
         foreach (i; Iota!M)
             lengths[i] = rlengths[i];
@@ -2111,7 +2111,7 @@ auto bitwise
         alias It = FieldIterator!(BitField!Iterator);
     }
     alias Ret = Slice!(It, N, kind);
-    Ret._Structure structure_;
+    auto structure_ = Ret._Structure.init;
     foreach(i; Iota!(Ret.N))
         structure_[0][i] = slice._lengths[i];
     structure_[0][$ - 1] *= I.sizeof * 8;
@@ -2213,7 +2213,7 @@ auto bitpack
         alias It = FieldIterator!(BitpackField!(Iterator, pack));
     }
     alias Ret = Slice!(It, N, kind);
-    Ret._Structure structure;
+    auto structure = Ret._Structure.init;
     foreach(i; Iota!(Ret.N))
         structure[0][i] = slice._lengths[i];
     structure[0][$ - 1] *= I.sizeof * 8;
@@ -3195,7 +3195,7 @@ auto zip
             enum kind = maxElem(staticMap!(kindOf, Slices));
             alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
             alias Ret = Slice!(Iterator, N, kind);
-            Ret._Structure structure;
+            auto structure = Ret._Structure.init;
             structure[0] = slices[0]._lengths;
             foreach (i; Iota!(Ret.S))
                 structure[1][i] = slices[0]._strides[i];

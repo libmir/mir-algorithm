@@ -73,7 +73,11 @@ struct mir_rcarray(T)
     static assert(Context.sizeof % 16 == 0);
 
     ///
-    private Context* _context;
+    private T* _payload;
+    private ref inout(Context*) _context() inout scope return pure nothrow @nogc @trusted @property
+    {
+        return *cast(inout(Context*)*)&_payload;
+    }
 
     // private inout(Context)* _context() inout @trusted pure nothrow @nogc scope
     // {
@@ -86,7 +90,7 @@ struct mir_rcarray(T)
     // }
 
     ///
-    this(this) scope @safe pure nothrow @nogc
+    this(this) scope @trusted pure nothrow @nogc
     {
         import core.atomic: atomicOp;
         if (_context !is null) with(*_context)
@@ -111,8 +115,8 @@ struct mir_rcarray(T)
                     T[] array;
                     ()@trusted { array = (cast(T*)(_context + 1))[0 .. length]; }();
                     xdestroy(array);
-                    auto p = cast(void*) _context;
                     () @trusted {
+                        auto p = cast(void*) _payload;
                         with(*_context)
                         {
                             if (_delegateContext !is null)
@@ -142,7 +146,7 @@ struct mir_rcarray(T)
     {
         ///
         pragma(inline, false)
-        ~this() scope nothrow @nogc
+        ~this() scope nothrow @nogc @safe
         {
             dec();
         }
@@ -154,17 +158,17 @@ struct mir_rcarray(T)
             return initializeImpl(length, alignment, deallocate);
         }
 
-        // ///
-        // this(ref typeof(this) rhs) @safe pure nothrow @nogc
-        // {
-        //     this._context = rhs._context;
-        //     this.__xpostblit;
-        // }
+        ///
+        this(ref typeof(this) rhs) @safe pure nothrow @nogc
+        {
+            this._context = rhs._context;
+            this.__xpostblit;
+        }
     }
     else
     {
         pragma(inline, false)
-        ~this() scope nothrow @nogc
+        ~this() scope nothrow @nogc @safe
         {
             dec();
         }
@@ -240,13 +244,13 @@ struct mir_rcarray(T)
     }
 
     ///
-    size_t length() @safe scope pure nothrow @nogc @property
+    size_t length() @trusted scope pure nothrow @nogc @property
     {
         return _context !is null ? _context.length : 0;
     }
 
     ///
-    size_t counter() @safe scope pure nothrow @nogc @property
+    size_t counter() @trusted scope pure nothrow @nogc @property
     {
         return _context !is null ? _context.counter : 0;
     }
@@ -260,7 +264,7 @@ struct mir_rcarray(T)
     ///
     ref opIndex(size_t i) @trusted scope inout
     {
-        assert(_context);
+        assert(_payload);
         assert(i < _context.length);
         return (cast(inout(T)*)(_context + 1))[i];
     }
@@ -277,17 +281,14 @@ struct mir_rcarray(T)
         return _context !is null ?  (cast(inout(T)*)(_context + 1))[0 .. _context.length] : null;
     }
 
-    mir_rcarray!(const T) lightConst() const @nogc nothrow @trusted
-    {
-        return cast(typeof(return)) this;
-    }
+    ///
+    mir_rcarray!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
+    { return cast(typeof(return)) this; }
 
-    mir_rcarray!(immutable T) lightImmutable() immutable @nogc nothrow @trusted
-    {
-        return cast(typeof(return)) this;
-    }
+    mir_rcarray!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
+    { return cast(typeof(return)) this; }
 
-    size_t opDollar(size_t pos : 0)() @safe scope pure nothrow @nogc
+    size_t opDollar(size_t pos : 0)() @trusted scope pure nothrow @nogc
     {
         return _context !is null ? _context.length : 0;
     }
@@ -300,11 +301,15 @@ struct mir_rcarray(T)
     }
 }
 
+/// ditto
+alias RCArray = mir_rcarray;
+
 ///
+version(mir_test)
 @safe pure @nogc
 unittest
 {
-    auto a = mir_rcarray!double(10);
+    auto a = RCArray!double(10);
     foreach(i, ref e; a)
         e = i;
     auto b = a;
@@ -339,14 +344,13 @@ struct mir_rci(T)
     // }
 
     ///
-    mir_rcarray!T _array;
+    RCArray!T _array;
 
-    ///
-    mir_rci!(const T) lightConst()() const @property
+
+    mir_rci!(const T) lightConst() scope return const @nogc nothrow @trusted @property
     { return typeof(return)(_iterator, _array.lightConst); }
 
-    ///
-    mir_rci!(immutable T) lightImmutable()() immutable @property
+    mir_rci!(immutable T) lightImmutable() scope return immutable @nogc nothrow @trusted @property
     { return typeof(return)(_iterator, _array.lightImmutable); }
 
     ///   
@@ -367,7 +371,7 @@ struct mir_rci(T)
         if (op == "-" || op == "+")
     { mixin("_iterator " ~ op ~ "= index;"); }
 
-    ///   
+    ///
     mir_rci!T opBinary(string op)(ptrdiff_t index)
         if (op == "+" || op == "-")
     { return mir_rci!T(_iterator + index, _array); }
@@ -399,9 +403,10 @@ struct mir_rci(T)
 alias RCI = mir_rci;
 
 ///
+version(mir_test)
 @nogc unittest
 {
-    import mir.ndslice;
+    import mir.ndslice.slice;
     import mir.rcarray;
     auto array = mir_rcarray!double(10);
     auto slice = array.asSlice;
@@ -413,9 +418,10 @@ alias RCI = mir_rci;
 }
 
 ///
+version(mir_test)
 @nogc unittest
 {
-    import mir.ndslice;
+    import mir.ndslice.slice;
     import mir.rcarray;
 
     alias rcvec = Slice!(RCI!double);
@@ -429,5 +435,32 @@ alias RCI = mir_rci;
         x[1] = y[1];
         x[1 .. $] += y[1 .. $];
         x = x.save;
+    }
+}
+
+version(mir_test)
+@safe @nogc unittest
+{
+    import mir.ndslice;
+    import mir.rcarray;
+
+    @safe void bar(ref const mir_rcarray!(const double) a, ref mir_rcarray!(const double) b)
+    {
+        b = a;
+    }
+
+    @safe void bari(ref immutable mir_rcarray!(immutable double) a, ref mir_rcarray!(immutable double) b)
+    {
+        b = a;
+    }
+
+    @safe void foo(ref const RCI!(const double) a, ref RCI!(const double) b)
+    {
+        b = a;
+    }
+
+    @safe void fooi(ref immutable RCI!(immutable double) a, ref RCI!(immutable double) b)
+    {
+        b = a;
     }
 }

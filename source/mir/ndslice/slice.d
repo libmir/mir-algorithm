@@ -345,7 +345,7 @@ Slice!(Iterator, N, kind)
     (Slice!(Iterator, 1, kind) slice, size_t[N] lengths...)
     if (N)
 {
-    typeof(return)._Structure structure;
+    auto structure = typeof(return)._Structure.init;
     structure[0] = lengths;
     static if (kind != Contiguous)
     {
@@ -908,14 +908,12 @@ public:
     ///
     auto lightImmutable()() scope return immutable @property
     {
-        import mir.qualifier: LightImmutableOf, lightImmutable;
         return Slice!(LightImmutableOf!Iterator, N, kind)(_structure, _iterator.lightImmutable);
     }
 
     /// ditto
     auto lightConst()() scope return const @property
     {
-        import mir.qualifier: LightConstOf, lightConst;
         return Slice!(LightConstOf!Iterator, N, kind)(_structure, _iterator.lightConst);
     }
 
@@ -1418,7 +1416,7 @@ public:
         if (dimension < N)
     {
         assert(!empty!dimension);
-        typeof(return)._Structure structure_;
+        auto structure_ = typeof(return)._Structure.init;
 
         foreach (i; Iota!(typeof(return).N))
         {
@@ -1836,10 +1834,19 @@ public:
             && __traits(compiles, this._iterator == rslice._iterator)
             )
         {
-            foreach (i; Iota!N)
-                if (this._lengths[i] != rslice._lengths[i])
+            if (this._lengths != rslice._lengths)
+                return false;
+            static if (kind == rkind)
+            {
+                if (this._strides != rslice._strides)
                     return false;
-            if (this._strides == rslice._strides && this._iterator == rslice._iterator)
+            }
+            else
+            {
+                if (this.strides != rslice.strides)
+                    return false;
+            }
+            if (this._iterator == rslice._iterator)
                 return true;
         }
         import mir.algorithm.iteration : equal;
@@ -1981,7 +1988,7 @@ public:
             else
                 enum K = Canonical;
             alias Ret = Slice!(Iterator, N - F, K);
-            Ret._Structure structure_;
+            auto structure_ = Ret._Structure.init;
 
             enum bool shrink = kind == Canonical && slices.length == N;
             static if (shrink)
