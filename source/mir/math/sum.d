@@ -1024,7 +1024,7 @@ public:
     }
 
     ///Returns the value of the sum.
-    T sum()() const
+    T sum()() scope const
     {
         /++
         Returns the value of the sum, rounded to the nearest representable

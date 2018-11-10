@@ -28,11 +28,11 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # packages and their modules.
 MIR_PACKAGES = mir mir/ndslice mir/ndslice/connect mir/math mir/math/func mir/array mir/interpolate mir/graph mir/combinatorics mir/container mir/algorithm
 
-PACKAGE_mir = range series
+PACKAGE_mir = range rcarray series
 
+PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_array = allocation
 PACKAGE_mir_combinatorics = package
-PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_container = binaryheap
 PACKAGE_mir_graph = tarjan package
 PACKAGE_mir_interpolate = package constant linear spline pchip utility
@@ -46,8 +46,8 @@ PACKAGE_mir_ndslice = \
 	concatenation\
 	dynamic\
 	field\
-	iterator\
 	fuse\
+	iterator\
 	mutation\
 	ndfield\
 	package\

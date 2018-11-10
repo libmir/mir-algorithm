@@ -66,7 +66,7 @@ enum std_ops = q{
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return this._iterator - right._iterator; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
@@ -228,13 +228,13 @@ struct RetroIterator(Iterator)
     ///
     auto lightConst()() const @property
     {
-        return RetroIterator!(LightConstOf!Iterator)(mir.qualifier.lightConst(_iterator));
+        return RetroIterator!(LightConstOf!Iterator)(.lightConst(_iterator));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return RetroIterator!(LightImmutableOf!Iterator)(mir.qualifier.lightImmutable(_iterator));
+        return RetroIterator!(LightImmutableOf!Iterator)(.lightImmutable(_iterator));
     }
 
     ///
@@ -250,7 +250,7 @@ struct RetroIterator(Iterator)
     { --_iterator; }
 
     auto ref opIndex()(ptrdiff_t index)
-    { return *(_iterator - index); }
+    { return _iterator[-index]; }
 
     void opOpAssign(string op : "-")(ptrdiff_t index) scope
     { _iterator += index; }
@@ -266,7 +266,7 @@ struct RetroIterator(Iterator)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return right._iterator - this._iterator; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
@@ -381,7 +381,7 @@ struct StrideIterator(Iterator)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return (this._iterator - right._iterator) / _stride; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
@@ -458,7 +458,7 @@ package template _zip_fronts(Iterators...)
     {
         enum i = Iterators.length - 1;
         static if (__traits(compiles, &Iterators[i].init[sizediff_t.init]))
-            enum _zip_fronts = _zip_fronts!(Iterators[0 .. i]) ~ "Ref!(typeof(*Iterators[" ~ i.stringof ~ "].init))(*_iterators[" ~ i.stringof ~ "]), ";
+            enum _zip_fronts = _zip_fronts!(Iterators[0 .. i]) ~ "_ref(*_iterators[" ~ i.stringof ~ "]), ";
         else
             enum _zip_fronts = _zip_fronts!(Iterators[0 .. i]) ~ "*_iterators[" ~ i.stringof ~ "], ";
     }
@@ -472,7 +472,7 @@ package template _zip_index(Iterators...)
     {
         enum i = Iterators.length - 1;
         static if (__traits(compiles, &Iterators[i].init[sizediff_t.init]))
-            enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "Ref!(typeof(_iterators[" ~ i.stringof ~ "][index]))(_iterators[" ~ i.stringof ~ "][index]), ";
+            enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "_ref(_iterators[" ~ i.stringof ~ "][index]), ";
         else
             enum _zip_index = _zip_index!(Iterators[0 .. i]) ~ "_iterators[" ~ i.stringof ~ "][index], ";
     }
@@ -489,7 +489,9 @@ struct ZipIterator(Iterators...)
     if (Iterators.length > 1)
 {
 @optmath:
-    import mir.functional: RefTuple, Ref;
+    import std.traits: ConstOf, ImmutableOf;
+    import std.meta: staticMap;
+    import mir.functional: RefTuple, Ref, _ref;
     ///
     Iterators _iterators;
 
@@ -516,6 +518,13 @@ struct ZipIterator(Iterators...)
     }
 
     auto opUnary(string op : "*")()
+    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
+
+
+    auto opUnary(string op : "*")() const
+    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
+
+    auto opUnary(string op : "*")() immutable
     { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
 
     void opUnary(string op)() scope
@@ -553,7 +562,7 @@ struct ZipIterator(Iterators...)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return this._iterators[0] - right._iterators[0]; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
@@ -698,7 +707,7 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return (this._iterator - right._iterator) / count; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
@@ -728,7 +737,7 @@ private enum map_primitives = q{
             return _fun(*_iterator);
     }
 
-    auto ref opIndex()(ptrdiff_t index)
+    auto ref opIndex()(ptrdiff_t index) scope
     {
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
@@ -741,7 +750,7 @@ private enum map_primitives = q{
 
     static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
     {
-        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index)
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
         {
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
@@ -944,7 +953,7 @@ struct MemberIterator(Iterator, string member)
 
     static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
     {
-        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index)
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
         {
             return __traits(getMember, _iterator[index], member) = value;
         }
@@ -1047,7 +1056,7 @@ struct BytegroupIterator(Iterator, size_t count, DestinationType)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return (this._iterator - right._iterator) / count; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
@@ -1175,7 +1184,7 @@ struct IndexIterator(Iterator, Field)
             return _field[*_iterator];
     }
 
-    auto ref opIndex(ptrdiff_t index)
+    auto ref opIndex()(ptrdiff_t index)
     {
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
@@ -1188,7 +1197,7 @@ struct IndexIterator(Iterator, Field)
 
     static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
     {
-        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index)
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
         {
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
@@ -1260,7 +1269,7 @@ struct SubSliceIterator(Iterator, Sliceable)
         return _sliceable[i[0] .. i[1]];
     }
 
-    auto ref opIndex(ptrdiff_t index)
+    auto ref opIndex()(ptrdiff_t index)
     {
         auto i = _iterator[index];
         return _sliceable[i[0] .. i[1]];
@@ -1302,7 +1311,7 @@ struct ChopIterator(Iterator, Sliceable)
         return _sliceable[*_iterator .. _iterator[1]];
     }
 
-    auto ref opIndex(ptrdiff_t index)
+    auto ref opIndex()(ptrdiff_t index)
     {
         return _sliceable[_iterator[index] .. _iterator[index + 1]];
     }
@@ -1322,32 +1331,30 @@ struct SliceIterator(Iterator, size_t N = 1, SliceKind kind = Contiguous)
     ///
     alias Element = Slice!(Iterator, N, kind);
     ///
-    size_t[Element.N] _lengths;
-    ///
-    ptrdiff_t[Element.S] _strides;
+    Element._Structure _structure;
     ///
     Iterator _iterator;
 
     ///
     auto lightConst()() const @property
     {
-        return SliceIterator!(LightConstOf!Iterator, N, kind)(_lengths, _strides, .lightConst(_iterator));
+        return SliceIterator!(LightConstOf!Iterator, N, kind)(_structure, .lightConst(_iterator));
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return SliceIterator!(LightImmutableOf!Iterator, N, kind)(_lengths, _strides, .lightImmutable(_iterator));
+        return SliceIterator!(LightImmutableOf!Iterator, N, kind)(_structure, .lightImmutable(_iterator));
     }
 
     auto opUnary(string op : "*")()
     {
-        return Element(_lengths, _strides, _iterator);
+        return Element(_structure, _iterator);
     }
 
     auto opIndex()(ptrdiff_t index)
     {
-        return Element(_lengths, _strides, _iterator + index);
+        return Element(_structure, _iterator + index);
     }
 
     mixin(std_ops);
@@ -1446,7 +1453,7 @@ struct FieldIterator(Field)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return this._index - right._index; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
@@ -1583,7 +1590,7 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
 
     static if (isMutable!(_slice.DeepElement) && !_slice.hasAccessByRef)
     ///
-    auto ref opIndexAssign(E)(auto scope ref E elem, size_t index) scope return
+    auto ref opIndexAssign(E)(scope ref E elem, size_t index) scope return
     {
         return _slice._iterator[getShift(index)] = elem;
     }
@@ -1626,7 +1633,7 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     {
         ptrdiff_t ret = this._indexes[0] - right._indexes[0];
         foreach (i; Iota!(1, N))
@@ -1817,7 +1824,7 @@ struct StairsIterator(Iterator, string direction)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(auto scope ref const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     {
         static if (direction == "+")
             return this._length - right._length;

@@ -308,12 +308,7 @@ Slice!(Iterator, N)
         return slice;
     else
     {
-        alias Ret = typeof(return);
-        size_t[Ret.N] lengths;
-        auto strides = sizediff_t[Ret.S].init;
-        foreach (i; Iota!(slice.N))
-            lengths[i] = slice._lengths[i];
-        return Ret(lengths, strides, slice._iterator);
+        return typeof(return)(slice._lengths, slice._iterator);
     }
 }
 
@@ -397,16 +392,15 @@ ipack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sl
             cast(ptrdiff_t[P]) sl._strides[0 .. P],
             It(
                 cast(size_t[EN]) sl._lengths[P .. $],
-                sizediff_t[0].init,
                 sl._iterator));
     else
-    return Ret(
-        cast(   size_t[P]) sl._lengths[0 .. P],
-        cast(ptrdiff_t[P]) sl._strides[0 .. P],
-        It(
-            cast(   size_t[EN]) sl._lengths[P .. $],
-            cast(ptrdiff_t[ES]) sl._strides[P .. $ - (It.Element.kind == Canonical)],
-            sl._iterator));
+        return Ret(
+            cast(   size_t[P]) sl._lengths[0 .. P],
+            cast(ptrdiff_t[P]) sl._strides[0 .. P],
+            It(
+                cast(   size_t[EN]) sl._lengths[P .. $],
+                cast(ptrdiff_t[ES]) sl._strides[P .. $ - (It.Element.kind == Canonical)],
+                sl._iterator));
 }
 
 ///
@@ -446,8 +440,7 @@ Slice!(Iterator, N + M, min(innerKind, Canonical))
     auto strides = sizediff_t[Ret.S].init;
     auto outerStrides = slice.strides;
     auto innerStrides = Slice!(Iterator, M, innerKind)(
-        slice._iterator._lengths,
-        slice._iterator._strides,
+        slice._iterator._structure,
         slice._iterator._iterator,
         ).strides;
     foreach(i; Iota!N)
@@ -455,7 +448,7 @@ Slice!(Iterator, N + M, min(innerKind, Canonical))
     foreach(i; Iota!N)
         strides[i] = outerStrides[i];
     foreach(i; Iota!M)
-        lengths[N + i] = slice._iterator._lengths[i];
+        lengths[N + i] = slice._iterator._structure[0][i];
     foreach(i; Iota!(Ret.S - N))
         strides[N + i] = innerStrides[i];
     return Ret(lengths, strides, slice._iterator._iterator);
@@ -477,11 +470,9 @@ evertPack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind
     (Slice!(SliceIterator!(Iterator, M, innerKind), N, outerKind) slice)
 {
     return typeof(return)(
-        slice._iterator._lengths,
-        slice._iterator._strides,
+        slice._iterator._structure,
         typeof(return).Iterator(
-            slice._lengths,
-            slice._strides,
+            slice._structure,
             slice._iterator._iterator));
 }
 
@@ -1036,18 +1027,27 @@ in
 }
 body
 {
+    size_t[N] rls = rlengths;
     size_t[N] lengths;
     foreach (dimension; Iota!N)
-        lengths[dimension] = slice._lengths[dimension] >= rlengths[dimension] ?
-            slice._lengths[dimension] - rlengths[dimension] + 1 : 0;
+        lengths[dimension] = slice._lengths[dimension] >= rls[dimension] ?
+            slice._lengths[dimension] - rls[dimension] + 1 : 0;
     auto rstrides = slice.strides;
-    return typeof(return)(
-        lengths,
-        rstrides,
-        typeof(return).Iterator(
-            rlengths,
-            rstrides[0 .. typeof(return).DeepElement.S],
-            slice._iterator));
+    static if (typeof(return).DeepElement.S)
+        return typeof(return)(
+            lengths,
+            rstrides,
+            typeof(return).Iterator(
+                rls,
+                rstrides[0 .. typeof(return).DeepElement.S],
+                slice._iterator));
+    else
+        return typeof(return)(
+            lengths,
+            rstrides,
+            typeof(return).Iterator(
+                rls,
+                slice._iterator));
 }
 
 ///
@@ -1225,8 +1225,8 @@ Slice!(Iterator, M, kind) reshape
     else
     {
         alias Ret = typeof(return);
-        size_t[Ret.N] lengths;
-        auto strides = sizediff_t[Ret.S].init;
+        Ret._Structure structure;
+        alias lengths = structure[0];
         foreach (i; Iota!M)
             lengths[i] = rlengths[i];
 
@@ -1282,20 +1282,20 @@ Slice!(Iterator, M, kind) reshape
                     }
                 assert((oi == N) == (ni == M));
 
-                strides[nj - 1] = slice._strides[oj - 1];
+                structure[1][nj - 1] = slice._strides[oj - 1];
                 foreach_reverse (i; ni .. nj - 1)
-                    strides[i] = lengths[i + 1] * strides[i + 1];
+                    structure[1][i] = lengths[i + 1] * structure[1][i + 1];
             }
         }
         foreach (i; Iota!(M, Ret.N))
             lengths[i] = slice._lengths[i + N - M];
         static if (M < Ret.S)
         foreach (i; Iota!(M, Ret.S))
-            strides[i] = slice._strides[i + N - M];
+            structure[1][i] = slice._strides[i + N - M];
         err = 0;
-        return Ret(lengths, strides, slice._iterator);
+        return Ret(structure, slice._iterator);
     R:
-        return Ret(lengths, strides, slice._iterator.init);
+        return Ret(structure, slice._iterator.init);
     }
 }
 
@@ -1414,12 +1414,10 @@ Slice!(FlattenedIterator!(Iterator, N, kind))
     (Slice!(Iterator, N, kind) slice)
     if (N != 1 && kind != Contiguous)
 {
-    alias Ret = typeof(return);
-    size_t[Ret.N] lengths;
-    auto strides = sizediff_t[Ret.S].init;
+    size_t[typeof(return).N] lengths;
     sizediff_t[typeof(return)._iterator._indexes.length] indexes;
     lengths[0] = slice.elementCount;
-    return Ret(lengths, strides, FlattenedIterator!(Iterator, N, kind)(indexes, slice));
+    return typeof(return)(lengths, FlattenedIterator!(Iterator, N, kind)(indexes, slice));
 }
 
 /// ditto
@@ -1436,7 +1434,7 @@ Slice!Iterator
     {
         size_t[typeof(return).N] lengths;
         lengths[0] = slice.elementCount;
-        return typeof(return)(lengths, sizediff_t[0].init, slice._iterator);
+        return typeof(return)(lengths, slice._iterator);
     }
 }
 
@@ -1819,8 +1817,9 @@ Slice!(FieldIterator!(RepeatField!T), M, Universal)
     repeat(T, size_t M)(T value, size_t[M] lengths...)
     if (M && !isSlice!T)
 {
+    size_t[M] ls = lengths;
     return typeof(return)(
-        lengths,
+        ls,
         sizediff_t[M].init,
         typeof(return).Iterator(0, RepeatField!T(cast(RepeatField!T.UT) value)));
 }
@@ -1832,12 +1831,12 @@ Slice!(SliceIterator!(Iterator, N, kind), M, Universal)
     (Slice!(Iterator, N, kind) slice, size_t[M] lengths...)
     if (M)
 {
+    size_t[M] ls = lengths;
     return typeof(return)(
-        lengths,
+        ls,
         sizediff_t[M].init,
         typeof(return).Iterator(
-            slice._lengths,
-            slice._strides,
+            slice._structure,
             slice._iterator));
 }
 
@@ -2032,20 +2031,28 @@ auto retro
     static if (kind == Contiguous || kind == Canonical)
     {
         size_t[slice.N] lengths;
-        sizediff_t[slice.S] strides;
         foreach (i; Iota!(slice.N))
             lengths[i] = slice._lengths[i];
-        foreach (i; Iota!(slice.S))
-            strides[i] = slice._strides[i];
+        static if (slice.S)
+        {
+            sizediff_t[slice.S] strides;
+            foreach (i; Iota!(slice.S))
+                strides[i] = slice._strides[i];
+            alias structure = AliasSeq!(lengths, strides);
+        }
+        else
+        {
+            alias structure = lengths;
+        }
         static if (is(Iterator : RetroIterator!It, It))
         {
             alias Ret = Slice!(It, N, kind);
-            return Ret(lengths, strides, slice._iterator._iterator - slice.lastIndex);
+            return Ret(structure, slice._iterator._iterator - slice.lastIndex);
         }
         else
         {
             alias Ret = Slice!(RetroIterator!Iterator, N, kind);
-            return Ret(lengths, strides, RetroIterator!Iterator(slice._iterator + slice.lastIndex));
+            return Ret(structure, RetroIterator!Iterator(slice._iterator + slice.lastIndex));
         }
     }
     else
@@ -2104,17 +2111,16 @@ auto bitwise
         alias It = FieldIterator!(BitField!Iterator);
     }
     alias Ret = Slice!(It, N, kind);
-    size_t[Ret.N] lengths;
-    auto strides = sizediff_t[Ret.S].init;
+    Ret._Structure structure_;
     foreach(i; Iota!(Ret.N))
-        lengths[i] = slice._lengths[i];
-    lengths[$ - 1] *= I.sizeof * 8;
+        structure_[0][i] = slice._lengths[i];
+    structure_[0][$ - 1] *= I.sizeof * 8;
     foreach(i; Iota!(Ret.S))
-        strides[i] = slice._strides[i];
+        structure_[1][i] = slice._strides[i];
     static if (simplified)
-        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field)));
+        return Ret(structure_, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field)));
     else
-        return Ret(lengths, strides, It(0, BitField!Iterator(slice._iterator)));
+        return Ret(structure_, It(0, BitField!Iterator(slice._iterator)));
 }
 
 /// ditto
@@ -2207,18 +2213,17 @@ auto bitpack
         alias It = FieldIterator!(BitpackField!(Iterator, pack));
     }
     alias Ret = Slice!(It, N, kind);
-    size_t[Ret.N] lengths;
-    auto strides = sizediff_t[Ret.S].init;
+    Ret._Structure structure;
     foreach(i; Iota!(Ret.N))
-        lengths[i] = slice._lengths[i];
-    lengths[$ - 1] *= I.sizeof * 8;
-    lengths[$ - 1] /= pack;
+        structure[0][i] = slice._lengths[i];
+    structure[0][$ - 1] *= I.sizeof * 8;
+    structure[0][$ - 1] /= pack;
     foreach(i; Iota!(Ret.S))
-        strides[i] = slice._strides[i];
+        structure[1][i] = slice._strides[i];
     static if (simplified)
-        return Ret(lengths, strides, It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field)));
+        return Ret(structure, It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field)));
     else
-        return Ret(lengths, strides, It(0, BitpackField!(Iterator, pack)(slice._iterator)));
+        return Ret(structure, It(0, BitpackField!(Iterator, pack)(slice._iterator)));
 }
 
 /// ditto
@@ -2268,11 +2273,9 @@ bytegroup
     (Slice!(Iterator, N, kind) slice)
     if ((kind == Contiguous || kind == Canonical) && group)
 {
-    alias Ret = typeof(return);
-    size_t[Ret.N] lengths;
-    lengths = slice._lengths;
-    lengths[$ - 1] /= group;
-    return Ret(lengths, slice._strides, BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator));
+    auto structure = slice._structure;
+    structure[0][$ - 1] /= group;
+    return typeof(return)(structure, BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator));
 }
 
 
@@ -2369,7 +2372,7 @@ template map(fun...)
             auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
-                return Slice!(typeof(_mapIterator!f(slice._iterator)), N, kind)(slice._lengths, slice._strides, _mapIterator!f(slice._iterator));
+                return Slice!(typeof(_mapIterator!f(slice._iterator)), N, kind)(slice._structure, _mapIterator!f(slice._iterator));
             }
 
             /// ditto
@@ -2552,22 +2555,22 @@ See_Also:
 +/
 @optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
     (
-        Slice!(Iterator, N, kind) slice,
-        Callable callable,
+        scope return Slice!(Iterator, N, kind) slice,
+        scope return Callable callable,
     )
 {
     alias It = VmapIterator!(Iterator, Callable);
-    return Slice!(It, N, kind)(slice._lengths, slice._strides, It(slice._iterator, callable));
+    return Slice!(It, N, kind)(slice._structure, It(slice._iterator, callable));
 }
 
 /// ditto
-auto vmap(T, Callable)(T[] array, Callable callable)
+auto vmap(T, Callable)(scope return T[] array, scope return Callable callable)
 {
     return vmap(array.sliced, callable);
 }
 
 /// ditto
-auto vmap(T, Callable)(T withAsSlice, Callable callable)
+auto vmap(T, Callable)(scope return T withAsSlice, scope return Callable callable)
     if (hasAsSlice!T)
 {
     return vmap(withAsSlice.asSlice, callable);
@@ -2690,7 +2693,6 @@ private auto hideStride
     static if (kind == Universal)
         return Slice!(StrideIterator!Iterator)(
             slice._lengths,
-            sizediff_t[0].init,
             StrideIterator!Iterator(slice._strides[0], slice._iterator));
     else
         return slice;
@@ -2705,12 +2707,10 @@ private auto unhideStride
         static if (kind == Universal)
         {
             alias Ret = SliceKind!(It, N, Universal);
-            size_t[Ret.N] lengths;
-            auto strides = sizediff_t[Ret.S].init;
-            foreach(i; Iota!(Ret.N))
-                lengths[i] = slice._lengths[i];
+            auto strides = slice._strides;
             foreach(i; Iota!(Ret.S))
                 strides[i] = slice._strides[i] * slice._iterator._stride;
+            return Slice!(It, N, Universal)(slice._lengths, strides, slice._iterator._iterator);
         }
         else
             return slice.universal.unhideStride;
@@ -2739,8 +2739,7 @@ Slice!(CachedIterator!(Iterator, CacheIterator, FlagIterator), N, kind)
     assert(original.shape == caches.shape, "caches.shape should be equal to original.shape");
     assert(original.shape == flags.shape, "flags.shape should be equal to original.shape");
     return typeof(return)(
-        original._lengths,
-        original._strides,
+        original._structure,
         IteratorOf!(typeof(return))(
             original._iterator,
             caches._iterator,
@@ -2839,8 +2838,7 @@ Slice!(CachedIterator!(Iterator, typeof(Iterator.init[0])*, FieldIterator!(BitFi
     else
         alias newSlice = uninitSlice;
     return typeof(return)(
-        original._lengths,
-        original._strides,
+        original._structure,
         IteratorOf!(typeof(return))(
             original._iterator,
             newSlice!C(original._lengths)._iterator,
@@ -3015,8 +3013,7 @@ Slice!(IndexIterator!(Iterator, Field), N, kind)
     (Field source, Slice!(Iterator, N, kind) indexes)
 {
     return typeof(return)(
-            indexes._lengths,
-            indexes._strides,
+            indexes._structure,
             IndexIterator!(Iterator, Field)(
                 indexes._iterator,
                 source));
@@ -3066,8 +3063,7 @@ Slice!(SubSliceIterator!(Iterator, Sliceable), N, kind)
     )
 {
     return typeof(return)(
-        slices._lengths,
-        slices._strides,
+        slices._structure,
         SubSliceIterator!(Iterator, Sliceable)(slices._iterator, sliceable)
     );
 }
@@ -3135,7 +3131,7 @@ do {
         }
     }
 
-    return typeof(return)([size_t(length)], sizediff_t[0].init, ChopIterator!(Iterator, Sliceable)(bounds._iterator, sliceable));
+    return typeof(return)([size_t(length)], ChopIterator!(Iterator, Sliceable)(bounds._iterator, sliceable));
 }
 
 /// ditto
@@ -3199,13 +3195,11 @@ auto zip
             enum kind = maxElem(staticMap!(kindOf, Slices));
             alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
             alias Ret = Slice!(Iterator, N, kind);
-            size_t[Ret.N] lengths;
-            auto strides = sizediff_t[Ret.S].init;
-            foreach (i; Iota!(Ret.N))
-                lengths[i] = slices[0]._lengths[i];
+            Ret._Structure structure;
+            structure[0] = slices[0]._lengths;
             foreach (i; Iota!(Ret.S))
-                strides[i] = slices[0]._strides[i];
-            return Ret(lengths, strides, mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")"));
+                structure[1][i] = slices[0]._strides[i];
+            return Ret(structure, mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")"));
         }
     }
     else
@@ -3263,7 +3257,7 @@ auto unzip
 {
     enum size_t i = name - 'a';
     static assert(i < Iterators.length, `unzip: constraint: size_t(name - 'a') < Iterators.length`);
-    return Slice!(Iterators[i], N, kind)(slice._lengths, slice._strides, slice._iterator._iterators[i]).unhideStride;
+    return Slice!(Iterators[i], N, kind)(slice._structure, slice._iterator._iterators[i]).unhideStride;
 }
 
 ///
@@ -3323,8 +3317,7 @@ template slide(size_t params, alias fun)
 
             alias I = SlideIterator!(_IteratorOf!(typeof(s)), params, fun);
             return Slice!(I)(
-                s._lengths,
-                s._strides,
+                s._structure,
                 I(s._iterator));
         }
 
@@ -4178,7 +4171,7 @@ template member(string name)
     +/
     Slice!(MemberIterator!(Iterator, name), N, kind) member(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        return typeof(return)(slice._lengths, slice._strides, MemberIterator!(Iterator, name)(slice._iterator));
+        return typeof(return)(slice._structure, MemberIterator!(Iterator, name)(slice._iterator));
     }
 
     /// ditto

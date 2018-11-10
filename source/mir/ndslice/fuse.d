@@ -95,7 +95,7 @@ template fuse(Dimensions...)
                 ret.each!(emplaceRef!T)(r);
             }
         }
-        return R(ret._lengths, ret._strides, (() @trusted => cast(T*)ret._iterator)());
+        return R(ret._structure, (() @trusted => cast(T*)ret._iterator)());
     }
 }
 
@@ -244,7 +244,7 @@ auto fuseCells(S)(S cells)
         auto ret = cells.fuseCellsShape.uninitSlice!UT;
         ret.fuseCellsAssign!(emplaceRef!T) = cells;
         alias R = Slice!(T*, ret.N);
-        return R(ret._lengths, ret._strides, (() @trusted => cast(T*)ret._iterator)());
+        return R(ret._structure, (() @trusted => cast(T*)ret._iterator)());
     }
 }
 

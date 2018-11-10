@@ -86,7 +86,7 @@ if (isRandomAccessRange!(Store) || isRandomAccessRange!(typeof(Store.init[])))
     // Convenience accessors
 
     // Asserts that the heap property is respected.
-    private void assertValid()()
+    private void assertValid() scope
     {
         debug
         {
@@ -115,7 +115,7 @@ public:
        $(D Store) is a container with $(D insertBack)). Performs
        $(BIGOH min(r.length, initialSize)) evaluations of $(D less).
     +/
-    this()(Store s, size_t initialSize = size_t.max)
+    this(Store s, size_t initialSize = size_t.max)
     {
         acquire(s, initialSize);
     }
@@ -124,7 +124,7 @@ public:
     Takes ownership of a store. After this, manipulating $(D s) may make
     the heap work incorrectly.
     +/
-    void acquire()(Store s, size_t initialSize = size_t.max)
+    void acquire(Store s, size_t initialSize = size_t.max)
     {
         _store = move(s);
         _length = min(_store.length, initialSize);
@@ -137,7 +137,7 @@ public:
     Takes ownership of a store assuming it already was organized as a
     heap.
     +/
-    void assume()(Store s, size_t initialSize = size_t.max)
+    void assume(Store s, size_t initialSize = size_t.max)
     {
         _store = move(s);
         _length = min(_store.length, initialSize);
@@ -147,7 +147,7 @@ public:
     /++
     Returns the _length of the heap.
     +/
-    @property size_t length()() const scope
+    @property size_t length() scope const
     {
         return _length;
     }
@@ -155,7 +155,7 @@ public:
     /++
     Returns $(D true) if the heap is _empty, $(D false) otherwise.
     +/
-    @property bool empty()() const scope
+    @property bool empty() scope const
     {
         return !length;
     }
@@ -165,7 +165,7 @@ public:
     underlying store (if the store is a range) or the _capacity of the
     underlying store (if the store is a container).
     +/
-    @property size_t capacity()() const scope
+    @property size_t capacity() scope const
     {
         static if (is(typeof(_store.capacity) : size_t))
         {
@@ -181,7 +181,7 @@ public:
     Returns a _front of the heap, which is the largest element
     according to `less`.
     +/
-    @property auto ref ElementType!Store front()()
+    @property auto ref ElementType!Store front() scope return
     {
         assert(!empty, "Cannot call front on an empty heap.");
         return _store.front;
@@ -193,7 +193,7 @@ public:
     Inserts `value` into the store. If the underlying store is a range
     and `length == capacity`, throws an AssertException.
     +/
-    size_t insert()(ElementType!Store value)
+    size_t insert(ElementType!Store value) scope
     {
         static if (is(typeof(_store.insertBack(value))))
         {
@@ -232,7 +232,7 @@ public:
     /++
     Removes the largest element from the heap.
     +/
-    void removeFront()()
+    void removeFront() scope
     {
         assert(!empty, "Cannot call removeFront on an empty heap.");
         if (--_length)
@@ -249,7 +249,7 @@ public:
     reasons you may want to use $(D removeFront) with heaps of objects
     that are expensive to copy.
     +/
-    auto ref removeAny()()
+    auto ref removeAny() scope
     {
         removeFront();
         return _store[_length];
@@ -258,7 +258,7 @@ public:
     /++
     Replaces the largest element in the store with `value`.
     +/
-    void replaceFront()(ElementType!Store value)
+    void replaceFront(ElementType!Store value) scope
     {
         // must replace the top
         assert(!empty, "Cannot call replaceFront on an empty heap.");
@@ -275,7 +275,7 @@ public:
     scenarios where the smallest $(D k) elements of a set of candidates
     must be collected.
     +/
-    bool conditionalInsert()(ElementType!Store value)
+    bool conditionalInsert(ElementType!Store value) scope
     {
         if (_length < _store.length)
         {
@@ -297,7 +297,7 @@ public:
     method exchanges store.front and value and returns $(D true). Otherwise, it
     leaves the heap unaffected and returns $(D false).
     +/
-    bool conditionalSwap()(ref ElementType!Store value)
+    bool conditionalSwap(ref ElementType!Store value) scope
     {
         assert(_length == _store.length);
         assert(!_store.empty, "Cannot swap front of an empty heap.");

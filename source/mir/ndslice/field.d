@@ -1,7 +1,7 @@
 /++
 This is a submodule of $(MREF mir,ndslice).
 
-Field is a type with `opIndex(ptrdiff_t index)` primitive.
+Field is a type with `opIndex()(ptrdiff_t index)` primitive.
 An iterator can be created on top of a field using $(SUBREF iterator, FieldIterator).
 An ndslice can be created on top of a field using $(SUBREF slice, slicedField).
 
@@ -238,7 +238,7 @@ struct ZipField(Fields...)
     if (Fields.length > 1)
 {
 @optmath:
-    import mir.functional: RefTuple, Ref;
+    import mir.functional: RefTuple, Ref, _ref;
     import std.meta: anySatisfy;
 
     ///
@@ -750,14 +750,14 @@ struct LinspaceField(T)
 @optmath:
 
     ///
-    size_t length() scope const @property
+    size_t length(size_t dimension = 0)() scope const @property
+        if (dimension == 0)
     {
         return _length;
     }
 
     ///
-    size_t[1] shape(size_t dimension = 0)() scope const @property @nogc
-        if (dimension == 0)
+    size_t[1] shape()() scope const @property @nogc
     {
         return [_length];
     }

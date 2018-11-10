@@ -26,7 +26,7 @@ import mir.functional;
 import mir.primitives;
 
 import std.traits;
-import std.range.primitives: isInfinite, isInputRange;
+import std.range.primitives: isInfinite, isInputRange, ElementType;
 
 /**
  * Allocates an array and initializes it with copies of the elements
@@ -40,12 +40,15 @@ import std.range.primitives: isInfinite, isInputRange;
  *      allocated and initialized array
  */
 auto array(Range)(Range r)
-if (isIterable!Range && !isInfinite!Range && !isStaticArray!Range || isPointer!Range && isIterable!(PointerTarget!Range))
+if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticArray!Range || isPointer!Range && isIterable!(PointerTarget!Range))
 {
-    static if (isPointer!Range)
+    static if (isIterable!Range)
+        alias E = ForeachType!Range;
+    else
+    static if (isPointer!Range && isIterable!(PointerTarget!Range))
         alias E = ForeachType!(PointerTarget!Range);
     else
-        alias E = ForeachType!Range;
+        alias E = ElementType!Range;
 
     if (__ctfe)
     {
