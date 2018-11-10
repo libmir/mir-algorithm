@@ -52,7 +52,6 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     Params:
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
-        forceCopyValues = always copy `values` if set
     Constraints:
         `grid` and `values` must have the same length >= 2
     Returns: $(LREF Spline)
