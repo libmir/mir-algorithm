@@ -1,4 +1,4 @@
-project('mir-algorithm', 'd', version : '4.0.0', license: 'BSL-1.0')
+project('mir-algorithm', 'd', version : '3.1.0', license: 'BSL-1.0')
 
 mir_algorithm_dir = include_directories('source/', 'include/')
 
