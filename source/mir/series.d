@@ -2108,9 +2108,9 @@ private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, SliceKind
     static if (N == 2) // fast path
     {
         alias algo = troykaSeriesImpl!(
-            (auto ref key, auto ref left) => left,
-            (auto ref key, auto ref left, auto ref right) => left,
-            (auto ref key, auto ref right) => right,
+            (auto scope ref key, auto scope return ref left) => left,
+            (auto scope ref key, auto scope ref left, auto scope return ref right) => left,
+            (auto scope ref key, auto scope return ref right) => right,
         );
         algo!(I, E)(seriesTuple[0], seriesTuple[1], ret);
     }

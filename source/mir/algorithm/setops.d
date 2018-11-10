@@ -54,7 +54,7 @@ struct MultiwayMerge(alias less, RangeOfRanges)
     @disable this(this);
 
     ///
-    static bool compFront()(auto ref ElementType!RangeOfRanges a, auto ref ElementType!RangeOfRanges b)
+    static bool compFront(ElementType!RangeOfRanges a, ElementType!RangeOfRanges b)
     {
         // revert comparison order so we get the smallest elements first
         return less(b.front, a.front);
@@ -64,7 +64,7 @@ struct MultiwayMerge(alias less, RangeOfRanges)
     BinaryHeap!(compFront, RangeOfRanges) _heap;
 
     ///
-    this()(auto ref RangeOfRanges ror)
+    this(RangeOfRanges ror) @nogc
     {
         import std.algorithm.mutation : remove, SwapStrategy;
 
@@ -75,17 +75,17 @@ struct MultiwayMerge(alias less, RangeOfRanges)
     }
 
     ///
-    @property bool empty()() { return _heap.empty; }
+    @property bool empty() scope const { return _heap.empty; }
 
     ///
-    @property auto ref front()()
+    @property auto ref front()
     {
         assert(!empty);
         return _heap.front.front;
     }
 
     ///
-    void popFront()()
+    void popFront() scope @safe
     {
         _heap._store.front.popFront;
         if (!_heap._store.front.empty)
@@ -98,7 +98,7 @@ struct MultiwayMerge(alias less, RangeOfRanges)
 /// Ditto
 MultiwayMerge!(naryFun!less, RangeOfRanges) multiwayMerge
 (alias less = "a < b", RangeOfRanges)
-(auto ref RangeOfRanges ror)
+(RangeOfRanges ror)
 {
     return typeof(return)(ror);
 }
@@ -147,7 +147,7 @@ Returns:
     A range of the union of the ranges in `ror`.
 See also: $(LREF multiwayMerge)
  */
-auto multiwayUnion(alias less = "a < b", RangeOfRanges)(auto ref RangeOfRanges ror)
+auto multiwayUnion(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
 {
     import mir.functional: not;
     import mir.algorithm.iteration : Uniq;

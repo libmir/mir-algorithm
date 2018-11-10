@@ -40,7 +40,6 @@ version(mir_test)
 
 
 import std.traits;
-import std.meta: AliasSeq, staticMap;
 import mir.primitives;
 import mir.ndslice.slice;
 import mir.internal.utility;
@@ -66,6 +65,8 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
 {
     static if (N > 1) pragma(msg, "Warning: multivariate constant interpolant was not tested.");
 
+    import std.meta: AliasSeq;
+
 @optmath:
 
     private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
@@ -75,24 +76,15 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
     Params:
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
-        forceCopyValues = always copy `values` if set
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
     Constant!(T, N, GridIterators) constant(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(yIterator, 1, ykind) values,
-        bool forceCopyValues = false
-        ) pure
+        scope Slice!(yIterator, 1, ykind) values
+        ) pure @trusted
     {
-        static if (__traits(compiles, typeof(return)(grid, values)))
-        {
-            if (!forceCopyValues)
-            {
-                return typeof(return)(grid, values);
-            }
-        }
         import std.algorithm.mutation: move;
         auto ret = typeof(return)(grid);
         ret._data[] = values;
@@ -106,92 +98,52 @@ Multivariate constant interpolant with nodes on rectilinear grid.
 struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
+    import mir.rcarray;
+    import std.meta: AliasSeq, staticMap;
+
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
 @optmath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
-    Slice!(F*, N) _data;
+    mir_slice!(mir_rci!F, N) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
-    ///
-    bool _ownsData;
 
     import mir.utility: min, max;
     package enum alignment = min(64u, F.sizeof).max(size_t.sizeof);
 
-    package ref shared(sizediff_t) counter() @trusted @property
-    {
-        assert(_ownsData);
-        auto p = cast(shared sizediff_t*) _data.ptr;
-        return *(p - 1);
-    }
-
-    ///
-    this(this) @safe nothrow @nogc
-    {
-        import core.atomic: atomicOp;
-        if (_ownsData)
-            counter.atomicOp!"+="(1);
-    }
-
-    /++
-    Frees _data if $(LREF Spline._freeData) is true.
-    +/
-    ~this() @trusted nothrow @nogc
-    {
-        import mir.internal.memory;
-        import core.atomic: atomicOp;
-
-        if (_ownsData)
-            if (counter.atomicOp!"-="(1) <= 0)
-                alignedFree(cast(void*)(_data.ptr) - alignment);
-    }
-
     /++
     +/
-    this()(GridVectors grid) @trusted nothrow @nogc
+    this(GridVectors grid) scope @safe @nogc
     {
-        import mir.internal.memory;
-        import mir.ndslice.topology: iota;
-
+        size_t length = 1;
         size_t[N] shape;
+        enum  msg =  "constant interpolant: minimal allowed length for the grid equals 1.";
+        version(D_Exceptions)
+            static immutable exc = new Exception(msg);
         foreach(i, ref x; grid)
         {
-            assert(x.length >= 1, "constant interpolant: minimal allowed length for the grid equals 1.");
-            shape[i] = x.length;
+            if (x.length < 1)
+            {
+                version(D_Exceptions)
+                    throw exc;
+                else
+                    assert(0, msg);
+            }
+            length *= shape[i] = x.length;
         }
 
-        auto data_ptr = cast(F*) (alignedAllocate(F.sizeof * shape.iota.elementCount + alignment, alignment) + alignment);
-        if(data_ptr is null)
-            assert(0, "No memory");
-
-        this._data = data_ptr.sliced(shape);
+        auto rca = mir_rcarray!F(length, alignment);
+        this._data = rca.asSlice.sliced(shape);
         this._grid = staticMap!(iter, grid);
-        this._ownsData = true;
-        this.counter = 1;
-    }
-
-    /++
-    +/
-    this()(GridVectors grid, Slice!(immutable(F)*, N) values) @trusted nothrow @nogc
-    {
-        foreach(i, ref x; grid)
-        {
-            assert(x.length >= 1, "constant interpolant: minimal allowed length for the grid equals 1.");
-            assert(values.length!i == x.length, "grid length should mutch to the values length");
-        }
-
-        this._data = values;
-        this._grid = staticMap!(iter, grid);
-        this._ownsData = false;
     }
 
 @trusted:
 
     ///
-    GridVectors[dimension] grid(size_t dimension = 0)() const @property
+    GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {
         return _grid[dimension].sliced(_data._lengths[dimension]);
@@ -200,14 +152,14 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
     /++
     Returns: intervals count.
     +/
-    size_t intervalCount(size_t dimension = 0)() const @property
+    size_t intervalCount(size_t dimension = 0)() scope const @property
     {
         assert(_data._lengths[dimension] > 0);
         return _data._lengths[dimension] - 0;
     }
 
     ///
-    size_t[N] gridShape()() const @property
+    size_t[N] gridShape()() scope const @property
     {
         return _data.shape;
     }
@@ -225,7 +177,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
         Complexity:
             `O(log(grid.length))`
         +/
-        auto opCall(X...)(in X xs) const
+        auto opCall(X...)(in X xs) scope const
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N

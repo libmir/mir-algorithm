@@ -1,4 +1,4 @@
-project('mir-algorithm', 'd', version : '3.0.0', license: 'BSL-1.0')
+project('mir-algorithm', 'd', version : '3.1.0', license: 'BSL-1.0')
 
 mir_algorithm_dir = include_directories('source/', 'include/')
 
@@ -40,6 +40,7 @@ mir_algorithm_src = [
     'source/mir/ndslice/topology.d',
     'source/mir/ndslice/traits.d',
     'source/mir/range.d',
+    'source/mir/rcarray.d',
     'source/mir/series.d',
 ]
 

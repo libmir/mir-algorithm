@@ -56,7 +56,7 @@ private template _indexes_range(size_t begin, size_t count)
 
 ///
 struct Cartesian(NdFields...)
- if (NdFields.length > 1)
+    if (NdFields.length > 1)
 {
     ///
     NdFields _fields;
@@ -81,45 +81,45 @@ struct Cartesian(NdFields...)
     }
 
     ///
-    size_t length(size_t d = 0)() const @property
+    size_t length(size_t d = 0)() @safe scope const @property
     {
-        foreach(f, ref field; _fields)
+        foreach(f, NdField; NdFields)
             static if (M!f <= d && M!(f + 1) > d)
             {
                 enum d = d - M!f;
                 static if (d)
-                    return field.length!(d - M!f);
+                    return _fields[f].length!(d - M!f);
                 else
-                    return field.length;
+                    return _fields[f].length;
             }
     }
 
     ///
-    size_t[N] shape()() const @property
+    size_t[N] shape()() @safe scope const @property
     {
         typeof(return) ret;
-        foreach(f, ref field; _fields)
+        foreach(f, NdField; NdFields)
         {
-            static if (hasShape!(NdFields[f]))
+            static if (hasShape!NdField)
             {
-                auto s = field.shape;
+                auto s = _fields[f].shape;
                 foreach(j; Iota!(s.length))
                     ret[M!f + j] = s[j];
             }
             else
             {
-                ret[M!f] = field.length;
+                ret[M!f] = _fields[f].length;
             }
         }
         return ret;
     }
 
     ///
-    size_t elementCount()() const @property
+    size_t elementCount()() @safe scope const @property
     {
         size_t ret = 1;
-        foreach (ref field; _fields)
-            ret *= field.elementCount;
+        foreach (f, NdField; NdFields)
+            ret *= _fields[f].elementCount;
         return ret;
     }
 
@@ -168,33 +168,33 @@ struct Kronecker(alias fun, NdFields...)
     private enum N = DimensionCount!(NdFields[$-1]);
 
     ///
-    size_t length(size_t d = 0)() const @property
+    size_t length(size_t d = 0)() scope const @property
     {
         static if (d == 0)
         {
-            size_t ret = _fields[0].length;
-            foreach(ref field; _fields[1 .. $])
-                ret *= field.length;
+            size_t ret = 1;
+            foreach (f, NdField; NdFields)
+                ret *= _fields[f].length;
         }
         else
         {
-            size_t ret = _fields[0].length!d;
-            foreach(ref field; _fields[1 .. $])
-                ret *= field.length!d;
+            size_t ret = 1;
+            foreach (f, NdField; NdFields)
+                ret *= _fields[f].length!d;
         }
         return ret;
     }
 
     
     ///
-    size_t[N] shape()() const @property
+    size_t[N] shape()() scope const @property
     {
         static if (N > 1)
         {
-            size_t[N] ret = _fields[0].shape;
-            foreach(ref field; _fields[1 .. $])
+            size_t[N] ret = 1;
+            foreach (f, NdField; NdFields)
             {
-                auto s = field.shape;
+                auto s = _fields[f].shape;
                 foreach(i; Iota!N)
                     ret[i] *= s[i];
             }
@@ -202,20 +202,19 @@ struct Kronecker(alias fun, NdFields...)
         }
         else
         {
-            size_t[1] ret;
-            ret[0] = _fields[0].length;
-            foreach(ref field; _fields[1 .. $])
-                ret[0] *= field.length;
+            size_t[1] ret = 1;
+            foreach (f, NdField; NdFields)
+                ret[0] *= _fields[f].length;
             return ret;
         }
     }
 
     ///
-    size_t elementCount()() const @property
+    size_t elementCount()() scope const @property
     {
         size_t ret = 1;
-        foreach (ref field; _fields)
-            ret *= field.elementCount;
+        foreach (f, NdField; NdFields)
+            ret *= _fields[f].elementCount;
         ret;
     }
 
@@ -226,18 +225,18 @@ struct Kronecker(alias fun, NdFields...)
             size_t[N][NdFields.length] ind;
         else
             size_t[NdFields.length] ind;
-        foreach_reverse (f, ref field; _fields)
+        foreach_reverse (f, NdField; NdFields)
         {
             static if (f)
             {
                 static if (hasShape!(NdFields[f]))
                 {
-                    auto s = field.shape;
+                    auto s = _fields[f].shape;
                 }
                 else
                 {
                     size_t[1] s;
-                    s[0] = field.length;
+                    s[0] = _fields[f].length;
                 }
                 static if (N > 1)
                 {

@@ -236,13 +236,13 @@ struct IndexedRoR(Collection, Range)
     }
 
     /// ditto
-    void popFront()
+    void popFront() scope
     {
         c.popFront;
     }
 
     /// ditto
-    bool empty()() @property const
+    bool empty()() @property scope const
     {
         return c.empty;
     }
@@ -250,13 +250,13 @@ struct IndexedRoR(Collection, Range)
     static if (hasLength!Collection)
     {
         /// ditto
-        @property size_t length()() const
+        @property size_t length()() scope const
         {
             return c.length;
         }
 
         /// 
-        @property size_t[2] shape()() const
+        @property size_t[2] shape()() scope const
         {
             return c.shape;
         }
@@ -420,7 +420,7 @@ struct Permutations(T)
     }
 
     /// ditto
-    void popFront()() @safe pure nothrow @nogc
+    void popFront()() scope @safe pure nothrow @nogc
     {
         import std.algorithm.mutation : swapAt;
 
@@ -448,19 +448,19 @@ struct Permutations(T)
     }
 
     /// ditto
-    @property bool empty()() @safe pure nothrow @nogc const
+    @property bool empty()() @safe pure nothrow @nogc scope const
     {
         return _empty;
     }
 
     /// ditto
-    @property size_t length()() @safe pure nothrow @nogc const
+    @property size_t length()() @safe pure nothrow @nogc scope const
     {
         return _max_states - _pos;
     }
 
     /// 
-    @property size_t[2] shape()() const
+    @property size_t[2] shape()() scope const
     {
         return [length, indices.length];
     }
@@ -651,7 +651,7 @@ public:
     }
 
     /// ditto
-    void popFront()() @safe pure nothrow @nogc
+    void popFront()() scope @safe pure nothrow @nogc
     {
         assert(!empty);
         _pos++;
@@ -676,19 +676,19 @@ public:
     }
 
     /// ditto
-    @property size_t length()() @safe pure nothrow @nogc const
+    @property size_t length()() @safe pure nothrow @nogc scope const
     {
         return _max_states - _pos;
     }
 
     /// ditto
-    @property bool empty()() @safe pure nothrow @nogc const
+    @property bool empty()() @safe pure nothrow @nogc scope const
     {
         return _pos == _max_states;
     }
 
     /// 
-    @property size_t[2] shape()() const
+    @property size_t[2] shape()() scope const
     {
         return [length, _state.length];
     }
@@ -915,7 +915,7 @@ public:
     }
 
     /// ditto
-    void popFront()() @safe pure nothrow @nogc
+    void popFront()() scope @safe pure nothrow @nogc
     {
         assert(!empty);
         pos++;
@@ -954,19 +954,19 @@ public:
     }
 
     /// ditto
-    @property size_t length()() @safe pure nothrow @nogc const
+    @property size_t length()() @safe pure nothrow @nogc scope const
     {
         return max_states - pos;
     }
 
     /// ditto
-    @property bool empty()() @safe pure nothrow @nogc const
+    @property bool empty()() @safe pure nothrow @nogc scope const
     {
         return pos == max_states;
     }
 
     /// 
-    @property size_t[2] shape()() const
+    @property size_t[2] shape()() scope const
     {
         return [length, state.length];
     }
@@ -1232,7 +1232,7 @@ public:
     }
 
     /// ditto
-    void popFront()() @safe pure nothrow @nogc
+    void popFront()() scope @safe pure nothrow @nogc
     {
         assert(!empty);
         pos++;
@@ -1260,19 +1260,19 @@ public:
     }
 
     /// ditto
-    @property size_t length()() @safe pure nothrow @nogc const
+    @property size_t length()() @safe pure nothrow @nogc scope const
     {
         return max_states - pos;
     }
 
     /// ditto
-    @property bool empty()() @safe pure nothrow @nogc const
+    @property bool empty()() @safe pure nothrow @nogc scope const
     {
         return pos == max_states;
     }
 
     /// 
-    @property size_t[2] shape()() const
+    @property size_t[2] shape()() scope const
     {
         return [length, state.length];
     }

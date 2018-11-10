@@ -58,7 +58,7 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
 
 ///
 version(mir_test)
-@safe nothrow unittest
+@safe unittest
 {
     import std.math: approxEqual;
     import mir.ndslice.allocation: slice;
@@ -70,20 +70,22 @@ version(mir_test)
     auto interpolant = pchip!double(x, y);
 
     auto xs = x[0 .. $ - 1] + 0.5;
-    auto ys = xs.vmap(interpolant);
 
-    assert(ys.approxEqual([
-        5.333333333333334,
-        2.500000000000000,
-        10.000000000000000,
-        4.288971807628524,
-        11.202580845771145,
-        16.250000000000000,
-        17.962962962962962,
-        5.558593750000000,
-        17.604662698412699,
-        ]));
+    () @trusted {
+        auto ys = xs.vmap(interpolant);
 
+        assert(ys.approxEqual([
+            5.333333333333334,
+            2.500000000000000,
+            10.000000000000000,
+            4.288971807628524,
+            11.202580845771145,
+            16.250000000000000,
+            17.962962962962962,
+            5.558593750000000,
+            17.604662698412699,
+            ]));
+    }();
 }
 
 // Check direction equality

@@ -14,7 +14,6 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.interpolate.linear;
 
 import std.traits;
-private alias AliasSeq(T...) = T;
 import mir.primitives;
 import mir.ndslice.slice;
 import mir.math.common: optmath;
@@ -40,8 +39,10 @@ Constraints:
 Returns: $(LREF Linear)
 +/
 template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
-    // if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
+    if (mir.internal.utility.isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
 {
+    import std.meta: AliasSeq;
+
     private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     private alias GridVectors = Linear!(T, N, GridIterators).GridVectors;
 
@@ -51,7 +52,6 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     Params:
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
-        forceCopyValues = always copy `values` if set
     Constraints:
         `grid` and `values` must have the same length >= 2
     Returns: $(LREF Spline)
@@ -59,16 +59,8 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     Linear!(T, N, GridIterators) linear(yIterator, SliceKind ykind)(
         GridVectors grid,
         scope Slice!(yIterator, N, ykind) values,
-        bool forceCopyValues = false
-        )
+        ) pure @trusted
     {
-        static if (__traits(compiles, typeof(return)(grid, values)))
-        {
-            if (!forceCopyValues)
-            {
-                return typeof(return)(grid, values);
-            }
-        }
         import std.algorithm.mutation: move;
         auto ret = typeof(return)(grid);
         ret._data[] = values;
@@ -121,10 +113,12 @@ version(mir_test)
     ///// compute test data ////
     auto test_grid = cartesian(x0 + 1.23, x1 + 3.23);
     auto real_data = test_grid.map!f;
-    auto interp_data = test_grid.vmap(interpolant);
+    ()@trusted{
+        auto interp_data = test_grid.vmap(interpolant);
 
-    ///// verify result ////
-    assert(all!appreq(interp_data, real_data));
+        ///// verify result ////
+        assert(all!appreq(interp_data, real_data));
+    }();
 
     //// check derivatives ////
     auto z0 = 1.23;
@@ -167,10 +161,12 @@ version(mir_test)
     ///// compute test data ////
     auto test_grid = cartesian(x0 + 1.23, x1 + 3.23, x2 - 3);
     auto real_data = test_grid.map!f;
-    auto interp_data = test_grid.vmap(interpolant);
+    ()@trusted{
+        auto interp_data = test_grid.vmap(interpolant);
 
-    ///// verify result ////
-    assert(all!appreq(interp_data, real_data));
+        ///// verify result ////
+        assert(all!appreq(interp_data, real_data));
+    }();
 
     //// check derivatives ////
     auto z0 = 1.23;
@@ -191,94 +187,50 @@ Multivariate linear interpolant with nodes on rectilinear grid.
 struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
-    import std.meta: staticMap;
+    import mir.rcarray;
+    import std.meta: AliasSeq, staticMap;
+
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
     /// $(RED For internal use.)
-    Slice!(F*, N) _data;
+    mir_slice!(mir_rci!F, N) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
-    ///
-    bool _ownsData;
 
     import mir.utility: min, max;
     package enum alignment = min(64u, F.sizeof).max(size_t.sizeof);
 
-    package ref shared(sizediff_t) counter() @trusted @property
-    {
-        assert(_ownsData);
-        auto p = cast(shared sizediff_t*) _data.ptr;
-        return *(p - 1);
-    }
-
-    ///
-    this(this) @safe nothrow @nogc
-    {
-        import core.atomic: atomicOp;
-        if (_ownsData)
-            counter.atomicOp!"+="(1);
-    }
-
-    /++
-    Frees _data if $(LREF Spline._freeData) is true.
-    +/
-    ~this() @trusted nothrow @nogc
-    {
-        import mir.internal.memory;
-        import core.atomic: atomicOp;
-
-        if (_ownsData)
-            if (counter.atomicOp!"-="(1) <= 0)
-                alignedFree(cast(void*)(_data.ptr) - alignment);
-    }
-
     /++
     +/
-    this()(GridVectors grid) @trusted nothrow @nogc
+    this(GridVectors grid) scope @safe @nogc
     {
-        import mir.internal.memory;
-        import mir.ndslice.topology: iota;
-
+        size_t length = 1;
         size_t[N] shape;
+        enum  msg =  "linear interpolant: minimal allowed length for the grid equals 2.";
+        version(D_Exceptions)
+            static immutable exc = new Exception(msg);
         foreach(i, ref x; grid)
         {
-            assert(x.length >= 2, "linear interpolation: minimal allowed length for the grid equals 2.");
-            shape[i] = x.length;
+            if (x.length < 2)
+            {
+                version(D_Exceptions)
+                    throw exc;
+                else
+                    assert(0, msg);
+            }
+            length *= shape[i] = x.length;
         }
 
-        auto data_ptr = cast(F*) (alignedAllocate(F.sizeof * shape.iota.elementCount + alignment, alignment) + alignment);
-        if(data_ptr is null)
-            assert(0, "No memory");
-
-        this._data = data_ptr.sliced(shape);
+        auto rca = mir_rcarray!F(length, alignment);
+        this._data = rca.asSlice.sliced(shape);
         this._grid = staticMap!(iter, grid);
-        this._ownsData = true;
-        this.counter = 1;
-    }
-
-    /++
-    +/
-    this()(GridVectors grid, Slice!(immutable(F)*, N) values) @trusted nothrow @nogc
-    {
-        import mir.internal.memory;
-        import mir.ndslice.topology: iota;
-
-        foreach(i, ref x; grid)
-        {
-            assert(x.length >= 2, "linear interpolation: minimal allowed length for the grid equals 2.");
-            assert(values.length!i == x.length, "grid length should mutch to the values length");
-        }
-
-        this._data = values;
-        this._grid = staticMap!(iter, grid);
-        this._ownsData = false;
     }
 
 @trusted:
 
     ///
-    GridVectors[dimension] grid(size_t dimension = 0)() const @property
+    GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {
         return _grid[dimension].sliced(_data._lengths[dimension]);
@@ -287,14 +239,14 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     /++
     Returns: intervals count.
     +/
-    size_t intervalCount(size_t dimension = 0)() const @property
+    size_t intervalCount(size_t dimension = 0)() scope const @property
     {
         assert(_data._lengths[dimension] > 1);
         return _data._lengths[dimension] - 1;
     }
 
     ///
-    size_t[N] gridShape()() const @property
+    size_t[N] gridShape()() scope const @property
     {
         return _data.shape;
     }
@@ -311,7 +263,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         Complexity:
             `O(log(grid.length))`
         +/
-        auto opCall(X...)(in X xs) const @trusted
+        auto opCall(X...)(in X xs) scope const @trusted
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N

@@ -131,7 +131,7 @@ private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
         }
     }
 
-const:
+scope const:
 
     bool isCentralProblem()
     {
@@ -504,13 +504,13 @@ const:
 Сount bits until set bit count is reached. Works with ndslices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 Returns: bit count if set bit count is reached or `-1` otherwise.
 +/
-sizediff_t nBitsToCount(Field, I)(Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
+sizediff_t nBitsToCount(Field, I)(scope Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
 {
     return BitSliceAccelerator!(Field, I)(bitSlice).nBitsToCount(count);
 }
 
 ///ditto
-sizediff_t nBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))) bitSlice, size_t count)
+sizediff_t nBitsToCount(Field, I)(scope Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))) bitSlice, size_t count)
 {
     import mir.ndslice.topology: retro;
     return BitSliceAccelerator!(Field, I)(bitSlice.retro).retroNBitsToCount(count);
@@ -536,7 +536,7 @@ private void checkShapesMatch(
     string fun = __FUNCTION__,
     string pfun = __PRETTY_FUNCTION__,
     Slices...)
-    (ref const Slices slices)
+    (scope ref const Slices slices)
     if (Slices.length > 1)
 {
     enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);
@@ -569,19 +569,14 @@ template frontOf(size_t N)
     }
 }
 
-template allFlattened(args...)
+template allFlattened(size_t N)
+ if (N)
 {
-    static if (args.length)
-    {
-        alias arg = args[0];
-        @optmath @property fwd()(){
-            import mir.ndslice.topology: flattened;
-            return arg.flattened;
-        }
-        alias allFlattened = AliasSeq!(fwd, allFlattened!(args[1..$]));
-    }
+    enum  i = N - 1;
+    static if (i)
+        enum allFlattened = .allFlattened!i ~ ("slices[" ~ i.stringof ~ "].flattened, ");
     else
-        alias allFlattened = AliasSeq!();
+        enum allFlattened = "slices[" ~ i.stringof ~ "].flattened, ";
 }
 
 private template areAllContiguousSlices(Slices...)
@@ -659,7 +654,7 @@ else
     private enum Mir_disable_inlining_in_reduce = false;
 }
 
-S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
+S reduceImpl(alias fun, S, Slices...)(S seed, scope Slices slices)
 {
     do
     {
@@ -706,14 +701,15 @@ template reduce(alias fun)
     Returns:
         the accumulated `result`
     +/
-    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
+    @optmath auto reduce(S, Slices...)(S seed, scope Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .reduce!fun(seed, allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.reduce!fun(seed, ` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -728,14 +724,15 @@ template reduce(alias fun)
     }
     else version(Mir_disable_inlining_in_reduce)
     //As above, but with inlining disabled.
-    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
+    @optmath auto reduce(S, Slices...)(S seed, scope Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .reduce!fun(seed, allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.reduce!fun(seed, ` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -912,7 +909,7 @@ version(mir_test) unittest
     assert(a == 7);
 }
 
-void eachImpl(alias fun, Slices...)(Slices slices)
+void eachImpl(alias fun, Slices...)(scope Slices slices)
 {
     foreach(ref slice; slices)
         assert(!slice.empty);
@@ -950,14 +947,15 @@ template each(alias fun)
     Params:
         slices = One or more slices, ranges, and arrays.
     +/
-    @optmath auto each(Slices...)(Slices slices)
+    @optmath auto each(Slices...)(scope Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            .each!fun(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            mixin(`.each!fun(` ~ allFlattened!(Slices.length) ~`);`);
         }
         else
         {
@@ -1070,7 +1068,7 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
         Params:
             matrix = Square matrix.
         +/
-        auto eachUploPair(Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) matrix)
+        auto eachUploPair(Iterator, SliceKind kind)(scope Slice!(Iterator, 2, kind) matrix)
         in
         {
             assert(matrix.length!0 == matrix.length!1, "matrix must be square.");
@@ -1269,7 +1267,7 @@ unittest
          2, 3].sliced(2, 2).isSymmetric == true);
 }
 
-bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(ref size_t[N] backwardIndex, ref Iterator iterator, Slice!(Iterator, N, kind) slice)
+bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref size_t[N] backwardIndex, scope ref Iterator iterator, Slice!(Iterator, N, kind) slice)
 {
     auto bis = backwardIndex[0];
     do
@@ -1295,7 +1293,7 @@ bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(ref size_t[N] bac
     return bis != backwardIndex[0];
 }
 
-bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(ref size_t[2][N] backwardIndex, ref Iterator[2] iterator, Slice!(Iterator, N, kind) slice)
+bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref size_t[2][N] backwardIndex, scope ref Iterator[2] iterator, Slice!(Iterator, N, kind) slice)
 {
     size_t[2] bis = backwardIndex[0];
     do
@@ -1360,7 +1358,6 @@ template minmaxPos(alias pred = "a < b")
     @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)[2]
         minmaxPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        import mir.ndslice.topology: map;
         typeof(return) pret;
         if (!slice.anyEmpty)
         {
@@ -1434,7 +1431,6 @@ template minmaxIndex(alias pred = "a < b")
     +/
     @optmath size_t[N][2] minmaxIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        import mir.ndslice.topology: map;
         typeof(return) pret = size_t.max;
         if (!slice.anyEmpty)
         {
@@ -1503,13 +1499,10 @@ template minPos(alias pred = "a < b")
     @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)
         minPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        typeof(return) ret;
-        import mir.ndslice.topology: map;
+        typeof(return) ret = { _iterator : slice._iterator };
         if (!slice.anyEmpty)
         {
-            auto iterator = slice._iterator;
-            minPosImpl!(pred, Iterator, N, kind)(ret._lengths, iterator, slice);
-            ret._iterator = iterator;
+            minPosImpl!(pred, Iterator, N, kind)(ret._lengths, ret._iterator, slice);
         }
         auto strides = slice.strides;
         foreach(i; Iota!(0, ret.S))
@@ -1578,7 +1571,6 @@ template minIndex(alias pred = "a < b")
     @optmath size_t[N] minIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         size_t[N] ret = size_t.max;
-        import mir.ndslice.topology: map;
         if (!slice.anyEmpty)
         {
             ret = slice.shape;
@@ -1637,7 +1629,7 @@ unittest
     assert(s[index] == -8);
 }
 
-bool findImpl(alias fun, size_t N, Slices...)(ref size_t[N] backwardIndex, Slices slices)
+bool findImpl(alias fun, size_t N, Slices...)(scope ref size_t[N] backwardIndex, Slices slices)
     if (Slices.length)
 {
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
@@ -1929,7 +1921,7 @@ version(mir_test) unittest
     assert(bi == [0, 0]);
 }
 
-size_t anyImpl(alias fun, Slices...)(Slices slices)
+size_t anyImpl(alias fun, Slices...)(scope Slices slices)
     if (Slices.length)
 {
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
@@ -1985,14 +1977,15 @@ template any(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath bool any(Slices...)(Slices slices)
+    @optmath bool any(Slices...)(scope Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         static if (Slices.length > 1)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .any!pred(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.any!pred(` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -2088,7 +2081,7 @@ version(mir_test) unittest
                   [8, 8, 5]]);
 }
 
-size_t allImpl(alias fun, Slices...)(Slices slices)
+size_t allImpl(alias fun, Slices...)(scope Slices slices)
     if (Slices.length)
 {
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
@@ -2144,14 +2137,15 @@ template all(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath bool all(Slices...)(Slices slices)
+    @optmath bool all(Slices...)(scope Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         static if (Slices.length > 1)
             slices.checkShapesMatch;
         static if (areAllContiguousSlices!Slices)
         {
-            return .all!pred(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.all!pred(` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -2273,7 +2267,7 @@ template count(alias fun)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath size_t count(Slices...)(Slices slices)
+    @optmath size_t count(Slices...)(scope Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -2285,7 +2279,8 @@ template count(alias fun)
         else
         static if (areAllContiguousSlices!Slices)
         {
-            return .count!fun(allFlattened!slices);
+            import mir.ndslice.topology: flattened;
+            return mixin(`.count!fun(` ~ allFlattened!(Slices.length) ~`)`);
         }
         else
         {
@@ -2391,7 +2386,7 @@ template equal(alias pred = "a == b")
     Returns:
         `true` any of the elements verify `pred` and `false` otherwise.
     +/
-    bool equal(Slices...)(Slices slices)
+    bool equal(Slices...)(scope Slices slices)
         if (Slices.length >= 2)
     {
         enum msg = "all arguments must be slices" ~ tailErrorMessage!();
@@ -2449,7 +2444,7 @@ version(mir_test) unittest
 }
 
 ptrdiff_t cmpImpl(alias pred, A, B)
-    (A sl1, B sl2)
+    (scope A sl1, scope B sl2)
     if (DimensionCount!A == DimensionCount!B)
 {
     for (;;)
@@ -2504,7 +2499,7 @@ template cmp(alias pred = "a < b")
         element of `sl1` according to `pred`.
     +/
     ptrdiff_t cmp(A, B)
-        (A sl1, B sl2)
+        (scope A sl1, scope B sl2)
         if (DimensionCount!A == DimensionCount!B)
     {
         auto b = sl2.anyEmpty;
@@ -2579,7 +2574,7 @@ version(mir_test) unittest
     assert(cmp(sl1[0 .. $ - 1, 0 .. $ - 3], sl1[0 .. $, 0 .. $ - 3]) < 0);
 }
 
-size_t countImpl(alias fun, Slices...)(Slices slices)
+size_t countImpl(alias fun, Slices...)(scope Slices slices)
 {
     size_t ret;
     alias S = Slices[0];
@@ -2641,7 +2636,7 @@ private template frontSelectFrontOf(size_t N, string input)
 /++
 Returns: max length across all dimensions.
 +/
-size_t maxLength(S)(auto ref S s)
+size_t maxLength(S)(auto ref scope S s)
  if (hasShape!S)
 {
     auto shape = s.shape;
@@ -2684,7 +2679,7 @@ template eachLower(alias fun)
             For k < 0, more diagonals above the main diagonal will have the
             function applied.
         +/
-        void eachLower(Inputs...)(Inputs inputs)
+        void eachLower(Inputs...)(scope Inputs inputs)
             if (((Inputs.length > 1) && 
                  (isIntegral!(Inputs[$ - 1]))) || 
                 (Inputs.length))
@@ -3149,7 +3144,7 @@ template eachUpper(alias fun)
             For k < 0, more diagonals above the main diagonal will have the
             function applied.
         +/
-        void eachUpper(Inputs...)(Inputs inputs)
+        void eachUpper(Inputs...)(scope Inputs inputs)
             if (((Inputs.length > 1) && 
                  (isIntegral!(Inputs[$ - 1]))) || 
                 (Inputs.length))
@@ -3611,12 +3606,12 @@ struct Uniq(alias pred, Range)
     //     AliasSeq!_input = forward!input;
     // }
 
-    auto opSlice()()
+    ref opSlice() inout
     {
         return this;
     }
 
-    void popFront()()
+    void popFront() scope
     {
         assert(!empty, "Attempting to popFront an empty uniq.");
         auto last = _input.front;
@@ -3627,7 +3622,7 @@ struct Uniq(alias pred, Range)
         while (!_input.empty && pred(last, _input.front));
     }
 
-    @property ElementType!Range front()()
+    @property ElementType!Range front()
     {
         assert(!empty, "Attempting to fetch the front of an empty uniq.");
         return _input.front;
@@ -3635,7 +3630,7 @@ struct Uniq(alias pred, Range)
 
     static if (isBidirectionalRange!Range)
     {
-        void popBack()()
+        void popBack() scope
         {
             assert(!empty, "Attempting to popBack an empty uniq.");
             auto last = _input.back;
@@ -3646,7 +3641,7 @@ struct Uniq(alias pred, Range)
             while (!_input.empty && pred(last, _input.back));
         }
 
-        @property ElementType!Range back()()
+        @property ElementType!Range back() scope return
         {
             assert(!empty, "Attempting to fetch the back of an empty uniq.");
             return _input.back;
@@ -3659,12 +3654,12 @@ struct Uniq(alias pred, Range)
     }
     else
     {
-        @property bool empty()() { return _input.empty; }
+        @property bool empty() const { return _input.empty; }
     }
 
     static if (isForwardRange!Range)
     {
-        @property typeof(this) save()() {
+        @property typeof(this) save() scope return {
             return typeof(this)(_input.save);
         }
     }

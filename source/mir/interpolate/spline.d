@@ -34,7 +34,7 @@ import mir.ndslice.traits;
 @fmamath:
 
 ///
-@safe pure nothrow version(mir_test) unittest
+@trusted pure version(mir_test) unittest
 {
     import std.math: approxEqual;
     import mir.ndslice.slice: sliced;
@@ -111,66 +111,70 @@ import mir.ndslice.traits;
     auto interpolant = x.spline!double(y); // default boundary condition is 'not-a-knot'
 
     auto xs = x + 0.5;
-    auto ys = xs.vmap(interpolant);
 
-    auto r =
-      [ 5.56971848,
-        9.30342403,
-        4.44139761,
-       -0.74740285,
-        3.00994108,
-        1.50750417,
-        1.73144979,
-        2.64860361,
-        0.64413911,
-       10.81768928];
+    ()@trusted{
 
-    assert(all!approxEqual(ys, r));
+        auto ys = xs.vmap(interpolant);
 
-    // first derivative
-    auto d1 = xs.vmap(interpolant.aliasCall!"withDerivative").map!"a[1]";
-    auto r1 =
-       [-4.51501279,
-         2.15715986,
-        -7.28363308,
-        -2.14050449,
-         0.03693092,
-        -0.49618999,
-         0.58109933,
-        -0.52926703,
-         0.7819035 ,
-         6.70632693];
-    assert(all!approxEqual(d1, r1));
+        auto r =
+        [ 5.56971848,
+            9.30342403,
+            4.44139761,
+        -0.74740285,
+            3.00994108,
+            1.50750417,
+            1.73144979,
+            2.64860361,
+            0.64413911,
+        10.81768928];
 
-    // second derivative
-    auto d2 = xs.vmap(interpolant.aliasCall!"withTwoDerivatives").map!"a[2]";
-    auto r2 =
-       [ 7.07104751,
-        -2.62293241,
-        -0.01468508,
-         5.70609505,
-        -2.02358911,
-         0.72142061,
-         0.25275483,
-        -0.6133589 ,
-         1.26894416,
-         2.68067146];
-    assert(all!approxEqual(d2, r2));
+        assert(all!approxEqual(ys, r));
 
-    // third derivative (6 * a)
-    auto d3 = xs.vmap(interpolant.aliasCall!("opCall", 3)).map!"a[3]";
-    auto r3 =
-       [-3.23132664,
-        -3.23132664,
-        14.91047457,
-        -3.46891432,
-         1.88520325,
-        -0.16559031,
-        -0.44056064,
-         0.47057577,
-         0.47057577,
-         0.47057577];
-    assert(all!approxEqual(d3, r3));
+        // first derivative
+        auto d1 = xs.vmap(interpolant.aliasCall!"withDerivative").map!"a[1]";
+        auto r1 =
+        [-4.51501279,
+            2.15715986,
+            -7.28363308,
+            -2.14050449,
+            0.03693092,
+            -0.49618999,
+            0.58109933,
+            -0.52926703,
+            0.7819035 ,
+            6.70632693];
+        assert(all!approxEqual(d1, r1));
+
+        // second derivative
+        auto d2 = xs.vmap(interpolant.aliasCall!"withTwoDerivatives").map!"a[2]";
+        auto r2 =
+        [ 7.07104751,
+            -2.62293241,
+            -0.01468508,
+            5.70609505,
+            -2.02358911,
+            0.72142061,
+            0.25275483,
+            -0.6133589 ,
+            1.26894416,
+            2.68067146];
+        assert(all!approxEqual(d2, r2));
+
+        // third derivative (6 * a)
+        auto d3 = xs.vmap(interpolant.aliasCall!("opCall", 3)).map!"a[3]";
+        auto r3 =
+        [-3.23132664,
+            -3.23132664,
+            14.91047457,
+            -3.46891432,
+            1.88520325,
+            -0.16559031,
+            -0.44056064,
+            0.47057577,
+            0.47057577,
+            0.47057577];
+        assert(all!approxEqual(d3, r3));
+    }();
 }
 
     import std.stdio;
@@ -197,7 +201,9 @@ version(mir_test)
         0.03314357,  0.03335896,  0.03355892,  0.03375674,  0.03396413,
         0.03419436,  0.03446018,  0.03477529,  0.03515072,  0.0356    ];
 
-    assert(approxEqual(xs.sliced.vmap(interpolation), data, 1e-4, 1e-4));
+    ()@trusted{
+        assert(approxEqual(xs.sliced.vmap(interpolation), data, 1e-4, 1e-4));
+    }();
 }
 
 /// R^2 -> R: Bicubic interpolation
@@ -435,88 +441,60 @@ Multivariate cubic spline with nodes on rectilinear grid.
 struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
+    import mir.rcarray;
+
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);
 
 @fmamath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
-    Slice!(F[2 ^^ N]*, N) _data;
+    mir_slice!(mir_rci!(F[2 ^^ N]), N) _data;
     /// Grid iterators. $(RED For internal use.)
     GridIterators _grid;
 
     import mir.utility: min, max;
     package enum alignment = min(64u, F[2 ^^ N].sizeof).max(size_t.sizeof);
 
-    package ref shared(sizediff_t) counter() @trusted @property
-    {
-        auto p = cast(shared sizediff_t*) _data.ptr;
-        return *(p - 1);
-    }
-
-    ///
-    this(this) @safe nothrow @nogc
-    {
-        import core.atomic: atomicOp;
-        counter.atomicOp!"+="(1);
-    }
-
-
-    /++
-    Frees _data if $(LREF Spline._freeData) is true.
-    +/
-    ~this() @trusted nothrow @nogc
-    {
-        import mir.internal.memory;
-        import core.atomic: atomicOp;
-
-        if (_data.ptr)
-            if (counter.atomicOp!"-="(1) <= 0)
-                alignedFree(cast(void*)(_data.ptr) - alignment);
-    }
-
     /++
     +/
-    this()(GridVectors grid) @trusted nothrow @nogc
+    this()(GridVectors grid) @trusted @nogc
     {
-        import mir.internal.memory;
-        import mir.ndslice.topology: iota;
-
+        size_t length = 1;
         size_t[N] shape;
+        enum  msg =  "linear interpolant: minimal allowed length for the grid equals 2.";
+        version(D_Exceptions)
+            static immutable exc = new Exception(msg);
         foreach(i, ref x; grid)
         {
-            assert(x.length >= 2, "cubic spline interpolant: minimal allowed length for the grid equals 2.");
-            shape[i] = x.length;
-            // assert(x.length == values.length!i, "grid[" ~ i.stringof ~
-            //     "].length should be equal to values.length!" ~ i.stringof ~ ".");
+            if (x.length < 2)
+            {
+                version(D_Exceptions)
+                    throw exc;
+                else
+                    assert(0, msg);
+            }
+            length *= shape[i] = x.length;
         }
 
-        auto data_ptr = cast(F[2 ^^ N]*) (alignedAllocate(F[2 ^^ N].sizeof * shape.iota.elementCount + alignment, alignment) + alignment);
-        if(data_ptr is null)
-            assert(0);
-
-        this._data = data_ptr.sliced(shape);
-        debug
-        {
-            this._data.opIndexAssign(F[2 ^^ N].init);
-        }
+        auto rca = mir_rcarray!(F[2 ^^ N])(length, alignment);
+        this._data = rca.asSlice.sliced(shape);
         this._grid = staticMap!(iter, grid);
-        this.counter = 1;
     }
 
-    package static auto pickDataSubslice(D)(auto ref D data, size_t index) @trusted
+    package static auto pickDataSubslice(D)(auto scope ref D data, size_t index) @trusted
     {
         auto strides = data.strides;
         foreach (i; Iota!(strides.length))
             strides[i] *= DeepElementType!D.length;
-        return Slice!(F*, strides.length, Universal)(data.shape, strides, data.iterator.ptr + index);
+        return Slice!(F*, strides.length, Universal)(data.shape, strides, data._iterator._iterator.ptr + index);
     }
 
     /++
     Assigns function values to the internal memory.
     $(RED For internal use.)
     +/
-    void _values(SliceKind kind, Iterator)(scope Slice!(Iterator, N, kind) values) @property @trusted
+    void _values(SliceKind kind, Iterator)(scope Slice!(Iterator, N, kind) values) scope @property @trusted
     {
         assert(values.shape == _data.shape, "'values' should have the same shape as the .gridShape");
         pickDataSubslice(_data, 0)[] = values;
@@ -531,7 +509,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     $(RED For internal use.)
     +/
-    void _computeDerivatives()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) @trusted nothrow @nogc
+    void _computeDerivatives()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) scope @trusted nothrow @nogc
     {
         import mir.internal.memory;
         import mir.algorithm.iteration: maxLength;
@@ -549,7 +527,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /// ditto
     pragma(inline, false)
-    void _computeDerivativesTemp()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) @system nothrow @nogc
+    void _computeDerivativesTemp()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) scope @system nothrow @nogc
     {
         import mir.internal.memory;
         import mir.algorithm.iteration: maxLength, each;
@@ -590,7 +568,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 @trusted:
 
     ///
-    GridVectors[dimension] grid(size_t dimension = 0)() const @property
+    GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {
         return _grid[dimension].sliced(_data._lengths[dimension]);
@@ -599,14 +577,14 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     /++
     Returns: intervals count.
     +/
-    size_t intervalCount(size_t dimension = 0)() const @property
+    size_t intervalCount(size_t dimension = 0)() scope const @property
     {
         assert(_data._lengths[dimension] > 1);
         return _data._lengths[dimension] - 1;
     }
 
     ///
-    size_t[N] gridShape()() const @property
+    size_t[N] gridShape()() scope const @property
     {
         return _data.shape;
     }
@@ -622,7 +600,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     ///
     template opCall(uint derivative : 2)
     {
-         auto opCall(X...)(in X xs) const
+         auto opCall(X...)(in X xs) scope const
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N
@@ -653,7 +631,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         Complexity:
             `O(log(points.length))`
         +/
-        auto opCall(X...)(in X xs) const @trusted
+        auto opCall(X...)(in X xs) scope const @trusted
             if (X.length == N)
             // @FUTURE@
             // X.length == N || derivative == 0 && X.length && X.length <= N
