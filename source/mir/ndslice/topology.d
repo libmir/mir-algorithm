@@ -319,7 +319,7 @@ version(mir_test) unittest
     auto slice = iota(2, 3).universal.assumeContiguous;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
     assert(slice._lengths == [2, 3]);
-    assert(slice._strides == []);
+    static assert(slice._strides.length == 0);
 }
 
 /++
