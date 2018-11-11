@@ -111,9 +111,10 @@ struct mir_rcarray(T)
             {
                 if (counter.atomicOp!"-="(1) == 0)
                 {
+                    import std.traits: Unqual;
                     import mir.conv: xdestroy;
-                    T[] array;
-                    ()@trusted { array = (cast(T*)(_context + 1))[0 .. length]; }();
+                    Unqual!T[] array;
+                    ()@trusted { array = (cast(Unqual!T*)(_context + 1))[0 .. length]; }();
                     xdestroy(array);
                     () @trusted {
                         auto p = cast(void*) _payload;
@@ -244,13 +245,13 @@ struct mir_rcarray(T)
     }
 
     ///
-    size_t length() @trusted scope pure nothrow @nogc @property
+    size_t length() @trusted scope pure nothrow @nogc const @property
     {
         return _context !is null ? _context.length : 0;
     }
 
     ///
-    size_t counter() @trusted scope pure nothrow @nogc @property
+    size_t counter() @trusted scope pure nothrow @nogc const @property
     {
         return _context !is null ? _context.counter : 0;
     }
