@@ -127,7 +127,7 @@ struct mir_rcarray(T)
 
         /// Extern constructor
         pragma(inline, false)
-        bool initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @safe nothrow @nogc
+        bool initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @system nothrow @nogc
         {
             return initializeImpl(length, alignment, deallocate, initialize);
         }
@@ -149,7 +149,7 @@ struct mir_rcarray(T)
         
         /// Extern constructor
         pragma(inline, false)
-        bool initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @safe nothrow @nogc
+        bool initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @system nothrow @nogc
         {
             return initializeImpl(length, alignment, deallocate, initialize);
         }
@@ -175,7 +175,7 @@ struct mir_rcarray(T)
         deallocate = Flag, never deallocates memory if `false`.
         initialize = Flag, don't initialize memory with default value if `false`.
     +/
-    this(size_t length, uint alignment = T.alignof, bool deallocate = true, bool initialize = true) @safe @nogc
+    this(size_t length, uint alignment = T.alignof, bool deallocate = true, bool initialize = true) @trusted @nogc
     {
         if (!this.initialize(length, alignment, deallocate, initialize))
         {
@@ -204,7 +204,7 @@ struct mir_rcarray(T)
     +/
     static typeof(this) create(V[] values...) @safe @nogc
     {
-        auto ret = typeof(this)(values.length, T.alignof, true, false);
+        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateAssign!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -217,18 +217,19 @@ struct mir_rcarray(T)
             import  mir.conv: emplaceRef;
             auto lhs = ret[];
             foreach (i, ref e; values)
-                lhs[i].emplaceRef(e);
+                lhs[i] = e;
         }
-        return ret;
+        import std.algorithm.mutation: move;
+        return ret.move;
     }
 
     static if (!hasIndirections!T)
     /++
     Contructor is defined if `hasIndirections!T == false`.
     +/
-    static typeof(this) create(scope V[] values...) @trusted @nogc
+    static typeof(this) create(scope V[] values...) @safe @nogc
     {
-        auto ret = RCArray!T(values.length, T.alignof, true, false);
+        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateAssign!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -241,10 +242,10 @@ struct mir_rcarray(T)
             import  mir.conv: emplaceRef;
             auto lhs = ret[];
             foreach (i, ref e; values)
-                lhs[i].emplaceRef(e);
+                lhs[i] = e;
         }
         import std.algorithm.mutation: move;
-        return ret;
+        return ret.move;
     }
 
     private bool initializeImpl()(size_t length, uint alignment, bool deallocate, bool initialize) scope @trusted nothrow @nogc
@@ -283,7 +284,7 @@ struct mir_rcarray(T)
         
         _context.length = length;
         _context.counter = deallocate; // 0
-        if (initialize)
+        if (initialize ||hasElaborateAssign!T)
         {
             import mir.conv: uninitializedFillDefault;
             import std.traits: Unqual;
