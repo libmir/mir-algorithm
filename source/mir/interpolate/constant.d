@@ -116,7 +116,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
 
     /++
     +/
-    this(GridVectors grid) scope @safe @nogc
+    this(GridVectors grid) @safe @nogc
     {
         size_t length = 1;
         size_t[N] shape;

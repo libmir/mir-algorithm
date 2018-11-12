@@ -1,4 +1,5 @@
 /++
+$(H1 Thread-safe reference-counted arrays and iterators).
 +/
 module mir.rcarray;
 
@@ -24,10 +25,8 @@ private template preferCppLinkage(T)
             enum preferCppLinkage = true;
     else
         enum preferCppLinkage = false;
-
 }
 
-///
 version(mir_test)
 unittest
 {
@@ -42,10 +41,6 @@ unittest
     static assert (!preferCppLinkage!(immutable C));
 }
 
-// extern(C++)
-// enum C {e, b}
-// pragma(msg, __traits(getLinkage, C));
-
 /++
 Thread safe reference counting array.
 
@@ -54,8 +49,9 @@ Thread safe reference counting array.
 The implementation never adds roots into the GC.
 +/
 struct mir_rcarray(T)
-    if (T.alignof <= 16)
 {
+    import std.traits;
+
     enum cppSupport = preferCppLinkage!T;
 
     private struct Context
@@ -79,29 +75,6 @@ struct mir_rcarray(T)
         return *cast(inout(Context*)*)&_payload;
     }
 
-    // private inout(Context)* _context() inout @trusted pure nothrow @nogc scope
-    // {
-    //     return cast(Context*) _contextCode;
-    // }
-
-    // private void _context(Context * context) @trusted pure nothrow @nogc scope
-    // {
-    //     _contextCode = cast(size_t) context;
-    // }
-
-    ///
-    this(this) scope @trusted pure nothrow @nogc
-    {
-        import core.atomic: atomicOp;
-        if (_context !is null) with(*_context)
-        {
-            if (counter)
-            {
-                counter.atomicOp!"+="(1);
-            }
-        }
-    }
-
     private void dec()() scope
     {
         import core.atomic: atomicOp;
@@ -111,7 +84,6 @@ struct mir_rcarray(T)
             {
                 if (counter.atomicOp!"-="(1) == 0)
                 {
-                    import std.traits: Unqual;
                     import mir.conv: xdestroy;
                     Unqual!T[] array;
                     ()@trusted { array = (cast(Unqual!T*)(_context + 1))[0 .. length]; }();
@@ -143,20 +115,21 @@ struct mir_rcarray(T)
         }
     }
 
-    static if (cppSupport) extern(C++)
+    static if (cppSupport)
     {
+    extern(C++):
         ///
         pragma(inline, false)
-        ~this() scope nothrow @nogc @safe
+        ~this() nothrow @nogc @safe
         {
             dec();
         }
 
-        ///
+        /// Extern constructor
         pragma(inline, false)
-        bool initialize(size_t length, uint alignment = T.alignof, bool deallocate = true) scope @safe nothrow @nogc
+        bool initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @safe nothrow @nogc
         {
-            return initializeImpl(length, alignment, deallocate);
+            return initializeImpl(length, alignment, deallocate, initialize);
         }
 
         ///
@@ -169,15 +142,29 @@ struct mir_rcarray(T)
     else
     {
         pragma(inline, false)
-        ~this() scope nothrow @nogc @safe
+        ~this() nothrow @nogc @safe
         {
             dec();
         }
         
+        /// Extern constructor
         pragma(inline, false)
-        bool initialize(size_t length, uint alignment = T.alignof, bool deallocate = true) scope @safe nothrow @nogc
+        bool initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @safe nothrow @nogc
         {
-            return initializeImpl(length, alignment, deallocate);
+            return initializeImpl(length, alignment, deallocate, initialize);
+        }
+    }
+
+    ///
+    this(this) scope @trusted pure nothrow @nogc
+    {
+        import core.atomic: atomicOp;
+        if (_context !is null) with(*_context)
+        {
+            if (counter)
+            {
+                counter.atomicOp!"+="(1);
+            }
         }
     }
 
@@ -186,10 +173,11 @@ struct mir_rcarray(T)
         length = array length
         alignment = alignment, must be power of 2
         deallocate = Flag, never deallocates memory if `false`.
+        initialize = Flag, don't initialize memory with default value if `false`.
     +/
-    this(size_t length, uint alignment = T.alignof, bool deallocate = true) scope @trusted @nogc
+    this(size_t length, uint alignment = T.alignof, bool deallocate = true, bool initialize = true) @safe @nogc
     {
-        if (!initialize(length, alignment, deallocate))
+        if (!this.initialize(length, alignment, deallocate, initialize))
         {
             version(D_Exceptions)
             {
@@ -199,10 +187,67 @@ struct mir_rcarray(T)
             {
                 assert(0, allocationExcMsg);
             }
-        } 
+        }
     }
 
-    private bool initializeImpl()(size_t length, uint alignment, bool deallocate) scope @trusted nothrow @nogc
+    static if (isImplicitlyConvertible!(const T, T))
+        static if (isImplicitlyConvertible!(const Unqual!T, T))
+            private alias V = const Unqual!T;
+        else
+            private alias V = const T;
+    else
+        private alias V = T;
+
+    static if (hasIndirections!T)
+    /++
+    Contructor is defined if `hasIndirections!T == true`.
+    +/
+    static typeof(this) create(V[] values...) @safe @nogc
+    {
+        auto ret = typeof(this)(values.length, T.alignof, true, false);
+        static if (!hasElaborateAssign!T)
+        {
+            ()@trusted {
+                import core.stdc.string: memcpy;
+                memcpy(cast(void*)ret.ptr, cast(const void*)values.ptr, values.length * T.sizeof);
+            }();
+        }
+        else
+        {
+            import  mir.conv: emplaceRef;
+            auto lhs = ret[];
+            foreach (i, ref e; values)
+                lhs[i].emplaceRef(e);
+        }
+        return ret;
+    }
+
+    static if (!hasIndirections!T)
+    /++
+    Contructor is defined if `hasIndirections!T == false`.
+    +/
+    static typeof(this) create(scope V[] values...) @trusted @nogc
+    {
+        auto ret = RCArray!T(values.length, T.alignof, true, false);
+        static if (!hasElaborateAssign!T)
+        {
+            ()@trusted {
+                import core.stdc.string: memcpy;
+                memcpy(cast(void*)ret.ptr, cast(const void*)values.ptr, values.length * T.sizeof);
+            }();
+        }
+        else
+        {
+            import  mir.conv: emplaceRef;
+            auto lhs = ret[];
+            foreach (i, ref e; values)
+                lhs[i].emplaceRef(e);
+        }
+        import std.algorithm.mutation: move;
+        return ret;
+    }
+
+    private bool initializeImpl()(size_t length, uint alignment, bool deallocate, bool initialize) scope @trusted nothrow @nogc
     {
         if (length == 0)
         {
@@ -238,9 +283,12 @@ struct mir_rcarray(T)
         
         _context.length = length;
         _context.counter = deallocate; // 0
-        import mir.conv: uninitializedFillDefault;
-        import std.traits: Unqual;
-        uninitializedFillDefault((cast(Unqual!T*)(_context + 1))[0 .. _context.length]);
+        if (initialize)
+        {
+            import mir.conv: uninitializedFillDefault;
+            import std.traits: Unqual;
+            uninitializedFillDefault((cast(Unqual!T*)(_context + 1))[0 .. _context.length]);
+        }
         return true;
     }
 
@@ -321,9 +369,35 @@ unittest
     assert(a[4] == 100);
 
     import mir.ndslice.slice;
-    auto s = a.toSlice;
+
+    auto s = a.asSlice; // as RC random access range (ndslice)
     static assert(is(typeof(s) == Slice!(RCI!double)));
     static assert(is(typeof(s) == mir_slice!(mir_rci!double)));
+
+    auto r = a[]; // scope array
+    static assert(is(typeof(r) == double[]));
+
+    auto fs = r.sliced; // scope fast random access range (ndslice)
+    static assert(is(typeof(fs) == Slice!(double*)));
+}
+
+///
+version(mir_test)
+@safe pure @nogc
+unittest
+{
+    auto a = RCArray!double.create(1.0, 2, 5, 3);
+    assert(a[0] == 1);
+    assert(a[$ - 1] == 3);
+
+    auto s = RCArray!char.create("hello!");
+    assert(s[0] == 'h');
+    assert(s[$ - 1] == '!');
+
+    alias rcstring = RCArray!(immutable char).create;
+    auto r = rcstring("string");
+    assert(r[0] == 's');
+    assert(r[$ - 1] == 'g');
 }
 
 /++
@@ -334,19 +408,8 @@ struct mir_rci(T)
     ///
     T* _iterator;
 
-    // private inout(T)* _iterator() inout @trusted pure nothrow @nogc scope
-    // {
-    //     return cast(T*) _iteratorCode;
-    // }
-
-    // private void _iterator(T * iterator) @trusted pure nothrow @nogc scope
-    // {
-    //     _iteratorCode = cast(size_t) iterator;
-    // }
-
     ///
     RCArray!T _array;
-
 
     mir_rci!(const T) lightConst() scope return const @nogc nothrow @trusted @property
     { return typeof(return)(_iterator, _array.lightConst); }
@@ -463,5 +526,30 @@ version(mir_test)
     @safe void fooi(ref immutable RCI!(immutable double) a, ref RCI!(immutable double) b)
     {
         b = a;
+    }
+}
+
+version(mir_test)
+unittest
+{
+    import mir.ndslice.slice: Slice;
+    static RCArray!int foo() @safe
+    {
+        auto ret = RCArray!int(10);
+        return ret;
+    }
+
+
+    static Slice!(RCI!int) bat() @safe
+    {
+        auto ret = RCArray!int(10);
+        return ret.asSlice;
+    }
+
+    static Slice!(RCI!int) bar() @safe
+    {
+        auto ret = RCArray!int(10);
+        auto d = ret.asSlice;
+        return d;
     }
 }

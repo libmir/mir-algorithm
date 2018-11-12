@@ -458,11 +458,11 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /++
     +/
-    this()(GridVectors grid) @trusted @nogc
+    this(GridVectors grid) @safe @nogc
     {
         size_t length = 1;
         size_t[N] shape;
-        enum  msg =  "linear interpolant: minimal allowed length for the grid equals 2.";
+        enum  msg =  "spline/pchip interpolant: minimal allowed length for the grid equals 2.";
         version(D_Exceptions)
             static immutable exc = new Exception(msg);
         foreach(i, ref x; grid)
