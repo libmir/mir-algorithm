@@ -78,7 +78,7 @@ struct mir_rcarray(T)
         return *cast(inout(Context*)*)&_payload;
     }
 
-    private void dec()() scope
+    private void dec()() scope nothrow @nogc @safe
     {
         import core.atomic: atomicOp;
         if (_context !is null) with(*_context)
@@ -136,7 +136,7 @@ struct mir_rcarray(T)
         }
 
         ///
-        this(ref typeof(this) rhs) @safe pure nothrow @nogc
+        this(ref typeof(this) rhs) pure nothrow @nogc
         {
             this._context = rhs._context;
             this.__xpostblit;
@@ -207,7 +207,7 @@ struct mir_rcarray(T)
     +/
     static typeof(this) create(V[] values...) @safe @nogc
     {
-        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateAssign!T);
+        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -220,19 +220,18 @@ struct mir_rcarray(T)
             import  mir.conv: emplaceRef;
             auto lhs = ret[];
             foreach (i, ref e; values)
-                lhs[i] = e;
+                lhs[i].emplaceRef(e);
         }
-        import std.algorithm.mutation: move;
-        return ret.move;
+        return ret;
     }
 
     static if (!hasIndirections!T)
     /++
     Contructor is defined if `hasIndirections!T == false`.
     +/
-    static typeof(this) create(scope V[] values...) @safe @nogc
+    static typeof(this) create(scope V[] values...) @nogc
     {
-        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateAssign!T);
+        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -245,10 +244,9 @@ struct mir_rcarray(T)
             import  mir.conv: emplaceRef;
             auto lhs = ret[];
             foreach (i, ref e; values)
-                lhs[i] = e;
+                lhs[i].emplaceRef(e);
         }
-        import std.algorithm.mutation: move;
-        return ret.move;
+        return ret;
     }
 
     private bool initializeImpl()(size_t length, uint alignment, bool deallocate, bool initialize) scope @trusted nothrow @nogc
@@ -287,7 +285,8 @@ struct mir_rcarray(T)
         
         _context.length = length;
         _context.counter = deallocate; // 0
-        if (initialize ||hasElaborateAssign!T)
+        // hasElaborateDestructor is required for safe destruction in case of exceptions
+        if (initialize || hasElaborateDestructor!T)
         {
             import mir.conv: uninitializedFillDefault;
             import std.traits: Unqual;
@@ -556,4 +555,39 @@ unittest
         auto d = ret.asSlice;
         return d;
     }
+}
+
+version(mir_test)
+@safe unittest
+{
+    import core.stdc.stdio;
+
+    struct S
+    {
+        uint s;
+        this(this) @nogc nothrow @safe
+        {
+            () @trusted {
+                // puts("this(this)\n");
+            } ();
+        }
+
+        ~this() nothrow @nogc @safe
+        {
+            () @trusted {
+            // if (s)
+                // puts("~this()\n");
+            // else
+                // puts("~this() - zero\n");
+            } ();
+        }
+    }
+
+    struct C
+    {
+        S s;
+    }
+
+    S[1] d = [S(1)];
+    auto r = RCArray!S.create(d[]);
 }
