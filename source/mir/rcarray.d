@@ -52,7 +52,10 @@ struct mir_rcarray(T)
 {
     import std.traits;
 
-    enum cppSupport = preferCppLinkage!T;
+    static if (__VERSION__ < 2082)
+        enum cppSupport = false;
+    else
+        enum cppSupport = preferCppLinkage!T;
 
     private struct Context
     {
