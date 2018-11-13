@@ -37,7 +37,7 @@ script:
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - travis_wait 100 dub test --arch "$ARCH" -c dips
  - ./test_examples.sh
- - meson build && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
+ - meson build -D with_test=true && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
 #  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
 after_success:

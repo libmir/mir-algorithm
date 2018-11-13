@@ -58,15 +58,6 @@ mir_algorithm_dep = declare_dependency(
     dependencies: required_deps,
 )
 
-mir_algorithm_test_exe = executable(meson.project_name() + '-test',
-    mir_algorithm_src,
-    include_directories: mir_algorithm_dir,
-    d_unittest: true,
-    d_module_versions: ['mir_test'],
-    link_args: '-main',
-    dependencies: required_deps,
-)
-
 install_subdir('include/',
     strip_directory :true,
     install_dir: 'include/',
@@ -85,4 +76,17 @@ import('pkgconfig').generate(
     version: meson.project_version(),
 )
 
-test(meson.project_name() + '-test', mir_algorithm_test_exe)
+if get_option('with_test')
+
+    mir_algorithm_test_exe = executable(meson.project_name() + '-test',
+        mir_algorithm_src,
+        include_directories: mir_algorithm_dir,
+        d_unittest: true,
+        d_module_versions: ['mir_test'],
+        link_args: '-main',
+        dependencies: required_deps,
+    )
+
+    test(meson.project_name() + '-test', mir_algorithm_test_exe)
+
+endif
