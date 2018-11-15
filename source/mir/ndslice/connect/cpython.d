@@ -160,7 +160,7 @@ PythonBufferErrorCode toPythonBuffer(T, size_t N, SliceKind kind)(Slice!(T*, N, 
                 import mir.ndslice.dynamic: everted;
                 import mir.ndslice.topology: iota;
                 if (slice.everted.shape.iota.everted.strides != slice.strides)
-                    return cannot_create_f_contiguous_buffer;
+                    return typeof(return).cannot_create_f_contiguous_buffer;
             }
         }
     }
@@ -208,15 +208,15 @@ PythonBufferErrorCode toPythonBuffer(T, size_t N, SliceKind kind)(Slice!(T*, N, 
     }
     else
         view.format = null;
-    
+
     return typeof(return).success;
 }
 
 ///
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : Slice, Structure, Universal;
-    Py_buffer bar(Slice!(double*, 2, Universal) slice)
+    import mir.ndslice.slice : Slice, Structure, Universal, Contiguous;
+    Py_buffer bar(SliceKind kind)(Slice!(double*, 2, kind) slice)
     {
         import core.stdc.stdlib;
         enum N = 2;
@@ -239,6 +239,9 @@ version(mir_test) unittest
 
         return view;
     }
+
+    alias barUni = bar!Universal;
+    alias barCon = bar!Contiguous;
 }
 
 /// Python $(LINK2 https://docs.python.org/3/c-api/buffer.html#buffer-structure, Buffer structure).
