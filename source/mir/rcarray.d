@@ -567,19 +567,19 @@ version(mir_test)
         uint s;
         this(this) @nogc nothrow @safe
         {
-            () @trusted {
-                puts("this(this)\n");
-            } ();
+            // () @trusted {
+            //     puts("this(this)\n");
+            // } ();
         }
 
         ~this() nothrow @nogc @safe
         {
-            () @trusted {
-            if (s)
-                puts("~this()\n");
-            else
-                puts("~this() - zero\n");
-            } ();
+            // () @trusted {
+            // if (s)
+            //     puts("~this()\n");
+            // else
+            //     puts("~this() - zero\n");
+            // } ();
         }
     }
 
