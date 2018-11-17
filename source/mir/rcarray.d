@@ -340,7 +340,7 @@ struct mir_rcarray(T)
     mir_rcarray!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
     { return cast(typeof(return)) this; }
 
-    size_t opDollar(size_t pos : 0)() @trusted scope pure nothrow @nogc
+    size_t opDollar(size_t pos : 0)() @trusted scope pure nothrow @nogc const
     {
         return _context !is null ? _context.length : 0;
     }
@@ -568,17 +568,17 @@ version(mir_test)
         this(this) @nogc nothrow @safe
         {
             () @trusted {
-                // puts("this(this)\n");
+                puts("this(this)\n");
             } ();
         }
 
         ~this() nothrow @nogc @safe
         {
             () @trusted {
-            // if (s)
-                // puts("~this()\n");
-            // else
-                // puts("~this() - zero\n");
+            if (s)
+                puts("~this()\n");
+            else
+                puts("~this() - zero\n");
             } ();
         }
     }
