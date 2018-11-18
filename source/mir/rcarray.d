@@ -136,10 +136,19 @@ struct mir_rcarray(T)
         }
 
         ///
+        pragma(inline, false)
         this(ref typeof(this) rhs) pure nothrow @nogc
         {
             this._context = rhs._context;
             this.__xpostblit;
+        }
+
+        ///
+        auto asSlice() scope return @property
+        {
+            import mir.ndslice.slice: mir_slice;
+            alias It = mir_rci!T;
+            return mir_slice!It([length], It((()@trusted => ptr)(), this));
         }
     }
     else
@@ -155,6 +164,14 @@ struct mir_rcarray(T)
         bool initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @system nothrow @nogc
         {
             return initializeImpl(length, alignment, deallocate, initialize);
+        }
+
+        ///
+        auto asSlice()() scope return @property
+        {
+            import mir.ndslice.slice: mir_slice;
+            alias It = mir_rci!T;
+            return mir_slice!It([length], It((()@trusted => ptr)(), this));
         }
     }
 
@@ -343,13 +360,6 @@ struct mir_rcarray(T)
     size_t opDollar(size_t pos : 0)() @trusted scope pure nothrow @nogc const
     {
         return _context !is null ? _context.length : 0;
-    }
-
-    auto asSlice()() scope return @property
-    {
-        import mir.ndslice.slice: mir_slice;
-        alias It = mir_rci!T;
-        return mir_slice!It([length], It((()@trusted => ptr)(), this));
     }
 }
 
