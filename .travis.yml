@@ -6,9 +6,6 @@ addons:
         - ubuntu-toolchain-r-test
       packages:
         - g++-7
-env:
-  - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-
 packages:
   - pkg-config
 d:
@@ -22,6 +19,7 @@ branches:
     - master
 env:
  - ARCH="x86_64"
+  - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 matrix:
   include:
     - {os: linux, d: ldc-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
