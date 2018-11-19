@@ -19,18 +19,18 @@ int main()
 
 
     // test rcarray constructors and destructors
-    mir_rcarray<double> a(3);
-    Space::initWithIota(a);
-    auto b = a;
-    auto c = b.asSlice();
-    auto d = c;
-    Space::reverseRcSlice(d);
-    auto e = a.asSlice();
+    // mir_rcarray<double> a(3);
+    // Space::initWithIota(a);
+    // auto b = a;
+    // auto c = b.asSlice();
+    // auto d = c;
+    // Space::reverseRcSlice(d);
+    // auto e = a.asSlice();
 
-    printf("%f %f %f",
-        e._iterator._iterator[0],
-        e._iterator._iterator[1],
-        e._iterator._iterator[2]);
+    // printf("%f %f %f",
+    //     e._iterator._iterator[0],
+    //     e._iterator._iterator[1],
+    //     e._iterator._iterator[2]);
 
     return 0;
 }
