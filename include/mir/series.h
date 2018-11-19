@@ -1,3 +1,7 @@
+#ifndef MIR_SERIES
+
+#define MIR_SERIES
+
 #include "mir/ndslice.h"
 
 template  <
@@ -21,3 +25,5 @@ struct mir_series
     mir_slice<Iterator, N, kind> _data;
     IndexIterator _index;
 };
+
+#endif

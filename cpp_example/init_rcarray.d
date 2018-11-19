@@ -5,13 +5,13 @@ import mir.rcarray;
 
 extern(C++, Space) 
 {
-    void iotaWithIota(ref RCArray!double a)
+    void initWithIota(ref RCArray!double a)
     {
         foreach(i, ref e; a)
             e = i;
     }
 
-    void reverseRcSlice(ref Slice!(RCArray!double) a)
+    void reverseRcSlice(ref Slice!(RCI!double) a)
     {
         import mir.utility: swap;
         foreach(i; 0 .. a.length / 2)

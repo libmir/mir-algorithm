@@ -8,6 +8,11 @@ License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2017-, Ilya Yaroshenko
 Authors:   Ilya Yaroshenko
 */
+
+#ifndef MIR_NDSLICE
+
+#define MIR_NDSLICE
+
 #include <cstddef>
 #include <cstdint>
 
@@ -15,8 +20,8 @@ Authors:   Ilya Yaroshenko
     #define mir_size_t unsigned int
     #define mir_ptrdiff_t int
 #elif INTPTR_MAX == INT64_MAX
-    #define mir_size_t unsigned long long
-    #define mir_ptrdiff_t long long
+    #define mir_size_t unsigned long
+    #define mir_ptrdiff_t long
 #else
     #error "Environment not 32 or 64-bit."
 #endif
@@ -40,3 +45,5 @@ struct mir_slice
     mir_ptrdiff_t _strides[kind == mir_slice_kind::universal ? N : kind == mir_slice_kind::canonical ? N - 1 : 0];
     Iterator _iterator;
 };
+
+#endif
