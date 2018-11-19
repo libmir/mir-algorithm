@@ -4,4 +4,4 @@ mir_algorithm_cpp_test_exe = executable(meson.project_name() + '-test',
     dependencies: mir_algorithm_dep,
 )
 
-test(meson.project_name() + '-test', mir_algorithm_cpp_test_exe)
+test(meson.project_name() + '-cpp-test', mir_algorithm_cpp_test_exe)
