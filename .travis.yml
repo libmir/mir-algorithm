@@ -18,14 +18,14 @@ branches:
   only:
     - master
 env:
- - ARCH="x86_64"
-  - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+ - CC="gcc-7" CXX="g++-7" ARCH="x86_64"
+
 matrix:
   include:
-    - {os: linux, d: ldc-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-    - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-    - {os: linux, d: dmd-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-    - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: ldc-beta, env: CC="gcc-7" CXX="g++-7" ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: ldc, env: CC="gcc-7" CXX="g++-7" ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: dmd-beta, env: CC="gcc-7" CXX="g++-7" ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: dmd, env: CC="gcc-7" CXX="g++-7" ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
   allow_failures:
     - {d: dmd-nightly}
     - {d: ldc-beta}
