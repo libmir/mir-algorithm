@@ -3,6 +3,7 @@ sudo: required
 addons:
     apt:
       sources:
+        - ubuntu-toolchain-r-test
         - llvm-toolchain-trusty-5.0
       packages:
         - gcc-7-multilib
