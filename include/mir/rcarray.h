@@ -2,7 +2,7 @@
 
 #define MIR_RCARRAY
 
-#include <assert.h> 
+#include <cassert> 
 #include <stdexcept>
 #include "mir/ndslice.h"
 
@@ -32,56 +32,56 @@ public:
         }
     }
 
-    size_t size() noexcept
+    inline size_t size() noexcept
     {
-        return _context ? *(size_t*)(_context + sizeof(void*)) : 0;
+        return _context ? *(size_t*)((char*)_context + sizeof(void*)) : 0;
     }
 
-    T& at(size_t index)
-    {
-        assert(index < this->size());
-        return ((T*)(_context + sizeof(void*) * 4))[index];
-    }
-
-    const T& at(size_t index) const
+    inline T& at(size_t index)
     {
         assert(index < this->size());
-        return ((const T*)(_context + sizeof(void*) * 4))[index];
+        return ((T*)((char*)_context + sizeof(void*) * 4))[index];
     }
 
-    T& operator[](size_t index)
+    inline const T& at(size_t index) const
     {
         assert(index < this->size());
-        return ((T*)(_context + sizeof(void*) * 4))[index];
+        return ((const T*)((char*)_context + sizeof(void*) * 4))[index];
     }
 
-    const T& operator[](size_t index) const
+    inline T& operator[](size_t index)
     {
         assert(index < this->size());
-        return ((const T*)(_context + sizeof(void*) * 4))[index];
+        return ((T*)((char*)_context + sizeof(void*) * 4))[index];
     }
 
-    T* data() noexcept
+    inline const T& operator[](size_t index) const
     {
-        return _context ? (T*)(_context + sizeof(void*) * 4) : NULL;
+        assert(index < this->size());
+        return ((const T*)((char*)_context + sizeof(void*) * 4))[index];
     }
 
-    T* begin() noexcept
+    inline T* data() noexcept
     {
-        return _context ? (T*)(_context + sizeof(void*) * 4) : NULL;
+        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
     }
 
-    const T* cbegin() const noexcept
+    inline T* begin() noexcept
     {
-        return _context ? (const T*)(_context + sizeof(void*) * 4) : NULL;
+        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
     }
 
-    T* end() noexcept
+    inline const T* cbegin() const noexcept
+    {
+        return _context ? (const T*)((char*)_context + sizeof(void*) * 4) : NULL;
+    }
+
+    inline T* end() noexcept
     {
         return this->begin() + this->size();
     }
 
-    const T* cend() const noexcept
+    inline const T* cend() const noexcept
     {
         return this->cbegin() + this->size();
     }
