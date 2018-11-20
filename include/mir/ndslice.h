@@ -20,8 +20,13 @@ Authors:   Ilya Yaroshenko
     #define mir_size_t unsigned int
     #define mir_ptrdiff_t int
 #elif INTPTR_MAX == INT64_MAX
-    #define mir_size_t unsigned long
-    #define mir_ptrdiff_t long
+    #ifdef _WIN32
+        #define mir_size_t unsigned long
+        #define mir_ptrdiff_t long
+    #else
+        #define mir_size_t unsigned long long
+        #define mir_ptrdiff_t long long
+    #endif
 #else
     #error "Environment not 32 or 64-bit."
 #endif
