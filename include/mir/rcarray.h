@@ -91,10 +91,10 @@ public:
 template <typename T>
 struct mir_rci
 {
+public:
+
     T* _iterator;
     mir_rcarray<T> _array;
-
-public:
 
     ~mir_rci() = default;
     mir_rci(mir_rci& rhs) = default;

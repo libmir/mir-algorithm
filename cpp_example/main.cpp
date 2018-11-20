@@ -20,12 +20,14 @@ int main()
 
 
     // test rcarray constructors and destructors
-    mir_rcarray<double> a(3);
-    Space::initWithIota(a);
+    mir_rcarray<double> a(3); // [NaN, NaN, NaN]
+    assert(a.size() == 3);
+
+    Space::initWithIota(a); //[0, 1, 2]
     auto b = a; // check copy constructor
     auto c = b.asSlice();
     auto d = c; // check copy constructor
-    Space::reverseRcSlice(d);
+    Space::reverseRcSlice(d); //[2, 1, 0]
 
     // reversed 0 1 2 (iota)
     assert(a[0] == 2);
