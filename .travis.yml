@@ -6,6 +6,7 @@ addons:
         - ubuntu-toolchain-r-test
         - llvm-toolchain-trusty-5.0
       packages:
+        - g++-7
         - gcc-7-multilib
         - clang-5.0
 packages:
