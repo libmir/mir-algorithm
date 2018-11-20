@@ -1,5 +1,14 @@
 language: d
 sudo: required
+addons:
+    apt:
+      sources:
+        - ubuntu-toolchain-r-test
+        - llvm-toolchain-trusty-5.0
+      packages:
+        - g++-7
+        - gcc-7-multilib
+        - clang-5.0
 packages:
   - pkg-config
 d:
@@ -12,13 +21,14 @@ branches:
   only:
     - master
 env:
- - ARCH="x86_64"
+ - CC="clang-5.0" CXX="clang++-5.0" ARCH="x86_64"
+
 matrix:
   include:
-    - {os: linux, d: ldc-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-    - {os: linux, d: ldc, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-    - {os: linux, d: dmd-beta, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
-    - {os: linux, d: dmd, env: ARCH="x86", addons: {apt: {packages: [[gcc-multilib]]}}}
+    - {os: linux, d: ldc-beta, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
+    - {os: linux, d: ldc, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
+    - {os: linux, d: dmd-beta, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
+    - {os: linux, d: dmd, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
   allow_failures:
     - {d: dmd-nightly}
     - {d: ldc-beta}
@@ -37,7 +47,7 @@ script:
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - travis_wait 100 dub test --arch "$ARCH" -c dips
  - ./test_examples.sh
- - meson build -D with_test=true && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
+ - meson build -D with_test=true --default-library=static && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
 #  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
 after_success:
