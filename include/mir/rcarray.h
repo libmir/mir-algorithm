@@ -72,6 +72,11 @@ public:
         return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
     }
 
+    inline const T* data() const noexcept
+    {
+        return _context ? (const T*)((char*)_context + sizeof(void*) * 4) : NULL;
+    }
+
     inline T* begin() noexcept
     {
         return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
