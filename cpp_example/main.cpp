@@ -36,5 +36,17 @@ int main()
 
     assert(d._iterator._iterator == a.data());
 
+    // check foreach loops
+    for (auto& elem : a)
+    {
+        elem = 0;
+    }
+
+    const auto e = a;
+    for (auto& elem : e)
+    {
+        assert(elem == 0);
+    }
+
     return 0;
 }
