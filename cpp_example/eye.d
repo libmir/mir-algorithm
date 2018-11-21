@@ -24,13 +24,3 @@ extern(C++, Space)
         }
     }
 }
-
-
-// Space::printMatrix(mir_slice<double*, 2ul, (mir_slice_kind)2>)
-// Space::printMatrix(mir_slice<double*, 2ull, (mir_slice_kind)2>)
-// Space::reverseRcSlice(mir_slice<mir_rci<double>, 1ull, (mir_slice_kind)2>&)
-
-//Space::printMatrix(mir_slice<double*, 2ul, (mir_slice_kind)2>)
-
-
-pragma(msg, printMatrix.mangleof);
