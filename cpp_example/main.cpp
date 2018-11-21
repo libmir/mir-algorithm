@@ -42,7 +42,7 @@ int main()
         elem = 0;
     }
 
-    const e = a;
+    const auto e = a;
     for (auto& elem : e)
     {
         assert(elem == 0);
