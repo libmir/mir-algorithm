@@ -135,7 +135,17 @@ struct mir_rcarray(T)
             return initializeImpl(length, alignment, deallocate, initialize);
         }
 
-        ///
+        static if (is(T == const))
+        /// Defined if T is const
+        pragma(inline, false)
+        this(ref const typeof(this) rhs) pure nothrow @nogc
+        {
+            this._context = rhs._context;
+            this.__xpostblit;
+        }
+
+        static if (!is(T == const))
+        /// Defined if T isn't const
         pragma(inline, false)
         this(ref typeof(this) rhs) pure nothrow @nogc
         {
