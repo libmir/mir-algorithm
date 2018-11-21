@@ -2,8 +2,9 @@
 
 #define MIR_RCARRAY
 
-#include <cassert> 
+#include <cassert>
 #include <stdexcept>
+#include <type_traits>
 #include "mir/ndslice.h"
 
 template <typename T>
@@ -19,7 +20,7 @@ private:
 public:
 
     ~mir_rcarray();
-    mir_rcarray(mir_rcarray& rhs);
+    mir_rcarray(typename std::conditional<std::is_const<T>::value, const mir_rcarray, mir_rcarray>::type& rhs);
     bool initialize(size_t length, unsigned int alignment, bool deallocate, bool initialize);
 
     mir_slice<mir_rci<T>> asSlice();
@@ -32,9 +33,14 @@ public:
         }
     }
 
-    inline size_t size() noexcept
+    inline size_t size() const noexcept
     {
         return _context ? *(size_t*)((char*)_context + sizeof(void*)) : 0;
+    }
+
+    inline size_t empty() const noexcept
+    {
+        return _context ? *(size_t*)((char*)_context + sizeof(void*)) == 0 : true;
     }
 
     inline T& at(size_t index)
