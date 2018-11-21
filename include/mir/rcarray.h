@@ -77,12 +77,22 @@ public:
         return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
     }
 
+    inline const T* begin() const noexcept
+    {
+        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
+    }
+
     inline const T* cbegin() const noexcept
     {
         return _context ? (const T*)((char*)_context + sizeof(void*) * 4) : NULL;
     }
 
     inline T* end() noexcept
+    {
+        return this->begin() + this->size();
+    }
+
+    inline const T* end() const noexcept
     {
         return this->begin() + this->size();
     }
