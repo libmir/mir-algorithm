@@ -44,10 +44,10 @@ install:
     - sudo pip3 install meson
 script:
 #  - travis_wait 100 dub test --arch "$ARCH"
+ - meson build -D with_test=true --default-library=static && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - travis_wait 100 dub test --arch "$ARCH" -c dips
  - ./test_examples.sh
- - meson build -D with_test=true --default-library=static && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
 #  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
 after_success:
