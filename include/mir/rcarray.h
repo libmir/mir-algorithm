@@ -33,12 +33,12 @@ public:
         }
     }
 
-    inline size_t size() noexcept
+    inline size_t size() const noexcept
     {
         return _context ? *(size_t*)((char*)_context + sizeof(void*)) : 0;
     }
 
-    inline size_t empty() noexcept
+    inline size_t empty() const noexcept
     {
         return _context ? *(size_t*)((char*)_context + sizeof(void*)) == 0 : true;
     }

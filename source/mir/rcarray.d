@@ -138,9 +138,9 @@ struct mir_rcarray(T)
         static if (is(T == const))
         /// Defined if T is const
         pragma(inline, false)
-        this(ref const typeof(this) rhs) pure nothrow @nogc
+        this(ref const typeof(this) rhs) @trusted pure nothrow @nogc
         {
-            this._context = rhs._context;
+            this._context = cast(Context*) rhs._context;
             this.__xpostblit;
         }
 
