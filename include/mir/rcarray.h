@@ -44,7 +44,9 @@ public:
         auto p = (T*)((char*)_context + sizeof(void*) * 4);
         do
         {
-            *p++ = ibegin++;
+            *p = *ibegin;
+            ++ibegin;
+            ++p;
         }
         while(ibegin != iend);
     }
