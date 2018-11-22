@@ -28,6 +28,8 @@ public:
 
     mir_slice<mir_rci<T>> asSlice();
 
+    inline mir_rcarray() : _context(NULL) {}
+
     inline mir_rcarray(size_t length, unsigned int alignment = alignof(T), bool deallocate = true, bool initialize = true)
     {
         if (!this->initialize(length, alignment, deallocate, initialize))
