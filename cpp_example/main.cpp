@@ -1,6 +1,7 @@
 #include <cassert> 
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 #include "mir/rcarray.h"
 #include "mir/ndslice.h"
 
@@ -21,7 +22,19 @@ int main()
 
     // test rcarray constructors and destructors
     mir_rcarray<double> a(3); // [NaN, NaN, NaN]
+    mir_rcarray<double> al = {5, 6, 4}; // [5, 6, 4]
+    mir_rcarray<double> av = std::vector<int>({5, 6, 4}); // [5, 6, 4]
     assert(a.size() == 3);
+    assert(al.size() == 3);
+    assert(av.size() == 3);
+
+    assert(al[0] == 5);
+    assert(al[1] == 6);
+    assert(al[2] == 4);
+
+    assert(av[0] == 5);
+    assert(av[1] == 6);
+    assert(av[2] == 4);
 
     Space::initWithIota(a); //[0, 1, 2]
     auto b = a; // check copy constructor
@@ -36,7 +49,7 @@ int main()
 
     assert(d._iterator._iterator == a.data());
 
-    // check foreach loops
+    // check foreach loops for rcarray
     for (auto& elem : a)
     {
         elem = 0;
