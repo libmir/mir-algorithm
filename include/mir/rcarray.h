@@ -3,8 +3,11 @@
 #define MIR_RCARRAY
 
 #include <cassert>
+#include <initializer_list>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
+#include <iterator>
 #include "mir/ndslice.h"
 
 template <typename T>
@@ -29,9 +32,27 @@ public:
     {
         if (!this->initialize(length, alignment, deallocate, initialize))
         {
-            throw std::runtime_error("mir_rcarray: out of memory arror.");
+            throw std::runtime_error("mir_rcarray: out of memory error.");
         }
     }
+
+    template <class RAIter> 
+    inline mir_rcarray(RAIter ibegin, RAIter iend) : mir_rcarray(iend - ibegin)
+    {
+        if (_context == NULL)
+            return; // zero length
+        auto p = (T*)((char*)_context + sizeof(void*) * 4);
+        do
+        {
+            *p++ = ibegin++;
+        }
+        while(ibegin != iend);
+    }
+
+    inline mir_rcarray(std::initializer_list<T> list) : mir_rcarray(list.begin(), list.end()) {}
+
+    template<class E, class Allocator>
+    inline mir_rcarray(const std::vector<E, Allocator>& vector) : mir_rcarray(vector.begin(), vector.end()) {}
 
     inline size_t size() const noexcept
     {
