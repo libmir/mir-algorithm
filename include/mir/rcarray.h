@@ -43,7 +43,7 @@ public:
     {
         if (_context == NULL)
             return; // zero length
-        auto p = (typename remove_const<T>::type*)((char*)_context + sizeof(void*) * 4);
+        auto p = (typename std::remove_const<T>::type*)((char*)_context + sizeof(void*) * 4);
         do
         {    
             *p = *ibegin;
