@@ -2,13 +2,10 @@ project('mir-algorithm', 'cpp', 'd', version : '3.1.0', license: 'BSL-1.0',
         default_options : ['cpp_std=c++1z'])
 
 
-add_global_arguments([
-    '-dip1008',
-    ], language: 'd')
-
 add_project_arguments([
     '-dip25',
     '-dip1000',
+    '-dip1008',
     ], language: 'd')
 
 
