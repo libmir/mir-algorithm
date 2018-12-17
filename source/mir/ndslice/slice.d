@@ -908,13 +908,13 @@ public:
     ///
     auto lightImmutable()() scope return immutable @property
     {
-        return Slice!(LightImmutableOf!Iterator, N, kind)(_structure, _iterator.lightImmutable);
+        return Slice!(LightImmutableOf!Iterator, N, kind)(_structure, .lightImmutable(_iterator));
     }
 
     /// ditto
     auto lightConst()() scope return const @property
     {
-        return Slice!(LightConstOf!Iterator, N, kind)(_structure, _iterator.lightConst);
+        return Slice!(LightConstOf!Iterator, N, kind)(_structure, .lightConst(_iterator));
     }
 
     /// ditto
