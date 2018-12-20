@@ -1226,34 +1226,33 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
     import mir.conv: to;
     const size_t length = aa.length;
     alias R = typeof(return);
-    Series!(Unqual!K*, Unqual!V*) ret;
     if (__ctfe)
     {
-        Unqual!K[] keys;
-        Unqual!V[] values;
+        K[] keys;
+        V[] values;
         foreach(kv; aa.byKeyValue)
         {
             keys ~= kv.key.to!K;
             values ~= kv.value.to!V;
         }
-        ret = series(keys, values);
+        auto ret = series(keys, values);
+        .sort((()@trusted=>cast(Series!(Unqual!K*, Unqual!V*))ret)());
+        static if (is(typeof(ret) == typeof(return)))
+            return ret;
+        else
+            return ()@trusted{ return cast(R) ret; }();
     }
-    else
+    import mir.ndslice.allocation: uninitSlice;
+    Series!(Unqual!K*, Unqual!V*) ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
+    auto it = ret;
+    foreach(kv; aa.byKeyValue)
     {
-        import mir.ndslice.allocation: uninitSlice;
-
-        ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
-        auto it = ret;
-        foreach(kv; aa.byKeyValue)
-        {
-            import mir.conv: emplaceRef;
-            emplaceRef!K(it.index.front, kv.key.to!K);
-            emplaceRef!V(it._data.front, kv.value.to!V);
-            it.popFront;
-        }
+        import mir.conv: emplaceRef;
+        emplaceRef!K(it.index.front, kv.key.to!K);
+        emplaceRef!V(it._data.front, kv.value.to!V);
+        it.popFront;
     }
-
-    ret.sort;
+    .sort(ret);
     static if (is(typeof(ret) == typeof(return)))
         return ret;
     else
