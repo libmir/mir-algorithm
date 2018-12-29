@@ -60,7 +60,8 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
 version(mir_test)
 @safe unittest
 {
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
+    import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap;
@@ -74,7 +75,7 @@ version(mir_test)
     () @trusted {
         auto ys = xs.vmap(interpolant);
 
-        assert(ys.approxEqual([
+        assert(ys.all!approxEqual([
             5.333333333333334,
             2.500000000000000,
             10.000000000000000,
@@ -92,7 +93,7 @@ version(mir_test)
 version(mir_test)
 @safe unittest
 {
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: retro, map;

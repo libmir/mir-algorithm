@@ -29,7 +29,7 @@ struct Prod(T)
 	void put()(T e)
 	{
         int lexp;
-        import std.math: frexp;
+        import mir.math.ieee: frexp;
         x *= frexp(e, lexp);
         exp += lexp;
         if (x.fabs < 0.5f)
@@ -47,7 +47,7 @@ struct Prod(T)
         else
         if (exp < int.min)
             exp = int.min;
-        import std.math: ldexp;
+        import mir.math.ieee: ldexp;
         return ldexp(x, cast(int)exp);
     }
 }
@@ -125,16 +125,16 @@ Unqual!(DeepElementType!Range) sumOfLog2s(Range)(Range r)
 version(mir_test)
 @safe unittest
 {
-    import std.math : isNaN;
+    alias isNaN = x => x != x;
 
     assert(sumOfLog2s(new double[0]) == 0);
     assert(sumOfLog2s([0.0L]) == -real.infinity);
     assert(sumOfLog2s([-0.0L]) == -real.infinity);
     assert(sumOfLog2s([2.0L]) == 1);
-    assert(sumOfLog2s([-2.0L]).isNaN());
-    assert(sumOfLog2s([real.nan]).isNaN());
-    assert(sumOfLog2s([-real.nan]).isNaN());
+    assert(isNaN(sumOfLog2s([-2.0L])));
+    assert(isNaN(sumOfLog2s([real.nan])));
+    assert(isNaN(sumOfLog2s([-real.nan])));
     assert(sumOfLog2s([real.infinity]) == real.infinity);
-    assert(sumOfLog2s([-real.infinity]).isNaN());
+    assert(isNaN(sumOfLog2s([-real.infinity])));
     assert(sumOfLog2s([ 0.25, 0.25, 0.25, 0.125 ]) == -9);
 }

@@ -36,10 +36,10 @@ import mir.ndslice.traits;
 ///
 @trusted pure version(mir_test) unittest
 {
-    import std.math: approxEqual;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap;
-    import mir.algorithm.iteration: all;
 
     auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
     auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
@@ -48,21 +48,21 @@ import mir.ndslice.traits;
     auto xs = x + 0.5;                     // input X values for cubic spline
 
     /// not-a-knot (default)
-    assert(xs.vmap(interpolant).approxEqual([
+    assert(xs.vmap(interpolant).all!approxEqual([
         -0.68361541,   7.28568719,  10.490694  ,   0.36192032,
         11.91572713,  16.44546433,  17.66699525,   4.52730869,
         19.22825394,  -2.3242592 ]));
 
     /// natural cubic spline
     interpolant = spline!double(x, y, SplineBoundaryType.secondDerivative);
-    assert(xs.vmap(interpolant).approxEqual([
+    assert(xs.vmap(interpolant).all!approxEqual([
         10.85298372,   5.26255911,  10.71443229,   0.1824536 ,
         11.94324989,  16.45633939,  17.59185094,   4.86340188,
         17.8565408 ,   2.81856494]));
 
     /// set both boundary derivatives to 3
     interpolant = spline!double(x, y, SplineBoundaryType.firstDerivative, 3);
-    assert(xs.vmap(interpolant).approxEqual([
+    assert(xs.vmap(interpolant).all!approxEqual([
         16.45728263,   4.27981687,  10.82295092,   0.09610695,
         11.95252862,  16.47583126,  17.49964521,   5.26561539,
         16.21803478,   8.96104974]));
@@ -71,7 +71,7 @@ import mir.ndslice.traits;
     interpolant = spline!double(x, y,
             SplineBoundaryCondition!double(SplineBoundaryType.firstDerivative, 3),
             SplineBoundaryCondition!double(SplineBoundaryType.secondDerivative, -5));
-    assert(xs.vmap(interpolant).approxEqual([
+    assert(xs.vmap(interpolant).all!approxEqual([
             16.45730084,   4.27966112,  10.82337171,   0.09403945,
             11.96265209,  16.44067375,  17.6374694 ,   4.67438921,
             18.6234452 ,  -0.05582876]));
@@ -79,7 +79,7 @@ import mir.ndslice.traits;
     interpolant = spline!double(x, y,
             SplineBoundaryCondition!double(SplineBoundaryType.secondDerivative, -5),
             SplineBoundaryCondition!double(SplineBoundaryType.firstDerivative, 3));
-    assert(xs.vmap(interpolant).approxEqual([
+    assert(xs.vmap(interpolant).all!approxEqual([
             12.37135558,   4.99638066,  10.74362441,   0.16008641,
             11.94073593,  16.47908148,  17.49841853,   5.26600921,
             16.21796051,   8.96102894]));
@@ -88,12 +88,12 @@ import mir.ndslice.traits;
 ///
 @safe pure version(mir_test) unittest
 {
-    import std.math: approxEqual;
+    import mir.algorithm.iteration: all;
+    import mir.functional: aliasCall;
+    import mir.math.common: approxEqual;
     import mir.ndslice.allocation: uninitSlice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap, map;
-    import mir.algorithm.iteration: all;
-    import mir.functional: aliasCall;
 
     auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
     auto y = [
@@ -184,8 +184,9 @@ import mir.ndslice.traits;
 version(mir_test)
 @safe unittest
 {
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
     import mir.ndslice;
-    import std.math: approxEqual;
 
     immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
     auto y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
@@ -202,7 +203,7 @@ version(mir_test)
         0.03419436,  0.03446018,  0.03477529,  0.03515072,  0.0356    ];
 
     ()@trusted{
-        assert(approxEqual(xs.sliced.vmap(interpolation), data, 1e-4, 1e-4));
+        assert(all!approxEqual(xs.sliced.vmap(interpolation), data));
     }();
 }
 
@@ -210,7 +211,7 @@ version(mir_test)
 version(mir_test)
 unittest
 {
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
     import mir.ndslice;
     alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
 
@@ -264,7 +265,7 @@ unittest
 version(mir_test)
 unittest
 {
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
     import mir.ndslice;
     alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
 

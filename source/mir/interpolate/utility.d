@@ -65,7 +65,7 @@ ParabolaKernel!(Unqual!(typeof(X.init - Y.init))) parabolaKernel(X, Y)(in X x0, 
 ///
 unittest
 {
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
 
     alias f = (double x) => 3 * (x ^^ 2) + 7 * x + 5;
     auto p = parabolaKernel(4, 9, 20, f(4), f(9), f(20));

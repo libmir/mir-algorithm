@@ -144,7 +144,7 @@ version(mir_test)
     assert(sum([1F, 2, 3, 4], 5F) == 15);
 
     //Force pair-wise floating point summation on large integers
-    import std.math : approxEqual;
+    import mir.math : approxEqual;
     assert(iota!long([4096], uint.max / 2).sum(0.0)
                .approxEqual((uint.max / 2) * 4096.0 + 4096.0 * 4096.0 / 2));
 }
@@ -176,7 +176,6 @@ nothrow @nogc unittest
 version(mir_test)
 nothrow @nogc unittest
 {
-    import std.math: isFinite;
     import mir.math.common;
     float  M = 2.0f ^^ (float.max_exp-1);
     double N = 2.0  ^^ (float.max_exp-1);
@@ -185,7 +184,7 @@ nothrow @nogc unittest
     s += M;
     assert(float.infinity == s.sum()); //infinity
     auto e = cast(Summator!(double, Summation.precise)) s;
-    assert(isFinite(e.sum()));
+    assert(e.sum() < double.infinity);
     assert(N+N == e.sum()); //finite number
 }
 
@@ -266,6 +265,12 @@ unittest
 import std.traits;
 private alias AliasSeq(T...) = T;
 import mir.internal.utility: Iota, isComplex;
+import mir.math.common: fabs;
+
+private alias isNaN = x => x != x;
+private alias isFinite = x => x.fabs < x.infinity;
+private alias isInfinity = x => x.fabs == x.infinity;
+
 
 private template chainSeq(size_t n)
 {
@@ -395,7 +400,6 @@ Output range for summation.
 struct Summator(T, Summation summation)
     if (isMutable!T)
 {
-    import mir.math.common: fabs;
     static if (is(T == class) || is(T == interface) || hasElaborateAssign!T)
         static assert (summation == Summation.naive,
             "Classes, interfaces, and structures with "
@@ -437,7 +441,7 @@ struct Summator(T, Summation summation)
     static if (summation == Summation.precise)
     {
         import std.internal.scopebuffer;
-        static import std.math;
+        import mir.math.ieee: signbit;
     private:
         enum F M = (cast(F)(2)) ^^ (T.max_exp - 1);
         F[16] scopeBufferArray = 0;
@@ -462,7 +466,7 @@ struct Summator(T, Summation summation)
         static F partialsReduce(F s, in F[] partials)
         in
         {
-            debug(numeric) assert(!partials.length || std.math.isFinite(s));
+            debug(numeric) assert(!partials.length || .isFinite(s));
         }
         body
         {
@@ -472,7 +476,7 @@ struct Summator(T, Summation summation)
                 s = partialsReducePred(s, y, i ? partials[i-1] : 0, _break);
                 if (_break)
                     break;
-                debug(numeric) assert(std.math.isFinite(s));
+                debug(numeric) assert(.isFinite(s));
             }
             return s;
         }
@@ -480,7 +484,7 @@ struct Summator(T, Summation summation)
         static F partialsReducePred(F s, F y, F z, out bool _break)
         out(result)
         {
-            debug(numeric) assert(std.math.isFinite(result));
+            debug(numeric) assert(.isFinite(result));
         }
         body
         {
@@ -490,9 +494,9 @@ struct Summator(T, Summation summation)
             F l = y - d;
             debug(numeric)
             {
-                assert(std.math.isFinite(x));
-                assert(std.math.isFinite(y));
-                assert(std.math.isFinite(s));
+                assert(.isFinite(x));
+                assert(.isFinite(y));
+                assert(.isFinite(s));
                 assert(fabs(y) < fabs(x));
             }
             if (l)
@@ -501,7 +505,7 @@ struct Summator(T, Summation summation)
             //Needed so that sum([1e-16, 1, 1e16]) will round-up the last
             //digit to two instead of down to zero (the 1e-16 makes the 1
             //slightly closer to two). Can guarantee commutativity.
-                if (z && !std.math.signbit(l * z))
+                if (z && !signbit(l * z))
                 {
                     l *= 2;
                     x = s + l;
@@ -519,7 +523,7 @@ struct Summator(T, Summation summation)
         {
             if (o == 0)
                 return 0;
-            if (partials.length && (o == -1 || o == 1)  && std.math.signbit(o * partials[$-1]))
+            if (partials.length && (o == -1 || o == 1)  && signbit(o * partials[$-1]))
             {
                 // problem case: decide whether result is representable
                 F x = o * M;
@@ -532,13 +536,13 @@ struct Summator(T, Summation summation)
                 F t = d - h;
                 version(X86)
                 {
-                    if (!std.math.isInfinity(cast(T)y) || !std.math.isInfinity(sum()))
+                    if (!.isInfinity(cast(T)y) || !.isInfinity(sum()))
                         return 0;
                 }
                 else
                 {
-                    if (!std.math.isInfinity(cast(T)y) ||
-                        ((partials.length > 1 && !std.math.signbit(l * partials[$-2])) && t == l))
+                    if (!.isInfinity(cast(T)y) ||
+                        ((partials.length > 1 && !signbit(l * partials[$-2])) && t == l))
                         return 0;
                 }
             }
@@ -688,20 +692,20 @@ public:
             F x = n;
         static if (summation == Summation.precise)
         {
-            if (std.math.isFinite(x))
+            if (.isFinite(x))
             {
                 size_t i;
                 foreach (y; partials[])
                 {
                     F h = x + y;
-                    if (std.math.isInfinity(cast(T)h))
+                    if (.isInfinity(cast(T)h))
                     {
                         if (fabs(x) < fabs(y))
                         {
                             F t = x; x = y; y = t;
                         }
                         //h == -F.infinity
-                        if (std.math.signbit(h))
+                        if (signbit(h))
                         {
                             x += M;
                             x += M;
@@ -990,14 +994,14 @@ public:
     static if (summation == Summation.precise)
     package void unsafePut()(F x)
     in {
-        assert(std.math.isFinite(x));
+        assert(.isFinite(x));
     }
     body {
         size_t i;
         foreach (y; partials[])
         {
             F h = x + y;
-            debug(numeric) assert(std.math.isFinite(h));
+            debug(numeric) assert(.isFinite(h));
             F l;
             if (fabs(x) < fabs(y))
             {
@@ -1009,7 +1013,7 @@ public:
                 F t = h - x;
                 l = y - t;
             }
-            debug(numeric) assert(std.math.isFinite(l));
+            debug(numeric) assert(.isFinite(l));
             if (l)
             {
                 partials[i++] = l;
@@ -1060,7 +1064,7 @@ public:
             if (o)
             {
                 immutable F of = o;
-                if (y && (o == -1 || o == 1)  && std.math.signbit(of * y))
+                if (y && (o == -1 || o == 1)  && signbit(of * y))
                 {
                     // problem case: decide whether result is representable
                     y /= 2;
@@ -1069,12 +1073,12 @@ public:
                     F t = h - x;
                     F l = (y - t) * 2;
                     y = h * 2;
-                    if (std.math.isInfinity(cast(T)y))
+                    if (.isInfinity(cast(T)y))
                     {
                         // overflow, except in edge case...
                         x = h + l;
                         t = x - h;
-                        y = parts.length && t == l && !std.math.signbit(l*parts[$-1]) ?
+                        y = parts.length && t == l && !signbit(l*parts[$-1]) ?
                             x * 2 :
                             F.infinity * of;
                         parts = null;
@@ -1516,7 +1520,7 @@ public:
     version(mir_test)
     @nogc nothrow unittest
     {
-        import std.math: approxEqual;
+        import mir.math.common: approxEqual;
         with(Summation)
         foreach (summation; AliasSeq!(naive, fast))
         foreach (T; AliasSeq!(float, double, real))
@@ -1536,7 +1540,7 @@ public:
         ///Returns `true` if current sum is a NaN.
         bool isNaN()() const
         {
-            return std.math.isNaN(s);
+            return .isNaN(s);
         }
 
         ///Returns `true` if current sum is finite (not infinite or NaN).
@@ -1550,7 +1554,7 @@ public:
         ///Returns `true` if current sum is ±∞.
         bool isInfinity()() const
         {
-            return std.math.isInfinity(s) || overflow();
+            return .isInfinity(s) || overflow();
         }
     }
     else static if (isFloatingPoint!F)
@@ -1558,22 +1562,19 @@ public:
         ///Returns `true` if current sum is a NaN.
         bool isNaN()() const
         {
-            static import std.math;
-            return std.math.isNaN(sum());
+            return .isNaN(sum());
         }
 
         ///Returns `true` if current sum is finite (not infinite or NaN).
         bool isFinite()() const
         {
-            static import std.math;
-            return std.math.isFinite(sum());
+            return .isFinite(sum());
         }
 
         ///Returns `true` if current sum is ±∞.
         bool isInfinity()() const
         {
-            static import std.math;
-            return std.math.isInfinity(sum());
+            return .isInfinity(sum());
         }
     }
     else

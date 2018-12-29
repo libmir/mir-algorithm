@@ -20,7 +20,7 @@ version(mir_test)
 @safe pure unittest
 {
     import mir.ndslice;
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
 
     immutable x = [0, 1, 2, 3];
     immutable y = [10, 20, 30, 40];

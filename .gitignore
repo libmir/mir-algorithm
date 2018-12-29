@@ -25,3 +25,4 @@ out/
 build/
 files
 mir-algorithm.lib
+mir-algorithm-test-default

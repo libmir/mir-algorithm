@@ -126,9 +126,9 @@ struct Interp1(Range, Interpolant)
         return ret;
     }
     /// Input range primitives
-    bool   empty ()() @property  { return _range.empty;  }
+    bool empty () const @property  { return _range.empty;  }
     /// ditto
-    void popFront()() { _range.popFront; }
+    void popFront() { _range.popFront; }
     /// ditto
     auto front() @property
         
@@ -152,7 +152,7 @@ PCHIP interpolation.
 version(mir_test)
 @safe unittest
 {
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: slice;
     import mir.interpolate: interp1;
@@ -183,7 +183,7 @@ version(mir_test)
 {
     import mir.interpolate.linear;
     import mir.ndslice;
-    import std.math: approxEqual;
+    import mir.math.common: approxEqual;
 
     immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
     immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
@@ -193,7 +193,7 @@ version(mir_test)
 
     auto data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
 
-    assert(approxEqual(xs.interp1(interpolation), data, 1e-4, 1e-4));
+    assert(all!((a, b) => approxEqual(a, b, 1e-4, 1e-4))(xs.interp1(interpolation), data));
 }
 
 /++
