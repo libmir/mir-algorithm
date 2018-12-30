@@ -17,6 +17,7 @@ module mir.series;
 
 public import mir.ndslice.slice;
 public import mir.ndslice.sorting: sort;
+import mir.ndslice.sorting: transitionIndex;
 import mir.qualifier;
 import std.traits;
 
@@ -222,8 +223,6 @@ $(LREF sort) can be used to normalise a series.
 +/
 struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
 {
-    import std.range: SearchPolicy, assumeSorted;
-
     private enum doUnittest = is(typeof(this) == Series!(int*, double*));
 
     ///
@@ -513,14 +512,12 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     +/
     auto lowerBound(Index)(Index moment)
     {
-        import mir.ndslice.sorting: transitionIndex;
         return this[0 .. index.transitionIndex(moment)];
     }
 
     /// ditto
     auto lowerBound(Index)(Index moment) const
     {
-        import mir.ndslice.sorting: transitionIndex;
         return this[0 .. index.transitionIndex(moment)];
     }
 
@@ -530,16 +527,14 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     `t > moment` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
-    auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Index)(Index moment)
+    auto upperBound(Index)(Index moment)
     {
-        import mir.ndslice.sorting: transitionIndex;
         return this[index.transitionIndex!"a <= b"(moment) .. $];
     }
 
     /// ditto
-    auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Index)(Index moment) const
+    auto upperBound(Index)(Index moment) const
     {
-        import mir.ndslice.sorting: transitionIndex;
         return this[index.transitionIndex!"a <= b"(moment) .. $];
     }
 
@@ -554,7 +549,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ref get(Index, Value)(Index moment, return ref Value _default)
         if (!is(Value : const(Exception)))
     {
-        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        size_t idx = index.transitionIndex(moment);
         return idx < _data._lengths[0] && index[idx] == moment ? data[idx] : _default;
     }
 
@@ -575,7 +570,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     auto get(Index, Value)(Index moment, Value _default)
         if (!is(Value : const(Exception)))
     {
-        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        size_t idx = index.transitionIndex(moment);
         return idx < _data._lengths[0] && index[idx] == moment ? data[idx] : _default;
     }
 
@@ -613,7 +608,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// ditto
     auto ref get(Index)(Index moment, lazy const Exception exc)
     {
-        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        size_t idx = index.transitionIndex(moment);
         if (idx < _data._lengths[0] && index[idx] == moment)
         {
             return data[idx];
@@ -703,14 +698,14 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     bool contains(Index)(Index moment) const
     {
-        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        size_t idx = index.transitionIndex(moment);
         return idx < _data._lengths[0] && index[idx] == moment;
     }
 
     ///
     auto opBinaryRight(string op : "in", Index)(Index moment)
     {
-        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        size_t idx = index.transitionIndex(moment);
         bool cond = idx < _data._lengths[0] && index[idx] == moment;
         static if (__traits(compiles, &_data[size_t.init]))
         {
@@ -739,7 +734,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     bool tryGet(Index, Value)(Index moment, ref Value val)
     {
-        size_t idx = index.assumeSorted.lowerBound(moment).length;
+        size_t idx = index.transitionIndex(moment);
         auto cond = idx < _data._lengths[0] && index[idx] == moment;
         if (cond)
             val = data[idx];
@@ -1434,9 +1429,7 @@ Returns:
 +/
 size_t findIndex(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
 {
-    import std.range: assumeSorted;
-
-    auto idx = series.index.assumeSorted.lowerBound(moment).length;
+    auto idx = series.index.transitionIndex(moment);
     if (idx < series._data._lengths[0] && series.index[idx] == moment)
     {
         return idx;
@@ -1466,9 +1459,7 @@ Returns:
 +/
 size_t find(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
 {
-    import std.range: assumeSorted;
-
-    auto idx = series.index.assumeSorted.lowerBound(moment).length;
+    auto idx = series.index.transitionIndex(moment);
     auto bidx = series._data._lengths[0] - idx;
     if (bidx && series.index[idx] == moment)
     {
