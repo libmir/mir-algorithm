@@ -16,11 +16,12 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.series;
 
 public import mir.ndslice.slice;
+public import mir.ndslice.sorting: sort;
 import mir.qualifier;
 import std.traits;
 
 /++
-See_also: $(LREF sort), $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
+See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
 +/
 @safe version(mir_test) unittest
 {
@@ -510,15 +511,17 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     `t < moment` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
-    auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, Index)(Index moment)
+    auto lowerBound(Index)(Index moment)
     {
-        return this[0 .. index.assumeSorted.lowerBound!sp(moment).length];
+        import mir.ndslice.sorting: transitionIndex;
+        return this[0 .. index.transitionIndex(moment)];
     }
 
     /// ditto
-    auto lowerBound(SearchPolicy sp = SearchPolicy.binarySearch, Index)(Index moment) const
+    auto lowerBound(Index)(Index moment) const
     {
-        return this[0 .. index.assumeSorted.lowerBound!sp(moment).length];
+        import mir.ndslice.sorting: transitionIndex;
+        return this[0 .. index.transitionIndex(moment)];
     }
 
 
@@ -529,13 +532,15 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     +/
     auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Index)(Index moment)
     {
-        return this[$ - index.assumeSorted.upperBound!sp(moment).length .. $];
+        import mir.ndslice.sorting: transitionIndex;
+        return this[index.transitionIndex!"a <= b"(moment) .. $];
     }
 
     /// ditto
     auto upperBound(SearchPolicy sp = SearchPolicy.binarySearch, Index)(Index moment) const
     {
-        return this[$ - index.assumeSorted.upperBound!sp(moment).length .. $];
+        import mir.ndslice.sorting: transitionIndex;
+        return this[index.transitionIndex!"a <= b"(moment) .. $];
     }
 
     /**
@@ -1489,121 +1494,6 @@ size_t find(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(In
     }
 
     assert(series.find(0) == 0);
-}
-
-/++
-Sorts index-series according to the `less` predicate applied to index observations.
-
-The function works only for 1-dimensional index-series data.
-+/
-template sort(alias less = "a < b")
-{
-    import mir.functional: naryFun;
-    static if (__traits(isSame, naryFun!less, less))
-    {
-    @optmath:
-
-        /++
-        One dimensional case.
-        +/
-        Series!(IndexIterator, Iterator, N, kind)
-            sort(IndexIterator, Iterator, size_t N, SliceKind kind)
-            (Series!(IndexIterator, Iterator, N, kind) series)
-        if (N == 1)
-        {
-            import mir.ndslice.sorting: sort;
-            import mir.ndslice.topology: zip;
-            with(series)
-                index.zip(data).sort!((a, b) => less(a.a, b.a));
-            return series;
-        }
-
-        /++
-        N-dimensional case. Requires index and data buffers.
-        +/
-        Series!(IndexIterator, Iterator, N, kind)
-            sort(
-                IndexIterator,
-                Iterator,
-                size_t N,
-                SliceKind kind,
-                SortIndexIterator,
-                DataIterator,
-                )
-            (
-                Series!(IndexIterator, Iterator, N, kind) series,
-                Slice!SortIndexIterator indexBuffer,
-                Slice!DataIterator dataBuffer,
-            )
-        {
-            import mir.algorithm.iteration: each;
-            import mir.ndslice.sorting: sort;
-            import mir.ndslice.topology: iota, zip, ipack, evertPack;
-
-            assert(indexBuffer.length == series.length);
-            assert(dataBuffer.length == series.length);
-            indexBuffer[] = indexBuffer.length.iota!(typeof(indexBuffer.front));
-            series.index.zip(indexBuffer).sort!((a, b) => less(a.a, b.a));
-            series.data.ipack!1.evertPack.each!((sl){
-            {
-                assert(sl.shape == dataBuffer.shape);
-                dataBuffer[] = sl[indexBuffer];
-                sl[] = dataBuffer;
-            }});
-            return series;
-        }
-    }
-    else
-        alias sort = .sort!(naryFun!less);
-}
-
-/// 1D data
-pure version(mir_test) unittest
-{
-    auto index = [1, 2, 4, 3].sliced;
-    auto data = [2.1, 3.4, 5.6, 7.8].sliced;
-    auto series = index.series(data);
-    series.sort;
-    assert(series.index == [1, 2, 3, 4]);
-    assert(series.data == [2.1, 3.4, 7.8, 5.6]);
-    /// initial index and data are the same
-    assert(index.iterator is series.index.iterator);
-    assert(data.iterator is series.data.iterator);
-
-    foreach(obs; series)
-    {
-        static assert(is(typeof(obs) == Observation!(int, double)));
-    }
-}
-
-/// 2D data
-pure version(mir_test) unittest
-{
-    import mir.series;
-    import mir.ndslice.allocation: uninitSlice;
-
-    auto index = [4, 2, 3, 1].sliced;
-    auto data =
-        [2.1, 3.4, 
-         5.6, 7.8,
-         3.9, 9.0,
-         4.0, 2.0].sliced(4, 2);
-    auto series = index.series(data);
-
-    series.sort(
-        uninitSlice!size_t(series.length), // index buffer
-        uninitSlice!double(series.length), // data buffer
-        );
-
-    assert(series.index == [1, 2, 3, 4]);
-    assert(series.data ==
-        [[4.0, 2.0],
-         [5.6, 7.8],
-         [3.9, 9.0],
-         [2.1, 3.4]]);
-    /// initial index and data are the same
-    assert(index.iterator is series.index.iterator);
-    assert(data.iterator is series.data.iterator);
 }
 
 /++

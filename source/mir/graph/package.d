@@ -52,8 +52,8 @@ GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aa
         components[i] = cast(J) dataIndex;
         foreach(ref elem; aaGraph[keys[i]])
         {
-            import std.range: assumeSorted;
-            auto index = keys.assumeSorted.lowerBound(elem).length;
+            import mir.ndslice.sorting: transitionIndex;
+            auto index = keys.transitionIndex(elem);
             assert(index < keys.length, "graphSeries: aaGraph should contains keys for all vertixes");
             data[dataIndex++] = cast(I) index;
         }

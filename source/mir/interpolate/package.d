@@ -58,7 +58,7 @@ template findInterval(size_t dimension = 0)
     size_t findInterval(Interpolant, X)(auto ref const Interpolant interpolant, in X x) @trusted
     {
         import mir.ndslice.slice: sliced;
-        import std.range: assumeSorted;
+        import mir.ndslice.sorting: transitionIndex;
         static if (dimension)
         {
             immutable sizediff_t len = interpolant.intervalCount!dimension - 1;
@@ -70,7 +70,7 @@ template findInterval(size_t dimension = 0)
             auto grid = interpolant.grid[1 .. $][0 .. len];
         }
         assert(len >= 0);
-        return len - grid.assumeSorted.upperBound(x).length;
+        return grid.transitionIndex!"a <= b"(x);
     }
 }
 

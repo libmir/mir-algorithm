@@ -16,7 +16,7 @@ See_also: $(SUBREF topology, flattened)
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Andrei Alexandrescu 2008-2016, Ilya Yaroshenko 2016-, 
-Authors:   Ilya Yaroshenko, Andrei Alexandrescu
+Authors:   Andrei Alexandrescu (Phobos), Ilya Yaroshenko (API, rework, Mir adoptation)
 
 Macros:
     SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
@@ -118,17 +118,20 @@ import mir.math.common: optmath;
 
 
 /++
-Sorts 1D ndslice.
+Sorts ndslice, array, or series.
 
 See_also: $(SUBREF topology, flattened).
 +/
 template sort(alias less = "a < b")
 {
     import mir.functional: naryFun;
+    import mir.series: Series;
     static if (__traits(isSame, naryFun!less, less))
     {
 @optmath:
-        ///
+        /++
+        Sort one-dimensional series.
+        +/
         Slice!(Iterator, N, kind) sort(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
         {
@@ -146,10 +149,62 @@ template sort(alias less = "a < b")
             return slice;
         }
 
-        ///
+        /++
+        Sort for arrays
+        +/
         T[] sort(T)(T[] ar)
         {
-            return ar.sliced.sort.field;
+            return .sort!less(ar.sliced).field;
+        }
+
+        /++
+        Sort for one-dimensional Series.
+        +/
+        Series!(IndexIterator, Iterator, N, kind)
+            sort(IndexIterator, Iterator, size_t N, SliceKind kind)
+            (Series!(IndexIterator, Iterator, N, kind) series)
+        if (N == 1)
+        {
+            import mir.ndslice.sorting: sort;
+            import mir.ndslice.topology: zip;
+            with(series)
+                index.zip(data).sort!((a, b) => less(a.a, b.a));
+            return series;
+        }
+
+        /++
+        Sort for n-dimensional Series.
+        +/
+        Series!(IndexIterator, Iterator, N, kind)
+            sort(
+                IndexIterator,
+                Iterator,
+                size_t N,
+                SliceKind kind,
+                SortIndexIterator,
+                DataIterator,
+                )
+            (
+                Series!(IndexIterator, Iterator, N, kind) series,
+                Slice!SortIndexIterator indexBuffer,
+                Slice!DataIterator dataBuffer,
+            )
+        {
+            import mir.algorithm.iteration: each;
+            import mir.ndslice.sorting: sort;
+            import mir.ndslice.topology: iota, zip, ipack, evertPack;
+
+            assert(indexBuffer.length == series.length);
+            assert(dataBuffer.length == series.length);
+            indexBuffer[] = indexBuffer.length.iota!(typeof(indexBuffer.front));
+            series.index.zip(indexBuffer).sort!((a, b) => less(a.a, b.a));
+            series.data.ipack!1.evertPack.each!((sl){
+            {
+                assert(sl.shape == dataBuffer.shape);
+                dataBuffer[] = sl[indexBuffer];
+                sl[] = dataBuffer;
+            }});
+            return series;
         }
     }
     else
@@ -169,6 +224,57 @@ template sort(alias less = "a < b")
     auto data = arr[].sliced(arr.length);
     data.sort();
     assert(data.pairwise!"a <= b".all);
+}
+
+/// one-dimensional series
+pure version(mir_test) unittest
+{
+    import mir.series;
+
+    auto index = [1, 2, 4, 3].sliced;
+    auto data = [2.1, 3.4, 5.6, 7.8].sliced;
+    auto series = index.series(data);
+    series.sort;
+    assert(series.index == [1, 2, 3, 4]);
+    assert(series.data == [2.1, 3.4, 7.8, 5.6]);
+    /// initial index and data are the same
+    assert(index.iterator is series.index.iterator);
+    assert(data.iterator is series.data.iterator);
+
+    foreach(obs; series)
+    {
+        static assert(is(typeof(obs) == Observation!(int, double)));
+    }
+}
+
+/// two-dimensional series
+pure version(mir_test) unittest
+{
+    import mir.series;
+    import mir.ndslice.allocation: uninitSlice;
+
+    auto index = [4, 2, 3, 1].sliced;
+    auto data =
+        [2.1, 3.4, 
+         5.6, 7.8,
+         3.9, 9.0,
+         4.0, 2.0].sliced(4, 2);
+    auto series = index.series(data);
+
+    series.sort(
+        uninitSlice!size_t(series.length), // index buffer
+        uninitSlice!double(series.length), // data buffer
+        );
+
+    assert(series.index == [1, 2, 3, 4]);
+    assert(series.data ==
+        [[4.0, 2.0],
+         [5.6, 7.8],
+         [3.9, 9.0],
+         [2.1, 3.4]]);
+    /// initial index and data are the same
+    assert(index.iterator is series.index.iterator);
+    assert(data.iterator is series.data.iterator);
 }
 
 void quickSortImpl(alias less, Iterator)(Slice!Iterator slice) @trusted
@@ -357,4 +463,74 @@ void medianOf(alias less, Iterator)
     {
         if (less(*c, *b)) swapStars(b, c);
     }
+}
+
+
+
+
+/++
+Computes transition index using binary search.
+It is low-level API for lower and upper bounds of a sorted array.
+
+See_also: $(SUBREF topology, flattened).
++/
+template transitionIndex(alias test = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!test, test))
+    {
+@optmath:
+        /++
+        Params:
+            slice = sorted one-dimensional slice.
+            v = value to test with. It is passed to second argument.
+        +/
+        size_t transitionIndex(Iterator, SliceKind kind, V)
+            (scope Slice!(Iterator, 1, kind) slice, V v)
+        {
+            size_t first = 0, count = slice.length;
+            while (count > 0)
+            {
+                immutable step = count / 2, it = first + step;
+                if (test(slice[it], v))
+                {
+                    first = it + 1;
+                    count -= step + 1;
+                }
+                else
+                {
+                    count = step;
+                }
+            }
+            return first;
+        }
+
+        /++
+        Params:
+            ar = sorted array.
+            v = value to test with. It is passed to second argument.
+        +/
+        size_t transitionIndex(T, V)(scope T[] ar, V v)
+        {
+            return .transitionIndex!test(ar.sliced, v);
+        }
+
+    }
+    else
+        alias transitionIndex = .transitionIndex!(naryFun!test);
+}
+
+///
+@safe pure unittest
+{
+    // sorted: a < b
+    auto a = [0, 1, 2, 3, 4, 6];
+
+    auto i = a.transitionIndex(2);
+    assert(i == 2);
+    auto lowerBound = a[0 .. i];
+
+    auto j = a.transitionIndex!"a <= b"(2);
+    assert(j == 3);
+    auto upperBound = a[j .. $];
 }
