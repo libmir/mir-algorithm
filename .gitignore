@@ -26,3 +26,4 @@ build/
 files
 mir-algorithm.lib
 mir-algorithm-test-default
+mir-algorithm-test-dips

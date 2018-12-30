@@ -1,10 +1,8 @@
 /++
-Ranges.
-
-See_also: $(MREF mir,_primitives).
+Base numeric algorithms.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Authors:   Ilya Yaroshenko, Phobos Team (findRoot)
+Authors:   Ilya Yaroshenko, Don Clugston
 +/
 module mir.numeric;
 
@@ -12,10 +10,96 @@ import mir.internal.utility: isFloatingPoint;
 import mir.math.common;
 import mir.math.ieee;
 
-import std.typecons: Tuple, tuple;
-import std.traits: Unqual, ReturnType;
+version(D_Exceptions)
+{
+    private static immutable findRoot_badBounds = new Exception("findRoot/findLocalMin: f(ax) and f(bx) must have opposite signs to bracket the root.");
+    private static immutable findRoot_nanX = new Exception("findRoot/findLocalMin: ax or bx is NaN.");
+    private static immutable findRoot_nanY = new Exception("findRoot/findLocalMin: f(x) returned NaN.");
+}
 
-/**  Find a real root of a real function f(x) via bracketing.
+/++
++/
+enum FindRootStatus
+{
+    /// Success
+    success,
+    ///
+    badBounds,
+    /// 
+    nanX,
+    ///
+    nanY,
+}
+
+/++
++/
+struct FindRootResult(T)
+{
+    /// Left bound
+    T ax = 0;
+    /// Rifht bound
+    T bx = 0;
+    /// `f(ax)` or `f(ax).fabs.fmin(T.max / 2).copysign(f(ax))`.
+    T ay = 0;
+    /// `f(bx)` or `f(bx).fabs.fmin(T.max / 2).copysign(f(bx))`.
+    T by = 0;
+
+@safe pure @nogc scope const @property:
+
+    /++
+    Returns: self
+    Required_versions:`D_Exceptions`
+    Throws: `Exception` if $(LREF FindRootResult.status) isn't $(LREF FindRootStatus.success).
+    +/
+    version(D_Exceptions)
+    ref validate() return
+    {
+        with(FindRootStatus) final switch(status)
+        {
+            case success: return this;
+            case badBounds: throw findRoot_badBounds;
+            case nanX: throw findRoot_nanX;
+            case nanY: throw findRoot_nanY;
+        }
+    }
+
+nothrow:
+
+    /++
+    Returns: $(LREF FindRootStatus)
+    +/
+    FindRootStatus status()
+    {
+        with(FindRootStatus) return
+            ax != ax || bx != bx ? nanX :
+            ay != ay || by != by ? nanY :
+            ay.signbit == by.signbit && ay != 0 && by != 0 ? badBounds :
+            success;
+    }
+
+    /++
+    A bound that corresponds to the minimal absolute function value.
+
+    Returns: `!(ay.fabs > by.fabs) ? ax : bx`
+    +/
+    T x()
+    {
+        return !(ay.fabs > by.fabs) ? ax : bx;
+    }
+
+    /++
+    The minimal of absolute function values.
+
+    Returns: `!(ay.fabs > by.fabs) ? ay : by`
+    +/
+    T y()
+    {
+        return !(ay.fabs > by.fabs) ? ay : by;
+    }
+}
+
+/** Find root of a real function f(x) by bracketing, allowing the
+ * termination condition to be specified.
  *
  * Given a function `f` and a range `[a .. b]` such that `f(a)`
  * and `f(b)` have opposite signs or at least one of them equals ±0,
@@ -39,36 +123,6 @@ import std.traits: Unqual, ReturnType;
  * pp733-744 (1993).  Fortran code available from $(HTTP
  * www.netlib.org,www.netlib.org) as algorithm TOMS478.
  *
- */
-@optmath
-T findRoot(T, DF, DT)(scope DF f, in T a, in T b,
-    scope DT tolerance) //= (T a, T b) => false)
-if (
-    isFloatingPoint!T &&
-    is(typeof(tolerance(T.init, T.init)): bool) &&
-    is(typeof(f(T.init)) == R, R) && isFloatingPoint!R
-    )
-{
-    immutable fa = f(a);
-    if (fa == 0)
-        return a;
-    immutable fb = f(b);
-    if (fb == 0)
-        return b;
-    immutable r = findRoot(f, a, b, fa, fb, tolerance);
-    // Return the first value if it is smaller or NaN
-    return !(fabs(r[2]) > fabs(r[3])) ? r[0]: r[1];
-}
-
-///ditto
-T findRoot(T, DF)(scope DF f, in T a, in T b)
-{
-    return findRoot(f, a, b, (T a, T b) => false);
-}
-
-/** Find root of a real function f(x) by bracketing, allowing the
- * termination condition to be specified.
- *
  * Params:
  *
  * f = Function to be analyzed
@@ -91,35 +145,121 @@ T findRoot(T, DF)(scope DF f, in T a, in T b)
  *             acceptable. If this function always returns `false`,
  *             full machine precision will be achieved.
  *
- * Returns:
- *
- * A tuple consisting of two ranges. The first two elements are the
- * range (in `x`) of the root, while the second pair of elements
- * are the corresponding function values at those points. If an exact
- * root was found, both of the first two elements will contain the
- * root, and the second pair of elements will be 0.
+ * Returns: $(LREF FindRootResult)
  */
-@optmath
-Tuple!(T, T, R, R) findRoot(T, R, DF, DT)(scope DF f, in T ax, in T bx, in R fax, in R fbx,
-    scope DT tolerance) // = (T a, T b) => false)
-if (
-    isFloatingPoint!T &&
-    is(typeof(tolerance(T.init, T.init)): bool) &&
-    is(typeof(f(T.init)) == R) && isFloatingPoint!R
-    )
-in
+@fmamath
+FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
+    const T ax,
+    const T bx,
+    const T fax = -T.nan,
+    const T fbx = +T.nan)
+    if (
+        isFloatingPoint!T && __traits(compiles, {T _ = f(T.init);}) &&
+        (
+            is(typeof(tolerance) == typeof(null)) || 
+            __traits(compiles, {auto _ = bool(tolerance(T.init, T.init));}
+        )
+    ))
 {
-    assert(ax == ax && bx == bx, "Limits must not be NaN");
-    assert(signbit(fax) != signbit(fbx), "Parameters must bracket the root.");
+    if (false) // break attributes
+    {
+        T y = f(T(123));
+        static if (!is(typeof(tolerance) == typeof(null)))
+            bool b = tolerance(T(123), T(123));
+    }
+    scope const T delegate(T) @safe pure nothrow @nogc fun = delegate(T x) {
+        return T(f(x));
+    }.trustedAllAttr;
+
+    scope bool delegate(T, T) @safe pure nothrow @nogc tol;
+    static if (!is(typeof(tolerance) == typeof(null)))
+    {
+        tol = delegate(T a, T b) {
+            return bool(tolerance(a, b));
+        }.trustedAllAttr;
+    }
+    return findRootImpl(ax, bx, fax, fbx, fun, tol);
 }
-do
+
+///
+version(mir_test) @safe unittest
 {
+    import mir.math.common: log, exp;
+
+
+    auto logRoot = findRoot!log(0, double.infinity).validate.x;
+    assert(logRoot == 1);
+
+    auto expm1Root = findRoot!
+        (x => exp(x) - 1)
+        (-double.infinity, double.infinity).validate.x;
+    assert(expm1Root == 0);
+
+    auto approxLogRoot = findRoot!(log, (a, b) => fabs(a - b) < 1e-5)(0, double.infinity).validate.x;
+    assert(fabs(approxLogRoot - 1) < 1e-5);
+}
+
+@fmamath
+private FindRootResult!float findRootImpl(
+    float ax,
+    float bx,
+    float fax,
+    float fbx,
+    scope const float delegate(float) @safe pure nothrow @nogc f,
+    scope const bool delegate(float, float) @safe pure nothrow @nogc tolerance = null, //can be null
+) @safe pure nothrow @nogc
+{
+    pragma(inline, false);
+    return findRootImplGen!float(ax, bx, fax, fbx, f, tolerance);
+}
+
+@fmamath
+private FindRootResult!double findRootImpl(
+    double ax,
+    double bx,
+    double fax,
+    double fbx,
+    scope const double delegate(double) @safe pure nothrow @nogc f,
+    scope const bool delegate(double, double) @safe pure nothrow @nogc tolerance = null, //can be null
+) @safe pure nothrow @nogc
+{
+    pragma(inline, false);
+    return findRootImplGen!double(ax, bx, fax, fbx, f, tolerance);
+}
+
+@fmamath
+private FindRootResult!real findRootImpl(
+    real ax,
+    real bx,
+    real fax,
+    real fbx,
+    scope const real delegate(real) @safe pure nothrow @nogc f,
+    scope const bool delegate(real, real) @safe pure nothrow @nogc tolerance = null, //can be null
+) @safe pure nothrow @nogc
+{
+    pragma(inline, false);
+    return findRootImplGen!real(ax, bx, fax, fbx, f, tolerance);
+}
+
+@fmamath
+private FindRootResult!T findRootImplGen(T)(
+    const T ax,
+    const T bx,
+    const T fax,
+    const T fbx,
+    scope const T delegate(T) @safe pure nothrow @nogc f,
+    scope const bool delegate(T, T) @safe pure nothrow @nogc tolerance, //can be null
+)
+    if (isFloatingPoint!T)
+{
+    version(LDC) pragma(inline, true);
     // Author: Don Clugston. This code is (heavily) modified from TOMS748
     // (www.netlib.org).  The changes to improve the worst-cast performance are
     // entirely original.
+    // Author 2: Ilya Yaroshenko (API improvements, infinity and huge numbers handing, compiled code size reduction)
 
     T a, b, d;  // [a .. b] is our current bracket. d is the third best guess.
-    R fa, fb, fd; // Values of f at a, b, d.
+    T fa, fb, fd; // Values of f at a, b, d.
     bool done = false; // Has a root been found?
 
     // Allow ax and bx to be provided in reverse order
@@ -134,10 +274,17 @@ do
         b = ax; fb = fax;
     }
 
+    bool exit()
+    {
+        pragma(inline, false);
+        return done || b == nextUp(a) || tolerance !is null && tolerance(a, b);
+    }
+
     // Test the function at point c; update brackets accordingly
     void bracket(T c)
     {
-        R fc = f(c);
+        pragma(inline, false);
+        T fc = f(c);
         if (fc == 0 || fc != fc) // Exact solution, or NaN
         {
             a = c;
@@ -147,6 +294,8 @@ do
             done = true;
             return;
         }
+
+        fc = fc.fabs.fmin(T.max / 2).copysign(fc);
 
         // Determine new enclosing interval
         if (signbit(fa) != signbit(fc))
@@ -169,8 +318,9 @@ do
      a and b differ so wildly in magnitude that the result would be meaningless,
      perform a bisection instead.
     */
-    static T secant_interpolate(T a, T b, R fa, R fb)
+    static T secantInterpolate(T a, T b, T fa, T fb)
     {
+        pragma(inline, false);
         if (( ((a - b) == a) && b != 0) || (a != 0 && ((b - a) == b)))
         {
             // Catastrophic cancellation
@@ -184,13 +334,11 @@ do
             return c;
         }
         // avoid overflow
-        if (b - a > T.max)
-            return b * 0.5f + a * 0.5f;
-        if (fb - fa > R.max)
-            return a - (b - a) * 0.5f;
+        if (b - a == T.infinity)
+            return b + a;
         T c = a - (fa / (fb - fa)) * (b - a);
-        if (c == a || c == b)
-            return (a + b) * 0.5f;
+        if (c == a || c == b || c != c)
+            return a.half + b.half;
         return c;
     }
 
@@ -202,9 +350,9 @@ do
     T newtonQuadratic(int numsteps)
     {
         // Find the coefficients of the quadratic polynomial.
-        immutable T a0 = fa;
-        immutable T a1 = (fb - fa)/(b - a);
-        immutable T a2 = ((fd - fb)/(d - b) - a1)/(d - a);
+        const T a0 = fa;
+        const T a1 = (fb - fa)/(b - a);
+        const T a2 = ((fd - fb)/(d - b) - a1)/(d - a);
 
         // Determine the starting point of newton steps.
         T c = a2.signbit != fa.signbit ? a : b;
@@ -212,8 +360,8 @@ do
         // start the safeguarded newton steps.
         foreach (int i; 0 .. numsteps)
         {
-            immutable T pc = a0 + (a1 + a2 * (c - b))*(c - a);
-            immutable T pdc = a1 + a2*((2 * c) - (a + b));
+            const T pc = a0 + (a1 + a2 * (c - b))*(c - a);
+            const T pdc = a1 + a2*((2 * c) - (a + b));
             if (pdc == 0)
                 return a - a0 / a1;
             else
@@ -222,33 +370,66 @@ do
         return c;
     }
 
+    // Starting with the second iteration, higher-order interpolation can
+    // be used.
+    int itnum = 1;   // Iteration number
+    int baditer = 1; // Num bisections to take if an iteration is bad.
+    T c, e;  // e is our fourth best guess
+    T fe;
+
+    if (a != a || b != b)
+    {
+        done = true;
+        goto whileloop;
+    }
+
+    if (a == -T.infinity)
+    {
+        a = -T.max;
+        fa = T.nan;
+    }
+
+    if (fa != fa)
+        fa = f(a);
+
     // On the first iteration we take a secant step:
     if (fa == 0 || fa != fa)
     {
         done = true;
         b = a;
         fb = fa;
+        goto whileloop;
     }
-    else if (fb == 0 || fb != fb)
+
+    if (b == +T.infinity)
+    {
+        b = +T.max;
+        fb = T.nan;
+    }
+
+    if (fb != fb)
+        fb = f(b);
+
+    if (fb == 0 || fb != fb)
     {
         done = true;
         a = b;
         fa = fb;
-    }
-    else
-    {
-        bracket(secant_interpolate(a, b, fa, fb));
+        goto whileloop;
     }
 
-    // Starting with the second iteration, higher-order interpolation can
-    // be used.
-    int itnum = 1;   // Iteration number
-    int baditer = 1; // Num bisections to take if an iteration is bad.
-    T c, e;  // e is our fourth best guess
-    R fe;
+    if (fa.signbit == fb.signbit)
+    {
+        done = true;
+        goto whileloop;
+    }
+
+    fa = fa.fabs.fmin(T.max / 2).copysign(fa);
+    fb = fb.fabs.fmin(T.max / 2).copysign(fb);
+    bracket(secantInterpolate(a, b, fa, fb));
 
 whileloop:
-    while (!done && (b != nextUp(a)) && !tolerance(a, b))
+    while (!exit)
     {
         T a0 = a, b0 = b; // record the brackets
 
@@ -266,52 +447,54 @@ whileloop:
             if (distinct)
             {
                 // Cubic inverse interpolation of f(x) at a, b, d, and e
-                immutable q11 = (d - e) * fd / (fe - fd);
-                immutable q21 = (b - d) * fb / (fd - fb);
-                immutable q31 = (a - b) * fa / (fb - fa);
-                immutable d21 = (b - d) * fd / (fd - fb);
-                immutable d31 = (a - b) * fb / (fb - fa);
+                const q11 = (d - e) * fd / (fe - fd);
+                const q21 = (b - d) * fb / (fd - fb);
+                const q31 = (a - b) * fa / (fb - fa);
+                const d21 = (b - d) * fd / (fd - fb);
+                const d31 = (a - b) * fb / (fb - fa);
 
-                immutable q22 = (d21 - q11) * fb / (fe - fb);
-                immutable q32 = (d31 - q21) * fa / (fd - fa);
-                immutable d32 = (d31 - q21) * fd / (fd - fa);
-                immutable q33 = (d32 - q22) * fa / (fe - fa);
+                const q22 = (d21 - q11) * fb / (fe - fb);
+                const q32 = (d31 - q21) * fa / (fd - fa);
+                const d32 = (d31 - q21) * fd / (fd - fa);
+                const q33 = (d32 - q22) * fa / (fe - fa);
                 c = a + (q31 + q32 + q33);
                 if (c != c || (c <= a) || (c >= b))
                 {
                     // DAC: If the interpolation predicts a or b, it's
                     // probable that it's the actual root. Only allow this if
                     // we're already close to the root.
-                    if (c == a && a - b != a)
+                    if (c == a && (a - b != a || a - b != -b))
                     {
-                        c = nextUp(a);
-                    }
-                    else if (c == b && a - b != -b)
-                    {
-                        c = nextDown(b);
+                        auto down = !(a - b != a);
+                        if (down)
+                            c = -c;
+                        c = c.nextUp;
+                        if (down)
+                            c = -c;
                     }
                     else
                     {
                         ok = false;
                     }
+
                 }
             }
             if (!ok)
             {
                 // DAC: Alefeld doesn't explain why the number of newton steps
                 // should vary.
-                c = newtonQuadratic(distinct ? 3: 2);
+                c = newtonQuadratic(2 + distinct);
                 if (c != c || (c <= a) || (c >= b))
                 {
                     // Failure, try a secant step:
-                    c = secant_interpolate(a, b, fa, fb);
+                    c = secantInterpolate(a, b, fa, fb);
                 }
             }
             ++itnum;
             e = d;
             fe = fd;
             bracket(c);
-            if (done || ( b == nextUp(a)) || tolerance(a, b))
+            if (exit)
                 break whileloop;
             if (itnum == 2)
                 continue whileloop;
@@ -319,7 +502,7 @@ whileloop:
 
         // Now we take a double-length secant step:
         T u;
-        R fu;
+        T fu;
         if (fabs(fa) < fabs(fb))
         {
             u = a;
@@ -369,7 +552,7 @@ whileloop:
         e = d;
         fe = fd;
         bracket(c);
-        if (done || (b == nextUp(a)) || tolerance(a, b))
+        if (exit)
             break;
 
         // IMPROVE THE WORST-CASE PERFORMANCE
@@ -379,8 +562,8 @@ whileloop:
         // perform a binary chop.
 
         if ((a == 0 || b == 0 ||
-            (fabs(a) >= T(0.5) * fabs(b) && fabs(b) >= T(0.5) * fabs(a)))
-            &&  (b - a) < T(0.25) * (b0 - a0))
+            (fabs(a) >= 0.5f * fabs(b) && fabs(b) >= 0.5f * fabs(a)))
+            &&  (b - a) < 0.25f * (b0 - a0))
         {
             baditer = 1;
             continue;
@@ -390,7 +573,7 @@ whileloop:
         // pathological function. Perform a number of bisections equal to the
         // total number of consecutive bad iterations.
 
-        if ((b - a) < T(0.25) * (b0 - a0))
+        if ((b - a) < 0.25f * (b0 - a0))
             baditer = 1;
         foreach (int QQ; 0 .. baditer)
         {
@@ -414,38 +597,26 @@ whileloop:
         }
         ++baditer;
     }
-    return Tuple!(T, T, R, R)(a, b, fa, fb);
+    return typeof(return)(a, b, fa, fb);
 }
 
-///ditto
-Tuple!(T, T, R, R) findRoot(T, R, DF)(scope DF f, in T ax, in T bx, in R fax, in R fbx)
+version(mir_test) @safe unittest
 {
-    return findRoot(f, ax, bx, fax, fbx, (T a, T b) => false);
-}
+    import mir.math.constant;
 
-///ditto
-T findRoot(T, R)(scope R delegate(T) f, in T a, in T b,
-    scope bool delegate(T lo, T hi) tolerance = (T a, T b) => false)
-{
-    return findRoot!(T, R delegate(T), bool delegate(T lo, T hi))(f, a, b, tolerance);
-}
-
-version(mir_test) @safe nothrow unittest
-{
     int numProblems = 0;
     int numCalls;
 
-    void testFindRoot(real delegate(real) @nogc @safe nothrow pure f , real x1, real x2) @nogc @safe nothrow pure
+    void testFindRoot(real delegate(real) @nogc @safe nothrow pure f , real x1, real x2) //@nogc @safe nothrow pure
     {
         //numCalls=0;
         //++numProblems;
         assert(x1 == x1 && x2 == x2);
-        assert(signbit(x1) != signbit(x2));
-        auto result = findRoot(f, x1, x2, f(x1), f(x2),
-          (real lo, real hi) { return false; });
+        assert(f(x1).signbit != f(x2).signbit);
+        auto result = findRoot!f(x1, x2, f(x1), f(x2)).validate;
 
-        auto flo = f(result[0]);
-        auto fhi = f(result[1]);
+        auto flo = f(result.ax);
+        auto fhi = f(result.bx);
         if (flo != 0)
         {
             assert(flo.signbit != fhi.signbit);
@@ -465,9 +636,9 @@ version(mir_test) @safe nothrow unittest
     }
     // Test a function with more than one root.
     real multisine(real x) { ++numCalls; return sin(x); }
-    //testFindRoot( &multisine, 6, 90);
-    //testFindRoot(&cubicfn, -100, 100);
-    //testFindRoot( &cubicfn, -double.max, real.max);
+    testFindRoot( &multisine, 6, 90);
+    testFindRoot(&cubicfn, -100, 100);
+    testFindRoot( &cubicfn, -double.max, real.max);
 
 
 /* Tests from the paper:
@@ -490,7 +661,7 @@ version(mir_test) @safe nothrow unittest
     // Alefeld paper states that pow(x,n) is a very poor case, where bisection
     // outperforms his method, and gives total numcalls =
     // 921 for bisection (2.4 calls per bit), 1830 for Alefeld (4.76/bit),
-    /* 0.5f624 for brent (6.8/bit)
+    // 0.5f624 for brent (6.8/bit)
     // ... but that is for double, not real80.
     // This poor performance seems mainly due to catastrophic cancellation,
     // which is avoided here by the use of ieeeMean().
@@ -561,17 +732,17 @@ version(mir_test) @safe nothrow unittest
     }
 
     numProblems=0;
-    //testFindRoot(&alefeld0, PI_2, PI);
+    testFindRoot(&alefeld0, PI_2, PI);
     for (n=1; n <= 10; ++n)
     {
-        //testFindRoot(&alefeld0, n*n+1e-9L, (n+1)*(n+1)-1e-9L);
+        testFindRoot(&alefeld0, n*n+1e-9L, (n+1)*(n+1)-1e-9L);
     }
     ale_a = -40; ale_b = -1;
-    //testFindRoot(&alefeld1, -9, 31);
+    testFindRoot(&alefeld1, -9, 31);
     ale_a = -100; ale_b = -2;
-    //testFindRoot(&alefeld1, -9, 31);
+    testFindRoot(&alefeld1, -9, 31);
     ale_a = -200; ale_b = -3;
-    //testFindRoot(&alefeld1, -9, 31);
+    testFindRoot(&alefeld1, -9, 31);
     int [] nvals_3 = [1, 2, 5, 10, 15, 20];
     int [] nvals_5 = [1, 2, 4, 5, 8, 15, 20];
     int [] nvals_6 = [1, 5, 10, 15, 20];
@@ -581,47 +752,46 @@ version(mir_test) @safe nothrow unittest
     {
        n = i;
        ale_a = 0.2;
-       //testFindRoot(&alefeld2, 0, 5);
+       testFindRoot(&alefeld2, 0, 5);
        ale_a=1;
-       //testFindRoot(&alefeld2, 0.95, 4.05);
-       //testFindRoot(&alefeld2, 0, 1.5);
+       testFindRoot(&alefeld2, 0.95, 4.05);
+       testFindRoot(&alefeld2, 0, 1.5);
     }
     foreach (i; nvals_3)
     {
         n=i;
-        //testFindRoot(&alefeld3, 0, 1);
+        testFindRoot(&alefeld3, 0, 1);
     }
     foreach (i; nvals_3)
     {
         n=i;
-        //testFindRoot(&alefeld4, 0, 1);
+        testFindRoot(&alefeld4, 0, 1);
     }
     foreach (i; nvals_5)
     {
         n=i;
-        //testFindRoot(&alefeld5, 0, 1);
+        testFindRoot(&alefeld5, 0, 1);
     }
     foreach (i; nvals_6)
     {
         n=i;
-        //testFindRoot(&alefeld6, 0, 1);
+        testFindRoot(&alefeld6, 0, 1);
     }
     foreach (i; nvals_7)
     {
         n=i;
-        //testFindRoot(&alefeld7, 0.01L, 1);
+        testFindRoot(&alefeld7, 0.01L, 1);
     }
     real worstcase(real x)
     {
         ++numCalls;
         return x<0.3*real.max? -0.999e-3: 1.0;
     }
-    //testFindRoot(&worstcase, -real.max, real.max);
+    testFindRoot(&worstcase, -real.max, real.max);
 
     // just check that the double + float cases compile
-    //findRoot((double x){ return 0.0; }, -double.max, double.max);
-    //findRoot((float x){ return 0.0f; }, -float.max, float.max);
-
+    findRoot!(x => 0)(-double.max, double.max);
+    findRoot!(x => -0.0)(-float.max, float.max);
 /*
    int grandtotal=0;
    foreach (calls; alefeldSums)
@@ -636,17 +806,52 @@ version(mir_test) @safe nothrow unittest
         (1.0*powercalls)/powerProblems);
 */
     //Issue 14231
-    auto xp = findRoot((float x) => x, 0f, 1f);
-    auto xn = findRoot((float x) => x, -1f, -0f);
+    auto xp = findRoot!(x => x)(0f, 1f);
+    auto xn = findRoot!(x => x)(-1f, -0f);
 }
 
-//regression control
-version(mir_test) @system unittest
+/++
++/
+struct FindLocalMinResult(T)
 {
-    // @system due to the case in the 2nd line
-    static assert(__traits(compiles, findRoot((float x)=>cast(real) x, float.init, float.init)));
-    static assert(__traits(compiles, findRoot!real((x)=>cast(double) x, real.init, real.init)));
-    static assert(__traits(compiles, findRoot((real x)=>cast(double) x, real.init, real.init)));
+    ///
+    T x = 0;
+    ///
+    T y = 0;
+    ///
+    T error = 0;
+
+@safe pure @nogc scope const @property:
+
+    /++
+    Returns: self
+    Required_versions:`D_Exceptions`
+    Throws: `Exception` if $(LREF FindRootResult.status) isn't $(LREF FindRootStatus.success).
+    +/
+    version(D_Exceptions)
+    ref validate() return
+    {
+        with(FindRootStatus) final switch(status)
+        {
+            case success: return this;
+            case badBounds: throw findRoot_badBounds;
+            case nanX: throw findRoot_nanX;
+            case nanY: throw findRoot_nanY;
+        }
+    }
+
+nothrow:
+
+    /++
+    Returns: $(LREF FindRootStatus)
+    +/
+    FindRootStatus status()
+    {
+        with(FindRootStatus) return
+            x != x ? nanX :
+            y != y ? nanY :
+            success;
+    }
 }
 
 /++
@@ -668,7 +873,7 @@ Preconditions:
     `relTolerance` shall be normal positive real. $(BR)
     `absTolerance` shall be normal positive real no less then `T.epsilon*2`.
 Returns:
-    A tuple consisting of `x`, `y = f(x)` and `error = 3 * (absTolerance * fabs(x) + relTolerance)`.
+    A $(LREF FindLocalMinResult) consisting of `x`, `y = f(x)` and `error = 3 * (absTolerance * fabs(x) + relTolerance)`.
     The method used is a combination of golden section search and
 successive parabolic interpolation. Convergence is never much slower
 than that for a Fibonacci search.
@@ -676,88 +881,135 @@ References:
     "Algorithms for Minimization without Derivatives", Richard Brent, Prentice-Hall, Inc. (1973)
 See_Also: $(LREF findRoot), $(REF isNormal, std,math)
 +/
-@optmath
-Tuple!(T, "x", Unqual!(ReturnType!DF), "y", T, "error")
-findLocalMin(T, DF)(
-        scope DF f,
-        in T ax,
-        in T bx,
-        in T relTolerance = sqrt(T.epsilon),
-        in T absTolerance = sqrt(T.epsilon),
-        )
-if (isFloatingPoint!T
-    && __traits(compiles, {T _ = DF.init(T.init);}))
+FindLocalMinResult!T findLocalMin(alias f, T)(
+    const T ax,
+    const T bx,
+    const T relTolerance = sqrt(T.epsilon),
+    const T absTolerance = sqrt(T.epsilon))
+    if (isFloatingPoint!T && __traits(compiles, {T _ = f(T.init);}))
+{
+    if (false) // break attributes
+    {
+        T y = f(T(123));
+    }
+    scope const T delegate(T) @safe pure nothrow @nogc fun = delegate(T x) {
+        return T(f(x));
+    }.trustedAllAttr;
+
+    return findLocalMinImpl(ax, bx, relTolerance, absTolerance, fun);
+}
+
+@fmamath
+private FindLocalMinResult!float findLocalMinImpl(
+    const float ax,
+    const float bx,
+    const float relTolerance,
+    const float absTolerance,
+    scope const float delegate(float) @safe pure nothrow @nogc f,
+    ) @safe pure nothrow @nogc
+{
+    pragma(inline, false);
+    return findLocalMinImplGen!float(ax, bx, relTolerance, absTolerance, f);
+}
+
+@fmamath
+private FindLocalMinResult!double findLocalMinImpl(
+    const double ax,
+    const double bx,
+    const double relTolerance,
+    const double absTolerance,
+    scope const double delegate(double) @safe pure nothrow @nogc f,
+    ) @safe pure nothrow @nogc
+{
+    pragma(inline, false);
+    return findLocalMinImplGen!double(ax, bx, relTolerance, absTolerance, f);
+}
+
+@fmamath
+private FindLocalMinResult!real findLocalMinImpl(
+    const real ax,
+    const real bx,
+    const real relTolerance,
+    const real absTolerance,
+    scope const real delegate(real) @safe pure nothrow @nogc f,
+    ) @safe pure nothrow @nogc
+{
+    pragma(inline, false);
+    return findLocalMinImplGen!real(ax, bx, relTolerance, absTolerance, f);
+}
+
+@fmamath
+private FindLocalMinResult!T findLocalMinImplGen(T)(
+    const T ax,
+    const T bx,
+    const T relTolerance,
+    const T absTolerance,
+    scope const T delegate(T) @safe pure nothrow @nogc f,
+    )
+    if (isFloatingPoint!T && __traits(compiles, {T _ = f(T.init);}))
 in
 {
-    assert(ax.fabs < T.infinity, "ax is not finite");
-    assert(bx.fabs < T.infinity, "bx is not finite");
     assert(relTolerance.fabs >= T.min_normal && relTolerance.fabs < T.infinity, "relTolerance is not normal floating point number");
     assert(absTolerance.fabs >= T.min_normal && absTolerance.fabs < T.infinity, "absTolerance is not normal floating point number");
     assert(relTolerance >= 0, "absTolerance is not positive");
     assert(absTolerance >= T.epsilon*2, "absTolerance is not greater then `2*T.epsilon`");
 }
-out (result)
-{
-    assert(result.x.fabs < T.infinity);
-}
 do
 {
-    alias R = typeof(ReturnType!DF(0) + T(0));
+    version(LDC) pragma(inline, true);
     // c is the squared inverse of the golden ratio
     // (3 - sqrt(5))/2
     // Value obtained from Wolfram Alpha.
-    enum T c = 0x0.61c8864680b583ea0c633f9fa31237p+0L;
+    enum T c   = 0x0.61c8864680b583ea0c633f9fa31237p+0L;
     enum T cm1 = 0x0.9e3779b97f4a7c15f39cc0605cedc8p+0L;
-    R tolerance;
-    T a = ax > bx ? bx: ax;
-    T b = ax > bx ? ax: bx;
+    T tolerance;
+    T a = ax > bx ? bx : ax;
+    T b = ax > bx ? ax : bx;
+    if (a < -T.max)
+        a = -T.max;
+    if (b > +T.max)
+        b = +T.max;
     // sequence of declarations suitable for SIMD instructions
     T  v = a * cm1 + b * c;
     assert(v.fabs < T.infinity);
-    R fv = f(v);
+    T fv = v == v ? f(v) : v;
     if (fv != fv || fv == -T.infinity)
     {
         return typeof(return)(v, fv, T.init);
     }
     T  w = v;
-    R fw = fv;
+    T fw = fv;
     T  x = v;
-    R fx = fv;
+    T fx = fv;
     size_t i;
-    for (R d = 0, e = 0;;)
+    for (T d = 0, e = 0;;)
     {
         i++;
         T m = (a + b) * 0.5f;
         // This fix is not part of the original algorithm
         if (!((m.fabs < T.infinity))) // fix infinity loop. Issue can be reproduced in R.
         {
-            // force disabled fused FMA math
-            static auto half(T x)
-            {
-                pragma(inline, false);
-                return x * 0.5f;
-            }
-            m = half(a) + half(b);
+            m = a.half + b.half;
         }
         tolerance = absTolerance * fabs(x) + relTolerance;
-        immutable t2 = tolerance * 2;
+        const t2 = tolerance * 2;
         // check stopping criterion
         if (!(fabs(x - m) > t2 - (b - a) * 0.5f))
         {
             break;
         }
-        R p = 0;
-        R q = 0;
-        R r = 0;
+        T p = 0;
+        T q = 0;
+        T r = 0;
         // fit parabola
         if (fabs(e) > tolerance)
         {
-            immutable  xw =  x -  w;
-            immutable fxw = fx - fw;
-            immutable  xv =  x -  v;
-            immutable fxv = fx - fv;
-            immutable xwfxv = xw * fxv;
-            immutable xvfxw = xv * fxw;
+            const  xw =  x -  w;
+            const fxw = fx - fw;
+            const  xv =  x -  v;
+            const fxv = fx - fv;
+            const xwfxv = xw * fxv;
+            const xvfxw = xv * fxw;
             p = xv * xvfxw - xw * xwfxv;
             q = (xvfxw - xwfxv) * 2;
             if (q > 0)
@@ -780,12 +1032,12 @@ do
         // a golden-section step
         else
         {
-            e = (x < m ? b: a) - x;
+            e = (x < m ? b : a) - x;
             d = c * e;
         }
         // f must not be evaluated too close to x
         u = x + (fabs(d) >= tolerance ? d: d > 0 ? tolerance: -tolerance);
-        immutable fu = f(u);
+        const fu = f(u);
         if (fu != fu || fu == -T.infinity)
         {
             return typeof(return)(u, fu, T.init);
@@ -793,14 +1045,14 @@ do
         //  update  a, b, v, w, and x
         if (fu <= fx)
         {
-            (u < x ? b: a) = x;
+            (u < x ? b : a) = x;
             v = w; fv = fw;
             w = x; fw = fx;
             x = u; fx = fu;
         }
         else
         {
-            (u < x ? a: b) = u;
+            (u < x ? a : b) = u;
             if (fu <= fw || w == x)
             {
                 v = w; fv = fw;
@@ -820,51 +1072,67 @@ version(mir_test) @safe unittest
 {
     import mir.math.common: approxEqual;
 
-    auto ret = findLocalMin((double x) => (x-4)^^2, -1e7, 1e7);
+    auto ret = findLocalMin!(x => (x-4)^^2)(-1e7, 1e7).validate;
     assert(ret.x.approxEqual(4.0));
     assert(ret.y.approxEqual(0.0));
 }
 
+///
 version(mir_test) @safe unittest
 {
     import mir.math.common: approxEqual;
-    import std.meta: AliasSeq;
-    alias isNaN = x => x != x;
+    alias AliasSeq(T...) = T;
     static foreach (T; AliasSeq!(double, float, real))
     {
         {
-            auto ret = findLocalMin!T((T x) => (x-4)^^2, T.min_normal, 1e7);
+            auto ret = findLocalMin!(x => (x-4)^^2)(T.min_normal, T(1e7)).validate;
             assert(ret.x.approxEqual(T(4)));
             assert(ret.y.approxEqual(T(0)));
         }
         {
-            auto ret = findLocalMin!T((T x) => fabs(x-1), -T.max/4, T.max/4, T.min_normal, 2*T.epsilon);
+            auto ret = findLocalMin!(x => fabs(x-1))(-T.max/4, T.max/4, T.min_normal, 2*T.epsilon).validate;
             assert(approxEqual(ret.x, T(1)));
             assert(approxEqual(ret.y, T(0)));
             assert(ret.error <= 10 * T.epsilon);
         }
         {
-            auto ret = findLocalMin!T((T x) => T.init, 0, 1, T.min_normal, 2*T.epsilon);
-            assert(!isNaN(ret.x));
-            assert(isNaN(ret.y));
-            assert(isNaN(ret.error));
+            auto ret = findLocalMin!(x => T.init)(0, 1, T.min_normal, 2*T.epsilon);
+            assert(ret.status ==  FindRootStatus.nanY);
         }
         {
-            auto ret = findLocalMin!T((T x) => log(x), 0, 1, T.min_normal, 2*T.epsilon);
+            auto ret = findLocalMin!log( 0, 1, T.min_normal, 2*T.epsilon).validate;
             assert(ret.error < 3.00001 * ((2*T.epsilon)*fabs(ret.x)+ T.min_normal));
             assert(ret.x >= 0 && ret.x <= ret.error);
         }
         {
-            auto ret = findLocalMin!T((T x) => log(x), 0, T.max, T.min_normal, 2*T.epsilon);
+            auto ret = findLocalMin!log(0, T.max, T.min_normal, 2*T.epsilon).validate;
             assert(ret.y < -18);
             assert(ret.error < 5e-08);
             assert(ret.x >= 0 && ret.x <= ret.error);
         }
         {
-            auto ret = findLocalMin!T((T x) => -fabs(x), -1, 1, T.min_normal, 2*T.epsilon);
+            auto ret = findLocalMin!(x => -fabs(x))(-1, 1, T.min_normal, 2*T.epsilon).validate;
             assert(ret.x.fabs.approxEqual(T(1)));
             assert(ret.y.fabs.approxEqual(T(1)));
             assert(ret.error.approxEqual(T(0)));
         }
     }
+}
+
+// force disabled FMA math
+private static auto half(T)(const T x)
+{
+    pragma(inline, false);
+    return x * 0.5f;
+}
+
+private auto trustedAllAttr(T)(T t) @trusted
+{
+    import std.traits;
+    enum attrs = (functionAttributes!T & ~FunctionAttribute.system) 
+        | FunctionAttribute.pure_
+        | FunctionAttribute.safe
+        | FunctionAttribute.nogc
+        | FunctionAttribute.nothrow_;
+    return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
 }
