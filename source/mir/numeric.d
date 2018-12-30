@@ -1,8 +1,10 @@
 /++
 Base numeric algorithms.
 
+Reworked part of `std.numeric`.
+
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Authors:   Ilya Yaroshenko, Don Clugston
+Authors:   Ilya Yaroshenko (findLocalMin), Don Clugston (findRoot)
 +/
 module mir.numeric;
 
@@ -98,55 +100,46 @@ nothrow:
     }
 }
 
-/** Find root of a real function f(x) by bracketing, allowing the
- * termination condition to be specified.
- *
- * Given a function `f` and a range `[a .. b]` such that `f(a)`
- * and `f(b)` have opposite signs or at least one of them equals ±0,
- * returns the value of `x` in
- * the range which is closest to a root of `f(x)`.  If `f(x)`
- * has more than one root in the range, one will be chosen
- * arbitrarily.  If `f(x)` returns NaN, NaN will be returned;
- * otherwise, this algorithm is guaranteed to succeed.
- *
- * Uses an algorithm based on TOMS748, which uses inverse cubic
- * interpolation whenever possible, otherwise reverting to parabolic
- * or secant interpolation. Compared to TOMS748, this implementation
- * improves worst-case performance by a factor of more than 100, and
- * typical performance by a factor of 2. For 80-bit reals, most
- * problems require 8 to 15 calls to `f(x)` to achieve full machine
- * precision. The worst-case performance (pathological cases) is
- * approximately twice the number of bits.
- *
- * References: "On Enclosing Simple Roots of Nonlinear Equations",
- * G. Alefeld, F.A. Potra, Yixun Shi, Mathematics of Computation 61,
- * pp733-744 (1993).  Fortran code available from $(HTTP
- * www.netlib.org,www.netlib.org) as algorithm TOMS478.
- *
- * Params:
- *
- * f = Function to be analyzed
- *
- * ax = Left bound of initial range of `f` known to contain the
- * root.
- *
- * bx = Right bound of initial range of `f` known to contain the
- * root.
- *
- * fax = Value of `f(ax)`.
- *
- * fbx = Value of `f(bx)`. `fax` and `fbx` should have opposite signs.
- * (`f(ax)` and `f(bx)` are commonly known in advance.)
- *
- *
- * tolerance = Defines an early termination condition. Receives the
- *             current upper and lower bounds on the root. The
- *             delegate must return `true` when these bounds are
- *             acceptable. If this function always returns `false`,
- *             full machine precision will be achieved.
- *
- * Returns: $(LREF FindRootResult)
- */
+/++
+Find root of a real function f(x) by bracketing, allowing the
+termination condition to be specified.
+
+Given a function `f` and a range `[a .. b]` such that `f(a)`
+and `f(b)` have opposite signs or at least one of them equals ±0,
+returns the value of `x` in
+the range which is closest to a root of `f(x)`.  If `f(x)`
+has more than one root in the range, one will be chosen
+arbitrarily.  If `f(x)` returns NaN, NaN will be returned;
+otherwise, this algorithm is guaranteed to succeed.
+
+Uses an algorithm based on TOMS748, which uses inverse cubic
+interpolation whenever possible, otherwise reverting to parabolic
+or secant interpolation. Compared to TOMS748, this implementation
+improves worst-case performance by a factor of more than 100, and
+typical performance by a factor of 2. For 80-bit reals, most
+problems require 8 to 15 calls to `f(x)` to achieve full machine
+precision. The worst-case performance (pathological cases) is
+approximately twice the number of bits.
+
+References: "On Enclosing Simple Roots of Nonlinear Equations",
+G. Alefeld, F.A. Potra, Yixun Shi, Mathematics of Computation 61,
+pp733-744 (1993).  Fortran code available from $(HTTP
+www.netlib.org,www.netlib.org) as algorithm TOMS478.
+
+Params:
+f = Function to be analyzed. `f(ax)` and `f(bx)` should have opposite signs.
+tolerance = tolerance = Defines an early termination condition. Receives the
+            current upper and lower bounds on the root. The
+            delegate must return `true` when these bounds are
+            acceptable. If this function always returns `false` or
+            it is null, full machine precision will be achieved.
+ax = Left bound of initial range of `f` known to contain the root.
+bx = Right bound of initial range of `f` known to contain the root.
+fax = Value of `f(ax)` (optional).
+fbx = Value of `f(bx)` (optional).
+
+Returns: $(LREF FindRootResult)
++/
 @fmamath
 FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     const T ax,
