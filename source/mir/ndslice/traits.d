@@ -231,11 +231,15 @@ template isIterator(T)
         ++b;
         --a;
         --b;
-        auto t = a[sizediff_t(3)];
-        //b = a + sizediff_t(3);
-        //b = a - sizediff_t(3);
+        void foo(V)(auto ref V v)
+        {
+
+        }
+        foo(a[sizediff_t(3)]);
+        auto c = a + sizediff_t(3);
+        auto d = a - sizediff_t(3);
         a += sizediff_t(3);
         a -= sizediff_t(3);
-        return *a;
+        foo(*a);
     });
 }
