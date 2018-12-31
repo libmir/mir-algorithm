@@ -137,12 +137,12 @@ struct IotaIterator(I)
     }
 
     ptrdiff_t opBinary(string op : "-")(const typeof(this) right) scope const
-    { return this._index - right._index; }
+    { return cast(ptrdiff_t)(this._index - right._index); }
 
     bool opEquals()(const typeof(this) right) scope const
     { return this._index == right._index; }
 
-    ptrdiff_t opCmp()(const typeof(this) right) scope const
+    auto opCmp()(const typeof(this) right) scope const
     { return this._index - right._index; }
 }
 
