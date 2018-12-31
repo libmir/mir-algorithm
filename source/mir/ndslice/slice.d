@@ -38,6 +38,7 @@ import mir.ndslice.concatenation;
 import mir.ndslice.field;
 import mir.ndslice.internal;
 import mir.ndslice.iterator;
+import mir.ndslice.traits: isIterator;
 import mir.primitives;
 import mir.qualifier;
 import mir.utility;
@@ -632,7 +633,7 @@ Slice!(Universal, N, Iterator)
 -------
 +/
 struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_...)
-    if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1) && Labels_.length <= N_)
+    if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1) && Labels_.length <= N_ && isIterator!Iterator_)
 {
 @optmath:
 

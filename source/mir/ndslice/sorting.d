@@ -534,3 +534,52 @@ template transitionIndex(alias test = "a < b")
     assert(j == 3);
     auto upperBound = a[j .. $];
 }
+
+/++
+Computes an index for `r` based on the comparison `less`. The
+index is a sorted array of indices into the original
+range. This technique is similar to sorting, but it is more flexible
+because (1) it allows "sorting" of immutable collections, (2) allows
+binary search even if the original collection does not offer random
+access, (3) allows multiple indexes, each on a different predicate,
+and (4) may be faster when dealing with large objects. However, using
+an index may also be slower under certain circumstances due to the
+extra indirection, and is always larger than a sorting-based solution
+because it needs space for the index in addition to the original
+collection. The complexity is the same as `sort`'s.
+Params:
+    less = The comparison to use.
+    ss = The swapping strategy.
+    r = The slice/array to index.
+    index = The resulting index.
+Returns: Index array.
++/
+Slice!(I*) makeIndex(I = size_t, alias less = "a < b", Iterator, SliceKind kind)(scope Slice!(Iterator, 1, kind) r)
+{
+    import mir.functional: naryFun;
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: iota;
+    return r
+        .length
+        .iota!I
+        .slice
+        .sort!((a, b) => naryFun!less(r[a], r[b]));
+}
+
+///
+I[] makeIndex(I = size_t, alias less = "a < b", T)(scope T[] r)
+{
+    return .makeIndex!(I, less)(r.sliced).field;
+}
+
+///
+@system unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.topology: indexed, pairwise;
+
+    immutable arr = [ 2, 3, 1, 5, 0 ];
+    auto index = arr.makeIndex;
+
+    assert(arr.indexed(index).pairwise!"a < b".all);
+}

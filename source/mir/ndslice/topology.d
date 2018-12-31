@@ -1814,7 +1814,7 @@ Returns:
     `n`-dimensional slice composed of identical values, where `n` is dimension count.
 +/
 Slice!(FieldIterator!(RepeatField!T), M, Universal)
-    repeat(T, size_t M)(T value, size_t[M] lengths...)
+    repeat(T, size_t M)(T value, size_t[M] lengths...) @trusted
     if (M && !isSlice!T)
 {
     size_t[M] ls = lengths;

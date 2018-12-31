@@ -136,13 +136,13 @@ struct IotaIterator(I)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(const typeof(this) right) scope const
     { return this._index - right._index; }
 
-    bool opEquals()(typeof(this) right) scope const
+    bool opEquals()(const typeof(this) right) scope const
     { return this._index == right._index; }
 
-    ptrdiff_t opCmp()(typeof(this) right) scope const
+    ptrdiff_t opCmp()(const typeof(this) right) scope const
     { return this._index - right._index; }
 }
 
@@ -661,7 +661,7 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
     {
         if (_expect(!*_flags, false))
         {
-            *_flags = true;
+            _flags[0] = true;
             emplaceRef!T(*cast(UT*)&*_caches, *_iterator);
         }
         return *_caches;
@@ -708,7 +708,7 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
     }
 
     ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
-    { return (this._iterator - right._iterator) / count; }
+    { return this._iterator - right._iterator; }
 
     bool opEquals()(scope ref const typeof(this) right) scope const
     { return this._iterator == right._iterator; }

@@ -16,6 +16,7 @@ $(T2 isUniversalVector, Test if type is a universal one-dimensional slice.)
 $(T2 isContiguousMatrix, Test if type is a contiguous two-dimensional slice.)
 $(T2 isCanonicalMatrix, Test if type is a canonical two-dimensional slice.)
 $(T2 isUniversalMatrix, Test if type is a universal two-dimensional slice.)
+$(T2 isIterator, Test if type is a random access iterator.)
 )
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).

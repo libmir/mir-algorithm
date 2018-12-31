@@ -48,6 +48,7 @@ mir_algorithm_src = [
     'source/mir/ndslice/sorting.d',
     'source/mir/ndslice/topology.d',
     'source/mir/ndslice/traits.d',
+    'source/mir/numeric.d',
     'source/mir/range.d',
     'source/mir/rcarray.d',
     'source/mir/series.d',

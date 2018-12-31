@@ -297,29 +297,24 @@ struct RepeatField(T)
     import std.traits: Unqual;
 
 @optmath:
-    static if (is(T == class) || is(T == interface) || is(T : Unqual!T) && is(Unqual!T : T))
-        ///
-        alias UT = Unqual!T;
-    else
-        ///
-        alias UT = T;
+    alias UT = Unqual!T;
 
     ///
     UT _value;
 
     ///
-    auto lightConst()() const @property
+    auto lightConst()() const @property @trusted
     {
         return RepeatField!(const T)(cast(UT) _value);
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightImmutable()() immutable @property @trusted
     {
         return RepeatField!(immutable T)(cast(UT) _value);
     }
 
-    auto ref T opIndex()(ptrdiff_t)
+    auto ref T opIndex()(ptrdiff_t) @trusted
     { return cast(T) _value; }
 }
 
