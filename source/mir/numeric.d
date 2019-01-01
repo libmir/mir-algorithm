@@ -147,7 +147,7 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     const T fax = -T.nan,
     const T fbx = +T.nan)
     if (
-        isFloatingPoint!T && __traits(compiles, {T _ = f(T.init);}) &&
+        isFloatingPoint!T && __traits(compiles, T(f(T.init))) &&
         (
             is(typeof(tolerance) == typeof(null)) || 
             __traits(compiles, {auto _ = bool(tolerance(T.init, T.init));}
@@ -160,22 +160,25 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
         static if (!is(typeof(tolerance) == typeof(null)))
             bool b = tolerance(T(123), T(123));
     }
-    scope const T delegate(T) @safe pure nothrow @nogc fun = delegate(T x) {
+    scope funInst = delegate(T x) {
         return T(f(x));
-    }.trustedAllAttr;
+    };
+
+    scope fun = funInst.trustedAllAttr;
 
     scope bool delegate(T, T) @safe pure nothrow @nogc tol;
     static if (!is(typeof(tolerance) == typeof(null)))
     {
-        tol = delegate(T a, T b) {
+        scope tolInst = delegate(T a, T b) {
             return bool(tolerance(a, b));
-        }.trustedAllAttr;
+        };
+        tol = tolInst.trustedAllAttr;
     }
     return findRootImpl(ax, bx, fax, fbx, fun, tol);
 }
 
 ///
-version(mir_test) @safe unittest
+version(mir_test) @safe @nogc unittest
 {
     import mir.math.common: log, exp;
 
@@ -183,8 +186,8 @@ version(mir_test) @safe unittest
     auto logRoot = findRoot!log(0, double.infinity).validate.x;
     assert(logRoot == 1);
 
-    auto expm1Root = findRoot!
-        (x => exp(x) - 1)
+    auto shift = 1;
+    auto expm1Root = findRoot!(x => exp(x) - shift)
         (-double.infinity, double.infinity).validate.x;
     assert(expm1Root == 0);
 
@@ -879,15 +882,16 @@ FindLocalMinResult!T findLocalMin(alias f, T)(
     const T bx,
     const T relTolerance = sqrt(T.epsilon),
     const T absTolerance = sqrt(T.epsilon))
-    if (isFloatingPoint!T && __traits(compiles, {T _ = f(T.init);}))
+    if (isFloatingPoint!T && __traits(compiles, T(f(T.init))))
 {
     if (false) // break attributes
     {
         T y = f(T(123));
     }
-    scope const T delegate(T) @safe pure nothrow @nogc fun = delegate(T x) {
+    scope funInst = delegate(T x) {
         return T(f(x));
-    }.trustedAllAttr;
+    };
+    scope fun = funInst.trustedAllAttr;
 
     return findLocalMinImpl(ax, bx, relTolerance, absTolerance, fun);
 }
@@ -1061,12 +1065,14 @@ do
 }
 
 ///
-version(mir_test) @safe unittest
+version(mir_test) @safe @nogc unittest
 {
     import mir.math.common: approxEqual;
 
-    auto ret = findLocalMin!(x => (x-4)^^2)(-1e7, 1e7).validate;
-    assert(ret.x.approxEqual(4.0));
+    double shift = 4;
+
+    auto ret = findLocalMin!(x => (x-shift)^^2)(-1e7, 1e7).validate;
+    assert(ret.x.approxEqual(shift));
     assert(ret.y.approxEqual(0.0));
 }
 

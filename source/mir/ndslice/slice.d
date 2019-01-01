@@ -252,7 +252,7 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
         {
             ++iterator;
             --iterator;
-            iterator = iterator + 34;
+            iterator += 34;
             iterator -= 34;
         }
         return Slice!(C, N)(_lengths, iterator);
