@@ -145,7 +145,7 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     const T ax,
     const T bx,
     const T fax = -T.nan,
-    const T fbx = +T.nan)
+    const T fbx = +T.nan) @safe
     if (
         isFloatingPoint!T && __traits(compiles, T(f(T.init))) &&
         (
@@ -163,22 +163,25 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     scope funInst = delegate(T x) {
         return T(f(x));
     };
-
     scope fun = funInst.trustedAllAttr;
 
-    scope bool delegate(T, T) @safe pure nothrow @nogc tol;
-    static if (!is(typeof(tolerance) == typeof(null)))
+    static if (is(typeof(tolerance) == typeof(null)))
+    {
+        return findRootImpl(ax, bx, fax, fbx, fun, null);
+    }
+    else
     {
         scope tolInst = delegate(T a, T b) {
             return bool(tolerance(a, b));
         };
-        tol = tolInst.trustedAllAttr;
+        scope tol = tolInst.trustedAllAttr;
+        return findRootImpl(ax, bx, fax, fbx, fun, tol);
     }
-    return findRootImpl(ax, bx, fax, fbx, fun, tol);
 }
 
 ///
-version(mir_test) @safe @nogc unittest
+// @nogc
+version(mir_test) @safe unittest
 {
     import mir.math.common: log, exp;
 
@@ -1065,7 +1068,8 @@ do
 }
 
 ///
-version(mir_test) @safe @nogc unittest
+//@nogc
+version(mir_test) @safe unittest
 {
     import mir.math.common: approxEqual;
 
