@@ -145,7 +145,7 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     const T ax,
     const T bx,
     const T fax = -T.nan,
-    const T fbx = +T.nan) @safe
+    const T fbx = +T.nan)
     if (
         isFloatingPoint!T && __traits(compiles, T(f(T.init))) &&
         (
