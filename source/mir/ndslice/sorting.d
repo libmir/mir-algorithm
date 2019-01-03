@@ -549,10 +549,8 @@ because it needs space for the index in addition to the original
 collection. The complexity is the same as `sort`'s.
 Params:
     less = The comparison to use.
-    ss = The swapping strategy.
     r = The slice/array to index.
-    index = The resulting index.
-Returns: Index array.
+Returns: Index slice/array.
 +/
 Slice!(I*) makeIndex(I = size_t, alias less = "a < b", Iterator, SliceKind kind)(scope Slice!(Iterator, 1, kind) r)
 {
