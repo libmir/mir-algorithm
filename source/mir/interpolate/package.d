@@ -67,7 +67,7 @@ template findInterval(size_t dimension = 0)
         else
         {
             immutable sizediff_t len = interpolant.intervalCount - 1;
-            auto grid = interpolant.grid[1 .. $][0 .. len];
+            auto grid = interpolant.grid[][1 .. $][0 .. len];
         }
         assert(len >= 0);
         return grid.transitionIndex!"a <= b"(x);

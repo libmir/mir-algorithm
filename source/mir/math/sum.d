@@ -1974,6 +1974,42 @@ private template sumType(Range)
     alias sumType = typeof(T.init + T.init);
 }
 
+/++
++/
+template fillCollapseSums(Summation summation, alias combineParts, combineElements...)
+{
+    import mir.ndslice.slice: Slice, SliceKind;
+    /++
+    +/
+    auto ref fillCollapseSums(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) data) @property
+    {
+        import mir.algorithm.iteration;
+        import mir.functional: naryFun;
+        import mir.ndslice.topology: iota, triplets;
+        foreach (triplet; data.length.iota.triplets) with(triplet)
+        {
+            auto ref ce(size_t i)()
+            {
+                static if (summation == Summation.fast)
+                {
+                    return
+                        sum!summation(naryFun!(combineElements[i])(center, left )) +
+                        sum!summation(naryFun!(combineElements[i])(center, right));
+                }
+                else
+                {
+                    Summator!summation summator = 0;
+                    summator.put(naryFun!(combineElements[i])(center, left));
+                    summator.put(naryFun!(combineElements[i])(center, right));
+                    return summator.sum;
+                }
+            }
+            alias sums = staticMap!(ce, Iota!(combineElements.length));
+            data[center] = naryFun!combineParts(center, sums);
+        }
+    }
+}
+
 package:
 
 template isSummable(F)

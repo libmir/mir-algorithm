@@ -13,6 +13,7 @@ module mir.math.numeric;
 
 import mir.math.common;
 import mir.primitives;
+import std.range.primitives: isInputRange;
 
 import std.traits;
 
@@ -24,9 +25,27 @@ struct Prod(T)
 	long exp = 1;
 	///
 	T x = 0.5f;
+    ///
+    alias mantissa = x;
+
+    ///
+    this(T value)
+    {
+        int lexp;
+        import mir.math.ieee: frexp;
+        x = frexp(value, lexp);
+        exp = lexp;
+    }
+
+    ///
+    this(long exp, T x)
+    {
+        this.exp = exp;
+        this.x = x;
+    }
 
 	///
-	void put()(T e)
+	void put(T e)
 	{
         int lexp;
         import mir.math.ieee: frexp;
@@ -39,40 +58,88 @@ struct Prod(T)
         }
 	}
 
+	///
+	void put(Prod p)
+	{
+        exp += p.exp;
+        x *= p.x;
+        if (x.fabs < 0.5f)
+        {
+            x += x;
+            exp--;
+        }
+	}
+
     ///
-    T value()() @property
+    T value() const scope @property
     {
-        if (exp > int.max)
-            exp = int.max;
-        else
-        if (exp < int.min)
-            exp = int.min;
         import mir.math.ieee: ldexp;
-        return ldexp(x, cast(int)exp);
+        int e =
+            exp > int.max ? int.max :
+            exp < int.min ? int.min :
+            cast(int) exp;
+        return ldexp(mantissa, e);
     }
+
+    Prod ldexp(long exp) const
+    {
+        return Prod(this.exp + exp, mantissa);
+    }
+
+    // ///
+    alias opOpAssign(string op : "*") = put;
+
+    ///
+    Prod opUnary(string op : "-")() const
+    {
+        return Prod(exp, -mantissa);
+    }
+
+    ///
+    Prod opUnary(string op : "+")() const
+    {
+        return Prod(exp, +mantissa);
+    }
+}
+
+/++
+Decompose a range or nd-slice of floating point numbers into a single product structure.
++/
+Prod!(Unqual!(DeepElementType!Range))
+wipProd(Range)(Range r)
+	if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
+{
+    import mir.algorithm.iteration: each;
+    typeof(return) prod;
+    r.each!(x => prod.put(x));
+    return prod;
+}
+
+/++
+Decompose a single floating point number.
++/
+Prod!T wipProd(T)(const T x)
+    if (isFloatingPoint!T)
+{
+    return typeof(return)(x);
 }
 
 /++
 Compute the product of the input range $(D r) using separate exponent accumulation.
 +/
 Unqual!(DeepElementType!Range) prod(Range)(Range r, ref long exp)
-	if (isFloatingPoint!(DeepElementType!Range))
+	if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
 {
-    import mir.algorithm.iteration: each;
-    Prod!(typeof(return)) prod;
-    r.each!(e => prod.put(e));
+    auto prod = wipProd(r);
     exp = prod.exp;
     return prod.x;
 }
 
 /// ditto
 Unqual!(DeepElementType!Range) prod(Range)(Range r)
-	if (isFloatingPoint!(DeepElementType!Range))
+	if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
 {
-
-    long exp;
-    auto x = .prod(r, exp);
-    return Prod!(typeof(return))(exp, x).value;
+    return wipProd(r).value;
 }
 
 /// Arrays and Ranges

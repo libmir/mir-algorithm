@@ -17,6 +17,7 @@ module mir.series;
 
 public import mir.ndslice.slice;
 public import mir.ndslice.sorting: sort;
+import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.sorting: transitionIndex;
 import mir.qualifier;
 import std.traits;
@@ -150,7 +151,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
 }
 
 import mir.ndslice.slice;
-import mir.ndslice.internal: _Slice, is_Slice, isIndex;
+import mir.ndslice.internal: is_Slice, isIndex;
 import mir.math.common: optmath;
 
 import std.meta;
@@ -879,7 +880,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    _Slice!() opSlice(size_t dimension)(size_t i, size_t j) const
+    Slice!(IotaIterator!size_t) opSlice(size_t dimension)(size_t i, size_t j) const
         if (dimension < N)
     in
     {
@@ -892,7 +893,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
     body
     {
-        return typeof(return)(i, j);
+        return typeof(return)(j - i, typeof(return).Iterator(i));
     }
 
     /// ditto

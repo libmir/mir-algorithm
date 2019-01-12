@@ -361,15 +361,15 @@ Slice!(Iterator, N, kind)
 {
     import mir.ndslice.topology : iota;
     auto data = new int[24];
-    foreach (int i,ref e; data)
-        e = i;
+    foreach (i, ref e; data)
+        e = cast(int)i;
     auto a = data[0..10].sliced(10)[0..6].sliced(2, 3);
     auto b = iota!int(10)[0..6].sliced(2, 3);
     assert(a == b);
     a[] += b;
-    foreach (int i, e; data[0..6])
+    foreach (i, e; data[0..6])
         assert(e == 2*i);
-    foreach (int i, e; data[6..$])
+    foreach (i, e; data[6..$])
         assert(e == i+6);
 }
 
@@ -708,7 +708,8 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
     enum isIndexedSlice(Slices...) =
            Slices.length
         && Slices.length <= N
-        && allSatisfy!(templateOr!isSlice, Slices);
+        && allSatisfy!(isSlice, Slices)
+        && anySatisfy!(templateNot!is_Slice, Slices);
 
     static if (S)
     {
@@ -1896,7 +1897,10 @@ public:
         assert(iota(2, 3).slice[0 .. $ - 2] == iota([4, 3], 2)[0 .. $ - 4]);
     }
 
-    _Slice!() opSlice(size_t dimension)(size_t i, size_t j) @safe scope const
+    /++
+    `Slice!(IotaIterator!size_t)` is the basic type for `[a .. b]` syntax for all ndslice based code.
+    +/
+    Slice!(IotaIterator!size_t) opSlice(size_t dimension)(size_t i, size_t j) @safe scope const
         if (dimension < N)
     in
     {
@@ -1908,7 +1912,7 @@ public:
     }
     body
     {
-        return typeof(return)(i, j);
+        return typeof(return)(j - i, typeof(return).Iterator(i));
     }
 
     /++
@@ -2004,8 +2008,8 @@ public:
                     }
                     else
                     {
-                        stride += slice.i;
-                        structure_[0][j!i] = slice.j - slice.i;
+                        stride += slice._iterator._index;
+                        structure_[0][j!i] = slice._lengths[0];
                     }
                 }
             }
@@ -2020,8 +2024,8 @@ public:
                     }
                     else
                     {
-                        stride += _strides[i] * slice.i;
-                        structure_[0][j!i] = slice.j - slice.i;
+                        stride += _strides[i] * slice._iterator._index;
+                        structure_[0][j!i] = slice._lengths[0];
                         structure_[1][j!i] = _strides[i];
                     }
                 }
@@ -2038,8 +2042,8 @@ public:
                     }
                     else
                     {
-                        stride += ball * slice.i;
-                        structure_[0][j!i] = slice.j - slice.i;
+                        stride += ball * slice._iterator._index;
+                        structure_[0][j!i] = slice._lengths[0];
                         static if (j!i < Ret.S)
                             structure_[1][j!i] = ball;
                     }
