@@ -3,10 +3,11 @@ $(H1 Interpolation Algorithms)
 
 $(BOOKTABLE $(H2 Interpolation modules),
 $(TR $(TH Module) $(TH Interpolation kind))
-$(T2M spline, Cubic Spline Interpolant)
-$(T2M pchip, Piecewise Cubic Hermite Interpolating Polynomial)
-$(T2M linear, Linear Interpolant)
 $(T2M constant, Constant Interpolant)
+$(T2M linear, Linear Interpolant)
+$(T2M pchip, Piecewise Cubic Hermite Interpolating Polynomial)
+$(T2M polynomial, Lagrange Barycentric Interpolation)
+$(T2M spline, Cubic Spline Interpolant)
 )
 
 Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited

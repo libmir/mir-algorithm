@@ -1,5 +1,5 @@
 /++
-$(H2 Polinomial Interpolation)
+$(H2 Lagrange Barycentric Interpolation)
 
 See_also: $(REF_ALTTEXT $(TT interp1), interp1, mir, interpolate)
 
