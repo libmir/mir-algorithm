@@ -51,6 +51,7 @@ The implementation never adds roots into the GC.
 struct mir_rcarray(T)
 {
     import std.traits;
+    import mir.ndslice.slice: Slice, SliceKind, Contiguous;
 
     static if (__VERSION__ < 2082)
         enum cppSupport = false;
@@ -156,9 +157,8 @@ struct mir_rcarray(T)
         ///
         auto asSlice() scope return @property
         {
-            import mir.ndslice.slice: mir_slice;
             alias It = mir_rci!T;
-            return mir_slice!It([length], It((()@trusted => ptr)(), this));
+            return Slice!It([length], It((()@trusted => ptr)(), this));
         }
     }
     else
@@ -179,9 +179,9 @@ struct mir_rcarray(T)
         ///
         auto asSlice()() scope return @property
         {
-            import mir.ndslice.slice: mir_slice;
+            import mir.ndslice.slice: Slice;
             alias It = mir_rci!T;
-            return mir_slice!It([length], It((()@trusted => ptr)(), this));
+            return Slice!It([length], It((()@trusted => ptr)(), this));
         }
     }
 
@@ -228,6 +228,21 @@ struct mir_rcarray(T)
     else
         private alias V = T;
 
+    ///
+    static typeof(this) create(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) values)
+    {
+        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateDestructor!T);
+        static if (kind == Contiguous && is(Iterator : V*))
+            return create(values.field);
+        else
+        {
+            import  mir.conv: emplaceRef;
+            foreach (i, ref e; ret)
+                e.emplaceRef!T(values[i]);
+            return ret;
+        }
+    }
+
     static if (hasIndirections!T)
     /++
     Contructor is defined if `hasIndirections!T == true`.
@@ -247,7 +262,7 @@ struct mir_rcarray(T)
             import  mir.conv: emplaceRef;
             auto lhs = ret[];
             foreach (i, ref e; values)
-                lhs[i].emplaceRef(e);
+                lhs[i].emplaceRef!T(e);
         }
         return ret;
     }
@@ -271,7 +286,7 @@ struct mir_rcarray(T)
             import  mir.conv: emplaceRef;
             auto lhs = ret[];
             foreach (i, ref e; values)
-                lhs[i].emplaceRef(e);
+                lhs[i].emplaceRef!T(e);
         }
         return ret;
     }
