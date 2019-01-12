@@ -47,7 +47,6 @@ $(T2 cachedGC, Random access cache auto-allocated in GC heap. It is usefull in c
 $(T2 diff, Differences between vector elements.)
 $(T2 flattened, Contiguous 1-dimensional slice of all elements of a slice.)
 $(T2 map, Multidimensional functional map.)
-$(T2 subSlices, Maps indexes pairs to subslices.)
 $(T2 member, Field (element's member) projection.)
 $(T2 orthogonalReduceField, Functional deep-element wise reduce of a slice composed of fields or iterators.)
 $(T2 pairwise, Pairwise map for vectors.)
@@ -56,6 +55,8 @@ $(T2 retro, Reverses order of iteration for all dimensions.)
 $(T2 slide, Sliding map for vectors.)
 $(T2 stairs, Two functions to pack, unpack, and iterate triangular and symmetric matrix storage.)
 $(T2 stride, Strides 1-dimensional slice.)
+$(T2 subSlices, Maps indexes pairs to subslices.)
+$(T2 triplets, Constructs a lazy view of triplets with `left`, `center`, and `right` members. The topology is usefull for Math and Physics.)
 $(T2 unzip, Selects a slice from a zipped slice.)
 $(T2 zip, Zips slices into a slice of refTuples.)
 )
@@ -2372,7 +2373,10 @@ template map(fun...)
             auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
-                return Slice!(typeof(_mapIterator!f(slice._iterator)), N, kind)(slice._structure, _mapIterator!f(slice._iterator));
+                alias Iterator = typeof(_mapIterator!f(slice._iterator));
+                import mir.ndslice.traits: isIterator;
+                static assert(isIterator!Iterator, "mir.ndslice.map: probably the lambda function contains a compile time bug.");
+                return Slice!(Iterator, N, kind)(slice._structure, _mapIterator!f(slice._iterator));
             }
 
             /// ditto
@@ -3648,7 +3652,7 @@ Params:
 Returns:
     1D contiguous slice composed of 1D contiguous slices.
 
-See_also: $(LREF ._stairs.2)
+See_also: $(LREF triplets) $(LREF ._stairs.2)
 +/
 Slice!(StairsIterator!(Iterator, type)) stairs(string type, Iterator)(Slice!Iterator slice, size_t n)
     if (type == "+" || type == "-")
@@ -4287,4 +4291,80 @@ unittest
         .slicedField(len);
 
     assert(and == (a & b & c));
+}
+
+/++
+Constructs a lazy view of triplets with `left`, `center`, and `right` members.
+
+Returns: Slice of the same length composed of $(SUBREF iterator,  Triplet) triplets.
+The `center` member is type of a slice element.
+The `left` and `right` members has the same type as slice.
+
+The module contains special function $(LREF collapse) to handle
+left and right side of triplets in one expression.
+
+Params:
+    slice = a slice or an array to iterate over
+
+Example:
+------
+triplets(eeeeee) =>
+
+||c|lllll|
+|r|c|llll|
+|rr|c|lll|
+|rrr|c|ll|
+|rrrr|c|l|
+|rrrrr|c||
+------
+
+See_also: $(LREF stairs).
++/
+Slice!(TripletIterator!(Iterator, kind)) triplets(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
+{
+    return typeof(return)(slice.length, typeof(return).Iterator(0, slice));
+}
+
+/// ditto
+Slice!(TripletIterator!(T*)) triplets(T)(scope return T[] slice)
+{
+    return .triplets(slice.sliced);
+}
+
+/// ditto
+auto triplets(string type, S)(S slice, size_t n)
+    if (hasAsSlice!S)
+{
+    return .triplets(slice.asSlice);
+}
+
+///
+version(mir_test) unittest
+{
+    auto a = [4, 5, 2, 8];
+    import mir.ndslice.traits;
+    alias E = TripletIterator!(int*);
+    static assert(isIterator!E);
+    auto h = a.triplets;
+
+    assert(h[1].center == 5);
+    assert(h[1].left == [4]);
+    assert(h[1].right == [2, 8]);
+
+    h[1].center = 9;
+    assert(a[1] == 9);
+
+    import mir.ndslice.topology: member;
+    assert(h.member!"center" == a);
+
+
+    // `triplets` topology can be used with iota to index a slice
+    import mir.ndslice.topology: iota;
+
+    auto s = a.sliced;
+    auto w = s.length.iota.triplets[1];
+
+    assert(&s[w.center] == &a[1]);
+    assert(s[w.left].field is a[0 .. 1]);
+    assert(s[w.right].field is a[2 .. $]);
 }

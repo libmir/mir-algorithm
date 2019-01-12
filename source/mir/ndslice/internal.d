@@ -1,9 +1,10 @@
 module mir.ndslice.internal;
 
-import mir.primitives;
 import mir.internal.utility : isFloatingPoint, Iota;
 import mir.math.common: optmath;
+import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.slice;
+import mir.primitives;
 import std.meta;
 import std.traits;
 
@@ -302,7 +303,13 @@ private bool isValidPartialPermutationImpl(size_t N)(in size_t[] perm, ref int[N
 enum toSize_t(size_t i) = i;
 enum isSize_t(alias i) = is(typeof(i) == size_t);
 enum isIndex(I) = is(I : size_t);
-enum is_Slice(S) = is(S : _Slice!());
+template is_Slice(S)
+{
+    static if (is(S : Slice!(IotaIterator!I), I))
+        enum is_Slice = __traits(isIntegral, I);
+    else
+        enum is_Slice = false;
+}
 
 alias Repeat(size_t N : 0, T...) = AliasSeq!();
 
@@ -330,5 +337,3 @@ pure nothrow version(mir_test) unittest
     assert(lengthsProduct(lengths) == 60);
     assert(lengthsProduct([3, 4, 5]) == 60);
 }
-
-struct _Slice() { size_t i, j; }

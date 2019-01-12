@@ -21,6 +21,7 @@ $(T2 SlideIterator, $(SUBREF topology, diff), $(SUBREF topology, pairwise), and 
 $(T2 StairsIterator, $(SUBREF topology, stairs))
 $(T2 StrideIterator, $(SUBREF topology, stride))
 $(T2 SubSliceIterator, $(SUBREF topology, subSlices))
+$(T2 TripletIterator, $(SUBREF topology, triplets))
 $(T2 ZipIterator, $(SUBREF topology, zip))
 )
 
@@ -1405,18 +1406,20 @@ struct FieldIterator(Field)
     static alias __map(alias fun) = FieldIterator__map!(Field, fun);
 
     ///
-    _Slice!() opSlice(size_t dimension)(size_t i, size_t j) scope const
+    Slice!(IotaIterator!size_t) opSlice(size_t dimension)(size_t i, size_t j) scope const
     {
-        return typeof(return)(i, j);
+        assert(i <= j);
+        return typeof(return)(j - i, typeof(return).Iterator(i));
     }
 
     /++
     Returns:
         `_field[_index + sl.i .. _index + sl.j]`.
     +/
-    auto opIndex()(_Slice!() sl)
+    auto opIndex()(Slice!(IotaIterator!size_t) sl)
     {
-        return _field[_index + sl.i .. _index + sl.j];
+        auto idx = _index + sl._iterator._index;
+        return _field[idx .. idx + sl.length];
     }
 
     auto ref opUnary(string op : "*")()
@@ -1888,4 +1891,93 @@ version(mir_test) unittest
     assert(it - 3 - it == -3);
     --it;
     assert(*it == [12, 13]);
+}
+
+/++
+Element type of $(LREF TripletIterator).
++/
+struct Triplet(Iterator, SliceKind kind = Contiguous)
+{
+@optmath:
+    ///
+    size_t _iterator;
+    ///
+    Slice!(Iterator, 1, kind) _slice;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return Triplet!(LightConstOf!Iterator, kind)(_iterator, slice.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return Triplet!(LightImmutableOf!Iterator, kind)(_iterator, slice.lightImmutable);
+    }
+
+    @property
+    {
+        ///
+        auto ref center()
+        {
+            assert(_iterator < _slice.length);
+            return _slice[_iterator];
+        }
+
+        ///
+        Slice!(Iterator, 1, kind) left()
+        {
+            assert(_iterator < _slice.length);
+            return _slice[0 .. _iterator];
+        }
+
+        ///
+        Slice!(Iterator, 1, kind) right()
+        {
+            assert(_iterator < _slice.length);
+            return _slice[_iterator + 1 .. $];
+        }
+    }
+}
+
+/++
+Iterates triplets position in a slice. 
+
+`TripletIterator` is used by $(SUBREF topology, triplets).
++/
+struct TripletIterator(Iterator, SliceKind kind = Contiguous)
+{
+@optmath:
+
+    ///
+    size_t _iterator;
+    ///
+    Slice!(Iterator, 1, kind) _slice;
+
+    ///
+    auto lightConst()() const @property
+    {
+        return TripletIterator!(LightConstOf!Iterator, kind)(_iterator, _slice.lightConst);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        return TripletIterator!(LightImmutableOf!Iterator, kind)(_iterator, _slice.lightImmutable);
+    }
+
+    ///
+    Triplet!(Iterator, kind) opUnary(string op : "*")()
+    {
+        return typeof(return)(_iterator, _slice);
+    }
+
+    ///
+    Triplet!(Iterator, kind) opIndex()(ptrdiff_t index)
+    {
+        return typeof(return)(_iterator + index, _slice);
+    }
+
+    mixin(std_ops);
 }
