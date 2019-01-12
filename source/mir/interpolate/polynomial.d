@@ -135,7 +135,7 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
     }
 
     /++
-    Complexity: `O(N^^2)
+    Complexity: `O(N^^2)`
     +/
     this(RCArray!(immutable T) grid, RCArray!T values)
     {
