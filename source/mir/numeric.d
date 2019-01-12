@@ -613,6 +613,7 @@ version(mir_test) @safe unittest
         assert(x1 == x1 && x2 == x2);
         auto result = findRoot!f(x1, x2);
 
+
         import std.conv: to;
         assert(result.status == FindRootStatus.success, line.to!string);
 
