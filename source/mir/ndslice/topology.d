@@ -4296,7 +4296,7 @@ unittest
 /++
 Constructs a lazy view of triplets with `left`, `center`, and `right` members.
 
-Returns: Slice of the same length composed of $(SUBREF iterator,  Triplet) triplets.
+Returns: Slice of the same length composed of $(SUBREF iterator, Triplet) triplets.
 The `center` member is type of a slice element.
 The `left` and `right` members has the same type as slice.
 
