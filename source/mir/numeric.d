@@ -606,13 +606,15 @@ version(mir_test) @safe unittest
     int numProblems = 0;
     int numCalls;
 
-    void testFindRoot(real delegate(real) @nogc @safe nothrow pure f , real x1, real x2) //@nogc @safe nothrow pure
+    void testFindRoot(real delegate(real) @nogc @safe nothrow pure f , real x1, real x2, int line = __LINE__) //@nogc @safe nothrow pure
     {
         //numCalls=0;
         //++numProblems;
         assert(x1 == x1 && x2 == x2);
-        assert(f(x1).signbit != f(x2).signbit);
-        auto result = findRoot!f(x1, x2, f(x1), f(x2)).validate;
+        auto result = findRoot!f(x1, x2);
+
+        import std.conv: to;
+        assert(result.status == FindRootStatus.success, line.to!string);
 
         auto flo = f(result.ax);
         auto fhi = f(result.bx);
