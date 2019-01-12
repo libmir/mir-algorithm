@@ -611,10 +611,7 @@ version(mir_test) @safe unittest
         //numCalls=0;
         //++numProblems;
         assert(x1 == x1 && x2 == x2);
-        auto result = findRoot!f(x1, x2);
-
-        import std.conv: to;
-        assert(result.status == FindRootStatus.success, line.to!string);
+        auto result = findRoot!f(x1, x2).validate;
 
         auto flo = f(result.ax);
         auto fhi = f(result.bx);
@@ -630,8 +627,8 @@ version(mir_test) @safe unittest
         //++numCalls;
         if (x>float.max)
             x = float.max;
-        if (x<-double.max)
-            x = -double.max;
+        if (x<-float.max)
+            x = -float.max;
         // This has a single real root at -59.286543284815
         return 0.386*x*x*x + 23*x*x + 15.7*x + 525.2;
     }
