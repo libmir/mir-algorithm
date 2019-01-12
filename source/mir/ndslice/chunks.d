@@ -19,6 +19,7 @@ module mir.ndslice.chunks;
 import mir.internal.utility;
 import mir.math.common: optmath;
 import mir.ndslice.internal;
+import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.slice;
 
 import std.meta;
@@ -103,7 +104,7 @@ Chunks!([0], Iterator, N, kind) chunks(Iterator, size_t N, SliceKind kind)(Slice
 
     assert(ch[$ - 1 .. $].length == 1);
     assert(ch[$ .. $].length == 0);
-    assert(ch[0 .. 0].empty);
+    assert(ch[0 ..  0].empty);
 
     import std.range.primitives: isRandomAccessRange;
     static assert(isRandomAccessRange!(typeof(ch)));
@@ -374,7 +375,7 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
    }
 
     /// ditto
-    _Slice!() opSlice(size_t dimensionIndex)(size_t i, size_t j) const
+    Slice!(IotaIterator!size_t) opSlice(size_t dimensionIndex)(size_t i, size_t j) const
         if (dimensionIndex < dimensions.length)
     in
     {
@@ -386,7 +387,7 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
     }
     body
     {
-        return typeof(return)(i, j);
+        return typeof(return)(j - i, typeof(return).Iterator(i));
     }
 
     /// ditto
@@ -422,13 +423,22 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
         }
         else
         {
-            static if (isIndex!(Slices[0]))
+            alias slice = slices[0];
+            alias S = Slices[0];
+            static if (isIndex!S)
             {
-                auto next = this.select!0(slices[0]);
+                auto next = this.select!0(slice);
+            }
+            else
+            static if (is_Slice!S)
+            {
+                auto i = slice._iterator._index;
+                auto j = i + slice._lengths[0];
+                auto next = this.select!0(i, j);
             }
             else
             {
-                auto next = this.select!0(slices[0].i, slices[0].j);
+                auto next = this.select!0(slice.i, slice.j);
             }
             static if (slices.length > 1)
             {

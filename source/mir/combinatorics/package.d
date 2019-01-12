@@ -398,8 +398,8 @@ struct Permutations(T)
     {
         assert(state.length + 1 == indices.length);
         // iota
-        foreach (T i, ref index; indices)
-            index = i;
+        foreach (i, ref index; indices)
+            index = cast(T)i;
         state[] = 0;
 
         this.indices = indices;
