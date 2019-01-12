@@ -98,8 +98,8 @@ Complexity:
 Returns:
     Lazy input range.
 See_also:
-    $(SUBREF linear, linearInterpolant),
-    $(SUBREF pchip, pchipInterpolant).
+    $(SUBREF linear, linear),
+    $(SUBREF pchip, pchip).
 +/
 auto interp1(Range, Interpolant)(Range range, Interpolant interpolant, size_t interval = 0)
 {
