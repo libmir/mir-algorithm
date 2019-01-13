@@ -4341,10 +4341,9 @@ auto triplets(string type, S)(S slice, size_t n)
 ///
 version(mir_test) unittest
 {
+    import mir.ndslice.topology: triplets, member, iota;
+
     auto a = [4, 5, 2, 8];
-    import mir.ndslice.traits;
-    alias E = TripletIterator!(int*);
-    static assert(isIterator!E);
     auto h = a.triplets;
 
     assert(h[1].center == 5);
@@ -4354,13 +4353,9 @@ version(mir_test) unittest
     h[1].center = 9;
     assert(a[1] == 9);
 
-    import mir.ndslice.topology: member;
     assert(h.member!"center" == a);
 
-
     // `triplets` topology can be used with iota to index a slice
-    import mir.ndslice.topology: iota;
-
     auto s = a.sliced;
     auto w = s.length.iota.triplets[1];
 
