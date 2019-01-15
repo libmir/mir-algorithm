@@ -1,7 +1,7 @@
 name "mir-algorithm"
 description "Mir Algorithm Collection"
 
-authors "Ilya Yaroshenko" "Sebastian Wilzbach" "John Michael Hall"
+authors "Ilya Yaroshenko" "Sebastian Wilzbach" "Andrei Alexandrescu and Phobos Team (original Phobos code)" "John Michael Hall"
 copyright "Copyright © 2016 - 2018, Ilya Yaroshenko; see also information per file."
 license "BSL-1.0"
 

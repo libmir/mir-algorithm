@@ -34,9 +34,9 @@ Note, that string lambdas in Mir are `auto ref` functions.
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-2018, Ilya Yaroshenko, 2018-, Mir community
-Authors:   Ilya Yaroshenko, John Michael Hall
+Authors:   Ilya Yaroshenko, John Michael Hall, Andrei Alexandrescu (original Phobos code)
 
-Copyright: Andrei Alexandrescu 2008-.
+Copyright: Andrei Alexandrescu 2008-. Ilya Yaroshenko 2017-
 License: $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: , Ilya Yaroshenko (Mir & BetterC rework).
 Source: $(PHOBOSSRC std/algorithm/_iteration.d)
