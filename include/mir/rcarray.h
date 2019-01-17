@@ -13,7 +13,7 @@
 template <typename T>
 struct mir_rci;
 
-template <typename T>
+template <typename T, bool cppSupport = true>
 struct mir_rcarray
 {
 private:

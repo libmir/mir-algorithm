@@ -10,35 +10,31 @@ version (D_Exceptions)
     static immutable allocationExc = new Exception(allocationExcMsg);
 }
 
-private template preferCppLinkage(T)
+private template StripPointers(T)
 {
-    static if (is(T == immutable) || is(T == shared))
-        enum preferCppLinkage = false;
+    static if (is(T : U*, U))
+        alias StripPointers = .StripPointers!U;
     else
-    static if (is(T == class) || is(T == struct) || is(T == union) || is(T == interface))
-        enum preferCppLinkage = __traits(getLinkage, T) == "C++";
-    else
-    static if (__traits(isScalar, T))
-        static if (is(T : U*, U))
-            enum preferCppLinkage = .preferCppLinkage!U;
-        else
-            enum preferCppLinkage = true;
-    else
-        enum preferCppLinkage = false;
+        alias StripPointers = T;
 }
 
-version(mir_test)
-unittest
-{
-    struct S {}
-    extern(C++) struct C {}
-    static assert (preferCppLinkage!double);
-    static assert (preferCppLinkage!(const double));
-    static assert (!preferCppLinkage!(immutable double));
-    static assert (!preferCppLinkage!S);
-    static assert (preferCppLinkage!C);
-    static assert (preferCppLinkage!(const C));
-    static assert (!preferCppLinkage!(immutable C));
+private enum isImmutableOrShared(T) = is(T == immutable) || is(T == shared);
+
+private template cppSupport(T) {
+
+    static if (__VERSION__ < 2082)
+        enum cppSupport = false;
+    else
+    {
+        alias S = StripPointers!T;
+        static if (isImmutableOrShared!S)
+            enum cppSupport = false;
+        else
+        static if (is(T == class) || is(T == struct) || is(T == union) || is(T == interface))
+            enum cppSupport = __traits(getLinkage, T) == "C++";
+        else
+            enum cppSupport = __traits(isScalar, T);
+    }
 }
 
 /++
@@ -48,15 +44,10 @@ Thread safe reference counting array.
 
 The implementation never adds roots into the GC.
 +/
-struct mir_rcarray(T)
+struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
 {
     import std.traits;
     import mir.ndslice.slice: Slice, SliceKind, Contiguous;
-
-    static if (__VERSION__ < 2082)
-        enum cppSupport = false;
-    else
-        enum cppSupport = preferCppLinkage!T;
 
     private struct Context
     {
