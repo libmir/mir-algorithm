@@ -61,5 +61,10 @@ int main()
         assert(elem == 0);
     }
 
+    a = a;
+    al = a;
+    b = b;
+    c = c;
+
     return 0;
 }
