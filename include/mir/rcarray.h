@@ -24,6 +24,8 @@ public:
 
     ~mir_rcarray();
     mir_rcarray(typename std::conditional<std::is_const<T>::value, const mir_rcarray, mir_rcarray>::type& rhs);
+    // mir_rcarray& operator=(typename std::conditional<std::is_const<T>::value, const mir_rcarray, mir_rcarray>::type rhs);
+    mir_rcarray& operator=(typename std::conditional<std::is_const<T>::value, const mir_rcarray, mir_rcarray>::type& rhs);
     bool initialize(size_t length, unsigned int alignment, bool deallocate, bool initialize);
 
     mir_slice<mir_rci<T>> asSlice();

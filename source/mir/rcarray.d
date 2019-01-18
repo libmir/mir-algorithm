@@ -70,10 +70,11 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         return *cast(inout(Context*)*)&_payload;
     }
 
+    pragma(inline, false)
     private void dec()() scope nothrow @nogc @safe
     {
         import core.atomic: atomicOp;
-        if (_context !is null) with(*_context)
+        with(*_context)
         {
             if (counter)
             {
@@ -114,10 +115,10 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     {
     extern(C++):
         ///
-        pragma(inline, false)
         ~this() nothrow @nogc @safe
         {
-            dec();
+            if (_context !is null)
+                dec();
         }
 
         /// Extern constructor
@@ -128,21 +129,70 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
 
         static if (is(T == const))
-        /// Defined if T is const
-        pragma(inline, false)
-        this(ref const typeof(this) rhs) @trusted pure nothrow @nogc
         {
-            this._context = cast(Context*) rhs._context;
-            this.__xpostblit;
+            /// Defined if T is const
+            this(ref const typeof(this) rhs) @trusted pure nothrow @nogc
+            {
+                this._payload = cast(T*) rhs._payload;
+                this.__xpostblit;
+            }
+
+            /// ditto
+            ref opAssign(ref const typeof(this) rhs) @trusted pure nothrow @nogc
+            {
+                if (_payload != rhs._payload)
+                {
+                    if (_payload) dec();
+                    _payload = cast(T*) rhs._payload;
+                    this.__xpostblit;
+                }
+                return this;
+            }
+
+            /// ditto
+            ref opAssign(const typeof(this) rhs) @trusted pure nothrow @nogc
+            {
+                if (_payload != rhs._payload)
+                {
+                    if (_payload) dec();
+                    _payload = cast(T*) rhs._payload;
+                    *cast(T**)&rhs._payload = null;
+                }
+                return this;
+            }
         }
 
         static if (!is(T == const))
-        /// Defined if T isn't const
-        pragma(inline, false)
-        this(ref typeof(this) rhs) pure nothrow @nogc
         {
-            this._context = rhs._context;
-            this.__xpostblit;
+            /// Defined if T isn't const
+            this(ref typeof(this) rhs) pure nothrow @nogc
+            {
+                this._payload = rhs._payload;
+                this.__xpostblit;
+            }
+
+            /// ditto
+            ref opAssign(ref typeof(this) rhs) pure nothrow @nogc
+            {
+                if (_payload != rhs._payload)
+                {
+                    if (_payload) dec();
+                    _payload = rhs._payload;
+                    this.__xpostblit;
+                }
+                return this;
+            }
+
+            ref opAssign(typeof(this) rhs) pure nothrow @nogc
+            {
+                if (_payload != rhs._payload)
+                {
+                    if (_payload) dec();
+                    _payload = rhs._payload;
+                    rhs._payload = null;
+                }
+                return this;
+            }
         }
 
         ///
@@ -154,10 +204,10 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     }
     else
     {
-        pragma(inline, false)
         ~this() nothrow @nogc @safe
         {
-            dec();
+            if (_context !is null)
+                dec();
         }
         
         /// Extern constructor
