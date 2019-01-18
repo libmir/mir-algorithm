@@ -165,14 +165,14 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         static if (!is(T == const))
         {
             /// Defined if T isn't const
-            this(ref typeof(this) rhs) pure nothrow @nogc
+            this(ref typeof(this) rhs) @trusted pure nothrow @nogc
             {
                 this._payload = rhs._payload;
                 this.__xpostblit;
             }
 
             /// ditto
-            ref opAssign(ref typeof(this) rhs) pure nothrow @nogc
+            ref opAssign(ref typeof(this) rhs) @trusted pure nothrow @nogc
             {
                 if (_payload != rhs._payload)
                 {
@@ -183,7 +183,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
                 return this;
             }
 
-            ref opAssign(typeof(this) rhs) pure nothrow @nogc
+            ref opAssign(typeof(this) rhs) @trusted pure nothrow @nogc
             {
                 if (_payload != rhs._payload)
                 {
