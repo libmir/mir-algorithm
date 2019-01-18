@@ -288,7 +288,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     /++
     Contructor is defined if `hasIndirections!T == true`.
     +/
-    static typeof(this) create(V[] values...) @safe @nogc
+    static typeof(this) create(V[] values...) @nogc
     {
         auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
