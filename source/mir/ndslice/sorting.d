@@ -231,12 +231,12 @@ pure version(mir_test) unittest
 {
     import mir.series;
 
-    auto index = [1, 2, 4, 3].sliced;
-    auto data = [2.1, 3.4, 5.6, 7.8].sliced;
+    auto index = [4, 2, 1, 3, 0].sliced;
+    auto data = [5.6, 3.4, 2.1, 7.8, 0.1].sliced;
     auto series = index.series(data);
     series.sort;
-    assert(series.index == [1, 2, 3, 4]);
-    assert(series.data == [2.1, 3.4, 7.8, 5.6]);
+    assert(series.index == [0, 1, 2, 3, 4]);
+    assert(series.data == [0.1, 2.1, 3.4, 7.8, 5.6]);
     /// initial index and data are the same
     assert(index.iterator is series.index.iterator);
     assert(data.iterator is series.data.iterator);
