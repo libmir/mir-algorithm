@@ -7,7 +7,8 @@ private static immutable allocationExcMsg = "mir_rcarray: out of memory arror.";
 
 version (D_Exceptions)
 {
-    static immutable allocationExc = new Exception(allocationExcMsg);
+    import core.exception: OutOfMemoryError;
+    static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
 }
 
 private template StripPointers(T)
@@ -252,7 +253,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         {
             version(D_Exceptions)
             {
-                throw allocationExc;
+                throw allocationError;
             }
             else
             {
@@ -434,7 +435,7 @@ alias RCArray = mir_rcarray;
 
 ///
 version(mir_test)
-@safe pure @nogc
+@safe pure @nogc nothrow
 unittest
 {
     auto a = RCArray!double(10);
@@ -462,7 +463,7 @@ unittest
 
 ///
 version(mir_test)
-@safe pure @nogc
+@safe pure @nogc nothrow
 unittest
 {
     auto a = RCArray!double.create(1.0, 2, 5, 3);
