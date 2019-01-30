@@ -609,7 +609,7 @@ Slice!(Canonical, N, Iterator)
 Schema
 
 -------
-Slice!(Universal, N, Iterator)
+Slice!(Canonical, N, Iterator)
     size_t[N]       _lengths
     sizediff_t[N-1] _strides
     Iterator        _iterator
@@ -626,7 +626,7 @@ Slice!(N, Iterator)
 Schema
 
 -------
-Slice!(Universal, N, Iterator)
+Slice!(Contiguous, N, Iterator)
     size_t[N]     _lengths
     sizediff_t[0] _strides
     Iterator      _iterator
