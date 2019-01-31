@@ -540,7 +540,7 @@ whileloop:
                         p1 = a;
                         p2 = b;
                     }
-                    c = ieeeMean(a, b);
+                    c = ieeeMean(p1, p2);
                 }
             }
             else
