@@ -66,9 +66,9 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
 
     ///
     private T* _payload;
-    private ref inout(Context*) _context() inout scope return pure nothrow @nogc @trusted @property
+    private inout(Context)* _context() inout scope return pure nothrow @nogc @trusted @property
     {
-        return *cast(inout(Context*)*)&_payload;
+        return cast(inout(Context)*)_payload;
     }
 
     pragma(inline, false)
@@ -337,23 +337,23 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     {
         if (length == 0)
         {
-            _context = null;
+            _payload = null;
             return true;
         }
         import mir.internal.memory: malloc, alignedAllocate;
         if (alignment <= 16)
         {
-            _context = cast(Context*) malloc(length * T.sizeof + Context.sizeof);
-            *_context = Context.init;
-            if (_context is null)
+            _payload = cast(T*) malloc(length * T.sizeof + Context.sizeof);
+            if (_payload is null)
                 return false;
+            *_context = Context.init;
         }
         else 
         {
-            _context = cast(Context*) alignedAllocate(length * T.sizeof + Context.sizeof, alignment);
-            *_context = Context.init;
-            if (_context is null)
+            _payload = cast(T*) alignedAllocate(length * T.sizeof + Context.sizeof, alignment);
+            if (_payload is null)
                 return false;
+            *_context = Context.init;
             version(Posix) {} // common free
             else
             {
