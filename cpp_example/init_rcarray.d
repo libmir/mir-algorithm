@@ -17,4 +17,11 @@ extern(C++, Space)
         foreach(i; 0 .. a.length / 2)
             swap(a[i], a[$ - 1 - i]);
     }
+
+    void reverseRcSlice(ref Slice!(RCI!int) a)
+    {
+        import mir.utility: swap;
+        foreach(i; 0 .. a.length / 2)
+            swap(a[i], a[$ - 1 - i]);
+    }
 }

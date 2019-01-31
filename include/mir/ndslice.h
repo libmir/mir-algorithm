@@ -46,9 +46,81 @@ template <
 >
 struct mir_slice
 {
-    mir_size_t _lengths[N];
-    mir_ptrdiff_t _strides[kind == mir_slice_kind::universal ? N : kind == mir_slice_kind::canonical ? N - 1 : 0];
+    mir_size_t _lengths[N] = {};
+    mir_ptrdiff_t _strides[kind == mir_slice_kind::universal ? N : kind == mir_slice_kind::canonical ? N - 1 : 0] = {};
     Iterator _iterator;
+
+    size_t size() const noexcept
+    {
+        return _lengths[0];
+    }
+
+    size_t empty() const noexcept
+    {
+        return _lengths[0] == 0;
+    }
+
+    auto&& at(mir_size_t index) noexcept
+    {
+        static_assert(N == 1, "The method is defined only for 1-dimensional slice.");
+        assert(index < this->size());
+        auto strides = (const mir_ptrdiff_t*)_strides;
+        return _iterator[sizeof(_strides) == 0 ? index : index * strides[0]];
+    }
+
+    auto&& at(mir_size_t index) const noexcept
+    {
+        static_assert(N == 1, "The method is defined only for 1-dimensional slice.");
+        assert(index < this->size());
+        auto strides = (const mir_ptrdiff_t*)_strides;
+        return _iterator[sizeof(_strides) == 0 ? index : index * strides[0]];
+    }
+
+    auto&& operator[](mir_size_t index) noexcept
+    {
+        return at(index);
+    }
+
+    auto&& operator[](mir_size_t index) const noexcept
+    {
+        return at(index);
+    }
+
+    Iterator begin() noexcept
+    {
+        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
+        return _iterator;
+    }
+
+    auto begin() const noexcept
+    {
+        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
+        return _iterator;
+    }
+
+    auto cbegin() const noexcept
+    {
+        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
+        return _iterator;
+    }
+
+    Iterator end() noexcept
+    {
+        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
+        return _iterator + _lengths[0];
+    }
+
+    auto end() const noexcept
+    {
+        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
+        return _iterator + _lengths[0];
+    }
+
+    auto cend() const noexcept
+    {
+        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
+        return _iterator + _lengths[0];
+    }
 };
 
 #endif

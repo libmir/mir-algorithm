@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include "mir/series.h"
 #include "mir/rcarray.h"
 #include "mir/ndslice.h"
 
@@ -12,6 +13,8 @@ namespace Space
     void initWithIota(mir_rcarray<double> &a);
     void reverseRcSlice(mir_slice<mir_rci<double>>& a);
 }
+
+void testSeries();
 
 int main()
 {
@@ -47,6 +50,12 @@ int main()
     assert(a[1] == 1);
     assert(a[2] == 0);
 
+    assert(c[0] == 2);
+    assert(c[1] == 1);
+    assert(c[2] == 0);
+
+    assert(&c[1] == &a[1]);
+
     assert(d._iterator._iterator == a.data());
 
     // check foreach loops for rcarray
@@ -61,10 +70,47 @@ int main()
         assert(elem == 0);
     }
 
+    for (auto& elem : c)
+    {
+        elem = 1;
+    }
+
+    for (auto& elem : c)
+    {
+        assert(elem == 1);
+    }
+
     a = a;
     al = a;
     b = b;
     c = c;
 
+    testSeries();
+
     return 0;
+}
+
+void testSeries()
+{
+    mir_rcarray<int> index = {1, 2, 3};
+    mir_rcarray<double> data = {4.0, 5, 6};
+
+    auto series = mir_make_series(index.asSlice(), data.asSlice());
+
+    assert(series[1].first == 2);
+    assert(series[1].second == 5);
+
+    double sum = 0;
+    for (auto&& [key, value] : series)
+    {
+        sum += value;
+    }
+
+    assert(sum == 15);
+
+    series.index()[2] = 4;
+    series.data()[2] = 10;
+
+    assert(series[2].first == 4);
+    assert(series[2].second == 10);
 }
