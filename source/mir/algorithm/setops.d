@@ -64,7 +64,7 @@ struct MultiwayMerge(alias less, RangeOfRanges)
     BinaryHeap!(compFront, RangeOfRanges) _heap;
 
     ///
-    this(RangeOfRanges ror) @nogc
+    this(RangeOfRanges ror)
     {
         import std.algorithm.mutation : remove, SwapStrategy;
 
