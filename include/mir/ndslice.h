@@ -46,34 +46,78 @@ template <
 >
 struct mir_slice
 {
-    mir_size_t _lengths[N] = {};
-    mir_ptrdiff_t _strides[kind == mir_slice_kind::universal ? N : kind == mir_slice_kind::canonical ? N - 1 : 0] = {};
-    Iterator _iterator;
+    mir_size_t _lengths[0] = {};
+    mir_ptrdiff_t  _strides[kind == mir_slice_kind::universal ? N : N - 1] = {};
+    Iterator _iterator = {};
 
+    template <unsigned int d = 0>
     size_t size() const noexcept
     {
-        return _lengths[0];
+        return _lengths[d];
     }
 
-    size_t empty() const noexcept
+    template <unsigned int d = 0>
+    bool empty() const noexcept
     {
-        return _lengths[0] == 0;
+        return _lengths[d] == 0;
+    }
+};
+
+template <
+    typename Iterator,
+    mir_size_t N
+>
+struct mir_slice<Iterator, N, mir_slice_kind::contiguous>
+{
+    mir_size_t _lengths[N] = {};
+    static const mir_ptrdiff_t _strides[0];
+    Iterator _iterator = {};
+
+    template <unsigned int d = 0>
+    size_t size() const noexcept
+    {
+        return _lengths[d];
+    }
+
+    template <unsigned int d = 0>
+    bool empty() const noexcept
+    {
+        return _lengths[d] == 0;
+    }
+};
+
+template <
+    typename Iterator
+>
+struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
+{
+    mir_size_t _lengths[1] = {};
+    static const mir_ptrdiff_t _strides[0];
+    Iterator _iterator = {};
+
+    template <unsigned int d = 0>
+    size_t size() const noexcept
+    {
+        return _lengths[d];
+    }
+
+    template <unsigned int d = 0>
+    bool empty() const noexcept
+    {
+        return _lengths[d] == 0;
     }
 
     auto&& at(mir_size_t index) noexcept
     {
-        static_assert(N == 1, "The method is defined only for 1-dimensional slice.");
+
         assert(index < this->size());
-        auto strides = (const mir_ptrdiff_t*)_strides;
-        return _iterator[sizeof(_strides) == 0 ? index : index * strides[0]];
+        return _iterator[index];
     }
 
     auto&& at(mir_size_t index) const noexcept
     {
-        static_assert(N == 1, "The method is defined only for 1-dimensional slice.");
         assert(index < this->size());
-        auto strides = (const mir_ptrdiff_t*)_strides;
-        return _iterator[sizeof(_strides) == 0 ? index : index * strides[0]];
+        return _iterator[index];
     }
 
     auto&& operator[](mir_size_t index) noexcept
@@ -88,38 +132,67 @@ struct mir_slice
 
     Iterator begin() noexcept
     {
-        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
-        return _iterator;
-    }
-
-    auto begin() const noexcept
-    {
-        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
         return _iterator;
     }
 
     auto cbegin() const noexcept
     {
-        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
         return _iterator;
     }
 
     Iterator end() noexcept
     {
-        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
-        return _iterator + _lengths[0];
-    }
-
-    auto end() const noexcept
-    {
-        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
         return _iterator + _lengths[0];
     }
 
     auto cend() const noexcept
     {
-        static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
         return _iterator + _lengths[0];
+    }
+};
+
+template <
+    typename Iterator
+>
+struct mir_slice<Iterator, 1, mir_slice_kind::universal>
+{
+    mir_size_t _lengths[1] = {};
+    mir_ptrdiff_t _strides[1] = {};
+    Iterator _iterator = {};
+
+    template <unsigned int d = 0>
+    size_t size() const noexcept
+    {
+        return _lengths[d];
+    }
+
+    template <unsigned int d = 0>
+    bool empty() const noexcept
+    {
+        return _lengths[d] == 0;
+    }
+
+    auto&& at(mir_size_t index) noexcept
+    {
+
+        assert(index < this->size());
+        return _iterator[index * _strides[0]];
+    }
+
+    auto&& at(mir_size_t index) const noexcept
+    {
+        assert(index < this->size());
+        return _iterator[index * _strides[0]];
+    }
+
+    auto&& operator[](mir_size_t index) noexcept
+    {
+        return at(index);
+    }
+
+    auto&& operator[](mir_size_t index) const noexcept
+    {
+        return at(index);
     }
 };
 

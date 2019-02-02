@@ -37,7 +37,7 @@ struct mir_series
 
     mir_slice<IndexIterator> index() noexcept
     {
-        return {{_data._lengths[0]}, {}, _index};
+        return {{_data._lengths[0]}, _index};
     }
 
     size_t size() const noexcept
