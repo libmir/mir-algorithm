@@ -271,9 +271,9 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         private alias V = T;
 
     ///
-    static typeof(this) create(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) values)
+    static typeof(this) create(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) values, uint alignment = T.alignof, bool deallocate = true)
     {
-        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateDestructor!T);
+        auto ret = typeof(this)(values.length, alignment, deallocate, hasElaborateDestructor!T);
         static if (kind == Contiguous && is(Iterator : V*))
             return create(values.field);
         else
@@ -289,9 +289,16 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     /++
     Contructor is defined if `hasIndirections!T == true`.
     +/
-    static typeof(this) create(V[] values...) @nogc
+    static typeof(this) create(scope V[] values...) @nogc
     {
-        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateDestructor!T);
+        return create(values, T.alignof, true);
+    }
+
+    static if (hasIndirections!T)
+    /// ditto
+    static typeof(this) create(V[] values, uint alignment, bool deallocate = true) @nogc
+    {
+        auto ret = typeof(this)(values.length, alignment, deallocate, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -315,7 +322,14 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     +/
     static typeof(this) create(scope V[] values...) @nogc
     {
-        auto ret = typeof(this)(values.length, T.alignof, true, hasElaborateDestructor!T);
+        return create(values, T.alignof, true);
+    }
+
+    static if (!hasIndirections!T)
+    /// ditto
+    static typeof(this) create(scope V[] values, uint alignment, bool deallocate = true) @nogc
+    {
+        auto ret = typeof(this)(values.length, alignment, deallocate, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -358,12 +372,12 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
             else
             {
                 import mir.internal.memory: alignedFree;
-                static bool feeFun(void[] p)
+                static bool freeFun(void[] p)
                 {
                     alignedFree(p.ptr);
                     return true;
                 }
-                _context._function = &feeFun;
+                _context._function = &freeFun;
             }
         }
         
@@ -418,7 +432,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     }
 
     ///
-    mir_rcarray!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
+    mir_rcarray!(const T, cppSupport) lightConst()() scope return const @nogc nothrow @trusted @property
     { return cast(typeof(return)) this; }
 
     mir_rcarray!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property

@@ -738,7 +738,7 @@ private enum map_primitives = q{
             return _fun(*_iterator);
     }
 
-    auto ref opIndex()(ptrdiff_t index) scope
+    auto ref opIndex(ptrdiff_t index) scope
     {
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
