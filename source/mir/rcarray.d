@@ -289,7 +289,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     /++
     Contructor is defined if `hasIndirections!T == true`.
     +/
-    static typeof(this) create(scope V[] values...) @nogc
+    static typeof(this) create(V[] values...) @nogc
     {
         return create(values, T.alignof, true);
     }
@@ -316,18 +316,18 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         return ret;
     }
 
-    static if (!hasIndirections!T)
+    static if (!hasIndirections!T) // TODO: mark argument as scope (future!)
     /++
     Contructor is defined if `hasIndirections!T == false`.
     +/
-    static typeof(this) create(scope V[] values...) @nogc
+    static typeof(this) create(V[] values...) @nogc
     {
         return create(values, T.alignof, true);
     }
 
-    static if (!hasIndirections!T)
+    static if (!hasIndirections!T) // TODO: mark argument as scope (future!)
     /// ditto
-    static typeof(this) create(scope V[] values, uint alignment, bool deallocate = true) @nogc
+    static typeof(this) create(V[] values, uint alignment, bool deallocate = true) @nogc
     {
         auto ret = typeof(this)(values.length, alignment, deallocate, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
