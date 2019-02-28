@@ -319,9 +319,10 @@ Params:
 Returns:
     1-dimensional slice
 +/
-auto sliced(T)(T[] array)
+Slice!(T*) sliced(T)(T[] array) @trusted
 {
-    return .sliced(array, [array.length]);
+    version(LDC) pragma(inline, true);
+    return Slice!(T*)([array.length], array.ptr);
 }
 
 /// Creates a slice from an array.
