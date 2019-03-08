@@ -625,7 +625,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (!is(Value : const(Exception)))
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        return idx < _data._lengths[0] && __index[idx] == key ? _data[idx] : _default;
+        return idx < _data._lengths[0] && _index[idx] == key ? _data[idx] : _default;
     }
 
     /// ditto
