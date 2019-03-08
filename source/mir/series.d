@@ -492,7 +492,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     This and r series are assumed to be sorted.
 
     Params:
-        r = rvalue index-series
+        rSeries = rvalue index-series
     +/
     void opIndexOpAssign(string op, IndexIterator_, Iterator_, size_t N_, SliceKind kind_)
         (auto ref Series!(IndexIterator_, Iterator_, N_, kind_) rSeries)
