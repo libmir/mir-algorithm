@@ -139,7 +139,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     auto data = slice!double([index.length, 2], 0); // initialized to 0 value
     auto series = index.series(data);
 
-    series[0 .. $, 0][] = series0; // fill first column
+    series[0 .. $, 0][].opIndexAssign(series0); // fill first column
     series[0 .. $, 1][] = series1; // fill second column
 
     assert(data == [
@@ -148,6 +148,40 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
         [3,  0],
         [4,  0],
         [0, 50]]);
+}
+
+///
+unittest{
+    double[int] map;
+    map[1] = 4.0;
+    map[2] = 5.0;
+    map[4] = 6.0;
+    map[5] = 10.0;
+    map[10] = 11.0;
+
+    const series = .series(map);
+    
+    double value;
+    int key;
+    assert(series.tryGet(2, value) && value == 5.0);
+    assert(!series.tryGet(8, value));
+
+    assert(series.tryGetNext(2, value) && value == 5.0);
+    assert(series.tryGetPrev(2, value) && value == 5.0);
+    assert(series.tryGetNext(8, value) && value == 11.0);
+    assert(series.tryGetPrev(8, value) && value == 10.0);
+    assert(!series.tryGetFirst(8, 9, value));
+    assert(series.tryGetFirst(2, 10, value) && value == 5.0);
+    assert(series.tryGetLast(2, 10, value) && value == 11.0);
+    assert(series.tryGetLast(2, 8, value) && value == 10.0);
+
+    key = 2; assert(series.tryGetNextUpdateKey(key, value) && key == 2 && value == 5.0);
+    key = 2; assert(series.tryGetPrevUpdateKey(key, value) && key == 2 && value == 5.0);
+    key = 8; assert(series.tryGetNextUpdateKey(key, value) && key == 10 && value == 11.0);
+    key = 8; assert(series.tryGetPrevUpdateKey(key, value) && key == 5 && value == 10.0);
+    key = 2; assert(series.tryGetFirstUpdateLower(key, 10, value) && key == 2 && value == 5.0);
+    key = 10; assert(series.tryGetLastUpdateKey(2, key, value) && key == 10 && value == 11.0);
+    key = 8; assert(series.tryGetLastUpdateKey(2, key, value) && key == 5 && value == 10.0);
 }
 
 import mir.ndslice.slice;
@@ -286,7 +320,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     bool opEquals(RIndexIterator, RIterator, size_t RN, SliceKind rkind, )(Series!(RIndexIterator, RIterator, RN, rkind) rhs) const
     {
-        return this.index == rhs.index && this.data == rhs.data;
+        return this.lightScopeIndex == rhs.lightScopeIndex && this._data.lightScope == rhs._data.lightScope;
     }
 
     /++
@@ -310,6 +344,21 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     auto index()() @property @trusted immutable
     {
         return _index.lightImmutable.sliced(_data._lengths[0]);
+    }
+
+    private auto lightScopeIndex()() @property @trusted
+    {
+        return .lightScope(_index).sliced(_data._lengths[0]);
+    }
+
+    private auto lightScopeIndex()() @property @trusted const
+    {
+        return .lightScope(_index).sliced(_data._lengths[0]);
+    }
+
+    private auto lightScopeIndex()() @property @trusted immutable
+    {
+        return .lightScope(_index).sliced(_data._lengths[0]);
     }
 
     /++
@@ -446,21 +495,22 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         r = rvalue index-series
     +/
     void opIndexOpAssign(string op, IndexIterator_, Iterator_, size_t N_, SliceKind kind_)
-        (Series!(IndexIterator_, Iterator_, N_, kind_) r)
+        (auto ref Series!(IndexIterator_, Iterator_, N_, kind_) rSeries)
     {
-        auto l = this;
+        auto l = this.lightScope;
+        auto r = rSeries.lightScope;
         if (r.empty)
             return;
         if (l.empty)
             return;
-        Unqual!(typeof(r.index.front)) rf = r.index.front;
-        Unqual!(typeof(l.index.front)) lf = l.index.front;
+        Unqual!(typeof(*r._index)) rf = *r._index;
+        Unqual!(typeof(*l._index)) lf = *l._index;
         goto Begin;
     R:
         r.popFront;
         if (r.empty)
             goto End;
-        rf = r.index.front;
+        rf = *r._index;
     Begin:
         if (lf > rf)
             goto R;
@@ -475,12 +525,12 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         r.popFront;
         if (r.empty)
             goto End;
-        rf = r.index.front;
+        rf = *r._index;
     L:
         l.popFront;
         if (l.empty)
             goto End;
-        lf = l.index.front;
+        lf = *l._index;
 
         if (lf < rf)
             goto L;
@@ -508,206 +558,206 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
 
     /++
     This function uses a search with policy sp to find the largest left subrange on which 
-    `t < moment` is true for all `t`.
+    `t < key` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
-    auto lowerBound(Index)(Index moment)
+    auto lowerBound(Index)(auto ref scope const Index key)
     {
-        return this[0 .. index.transitionIndex(moment)];
+        return this[0 .. lightScopeIndex.transitionIndex(key)];
     }
 
     /// ditto
-    auto lowerBound(Index)(Index moment) const
+    auto lowerBound(Index)(auto ref scope const Index key) const
     {
-        return this[0 .. index.transitionIndex(moment)];
+        return this[0 .. lightScopeIndex.transitionIndex(key)];
     }
 
 
     /++
     This function uses a search with policy sp to find the largest left subrange on which 
-    `t > moment` is true for all `t`.
+    `t > key` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
-    auto upperBound(Index)(Index moment)
+    auto upperBound(Index)(auto ref scope const Index key)
     {
-        return this[index.transitionIndex!"a <= b"(moment) .. $];
+        return this[lightScopeIndex.transitionIndex!"a <= b"(key) .. $];
     }
 
     /// ditto
-    auto upperBound(Index)(Index moment) const
+    auto upperBound(Index)(auto ref scope const Index key) const
     {
-        return this[index.transitionIndex!"a <= b"(moment) .. $];
+        return this[lightScopeIndex.transitionIndex!"a <= b"(key) .. $];
     }
 
     /**
     Gets data for the index.
     Params:
-        moment = index
+        key = index
         _default = default value is returned if the series does not contains the index.
     Returns:
         data that corresponds to the index or default value.
     */
-    ref get(Index, Value)(Index moment, return ref Value _default)
+    ref get(Index, Value)(auto ref scope const Index key, return ref Value _default) @trusted
         if (!is(Value : const(Exception)))
     {
-        size_t idx = index.transitionIndex(moment);
-        return idx < _data._lengths[0] && index[idx] == moment ? data[idx] : _default;
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        return idx < _data._lengths[0] && _index[idx] == key ? _data[idx] : _default;
     }
 
     /// ditto
-    ref get(Index, Value)(Index moment, return ref Value _default) const
+    ref get(Index, Value)(auto ref scope const Index key, return ref Value _default) const
         if (!is(Value : const(Exception)))
     {
-        return this[].get(moment, _default);
+        return this.lightScope.get(key, _default);
     }
 
     /// ditto
-    ref get(Index, Value)(Index moment, return ref Value _default) immutable
+    ref get(Index, Value)(auto ref scope const Index key, return ref Value _default) immutable
         if (!is(Value : const(Exception)))
     {
-        return this[].get(moment, _default);
+        return this.lightScope.get(key, _default);
     }
 
-    auto get(Index, Value)(Index moment, Value _default)
+    auto get(Index, Value)(auto ref scope const Index key, Value _default) @trusted
         if (!is(Value : const(Exception)))
     {
-        size_t idx = index.transitionIndex(moment);
-        return idx < _data._lengths[0] && index[idx] == moment ? data[idx] : _default;
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        return idx < _data._lengths[0] && __index[idx] == key ? _data[idx] : _default;
     }
 
     /// ditto
-    auto get(Index, Value)(Index moment, Value _default) const
+    auto get(Index, Value)(auto ref scope const Index key, Value _default) const
         if (!is(Value : const(Exception)))
     {
         import mir.functional: forward;
-        return this[].get(moment, forward!_default);
+        return this.lightScope.get(key, forward!_default);
     }
 
     /// ditto
-    auto get(Index, Value)(Index moment, Value _default) immutable
+    auto get(Index, Value)(auto ref scope const Index key, Value _default) immutable
         if (!is(Value : const(Exception)))
     {
         import mir.functional: forward;
-        return this[].get(moment, forward!_default);
+        return this.lightScope.get(key, forward!_default);
     }
 
     /**
     Gets data for the index.
     Params:
-        moment = index
+        key = index
         exc = (lazy, optional) exception to throw if the series does not contains the index.
     Returns: data that corresponds to the index.
     Throws:
         Exception if the series does not contains the index.
     See_also: $(LREF Series.getVerbose), $(LREF Series.tryGet)
     */
-    auto ref get(Index)(Index moment)
+    auto ref get(Index)(auto ref scope const Index key)
     {
-        return this.get(moment, defaultExc!());
+        return this.get(key, defaultExc!());
     }
 
     /// ditto
-    auto ref get(Index)(Index moment, lazy const Exception exc)
+    auto ref get(Index)(auto ref scope const Index key, lazy const Exception exc) @trusted
     {
-        size_t idx = index.transitionIndex(moment);
-        if (idx < _data._lengths[0] && index[idx] == moment)
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        if (idx < _data._lengths[0] && _index[idx] == key)
         {
-            return data[idx];
+            return _data[idx];
         }
         throw exc;
     }
 
     /// ditto
-    auto ref get(Index)(Index moment) const
+    auto ref get(Index)(auto ref scope const Index key) const
     {
-        return this[].get(moment);
+        return this.lightScope.get(key);
     }
 
     /// ditto
-    auto ref get(Index)(Index moment, lazy const Exception exc) const
+    auto ref get(Index)(auto ref scope const Index key, lazy const Exception exc) const
     {
-        return this[].get(moment, exc);
+        return this.lightScope.get(key, exc);
     }
 
 
     /// ditto
-    auto ref get(Index)(Index moment) immutable
+    auto ref get(Index)(auto ref scope const Index key) immutable
     {
-        return this[].get(moment);
+        return this.lightScope.get(key);
     }
 
     /// ditto
-    auto ref get(Index)(Index moment, lazy const Exception exc) immutable
+    auto ref get(Index)(auto ref scope const Index key, lazy const Exception exc) immutable
     {
-        return this[].get(moment, exc);
+        return this.lightScope.get(key, exc);
     }
 
     /**
     Gets data for the index (verbose exception).
     Params:
-        moment = index
+        key = index
     Returns: data that corresponds to the index.
     Throws:
         Detailed exception if the series does not contains the index.
     See_also: $(LREF Series.get), $(LREF Series.tryGet)
     */
-    auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__)
+    auto ref getVerbose(Index)(auto ref scope const Index key, string file = __FILE__, int line = __LINE__)
     {
         import std.format: format;
-        return this.get(moment, new Exception(format("%s %s key", defaultMsg!(), moment), file, line));
+        return this.get(key, new Exception(format("%s %s key", defaultMsg!(), key), file, line));
     }
 
     /// ditto
-    auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__) const
+    auto ref getVerbose(Index)(auto ref scope const Index key, string file = __FILE__, int line = __LINE__) const
     {
-        return this[].getVerbose(moment, file, line);
+        return this.lightScope.getVerbose(key, file, line);
     }
 
     /// ditto
-    auto ref getVerbose(Index)(Index moment, string file = __FILE__, int line = __LINE__) immutable
+    auto ref getVerbose(Index)(auto ref scope const Index key, string file = __FILE__, int line = __LINE__) immutable
     {
-        return this[].getVerbose(moment, file, line);
+        return this.lightScope.getVerbose(key, file, line);
     }
 
     /**
     Gets data for the index (extra verbose exception).
     Params:
-        moment = index
+        key = index
     Returns: data that corresponds to the index.
     Throws:
         Detailed exception if the series does not contains the index.
     See_also: $(LREF Series.get), $(LREF Series.tryGet)
     */
-    auto ref getExtraVerbose(Index)(Index moment, string exceptionInto, string file = __FILE__, int line = __LINE__)
+    auto ref getExtraVerbose(Index)(auto ref scope const Index key, string exceptionInto, string file = __FILE__, int line = __LINE__)
     {
         import std.format: format;
-        return this.get(moment, new Exception(format("%s. %s %s key", exceptionInto, defaultMsg!(), moment), file, line));
+        return this.get(key, new Exception(format("%s. %s %s key", exceptionInto, defaultMsg!(), key), file, line));
     }
 
     /// ditto
-    auto ref getExtraVerbose(Index)(Index moment, string exceptionInto, string file = __FILE__, int line = __LINE__) const
+    auto ref getExtraVerbose(Index)(auto ref scope const Index key, string exceptionInto, string file = __FILE__, int line = __LINE__) const
     {
-        return this[].getExtraVerbose(moment, exceptionInto, file, line);
+        return this.lightScope.getExtraVerbose(key, exceptionInto, file, line);
     }
 
     /// ditto
-    auto ref getExtraVerbose(Index)(Index moment, string exceptionInto, string file = __FILE__, int line = __LINE__) immutable
+    auto ref getExtraVerbose(Index)(auto ref scope const Index key, string exceptionInto, string file = __FILE__, int line = __LINE__) immutable
     {
-        return this[].getExtraVerbose(moment, exceptionInto, file, line);
+        return this.lightScope.getExtraVerbose(key, exceptionInto, file, line);
     }
 
     ///
-    bool contains(Index)(Index moment) const
+    bool contains(Index)(auto ref scope const Index key) const @trusted
     {
-        size_t idx = index.transitionIndex(moment);
-        return idx < _data._lengths[0] && index[idx] == moment;
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        return idx < _data._lengths[0] && _index[idx] == key;
     }
 
     ///
-    auto opBinaryRight(string op : "in", Index)(Index moment)
+    auto opBinaryRight(string op : "in", Index)(auto ref scope const Index key) @trusted
     {
-        size_t idx = index.transitionIndex(moment);
-        bool cond = idx < _data._lengths[0] && index[idx] == moment;
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        bool cond = idx < _data._lengths[0] && _index[idx] == key;
         static if (__traits(compiles, &_data[size_t.init]))
         {
             if (cond)
@@ -721,37 +771,265 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    auto opBinaryRight(string op : "in", Index)(Index moment) const
+    auto opBinaryRight(string op : "in", Index)(auto ref scope const Index key) const
     {
-        return moment in this[];
+        return key in this.lightScope;
     }
 
     /// ditto
-    auto opBinaryRight(string op : "in", Index)(Index moment) immutable
+    auto opBinaryRight(string op : "in", Index)(auto ref scope const Index key) immutable
     {
-        return moment in this[];
+        return key in this.lightScope;
     }
 
-    ///
-    bool tryGet(Index, Value)(Index moment, ref Value val)
+    /++
+    Tries to get the first value, such that `key_i == key`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGet(Index, Value)(Index key, scope ref Value val) @trusted
     {
-        size_t idx = index.transitionIndex(moment);
-        auto cond = idx < _data._lengths[0] && index[idx] == moment;
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        auto cond = idx < _data._lengths[0] && _index[idx] == key;
         if (cond)
-            val = data[idx];
+            val = _data[idx];
         return cond;
     }
 
     /// ditto
-    bool tryGet(Index, Value)(Index moment, ref Value val) const
+    bool tryGet(Index, Value)(Index key, scope ref Value val) const
     {
-        return this[].tryGet(moment, val);
+        return this.lightScope.tryGet(key, val);
     }
 
     /// ditto
-    bool tryGet(Index, Value)(Index moment, ref Value val) immutable
+    bool tryGet(Index, Value)(Index key, scope ref Value val) immutable
     {
-        return this[].tryGet(moment, val);
+        return this.lightScope.tryGet(key, val);
+    }
+
+    /++
+    Tries to get the first value, such that `key_i >= key`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetNext(Index, Value)(auto ref scope const Index key, scope ref Value val)
+    {
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        auto cond = idx < _data._lengths[0];
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetNext(Index, Value)(auto ref scope const Index key, scope ref Value val) const
+    {
+        return this.lightScope.tryGetNext(key, val);
+    }
+
+    /// ditto
+    bool tryGetNext(Index, Value)(auto ref scope const Index key, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetNext(key, val);
+    }
+
+    /++
+    Tries to get the first value, such that `key_i >= key`.
+    Updates `key` with `key_i`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetNextUpdateKey(Index, Value)(scope ref Index key, scope ref Value val) @trusted
+    {
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        auto cond = idx < _data._lengths[0];
+        if (cond)
+        {
+            key = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetNextUpdateKey(Index, Value)(scope ref Index key, scope ref Value val) const
+    {
+        return this.lightScope.tryGetNextUpdateKey(key, val);
+    }
+
+    /// ditto
+    bool tryGetNextUpdateKey(Index, Value)(scope ref Index key, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetNextUpdateKey(key, val);
+    }
+
+    /++
+    Tries to get the last value, such that `key_i <= key`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetPrev(Index, Value)(auto ref scope const Index key, scope ref Value val)
+    {
+        size_t idx = lightScopeIndex.transitionIndex!"a <= b"(key) - 1;
+        auto cond = 0 <= sizediff_t(idx);
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetPrev(Index, Value)(auto ref scope const Index key, scope ref Value val) const
+    {
+        return this.lightScope.tryGetPrev(key, val);
+    }
+
+    /// ditto
+    bool tryGetPrev(Index, Value)(auto ref scope const Index key, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetPrev(key, val);
+    }
+
+    /++
+    Tries to get the last value, such that `key_i <= key`.
+    Updates `key` with `key_i`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetPrevUpdateKey(Index, Value)(scope ref Index key, scope ref Value val) @trusted
+    {
+        size_t idx = lightScopeIndex.transitionIndex!"a <= b"(key) - 1;
+        auto cond = 0 <= sizediff_t(idx);
+        if (cond)
+        {
+            key = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetPrevUpdateKey(Index, Value)(scope ref Index key, scope ref Value val) const
+    {
+        return this.lightScope.tryGetPrevUpdateKey(key, val);
+    }
+
+    /// ditto
+    bool tryGetPrevUpdateKey(Index, Value)(scope ref Index key, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetPrevUpdateKey(key, val);
+    }
+
+    /++
+    Tries to get the first value, such that `lowerBound <= key_i <= upperBound`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetFirst(Index, Value)(auto ref scope const Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
+    {
+        size_t idx = lightScopeIndex.transitionIndex(lowerBound);
+        auto cond = idx < _data._lengths[0] && _data[idx] <= upperBound;
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetFirst(Index, Value)(Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) const
+    {
+        return this.lightScope.tryGetFirst(lowerBound, upperBound, val);
+    }
+
+    /// ditto
+    bool tryGetFirst(Index, Value)(Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetFirst(lowerBound, upperBound, val);
+    }
+
+    /++
+    Tries to get the first value, such that `lowerBound <= key_i <= upperBound`.
+    Updates `lowerBound` with `key_i`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetFirstUpdateLower(Index, Value)(ref Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
+    {
+        size_t idx = lightScopeIndex.transitionIndex(lowerBound);
+        auto cond = idx < _data._lengths[0] && _data[idx] <= upperBound;
+        if (cond)
+        {
+            lowerBound = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetFirstUpdateLower(Index, Value)(ref Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) const
+    {
+        return this.lightScope.tryGetFirstUpdateLower(lowerBound, upperBound, val);
+    }
+
+    /// ditto
+    bool tryGetFirstUpdateLower(Index, Value)(ref Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetFirstUpdateLower(lowerBound, upperBound, val);
+    }
+
+    /++
+    Tries to get the last value, such that `lowerBound <= key_i <= upperBound`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetLast(Index, Value)(Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
+    {
+        size_t idx = lightScopeIndex.transitionIndex!"a <= b"(upperBound) - 1;
+        auto cond = 0 <= sizediff_t(idx) && _data[idx] >= lowerBound;
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetLast(Index, Value)(Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) const
+    {
+        return this.lightScope.tryGetLast(lowerBound, upperBound, val);
+    }
+
+    /// ditto
+    bool tryGetLast(Index, Value)(Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetLast(lowerBound, upperBound, val);
+    }
+
+    /++
+    Tries to get the last value, such that `lowerBound <= key_i <= upperBound`.
+    Updates `upperBound` with `key_i`.
+
+    Returns: `true` on success.
+    +/
+    bool tryGetLastUpdateKey(Index, Value)(Index lowerBound, ref Index upperBound, scope ref Value val) @trusted
+    {
+        size_t idx = lightScopeIndex.transitionIndex!"a <= b"(upperBound) - 1;
+        auto cond = 0 <= sizediff_t(idx) && _data[idx] >= lowerBound;
+        if (cond)
+        {
+            upperBound = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
+    }
+
+    /// ditto
+    bool tryGetLastUpdateKey(Index, Value)(Index lowerBound, ref Index upperBound, scope ref Value val) const
+    {
+        return this.lightScope.tryGetLastUpdateKey(lowerBound, upperBound, val);
+    }
+
+    /// ditto
+    bool tryGetLastUpdateKey(Index, Value)(Index lowerBound, ref Index upperBound, scope ref Value val) immutable
+    {
+        return this.lightScope.tryGetLastUpdateKey(lowerBound, upperBound, val);
     }
 
     /++
@@ -947,7 +1225,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, RIterator, N, kind) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref scope const Series!(RIndexIterator, RIterator, N, kind) rvalue)
         if (isAssignable!(IndexIterator, LightConstOf!RIndexIterator) && isAssignable!(Iterator, LightConstOf!RIterator))
     {
         return this = rvalue[];
@@ -973,12 +1251,30 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
+    Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() @trusted scope return @property
+    {
+        return typeof(return)(lightScopeIndex, _data.lightScope);
+    }
+
+    /// ditto
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted scope return const @property
+    {
+        return typeof(return)(lightScopeIndex, _data.lightScope);
+    }
+
+    /// ditto
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted scope return immutable @property
+    {
+        return typeof(return)(lightScopeIndex, _data.lightScope);
+    }
+
+    ///
     auto lightConst()() const @property
     {
         return index.series(data);
     }
 
-    /// ditto
+    ///
     auto lightImmutable()() immutable @property
     {
         return index.series(data);
@@ -1420,18 +1716,18 @@ auto assocArray(IndexIterator, Iterator, size_t N, SliceKind kind)
 enum isSeries(U) = is(U : Series!(IndexIterator, Iterator, N, kind), IndexIterator, Iterator, size_t N, SliceKind kind);
 
 /++
-Finds an index such that `series.index[index] == moment`.
+Finds an index such that `series.index[index] == key`.
 
 Params:
     series = series
-    moment = index to find in the series
+    key = index to find in the series
 Returns:
-    `size_t.max` if the series does not contain the moment and appropriate index otherwise.
+    `size_t.max` if the series does not contain the key and appropriate index otherwise.
 +/
-size_t findIndex(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
+size_t findIndex(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, auto ref scope const Index key)
 {
-    auto idx = series.index.transitionIndex(moment);
-    if (idx < series._data._lengths[0] && series.index[idx] == moment)
+    auto idx = series.lightScopeIndex.transitionIndex(key);
+    if (idx < series._data._lengths[0] && series.index[idx] == key)
     {
         return idx;
     }
@@ -1450,19 +1746,19 @@ size_t findIndex(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Serie
 }
 
 /++
-Finds a backward index such that `series.index[$ - backward_index] == moment`.
+Finds a backward index such that `series.index[$ - backward_index] == key`.
 
 Params:
     series = series
-    moment = index moment to find in the series
+    key = index key to find in the series
 Returns:
-    `0` if the series does not contain the moment and appropriate backward index otherwise.
+    `0` if the series does not contain the key and appropriate backward index otherwise.
 +/
-size_t find(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, Index moment)
+size_t find(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, auto ref scope const Index key)
 {
-    auto idx = series.index.transitionIndex(moment);
+    auto idx = series.lightScopeIndex.transitionIndex(key);
     auto bidx = series._data._lengths[0] - idx;
-    if (bidx && series.index[idx] == moment)
+    if (bidx && series.index[idx] == key)
     {
         return bidx;
     }
@@ -2011,11 +2307,12 @@ Params:
 Returns:
     associative array 
 */
-ref V[K] insertOrAssign(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
+ref V[K] insertOrAssign(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, auto ref Series!(IndexIterator, Iterator, N, kind) series) @property
 {
-    foreach (i; 0 .. series.length)
+    auto s = series.lightScope;
+    foreach (i; 0 .. s.length)
     {
-        aa[series.index[i]] = series.data[i];
+        aa[s.index[i]] = s.data[i];
     }
     return aa;
 }
@@ -2037,13 +2334,14 @@ Params:
 Returns:
     associative array 
 */
-ref V[K] insert(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, Series!(IndexIterator, Iterator, N, kind) series) @property
+ref V[K] insert(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, auto ref Series!(IndexIterator, Iterator, N, kind) series) @property
 {
-    foreach (i; 0 .. series.length)
+    auto s = series.lightScope;
+    foreach (i; 0 .. s.length)
     {
-        if (series.index[i] in aa)
+        if (s.index[i] in aa)
             continue;
-        aa[series.index[i]] = series.data[i];
+        aa[s.index[i]] = s.data[i];
     }
     return aa;
 }

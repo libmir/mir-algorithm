@@ -482,11 +482,11 @@ template transitionIndex(alias test = "a < b")
 @optmath:
         /++
         Params:
-            slice = sorted one-dimensional slice.
+            slice = sorted one-dimensional slice or array.
             v = value to test with. It is passed to second argument.
         +/
         size_t transitionIndex(Iterator, SliceKind kind, V)
-            (scope Slice!(Iterator, 1, kind) slice, V v)
+            (auto ref scope Slice!(Iterator, 1, kind) slice, auto ref scope const V v)
         {
             size_t first = 0, count = slice.length;
             while (count > 0)
@@ -505,12 +505,8 @@ template transitionIndex(alias test = "a < b")
             return first;
         }
 
-        /++
-        Params:
-            ar = sorted array.
-            v = value to test with. It is passed to second argument.
-        +/
-        size_t transitionIndex(T, V)(scope T[] ar, V v)
+        /// ditto
+        size_t transitionIndex(T, V)(scope T[] ar, auto ref scope const V v)
         {
             return .transitionIndex!test(ar.sliced, v);
         }

@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include <map>
 #include "mir/series.h"
 #include "mir/rcarray.h"
 #include "mir/ndslice.h"
@@ -92,10 +93,14 @@ int main()
 
 void testSeries()
 {
-    mir_rcarray<int> index = {1, 2, 3};
-    mir_rcarray<double> data = {4.0, 5, 6};
+    std::map<int, double> map;
+    map[1] = 4.0;
+    map[2] = 5.0;
+    map[3] = 6.0; // index 5 replaced with index 4 below
+    map[5] = 10.0;
+    map[10] = 11.0;
 
-    auto series = mir_make_series(index.asSlice(), data.asSlice());
+    auto series = mir_make_series(map);
 
     assert(series[1].first == 2);
     assert(series[1].second == 5);
@@ -106,11 +111,35 @@ void testSeries()
         sum += value;
     }
 
-    assert(sum == 15);
+    assert(sum == 36);
 
     series.index()[2] = 4;
     series.data()[2] = 10;
 
     assert(series[2].first == 4);
     assert(series[2].second == 10);
+    
+    double value;
+    int key;
+    assert(series.try_get(2, value) && value == 5.0);
+    // printf("%ld\n", series.transition_index_less(4));
+    // printf("%ld\n", series.index()[series.transition_index_less(4)]);
+    assert(!series.try_get(8, value));
+
+    assert(series.try_get_next(2, value) && value == 5.0);
+    assert(series.try_get_prev(2, value) && value == 5.0);
+    assert(series.try_get_next(8, value) && value == 11.0);
+    assert(series.try_get_prev(8, value) && value == 10.0);
+    assert(!series.try_get_first(8, 9, value));
+    assert(series.try_get_first(2, 10, value) && value == 5.0);
+    assert(series.try_get_last(2, 10, value) && value == 11.0);
+    assert(series.try_get_last(2, 8, value) && value == 10.0);
+
+    key = 2; assert(series.try_get_next_update_key(key, value) && key == 2 && value == 5.0);
+    key = 2; assert(series.try_get_prev_update_key(key, value) && key == 2 && value == 5.0);
+    key = 8; assert(series.try_get_next_update_key(key, value) && key == 10 && value == 11.0);
+    key = 8; assert(series.try_get_prev_update_key(key, value) && key == 5 && value == 10.0);
+    key = 2; assert(series.try_get_first_update_lower(key, 10, value) && key == 2 && value == 5.0);
+    key = 10; assert(series.try_get_last_update_upper(2, key, value) && key == 10 && value == 11.0);
+    key = 8; assert(series.try_get_last_update_upper(2, key, value) && key == 5 && value == 10.0);
 }

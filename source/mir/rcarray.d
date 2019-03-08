@@ -505,10 +505,16 @@ struct mir_rci(T)
     ///
     RCArray!T _array;
 
-    mir_rci!(const T) lightConst() scope return const @nogc nothrow @trusted @property
+    ///
+    inout(T)* lightScope()() scope return inout @property
+    { return _iterator; }
+
+    ///
+    mir_rci!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
     { return typeof(return)(_iterator, _array.lightConst); }
 
-    mir_rci!(immutable T) lightImmutable() scope return immutable @nogc nothrow @trusted @property
+    ///
+    mir_rci!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
     { return typeof(return)(_iterator, _array.lightImmutable); }
 
     ///   

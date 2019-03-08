@@ -2,8 +2,11 @@
 
 #define MIR_SERIES
 
-#include  <type_traits>
+#include <type_traits>
+#include <map>
+#include <functional>
 #include "mir/ndslice.h"
+#include "mir/rcarray.h"
 
 template <
     typename IndexIterator,
@@ -45,7 +48,7 @@ struct mir_series
         return _data.size();
     }
 
-    size_t empty() const noexcept
+    bool empty() const noexcept
     {
         return _data.empty();
     }
@@ -58,6 +61,155 @@ struct mir_series
     Observation operator[](mir_size_t index) const noexcept
     {
         return {_index[index], _data[index]};
+    }
+
+    template <class T>
+    size_t transition_index_less(const T& val) const
+    {
+        size_t first = 0, count = size();
+        while (count > 0)
+        {
+            size_t step = count / 2, it = first + step;
+            if (_index[it] < val)
+            {
+                first = it + 1;
+                count -= step + 1;
+            }
+            else
+            {
+                count = step;
+            }
+        }
+        return first;
+    }
+
+    template <class T>
+    size_t transition_index_less_or_equal(const T& val) const
+    {
+        size_t first = 0, count = size();
+        while (count > 0)
+        {
+            size_t step = count / 2, it = first + step;
+            if (_index[it] <= val)
+            {
+                first = it + 1;
+                count -= step + 1;
+            }
+            else
+            {
+                count = step;
+            }
+        }
+        return first;
+    }
+
+    template <class T>
+    bool contains(const T& key) const
+    {
+        size_t idx = transition_index_less(key);
+        return idx < _data._lengths[0] && _index[idx] == key;
+    }
+
+    template <class T, class Value>
+    bool try_get(const T& key, Value& val) const
+    {
+        size_t idx = transition_index_less(key);
+        auto cond = idx < _data._lengths[0] && _index[idx] == key;
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_next(const T& key, Value& val) const
+    {
+        size_t idx = transition_index_less(key);
+        auto cond = idx < _data._lengths[0];
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_next_update_key(T& key, Value& val) const
+    {
+        size_t idx = transition_index_less(key);
+        auto cond = idx < _data._lengths[0];
+        if (cond)
+        {
+            key = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_prev(const T& key, Value& val) const
+    {
+        size_t idx = transition_index_less_or_equal(key) - 1;
+        auto cond = 0 <= (ptrdiff_t) idx;
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_prev_update_key(T& key, Value& val) const
+    {
+        size_t idx = transition_index_less_or_equal(key) - 1;
+        auto cond = 0 <= (ptrdiff_t) idx;
+        if (cond)
+        {
+            key = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_first(const T& lowerBound, const T& upperBound, Value& val) const
+    {
+        size_t idx = transition_index_less(lowerBound);
+        auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_first_update_lower(T& lowerBound, const T& upperBound, Value& val) const
+    {
+        size_t idx = transition_index_less(lowerBound);
+        auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
+        if (cond)
+        {
+            lowerBound = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_last(const T& lowerBound, const T& upperBound, Value& val) const
+    {
+        size_t idx = transition_index_less_or_equal(upperBound) - 1;
+        auto cond = 0 <= (ptrdiff_t) idx && lowerBound <= _index[idx];
+        if (cond)
+            val = _data[idx];
+        return cond;
+    }
+
+    template <class T, class Value>
+    bool try_get_last_update_upper(const T& lowerBound, T& upperBound, Value& val) const
+    {
+        size_t idx = transition_index_less_or_equal(upperBound) - 1;
+        auto cond = 0 <= (ptrdiff_t) idx && lowerBound <= _index[idx];
+        if (cond)
+        {
+            upperBound = _index[idx];
+            val = _data[idx];
+        }
+        return cond;
     }
 
     struct ThisIterator
@@ -96,6 +248,26 @@ mir_series<IndexIterator, Iterator, N, kind>
 {
     assert(data._lengths[0] == index._lengths[0]);
     return { data, index._iterator };
+}
+
+template<
+    class Key,
+    class Value,
+    class Allocator
+>
+mir_series<mir_rci<Key>,mir_rci<Value>>
+    mir_make_series(const std::map<Key, Value, std::less<Key>, Allocator>& map)
+{
+    auto index = mir_rcarray<Key>(map.size()).asSlice();
+    auto data = mir_rcarray<Value>(map.size()).asSlice();
+    size_t i = 0;
+    for (const auto&[key, value] : map)
+    {
+        index[i] = key;
+        data[i] = value;
+        i++;
+    }
+    return mir_make_series(index, data);
 }
 
 #endif

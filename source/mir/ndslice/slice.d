@@ -909,6 +909,24 @@ public:
     }
 
     ///
+    auto lightScope()() scope return @property
+    {
+        return Slice!(LightScopeOf!Iterator, N, kind)(_structure, .lightScope(_iterator));
+    }
+
+    /// ditto
+    auto lightScope()() scope const return @property
+    {
+        return Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightConst(.lightScope(_iterator)));
+    }
+
+    /// ditto
+    auto lightScope()() scope immutable return @property
+    {
+        return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightImmutable(.lightScope(_iterator)));
+    }
+
+    ///
     auto lightImmutable()() scope return immutable @property
     {
         return Slice!(LightImmutableOf!Iterator, N, kind)(_structure, .lightImmutable(_iterator));
