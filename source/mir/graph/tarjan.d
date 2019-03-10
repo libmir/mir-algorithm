@@ -303,7 +303,7 @@ pure version(mir_test) unittest
         [5, 6],
         [3, 4],
         [0, 1, 2],
-	]);
+    ]);
 }
 
 /++

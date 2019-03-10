@@ -19,12 +19,12 @@ import std.traits;
 
 ///
 struct Prod(T)
-	if (isFloatingPoint!T)
+    if (isFloatingPoint!T)
 {
-	///
-	long exp = 1;
-	///
-	T x = 0.5f;
+    ///
+    long exp = 1;
+    ///
+    T x = 0.5f;
     ///
     alias mantissa = x;
 
@@ -44,9 +44,9 @@ struct Prod(T)
         this.x = x;
     }
 
-	///
-	void put(T e)
-	{
+    ///
+    void put(T e)
+    {
         int lexp;
         import mir.math.ieee: frexp;
         x *= frexp(e, lexp);
@@ -56,11 +56,11 @@ struct Prod(T)
             x += x;
             exp--;
         }
-	}
+    }
 
-	///
-	void put(Prod p)
-	{
+    ///
+    void put(Prod p)
+    {
         exp += p.exp;
         x *= p.x;
         if (x.fabs < 0.5f)
@@ -68,7 +68,7 @@ struct Prod(T)
             x += x;
             exp--;
         }
-	}
+    }
 
     ///
     T value() const scope @property
@@ -107,7 +107,7 @@ Decompose a range or nd-slice of floating point numbers into a single product st
 +/
 Prod!(Unqual!(DeepElementType!Range))
 wipProd(Range)(Range r)
-	if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
+    if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
 {
     import mir.algorithm.iteration: each;
     typeof(return) prod;
@@ -128,7 +128,7 @@ Prod!T wipProd(T)(const T x)
 Compute the product of the input range $(D r) using separate exponent accumulation.
 +/
 Unqual!(DeepElementType!Range) prod(Range)(Range r, ref long exp)
-	if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
+    if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
 {
     auto prod = wipProd(r);
     exp = prod.exp;
@@ -137,7 +137,7 @@ Unqual!(DeepElementType!Range) prod(Range)(Range r, ref long exp)
 
 /// ditto
 Unqual!(DeepElementType!Range) prod(Range)(Range r)
-	if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
+    if (isInputRange!Range && isFloatingPoint!(DeepElementType!Range))
 {
     return wipProd(r).value;
 }
@@ -146,13 +146,13 @@ Unqual!(DeepElementType!Range) prod(Range)(Range r)
 version(mir_test)
 unittest
 {
-	enum l = 2.0 ^^ (double.max_exp - 1);
-	enum s = 2.0 ^^ -(double.max_exp - 1);
-	auto r = [l, l, l, s, s, s, 0.8 * 2.0 ^^ 10];
-	long e;
-	assert(r.prod(e) == 0.8);
-	assert(e == 10);
-	assert(r.prod == 0.8 * 2.0 ^^ 10);
+    enum l = 2.0 ^^ (double.max_exp - 1);
+    enum s = 2.0 ^^ -(double.max_exp - 1);
+    auto r = [l, l, l, s, s, s, 0.8 * 2.0 ^^ 10];
+    long e;
+    assert(r.prod(e) == 0.8);
+    assert(e == 10);
+    assert(r.prod == 0.8 * 2.0 ^^ 10);
 }
 
 /// Ndslices
@@ -163,17 +163,17 @@ unittest
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: reduce;
 
-	enum l = 2.0 ^^ (double.max_exp - 1);
-	enum s = 2.0 ^^ -(double.max_exp - 1);
+    enum l = 2.0 ^^ (double.max_exp - 1);
+    enum s = 2.0 ^^ -(double.max_exp - 1);
     auto c = 0.8;
     auto u = c * 2.0 ^^ 10;
-	auto r = [l, l, l,
+    auto r = [l, l, l,
               s, s, s,
               u, u, u].sliced(3, 3);
-	long e;
-	assert(r.prod(e) == reduce!"a * b"(1.0, [c, c, c]));
-	assert(e == 30);
-	assert(r.prod == reduce!"a * b"(1.0, [u, u, u]));
+    long e;
+    assert(r.prod(e) == reduce!"a * b"(1.0, [c, c, c]));
+    assert(e == 30);
+    assert(r.prod == reduce!"a * b"(1.0, [u, u, u]));
 }
 
 /++
@@ -181,7 +181,7 @@ Compute the sum of binary logarithms of the input range $(D r).
 The error of this method is much smaller than with a naive sum of log2.
 +/
 Unqual!(DeepElementType!Range) sumOfLog2s(Range)(Range r)
-	if (isFloatingPoint!(DeepElementType!Range))
+    if (isFloatingPoint!(DeepElementType!Range))
 {
     long exp = 0;
     auto x = .prod(r, exp);
