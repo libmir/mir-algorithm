@@ -2,9 +2,7 @@
 
 #define MIR_SERIES
 
-#include <type_traits>
 #include <map>
-#include <functional>
 #include "mir/ndslice.h"
 #include "mir/rcarray.h"
 

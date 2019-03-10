@@ -162,28 +162,8 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
                 return this;
             }
         }
-
-        static if (!is(T == const))
+        else
         {
-            /// Defined if T isn't const
-            this(ref typeof(this) rhs) @trusted pure nothrow @nogc
-            {
-                this._payload = rhs._payload;
-                this.__xpostblit;
-            }
-
-            /// ditto
-            ref opAssign(ref typeof(this) rhs) @trusted pure nothrow @nogc
-            {
-                if (_payload != rhs._payload)
-                {
-                    if (_payload) dec();
-                    _payload = rhs._payload;
-                    this.__xpostblit;
-                }
-                return this;
-            }
-
             ref opAssign(typeof(this) rhs) @trusted pure nothrow @nogc
             {
                 if (_payload != rhs._payload)
@@ -194,6 +174,25 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
                 }
                 return this;
             }
+        }
+
+        ///
+        this(ref typeof(this) rhs) @trusted pure nothrow @nogc
+        {
+            this._payload = rhs._payload;
+            this.__xpostblit;
+        }
+
+        /// ditto
+        ref opAssign(ref typeof(this) rhs) @trusted pure nothrow @nogc
+        {
+            if (_payload != rhs._payload)
+            {
+                if (_payload) dec();
+                _payload = rhs._payload;
+                this.__xpostblit;
+            }
+            return this;
         }
 
         ///

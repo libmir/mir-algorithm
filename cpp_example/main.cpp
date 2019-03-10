@@ -41,6 +41,8 @@ int main()
     assert(av[2] == 4);
 
     Space::initWithIota(a); //[0, 1, 2]
+    a = a;
+    // a = std::move(a);
     auto b = a; // check copy constructor
     auto c = b.asSlice();
     auto d = c; // check copy constructor
@@ -119,27 +121,29 @@ void testSeries()
     assert(series[2].first == 4);
     assert(series[2].second == 10);
     
+    auto s = std::move(series);
+    s = s;
+
     double value;
     int key;
-    assert(series.try_get(2, value) && value == 5.0);
-    // printf("%ld\n", series.transition_index_less(4));
-    // printf("%ld\n", series.index()[series.transition_index_less(4)]);
-    assert(!series.try_get(8, value));
+    assert(s.try_get(2, value) && value == 5.0);
+    // printf("%ld\n", s.index()[s.transition_index_less(4)]);
+    assert(!s.try_get(8, value));
 
-    assert(series.try_get_next(2, value) && value == 5.0);
-    assert(series.try_get_prev(2, value) && value == 5.0);
-    assert(series.try_get_next(8, value) && value == 11.0);
-    assert(series.try_get_prev(8, value) && value == 10.0);
-    assert(!series.try_get_first(8, 9, value));
-    assert(series.try_get_first(2, 10, value) && value == 5.0);
-    assert(series.try_get_last(2, 10, value) && value == 11.0);
-    assert(series.try_get_last(2, 8, value) && value == 10.0);
+    assert(s.try_get_next(2, value) && value == 5.0);
+    assert(s.try_get_prev(2, value) && value == 5.0);
+    assert(s.try_get_next(8, value) && value == 11.0);
+    assert(s.try_get_prev(8, value) && value == 10.0);
+    assert(!s.try_get_first(8, 9, value));
+    assert(s.try_get_first(2, 10, value) && value == 5.0);
+    assert(s.try_get_last(2, 10, value) && value == 11.0);
+    assert(s.try_get_last(2, 8, value) && value == 10.0);
 
-    key = 2; assert(series.try_get_next_update_key(key, value) && key == 2 && value == 5.0);
-    key = 2; assert(series.try_get_prev_update_key(key, value) && key == 2 && value == 5.0);
-    key = 8; assert(series.try_get_next_update_key(key, value) && key == 10 && value == 11.0);
-    key = 8; assert(series.try_get_prev_update_key(key, value) && key == 5 && value == 10.0);
-    key = 2; assert(series.try_get_first_update_lower(key, 10, value) && key == 2 && value == 5.0);
-    key = 10; assert(series.try_get_last_update_upper(2, key, value) && key == 10 && value == 11.0);
-    key = 8; assert(series.try_get_last_update_upper(2, key, value) && key == 5 && value == 10.0);
+    key = 2; assert(s.try_get_next_update_key(key, value) && key == 2 && value == 5.0);
+    key = 2; assert(s.try_get_prev_update_key(key, value) && key == 2 && value == 5.0);
+    key = 8; assert(s.try_get_next_update_key(key, value) && key == 10 && value == 11.0);
+    key = 8; assert(s.try_get_prev_update_key(key, value) && key == 5 && value == 10.0);
+    key = 2; assert(s.try_get_first_update_lower(key, 10, value) && key == 2 && value == 5.0);
+    key = 10; assert(s.try_get_last_update_upper(2, key, value) && key == 10 && value == 11.0);
+    key = 8; assert(s.try_get_last_update_upper(2, key, value) && key == 5 && value == 10.0);
 }

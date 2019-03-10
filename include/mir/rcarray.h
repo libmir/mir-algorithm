@@ -6,7 +6,6 @@
 #include <cassert>
 #include <initializer_list>
 #include <stdexcept>
-#include <type_traits>
 #include <vector>
 #include <iterator>
 #include "mir/ndslice.h"
@@ -19,19 +18,25 @@ struct mir_rcarray
 {
 private:
 
-    void* _context = NULL;
+    void* _context = nullptr;
 
 public:
 
     ~mir_rcarray();
-    mir_rcarray(typename std::conditional<std::is_const<T>::value, const mir_rcarray, mir_rcarray>::type& rhs);
-    // mir_rcarray& operator=(typename std::conditional<std::is_const<T>::value, const mir_rcarray, mir_rcarray>::type rhs);
-    mir_rcarray& operator=(typename std::conditional<std::is_const<T>::value, const mir_rcarray, mir_rcarray>::type& rhs);
+    mir_rcarray(mir_rcarray& rhs);
+    mir_rcarray(const mir_rcarray& rhs) : mir_rcarray(*(mir_rcarray*)&rhs) {}
+    mir_rcarray(mir_rcarray&& rhs)
+        : _context(rhs._context)
+    {
+        rhs._context = nullptr;
+    }
+    mir_rcarray& operator=(mir_rcarray& rhs);
+    mir_rcarray& operator=(const mir_rcarray& rhs) { *this = *(mir_rcarray*)&rhs; return *this; }
     bool initialize(size_t length, unsigned int alignment, bool deallocate, bool initialize);
 
     mir_slice<mir_rci<T>> asSlice();
 
-    mir_rcarray() : _context(NULL) {}
+    mir_rcarray() : _context(nullptr) {}
 
     mir_rcarray(size_t length, unsigned int alignment = alignof(T), bool deallocate = true, bool initialize = true)
     {
@@ -44,7 +49,7 @@ public:
     template <class RAIter> 
     mir_rcarray(RAIter ibegin, RAIter iend) : mir_rcarray(iend - ibegin)
     {
-        if (_context == NULL)
+        if (_context == nullptr)
             return; // zero length
         auto p = (typename std::remove_const<T>::type*)((char*)_context + sizeof(void*) * 4);
         do
@@ -97,27 +102,27 @@ public:
 
     T* data() noexcept
     {
-        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
+        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : nullptr;
     }
 
     const T* data() const noexcept
     {
-        return _context ? (const T*)((char*)_context + sizeof(void*) * 4) : NULL;
+        return _context ? (const T*)((char*)_context + sizeof(void*) * 4) : nullptr;
     }
 
     T* begin() noexcept
     {
-        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
+        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : nullptr;
     }
 
     const T* begin() const noexcept
     {
-        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : NULL;
+        return _context ? (T*)((char*)_context + sizeof(void*) * 4) : nullptr;
     }
 
     const T* cbegin() const noexcept
     {
-        return _context ? (const T*)((char*)_context + sizeof(void*) * 4) : NULL;
+        return _context ? (const T*)((char*)_context + sizeof(void*) * 4) : nullptr;
     }
 
     T* end() noexcept
@@ -152,9 +157,6 @@ private:
     mir_rci(T* iterator, mir_rcarray<T>& array) : _iterator(iterator), _array(array) {}
 
 public:
-
-    ~mir_rci() = default;
-    mir_rci(mir_rci& rhs) = default;
 
     T* operator->()
     {
