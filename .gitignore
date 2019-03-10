@@ -27,3 +27,4 @@ files
 mir-algorithm.lib
 mir-algorithm-test-default
 mir-algorithm-test-dips
+subprojects/mir-core

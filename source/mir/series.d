@@ -152,6 +152,9 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
 
 ///
 unittest{
+
+    import mir.series;
+
     double[int] map;
     map[1] = 4.0;
     map[2] = 5.0;
@@ -159,29 +162,29 @@ unittest{
     map[5] = 10.0;
     map[10] = 11.0;
 
-    const series = .series(map);
-    
+    const s = series(map);
+
     double value;
     int key;
-    assert(series.tryGet(2, value) && value == 5.0);
-    assert(!series.tryGet(8, value));
+    assert(s.tryGet(2, value) && value == 5.0);
+    assert(!s.tryGet(8, value));
 
-    assert(series.tryGetNext(2, value) && value == 5.0);
-    assert(series.tryGetPrev(2, value) && value == 5.0);
-    assert(series.tryGetNext(8, value) && value == 11.0);
-    assert(series.tryGetPrev(8, value) && value == 10.0);
-    assert(!series.tryGetFirst(8, 9, value));
-    assert(series.tryGetFirst(2, 10, value) && value == 5.0);
-    assert(series.tryGetLast(2, 10, value) && value == 11.0);
-    assert(series.tryGetLast(2, 8, value) && value == 10.0);
+    assert(s.tryGetNext(2, value) && value == 5.0);
+    assert(s.tryGetPrev(2, value) && value == 5.0);
+    assert(s.tryGetNext(8, value) && value == 11.0);
+    assert(s.tryGetPrev(8, value) && value == 10.0);
+    assert(!s.tryGetFirst(8, 9, value));
+    assert(s.tryGetFirst(2, 10, value) && value == 5.0);
+    assert(s.tryGetLast(2, 10, value) && value == 11.0);
+    assert(s.tryGetLast(2, 8, value) && value == 10.0);
 
-    key = 2; assert(series.tryGetNextUpdateKey(key, value) && key == 2 && value == 5.0);
-    key = 2; assert(series.tryGetPrevUpdateKey(key, value) && key == 2 && value == 5.0);
-    key = 8; assert(series.tryGetNextUpdateKey(key, value) && key == 10 && value == 11.0);
-    key = 8; assert(series.tryGetPrevUpdateKey(key, value) && key == 5 && value == 10.0);
-    key = 2; assert(series.tryGetFirstUpdateLower(key, 10, value) && key == 2 && value == 5.0);
-    key = 10; assert(series.tryGetLastUpdateKey(2, key, value) && key == 10 && value == 11.0);
-    key = 8; assert(series.tryGetLastUpdateKey(2, key, value) && key == 5 && value == 10.0);
+    key = 2; assert(s.tryGetNextUpdateKey(key, value) && key == 2 && value == 5.0);
+    key = 2; assert(s.tryGetPrevUpdateKey(key, value) && key == 2 && value == 5.0);
+    key = 8; assert(s.tryGetNextUpdateKey(key, value) && key == 10 && value == 11.0);
+    key = 8; assert(s.tryGetPrevUpdateKey(key, value) && key == 5 && value == 10.0);
+    key = 2; assert(s.tryGetFirstUpdateLower(key, 10, value) && key == 2 && value == 5.0);
+    key = 10; assert(s.tryGetLastUpdateKey(2, key, value) && key == 10 && value == 11.0);
+    key = 8; assert(s.tryGetLastUpdateKey(2, key, value) && key == 5 && value == 10.0);
 }
 
 import mir.ndslice.slice;
@@ -492,7 +495,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     This and r series are assumed to be sorted.
 
     Params:
-        r = rvalue index-series
+        rSeries = rvalue index-series
     +/
     void opIndexOpAssign(string op, IndexIterator_, Iterator_, size_t N_, SliceKind kind_)
         (auto ref Series!(IndexIterator_, Iterator_, N_, kind_) rSeries)
@@ -622,7 +625,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (!is(Value : const(Exception)))
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        return idx < _data._lengths[0] && __index[idx] == key ? _data[idx] : _default;
+        return idx < _data._lengths[0] && _index[idx] == key ? _data[idx] : _default;
     }
 
     /// ditto
