@@ -39,6 +39,8 @@ public:
 
     mir_slice<mir_rci<T>> asSlice();
 
+    mir_rcarray<const T>& light_const() { return *(mir_rcarray<const T>*)this; }
+
     mir_rcarray(size_t length, unsigned int alignment = alignof(T), bool deallocate = true, bool initialize = true)
     {
         if (!this->initialize(length, alignment, deallocate, initialize))
@@ -162,6 +164,8 @@ public:
     mir_rci() {}
     mir_rci(std::nullptr_t) {}
 
+    mir_rci<const T>& light_const() { return *(mir_rci<const T>*)this; }
+
     T* operator->()
     {
         assert(_array.cbegin() <= _iterator && _iterator < _array.cend());
@@ -255,5 +259,12 @@ public:
     bool operator>=(const mir_rci& rhs) const { return _iterator >= rhs._iterator; }
     bool operator<=(const mir_rci& rhs) const { return _iterator <= rhs._iterator; }
 };
+
+template <
+    typename T,
+    mir_size_t N,
+    mir_slice_kind kind
+>
+mir_slice<mir_rci<const T>, N, kind> mir_light_const(const mir_slice<mir_rci<T>, N, kind>& s) { return *(mir_slice<mir_rci<const T>, N, kind>*)&s; }
 
 #endif

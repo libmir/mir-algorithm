@@ -196,4 +196,12 @@ struct mir_slice<Iterator, 1, mir_slice_kind::universal>
     }
 };
 
+template <
+    typename T,
+    mir_size_t N,
+    mir_slice_kind kind
+>
+mir_slice<const T*, N, kind> mir_light_const(const mir_slice<T*, N, kind> s) { return *(mir_slice<const T*, N, kind>*)&s; }
+
+
 #endif

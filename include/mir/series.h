@@ -268,4 +268,21 @@ mir_series<mir_rci<Key>,mir_rci<Value>>
     return mir_make_series(index, data);
 }
 
+template <
+    typename I,
+    typename T,
+    mir_size_t N,
+    mir_slice_kind kind
+>
+mir_series<const I*, const T*, N, kind> mir_light_const(const mir_series<I*, T*, N, kind> s) { return *(mir_series<const I*, const T*, N, kind>*)&s; }
+
+template <
+    typename I,
+    typename T,
+    mir_size_t N,
+    mir_slice_kind kind
+>
+mir_series<mir_rci<const I>, mir_rci<const T>, N, kind> mir_light_const(const mir_series<mir_rci<I>, mir_rci<T>, N, kind> s) { return *(mir_series<mir_rci<const I>, mir_rci<const T>, N, kind>*)&s; }
+
+
 #endif
