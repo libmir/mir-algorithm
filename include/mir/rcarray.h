@@ -22,6 +22,9 @@ private:
 
 public:
 
+    mir_rcarray() {}
+    mir_rcarray(std::nullptr_t) {}
+
     ~mir_rcarray();
     mir_rcarray(mir_rcarray& rhs);
     mir_rcarray(const mir_rcarray& rhs) : mir_rcarray(*(mir_rcarray*)&rhs) {}
@@ -35,8 +38,6 @@ public:
     bool initialize(size_t length, unsigned int alignment, bool deallocate, bool initialize);
 
     mir_slice<mir_rci<T>> asSlice();
-
-    mir_rcarray() : _context(nullptr) {}
 
     mir_rcarray(size_t length, unsigned int alignment = alignof(T), bool deallocate = true, bool initialize = true)
     {
@@ -150,13 +151,16 @@ public:
     using Iterator = T*;
     using Array = mir_rcarray<T>;
 
-    Iterator _iterator;
+    Iterator _iterator = nullptr;
     mir_rcarray<T> _array;
 
 private:
     mir_rci(T* iterator, mir_rcarray<T>& array) : _iterator(iterator), _array(array) {}
 
 public:
+
+    mir_rci() {}
+    mir_rci(std::nullptr_t) {}
 
     T* operator->()
     {

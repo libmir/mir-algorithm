@@ -48,7 +48,7 @@ struct mir_slice
 {
     mir_size_t _lengths[0] = {};
     mir_ptrdiff_t  _strides[kind == mir_slice_kind::universal ? N : N - 1] = {};
-    Iterator _iterator = {};
+    Iterator _iterator = nullptr;
 
     template <unsigned int d = 0>
     size_t size() const noexcept
@@ -71,7 +71,7 @@ struct mir_slice<Iterator, N, mir_slice_kind::contiguous>
 {
     mir_size_t _lengths[N] = {};
     static const mir_ptrdiff_t _strides[0];
-    Iterator _iterator = {};
+    Iterator _iterator = nullptr;
 
     template <unsigned int d = 0>
     size_t size() const noexcept
@@ -93,7 +93,7 @@ struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
 {
     mir_size_t _lengths[1] = {};
     static const mir_ptrdiff_t _strides[0];
-    Iterator _iterator = {};
+    Iterator _iterator = nullptr;
 
     template <unsigned int d = 0>
     size_t size() const noexcept
@@ -158,7 +158,7 @@ struct mir_slice<Iterator, 1, mir_slice_kind::universal>
 {
     mir_size_t _lengths[1] = {};
     mir_ptrdiff_t _strides[1] = {};
-    Iterator _iterator = {};
+    Iterator _iterator = nullptr;
 
     template <unsigned int d = 0>
     size_t size() const noexcept
