@@ -1225,20 +1225,21 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
             this._data._strides = rvalue._data._strides;
         this._data._iterator = rvalue._data._iterator;
         this._index = rvalue._index;
+        return this;
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref scope const Series!(RIndexIterator, RIterator, N, kind) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, RIterator, N, kind) rvalue) @safe
         if (isAssignable!(IndexIterator, LightConstOf!RIndexIterator) && isAssignable!(Iterator, LightConstOf!RIterator))
     {
-        return this = rvalue[];
+        return this = rvalue.opIndex;
     }
 
     /// ditto
     ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, RIterator, N, kind) rvalue)
         if (isAssignable!(IndexIterator, LightImmutableOf!RIndexIterator) && isAssignable!(Iterator, LightImmutableOf!RIterator))
     {
-        return this = rvalue[];
+        return this = rvalue.opIndex;
     }
 
     /// ditto
@@ -1563,14 +1564,14 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
 Series!(RK*, RV*) series(K, V, RK = const K, RV = const V)(const V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series!(K, V, RK, RV)(cast(V[K]) aa);
+    return .series!(K, V, RK, RV)((()@trusted => cast(V[K]) aa)());
 }
 
 /// ditto
 Series!(RK*, RV*)  series( K, V, RK = immutable K, RV = immutable V)(immutable V[K] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    return .series!(K, V, RK, RV)(cast(V[K]) aa);
+    return .series!(K, V, RK, RV)((()@trusted => cast(V[K]) aa)());
 }
 
 /// ditto
@@ -1591,9 +1592,12 @@ auto series(K, V)(V[K]* aa)
 
 pure nothrow version(mir_test) unittest
 {
-    alias ed = immutable double;
     immutable aa = [1: 1.5, 3: 3.3, 2: 2.9];
     auto s = aa.series;
+    s.opAssign(cast() s);
+    s.opAssign(cast(const) s);
+    s.opAssign(cast(immutable) s);
+    s = s;
     assert(s.index == [1, 2, 3]);
     assert(s.data == [1.5, 2.9, 3.3]);
     assert(s.data[s.findIndex(2)] == 2.9);
