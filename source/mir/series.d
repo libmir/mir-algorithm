@@ -931,7 +931,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetFirst(Index, Value)(auto ref scope const Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(lowerBound);
-        auto cond = idx < _data._lengths[0] && _data[idx] <= upperBound;
+        auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
         if (cond)
             val = _data[idx];
         return cond;
@@ -958,7 +958,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetFirstUpdateLower(Index, Value)(ref Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(lowerBound);
-        auto cond = idx < _data._lengths[0] && _data[idx] <= upperBound;
+        auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
         if (cond)
         {
             lowerBound = _index[idx];
@@ -987,7 +987,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetLast(Index, Value)(Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex!"a <= b"(upperBound) - 1;
-        auto cond = 0 <= sizediff_t(idx) && _data[idx] >= lowerBound;
+        auto cond = 0 <= sizediff_t(idx) && _index[idx] >= lowerBound;
         if (cond)
             val = _data[idx];
         return cond;
@@ -1014,7 +1014,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetLastUpdateKey(Index, Value)(Index lowerBound, ref Index upperBound, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex!"a <= b"(upperBound) - 1;
-        auto cond = 0 <= sizediff_t(idx) && _data[idx] >= lowerBound;
+        auto cond = 0 <= sizediff_t(idx) && _index[idx] >= lowerBound;
         if (cond)
         {
             upperBound = _index[idx];
