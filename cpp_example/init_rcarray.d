@@ -3,6 +3,10 @@ module init_rcarray;
 import mir.ndslice;
 import mir.rcarray;
 
+// force template instatiations
+alias RCArrayDouble = RCArray!double;
+alias RCArrayInt = RCArray!int;
+
 extern(C++, Space) 
 {
     void initWithIota(ref RCArray!double a)

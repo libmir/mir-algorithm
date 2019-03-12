@@ -129,77 +129,30 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
             return initializeImpl(length, alignment, deallocate, initialize);
         }
 
-        static if (is(T == const))
-        {
-            /// Defined if T is const
-            this(ref const typeof(this) rhs) @trusted pure nothrow @nogc
-            {
-                this._payload = cast(T*) rhs._payload;
-                this.__xpostblit;
-            }
-
-            /// ditto
-            ref opAssign(ref const typeof(this) rhs) @trusted pure nothrow @nogc
-            {
-                if (_payload != rhs._payload)
-                {
-                    if (_payload) dec();
-                    _payload = cast(T*) rhs._payload;
-                    this.__xpostblit;
-                }
-                return this;
-            }
-
-            /// ditto
-            ref opAssign(const typeof(this) rhs) @trusted pure nothrow @nogc
-            {
-                if (_payload != rhs._payload)
-                {
-                    if (_payload) dec();
-                    _payload = cast(T*) rhs._payload;
-                    *cast(T**)&rhs._payload = null;
-                }
-                return this;
-            }
-        }
-        else
-        {
-            ref opAssign(typeof(this) rhs) @trusted pure nothrow @nogc
-            {
-                if (_payload != rhs._payload)
-                {
-                    if (_payload) dec();
-                    _payload = rhs._payload;
-                    rhs._payload = null;
-                }
-                return this;
-            }
-        }
-
-        ///
-        this(ref typeof(this) rhs) @trusted pure nothrow @nogc
-        {
-            this._payload = rhs._payload;
-            this.__xpostblit;
-        }
-
-        /// ditto
-        ref opAssign(ref typeof(this) rhs) @trusted pure nothrow @nogc
-        {
-            if (_payload != rhs._payload)
-            {
-                if (_payload) dec();
-                _payload = rhs._payload;
-                this.__xpostblit;
-            }
-            return this;
-        }
-
         ///
         auto asSlice() scope return @property
         {
             alias It = mir_rci!T;
             return Slice!It([length], It((()@trusted => ptr)(), this));
+        }
+
+        /// Defined if T is const
+        private void _cpp_copy_constructor(ref const typeof(this) rhs) @system pure nothrow @nogc
+        {
+            this._payload = cast(T*) rhs._payload;
+            this.__xpostblit;
+        }
+
+        /// ditto
+        private ref _cpp_assign(ref const typeof(this) rhs) @system pure nothrow @nogc
+        {
+            if (_payload != rhs._payload)
+            {
+                if (_payload) dec();
+                _payload = cast(T*) rhs._payload;
+                this.__xpostblit;
+            }
+            return this;
         }
     }
     else

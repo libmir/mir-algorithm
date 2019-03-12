@@ -19,6 +19,8 @@ struct mir_rcarray
 private:
 
     void* _context = nullptr;
+    void _cpp_copy_constructor(const mir_rcarray& rhs);
+    mir_rcarray& _cpp_assign(const mir_rcarray& rhs);
 
 public:
 
@@ -26,15 +28,13 @@ public:
     mir_rcarray(std::nullptr_t) {}
 
     ~mir_rcarray();
-    mir_rcarray(mir_rcarray& rhs);
-    mir_rcarray(const mir_rcarray& rhs) : mir_rcarray(*(mir_rcarray*)&rhs) {}
+    mir_rcarray(const mir_rcarray& rhs) { _cpp_copy_constructor(rhs); }
     mir_rcarray(mir_rcarray&& rhs)
         : _context(rhs._context)
     {
         rhs._context = nullptr;
     }
-    mir_rcarray& operator=(mir_rcarray& rhs);
-    mir_rcarray& operator=(const mir_rcarray& rhs) { *this = *(mir_rcarray*)&rhs; return *this; }
+    mir_rcarray& operator=(const mir_rcarray& rhs) { return _cpp_assign(rhs); }
     bool initialize(size_t length, unsigned int alignment, bool deallocate, bool initialize);
 
     mir_slice<mir_rci<T>> asSlice();
