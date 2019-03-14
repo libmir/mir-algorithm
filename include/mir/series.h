@@ -7,6 +7,16 @@
 #include "mir/rcarray.h"
 
 template <
+    typename Index,
+    typename Data
+>
+struct mir_observation
+{
+    Index index;
+    Data data;
+};
+
+template <
     typename IndexIterator,
     typename Iterator,
     mir_size_t N = 1,
@@ -19,14 +29,8 @@ struct mir_series
 
     /// Index / Key / Time type aliases
     using Index = typename std::remove_reference<decltype(_index[0])>::type;
-    /// ditto
-    using Key = Index;
-    /// ditto
-    using Time = Index;
     /// Data / Value type aliases
     using Data = typename std::remove_reference<decltype(_data._iterator[0])>::type;
-    /// ditto
-    using Value = Data;
 
     using Observation = std::pair<Index, Data>;
     // using ConstObservation = std::pair<const Index, const Data>;
@@ -218,10 +222,10 @@ struct mir_series
         ThisIterator operator++(int) noexcept {ThisIterator retval = *this; ++(*this); return retval; }
         bool operator==(const ThisIterator& rhs) const noexcept { return _index == rhs._index; }
         bool operator!=(const ThisIterator& rhs) const noexcept { return !(*this == rhs); }
-        bool operator<(const ThisIterator& rhs) const { return _index < rhs._index; }
-        bool operator>(const ThisIterator& rhs) const { return _index > rhs._index; }
-        bool operator>=(const ThisIterator& rhs) const { return _index >= rhs._index; }
-        bool operator<=(const ThisIterator& rhs) const { return _index <= rhs._index; }
+        bool operator<(const ThisIterator& rhs) const noexcept { return _index < rhs._index; }
+        bool operator>(const ThisIterator& rhs) const noexcept { return _index > rhs._index; }
+        bool operator>=(const ThisIterator& rhs) const noexcept { return _index >= rhs._index; }
+        bool operator<=(const ThisIterator& rhs) const noexcept { return _index <= rhs._index; }
 
         Observation operator*() noexcept
         {
