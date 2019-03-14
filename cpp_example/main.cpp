@@ -5,6 +5,7 @@
 #include <map>
 #include "mir/series.h"
 #include "mir/rcarray.h"
+#include "mir/shared_ptr.h"
 #include "mir/ndslice.h"
 
 namespace Space
@@ -146,4 +147,16 @@ void testSeries()
     key = 2; assert(s.try_get_first_update_lower(key, 10, value) && key == 2 && value == 5.0);
     key = 10; assert(s.try_get_last_update_upper(2, key, value) && key == 10 && value == 11.0);
     key = 8; assert(s.try_get_last_update_upper(2, key, value) && key == 5 && value == 10.0);
+}
+
+struct S { double d = 0; S() {}; S(double e) : d(e) {} };
+
+void testRCPtr()
+{
+    auto s = mir_shared_ptr<S>(3.0);
+    auto e = mir_shared_ptr<S>(5.0);
+    s = e;
+    (*e).d = 4;
+    assert(s->d == 4);
+    s = nullptr;
 }

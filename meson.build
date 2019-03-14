@@ -52,6 +52,7 @@ mir_algorithm_src = [
     'source/mir/range.d',
     'source/mir/rcarray.d',
     'source/mir/series.d',
+    'source/mir/shared_ptr.d',
 ]
 
 mir_algorithm_lib = library(meson.project_name(),
