@@ -153,8 +153,8 @@ struct S { double d = 0; S() {}; S(double e) : d(e) {} };
 
 void testRCPtr()
 {
-    auto s = mir_shared_ptr<S>(3.0);
-    auto e = mir_shared_ptr<S>(5.0);
+    auto s = mir_make_shared<S>(3.0);
+    auto e = mir_make_shared<S>(5.0);
     s = e;
     (*e).d = 4;
     assert(s->d == 4);

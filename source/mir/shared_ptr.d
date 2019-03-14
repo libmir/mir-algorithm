@@ -226,14 +226,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
         }
     }
 
-    /++
-    Params:
-        length = array length
-        alignment = alignment, must be power of 2
-        deallocate = Flag, never deallocates memory if `false`.
-        initialize = Flag, don't initialize memory with default value if `false`.
-    +/
-    this(Args...)(auto ref Args args) @trusted @nogc
+    private this(Args...)(auto ref Args args) @trusted @nogc
     {
         if (!this.__initialize(true, true))
         {
@@ -398,10 +391,6 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
     alias _get_value this;
 
     ///
-    pragma(inline, true)
-    inout(T)* get() inout nothrow @nogc scope return { return _payload; }
-
-    ///
     mir_shared_ptr!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
     { return cast(typeof(return)) this; }
 
@@ -413,12 +402,22 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
 /// ditto
 alias SharedPtr = mir_shared_ptr;
 
+/// ditto
+template shared_ptr(T)
+{
+    mir_shared_ptr!T shared_ptr(Args...)(auto ref Args args)
+    {
+        import mir.functional: forward;
+        return mir_shared_ptr!T(forward!args);
+    }
+}
+
 ///
 version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
-    auto a = SharedPtr!double(10);
+    auto a = shared_ptr!double(10);
     auto b = a;
     assert(*b == 10);
     *b = 100;

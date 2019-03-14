@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <memory>
 #include <cstdlib>
+#include <type_traits>
 
 // Does not support allocators for now
 template <typename T, bool _unused_ = true>
@@ -50,12 +51,41 @@ public:
         return *this;
     }
 
-    template<class ...Args>
-    mir_shared_ptr(Args&& ...args)
+    template<class ...Args> 
+    static mir_shared_ptr make_shared(Args&& ...args)
     {
-        static_assert( std::is_constructible<T, Args...>::value, "Can't construct object in make_shared" );
-        __initialize(true, true);
-        new(get()) T(std::forward<Args>(args)...);
+        using U = typename std::remove_const<T>::type;
+        static_assert( std::is_constructible<U, Args...>::value, "Can't construct object in mir_shared_ptr constructor" );
+        mir_shared_ptr ret;
+        ret.__initialize(true, true);
+        ::new((U*)ret.get()) U(std::forward<Args>(args)...);
+        return ret;
+    }
+
+    void __reset() { _payload = nullptr; }
+
+    template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
+    mir_shared_ptr& operator=(const mir_shared_ptr<Q>& rhs) noexcept
+    {
+        if (_payload != rhs.get())
+        {
+            _decrease_counter();
+            _payload = (T*) rhs.get();
+            _increase_counter();;
+        }
+        return *this;
+    }
+
+    template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
+    mir_shared_ptr(const mir_shared_ptr<Q>& rhs) noexcept : _payload(rhs.get())
+    {
+        _increase_counter();
+    }
+
+    template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
+    mir_shared_ptr(mir_shared_ptr<Q>&& rhs) noexcept : _payload(rhs.get())
+    {
+        rhs.__reset();
     }
 
     mir_shared_ptr<const T>& light_const() noexcept { return *(mir_shared_ptr<const T>*)this; }
@@ -75,6 +105,12 @@ public:
     template<class Y> bool operator>(const mir_shared_ptr<Y>& rhs) const noexcept { return _payload > rhs._payload; }
     explicit operator bool() const noexcept { return _payload != nullptr; }
 };
+
+template<class T, class ...Args> 
+mir_shared_ptr<T> mir_make_shared(Args&& ...args)
+{
+    return mir_shared_ptr<T>::make_shared(std::forward<Args>(args)...);
+}
 
 namespace std
 {

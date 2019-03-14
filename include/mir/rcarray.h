@@ -81,6 +81,32 @@ public:
         while(ibegin != iend);
     }
 
+    void __reset() { _payload = nullptr; }
+
+    template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
+    mir_rcarray& operator=(const mir_rcarray<Q>& rhs) noexcept
+    {
+        if (_payload != rhs.get())
+        {
+            _decrease_counter();
+            _payload = (T*) rhs.get();
+            _increase_counter();;
+        }
+        return *this;
+    }
+
+    template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
+    mir_rcarray(const mir_rcarray<Q>& rhs) noexcept : _payload(rhs.get())
+    {
+        _increase_counter();
+    }
+
+    template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
+    mir_rcarray(mir_rcarray<Q>&& rhs) noexcept : _payload(rhs.get())
+    {
+        rhs.__reset();
+    }
+
     mir_rcarray<const T>& light_const() noexcept { return *(mir_rcarray<const T>*)this; }
     mir_rcarray(std::initializer_list<T> list) : mir_rcarray(list.begin(), list.end()) {}
     template<class E, class Allocator> mir_rcarray(const std::vector<E, Allocator>& vector) : mir_rcarray(vector.begin(), vector.end()) {}

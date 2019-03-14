@@ -171,17 +171,17 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     static if (is(T == const) || is(T == immutable))
     {
         ///
-        ref opAssign(Q)(return scope const mir_rcarray!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(return scope const mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
             this._payload = rhs._payload;
-            rhs._payload = lhs_payload;
+            *cast(Q**)&rhs._payload = lhs_payload;
             return this;
         }
 
         /// ditto
-        ref opAssign(Q)(ref return scope const mir_rcarray!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(ref return scope const mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)
@@ -196,7 +196,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     else
     {
         ///
-        ref opAssign(Q)(return scope mir_rcarray!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(return scope mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
@@ -206,7 +206,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
 
         /// ditto
-        ref opAssign(Q)(ref return scope mir_rcarray!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(ref return scope mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)
@@ -460,6 +460,9 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
 /// ditto
 alias RCArray = mir_rcarray;
 
+/// ditto
+alias rcarray(T) = RCArray!T.create;
+
 ///
 version(mir_test)
 @safe pure @nogc nothrow
@@ -493,15 +496,15 @@ version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
-    auto a = RCArray!double.create(1.0, 2, 5, 3);
+    RCArray!double a = rcarray!double(1.0, 2, 5, 3);
     assert(a[0] == 1);
     assert(a[$ - 1] == 3);
 
-    auto s = RCArray!char.create("hello!");
+    auto s = rcarray!char("hello!");
     assert(s[0] == 'h');
     assert(s[$ - 1] == '!');
 
-    alias rcstring = RCArray!(immutable char).create;
+    alias rcstring = rcarray!(immutable char);
     auto r = rcstring("string");
     assert(r[0] == 's');
     assert(r[$ - 1] == 'g');
