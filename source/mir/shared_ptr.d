@@ -183,7 +183,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
         {
             auto lhs_payload = this._payload;
             this._payload = rhs._payload;
-            rhs._payload = lhs_payload;
+            *cast(Q**)&rhs._payload = lhs_payload;
             return this;
         }
 
