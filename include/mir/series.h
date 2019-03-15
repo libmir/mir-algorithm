@@ -3,6 +3,7 @@
 #define MIR_SERIES
 
 #include <map>
+#include <stdexcept>
 #include "mir/ndslice.h"
 #include "mir/rcarray.h"
 
@@ -123,6 +124,26 @@ struct mir_series
     }
 
     template <class T, class Value>
+    auto&& get(const T& key)
+    {
+        size_t idx = transition_index_less(key);
+        auto cond = idx < _data._lengths[0] && _index[idx] == key;
+        if (cond)
+            return _data[idx];
+        throw std::out_of_range("series::get:  key not found");
+    }
+
+    template <class T, class Value>
+    auto&& get(const T& key) const
+    {
+        size_t idx = transition_index_less(key);
+        auto cond = idx < _data._lengths[0] && _index[idx] == key;
+        if (cond)
+            return _data[idx];
+        throw std::out_of_range("series::get:  key not found");
+    }
+
+    template <class T, class Value>
     bool try_get_next(const T& key, Value& val) const
     {
         size_t idx = transition_index_less(key);
@@ -236,6 +257,12 @@ struct mir_series
 
     ThisIterator begin() noexcept { return {0, *this}; }
     ThisIterator end() noexcept { return {_data.size(), *this}; }
+
+    ThisIterator begin() const noexcept { return {0, *this}; }
+    ThisIterator end() const noexcept { return {_data.size(), *this}; }
+
+    ThisIterator cbegin() const noexcept { return {0, *this}; }
+    ThisIterator cend() const noexcept { return {_data.size(), *this}; }
 };
 
 // don't sort

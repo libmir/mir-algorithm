@@ -2085,7 +2085,7 @@ See_also $(LREF Series.opBinary) $(LREF makeUnionSeries)
 auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
     if (C > 1)
 {
-    return unionSeriesImplPrivate(seriesTuple);
+    return unionSeriesImplPrivate!false(seriesTuple);
 }
 
 ///
@@ -2155,8 +2155,6 @@ auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Se
 
 /**
 Merges multiple (time) series into one.
-Makes exactly one memory allocation for two series union
-and exactly two memory allocation for three and more series union.
 
 Params:
     allocator = memory allocator
@@ -2167,13 +2165,12 @@ See_also $(LREF unionSeries)
 auto makeUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator)(auto ref Allocator allocator, Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
     if (C > 1)
 {
-    return unionSeriesImplPrivate(seriesTuple, allocator);
+    return unionSeriesImplPrivate!false(seriesTuple, allocator);
 }
 
 ///
 @system pure nothrow version(mir_test) unittest
 {
-    import std.datetime: Date;
     import std.experimental.allocator;
     import std.experimental.allocator.building_blocks.region;
 
@@ -2208,6 +2205,51 @@ auto makeUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C
     allocator.dispose(m0.data.field);
     allocator.dispose(m1.index.field);
     allocator.dispose(m1.data.field);
+}
+
+/**
+Merges multiple (time) series into one.
+
+Params:
+    allocator = memory allocator
+    seriesTuple = variadic static array of composed of series.
+Returns: sorted manually allocated series.
+See_also $(LREF unionSeries)
+*/
+auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
+    if (C > 1)
+{
+    return unionSeriesImplPrivate!true(seriesTuple);
+}
+
+///
+@system pure nothrow version(mir_test) unittest
+{
+    import mir.rcarray;
+
+    //////////////////////////////////////
+    // Constructs two time-series.
+    //////////////////////////////////////
+    auto index0 = [1,3,4];
+
+    auto data0 = [1.0, 3, 4];
+    auto series0 = index0.series(data0);
+
+    auto index1 = [1,2,5];
+
+    auto data1 = [10.0, 20, 50];
+    auto series1 = index1.series(data1);
+
+    //////////////////////////////////////
+    // Merges multiple series into one.
+    //////////////////////////////////////
+
+    Series!(RCI!int, RCI!double) m0 = rcUnionSeries(series0, series1);
+    Series!(RCI!int, RCI!double) m1 = rcUnionSeries(series1, series0); // order is matter
+
+    assert(m0.index == m1.index);
+    assert(m0.data == [ 1, 20,  3,  4, 50]);
+    assert(m1.data == [10, 20,  3,  4, 50]);
 }
 
 /**
@@ -2250,12 +2292,15 @@ auto unionSeriesImpl(I, E,
     }
 }
 
-private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(ref Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
+private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(ref Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
     if (C > 1 && Allocator.length <= 1)
 {
     import mir.algorithm.setops: unionLength;
+    import mir.ndslice.topology: iota;
     import mir.internal.utility: Iota;
     import mir.ndslice.allocation: uninitSlice, makeUninitSlice;
+    static if (rc)
+        import mir.rcarray;
 
     Slice!IndexIterator[C] indeces;
     foreach (i; Iota!C)
@@ -2265,7 +2310,10 @@ private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, SliceKind
 
     alias I = typeof(seriesTuple[0].index.front);
     alias E = typeof(seriesTuple[0].data.front);
-    alias R = Series!(I*, E*, N);
+    static if (rc)
+        alias R = Series!(RCI!I, RCI!E, N);
+    else
+        alias R = Series!(I*, E*, N);
     alias UI = Unqual!I;
     alias UE = Unqual!E;
 
@@ -2284,10 +2332,25 @@ private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, SliceKind
         alias shape = len;
     }
 
-    static if (Allocator.length)
-        auto ret = (()@trusted => allocator[0].makeUninitSlice!UI(len).series(allocator[0].makeUninitSlice!UE(shape)))();
+    static if (rc == false)
+    {
+        static if (Allocator.length)
+            auto ret = (()@trusted => allocator[0].makeUninitSlice!UI(len).series(allocator[0].makeUninitSlice!UE(shape)))();
+        else
+            auto ret = (()@trusted => len.uninitSlice!UI.series(shape.uninitSlice!UE))();
+    }
     else
-        auto ret = (()@trusted => len.uninitSlice!UI.series(shape.uninitSlice!UE))();
+    {
+        static if (Allocator.length)
+            static assert(0, "rcUnionSeries with allocators is not implemented.");
+        else
+            auto ret = (()@trusted =>
+                mir_rcarray!UI(len, UI.alignof, true, false)
+                .asSlice
+                .series(
+                    mir_rcarray!UE(shape.iota.elementCount, UE.alignof, true, false)
+                    .asSlice.sliced(shape)))();
+    }
 
     static if (N == 2) // fast path
     {
@@ -2296,11 +2359,11 @@ private auto unionSeriesImplPrivate(IndexIterator, Iterator, size_t N, SliceKind
             (auto scope ref key, auto scope ref left, auto scope return ref right) => left,
             (auto scope ref key, auto scope return ref right) => right,
         );
-        algo!(I, E)(seriesTuple[0], seriesTuple[1], ret);
+        algo!(I, E)(seriesTuple[0], seriesTuple[1], ret.lightScope);
     }
     else
     {
-        unionSeriesImpl!(I, E)(seriesTuple, ret);
+        unionSeriesImpl!(I, E)(seriesTuple, ret.lightScope);
     }
 
     return () @trusted {return cast(R) ret; }();
