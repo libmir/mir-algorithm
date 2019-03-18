@@ -654,9 +654,14 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         Exception if the series does not contains the index.
     See_also: $(LREF Series.getVerbose), $(LREF Series.tryGet)
     */
-    auto ref get(Index)(auto ref scope const Index key)
+    auto ref get(Index)(auto ref scope const Index key) @trusted
     {
-        return this.get(key, defaultExc!());
+        size_t idx = lightScopeIndex.transitionIndex(key);
+        if (idx < _data._lengths[0] && _index[idx] == key)
+        {
+            return _data[idx];
+        }
+        throw defaultExc!();
     }
 
     /// ditto
