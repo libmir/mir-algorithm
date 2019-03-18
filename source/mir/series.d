@@ -1965,8 +1965,8 @@ template troykaSeries(alias lfun, alias cfun, alias rfun)
         IndexIterL, IterL, size_t LN, SliceKind lkind,
         IndexIterR, IterR, size_t RN, SliceKind rkind,
     )(
-        Series!(IndexIterL, IterL, LN, lkind) lhs,
-        Series!(IndexIterR, IterR, RN, rkind) rhs,
+        auto ref Series!(IndexIterL, IterL, LN, lkind) lhs,
+        auto ref Series!(IndexIterR, IterR, RN, rkind) rhs,
     )
     {
         alias I = CommonType!(typeof(lhs.index.front), typeof(rhs.index.front));
@@ -1984,7 +1984,7 @@ template troykaSeries(alias lfun, alias cfun, alias rfun)
         auto data = length.uninitSlice!UE;
         auto ret = index.series(data);
         alias algo = troykaSeriesImpl!(lfun, cfun, rfun);
-        algo!(I, E)(lhs, rhs, ret);
+        algo!(I, E)(lhs.lightScope, rhs.lightScope, ret);
         return (()@trusted => cast(R) ret)();
     }
 }
@@ -2004,6 +2004,67 @@ version(mir_test) unittest
     assert(c.index == [0, 1, 2, 3, 4, 9]);
     assert(c.data == [-10, 1, 22, 3, -30, 44]);
 }
+
+/++
+Constructs union using three functions to handle each intersection case separately.
+Params:
+    lfun = binary function that accepts left side key and left side value
+    cfun = trinary function that accepts left side key, left side value, and right side value
+    rfun = binary function that accepts right side key and right side value
++/
+template rcTroykaSeries(alias lfun, alias cfun, alias rfun)
+{
+    /++
+    Params:
+        lhs = left hand series
+        rhs = right hand series
+    Returns:
+        RC-allocated union series with length equal to $(LREF troykaLength)
+    +/
+    auto rcTroykaSeries
+    (
+        IndexIterL, IterL, size_t LN, SliceKind lkind,
+        IndexIterR, IterR, size_t RN, SliceKind rkind,
+    )(
+        auto ref Series!(IndexIterL, IterL, LN, lkind) lhs,
+        auto ref Series!(IndexIterR, IterR, RN, rkind) rhs,
+    )
+    {
+        import mir.rcarray;
+        alias I = CommonType!(typeof(lhs.index.front), typeof(rhs.index.front));
+        alias E = CommonType!(
+            typeof(lfun(lhs.index.front, lhs.data.front)),
+            typeof(cfun(lhs.index.front, lhs.data.front, rhs.data.front)),
+            typeof(rfun(rhs.index.front, rhs.data.front)),
+        );
+        alias R = Series!(RCI!I, RCI!E);
+        alias UI = Unqual!I;
+        alias UE = Unqual!E;
+        const length = troykaLength(lhs.index, rhs.index);
+        import mir.ndslice.allocation: uninitSlice;
+        auto ret = length.mininit_rcarray!UI.asSlice.series(length.mininit_rcarray!UE.asSlice);
+        alias algo = troykaSeriesImpl!(lfun, cfun, rfun);
+        algo!(I, E)(lhs.lightScope, rhs.lightScope, ret.lightScope);
+        return (()@trusted => cast(R) ret)();
+    }
+}
+
+///
+version(mir_test) unittest
+{
+    import mir.ndslice;
+    auto a = [1, 2, 3, 9].sliced.series(iota!int([4], 1));
+    auto b = [0, 2, 4, 9].sliced.series(iota!int([4], 1) * 10.0);
+    alias unionAlgorithm = rcTroykaSeries!(
+        (key, left) => left,
+        (key, left, right) => left + right,
+        (key, right) => -right,
+    );
+    auto c = unionAlgorithm(a, b);
+    assert(c.index == [0, 1, 2, 3, 4, 9]);
+    assert(c.data == [-10, 1, 22, 3, -30, 44]);
+}
+
 
 /++
 Length for Troyka union handlers.
@@ -2223,7 +2284,7 @@ auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(
 }
 
 ///
-@system pure nothrow version(mir_test) unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.rcarray;
 
@@ -2345,18 +2406,23 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
             static assert(0, "rcUnionSeries with allocators is not implemented.");
         else
             auto ret = (()@trusted =>
-                mir_rcarray!UI(len, UI.alignof, true, false)
+                len
+                .mininit_rcarray!UI
                 .asSlice
                 .series(
-                    mir_rcarray!UE(shape.iota.elementCount, UE.alignof, true, false)
-                    .asSlice.sliced(shape)))();
+                    shape
+                    .iota
+                    .elementCount
+                    .mininit_rcarray!UE
+                    .asSlice
+                    .sliced(shape)))();
     }
 
     static if (N == 2) // fast path
     {
         alias algo = troykaSeriesImpl!(
             (auto scope ref key, auto scope return ref left) => left,
-            (auto scope ref key, auto scope ref left, auto scope return ref right) => left,
+            (auto scope ref key, auto scope return ref left, auto scope return ref right) => left,
             (auto scope ref key, auto scope return ref right) => right,
         );
         algo!(I, E)(seriesTuple[0], seriesTuple[1], ret.lightScope);

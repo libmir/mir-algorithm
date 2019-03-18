@@ -241,6 +241,18 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
     }
 
+    /++
+    Params:
+        length = array length
+        alignment = alignment, must be power of 2
+        deallocate = Flag, never deallocates memory if `false`.
+    Returns: minimally initialized rcarray.
+    +/
+    static mir_rcarray mininit(size_t length, uint alignment = T.alignof, bool deallocate = true)
+    {
+        return mir_rcarray(length, alignment, deallocate, false);
+    }
+
     static if (isImplicitlyConvertible!(const T, T))
         static if (isImplicitlyConvertible!(const Unqual!T, T))
             private alias V = const Unqual!T;
@@ -462,6 +474,8 @@ alias RCArray = mir_rcarray;
 
 /// ditto
 alias rcarray(T) = RCArray!T.create;
+
+alias mininit_rcarray(T) = RCArray!T.mininit;
 
 ///
 version(mir_test)

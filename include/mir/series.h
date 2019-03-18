@@ -123,7 +123,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
+    template <class T>
     auto&& get(const T& key)
     {
         size_t idx = transition_index_less(key);
@@ -133,7 +133,7 @@ struct mir_series
         throw std::out_of_range("series::get:  key not found");
     }
 
-    template <class T, class Value>
+    template <class T>
     auto&& get(const T& key) const
     {
         size_t idx = transition_index_less(key);
