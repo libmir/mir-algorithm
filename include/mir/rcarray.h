@@ -2,6 +2,7 @@
 
 #define MIR_RCARRAY
 
+#include <atomic>
 #include <utility>
 #include <cassert>
 #include <initializer_list>
@@ -26,14 +27,14 @@ private:
     {
         void* _delegateContext;
         void* _function;
-        size_t counter;
+        std::atomic_size_t counter;
         size_t length;
     };
 
     Context* _context() noexcept { return (Context*)_payload - 1; }
     const Context* _context() const noexcept { return (const Context*)_payload - 1; }
 
-    bool __initialize(size_t length, unsigned int alignment, bool deallocate, bool initialize) noexcept;
+    bool __initialize(mir_size_t length, unsigned int alignment, bool deallocate, bool initialize) noexcept;
     void __decreaseCounterImpl() noexcept;
 
 public:
@@ -211,26 +212,26 @@ public:
         return ret;
     }
 
-    T& operator[](mir_size_t index)
+    T& operator[](size_t index)
     {
         auto ptr = _iterator + index;
         assert(_array.cbegin() <= ptr && ptr < _array.cend());
         return _iterator[index];
     }
 
-    const T& operator[](mir_size_t index) const
+    const T& operator[](size_t index) const
     {
         auto ptr = _iterator + index;
         assert(_array.cbegin() <= ptr && ptr < _array.cend());
         return _iterator[index];
     }
 
-    mir_rci operator+(mir_ptrdiff_t index)
+    mir_rci operator+(ptrdiff_t index)
     {
         return mir_rci(_iterator + index, _array);
     }
 
-    mir_rci operator-(mir_ptrdiff_t index) const
+    mir_rci operator-(ptrdiff_t index) const
     {
         return mir_rci(_iterator + index, _array);
     }

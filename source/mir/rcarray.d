@@ -106,7 +106,10 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         auto asSlice() scope return @property
         {
             alias It = mir_rci!T;
-            return Slice!It([length], It((()@trusted => ptr)(), this));
+            static if (cppSupport != .cppSupport!T)
+                return Slice!It([length], It((()@trusted => ptr)(), cast(mir_rcarray!(T, false)) this));
+            else
+                return Slice!It([length], It((()@trusted => ptr)(), this));
         }
     }
     else
@@ -171,7 +174,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     static if (is(T == const) || is(T == immutable))
     {
         ///
-        ref opAssign(Q)(return scope const mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(return scope const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
@@ -181,7 +184,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
 
         /// ditto
-        ref opAssign(Q)(ref return scope const mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(ref return scope const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)
@@ -196,7 +199,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     else
     {
         ///
-        ref opAssign(Q)(return scope mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(return scope mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
@@ -206,7 +209,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
 
         /// ditto
-        ref opAssign(Q)(ref return scope mir_rcarray!Q rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(ref return scope mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)
@@ -415,20 +418,20 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     }
 
     ///
-    mir_rcarray!Q opCast(C : mir_rcarray!Q, Q)() pure nothrow @nogc
+    mir_rcarray!(Q, b) opCast(C : mir_rcarray!(Q, b), Q, bool b)() pure nothrow @nogc
         if (isImplicitlyConvertible!(T*, Q*))
     {
-        mir_rcarray!Q ret;
+        mir_rcarray!(Q, b) ret;
         ret._payload = _payload;
         ret.__xpostblit;
         return ret;
     }
 
     /// ditto
-    mir_rcarray!Q opCast(C : mir_rcarray!Q, Q)() pure nothrow @nogc const
+    mir_rcarray!(Q, b) opCast(C : mir_rcarray!(Q, b), Q, bool b)() pure nothrow @nogc const
         if (isImplicitlyConvertible!(const(T)*, Q*))
     {
-        mir_rcarray!Q ret;
+        mir_rcarray!(Q, b) ret;
         ret._payload = _payload;
         ret.__xpostblit;
         return ret;

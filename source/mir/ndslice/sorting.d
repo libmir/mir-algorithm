@@ -529,6 +529,9 @@ template transitionIndex(alias test = "a < b")
     auto j = a.transitionIndex!"a <= b"(2);
     assert(j == 3);
     auto upperBound = a[j .. $];
+
+    assert(a.transitionIndex(a[$-1]) == a.length - 1);
+    assert(a.transitionIndex!"a <= b"(a[$-1]) == a.length);
 }
 
 /++
