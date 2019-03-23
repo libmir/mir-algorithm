@@ -591,6 +591,8 @@ struct ZipIterator(Iterators...)
 ///
 pure nothrow @nogc version(mir_test) unittest
 {
+    import mir.ndslice.traits: isIterator;
+
     double[10] data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     alias ItA = IotaIterator!int;
     alias ItB = double*;
@@ -621,6 +623,9 @@ pure nothrow @nogc version(mir_test) unittest
 
     assert(zip == zip);
     assert(zip - 1 < zip);
+
+    static assert(isIterator!(ZipIterator!(double*, int*)));
+    static assert(isIterator!(ZipIterator!(immutable(double)*, immutable(int)*)));
 }
 
 ///

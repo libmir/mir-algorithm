@@ -601,12 +601,14 @@ alias RCI = mir_rci;
 
 ///
 version(mir_test)
-@nogc unittest
+@safe @nogc unittest
 {
+    import mir.ndslice.traits: isIterator;
     import mir.ndslice.slice;
     import mir.rcarray;
     auto array = mir_rcarray!double(10);
     auto slice = array.asSlice;
+    static assert(isIterator!(RCI!double));
     static assert(is(typeof(slice) == Slice!(RCI!double)));
     auto matrix = slice.sliced(2, 5);
     static assert(is(typeof(matrix) == Slice!(RCI!double, 2)));
@@ -616,7 +618,7 @@ version(mir_test)
 
 ///
 version(mir_test)
-@nogc unittest
+@safe @nogc unittest
 {
     import mir.ndslice.slice;
     import mir.rcarray;
@@ -624,7 +626,11 @@ version(mir_test)
     alias rcvec = Slice!(RCI!double);
 
     RCI!double a, b;
-    size_t c = a - b;
+    a = b;
+
+    RCI!(const double) ca, cb;
+    ca = cb;
+    ca = cast(const) cb;
 
     void foo(scope ref rcvec x, scope ref rcvec y)
     {
@@ -640,6 +646,7 @@ version(mir_test)
 {
     import mir.ndslice;
     import mir.rcarray;
+    import mir.series;
 
     @safe void bar(ref const mir_rcarray!(const double) a, ref mir_rcarray!(const double) b)
     {
@@ -660,6 +667,33 @@ version(mir_test)
     {
         b = a;
     }
+
+    struct S
+    {
+        uint i;
+        @safe pure:
+        ~this() {}
+    }
+
+    @safe void goo(ref const Series!(RCI!(const double), RCI!(const S)) a, ref Series!(RCI!(const double), RCI!(const S)) b)
+    {
+        b = a;
+    }
+
+    @safe void gooi(ref immutable Series!(RCI!(immutable double), RCI!(const S)) a, ref Series!(RCI!(immutable double), RCI!(const S)) b)
+    {
+        b = a;
+    }
+
+    struct C
+    {
+        Series!(RCI!(const S), RCI!(const S)) a;
+        Series!(RCI!(const S), RCI!(const S)) b;
+    }
+
+    C a, b;
+    a = b;
+    a = cast(const) b;
 }
 
 version(mir_test)
