@@ -1221,8 +1221,20 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         return lightImmutable[slices];
     }
 
+    ///
+    ref opAssign(typeof(this) rvalue) return @trusted
+    {
+        import mir.utility: swap;
+        this._data._lengths = rvalue._data._lengths;
+        static if (this._data._strides.length)
+            this._data._strides = rvalue._data._strides;
+        swap(this._data._iterator, rvalue._data._iterator);
+        swap(this._index, rvalue._index);
+        return this;
+    }
+
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref Series!(RIndexIterator, RIterator, N, kind) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
         this._data._lengths = rvalue._data._lengths;
@@ -1234,23 +1246,23 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, RIterator, N, kind) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, LightConstOf!RIndexIterator) && isAssignable!(Iterator, LightConstOf!RIterator))
     {
         return this = rvalue.opIndex;
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, RIterator, N, kind) rvalue)
+    ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, LightImmutableOf!RIndexIterator) && isAssignable!(Iterator, LightImmutableOf!RIterator))
     {
         return this = rvalue.opIndex;
     }
 
     /// ditto
-    ref opAssign(typeof(null))
+    ref opAssign(typeof(null)) return
     {
-        this = typeof(this)(null);
+        return this = typeof(this)(null);
     }
 
     /// ditto

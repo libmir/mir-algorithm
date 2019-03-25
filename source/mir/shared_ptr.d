@@ -163,7 +163,10 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
     ~this() nothrow @nogc @safe
     {
         if (_payload !is null)
-            __decreaseCounterImpl();
+        {
+            __decreaseCounterImpl;
+            debug _payload = null;
+        }
     }
 
     ///
@@ -175,10 +178,19 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
         return this;
     }
 
+    ///
+    ref opAssign(return typeof(this) rhs) scope return @trusted
+    {
+        auto p = _payload;
+        _payload = rhs._payload;
+        rhs._payload = p;
+        return this;
+    }
+
     static if (is(T == const) || is(T == immutable))
     {
         ///
-        ref opAssign(Q)(return scope const mir_shared_ptr!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(return const mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
@@ -188,7 +200,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
         }
 
         /// ditto
-        ref opAssign(Q)(ref return scope const mir_shared_ptr!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(ref return const mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)
@@ -203,7 +215,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
     else
     {
         ///
-        ref opAssign(Q)(return scope mir_shared_ptr!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(return mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
@@ -213,7 +225,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
         }
 
         /// ditto
-        ref opAssign(Q)(ref return scope mir_shared_ptr!Q rhs) scope pure nothrow @nogc @trusted
+        ref opAssign(Q)(ref return mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)

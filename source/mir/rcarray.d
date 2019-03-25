@@ -138,7 +138,10 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     ~this() nothrow @nogc @safe
     {
         if (_payload !is null)
+        {
             __decreaseCounterImpl;
+            debug _payload = null;
+        }
     }
 
     ///
@@ -170,11 +173,19 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         return this;
     }
 
+    ///
+    ref opAssign(return typeof(this) rhs) scope return @trusted
+    {
+        auto p = _payload;
+        _payload = rhs._payload;
+        rhs._payload = p;
+        return this;
+    }
 
     static if (is(T == const) || is(T == immutable))
     {
         ///
-        ref opAssign(Q, bool b)(return scope const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(return const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
@@ -184,7 +195,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
 
         /// ditto
-        ref opAssign(Q, bool b)(ref return scope const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(ref return const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)
@@ -199,7 +210,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     else
     {
         ///
-        ref opAssign(Q, bool b)(return scope mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(return mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             auto lhs_payload = this._payload;
@@ -209,7 +220,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
 
         /// ditto
-        ref opAssign(Q, bool b)(ref return scope mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
+        ref opAssign(Q, bool b)(ref return mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
             if (isImplicitlyConvertible!(T*, Q*))
         {
             if (_payload != rhs._payload)
