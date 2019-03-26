@@ -553,7 +553,7 @@ struct mir_rci(T)
     RCArray!T _array;
 
     ///
-    inout(T)* lightScope()() scope return inout @property
+    inout(T)* lightScope()() scope return inout @property @trusted
     {
         debug
         {
@@ -574,7 +574,7 @@ struct mir_rci(T)
     { return typeof(return)(_iterator, _array.lightImmutable); }
 
     ///   
-    ref inout(T) opUnary(string op : "*")() inout scope return
+    ref inout(T) opUnary(string op : "*")() inout scope return @trusted
     {
         debug
         {
@@ -587,7 +587,7 @@ struct mir_rci(T)
     }
 
     ///   
-    ref inout(T) opIndex(ptrdiff_t index) inout scope return
+    ref inout(T) opIndex(ptrdiff_t index) inout scope return @trusted
     {
         debug
         {
