@@ -557,10 +557,8 @@ struct mir_rci(T)
     {
         debug
         {
-            assert(_iterator);
-            assert(_array._payload);
             assert(_array._payload <= _iterator);
-            assert(_iterator < _array._payload + _array.length);
+            assert(_iterator is null || _iterator < _array._payload + _array.length);
         }
         return _iterator;
     }
