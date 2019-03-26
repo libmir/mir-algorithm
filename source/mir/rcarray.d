@@ -66,17 +66,20 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
                             if (_delegateContext !is null)
                             {
                                 size_t size = length * T.sizeof + Context.sizeof;
+                                debug *_context = Context.init;
                                 _delegate(_delegateContext, p[0 .. size]);
                             }
                             else
                             if (_function !is null)
                             {
                                 size_t size = length * T.sizeof + Context.sizeof;
+                                debug *_context = Context.init;
                                 _function(p[0 .. size]);
                             }
                             else
                             {
                                 import mir.internal.memory: free;
+                                debug *_context = Context.init;
                                 free(p);
                             }
                         }
@@ -551,7 +554,16 @@ struct mir_rci(T)
 
     ///
     inout(T)* lightScope()() scope return inout @property
-    { return _iterator; }
+    {
+        debug
+        {
+            assert(_iterator);
+            assert(_array._payload);
+            assert(_array._payload <= _iterator);
+            assert(_iterator < _array._payload + _array.length);
+        }
+        return _iterator;
+    }
 
     ///
     mir_rci!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
@@ -563,11 +575,29 @@ struct mir_rci(T)
 
     ///   
     ref inout(T) opUnary(string op : "*")() inout scope return
-    { return *_iterator; }
+    {
+        debug
+        {
+            assert(_iterator);
+            assert(_array._payload);
+            assert(_array._payload <= _iterator);
+            assert(_iterator < _array._payload + _array.length);
+        }
+        return *_iterator;
+    }
 
     ///   
     ref inout(T) opIndex(ptrdiff_t index) inout scope return
-    { return _iterator[index]; }
+    {
+        debug
+        {
+            assert(_iterator);
+            assert(_array._payload);
+            assert(_array._payload <= _iterator + index);
+            assert(_iterator + index < _array._payload + _array.length);
+        }
+        return _iterator[index];
+    }
 
     ///   
     void opUnary(string op)() scope
