@@ -1982,8 +1982,8 @@ template troykaSeries(alias lfun, alias cfun, alias rfun)
         IndexIterL, IterL, size_t LN, SliceKind lkind,
         IndexIterR, IterR, size_t RN, SliceKind rkind,
     )(
-        auto ref Series!(IndexIterL, IterL, LN, lkind) lhs,
-        auto ref Series!(IndexIterR, IterR, RN, rkind) rhs,
+        Series!(IndexIterL, IterL, LN, lkind) lhs,
+        Series!(IndexIterR, IterR, RN, rkind) rhs,
     )
     {
         alias I = CommonType!(typeof(lhs.index.front), typeof(rhs.index.front));
