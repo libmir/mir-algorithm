@@ -519,7 +519,6 @@ sizediff_t nBitsToCount(Field, I)(scope Slice!(RetroIterator!(FieldIterator!(Bit
 ///
 pure unittest
 {
-    import std.stdio;
     import mir.ndslice.allocation: bitSlice;
     import mir.ndslice.topology: retro;
     auto s = bitSlice(1000);
@@ -990,7 +989,6 @@ unittest
 
     sl.each!((ref a) { a = a * 10 + 5; });
 
-    import std.stdio;
     assert(sl ==
         [[ 5, 15, 25],
          [35, 45, 55]]);
@@ -1269,7 +1267,7 @@ unittest
 
 bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref size_t[N] backwardIndex, scope ref Iterator iterator, Slice!(Iterator, N, kind) slice)
 {
-    auto bis = backwardIndex[0];
+    bool found;
     do
     {
         static if (slice.shape.length == 1)
@@ -1278,6 +1276,7 @@ bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref size_t[
             {
                 backwardIndex[0] = slice.length;
                 iterator = slice._iterator;
+                found = true;
             }
         }
         else
@@ -1285,17 +1284,18 @@ bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref size_t[
             if (minPosImpl!(fun, Iterator, N - 1, kind)(backwardIndex[1 .. $], iterator, slice.front))
             {
                 backwardIndex[0] = slice.length;
+                found = true;
             }
         }
         slice.popFront;
     }
     while(!slice.empty);
-    return bis != backwardIndex[0];
+    return found;
 }
 
 bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref size_t[2][N] backwardIndex, scope ref Iterator[2] iterator, Slice!(Iterator, N, kind) slice)
 {
-    size_t[2] bis = backwardIndex[0];
+    bool[2] found;
     do
     {
         static if (slice.shape.length == 1)
@@ -1304,12 +1304,14 @@ bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref s
             {
                 backwardIndex[0][0] = slice.length;
                 iterator[0] = slice._iterator;
+                found[0] = true;
             }
             else
             if (fun(*iterator[1], *slice._iterator))
             {
                 backwardIndex[0][1] = slice.length;
                 iterator[1] = slice._iterator;
+                found[1] = true;
             }
         }
         else
@@ -1327,7 +1329,7 @@ bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref s
         slice.popFront;
     }
     while(!slice.empty);
-    return [bis[0] != backwardIndex[0][0], bis[1] != backwardIndex[0][1]];
+    return found;
 }
 
 /++
@@ -1574,8 +1576,7 @@ template minIndex(alias pred = "a < b")
         if (!slice.anyEmpty)
         {
             ret = slice.shape;
-            auto iterator = slice._iterator;
-            minPosImpl!(pred, Iterator, N, kind)(ret, iterator, slice);
+            minPosImpl!(pred, Iterator, N, kind)(ret, slice._iterator, slice);
             foreach (i; Iota!N)
                 ret[i] = slice._lengths[i] - ret[i];
         }
@@ -1627,6 +1628,24 @@ unittest
 
     assert(index == [0, 0]);
     assert(s[index] == -8);
+}
+
+version(mir_test)
+unittest
+{
+    auto s = [
+            0, 1, 2, 3,
+            4, 5, 6, 7,
+            8, 9, 10, 11
+            ].sliced(3, 4);
+
+    auto index = s.minIndex;
+    assert(index == [0, 0]);
+    assert(s[index] == 0);
+
+    index = s.maxIndex;
+    assert(index == [2, 3]);
+    assert(s[index] == 11);
 }
 
 bool findImpl(alias fun, size_t N, Slices...)(scope ref size_t[N] backwardIndex, Slices slices)
