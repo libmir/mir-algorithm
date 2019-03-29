@@ -85,7 +85,7 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
         scope Slice!(yIterator, 1, ykind) values
         ) pure @trusted
     {
-        import std.algorithm.mutation: move;
+        import core.lifetime: move;
         auto ret = typeof(return)(grid);
         ret._data[] = values;
         return ret.move;
@@ -135,7 +135,7 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
             length *= shape[i] = x.length;
         }
 
-        auto rca = mir_rcarray!F(length, alignment);
+        auto rca = mir_rcarray!F(length);
         this._data = rca.asSlice.sliced(shape);
         this._grid = staticMap!(iter, grid);
     }

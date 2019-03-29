@@ -67,7 +67,8 @@ if (isRandomAccessRange!(Store) || isRandomAccessRange!(typeof(Store.init[])))
 {
     import mir.utility : min;
     import mir.functional : naryFun;
-    import std.algorithm.mutation : move, swapAt;
+    import core.lifetime: move;
+    import std.algorithm.mutation : swapAt;
 
     static if (isRandomAccessRange!Store)
         alias Range = Store;

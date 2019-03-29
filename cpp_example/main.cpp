@@ -17,6 +17,8 @@ namespace Space
 }
 
 void testSeries();
+void testRCPtr();
+void testPM();
 
 int main()
 {
@@ -42,8 +44,6 @@ int main()
     assert(av[2] == 4);
 
     Space::initWithIota(a); //[0, 1, 2]
-    a = a;
-    // a = std::move(a);
     auto b = a; // check copy constructor
     auto c = b.asSlice();
     auto d = c; // check copy constructor
@@ -84,12 +84,12 @@ int main()
         assert(elem == 1);
     }
 
-    a = a;
+    a = b;
     al = a;
-    b = b;
-    c = c;
 
     testSeries();
+    testRCPtr();
+    testPM();
 
     return 0;
 }
@@ -123,7 +123,8 @@ void testSeries()
     assert(series[2].second == 10);
     
     auto s = std::move(series);
-    s = s;
+    auto s2 = s;
+    s2 = s;
 
     double value;
     int key;
@@ -150,6 +151,7 @@ void testSeries()
 }
 
 struct S { double d = 0; S() {}; S(double e) : d(e) {} };
+struct C : S { double j = 3; C(double d, double k) : S(d) { k = j; }; };
 
 void testRCPtr()
 {
@@ -158,5 +160,16 @@ void testRCPtr()
     s = e;
     (*e).d = 4;
     assert(s->d == 4);
+    assert(s.getContext()->counter == 2);
     s = nullptr;
+    assert(e.getContext()->counter == 1);
+}
+
+void testPM()
+{
+    auto c = mir_make_shared<C>(3.0, 4);
+    assert(c.getContext()->counter == 1);
+    auto s = mir_shared_ptr<S>(c);
+    assert(c.getContext()->counter == 2);
+    assert(s->d == 3);
 }

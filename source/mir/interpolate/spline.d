@@ -177,9 +177,6 @@ import mir.ndslice.traits;
     }();
 }
 
-    import std.stdio;
-
-
 /// R -> R: Cubic interpolation
 version(mir_test)
 @safe unittest
@@ -394,7 +391,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         SplineBoundaryCondition!T lBoundary,
         )
     {
-        import std.algorithm.mutation: move;
+        import core.lifetime: move;
         auto ret = typeof(return)(grid);
         ret._values = values;
         ret._computeDerivatives(rBoundary, lBoundary);
@@ -478,7 +475,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
             length *= shape[i] = x.length;
         }
 
-        auto rca = mir_rcarray!(F[2 ^^ N])(length, alignment);
+        auto rca = mir_rcarray!(F[2 ^^ N])(length);
         this._data = rca.asSlice.sliced(shape);
         this._grid = staticMap!(iter, grid);
     }
@@ -666,7 +663,9 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
                 version(LDC) pragma(inline, true);
                 static if (i == -1)
                 {
-                    copyvec(*from, *to);
+                    // copyvec(*from, *to);
+                    // not aligned:
+                    *to = *from;
                 }
                 else
                 {

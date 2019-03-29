@@ -10,7 +10,6 @@ version (D_Exceptions)
 {
     import core.exception: OutOfMemoryError, InvalidMemoryOperationError;
     private static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
-    private static immutable getError = new InvalidMemoryOperationError(allocationExcMsg);
 }
 
 private template StripPointers(T)
@@ -41,6 +40,205 @@ package template cppSupport(T) {
 }
 
 /++
++/
+struct mir_rcarray_context
+{
+    ///
+    void* allocatorContext;
+    ///
+    extern(C)
+    pure nothrow @nogc int function(void* allocatorContext, mir_rcarray_context* payload) destroyAndDeallocate;
+    ///
+    shared size_t counter;
+    ///
+    size_t length;
+}
+
+/++
+Increase counter by 1.
+
+Params:
+    context = shared_ptr context (not null)
++/
+extern(C)
+void mir_rcarray_increase_counter(ref mir_rcarray_context context) @system nothrow @nogc pure
+{
+    import core.atomic: atomicOp;
+    with(context)
+    {
+        if (counter)
+        {
+            counter.atomicOp!"+="(1);
+        }
+    }
+}
+
+/++
+Decrease counter by 1.
+Destroys data if counter decreased from 1 to 0.
+
+Params:
+    context = shared_ptr context (not null)
++/
+extern(C)
+void mir_rcarray_decrease_counter(ref mir_rcarray_context context) @system nothrow @nogc pure
+{
+    pragma(inline, false);
+    import core.atomic: atomicOp;
+    with(context)
+    {
+        if (counter)
+        {
+            if (counter.atomicOp!"-="(1) == 0)
+            {
+                destroyAndDeallocate(allocatorContext, &context);
+            }
+        }
+    }
+}
+
+extern(C)
+package static int _freeImpl(T, bool structLike = !is(T == class))(void*, mir_rcarray_context* context) @trusted pure nothrow @nogc
+{
+    import std.traits: Unqual;
+    import mir.internal.memory: free;
+    static if (is(T == class))
+    {
+        static if (structLike)
+        {
+            assert(context.length == 1);
+            import mir.conv: xdestroy;
+            auto value = cast(Unqual!T)(context + 1);
+            static if (__traits(hasMember, Unqual!T, "__xdtor"))
+            static if (__traits(isSame, Unqual!T, __traits(parent, value.__xdtor)))
+                value.__xdtor();
+        }
+    }
+    else
+    {
+        import mir.conv: xdestroy;
+        xdestroy((cast(Unqual!T*)(context + 1))[0 .. context.length]);
+    }
+    free(context);
+    return true;
+}
+
+///
+mixin template CommonRCImpl()
+{
+    ///
+    this(typeof(null))
+    {
+    }
+
+    ///
+    ~this() nothrow @nogc @trusted
+    {
+        if (this)
+        {
+            mir_rcarray_decrease_counter(context);
+            debug _reset;
+        }
+    }
+
+    ///
+    this(this) scope @trusted pure nothrow @nogc
+    {
+        if (this)
+        {
+            mir_rcarray_increase_counter(context);
+        }
+    }
+
+    ///
+    ref opAssign(typeof(null)) scope return pure nothrow @nogc @trusted
+    {
+        this = typeof(this).init;
+    }
+
+    ///
+    ref opAssign(return typeof(this) rhs) scope return @trusted
+    {
+        this.proxySwap(rhs);
+        return this;
+    }
+
+    ///
+    ref opAssign(Q, bool b)(return ThisTemplate!(Q, b) rhs) scope return pure nothrow @nogc @trusted
+        if (isImplicitlyConvertible!(Q*, T*))
+    {
+        this.proxySwap(*cast(typeof(this)*)&rhs);
+        return this;
+    }
+
+    ///
+    ThisTemplate!(const T, cppSupport) lightConst()() scope return const @nogc nothrow @trusted @property
+    { return *cast(typeof(return)*) &this; }
+
+    /// ditto
+    ThisTemplate!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
+    { return *cast(typeof(return)*) &this; }
+
+    ///
+    pragma(inline, true)
+    size_t _counter() @trusted scope pure nothrow @nogc const @property
+    {
+        return cast(bool)this ? context.counter : 0;
+    }
+
+    ///
+    bool opCast(C : bool)() const
+    {
+        return _thisPtr !is null;
+    }
+
+    ///
+    ref C opCast(C : ThisTemplate!(Q, b), Q, bool b)() pure nothrow @nogc @trusted
+        if (isImplicitlyConvertible!(T*, Q*))
+    {
+        return *cast(typeof(return)*)&this;
+    }
+
+    /// ditto
+    C opCast(C : ThisTemplate!(Q, b), Q, bool b)() pure nothrow @nogc const @trusted
+        if (isImplicitlyConvertible!(const(T)*, Q*))
+    {
+        return *cast(typeof(return)*)&this;
+    }
+
+    /// ditto
+    C opCast(C : ThisTemplate!(Q, b), Q, bool b)() pure nothrow @nogc immutable @trusted
+        if (isImplicitlyConvertible!(immutable(T)*, Q*))
+    {
+        return *cast(typeof(return)*)&this;
+    }
+
+    ///
+    pragma(inline, true)
+    bool opEquals(typeof(null)) @safe scope pure nothrow @nogc @property
+    {
+        return !this;
+    }
+
+    /// ditto
+    bool opEquals(Y, bool b)(auto ref scope const ThisTemplate!(Y, b) rhs) @safe scope pure nothrow @nogc @property
+    {
+        return _thisPtr == _rhs._thisPtr;
+    }
+
+    ///
+    sizediff_t opCmp(Y, bool b)(auto ref scope const ThisTemplate!(Y, b) rhs) @trusted scope pure nothrow @nogc @property
+    {
+        return cast(void*)_thisPtr - cast(void*)_rhs._thisPtr;
+    }
+
+    size_t toHash() @trusted scope pure nothrow @nogc @property
+    {
+        return cast(size_t) _thisPtr;
+    }
+}
+
+/++
 Thread safe reference counting array.
 
 `__xdtor` if any is used to destruct objects.
@@ -48,374 +246,218 @@ Thread safe reference counting array.
 The implementation never adds roots into the GC.
 +/
 struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
-    if (!is(T == class) && !is(T == interface))
 {
     import std.traits;
-    import mir.ndslice.slice: Slice, SliceKind, Contiguous;
 
-    private struct Context
-    {
-        void* _delegateContext;
-        union
-        {
-            pure nothrow @nogc bool function(void[]) _function;
-            pure nothrow @nogc bool function(void* ctx, void[]) _delegate;
-        }
-        shared size_t counter;
-    }
+    static if (is(T == class) || is(T == interface) || is(T == struct) || is(T == union))
+        static assert(!__traits(isNested, T), "mir_shared_ptr does not support nested types.");
 
     ///
-    private T* _payload;
-    private inout(Context)* _context() inout scope return pure nothrow @nogc @trusted @property
-    {
-        return cast(inout(Context)*)_payload - 1;
-    }
-
-    pragma(inline, false)
-    private void __decreaseCounterImplImpl()() scope nothrow @nogc @safe
-    {
-        import core.atomic: atomicOp;
-        with(*_context)
-        {
-            if (counter)
-            {
-                if (counter.atomicOp!"-="(1) == 0)
-                {
-                    Unqual!T* p;
-                    ()@trusted { p = cast(Unqual!T*)_payload; }();
-                    static if ((is(T == struct) || is(T == union)) && __traits(hasMember, Unqual!T, "__xdtor"))
-                    static if (__traits(isSame, Unqual!T, __traits(parent, (*p).__xdtor)))
-                        (*p).__xdtor();
-                    () @trusted {
-                        auto p = cast(void*) _context;
-                        with(*_context)
-                        {
-                            if (_delegateContext !is null)
-                            {
-                                size_t size = T.sizeof + Context.sizeof;
-                                _delegate(_delegateContext, p[0 .. size]);
-                            }
-                            else
-                            if (_function !is null)
-                            {
-                                size_t size = T.sizeof + Context.sizeof;
-                                _function(p[0 .. size]);
-                            }
-                            else
-                            {
-                                import mir.internal.memory: free;
-                                free(p);
-                            }
-                        }
-                    }();
-                }
-            }
-        }
-    }
-
-    static if (cppSupport)
-    {
-    extern(C++):
-
-        pragma(inline, false)
-        private void __decreaseCounterImpl() scope @safe nothrow @nogc
-        {
-            __decreaseCounterImplImpl();
-        }
-
-        pragma(inline, false)
-        private bool __initialize(bool deallocate, bool initialize) scope @system nothrow @nogc
-        {
-            return __initializeImpl(deallocate, initialize);
-        }
-    }
+    static if (is(T == class) || is(T == interface))
+        private Unqual!T _value;
     else
-    {
-        pragma(inline, false)
-        private void __decreaseCounterImpl() scope @safe nothrow @nogc
-        {
-            __decreaseCounterImplImpl();
-        }
+        private T* _value;
+    private mir_rcarray_context* _context;
 
-        pragma(inline, false)
-        private bool __initialize(bool deallocate, bool initialize) scope @system nothrow @nogc
-        {
-            return __initializeImpl(deallocate, initialize);
-        }
+    private ref inout(mir_rcarray_context) context() inout scope return @trusted @property
+    {
+        return *_context;
     }
 
-    ///
-    this(this) scope @trusted pure nothrow @nogc
+    private void _reset()
     {
-        import core.atomic: atomicOp;
-        if (_payload !is null) with(*_context)
-        {
-            if (counter)
-            {
-                counter.atomicOp!"+="(1);
-            }
-        }
+        _value = null;
+        _context = null;
     }
 
-    ///
-    ~this() nothrow @nogc @safe
+    inout(void)* _thisPtr() inout scope return @trusted @property
     {
-        if (_payload !is null)
-        {
-            __decreaseCounterImpl;
-            debug _payload = null;
-        }
+        return cast(inout(void)*) _value;
     }
 
-    ///
-    ref opAssign(typeof(null)) scope return pure nothrow @nogc @trusted
-    {
-        pragma(inline, true);
-        this.__xdtor;
-        _payload = null;
-        return this;
-    }
-
-    ///
-    ref opAssign(return typeof(this) rhs) scope return @trusted
-    {
-        auto p = _payload;
-        _payload = rhs._payload;
-        rhs._payload = p;
-        return this;
-    }
-
-    static if (is(T == const) || is(T == immutable))
-    {
-        ///
-        ref opAssign(Q)(return const mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            auto lhs_payload = this._payload;
-            this._payload = rhs._payload;
-            *cast(Q**)&rhs._payload = lhs_payload;
-            return this;
-        }
-
-        /// ditto
-        ref opAssign(Q)(ref return const mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            if (_payload != rhs._payload)
-            {
-                this.__xdtor;
-                _payload = cast(T*) rhs._payload;
-                this.__xpostblit;
-            }
-            return this;
-        }
-    }
-    else
-    {
-        ///
-        ref opAssign(Q)(return mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            auto lhs_payload = this._payload;
-            this._payload = rhs._payload;
-            rhs._payload = lhs_payload;
-            return this;
-        }
-
-        /// ditto
-        ref opAssign(Q)(ref return mir_shared_ptr!Q rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            if (_payload != rhs._payload)
-            {
-                this.__xdtor;
-                _payload = cast(T*) rhs._payload;
-                this.__xpostblit;
-            }
-            return this;
-        }
-    }
-
-    private this(Args...)(auto ref Args args) @trusted @nogc
-    {
-        if (!this.__initialize(true, true))
-        {
-            version(D_Exceptions)
-                throw allocationError;
-            else
-                assert(0, allocationExcMsg);
-        }
-        import mir.conv: emplace;
-        import mir.functional: forward;
-        emplace!T(_payload, forward!args);
-    }
-
-    ///
-    this(typeof(null))
-    {
-        pragma(inline, true);
-        _payload = null;
-    }
-
-    static if (isImplicitlyConvertible!(const T, T))
-        static if (isImplicitlyConvertible!(const Unqual!T, T))
-            private alias V = const Unqual!T;
-        else
-            private alias V = const T;
-    else
-        private alias V = T;
-
-    private bool __initializeImpl()(bool deallocate, bool initialize) scope @trusted nothrow @nogc
-    {
-        import mir.internal.memory: malloc, alignedAllocate;
-        if (T.alignof <= 8)
-        {
-            _payload = cast(T*) (malloc(T.sizeof + Context.sizeof) + Context.sizeof);
-            if (_payload is null)
-                return false;
-            *_context = Context.init;
-        }
-        else 
-        {
-            _payload = cast(T*) (alignedAllocate(T.sizeof + Context.sizeof, T.alignof) + Context.sizeof);
-            if (_payload is null)
-                return false;
-            *_context = Context.init;
-            version(Posix) {} // common free
-            else
-            {
-                import mir.internal.memory: alignedFree;
-                static bool freeFun(void[] p)
-                {
-                    alignedFree(p.ptr);
-                    return true;
-                }
-                _context._function = &freeFun;
-            }
-        }
-
-        _context.counter = deallocate;
-        // hasElaborateDestructor is required for safe destruction in case of exceptions
-        if (initialize || hasElaborateDestructor!T)
-        {
-            import mir.conv: emplaceInitializer;
-            emplaceInitializer(*cast(Unqual!T*)_payload);
-        }
-        return true;
-    }
-
-    ///
-    pragma(inline, true)
-    size_t _counter() @trusted scope pure nothrow @nogc const @property
-    {
-        return _payload !is null ? _context.counter : 0;
-    }
-
-    ///
-    bool opCast(C : bool)() const
-    {
-        return _payload !is null;
-    }
-
-    ///
-    mir_shared_ptr!Q opCast(C : mir_shared_ptr!Q, Q)() pure nothrow @nogc
-        if (isImplicitlyConvertible!(T*, Q*))
-    {
-        mir_shared_ptr!Q ret;
-        ret._payload = _payload;
-        ret.__xpostblit;
-        return ret;
-    }
-
-    /// ditto
-    mir_shared_ptr!Q opCast(C : mir_shared_ptr!Q, Q)() pure nothrow @nogc const
-        if (isImplicitlyConvertible!(const(T)*, Q*))
-    {
-        mir_shared_ptr!Q ret;
-        ret._payload = _payload;
-        ret.__xpostblit;
-        return ret;
-    }
-
-    /// ditto
-    mir_shared_ptr!Q opCast(C : mir_shared_ptr!Q, Q)() pure nothrow @nogc immutable
-        if (isImplicitlyConvertible!(immutable(T)*, Q*))
-    {
-        mir_shared_ptr!Q ret;
-        ret._payload = _payload;
-        ret.__xpostblit;
-        return ret;
-    }
-
-    ///
-    pragma(inline, true)
-    bool opEquals(typeof(null)) @safe scope pure nothrow @nogc @property
-    {
-        return _payload is null;
-    }
-
-    /// ditto
-    bool opEquals(Y)(auto ref scope const mir_shared_ptr!Y rhs) @safe scope pure nothrow @nogc @property
-    {
-        return _payload is _rhs._payload;
-    }
-
-    /// ditto
-    bool opEquals(Y)(scope const Y* rhs) @safe scope pure nothrow @nogc @property
-    {
-        return _payload is _rhs;
-    }
-
-    ///
-    sizediff_t opCmp(Y)(auto ref scope const mir_shared_ptr!Y rhs) @safe scope pure nothrow @nogc @property
-    {
-        return cast(sizediff_t)(_payload - _rhs._payload);
-    }
-
-    /// ditto
-    sizediff_t opCmp(Y)(scope const Y* rhs) @safe scope pure nothrow @nogc @property
-    {
-        return cast(sizediff_t)(_payload - _rhs);
-    }
-
-    ///
-    pragma(inline, true)
-    ref inout(T) _get_value() inout
-    {
-        version(D_Exceptions)
-        {
-            if (_payload is null)
-                throw getError;
-        }
-        else
-        {
-            assert(_payload !is null, getError);
-        }
-        return *_payload;
-    }
+    private alias ThisTemplate = .mir_shared_ptr;
 
     /// ditto
     alias opUnary(string op : "*") = _get_value;
-
     /// ditto
     alias _get_value this;
 
+    static if (is(T == class) || is(T == interface))
+        ///
+        pragma(inline, true)
+        inout(T) _get_value() scope inout @property
+        {
+            assert(this, getExcMsg);
+            return _value;
+        }
+    else
+        ///
+        pragma(inline, true)
+        ref inout(T) _get_value() scope inout @property
+        {
+            assert(this, getExcMsg);
+            return *_value;
+        }
+
     ///
-    mir_shared_ptr!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
-    { return cast(typeof(return)) this; }
+    void proxySwap(ref typeof(this) rhs) pure nothrow @nogc @safe
+    {
+        auto t0 = this._value;
+        auto t1 = this._context;
+        this._value = rhs._value;
+        this._context = rhs._context;
+        rhs._value = t0;
+        rhs._context = t1;
+    }
+
+    /++
+    +/
+    auto _shareMember(string member, Args...)(auto ref Args args)
+    {
+        void foo(A)(auto ref A) {}
+        static if (args.length)
+        {
+            // breaks safaty
+            if (false) foo(__traits(getMember, _get_value, member)(forward!args));
+
+            return (()@trusted => _withContext(__traits(getMember, _get_value, member)(forward!args)))();
+        }
+        else
+        {
+            // breaks safaty
+            if (false) foo(__traits(getMember, _get_value, member));
+
+            return (()@trusted => _withContext(__traits(getMember, _get_value, member)))();
+        }
+    }
+
+    /++
+    Construct a shared pointer of a required type with a current context.
+    Provides polymorphism abilities for classes and structures with `alias this` syntax.
+    +/
+    .mir_shared_ptr!R _shareAs(R)() @trusted
+        if (isImplicitlyConvertible!(T, R))
+    {
+        return _withContext(cast(R)_get_value);
+    }
 
     /// ditto
-    mir_shared_ptr!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
-    { return cast(typeof(return)) this; }
+    .mir_shared_ptr!(const R) _shareAs(R)() @trusted const
+        if (isImplicitlyConvertible!(const T, const R))
+    {
+        return _withContext(cast(const R)_get_value);
+    }
+
+    /// ditto
+    .mir_shared_ptr!(immutable R) _shareAs(R)() @trusted immutable
+        if (isImplicitlyConvertible!(immutable T, immutable R))
+    {
+        return _withContext(cast(immutable R)_get_value);
+    }
+
+    /++
+    Returns: shared pointer constructed with current context. 
+    +/
+    @system .mir_shared_ptr!R _withContext(R)(return R value) return const
+        if (is(R == class) || is(R == interface))
+    {
+        import core.lifetime: move;
+        typeof(return) ret;
+        ret._value = cast()value;
+        ret._context = cast(mir_rcarray_context*)_context;
+        ret.__postblit;
+        return ret.move;
+    }
+
+    ///ditto
+    @system .mir_shared_ptr!R _withContext(R)(return ref R value) return const
+        if (!is(R == class) && !is(R == interface))
+    {
+        import std.algorithm.mutation: move;
+        typeof(return) ret;
+        ret._value = &value;
+        ret._context = cast(mir_rcarray_context*)_context;
+        ret.__postblit;
+        return ret.move;
+    }
+
+    ///
+    mixin CommonRCImpl;
+
+    static if (!is(T == interface) && !__traits(isAbstractClass, T))
+    {
+        static if (cppSupport)
+        {
+        extern(C++):
+            pragma(inline, false)
+            private bool __initialize(bool deallocate, bool initialize) scope @system nothrow @nogc
+            {
+                return initializeImpl(deallocate, initialize);
+            }
+        }
+        else
+        {
+            pragma(inline, false)
+            private bool __initialize(bool deallocate, bool initialize) scope @system nothrow @nogc
+            {
+                return initializeImpl(deallocate, initialize);
+            }
+        }
+
+        private this(Args...)(auto ref Args args) @trusted
+        {
+            if (!this.__initialize(true, true))
+            {
+                version(D_Exceptions)
+                    throw allocationError;
+                else
+                    assert(0, allocationExcMsg);
+            }
+            import core.lifetime: emplace;
+            import mir.functional: forward;
+            emplace!T(_value, forward!args);
+        }
+
+        private bool initializeImpl()(bool deallocate, bool initialize) scope @trusted nothrow @nogc
+        {
+            import mir.internal.memory: malloc, alignedAllocate;
+            static if (is(T == class))
+                enum sizeof = __traits(classInstanceSize, T);
+            else
+                enum sizeof = T.sizeof;
+                _context = cast(mir_rcarray_context*)malloc(sizeof + mir_rcarray_context.sizeof);
+
+            if (_context is null)
+                return false;
+
+            _value = cast(typeof(_value))(_context + 1);
+
+            context = mir_rcarray_context.init;
+            context.destroyAndDeallocate = &_freeImpl!(T, true);
+            context.counter = deallocate;
+            context.length = 1;
+            // hasElaborateDestructor is required for safe destruction in case of exceptions
+            if (initialize || hasElaborateDestructor!T)
+            {
+                static if (!is(T == class))
+                {
+                    import core.lifetime: emplace;
+                    emplace(cast(Unqual!T*)_value);
+                }
+            }
+            return true;
+        }
+    }
 }
 
-/// ditto
+///
 alias SharedPtr = mir_shared_ptr;
 
-/// ditto
-template shared_ptr(T)
+///
+template createShared(T)
 {
-    mir_shared_ptr!T shared_ptr(Args...)(auto ref Args args)
+    ///
+    mir_shared_ptr!T createShared(Args...)(auto ref Args args)
     {
         import mir.functional: forward;
         return mir_shared_ptr!T(forward!args);
@@ -427,9 +469,70 @@ version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
-    auto a = shared_ptr!double(10);
+    auto a = createShared!double(10);
     auto b = a;
     assert(*b == 10);
     *b = 100;
     assert(*a == 100);
+}
+
+///
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    static interface I { ref double bar() @safe pure nothrow @nogc; }
+    static abstract class D { int index; }
+    static class C : D, I
+    {
+        double value;
+        ref double bar() @safe pure nothrow @nogc { return value; }
+        this(double d) { value = d; }
+    }
+    auto a = createShared!C(10);
+    assert(a._counter == 1);
+    auto b = a;
+    assert(a._counter == 2);
+    assert((*b).value == 10);
+    b.value = 100; // access via alias this syntax
+    assert(a.value == 100);
+
+    auto d = a._shareAs!D; //SharedPtr!D
+    import std.stdio;
+    assert(d._counter == 3);
+    d.index = 234;
+    assert(a.index == 234);
+    auto i = a._shareAs!I; //SharedPtr!I
+    assert(i.bar == 100);
+    assert(i._counter == 4);
+
+    auto v = a._shareMember!"value"; //SharedPtr!double
+    auto w = a._shareMember!"bar"; //SharedPtr!double
+    assert(i._counter == 6);
+    assert(*v == 100);
+    ()@trusted{assert(&*w is &*v);}();
+}
+
+/// 'Alias This' support
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    struct S
+    {
+        double e;
+    }
+    struct C
+    {
+        int i;
+        S s;
+        // 'alias' should be accesable by reference
+        // or a class/interface
+        alias s this;
+    }
+
+    auto a = createShared!C(10, S(3));
+    auto s = a._shareAs!S; // SharedPtr!S
+    assert(s._counter == 2);
+    assert(s.e == 3);
 }

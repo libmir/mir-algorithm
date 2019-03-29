@@ -127,7 +127,7 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
             auto y = _normalizedValues[_][].sliced;
             static if (_ == 0)
                 _asums[_] = y.asumNorm;
-            _normalizedValues[_ + 1] = RCArray!T(x.length, T.alignof, true, false);
+            _normalizedValues[_ + 1] = RCArray!T(x.length, true, false);
             auto d = _normalizedValues[_ + 1][].sliced;
             polynomialDerivativeValues(d, x, y, w);
             _asums[_ + 1] = d.asumNorm * _asums[_];
@@ -139,7 +139,7 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
     +/
     this(RCArray!(immutable T) grid, RCArray!T values)
     {
-        import std.algorithm.mutation: move;
+        import core.lifetime: move;
         auto weights = grid[].sliced.inversedBarycentricWeights;
         this(grid.move, values.move, weights.move);
     }

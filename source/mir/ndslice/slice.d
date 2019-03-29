@@ -695,10 +695,6 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
         && Filter!(isIndex, Slices).length < Slices.length
         && allSatisfy!(templateOr!(isIndex, is_Slice), Slices);
 
-    enum isIndexSlice(Indexes...) =
-        Indexes.length
-        && Indexes.length <= N
-        && allSatisfy!(isIndex, Indexes);
 
     enum isFullPureSlice(Slices...) =
            Slices.length == 0
@@ -927,15 +923,15 @@ public:
     }
 
     ///
-    auto lightImmutable()() scope return immutable @property
+    Slice!(LightImmutableOf!Iterator, N, kind) lightImmutable()() scope return immutable @property
     {
-        return Slice!(LightImmutableOf!Iterator, N, kind)(_structure, .lightImmutable(_iterator));
+        return typeof(return)(_structure, .lightImmutable(_iterator));
     }
 
     /// ditto
-    auto lightConst()() scope return const @property
+    Slice!(LightConstOf!Iterator, N, kind) lightConst()() scope return const @property @trusted
     {
-        return Slice!(LightConstOf!Iterator, N, kind)(_structure, .lightConst(_iterator));
+        return typeof(return)(_structure, .lightConst(_iterator));
     }
 
     /// ditto
@@ -945,17 +941,17 @@ public:
     }
 
     /// ditto
-    auto ref opIndex(Indexes...)(Indexes indexes) scope return const @trusted
-            if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
+    auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
+            if (isPureSlice!Indexes || isIndexedSlice!Indexes)
     {
-        return this.lightConst[indexes];
+        return lightConst.opIndex(indexes);
     }
 
     /// ditto
     auto ref opIndex(Indexes...)(Indexes indexes) scope return immutable @trusted
-            if (isPureSlice!Indexes || isIndexedSlice!Indexes || isIndexSlice!Indexes)
+            if (isPureSlice!Indexes || isIndexedSlice!Indexes)
     {
-        return this.lightImmutable[indexes];
+        return lightImmutable.opIndex(indexes);
     }
 
     static if (isPointer!Iterator)
@@ -1651,7 +1647,7 @@ public:
         static if (isInstanceOf!(SliceIterator, Iterator))
         {
             import mir.ndslice.topology: unpack;
-            return this[].unpack.anyRUEmpty;
+            return this.lightScope.unpack.anyRUEmpty;
         }
         else
             return _lengths[0 .. N].anyEmptyShape;
@@ -1948,7 +1944,7 @@ public:
         static if (is(typeof(_iterator[indexStride(_indexes)])))
             return _iterator[indexStride(_indexes)];
         else
-            return lightConst[_indexes];
+            return .lightConst(.lightScope(_iterator))[indexStride(_indexes)];
     }
 
     /// ditto
@@ -1957,7 +1953,7 @@ public:
         static if (is(typeof(_iterator[indexStride(_indexes)])))
             return _iterator[indexStride(_indexes)];
         else
-            return lightImmutable[_indexes];
+            return .lightImmutable(.lightScope(_iterator))[indexStride(_indexes)];
     }
 
     /++
@@ -1978,14 +1974,14 @@ public:
     auto opIndex(size_t I)(size_t[I] _indexes...) scope return const
         if (I && I < N)
     {
-        return this.lightConst[_indexes];
+        return this.lightConst.opIndex(_indexes);
     }
 
     /// ditto
     auto opIndex(size_t I)(size_t[I] _indexes...) scope return immutable
         if (I && I < N)
     {
-        return this.lightImmutable[_indexes];
+        return this.lightImmutable.opIndex(_indexes);
     }
 
     /++
@@ -2324,14 +2320,14 @@ public:
     Slice!(immutable(DeepElement)*, N)
     dup()() scope const @property
     {
-        this[].dup;
+        this.lightScope.dup;
     }
 
     /// ditto
     Slice!(immutable(DeepElement)*, N)
     dup()() scope immutable @property
     {
-        this[].dup;
+        this.lightScope.dup;
     }
 
     static if (doUnittest)
@@ -2379,14 +2375,14 @@ public:
     Slice!(immutable(DeepElement)*, N)
     idup()() scope const @property
     {
-        this[].idup;
+        this.lightScope.idup;
     }
 
     /// ditto
     Slice!(immutable(DeepElement)*, N)
     idup()() scope immutable @property
     {
-        this[].idup;
+        this.lightScope.idup;
     }
 
     static if (doUnittest)
@@ -2459,15 +2455,14 @@ public:
         /++
         Assignment of a value of `Slice` type to a $(B fully defined slice).
         +/
-        auto opIndexAssign(RIterator, size_t RN, SliceKind rkind, Slices...)
+        void opIndexAssign(RIterator, size_t RN, SliceKind rkind, Slices...)
             (scope Slice!(RIterator, RN, rkind) value, Slices slices) scope return
             if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             assert(_checkAssignLengths(sl, value));
             if(!sl.anyRUEmpty)
                 sl.opIndexOpAssignImplSlice!""(value);
-            return sl;
         }
 
         static if (doUnittest)
@@ -2585,14 +2580,13 @@ public:
         /++
         Assignment of a regular multidimensional array to a $(B fully defined slice).
         +/
-        auto opIndexAssign(T, Slices...)(T[] value, Slices slices) scope return
+        void opIndexAssign(T, Slices...)(T[] value, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && !isDynamicArray!DeepElement
-                && DynamicArrayDimensionsCount!(T[]) <= typeof(this[slices]).N)
+                && DynamicArrayDimensionsCount!(T[]) <= typeof(this.opIndex(slices)).N)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             sl.opIndexOpAssignImplArray!""(value);
-            return sl;
         }
 
         static if (doUnittest)
@@ -2668,28 +2662,26 @@ public:
         }
 
         ///
-        auto opIndexAssign(T, Slices...)(T concatenation, Slices slices) scope return
+        void opIndexAssign(T, Slices...)(T concatenation, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices) && isConcatenation!T)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             static assert(typeof(sl).N == T.N, "incompatible dimension count");
             sl.opIndexOpAssignImplConcatenation!""(concatenation);
-            return sl;
         }
 
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined slice).
         +/
-        auto opIndexAssign(T, Slices...)(T value, Slices slices) scope return
+        void opIndexAssign(T, Slices...)(T value, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElement)
                 && !isSlice!T
                 && !isConcatenation!T)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             if(!sl.anyRUEmpty)
                 sl.opIndexOpAssignImplValue!""(value);
-            return sl;
         }
 
         static if (doUnittest)
@@ -2808,15 +2800,14 @@ public:
         /++
         Op Assignment `op=` of a value of `Slice` type to a $(B fully defined slice).
         +/
-        auto opIndexOpAssign(string op, RIterator, SliceKind rkind, size_t RN, Slices...)
+        void opIndexOpAssign(string op, RIterator, SliceKind rkind, size_t RN, Slices...)
             (Slice!(RIterator, RN, rkind) value, Slices slices) scope return
             if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             assert(_checkAssignLengths(sl, value));
             if(!sl.anyRUEmpty)
                 sl.opIndexOpAssignImplSlice!op(value);
-            return sl;
         }
 
         static if (doUnittest)
@@ -2875,14 +2866,13 @@ public:
         /++
         Op Assignment `op=` of a regular multidimensional array to a $(B fully defined slice).
         +/
-        auto opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices) scope return
+        void opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices) scope return
             if (isFullPureSlice!Slices
                 && !isDynamicArray!DeepElement
-                && DynamicArrayDimensionsCount!(T[]) <= typeof(this[slices]).N)
+                && DynamicArrayDimensionsCount!(T[]) <= typeof(this.opIndex(slices)).N)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             sl.opIndexOpAssignImplArray!op(value);
-            return sl;
         }
 
         static if (doUnittest)
@@ -2952,16 +2942,15 @@ public:
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined slice).
        +/
-        auto opIndexOpAssign(string op, T, Slices...)(T value, Slices slices) scope return
+        void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElement)
                 && !isSlice!T
                 && !isConcatenation!T)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             if(!sl.anyRUEmpty)
                 sl.opIndexOpAssignImplValue!op(value);
-            return sl;
         }
 
         static if (doUnittest)
@@ -2982,13 +2971,12 @@ public:
         }
 
         ///
-        auto opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices) scope return
+        void opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices) && isConcatenation!T)
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             static assert(typeof(sl).N == concatenation.N);
             sl.opIndexOpAssignImplConcatenation!op(concatenation);
-            return sl;
         }
 
         static if (doUnittest)
@@ -3074,7 +3062,7 @@ public:
         void opIndexUnary(string op, Slices...)(Slices slices) scope return
             if (isFullPureSlice!Slices && (op == `++` || op == `--`))
         {
-            auto sl = this[slices];
+            auto sl = this.lightScope.opIndex(slices);
             if (!sl.anyRUEmpty)
                 sl.opIndexUnaryImpl!op;
         }
