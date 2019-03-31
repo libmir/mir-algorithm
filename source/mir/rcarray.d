@@ -37,8 +37,6 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         size_t length;
     }
 
-    static assert(Context.sizeof % 16 == 0);
-
     ///
     private T* _payload;
     private inout(Context)* _context() inout scope return pure nothrow @nogc @trusted @property

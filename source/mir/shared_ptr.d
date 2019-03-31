@@ -64,8 +64,6 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
         shared size_t counter;
     }
 
-    static assert(Context.sizeof % 8 == 0);
-
     ///
     private T* _payload;
     private inout(Context)* _context() inout scope return pure nothrow @nogc @trusted @property
