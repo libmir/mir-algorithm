@@ -10,7 +10,10 @@ alias RCArrayInt = RCArray!int;
 
 extern(C++)
 struct S { double d = 0; this(double e) { d = e;}  }
+extern(C++)
+struct C { double k = 0; S s;  }
 alias SPtr = SharedPtr!S;
+alias CPtr = SharedPtr!C;
 
 extern(C++, Space) 
 {

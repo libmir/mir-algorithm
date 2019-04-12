@@ -34,7 +34,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     import mir.algorithm.setops: multiwayUnion;
 
     import std.datetime: Date;
-    import std.algorithm.mutation: move;
+    import core.lifetime: move;
     import std.exception: collectExceptionMsg;
 
     //////////////////////////////////////
@@ -236,6 +236,7 @@ version(mir_test) unittest
     static assert (is(SeriesMap!(string, double) == Series!(string*, double*)));
 
     /// LHS, RHS
+    static assert (isAssignable!(SeriesMap!(string, double), SeriesMap!(string, double)));
     static assert (isAssignable!(SeriesMap!(string, double), typeof(null)));
 
     static assert (isAssignable!(SeriesMap!(const string, double), SeriesMap!(string, double)));
@@ -314,10 +315,8 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
 
 
     /// Construct from null
-    this()(typeof(null))
+    this(typeof(null))
     {
-        _data = _data.init;
-        _index = _index.init;
     }
 
     ///
@@ -388,13 +387,13 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     typeof(this) opBinary(string op : "~")(typeof(this) rhs)
     {
-        return unionSeries(this, rhs);
+        return unionSeries(this.lightScope, rhs.lightScope);
     }
 
     /// ditto
     auto opBinary(string op : "~")(const typeof(this) rhs) const
     {
-        return unionSeries(this[], rhs[]);
+        return unionSeries(this.lightScope, rhs.lightScope);
     }
 
     static if (doUnittest)
@@ -566,13 +565,13 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     +/
     auto lowerBound(Index)(auto ref scope const Index key)
     {
-        return this[0 .. lightScopeIndex.transitionIndex(key)];
+        return opIndex(opSlice(0, lightScopeIndex.transitionIndex(key)));
     }
 
     /// ditto
     auto lowerBound(Index)(auto ref scope const Index key) const
     {
-        return this[0 .. lightScopeIndex.transitionIndex(key)];
+        return opIndex(opSlice(0, lightScopeIndex.transitionIndex(key)));
     }
 
 
@@ -583,13 +582,13 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     +/
     auto upperBound(Index)(auto ref scope const Index key)
     {
-        return this[lightScopeIndex.transitionIndex!"a <= b"(key) .. $];
+        return opIndex(opSlice(lightScopeIndex.transitionIndex!"a <= b"(key), length));
     }
 
     /// ditto
     auto upperBound(Index)(auto ref scope const Index key) const
     {
-        return this[lightScopeIndex.transitionIndex!"a <= b"(key) .. $];
+        return opIndex(opSlice(lightScopeIndex.transitionIndex!"a <= b"(key), length));
     }
 
     /**
@@ -1058,13 +1057,13 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// ditto
     auto asSlice()() const @property
     {
-        return this[].asSlice;
+        return opIndex.asSlice;
     }
 
     /// ditto
     auto asSlice()() immutable @property
     {
-        return this[].asSlice;
+        return opIndex.asSlice;
     }
 
     /// ndslice-like primitives
@@ -1166,7 +1165,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    Slice!(IotaIterator!size_t) opSlice(size_t dimension)(size_t i, size_t j) const
+    Slice!(IotaIterator!size_t) opSlice(size_t dimension = 0)(size_t i, size_t j) const
         if (dimension < N)
     in
     {
@@ -1211,37 +1210,34 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     auto opIndex(Slices...)(Slices slices) const
         if (allSatisfy!(templateOr!(is_Slice, isIndex), Slices))
     {
-        return lightConst[slices];
+        return lightConst.opIndex(slices);
     }
 
     /// ditto
     auto opIndex(Slices...)(Slices slices) immutable
         if (allSatisfy!(templateOr!(is_Slice, isIndex), Slices))
     {
-        return lightImmutable[slices];
+        return lightImmutable.opIndex(slices);
     }
 
     ///
     ref opAssign(typeof(this) rvalue) return @trusted
     {
         import mir.utility: swap;
-        this._data._lengths = rvalue._data._lengths;
-        static if (this._data._strides.length)
-            this._data._strides = rvalue._data._strides;
+        this._data._structure = rvalue._data._structure;
         swap(this._data._iterator, rvalue._data._iterator);
         swap(this._index, rvalue._index);
         return this;
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref Series!(RIndexIterator, RIterator, N, kind) rvalue) return
+    ref opAssign(RIndexIterator, RIterator)(Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
-        this._data._lengths = rvalue._data._lengths;
-        static if (this._data._strides.length)
-            this._data._strides = rvalue._data._strides;
-        this._data._iterator = rvalue._data._iterator;
-        this._index = rvalue._index;
+        import core.lifetime: move;
+        this._data._structure = rvalue._data._structure;
+        this._data._iterator = rvalue._data._iterator.move;
+        this._index = rvalue._index.move;
         return this;
     }
 
@@ -1262,7 +1258,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// ditto
     ref opAssign(typeof(null)) return
     {
-        return this = typeof(this)(null);
+        return this = this.init;
     }
 
     /// ditto
@@ -1290,13 +1286,13 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
-    auto lightConst()() const @property
+    Series!(LightConstOf!IndexIterator, LightConstOf!Iterator, N, kind) lightConst()() scope return const @property @trusted
     {
         return index.series(data);
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    Series!(LightImmutableOf!IndexIterator, LightImmutableOf!Iterator, N, kind) lightImmutable()() scope return immutable @property @trusted
     {
         return index.series(data);
     }
@@ -1548,7 +1544,7 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
     {
         K[] keys;
         V[] values;
-        foreach(kv; aa.byKeyValue)
+        foreach(ref kv; aa.byKeyValue)
         {
             keys ~= kv.key.to!K;
             values ~= kv.value.to!V;
@@ -1563,7 +1559,7 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
     import mir.ndslice.allocation: uninitSlice;
     Series!(Unqual!K*, Unqual!V*) ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
     auto it = ret;
-    foreach(kv; aa.byKeyValue)
+    foreach(ref kv; aa.byKeyValue)
     {
         import mir.conv: emplaceRef;
         emplaceRef!K(it.index.front, kv.key.to!K);
@@ -1611,9 +1607,91 @@ pure nothrow version(mir_test) unittest
 {
     immutable aa = [1: 1.5, 3: 3.3, 2: 2.9];
     auto s = aa.series;
-    s.opAssign(cast() s);
-    s.opAssign(cast(const) s);
-    s.opAssign(cast(immutable) s);
+    s = cast() s;
+    s = cast(const) s;
+    s = cast(immutable) s;
+    s = s;
+    assert(s.index == [1, 2, 3]);
+    assert(s.data == [1.5, 2.9, 3.3]);
+    assert(s.data[s.findIndex(2)] == 2.9);
+}
+
+
+/**
+Constructs a RC-allocated series from an associative array.
+Performs exactly two allocations.
+
+Params:
+    aa = associative array or a pointer to associative array
+Returns:
+    sorted RC-allocated series.
+See_also: $(LREF assocArray)
+*/
+auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    import mir.rcarray;
+    import mir.conv: to;
+    alias R = Series!(RCI!K, RCI!V);
+    const size_t length = aa.length;
+    auto ret = series(mir_rcarray!(Unqual!K).mininit(length).asSlice, mir_rcarray!(Unqual!V).mininit(length).asSlice);
+    auto it = ret.lightScope;
+    foreach(ref kv; aa.byKeyValue)
+    {
+        import mir.conv: emplaceRef;
+        emplaceRef!K(it.lightScopeIndex.front, kv.key.to!K);
+        emplaceRef!V(it._data.front, kv.value.to!V);
+        it.popFront;
+    }
+    import core.lifetime: move;
+    .sort(ret.lightScope);
+    static if (is(typeof(ret) == R))
+        return ret;
+    else
+        return ()@trusted{ return (*cast(R*) &ret); }();
+}
+
+/// ditto
+auto rcseries(K, V, RK = const K, RV = const V)(const V[K] aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    return .rcseries!(K, V, RK, RV)((()@trusted => cast(V[K]) aa)());
+}
+
+/// ditto
+auto  rcseries( K, V, RK = immutable K, RV = immutable V)(immutable V[K] aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
+{
+    return .rcseries!(K, V, RK, RV)((()@trusted => cast(V[K]) aa)());
+}
+
+/// ditto
+auto rcseries(K, V)(V[K]* aa)
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+{
+    return rcseries(*a);
+}
+
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    auto s = [1: 1.5, 3: 3.3, 2: 20.9].rcseries;
+    assert(s.index == [1, 2, 3]);
+    assert(s.data == [1.5, 20.9, 3.3]);
+    assert(s.data[s.findIndex(2)] == 20.9);
+}
+
+// pure nothrow
+version(mir_test) unittest
+{
+    import mir.rcarray;
+    immutable aa = [1: 1.5, 3: 3.3, 2: 2.9];
+    auto s = aa.rcseries;
+    Series!(RCI!(const int), RCI!(const double)) c;
+    s = cast() s;
+    c = s;
+    s = cast(const) s;
+    s = cast(immutable) s;
     s = s;
     assert(s.index == [1, 2, 3]);
     assert(s.data == [1.5, 2.9, 3.3]);
@@ -1642,7 +1720,7 @@ Series!(K*, V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] a
         allocator.makeUninitSlice!(Unqual!V)(length));
 
     auto it = ret;
-    foreach(kv; aa.byKeyValue)
+    foreach(ref kv; aa.byKeyValue)
     {
         it.index.front.emplaceRef!K(kv.key);
         it.data.front.emplaceRef!V(kv.value);
@@ -2062,7 +2140,7 @@ template rcTroykaSeries(alias lfun, alias cfun, alias rfun)
         auto ret = length.mininit_rcarray!UI.asSlice.series(length.mininit_rcarray!UE.asSlice);
         alias algo = troykaSeriesImpl!(lfun, cfun, rfun);
         algo!(I, E)(lhs.lightScope, rhs.lightScope, ret.lightScope);
-        return (()@trusted => cast(R) ret)();
+        return (()@trusted => *cast(R*) &ret)();
     }
 }
 

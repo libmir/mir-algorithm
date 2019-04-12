@@ -48,7 +48,7 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
         GridVectors grid,
         scope Slice!(yIterator, N, ykind) values) @safe
     {
-        import std.algorithm.mutation: move;
+        import core.lifetime: move;
         auto ret = Spline!T(grid);
         ret._values = values;
         pchipSlopes(grid, values, typeof(return).pickDataSubslice(ret._data, 1));

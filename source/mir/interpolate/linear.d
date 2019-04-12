@@ -61,7 +61,7 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         scope Slice!(yIterator, N, ykind) values,
         ) pure @trusted
     {
-        import std.algorithm.mutation: move;
+        import core.lifetime: move;
         auto ret = typeof(return)(grid);
         ret._data[] = values;
         return ret.move;
@@ -223,7 +223,7 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
             length *= shape[i] = x.length;
         }
 
-        auto rca = mir_rcarray!F(length, alignment);
+        auto rca = mir_rcarray!F(length);
         this._data = rca.asSlice.sliced(shape);
         this._grid = staticMap!(iter, grid);
     }

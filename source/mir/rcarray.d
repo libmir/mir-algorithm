@@ -3,7 +3,13 @@ $(H1 Thread-safe reference-counted arrays and iterators).
 +/
 module mir.rcarray;
 
-import mir.shared_ptr: cppSupport;
+import mir.shared_ptr:
+    mir_rcarray_context,
+    mir_rcarray_increase_counter,
+    mir_rcarray_decrease_counter,
+    cppSupport,
+    _freeImpl,
+    CommonRCImpl;
 
 private static immutable allocationExcMsg = "mir_rcarray: out of memory error.";
 
@@ -25,82 +31,67 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     import std.traits;
     import mir.ndslice.slice: Slice, SliceKind, Contiguous;
 
-    private struct Context
+    ///
+    private T* _payload;
+    private ref inout(mir_rcarray_context) context() inout scope return pure nothrow @nogc @trusted @property
     {
-        void* _delegateContext;
-        union
-        {
-            pure nothrow @nogc bool function(void[]) _function;
-            pure nothrow @nogc bool function(void* ctx, void[]) _delegate;
-        }
-        shared size_t counter;
-        size_t length;
+        assert(_payload);
+        return (cast(inout(mir_rcarray_context)*)_payload)[-1];
+    }
+    private void _reset() { _payload = null; }
+
+    private alias ThisTemplate = .mir_rcarray;
+    private alias _thisPtr = _payload;
+
+    ///
+    void proxySwap(ref typeof(this) rhs) pure nothrow @nogc @safe
+    {
+        auto t = this._payload;
+        this._payload = rhs._payload;
+        rhs._payload = t;
     }
 
     ///
-    private T* _payload;
-    private inout(Context)* _context() inout scope return pure nothrow @nogc @trusted @property
+    mixin CommonRCImpl;
+
+    ///
+    size_t length() @trusted scope pure nothrow @nogc const @property
     {
-        return cast(inout(Context)*)_payload - 1;
+        return _payload !is null ? context.length : 0;
     }
 
-    private void __decreaseCounterImplImpl()() scope nothrow @nogc @safe
+    ///
+    inout(T)* ptr() @system scope inout
     {
-        import core.atomic: atomicOp;
-        with(*_context)
-        {
-            if (counter)
-            {
-                if (counter.atomicOp!"-="(1) == 0)
-                {
-                    import mir.conv: xdestroy;
-                    Unqual!T[] array;
-                    ()@trusted { array = (cast(Unqual!T*)_payload)[0 .. length]; }();
-                    xdestroy(array);
-                    () @trusted {
-                        auto p = cast(void*) _context;
-                        with(*_context)
-                        {
-                            if (_delegateContext !is null)
-                            {
-                                size_t size = length * T.sizeof + Context.sizeof;
-                                debug *_context = Context.init;
-                                _delegate(_delegateContext, p[0 .. size]);
-                            }
-                            else
-                            if (_function !is null)
-                            {
-                                size_t size = length * T.sizeof + Context.sizeof;
-                                debug *_context = Context.init;
-                                _function(p[0 .. size]);
-                            }
-                            else
-                            {
-                                import mir.internal.memory: free;
-                                debug *_context = Context.init;
-                                free(p);
-                            }
-                        }
-                    }();
-                }
-            }
-        }
+        return _payload;
+    }
+
+    ///
+    ref opIndex(size_t i) @trusted scope inout
+    {
+        assert(_payload);
+        assert(i < context.length);
+        return _payload[i];
+    }
+
+    ///
+    inout(T)[] opIndex() @trusted scope inout
+    {
+        return _payload !is null ?  _payload[0 .. context.length] : null;
+    }
+
+    size_t opDollar(size_t pos : 0)() @trusted scope pure nothrow @nogc const
+    {
+        return _payload !is null ? context.length : 0;
     }
 
     static if (cppSupport)
     {
     extern(C++):
-
         pragma(inline, false)
-        private void __decreaseCounterImpl() scope @safe nothrow @nogc
+        private bool __initialize(size_t length, bool deallocate, bool initialize) scope @system nothrow @nogc
         {
-            __decreaseCounterImplImpl();
-        }
-
-        pragma(inline, false)
-        private bool __initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @system nothrow @nogc
-        {
-            return __initializeImpl(length, alignment, deallocate, initialize);
+            return initializeImpl(length, deallocate, initialize);
         }
 
         ///
@@ -108,7 +99,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         {
             alias It = mir_rci!T;
             static if (cppSupport != .cppSupport!T)
-                return Slice!It([length], It((()@trusted => ptr)(), cast(mir_rcarray!(T, false)) this));
+                return Slice!It([length], It((()@trusted => ptr)(), *cast(mir_rcarray!(T, false)*) &this));
             else
                 return Slice!It([length], It((()@trusted => ptr)(), this));
         }
@@ -116,15 +107,9 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     else
     {
         pragma(inline, false)
-        private void __decreaseCounterImpl() scope @safe nothrow @nogc
+        private bool __initialize(size_t length, bool deallocate, bool initialize) scope @system nothrow @nogc
         {
-            __decreaseCounterImplImpl();
-        }
-
-        pragma(inline, false)
-        private bool __initialize(size_t length, uint alignment, bool deallocate, bool initialize) scope @system nothrow @nogc
-        {
-            return __initializeImpl(length, alignment, deallocate, initialize);
+            return initializeImpl(length, deallocate, initialize);
         }
 
         ///
@@ -135,115 +120,15 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         }
     }
 
-    ///
-    ~this() nothrow @nogc @safe
-    {
-        if (_payload !is null)
-        {
-            __decreaseCounterImpl;
-            debug _payload = null;
-        }
-    }
-
-    ///
-    this(this) scope @trusted pure nothrow @nogc
-    {
-        import core.atomic: atomicOp;
-        if (_payload !is null) with(*_context)
-        {
-            if (counter)
-            {
-                counter.atomicOp!"+="(1);
-            }
-        }
-    }
-
-    ///
-    this(typeof(null))
-    {
-        pragma(inline, true);
-        _payload = null;
-    }
-
-    ///
-    ref opAssign(typeof(null)) scope return pure nothrow @nogc @trusted
-    {
-        pragma(inline, true);
-        this.__xdtor;
-        _payload = null;
-        return this;
-    }
-
-    ///
-    ref opAssign(return typeof(this) rhs) scope return @trusted
-    {
-        auto p = _payload;
-        _payload = rhs._payload;
-        rhs._payload = p;
-        return this;
-    }
-
-    static if (is(T == const) || is(T == immutable))
-    {
-        ///
-        ref opAssign(Q, bool b)(return const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            auto lhs_payload = this._payload;
-            this._payload = rhs._payload;
-            *cast(Q**)&rhs._payload = lhs_payload;
-            return this;
-        }
-
-        /// ditto
-        ref opAssign(Q, bool b)(ref return const mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            if (_payload != rhs._payload)
-            {
-                this.__xdtor;
-                _payload = cast(T*) rhs._payload;
-                this.__xpostblit;
-            }
-            return this;
-        }
-    }
-    else
-    {
-        ///
-        ref opAssign(Q, bool b)(return mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            auto lhs_payload = this._payload;
-            this._payload = rhs._payload;
-            rhs._payload = lhs_payload;
-            return this;
-        }
-
-        /// ditto
-        ref opAssign(Q, bool b)(ref return mir_rcarray!(Q, b) rhs) scope return pure nothrow @nogc @trusted
-            if (isImplicitlyConvertible!(T*, Q*))
-        {
-            if (_payload != rhs._payload)
-            {
-                this.__xdtor;
-                _payload = cast(T*) rhs._payload;
-                this.__xpostblit;
-            }
-            return this;
-        }
-    }
-
     /++
     Params:
         length = array length
-        alignment = alignment, must be power of 2
         deallocate = Flag, never deallocates memory if `false`.
         initialize = Flag, don't initialize memory with default value if `false`.
     +/
-    this(size_t length, uint alignment = T.alignof, bool deallocate = true, bool initialize = true) @trusted @nogc
+    this(size_t length, bool deallocate = true, bool initialize = true) @trusted @nogc
     {
-        if (!this.__initialize(length, alignment, deallocate, initialize))
+        if (!this.__initialize(length, deallocate, initialize))
         {
             version(D_Exceptions)
             {
@@ -259,13 +144,12 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     /++
     Params:
         length = array length
-        alignment = alignment, must be power of 2
         deallocate = Flag, never deallocates memory if `false`.
     Returns: minimally initialized rcarray.
     +/
-    static mir_rcarray mininit(size_t length, uint alignment = T.alignof, bool deallocate = true)
+    static mir_rcarray mininit(size_t length, bool deallocate = true)
     {
-        return mir_rcarray(length, alignment, deallocate, false);
+        return mir_rcarray(length, deallocate, false);
     }
 
     static if (isImplicitlyConvertible!(const T, T))
@@ -277,17 +161,18 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         private alias V = T;
 
     ///
-    static typeof(this) create(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) values, uint alignment = T.alignof, bool deallocate = true)
+    static typeof(this) create(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) values, bool deallocate = true)
     {
-        auto ret = typeof(this)(values.length, alignment, deallocate, hasElaborateDestructor!T);
+        auto ret = typeof(this)(values.length, deallocate, hasElaborateDestructor!T);
         static if (kind == Contiguous && is(Iterator : V*))
             return create(values.field);
         else
         {
-            import  mir.conv: emplaceRef;
+            import mir.conv: emplaceRef;
+            import core.lifetime: move;
             foreach (i, ref e; ret)
                 e.emplaceRef!T(values[i]);
-            return ret;
+            return move(ret);
         }
     }
 
@@ -297,14 +182,14 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     +/
     static typeof(this) create(V[] values...) @nogc
     {
-        return create(values, T.alignof, true);
+        return create(values, true);
     }
 
     static if (hasIndirections!T)
     /// ditto
-    static typeof(this) create(V[] values, uint alignment, bool deallocate = true) @nogc
+    static typeof(this) create(V[] values, bool deallocate) @nogc
     {
-        auto ret = typeof(this)(values.length, alignment, deallocate, hasElaborateDestructor!T);
+        auto ret = typeof(this)(values.length, deallocate, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -319,7 +204,8 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        return ret;
+        import core.lifetime: move;
+        return move(ret);
     }
 
     static if (!hasIndirections!T) // TODO: mark argument as scope (future!)
@@ -328,14 +214,14 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
     +/
     static typeof(this) create(scope V[] values...) @nogc
     {
-        return create(values, T.alignof, true);
+        return create(values, true);
     }
 
     static if (!hasIndirections!T) // TODO: mark argument as scope (future!)
     /// ditto
-    static typeof(this) create(scope V[] values, uint alignment, bool deallocate = true) @nogc
+    static typeof(this) create(scope V[] values, bool deallocate) @nogc
     {
-        auto ret = typeof(this)(values.length, alignment, deallocate, hasElaborateDestructor!T);
+        auto ret = typeof(this)(values.length, deallocate, hasElaborateDestructor!T);
         static if (!hasElaborateAssign!T)
         {
             ()@trusted {
@@ -350,10 +236,11 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        return ret;
+        import core.lifetime: move;
+        return move(ret);
     }
 
-    private bool __initializeImpl()(size_t length, uint alignment, bool deallocate, bool initialize) scope @trusted nothrow @nogc
+    private bool initializeImpl()(size_t length, bool deallocate, bool initialize) scope @trusted nothrow @nogc
     {
         if (length == 0)
         {
@@ -361,126 +248,21 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
             return true;
         }
         import mir.internal.memory: malloc, alignedAllocate;
-        if (alignment <= 16)
-        {
-            _payload = cast(T*) (malloc(length * T.sizeof + Context.sizeof) + Context.sizeof);
-            if (_payload is null)
-                return false;
-            *_context = Context.init;
-        }
-        else 
-        {
-            _payload = cast(T*) (alignedAllocate(length * T.sizeof + Context.sizeof, alignment) + Context.sizeof);
-            if (_payload is null)
-                return false;
-            *_context = Context.init;
-            version(Posix) {} // common free
-            else
-            {
-                import mir.internal.memory: alignedFree;
-                static bool freeFun(void[] p)
-                {
-                    alignedFree(p.ptr);
-                    return true;
-                }
-                _context._function = &freeFun;
-            }
-        }
-        
-        _context.length = length;
-        _context.counter = deallocate;
+        auto p = cast(mir_rcarray_context*) malloc(length * T.sizeof + mir_rcarray_context.sizeof);
+        if (p is null)
+            return false;
+        _payload = cast(T*)(p + 1);
+        context = mir_rcarray_context.init;
+        context.destroyAndDeallocate = &_freeImpl!T;
+        context.length = length;
+        context.counter = deallocate;
         // hasElaborateDestructor is required for safe destruction in case of exceptions
         if (initialize || hasElaborateDestructor!T)
         {
             import mir.conv: uninitializedFillDefault;
-            uninitializedFillDefault((cast(Unqual!T*)_payload)[0 .. _context.length]);
+            uninitializedFillDefault((cast(Unqual!T*)_payload)[0 .. length]);
         }
         return true;
-    }
-
-    ///
-    size_t length() @trusted scope pure nothrow @nogc const @property
-    {
-        return _payload !is null ? _context.length : 0;
-    }
-
-    ///
-    size_t _counter() @trusted scope pure nothrow @nogc const @property
-    {
-        return _payload !is null ? _context.counter : 0;
-    }
-
-    ///
-    inout(T)* ptr() @system scope inout
-    {
-        return _payload;
-    }
-
-    ///
-    ref opIndex(size_t i) @trusted scope inout
-    {
-        assert(_payload);
-        assert(i < _context.length);
-        return _payload[i];
-    }
-
-    bool opCast(C : bool)() const
-    {
-        return _payload !is null;
-    }
-
-    ///
-    mir_rcarray!(Q, b) opCast(C : mir_rcarray!(Q, b), Q, bool b)() pure nothrow @nogc
-        if (isImplicitlyConvertible!(T*, Q*))
-    {
-        mir_rcarray!(Q, b) ret;
-        ret._payload = _payload;
-        ret.__xpostblit;
-        return ret;
-    }
-
-    /// ditto
-    mir_rcarray!(Q, b) opCast(C : mir_rcarray!(Q, b), Q, bool b)() pure nothrow @nogc const
-        if (isImplicitlyConvertible!(const(T)*, Q*))
-    {
-        mir_rcarray!(Q, b) ret;
-        ret._payload = _payload;
-        ret.__xpostblit;
-        return ret;
-    }
-
-    /// ditto
-    mir_rcarray!Q opCast(C : mir_rcarray!Q, Q)() pure nothrow @nogc immutable
-        if (isImplicitlyConvertible!(immutable(T)*, Q*))
-    {
-        mir_rcarray!Q ret;
-        ret._payload = _payload;
-        ret.__xpostblit;
-        return ret;
-    }
-
-    ///
-    bool opEquals(typeof(null)) @safe scope pure nothrow @nogc @property
-    {
-        return _payload is null;
-    }
-
-    ///
-    inout(T)[] opIndex() @trusted scope inout
-    {
-        return _payload !is null ?  _payload[0 .. _context.length] : null;
-    }
-
-    ///
-    mir_rcarray!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
-    { return cast(typeof(return)) this; }
-
-    mir_rcarray!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
-    { return cast(typeof(return)) this; }
-
-    size_t opDollar(size_t pos : 0)() @trusted scope pure nothrow @nogc const
-    {
-        return _payload !is null ? _context.length : 0;
     }
 }
 
@@ -544,6 +326,8 @@ Thread safe reference counting iterator.
 +/
 struct mir_rci(T)
 {
+    import std.traits;
+
     ///
     T* _iterator;
 
@@ -556,9 +340,36 @@ struct mir_rci(T)
         debug
         {
             assert(_array._payload <= _iterator);
-            assert(_iterator is null || _iterator < _array._payload + _array.length);
+            assert(_iterator is null || _iterator <= _array._payload + _array.length);
         }
         return _iterator;
+    }
+
+    ///
+    ref opAssign(typeof(null)) scope return pure nothrow @nogc @trusted
+    {
+        pragma(inline, true);
+        _iterator = null;
+        _array = null;
+        return this;
+    }
+
+    ///
+    ref opAssign(return typeof(this) rhs) scope return @trusted
+    {
+        _iterator = rhs._iterator;
+        _array.proxySwap(rhs._array);
+        return this;
+    }
+
+    ///
+    ref opAssign(Q)(return mir_rci!Q rhs) scope return pure nothrow @nogc @trusted
+        if (isImplicitlyConvertible!(Q*, T*))
+    {
+        import core.lifetime: move;
+        _iterator = rhs._iterator;
+        _array = move(rhs._array);
+        return this;
     }
 
     ///
@@ -577,7 +388,7 @@ struct mir_rci(T)
             assert(_iterator);
             assert(_array._payload);
             assert(_array._payload <= _iterator);
-            assert(_iterator < _array._payload + _array.length);
+            assert(_iterator <= _array._payload + _array.length);
         }
         return *_iterator;
     }
@@ -590,7 +401,7 @@ struct mir_rci(T)
             assert(_iterator);
             assert(_array._payload);
             assert(_array._payload <= _iterator + index);
-            assert(_iterator + index < _array._payload + _array.length);
+            assert(_iterator + index <= _array._payload + _array.length);
         }
         return _iterator[index];
     }
