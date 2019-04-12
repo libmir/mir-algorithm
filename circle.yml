@@ -1,6 +1,6 @@
 machine:
   environment:
-    DMD: 2.082.1
+    DMD: 2.085.1
     PATH: "${HOME}/dmd2/linux/bin64:${PATH}"
     LD_LIBRARY_PATH: "${HOME}/dmd2/linux/lib64:${LD_LIBRARY_PATH}"
 checkout:
