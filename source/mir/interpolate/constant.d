@@ -85,7 +85,7 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
         scope Slice!(yIterator, 1, ykind) values
         ) pure @trusted
     {
-        import core.lifetime: move;
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         auto ret = typeof(return)(grid);
         ret._data[] = values;
         return ret.move;

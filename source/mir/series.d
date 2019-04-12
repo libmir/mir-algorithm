@@ -34,7 +34,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     import mir.algorithm.setops: multiwayUnion;
 
     import std.datetime: Date;
-    import core.lifetime: move;
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
     import std.exception: collectExceptionMsg;
 
     //////////////////////////////////////
@@ -1236,7 +1236,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ref opAssign(RIndexIterator, RIterator)(Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
-        import core.lifetime: move;
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         this._data._structure = rvalue._data._structure;
         this._data._iterator = rvalue._data._iterator.move;
         this._index = rvalue._index.move;
@@ -1645,7 +1645,7 @@ auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
         emplaceRef!V(it._data.front, kv.value.to!V);
         it.popFront;
     }
-    import core.lifetime: move;
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
     .sort(ret.lightScope);
     static if (is(typeof(ret) == R))
         return ret;

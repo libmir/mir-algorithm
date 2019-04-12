@@ -361,7 +361,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
     @system .mir_shared_ptr!R _withContext(R)(return R value) return const
         if (is(R == class) || is(R == interface))
     {
-        import core.lifetime: move;
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         typeof(return) ret;
         ret._value = cast()value;
         ret._context = cast(mir_rcarray_context*)_context;
@@ -413,7 +413,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
                 else
                     assert(0, allocationExcMsg);
             }
-            import core.lifetime: emplace;
+            static if (__VERSION__ >= 2085) import core.lifetime: emplace; else import mir.conv: emplace;
             import mir.functional: forward;
             emplace!T(_value, forward!args);
         }
@@ -441,7 +441,7 @@ struct mir_shared_ptr(T, bool cppSupport = .cppSupport!T)
             {
                 static if (!is(T == class))
                 {
-                    import core.lifetime: emplace;
+                    static if (__VERSION__ >= 2085) import core.lifetime: emplace; else import mir.conv: emplace;
                     emplace(cast(Unqual!T*)_value);
                 }
             }

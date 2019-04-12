@@ -139,7 +139,7 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
     +/
     this(RCArray!(immutable T) grid, RCArray!T values)
     {
-        import core.lifetime: move;
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         auto weights = grid[].sliced.inversedBarycentricWeights;
         this(grid.move, values.move, weights.move);
     }

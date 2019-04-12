@@ -169,7 +169,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
         else
         {
             import mir.conv: emplaceRef;
-            import core.lifetime: move;
+            static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
             foreach (i, ref e; ret)
                 e.emplaceRef!T(values[i]);
             return move(ret);
@@ -204,7 +204,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        import core.lifetime: move;
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         return move(ret);
     }
 
@@ -236,7 +236,7 @@ struct mir_rcarray(T, bool cppSupport = .cppSupport!T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        import core.lifetime: move;
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         return move(ret);
     }
 
@@ -366,7 +366,7 @@ struct mir_rci(T)
     ref opAssign(Q)(return mir_rci!Q rhs) scope return pure nothrow @nogc @trusted
         if (isImplicitlyConvertible!(Q*, T*))
     {
-        import core.lifetime: move;
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         _iterator = rhs._iterator;
         _array = move(rhs._array);
         return this;
