@@ -317,6 +317,8 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// Construct from null
     this(typeof(null))
     {
+        _data = _data.init;
+        _index = _index.init;
     }
 
     ///
