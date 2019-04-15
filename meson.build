@@ -79,12 +79,9 @@ install_subdir('source/',
     install_dir: 'include/d/' + meson.project_name(),
 )
 
-import('pkgconfig').generate(
-    name: meson.project_name(),
+import('pkgconfig').generate(mir_algorithm_lib,
     description: 'Mir Algorithm - Dlang Core Library for Math and Finance.',
     subdirs: 'd/' + meson.project_name(),
-    libraries: [mir_algorithm_lib],
-    version: meson.project_version(),
 )
 
 if get_option('with_test')
