@@ -439,7 +439,7 @@ Multivariate cubic spline with nodes on rectilinear grid.
 struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
-    import mir.rcarray;
+    import mir.rc.array;
 
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
     package alias GridVectors = staticMap!(GridVector, GridIterators);

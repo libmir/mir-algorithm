@@ -22,7 +22,7 @@ import mir.math.numeric;
 import mir.math.sum;
 import mir.ndslice.slice;
 import mir.ndslice.topology: diff, map, member, iota, triplets;
-import mir.rcarray;
+import mir.rc.array;
 import mir.utility: min, swap;
 import std.traits: Unqual;
 
@@ -80,7 +80,7 @@ Lagrange!(Unqual!(Slice!(YIterator, 1, ykind).DeepElement), maxDerivative)
     if (maxDerivative < 16)
 {
     alias T = Unqual!(Slice!(YIterator, 1, ykind).DeepElement);
-    return Lagrange!(T, maxDerivative)(RCArray!(immutable T).create(x), RCArray!T.create(y));
+    return Lagrange!(T, maxDerivative)(rcarray!(immutable T)(x), rcarray!T(y));
 }
 
 /++
@@ -266,7 +266,7 @@ RCArray!(immutable T) inversedBarycentricWeights(T)(scope Slice!(const(T)*) x)
     const minExp = long.max.reduce!min(p.member!"exp");
     foreach (ref e; p)
         e = e.ldexp(1 - minExp);
-    auto ret = RCArray!(immutable T).create(p.member!"value");
+    auto ret = rcarray!(immutable T)(p.member!"value");
     return ret;
 }
 

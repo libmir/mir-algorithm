@@ -1,7 +1,7 @@
 module init_rcarray;
 
 import mir.ndslice;
-import mir.rcarray;
+import mir.rc.array;
 import mir.shared_ptr;
 
 // force template instatiations

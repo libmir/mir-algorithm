@@ -1172,7 +1172,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     in
     {
         assert(i <= j,
-            "Series.opSlice!" ~ dimension.stringof ~ ": the left bound must be less than or equal to the right bound.");
+            "Series.opSlice!" ~ dimension.stringof ~ ": the left opSlice boundary must be less than or equal to the right bound.");
         enum errorMsg = ": difference between the right and the left bounds"
                         ~ " must be less than or equal to the length of the given dimension.";
         assert(j - i <= _data._lengths[dimension],
@@ -1632,11 +1632,11 @@ See_also: $(LREF assocArray)
 auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
     if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
 {
-    import mir.rcarray;
+    import mir.rc.array;
     import mir.conv: to;
     alias R = Series!(RCI!K, RCI!V);
     const size_t length = aa.length;
-    auto ret = series(mir_rcarray!(Unqual!K).mininit(length).asSlice, mir_rcarray!(Unqual!V).mininit(length).asSlice);
+    auto ret = series(length.mininitRcarray!(Unqual!K).asSlice, length.mininitRcarray!(Unqual!V).asSlice);
     auto it = ret.lightScope;
     foreach(ref kv; aa.byKeyValue)
     {
@@ -1686,7 +1686,7 @@ auto rcseries(K, V)(V[K]* aa)
 // pure nothrow
 version(mir_test) unittest
 {
-    import mir.rcarray;
+    import mir.rc.array;
     immutable aa = [1: 1.5, 3: 3.3, 2: 2.9];
     auto s = aa.rcseries;
     Series!(RCI!(const int), RCI!(const double)) c;
@@ -2127,7 +2127,7 @@ template rcTroykaSeries(alias lfun, alias cfun, alias rfun)
         auto ref Series!(IndexIterR, IterR, RN, rkind) rhs,
     )
     {
-        import mir.rcarray;
+        import mir.rc.array;
         alias I = CommonType!(typeof(lhs.index.front), typeof(rhs.index.front));
         alias E = CommonType!(
             typeof(lfun(lhs.index.front, lhs.data.front)),
@@ -2139,7 +2139,7 @@ template rcTroykaSeries(alias lfun, alias cfun, alias rfun)
         alias UE = Unqual!E;
         const length = troykaLength(lhs.index, rhs.index);
         import mir.ndslice.allocation: uninitSlice;
-        auto ret = length.mininit_rcarray!UI.asSlice.series(length.mininit_rcarray!UE.asSlice);
+        auto ret = length.mininitRcarray!UI.asSlice.series(length.mininitRcarray!UE.asSlice);
         alias algo = troykaSeriesImpl!(lfun, cfun, rfun);
         algo!(I, E)(lhs.lightScope, rhs.lightScope, ret.lightScope);
         return (()@trusted => *cast(R*) &ret)();
@@ -2383,7 +2383,7 @@ auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    import mir.rcarray;
+    import mir.rc.array;
 
     //////////////////////////////////////
     // Constructs two time-series.
@@ -2458,7 +2458,7 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
     import mir.internal.utility: Iota;
     import mir.ndslice.allocation: uninitSlice, makeUninitSlice;
     static if (rc)
-        import mir.rcarray;
+        import mir.rc.array;
 
     Slice!IndexIterator[C] indeces;
     foreach (i; Iota!C)
@@ -2504,13 +2504,13 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
         else
             auto ret = (()@trusted =>
                 len
-                .mininit_rcarray!UI
+                .mininitRcarray!UI
                 .asSlice
                 .series(
                     shape
                     .iota
                     .elementCount
-                    .mininit_rcarray!UE
+                    .mininitRcarray!UE
                     .asSlice
                     .sliced(shape)))();
     }

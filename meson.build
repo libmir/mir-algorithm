@@ -1,4 +1,4 @@
-project('mir-algorithm', 'cpp', 'd', version : '3.1.0', license: 'BSL-1.0',
+project('mir-algorithm', 'cpp', 'd', version : '3.4.0', license: 'BSL-1.0',
         default_options : ['cpp_std=c++1z'])
 
 
@@ -50,9 +50,12 @@ mir_algorithm_src = [
     'source/mir/ndslice/traits.d',
     'source/mir/numeric.d',
     'source/mir/range.d',
-    'source/mir/rcarray.d',
+    'source/mir/rc/array.d',
+    'source/mir/rc/context.d',
+    'source/mir/rc/package.d',
+    'source/mir/rc/ptr.d',
     'source/mir/series.d',
-    'source/mir/shared_ptr.d',
+    'source/mir/type_info.d',
 ]
 
 mir_algorithm_lib = library(meson.project_name(),

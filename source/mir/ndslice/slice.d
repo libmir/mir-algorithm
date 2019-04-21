@@ -1074,7 +1074,7 @@ public:
         alias ptr = iterator;
     else
     {
-        import mir.rcarray: mir_rci;
+        import mir.rc.array: mir_rci;
         static if (kind == Contiguous && is(Iterator : mir_rci!ET, ET))
         auto ptr() scope return inout @property
         {
@@ -1103,6 +1103,18 @@ public:
         }
     }
 
+    /// ditto
+    auto field()() scope const return @trusted @property
+    {
+        return this.lightConst.field;
+    }
+
+    /// ditto
+    auto field()() scope immutable return @trusted @property
+    {
+        return this.lightImmutable.field;
+    }
+
     static if (doUnittest)
     ///
     @safe version(mir_test) unittest
@@ -1120,6 +1132,8 @@ public:
 
         assert(sl0.field is arr);
         assert(sl1.field is arr);
+        assert((cast(const)sl1).field is arr);
+        ()@trusted{ assert((cast(immutable)sl1).field is arr); }();
     }
 
     /++
@@ -1920,8 +1934,8 @@ public:
     in
     {
         assert(i <= j,
-            "Slice.opSlice!" ~ dimension.stringof ~ ": the left bound must be less than or equal to the right bound.");
-        enum errorMsg = ": the right must be less than or equal to the length of the given dimension.";
+            "Slice.opSlice!" ~ dimension.stringof ~ ": the left opSlice boundary must be less than or equal to the right bound.");
+        enum errorMsg = ": right opSlice boundary must equal to the length of the given dimension.";
         assert(j <= _lengths[dimension],
               "Slice.opSlice!" ~ dimension.stringof ~ errorMsg);
     }

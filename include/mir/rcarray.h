@@ -11,11 +11,10 @@
 #include "mir/ndslice.h"
 #include "mir/shared_ptr.h"
 
-
 template <typename T>
 struct mir_rci;
 
-template <typename T, bool _unused_ = true>
+template <typename T>
 struct mir_rcarray
 {
 private:
@@ -27,31 +26,32 @@ private:
     mir_rcarray_context* _context() noexcept { return (mir_rcarray_context*)_payload - 1; }
     const mir_rcarray_context* _context() const noexcept { return (const mir_rcarray_context*)_payload - 1; }
 
-    bool __initialize(mir_size_t length, bool deallocate, bool initialize) noexcept;
-
 public:
 
-    mir_slice<mir_rci<T>> asSlice();
+    mir_slice<mir_rci<T>> asSlice()
+    {
+        return mir_slice<mir_rci<T>>({size()}, mir_rci<T>());
+    }
 
     mir_rcarray() noexcept {}
     mir_rcarray(std::nullptr_t) noexcept {}
-    ~mir_rcarray() noexcept { if (_payload) mir_rcarray_decrease_counter(_context()); }
-    mir_rcarray(const mir_rcarray& rhs) noexcept : _payload(rhs._payload) { if (_payload) mir_rcarray_increase_counter(_context()); }
+    ~mir_rcarray() noexcept { if (_payload) mir_rc_decrease_counter(_context()); }
+    mir_rcarray(const mir_rcarray& rhs) noexcept : _payload(rhs._payload) { if (_payload) mir_rc_increase_counter(_context()); }
     mir_rcarray(mir_rcarray&& rhs) noexcept : _payload(rhs._payload) { rhs._payload = nullptr; }
     mir_rcarray& operator=(const mir_rcarray& rhs) noexcept
     {
         if (_payload != rhs._payload)
         {
-            if (_payload) mir_rcarray_decrease_counter(_context());
+            if (_payload) mir_rc_decrease_counter(_context());
             _payload = (T*) rhs._payload;
-            if (_payload) mir_rcarray_increase_counter(_context());;
+            if (_payload) mir_rc_increase_counter(_context());;
         }
         return *this;
     }
 
-    mir_rcarray(size_t length, bool deallocate = true, bool initialize = true)
+    mir_rcarray(size_t length, bool initialize = true, bool deallocate = true)
     {
-        if (!this->__initialize(length, deallocate, initialize))
+        if (!this->__initialize(length, initialize, deallocate))
         {
             throw std::runtime_error("mir_rcarray: out of memory error.");
         }
@@ -79,9 +79,9 @@ public:
     {
         if (_payload != rhs.get())
         {
-            if (_payload) mir_rcarray_decrease_counter(_context());
+            if (_payload) mir_rc_decrease_counter(_context());
             _payload = (T*) rhs.get();
-            if (_payload) mir_rcarray_increase_counter(_context());;
+            if (_payload) mir_rc_increase_counter(_context());;
         }
         return *this;
     }
@@ -89,7 +89,7 @@ public:
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
     mir_rcarray(const mir_rcarray<Q>& rhs) noexcept : _payload(rhs.get())
     {
-        if (_payload) mir_rcarray_increase_counter(_context());
+        if (_payload) mir_rc_increase_counter(_context());
     }
 
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
@@ -101,7 +101,7 @@ public:
     mir_rcarray<const T>& light_const() noexcept { return *(mir_rcarray<const T>*)this; }
     mir_rcarray(std::initializer_list<T> list) : mir_rcarray(list.begin(), list.end()) {}
     template<class E, class Allocator> mir_rcarray(const std::vector<E, Allocator>& vector) : mir_rcarray(vector.begin(), vector.end()) {}
-    mir_rcarray& operator=(std::nullptr_t) noexcept { if (_payload) mir_rcarray_decrease_counter(_context()); _payload = nullptr; return *this; }
+    mir_rcarray& operator=(std::nullptr_t) noexcept { if (_payload) mir_rc_decrease_counter(_context()); _payload = nullptr; return *this; }
     size_t size() const noexcept { return _payload ? _context()->length : 0; }
     size_t empty() const noexcept { return size() == 0; }
     T& at(size_t index) noexcept { assert(index < this->size()); return _payload[index]; }
@@ -131,7 +131,8 @@ public:
     mir_rcarray<T> _array;
 
 private:
-    mir_rci(T* iterator, mir_rcarray<T>& array) : _iterator(iterator), _array(array) {}
+    mir_rci(T* iterator, mir_rcarray<T> array) : _iterator(iterator), _array(std::move(array)) {}
+    mir_rci(mir_rcarray<T> array) : mir_rci(array.data()), _array(std::move(array)) {}
 
 public:
 
