@@ -231,6 +231,11 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 @trusted:
 
     ///
+    Linear lightConst()() const @property { return *cast(Linear*)&this; }
+    ///
+    Linear lightImmutable()() immutable @property { return *cast(Linear*)&this; }
+
+    ///
     GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {

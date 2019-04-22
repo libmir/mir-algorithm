@@ -82,7 +82,7 @@ struct mir_rcarray(T)
     }
 
     ///
-    auto asSlice()() scope return @property
+    auto asSlice() @property @safe
     {
         import mir.ndslice.slice: mir_slice;
         alias It = mir_rci!T;

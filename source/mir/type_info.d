@@ -44,15 +44,15 @@ ref immutable(mir_type_info) mir_get_type_info(T)()
     static if (hasDestructor!T)
     {
         extern(C)
-        static void destroy_impl(scope void* ptr) @safe pure nothrow @nogc
+        static void destroy_impl(void* ptr) @safe pure nothrow @nogc
         {
             static if (is(T == class))
-                T inst() @trusted
+                T inst() return @trusted
                 {
                     return cast(T)ptr;
                 }
             else
-                ref T inst() @trusted
+                ref T inst() return @trusted
                 {
                     return *cast(T*)ptr;
                 }

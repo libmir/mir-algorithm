@@ -1299,12 +1299,6 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         return index.series(data);
     }
 
-    /// ditto
-    auto trustedImmutable()() const @property @trusted
-    {
-        return (cast(immutable) this)[];
-    }
-
     ///
     auto toConst()() const @property
     {

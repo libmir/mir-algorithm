@@ -143,6 +143,11 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
 @trusted:
 
     ///
+    Constant lightConst()() const @property { return *cast(Constant*)&this; }
+    ///
+    Constant lightImmutable()() immutable @property { return *cast(Constant*)&this; }
+
+    ///
     GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {

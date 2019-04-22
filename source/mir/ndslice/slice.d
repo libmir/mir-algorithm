@@ -913,13 +913,13 @@ public:
     /// ditto
     auto lightScope()() scope const return @property
     {
-        return Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightConst(.lightScope(_iterator)));
+        return Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightScope(_iterator));
     }
 
     /// ditto
     auto lightScope()() scope immutable return @property
     {
-        return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightImmutable(.lightScope(_iterator)));
+        return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightScope(_iterator));
     }
 
     ///
@@ -1857,7 +1857,24 @@ public:
     /++
     Overloading `==` and `!=`
     +/
-    bool opEquals(IteratorR, SliceKind rkind)(const Slice!(IteratorR, N, rkind) rslice) @trusted scope const
+    bool opEquals(scope const ref typeof(this) rslice) @trusted scope const
+    {
+        static if (!hasReference!(typeof(this)))
+        {
+            if (this._lengths != rslice._lengths)
+                return false;
+            if (this._iterator == rslice._iterator)
+                return true;
+        }
+        import mir.algorithm.iteration : equal;
+        static if (__traits(compiles, this.lightScope))
+            return equal(this.lightScope, rslice.lightScope);
+        else
+            return equal(*cast(This*)&this, *cast(This*)&rslice);
+    }
+
+    ///ditto
+    bool opEquals(IteratorR, SliceKind rkind)(auto ref const Slice!(IteratorR, N, rkind) rslice) @trusted scope const
     {
         static if (
                !hasReference!(typeof(this))
@@ -1867,21 +1884,11 @@ public:
         {
             if (this._lengths != rslice._lengths)
                 return false;
-            static if (kind == rkind)
-            {
-                if (this._strides != rslice._strides)
-                    return false;
-            }
-            else
-            {
-                if (this.strides != rslice.strides)
-                    return false;
-            }
             if (this._iterator == rslice._iterator)
                 return true;
         }
         import mir.algorithm.iteration : equal;
-        return equal(this.lightConst, rslice.lightConst);
+        return equal(this.lightScope, rslice.lightScope);
     }
 
     /// ditto

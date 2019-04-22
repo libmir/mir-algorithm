@@ -146,6 +146,11 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
 
 scope const:
 
+    ///
+    Lagrange lightConst()() const @property @trusted { return *cast(Lagrange*)&this; }
+    ///
+    Lagrange lightImmutable()() immutable @property @trusted { return *cast(Lagrange*)&this; }
+
     @property
     {
         ///

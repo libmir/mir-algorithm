@@ -20,17 +20,20 @@ struct mir_rcarray
 private:
 
     T* _payload = nullptr;
+    static T defaultT;
+    static mir_type_info typeInfoT = mir_type_info(nullptr, sizeof(T));
+
     void _cpp_copy_constructor(const mir_rcarray& rhs) noexcept;
     mir_rcarray& _cpp_assign(const mir_rcarray& rhs) noexcept;
 
-    mir_rcarray_context* _context() noexcept { return (mir_rcarray_context*)_payload - 1; }
-    const mir_rcarray_context* _context() const noexcept { return (const mir_rcarray_context*)_payload - 1; }
+    mir_rc_context* _context() noexcept { return (mir_rc_context*)_payload - 1; }
+    const mir_rc_context* _context() const noexcept { return (const mir_rc_context*)_payload - 1; }
 
 public:
 
     mir_slice<mir_rci<T>> asSlice()
     {
-        return mir_slice<mir_rci<T>>({size()}, mir_rci<T>());
+        return mir_slice<mir_rci<T>>({size()}, mir_rci<T>(*this));
     }
 
     mir_rcarray() noexcept {}
@@ -51,10 +54,10 @@ public:
 
     mir_rcarray(size_t length, bool initialize = true, bool deallocate = true)
     {
-        if (!this->__initialize(length, initialize, deallocate))
-        {
-            throw std::runtime_error("mir_rcarray: out of memory error.");
-        }
+        auto context = mir_rc_create(&typeInfoT, length, initialize, deallocate);
+        if (context == nullptr)
+            throw std::bad_alloc();
+        ret._payload = (T*)(ret._context + 1);
     }
 
     template <class RAIter> 

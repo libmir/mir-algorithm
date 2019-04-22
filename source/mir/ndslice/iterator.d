@@ -641,22 +641,44 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
 @optmath:
 
     ///
-    auto lightConst()() const @property
+    auto lightScope()() scope @property
     {
-        return CachedIterator!(LightConstOf!Iterator, LightConstOf!CacheIterator, LightConstOf!FlagIterator)(
-            .lightConst(_iterator),
-            _caches.lightConst,
-            _flags.lightConst,
+        return CachedIterator!(LightScopeOf!Iterator, LightScopeOf!CacheIterator, LightScopeOf!FlagIterator)(
+            .lightScope(_iterator),
+            .lightScope(_caches),
+            .lightScope(_flags),
             );
     }
 
     ///
-    auto lightImmutable()() immutable @property
+    auto lightScope()() scope const @property
     {
-        return CachedIterator!(LightImmutableOf!Iterator, LightImmutableOf!CacheIterator, LightImmutableOf!FlagIterator)(
+        return lightConst.lightScope;
+    }
+
+    ///
+    auto lightScope()() scope immutable @property
+    {
+        return lightImmutable.lightScope;
+    }
+
+    ///
+    auto lightConst()() const @property
+    {
+        return CachedIterator!(LightConstOf!Iterator, CacheIterator, FlagIterator)(
+            .lightConst(_iterator),
+            *cast(CacheIterator*)&_caches,
+            *cast(FlagIterator*)&_flags,
+            );
+    }
+
+    ///
+    auto lightImmutable()() immutable @property @trusted
+    {
+        return CachedIterator!(LightImmutableOf!Iterator, CacheIterator, FlagIterator)(
             .lightImmutable(_iterator),
-            _caches.lightImmutable,
-            _flags.lightImmutable,
+            *cast(CacheIterator*)&_caches,
+            *cast(FlagIterator*)&_flags,
             );
     }
 

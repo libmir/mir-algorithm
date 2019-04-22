@@ -566,6 +566,11 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 @trusted:
 
     ///
+    Spline lightConst()() const @property { return *cast(Spline*)&this; }
+    ///
+    Spline lightImmutable()() immutable @property { return *cast(Spline*)&this; }
+
+    ///
     GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {
