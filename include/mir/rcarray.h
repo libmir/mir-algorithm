@@ -9,7 +9,7 @@
 #include <vector>
 #include <iterator>
 #include "mir/ndslice.h"
-#include "mir/shared_ptr.h"
+#include "mir/rcptr.h"
 
 template <typename T>
 struct mir_rci;
@@ -20,8 +20,7 @@ struct mir_rcarray
 private:
 
     T* _payload = nullptr;
-    static T defaultT;
-    static mir_type_info typeInfoT = mir_type_info(nullptr, sizeof(T));
+    static constexpr mir_type_info typeInfoT = {nullptr, sizeof(T)};
 
     void _cpp_copy_constructor(const mir_rcarray& rhs) noexcept;
     mir_rcarray& _cpp_assign(const mir_rcarray& rhs) noexcept;
@@ -33,7 +32,7 @@ public:
 
     mir_slice<mir_rci<T>> asSlice()
     {
-        return mir_slice<mir_rci<T>>({size()}, mir_rci<T>(*this));
+        return {{size()}, mir_rci<T>(*this)};
     }
 
     mir_rcarray() noexcept {}
@@ -54,10 +53,20 @@ public:
 
     mir_rcarray(size_t length, bool initialize = true, bool deallocate = true)
     {
-        auto context = mir_rc_create(&typeInfoT, length, initialize, deallocate);
+        if (length == 0)
+            return;
+        auto context = mir_rc_create(&typeInfoT, length, nullptr, false, deallocate);
         if (context == nullptr)
             throw std::bad_alloc();
-        ret._payload = (T*)(ret._context + 1);
+        _payload = (T*)(context + 1);
+        if (initialize)
+        {
+            for(size_t i = 0; i < length; i++)
+            {
+                using U = typename std::remove_const<T>::type;
+                ::new((U*)_payload + i) U();
+            }
+        }
     }
 
     template <class RAIter> 
@@ -125,19 +134,14 @@ public:
 template <typename T>
 struct mir_rci
 {
-public:
-
     using Iterator = T*;
     using Array = mir_rcarray<T>;
 
     Iterator _iterator = nullptr;
     mir_rcarray<T> _array;
 
-private:
     mir_rci(T* iterator, mir_rcarray<T> array) : _iterator(iterator), _array(std::move(array)) {}
-    mir_rci(mir_rcarray<T> array) : mir_rci(array.data()), _array(std::move(array)) {}
-
-public:
+    mir_rci(mir_rcarray<T> array) : mir_rci(array.data(), std::move(array)) {}
 
     mir_rci() {}
     mir_rci(std::nullptr_t) {}

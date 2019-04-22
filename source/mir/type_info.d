@@ -20,7 +20,7 @@ struct mir_type_info
 {
     ///
     extern(C)
-    void function(scope void*) @safe pure nothrow @nogc destructor;
+    void function(void*) @safe pure nothrow @nogc destructor;
     /++
     Note: Negative values are used for classes to indicate that 
     +/

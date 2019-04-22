@@ -32,9 +32,9 @@ extern "C"
     mir_rc_context* mir_rc_create(
         const mir_type_info* typeInfo,
         size_t length,
-        const void* payload = null,
+        const void* payload = nullptr,
         bool initialise = true,
-        bool deallocate = true,
+        bool deallocate = true
     );
 }
 
@@ -46,8 +46,7 @@ private:
 
     T* _payload = nullptr;
     mir_rc_context* _context = nullptr;
-    static T defaultT;
-    static mir_type_info typeInfoT = mir_type_info(nullptr, sizeof(T));
+    static constexpr mir_type_info typeInfoT = {nullptr, sizeof(T)};
 
 public:
 

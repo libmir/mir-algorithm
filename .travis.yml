@@ -1,16 +1,4 @@
 language: d
-sudo: required
-addons:
-    apt:
-      sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-trusty-5.0
-      packages:
-        - g++-7
-        - gcc-7-multilib
-        - clang-5.0
-packages:
-  - pkg-config
 d:
  - ldc
  - ldc-beta
@@ -21,30 +9,18 @@ branches:
   only:
     - master
 env:
- - CC="clang-5.0" CXX="clang++-5.0" ARCH="x86_64"
-
+ - ARCH="x86"
+ - ARCH="x86_64"
+addons:
+  apt:
+    packages:
+      - gcc-multilib
 matrix:
-  include:
-    - {os: linux, d: ldc-beta, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
-    - {os: linux, d: ldc, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
-    - {os: linux, d: dmd-beta, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
-    - {os: linux, d: dmd, env: CC="clang-5.0" CXX="clang++-5.0" ARCH="x86"}
   allow_failures:
     - {d: dmd-nightly}
     - {d: ldc-beta}
     - {d: gdc}
-install:
-    - curl -L "https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-linux.zip" -o ninja-linux.zip
-    - sudo unzip ninja-linux.zip -d /usr/local/bin
-    - sudo chmod 755 /usr/local/bin/ninja
-    - sudo add-apt-repository -y ppa:deadsnakes/ppa
-    - sudo apt-get -y update
-    - sudo apt-get -y install python3.6
-    - curl https://bootstrap.pypa.io/get-pip.py | sudo python3.6
-    - sudo pip3 install meson
 script:
-#  - travis_wait 100 dub test --arch "$ARCH"
- - meson build -D with_test=true --default-library=static && cd build && ninja -j4 && ninja -j4 test -v && cd .. # TODO: 32bit meson test
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
  - travis_wait 100 dub test --arch "$ARCH" -c dips
  - ./test_examples.sh

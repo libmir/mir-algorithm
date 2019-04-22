@@ -2,7 +2,7 @@ module init_rcarray;
 
 import mir.ndslice;
 import mir.rc.array;
-import mir.shared_ptr;
+import mir.rc.ptr;
 
 // force template instatiations
 alias RCArrayDouble = RCArray!double;
@@ -12,8 +12,8 @@ extern(C++)
 struct S { double d = 0; this(double e) { d = e;}  }
 extern(C++)
 struct C { double k = 0; S s;  }
-alias SPtr = SharedPtr!S;
-alias CPtr = SharedPtr!C;
+alias SPtr = RCPtr!S;
+alias CPtr = RCPtr!C;
 
 extern(C++, Space) 
 {

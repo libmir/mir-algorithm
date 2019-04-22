@@ -5,7 +5,7 @@
 #include <map>
 #include "mir/series.h"
 #include "mir/rcarray.h"
-#include "mir/shared_ptr.h"
+#include "mir/rcptr.h"
 #include "mir/ndslice.h"
 
 namespace Space
