@@ -10,8 +10,8 @@ jobs:
     steps:
       - checkout
       - run: git submodule sync && git submodule update --recursive --init
-      - run: dub test
-      - run: dub test -c dips
+      # - run: dub test
+      # - run: dub test -c dips
       - run: meson build -D with_tests=true
       - run: ninja -C build test
       - run: make -f doc/Makefile html
