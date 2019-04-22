@@ -2363,7 +2363,6 @@ auto makeUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C
 Merges multiple (time) series into one.
 
 Params:
-    allocator = memory allocator
     seriesTuple = variadic static array of composed of series.
 Returns: sorted manually allocated series.
 See_also $(LREF unionSeries)

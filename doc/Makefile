@@ -15,7 +15,7 @@ DOC_OUTPUT_DIR=web
 DOC_SOURCE_DIR=doc
 GENERATED=.generated
 ALGORITHM_DIR=source
-CORE_DIR=mir-core/source
+CORE_DIR=subprojects/mir-core/source
 DLANGORG_DIR=$(DOC_SOURCE_DIR)/dlang.org
 ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 
@@ -28,7 +28,7 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # packages and their modules.
 MIR_PACKAGES = mir mir/rc mir/ndslice mir/ndslice/connect mir/math mir/math/func mir/array mir/interpolate mir/graph mir/combinatorics mir/container mir/algorithm
 
-PACKAGE_mir = range rcarray series numeric shared_ptr
+PACKAGE_mir = range series numeric type_info
 
 PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_array = allocation
