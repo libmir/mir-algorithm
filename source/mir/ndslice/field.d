@@ -761,43 +761,47 @@ struct LinspaceField(T)
 /++
 Magic square field.
 +/
-struct MagicField()
+struct MagicField
 {
 @optmath:
+@safe pure nothrow @nogc:
 
     /++
     Magic Square size.
     +/
     size_t _n;
 
+scope const:
+
     ///
-    auto lightConst()() scope const @property
+    MagicField lightConst()() @property
     {
-        return MagicField!()(_n);
+        return this;
     }
 
     ///
-    auto lightImmutable()() scope const @property
+    MagicField lightImmutable()() @property
     {
-        return MagicField!()(_n);
+        return this;
     }
 
     ///
-    size_t length(size_t dimension = 0)() scope const @property
+    size_t length(size_t dimension = 0)() @property
         if(dimension <= 2)
     {
         return _n * _n;
     }
 
     ///
-    size_t[1] shape() scope const @property @nogc
+    size_t[1] shape() @property
     {
         return [_n * _n];
     }
 
     ///
-    size_t opIndex()(size_t index) scope const
+    size_t opIndex(size_t index)
     {
+        pragma(inline, false);
         auto d = index / _n;
         auto m = index % _n;
         if (_n & 1)

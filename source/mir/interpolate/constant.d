@@ -98,7 +98,7 @@ Multivariate constant interpolant with nodes on rectilinear grid.
 struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
-    import mir.rcarray;
+    import mir.rc.array;
     import std.meta: AliasSeq, staticMap;
 
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
@@ -141,6 +141,11 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
     }
 
 @trusted:
+
+    ///
+    Constant lightConst()() const @property { return *cast(Constant*)&this; }
+    ///
+    Constant lightImmutable()() immutable @property { return *cast(Constant*)&this; }
 
     ///
     GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property

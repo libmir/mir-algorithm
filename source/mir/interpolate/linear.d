@@ -188,7 +188,7 @@ Multivariate linear interpolant with nodes on rectilinear grid.
 struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
     if (N && N <= 6 && NextGridIterators.length == N - 1)
 {
-    import mir.rcarray;
+    import mir.rc.array;
     import std.meta: AliasSeq, staticMap;
 
     package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
@@ -229,6 +229,11 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     }
 
 @trusted:
+
+    ///
+    Linear lightConst()() const @property { return *cast(Linear*)&this; }
+    ///
+    Linear lightImmutable()() immutable @property { return *cast(Linear*)&this; }
 
     ///
     GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property

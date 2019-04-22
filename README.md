@@ -11,11 +11,10 @@
 
 Mir Algorithm
 =============
-Dlang core library for math, finance and a home for Dlang multidimensional array package - ndslice.
+Mir library with basic types and algorithms including multidimensional matrixes, thread-safe reference counted arrays and pointers.
 
 ### Links
- - [API Documentation](http://docs.algorithm.dlang.io)
- - [Scheme of basic API (advanced)](https://rawgit.com/libmir/mir-algorithm/master/ndslice.svg)
+ - [API Documentation](http://mir-algorithm.libmir.org)
  - [Lubeck](https://github.com/kaleidicassociates/lubeck) - Linear Algebra Library for Mir Algorithm
  - [numir](https://github.com/libmir/numir) - mir extension with numpy-like API
 
@@ -47,7 +46,7 @@ void main()
 }
 ```
 
-[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/Lmd70U)
+[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/OdGbCj)
 
 #### Example (30 sec)
 ```d
@@ -84,7 +83,7 @@ void main()
 }
 ```
 
-[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/juePet)
+[![Open on run.dlang.io](https://img.shields.io/badge/run.dlang.io-open-blue.svg)](https://run.dlang.io/is/67Gi6X)
 
 ### Our sponsors
 

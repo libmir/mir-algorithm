@@ -5,7 +5,7 @@
 #include <map>
 #include "mir/series.h"
 #include "mir/rcarray.h"
-#include "mir/shared_ptr.h"
+#include "mir/rcptr.h"
 #include "mir/ndslice.h"
 
 namespace Space
@@ -169,7 +169,7 @@ void testPM()
 {
     auto c = mir_make_shared<C>(3.0, 4);
     assert(c.getContext()->counter == 1);
-    auto s = mir_shared_ptr<S>(c);
+    auto s = mir_rcptr<S>(c);
     assert(c.getContext()->counter == 2);
     assert(s->d == 3);
 }

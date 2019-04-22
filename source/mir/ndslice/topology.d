@@ -1957,7 +1957,7 @@ auto cycle(size_t loopLength, T)(T withAsSlice, size_t length)
 }
 
 ///
-unittest
+@safe pure nothrow version(mir_test) unittest
 {
     auto slice = iota(3);
     assert(slice.cycle(7) == [0, 1, 2, 0, 1, 2, 0]);
@@ -3601,7 +3601,7 @@ auto magic(size_t length)
     else
         assert(length <= ushort.max);
     import mir.ndslice.field: MagicField;
-    return MagicField!()(length).slicedField(length, length);
+    return MagicField(length).slicedField(length, length);
 }
 
 ///
@@ -4193,6 +4193,7 @@ template member(string name)
 }
 
 ///
+version(mir_test)
 @safe pure unittest
 {
     // struct, union or class
@@ -4266,6 +4267,7 @@ template orthogonalReduceField(alias fun)
 }
 
 /// bit array operations
+version(mir_test)
 unittest
 {
     import mir.ndslice.slice: slicedField;

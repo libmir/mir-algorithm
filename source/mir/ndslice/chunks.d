@@ -380,8 +380,8 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
     in
     {
         assert(i <= j,
-            "Chunks.opSlice!" ~ dimensionIndex.stringof ~ ": the left bound must be less than or equal to the right bound.");
-        enum errorMsg = ": the right must be less than or equal to the length of the given dimensionIndex.";
+            "Chunks.opSlice!" ~ dimensionIndex.stringof ~ ": the left opSlice boundary must be less than or equal to the right bound.");
+        enum errorMsg = ": the right opSlice boundary must be less than or equal to the length of the given dimensionIndex.";
         assert(j <= length!dimensionIndex,
               "Chunks.opSlice!" ~ dimensionIndex.stringof ~ errorMsg);
     }
@@ -396,8 +396,8 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
     in
     {
         assert(i <= j,
-            "Chunks.opSlice!" ~ dimensionIndex.stringof ~ ": the left bound must be less than or equal to the right bound.");
-        enum errorMsg = ": the right must be less than or equal to the length of the given dimensionIndex.";
+            "Chunks.opSlice!" ~ dimensionIndex.stringof ~ ": the left opSlice boundary must be less than or equal to the right bound.");
+        enum errorMsg = ": the right opSlice boundary must be less than or equal to the length of the given dimensionIndex.";
         assert(j <= length!dimensionIndex,
               "Chunks.opSlice!" ~ dimensionIndex.stringof ~ errorMsg);
     }

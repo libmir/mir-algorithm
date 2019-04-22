@@ -42,18 +42,173 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.allocation;
 
-import std.traits;
-import mir.ndslice.slice;
-import mir.ndslice.internal;
-import mir.ndslice.concatenation;
 import mir.math.common: optmath;
-import mir.ndslice.iterator: FieldIterator;
+import mir.ndslice.concatenation;
 import mir.ndslice.field: BitField;
+import mir.ndslice.internal;
+import mir.ndslice.iterator: FieldIterator;
+import mir.ndslice.slice;
+import mir.rc.array;
+import std.traits;
 
 @optmath:
 
 /++
-Allocates an an n-dimensional slice.
+Allocates an an n-dimensional reference-counted (thread-safe) slice.
+Params:
+    lengths = List of lengths for each dimension.
+    init = Value to initialize with (optional).
+    slice = Slice to copy shape and data from (optional).
+Returns:
+    n-dimensional slice
++/
+Slice!(RCI!T, N)
+    rcslice(T, size_t N)(size_t[N] lengths...)
+{
+    immutable len = lengths.lengthsProduct;
+    auto _lengths = lengths;
+    return typeof(return)(_lengths, RCI!T(RCArray!T(len)));
+}
+
+/// ditto
+Slice!(RCI!T, N)
+    rcslice(T, size_t N)(size_t[N] lengths, T init)
+{
+    auto ret = (()@trusted => mininitRcslice!T(lengths))();
+    ret.lightScope.field[] = init;
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+    return move(ret);
+}
+
+/// ditto
+auto rcslice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+{
+    import mir.conv: emplaceRef;
+    alias E = slice.DeepElement;
+
+    auto result = (() @trusted => slice.shape.mininitRcslice!(Unqual!E))();
+
+    import mir.algorithm.iteration: each;
+    each!(emplaceRef!E)(result.lightScope, slice.lightScope);
+
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+    return move(*(() @trusted => cast(Slice!(RCI!E, N)*) &result)());
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    auto tensor = rcslice!int(5, 6, 7);
+    assert(tensor.length == 5);
+    assert(tensor.elementCount == 5 * 6 * 7);
+    static assert(is(typeof(tensor) == Slice!(RCI!int, 3)));
+
+    // creates duplicate using `rcslice`
+    auto dup = tensor.rcslice;
+    assert(dup == tensor);
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    auto tensor = rcslice([2, 3], 5);
+    assert(tensor.elementCount == 2 * 3);
+    assert(tensor[1, 1] == 5);
+
+    import mir.rc.array;
+    static assert(is(typeof(tensor) == Slice!(RCI!int, 2)));
+}
+
+/// ditto
+auto rcslice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
+{
+    alias T = Unqual!(concatenation.DeepElement);
+    auto ret = (()@trusted => mininitRcslice!T(concatenation.shape))();
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+    ret.lightScope.opIndexAssign(concatenation);
+    return ret;
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    import mir.ndslice.topology : iota;
+    import mir.ndslice.concatenation;
+    auto tensor = concatenation([2, 3].iota, [3].iota(6)).rcslice;
+    assert(tensor == [3, 3].iota);
+
+    static assert(is(typeof(tensor) == Slice!(RCI!ptrdiff_t, 2)));
+}
+
+/++
+Allocates a bitwise packed n-dimensional reference-counted (thread-safe) boolean slice.
+Params:
+    lengths = List of lengths for each dimension.
+Returns:
+    n-dimensional bitwise rcslice
+See_also: $(SUBREF topology, bitwise).
++/
+Slice!(FieldIterator!(BitField!(RCI!size_t)), N) bitRcslice(size_t N)(size_t[N] lengths...)
+{
+    import mir.ndslice.topology: bitwise;
+    enum elen = size_t.sizeof * 8;
+    immutable len = lengths.lengthsProduct;
+    immutable dlen = (len / elen + (len % elen != 0));
+    return RCArray!size_t(dlen).asSlice.bitwise[0 .. len].sliced(lengths);
+}
+
+/// 1D
+@safe pure nothrow @nogc
+version(mir_test) unittest
+{
+    auto bitarray = 100.bitRcslice; // allocates 16 bytes total (plus RC context)
+    assert(bitarray.shape == cast(size_t[1])[100]);
+    assert(bitarray[72] == false);
+    bitarray[72] = true;
+    assert(bitarray[72] == true);
+}
+
+/// 2D
+@safe pure nothrow @nogc
+version(mir_test) unittest
+{
+    auto bitmatrix = bitRcslice(20, 6); // allocates 16 bytes total (plus RC context)
+    assert(bitmatrix.shape == cast(size_t[2])[20, 6]);
+    assert(bitmatrix[3, 4] == false);
+    bitmatrix[3, 4] = true;
+    assert(bitmatrix[3, 4] == true);
+}
+
+/++
+Allocates a minimally initialized n-dimensional reference-counted (thread-safe) slice.
+Params:
+    lengths = list of lengths for each dimension
+Returns:
+    contiguous minimally initialized n-dimensional reference-counted (thread-safe) slice
++/
+Slice!(RCI!T, N) mininitRcslice(T, size_t N)(size_t[N] lengths...)
+{
+    immutable len = lengths.lengthsProduct;
+    auto _lengths = lengths;
+    return Slice!(RCI!T, N)(_lengths, RCI!T(mininitRcarray!T(len)));
+}
+
+///
+version(mir_test)
+pure nothrow @nogc unittest
+{
+    import mir.rc.array;
+    auto tensor = mininitRcslice!int(5, 6, 7);
+    assert(tensor.length == 5);
+    assert(tensor.elementCount == 5 * 6 * 7);
+    static assert(is(typeof(tensor) == Slice!(RCI!int, 3)));
+}
+
+/++
+GC-Allocates an an n-dimensional slice.
 Params:
     lengths = List of lengths for each dimension.
     init = Value to initialize with (optional).
@@ -141,21 +296,25 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
         alias fun = .slice;
     else
         alias fun = .uninitSlice;
-    auto ret = (shape)@trusted{ return fun!T(shape);}(concatenation.shape);
+    auto ret = (()@trusted => fun!T(concatenation.shape))();
     ret.opIndexAssign(concatenation);
     return ret;
 }
 
+///
 version(mir_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
-    auto tensor = iota(2, 3).slice;
-    assert(tensor == [[0, 1, 2], [3, 4, 5]]);
+    import mir.ndslice.concatenation;
+    auto tensor = concatenation([2, 3].iota, [3].iota(6)).slice;
+    assert(tensor == [3, 3].iota);
+
+    static assert(is(typeof(tensor) == Slice!(ptrdiff_t*, 2)));
 }
 
 /++
-Allocates a packed n-dimensional bit-array.
+GC-Allocates a bitwise packed n-dimensional boolean slice.
 Params:
     lengths = List of lengths for each dimension.
 Returns:
@@ -167,7 +326,7 @@ Slice!(FieldIterator!(BitField!(size_t*)), N) bitSlice(size_t N)(size_t[N] lengt
     import mir.ndslice.topology: bitwise;
     enum elen = size_t.sizeof * 8;
     immutable len = lengths.lengthsProduct;
-    immutable dlen = (len / elen + (len % elen != 0)) * elen;
+    immutable dlen = (len / elen + (len % elen != 0));
     return new size_t[dlen].sliced.bitwise[0 .. len].sliced(lengths);
 }
 
@@ -192,7 +351,7 @@ Slice!(FieldIterator!(BitField!(size_t*)), N) bitSlice(size_t N)(size_t[N] lengt
 }
 
 /++
-Allocates an uninitialized an n-dimensional slice.
+GC-Allocates an uninitialized n-dimensional slice.
 Params:
     lengths = list of lengths for each dimension
 Returns:
@@ -217,7 +376,7 @@ version(mir_test)
 }
 
 /++
-Allocates an uninitialized aligned an n-dimensional slice.
+GC-Allocates an uninitialized aligned an n-dimensional slice.
 Params:
     lengths = list of lengths for each dimension
     alignment = memory alignment (bytes)
