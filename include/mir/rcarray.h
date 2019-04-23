@@ -28,6 +28,16 @@ private:
     mir_rc_context* _context() noexcept { return (mir_rc_context*)_payload - 1; }
     const mir_rc_context* _context() const noexcept { return (const mir_rc_context*)_payload - 1; }
 
+    mir_rcarray(size_t length, const void* _unused_, bool deallocate = true)
+    {
+        if (length == 0)
+            return;
+        auto context = mir_rc_create(&typeInfoT, length, nullptr, false, deallocate);
+        if (context == nullptr)
+            throw std::bad_alloc();
+        _payload = (T*)(context + 1);
+    }
+
 public:
 
     mir_slice<mir_rci<T>> asSlice()
@@ -52,13 +62,8 @@ public:
     }
 
     mir_rcarray(size_t length, bool initialize = true, bool deallocate = true)
+        : mir_rcarray(length, nullptr, deallocate)
     {
-        if (length == 0)
-            return;
-        auto context = mir_rc_create(&typeInfoT, length, nullptr, false, deallocate);
-        if (context == nullptr)
-            throw std::bad_alloc();
-        _payload = (T*)(context + 1);
         if (initialize)
         {
             for(size_t i = 0; i < length; i++)
@@ -70,14 +75,15 @@ public:
     }
 
     template <class RAIter> 
-    mir_rcarray(RAIter ibegin, RAIter iend) : mir_rcarray(iend - ibegin)
+    mir_rcarray(RAIter ibegin, RAIter iend) : mir_rcarray((size_t)(iend - ibegin), nullptr)
     {
         if (_payload == nullptr)
             return; // zero length
         auto p = (typename std::remove_const<T>::type*)(_payload);
         do
         {    
-            *p = *ibegin;
+            using U = typename std::remove_const<T>::type;
+            ::new((U*)p) U(*ibegin);
             ++ibegin;
             ++p;
         }
