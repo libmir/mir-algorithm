@@ -110,6 +110,7 @@ auto rcslice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice
 version(mir_test)
 @safe pure nothrow @nogc unittest
 {
+    import mir.ndslice.slice: Slice;
     auto tensor = rcslice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementCount == 5 * 6 * 7);
@@ -124,6 +125,7 @@ version(mir_test)
 version(mir_test)
 @safe pure nothrow @nogc unittest
 {
+    import mir.ndslice.slice: Slice;
     auto tensor = rcslice([2, 3], 5);
     assert(tensor.elementCount == 2 * 3);
     assert(tensor[1, 1] == 5);
@@ -146,6 +148,7 @@ auto rcslice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 version(mir_test)
 @safe pure nothrow @nogc unittest
 {
+    import mir.ndslice.slice: Slice;
     import mir.ndslice.topology : iota;
     import mir.ndslice.concatenation;
     auto tensor = concatenation([2, 3].iota, [3].iota(6)).rcslice;
@@ -211,6 +214,7 @@ Slice!(RCI!T, N) mininitRcslice(T, size_t N)(size_t[N] lengths...)
 version(mir_test)
 pure nothrow @nogc unittest
 {
+    import mir.ndslice.slice: Slice;
     import mir.rc.array;
     auto tensor = mininitRcslice!int(5, 6, 7);
     assert(tensor.length == 5);
@@ -280,6 +284,7 @@ auto slice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 version(mir_test)
 @safe pure nothrow unittest
 {
+    import mir.ndslice.slice: Slice;
     auto tensor = slice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementCount == 5 * 6 * 7);
@@ -316,6 +321,7 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 version(mir_test)
 @safe pure nothrow unittest
 {
+    import mir.ndslice.slice: Slice;
     import mir.ndslice.topology : iota;
     import mir.ndslice.concatenation;
     auto tensor = concatenation([2, 3].iota, [3].iota(6)).slice;
@@ -380,6 +386,7 @@ auto uninitSlice(T, size_t N)(size_t[N] lengths...)
 version(mir_test)
 @safe pure nothrow unittest
 {
+    import mir.ndslice.slice: Slice;
     auto tensor = uninitSlice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementCount == 5 * 6 * 7);
@@ -409,6 +416,7 @@ auto uninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @system
 version(mir_test)
 @system pure nothrow unittest
 {
+    import mir.ndslice.slice: Slice;
     auto tensor = uninitAlignedSlice!double([5, 6, 7], 64);
     tensor[] = 0;
     assert(tensor.length == 5);
