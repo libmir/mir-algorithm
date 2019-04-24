@@ -111,6 +111,7 @@ version(mir_test)
 @safe pure nothrow @nogc unittest
 {
     import mir.ndslice.slice: Slice;
+    import mir.rc.array: RCI;
     auto tensor = rcslice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementCount == 5 * 6 * 7);
@@ -126,6 +127,7 @@ version(mir_test)
 @safe pure nothrow @nogc unittest
 {
     import mir.ndslice.slice: Slice;
+    import mir.rc.array: RCI;
     auto tensor = rcslice([2, 3], 5);
     assert(tensor.elementCount == 2 * 3);
     assert(tensor[1, 1] == 5);
@@ -215,7 +217,7 @@ version(mir_test)
 pure nothrow @nogc unittest
 {
     import mir.ndslice.slice: Slice;
-    import mir.rc.array;
+    import mir.rc.array: RCI;
     auto tensor = mininitRcslice!int(5, 6, 7);
     assert(tensor.length == 5);
     assert(tensor.elementCount == 5 * 6 * 7);
