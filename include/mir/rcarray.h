@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 #include <iterator>
+#include <iostream>
 #include "mir/ndslice.h"
 #include "mir/rcptr.h"
 
@@ -147,7 +148,10 @@ struct mir_rci
     mir_rcarray<T> _array;
 
     mir_rci(T* iterator, mir_rcarray<T> array) : _iterator(iterator), _array(std::move(array)) {}
-    mir_rci(mir_rcarray<T> array) : mir_rci(array.data(), std::move(array)) {}
+    mir_rci(mir_rcarray<T> array) : _iterator(array.data())
+    {
+        _array = std::move(array);
+    }
 
     mir_rci() {}
     mir_rci(std::nullptr_t) {}
