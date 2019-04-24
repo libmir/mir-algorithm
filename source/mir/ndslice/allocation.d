@@ -3,12 +3,23 @@ This is a submodule of $(MREF mir,ndslice).
 
 It contains allocation utilities.
 
+
+$(BOOKTABLE $(H2 Common utilities),
+$(T2 shape, Returns a shape of a common n-dimensional array. )
+)
+
 $(BOOKTABLE $(H2 GC Allocation utilities),
 $(TR $(TH Function Name) $(TH Description))
 $(T2 slice, Allocates a slice using GC.)
-$(T2 shape, Returns a shape of a common n-dimensional array. )
+$(T2 bitSlice, GC-Allocates a bitwise packed n-dimensional boolean slice.)
 $(T2 ndarray, Allocates a common n-dimensional array from a slice. )
 $(T2 uninitSlice, Allocates an uninitialized slice using GC. )
+)
+
+$(BOOKTABLE $(H2 Ref counted allocation utilities),
+$(T2 rcslice, Allocates an an n-dimensional reference-counted (thread-safe) slice.)
+$(T2 bitRcslice, Allocates a bitwise packed n-dimensional reference-counted (thread-safe) boolean slice.)
+$(T2 mininitRcslice, Allocates a minimally initialized n-dimensional reference-counted (thread-safe) slice.)
 )
 
 $(BOOKTABLE $(H2 Custom allocation utilities),
