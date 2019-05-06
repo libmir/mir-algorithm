@@ -30,7 +30,7 @@ struct mir_type_info
 /++
 Convinience function for integration with .NET.
 +/
-extern(C) void mir_type_info_init(ref mir_type_info ti, typeof(mir_type_info.init.destructor) destructor, int size)
+export extern(C) void mir_type_info_init(ref mir_type_info ti, typeof(mir_type_info.init.destructor) destructor, int size)
     @safe pure nothrow @nogc
 {
     ti.destructor = destructor;
