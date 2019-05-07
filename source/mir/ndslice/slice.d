@@ -538,13 +538,13 @@ $(H4 Internal Representation for Universal Slices)
 Type definition
 
 -------
-Slice!(Universal, N, Iterator)
+Slice!(Iterator, N, Universal)
 -------
 
 Schema
 
 -------
-Slice!(Universal, N, Iterator)
+Slice!(Iterator, N, Universal)
     size_t[N]     _lengths
     sizediff_t[N] _strides
     Iterator      _iterator
@@ -557,9 +557,9 @@ Definitions
 -------
 import mir.ndslice;
 auto a = new double[24];
-Slice!(Universal, [3], double*) s = a.sliced(2, 3, 4).universal;
-Slice!(Universal, [3], double*) t = s.transposed!(1, 2, 0);
-Slice!(Universal, [3], double*) r = t.reversed!1;
+Slice!(double*, 3, Universal) s = a.sliced(2, 3, 4).universal;
+Slice!(double*, 3, Universal) t = s.transposed!(1, 2, 0);
+Slice!(double*, 3, Universal) r = t.reversed!1;
 -------
 
 Representation
@@ -604,13 +604,13 @@ $(H4 Internal Representation for Canonical Slices)
 Type definition
 
 -------
-Slice!(Canonical, N, Iterator)
+Slice!(Iterator, N, Canonical)
 -------
 
 Schema
 
 -------
-Slice!(Canonical, N, Iterator)
+Slice!(Iterator, N, Canonical)
     size_t[N]       _lengths
     sizediff_t[N-1] _strides
     Iterator        _iterator
@@ -621,13 +621,13 @@ $(H4 Internal Representation for Contiguous Slices)
 Type definition
 
 -------
-Slice!(N, Iterator)
+Slice!(Iterator, N)
 -------
 
 Schema
 
 -------
-Slice!(Contiguous, N, Iterator)
+Slice!(Iterator, N, Contiguous)
     size_t[N]     _lengths
     sizediff_t[0] _strides
     Iterator      _iterator
