@@ -124,6 +124,16 @@ struct mir_series
     }
 
     template <class T>
+    const Data* try_get_ptr(const T& key) const
+    {
+        size_t idx = transition_index_less(key);
+        auto cond = idx < _data._lengths[0] && _index[idx] == key;
+        if (cond)
+            return &_data[idx];
+        return nullptr;
+    }
+
+    template <class T>
     auto&& get(const T& key)
     {
         size_t idx = transition_index_less(key);
