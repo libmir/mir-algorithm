@@ -123,7 +123,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
+    template <class T>
     const Data* try_get_ptr(const T& key) const
     {
         size_t idx = transition_index_less(key);
