@@ -129,6 +129,7 @@ void testSeries()
     double value;
     int key;
     assert(s.try_get(2, value) && value == 5.0);
+    assert(*s.try_get_ptr(2) == 5.0);
     // printf("%ld\n", s.index()[s.transition_index_less(4)]);
     assert(!s.try_get(8, value));
 
