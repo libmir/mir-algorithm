@@ -143,9 +143,16 @@ struct VmapField(Field, Fun)
     Fun _fun;
 
     ///
+    this(Field field, Fun fun)
+    {
+        this._field = field;
+        this._fun = fun;
+    }
+
+    ///
     auto lightConst()() const @property
     {
-        return VmapField!(LightConstOf!Field, _fun)(.lightConst(_field));
+        return VmapField!(LightConstOf!Field, _fun)(.lightConst(fun));
     }
 
     ///
@@ -332,6 +339,12 @@ struct BitField(Field, I = typeof(cast()Field.init[size_t.init]))
     ///
     Field _field;
 
+    ///
+    this(Field field)
+    {
+        this._field = field;
+    }
+
     /// optimization for bitwise operations
     auto __vmap(Fun : LeftOp!(op, bool), string op)(Fun fun)
         if (op == "|" || op == "&" || op == "^")
@@ -395,7 +408,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.iterator: FieldIterator;
     ushort[10] data;
-    auto f = FieldIterator!(BitField!(ushort*))(0, BitField!(ushort*)(data.ptr));
+    auto f = FieldIterator!(BitField!(ushort*))(BitField!(ushort*)(data.ptr));
     f[123] = true;
     f++;
     assert(f[122]);
@@ -488,7 +501,7 @@ unittest
 {
     import mir.ndslice.iterator: FieldIterator;
     ushort[10] data;
-    auto f = FieldIterator!(BitpackField!(ushort*, 6))(0, BitpackField!(ushort*, 6)(data.ptr));
+    auto f = FieldIterator!(BitpackField!(ushort*, 6))(BitpackField!(ushort*, 6)(data.ptr));
     f[0] = cast(ushort) 31;
     f[1] = cast(ushort) 13;
     f[2] = cast(ushort)  8;

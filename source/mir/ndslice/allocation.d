@@ -87,8 +87,7 @@ Slice!(RCI!T, N)
 {
     auto ret = (()@trusted => mininitRcslice!T(lengths))();
     ret.lightScope.field[] = init;
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-    return move(ret);
+    return ret;
 }
 
 /// ditto
@@ -102,8 +101,7 @@ auto rcslice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice
     import mir.algorithm.iteration: each;
     each!(emplaceRef!E)(result.lightScope, slice.lightScope);
 
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-    return move(*(() @trusted => cast(Slice!(RCI!E, N)*) &result)());
+    return *(() @trusted => cast(Slice!(RCI!E, N)*) &result)();
 }
 
 ///
@@ -141,7 +139,6 @@ auto rcslice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 {
     alias T = Unqual!(concatenation.DeepElement);
     auto ret = (()@trusted => mininitRcslice!T(concatenation.shape))();
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
     ret.lightScope.opIndexAssign(concatenation);
     return ret;
 }
@@ -173,7 +170,8 @@ Slice!(FieldIterator!(BitField!(RCI!size_t)), N) bitRcslice(size_t N)(size_t[N] 
     enum elen = size_t.sizeof * 8;
     immutable len = lengths.lengthsProduct;
     immutable dlen = (len / elen + (len % elen != 0));
-    return RCArray!size_t(dlen).asSlice.bitwise[0 .. len].sliced(lengths);
+    return RCArray!size_t(dlen).asSlice
+    .bitwise[0 .. len].sliced(lengths);
 }
 
 /// 1D

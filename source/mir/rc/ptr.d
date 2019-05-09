@@ -138,28 +138,65 @@ struct mir_rcptr(T)
     @system .mir_rcptr!R _withContext(R)(return R value) return const
         if (is(R == class) || is(R == interface))
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         typeof(return) ret;
         ret._value = cast()value;
         ret._context = cast(mir_rc_context*)_context;
-        ret.__postblit;
-        return ret.move;
+        if (ret._context)
+        {
+            mir_rc_increase_counter(*cast(mir_rc_context*)ret._context);
+        }
+        return ret;
     }
 
     ///ditto
     @system .mir_rcptr!R _withContext(R)(return ref R value) return const
         if (!is(R == class) && !is(R == interface))
     {
-        import std.algorithm.mutation: move;
         typeof(return) ret;
         ret._value = &value;
         ret._context = cast(mir_rc_context*)_context;
-        ret.__postblit;
-        return ret.move;
+        if (ret._context)
+        {
+            mir_rc_increase_counter(*cast(mir_rc_context*)ret._context);
+        }
+        return ret;
     }
 
     ///
     mixin CommonRCImpl;
+
+    ///
+    static if (!is(T == const))
+    this(ref return scope inout(typeof(this)) src) inout scope @trusted pure nothrow @nogc
+    {
+        if (src._context)
+        {
+            _value = src._value;
+            _context = src._context;
+            mir_rc_increase_counter(*cast(mir_rc_context*) src._context);
+        }
+    }
+    else
+    this(ref return scope const(typeof(this)) src) inout scope @trusted pure nothrow @nogc
+    {
+        if (src._context)
+        {
+            _value = cast(inout(typeof(_value)))src._value;
+            _context = cast(inout(mir_rc_context*))src._context;
+            mir_rc_increase_counter(*cast(mir_rc_context*) src._context);
+        }
+    }
+
+    static if (is(T == immutable))
+    this(ref return scope immutable(typeof(this)) src) inout scope @trusted pure nothrow @nogc
+    {
+        if (src._context)
+        {
+            _value = cast(inout(typeof(_value)))src._value;
+            _context = cast(inout(mir_rc_context*))src._context;
+            mir_rc_increase_counter(*cast(mir_rc_context*) src._context);
+        }
+    }
 
     static if (!is(T == interface) && !__traits(isAbstractClass, T))
     {
@@ -211,7 +248,7 @@ unittest
 
 ///
 version(mir_test)
-@safe pure @nogc nothrow
+// @safe pure @nogc nothrow
 unittest
 {
     static interface I { ref double bar() @safe pure nothrow @nogc; }
@@ -231,7 +268,6 @@ unittest
     assert(a.value == 100);
 
     auto d = a._shareAs!D; //RCPtr!D
-    import std.stdio;
     assert(d._counter == 3);
     d.index = 234;
     assert(a.index == 234);

@@ -1501,7 +1501,8 @@ template minPos(alias pred = "a < b")
     @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)
         minPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        typeof(return) ret = { _iterator : slice._iterator };
+        typeof(return) ret;
+        ret._iterator = slice._iterator;
         if (!slice.anyEmpty)
         {
             minPosImpl!(pred, Iterator, N, kind)(ret._lengths, ret._iterator, slice);

@@ -50,6 +50,38 @@ struct mir_rcarray(T)
     mixin CommonRCImpl;
 
     ///
+    static if (!is(T == const))
+    this(ref return scope inout(typeof(this)) src) inout scope @trusted pure nothrow @nogc
+    {
+        if (src._payload)
+        {
+            _payload = src._payload;
+            mir_rc_increase_counter(*cast(mir_rc_context*) &src.context());
+        }
+        // foreach (i, ref inout field; src.tupleof)
+        //     this.tupleof[i] = field;
+    }
+    else
+    this(ref return scope const(typeof(this)) src) inout scope @trusted pure nothrow @nogc
+    {
+        if (src._payload)
+        {
+            _payload = cast(inout(typeof(_payload)))src._payload;
+            mir_rc_increase_counter(*cast(mir_rc_context*) &src.context());
+        }
+    }
+
+    static if (is(T == immutable))
+    this(ref return scope immutable(typeof(this)) src) inout scope @trusted pure nothrow @nogc
+    {
+        if (src._payload)
+        {
+            _payload = cast(inout(typeof(_payload)))src._payload;
+            mir_rc_increase_counter(*cast(mir_rc_context*) &src.context());
+        }
+    }
+
+    ///
     size_t length() @trusted scope pure nothrow @nogc const @property
     {
         return _payload !is null ? context.length : 0;
@@ -268,11 +300,10 @@ template rcarray(T)
         {
             auto ret = RCArray!T(range.length, false);
             import mir.conv: emplaceRef;
-            static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
             size_t i;
             foreach(ref e; range)
                 ret[i++].emplaceRef!T(e);
-            return move(ret);
+            return ret;
         }
     }
 
@@ -309,8 +340,7 @@ template rcarray(T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        return move(ret);
+        return ret;
     }
 
     /// ditto
@@ -332,8 +362,7 @@ template rcarray(T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        return move(ret);
+        return ret;
     }
 }
 
@@ -417,9 +446,10 @@ struct mir_rci(T)
     ref opAssign(Q)(return mir_rci!Q rhs) scope return pure nothrow @nogc @trusted
         if (isImplicitlyConvertible!(Q*, T*))
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+        // static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         _iterator = rhs._iterator;
-        _array = move(rhs._array);
+        // _array = move(rhs._array);
+        _array = rhs._array;
         return this;
     }
 

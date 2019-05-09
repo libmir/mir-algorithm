@@ -34,7 +34,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     import mir.algorithm.setops: multiwayUnion;
 
     import std.datetime: Date;
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
     import std.exception: collectExceptionMsg;
 
     //////////////////////////////////////
@@ -139,7 +139,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     auto data = slice!double([index.length, 2], 0); // initialized to 0 value
     auto series = index.series(data);
 
-    series[0 .. $, 0][].opIndexAssign(series0); // fill first column
+    series[0 .. $, 0][] = series0; // fill first column
     series[0 .. $, 1][] = series1; // fill second column
 
     assert(data == [
@@ -201,6 +201,13 @@ Observation are used as return tuple for for indexing $(LREF Series).
 +/
 struct mir_observation(Index, Data)
 {
+    ///
+    this(Index index, Data data)
+    {
+        this.index = index;
+        this.data = data;
+    }
+
     /// Date, date-time, time, or index.
     Index index;
     /// An alias for time-series index.
@@ -1180,7 +1187,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
     body
     {
-        return typeof(return)(j - i, typeof(return).Iterator(i));
+        return typeof(return)([j - i], typeof(return).Iterator(i));
     }
 
     /// ditto
@@ -1236,10 +1243,12 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ref opAssign(RIndexIterator, RIterator)(Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+        // static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         this._data._structure = rvalue._data._structure;
-        this._data._iterator = rvalue._data._iterator.move;
-        this._index = rvalue._index.move;
+        this._data._iterator = rvalue._data._iterator;
+        this._index = rvalue._index;
+        // this._data._iterator = rvalue._data._iterator.move;
+        // this._index = rvalue._index.move;
         return this;
     }
 
@@ -1639,7 +1648,6 @@ auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
         emplaceRef!V(it._data.front, kv.value.to!V);
         it.popFront;
     }
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
     .sort(ret.lightScope);
     static if (is(typeof(ret) == R))
         return ret;

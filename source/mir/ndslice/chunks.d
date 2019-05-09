@@ -387,7 +387,7 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
     }
     body
     {
-        return typeof(return)(j - i, typeof(return).Iterator(i));
+        return typeof(return)([j - i], typeof(return).Iterator(i));
     }
 
     /// ditto

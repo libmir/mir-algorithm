@@ -826,6 +826,13 @@ struct VmapIterator(Iterator, Fun)
     Fun _fun;
 
     ///
+    this(Iterator iterator, Fun fun)
+    {
+        this._iterator = iterator;
+        this._fun = fun;
+    }
+
+    ///
     auto lightConst()() const @property
     {
         return VmapIterator!(LightConstOf!Iterator, LightConstOf!Fun)(.lightConst(_iterator), .lightConst(_fun));
@@ -861,6 +868,12 @@ struct MapIterator(Iterator, alias _fun)
 @optmath:
     ///
     Iterator _iterator;
+
+    ///
+    this(Iterator iterator)
+    {
+        this._iterator = iterator;
+    }
 
     ///
     auto lightConst()() const @property
@@ -1364,6 +1377,13 @@ struct SliceIterator(Iterator, size_t N = 1, SliceKind kind = Contiguous)
     Iterator _iterator;
 
     ///
+    this(Element._Structure structure, Iterator iterator)
+    {
+        this._structure = structure;
+        this._iterator = iterator;
+    }
+
+    ///
     auto lightConst()() const @property
     {
         return SliceIterator!(LightConstOf!Iterator, N, kind)(_structure, .lightConst(_iterator));
@@ -1418,6 +1438,19 @@ struct FieldIterator(Field)
     Field _field;
 
     ///
+    this(Field field)
+    {
+        this._field = field;
+    }
+
+    ///
+    this(ptrdiff_t index, Field field)
+    {
+        this._index = index;
+        this._field = field;
+    }
+
+    ///
     auto lightConst()() const @property
     {
         return FieldIterator!(LightConstOf!Field)(_index, .lightConst(_field));
@@ -1433,10 +1466,11 @@ struct FieldIterator(Field)
     static alias __map(alias fun) = FieldIterator__map!(Field, fun);
 
     ///
-    Slice!(IotaIterator!size_t) opSlice(size_t dimension)(size_t i, size_t j) scope const
+    Slice!(IotaIterator!size_t) opSlice()(size_t i, size_t j) scope const
+        if (__traits(compiles, _field[size_t.init .. size_t.max]))
     {
         assert(i <= j);
-        return typeof(return)(j - i, typeof(return).Iterator(i));
+        return typeof(return)([j - i], typeof(return).Iterator(i));
     }
 
     /++
@@ -1444,6 +1478,13 @@ struct FieldIterator(Field)
         `_field[_index + sl.i .. _index + sl.j]`.
     +/
     auto opIndex()(Slice!(IotaIterator!size_t) sl)
+    {
+        auto idx = _index + sl._iterator._index;
+        return _field[idx .. idx + sl.length];
+    }
+
+    /// ditto
+    auto opIndex()(Slice!(IotaIterator!size_t) sl) const
     {
         auto idx = _index + sl._iterator._index;
         return _field[idx .. idx + sl.length];

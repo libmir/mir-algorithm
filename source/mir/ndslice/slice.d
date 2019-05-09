@@ -390,7 +390,7 @@ slicedField(Field, size_t N)(Field field, size_t[N] lengths...)
 {
     static if (hasLength!Field)
         assert(lengths.lengthsProduct <= field.length, "Length product should be less or equal to the field length.");
-    return FieldIterator!Field(0, field).sliced(lengths);
+    return typeof(return)(lengths, FieldIterator!Field(field));
 }
 
 ///ditto
@@ -795,6 +795,13 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
 
 public:
 
+    this(_Structure structure, Iterator iterator, Labels labels)
+    {
+        this._structure = structure;
+        this._iterator = iterator;
+        this._labels = labels;
+    }
+
     // static if (S == 0)
     // {
         /// Defined for Contiguous Slice only
@@ -1094,7 +1101,14 @@ public:
         static assert(kind == Contiguous, "Slice.field is defined only for contiguous slices. Slice kind is " ~ kind.stringof);
         static if (is(typeof(_iterator[size_t(0) .. elementCount])))
         {
-            return _iterator[size_t(0) .. elementCount];
+            static if (isPointer!Iterator)
+            {
+                return _iterator[size_t(0) .. elementCount];
+            }
+            else
+            {
+                return _iterator.opIndex(_iterator.opSlice(size_t(0), elementCount));
+            }
         }
         else
         {
@@ -1948,7 +1962,7 @@ public:
     }
     body
     {
-        return typeof(return)(j - i, typeof(return).Iterator(i));
+        return typeof(return)([j - i], typeof(return).Iterator(i));
     }
 
     /++

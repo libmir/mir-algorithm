@@ -116,6 +116,18 @@ struct Interp1(Range, Interpolant)
     /// Current interpolation interval. $(RED For internal use.)
     private size_t _interval;
 
+    ///
+    this(
+        Range range,
+        Interpolant interpolant,
+        size_t interval,
+    )
+    {
+        this._range = range;
+        this._interpolant = interpolant;
+        this._interval = interval;
+    }
+
     static if (hasLength!Range)
     /// Length (optional)
     size_t length()() const @property  { return _range.length; }

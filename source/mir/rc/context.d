@@ -33,7 +33,7 @@ void mir_rc_increase_counter(ref mir_rc_context context) @system nothrow @nogc p
     {
         if (counter)
         {
-            counter.atomicOp!"+="(1);
+            context.counter.atomicOp!"+="(1);
         }
     }
 }
@@ -171,7 +171,7 @@ package mixin template CommonRCImpl()
         }
     }
 
-    ///
+    static if (__VERSION__ < 2086)
     this(this) scope @trusted pure nothrow @nogc
     {
         if (this)

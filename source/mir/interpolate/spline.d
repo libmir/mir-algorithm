@@ -391,11 +391,10 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         SplineBoundaryCondition!T lBoundary,
         )
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         auto ret = typeof(return)(grid);
         ret._values = values;
         ret._computeDerivatives(rBoundary, lBoundary);
-        return ret.move;
+        return ret;
     }
 }
 

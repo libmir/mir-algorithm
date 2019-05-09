@@ -533,8 +533,7 @@ iota
     (I = sizediff_t, size_t N)(size_t[N] lengths...)
     if (__traits(isIntegral, I))
 {
-    import mir.ndslice.slice : sliced;
-    return IotaIterator!I(I.init).sliced(lengths);
+    return typeof(return)(lengths, IotaIterator!I(I.init));
 }
 
 ///ditto
@@ -542,8 +541,7 @@ Slice!(IotaIterator!sizediff_t, N)
 iota
     (size_t N)(size_t[N] lengths, sizediff_t start)
 {
-    import mir.ndslice.slice : sliced;
-    return IotaIterator!sizediff_t(start).sliced(lengths);
+    return typeof(return)(lengths, IotaIterator!sizediff_t(start));
 }
 
 ///ditto
@@ -551,8 +549,7 @@ Slice!(StrideIterator!(IotaIterator!sizediff_t), N)
 iota
     (size_t N)(size_t[N] lengths, sizediff_t start, size_t stride)
 {
-    import mir.ndslice.slice : sliced;
-    return StrideIterator!(IotaIterator!sizediff_t)(stride, IotaIterator!sizediff_t(start)).sliced(lengths);
+    return typeof(return)(lengths, StrideIterator!(IotaIterator!sizediff_t)(stride, IotaIterator!sizediff_t(start)));
 }
 
 ///ditto
@@ -565,8 +562,7 @@ template iota(I)
         (size_t N)(size_t[N] lengths, I start)
         if (__traits(isIntegral, I))
     {
-        import mir.ndslice.slice : sliced;
-        return IotaIterator!I(start).sliced(lengths);
+        return typeof(return)(lengths, IotaIterator!I(start));
     }
 
     ///ditto
@@ -575,8 +571,7 @@ template iota(I)
         (size_t N)(size_t[N] lengths, I start, size_t stride)
         if (__traits(isIntegral, I))
     {
-        import mir.ndslice.slice : sliced;
-        return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
+        return typeof(return)(lengths, StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)));
     }
 }
 
@@ -586,8 +581,7 @@ iota
     (I, size_t N)(size_t[N] lengths, I start)
     if (is(I P : P*))
 {
-    import mir.ndslice.slice : sliced;
-    return IotaIterator!I(start).sliced(lengths);
+    return typeof(return)(lengths, IotaIterator!I(start));
 }
 
 ///ditto
@@ -596,8 +590,7 @@ iota
     (I, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (is(I P : P*))
 {
-    import mir.ndslice.slice : sliced;
-    return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
+    return typeof(return)(lengths, StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)));
 }
 
 ///
@@ -855,7 +848,6 @@ Slice!(Iterator, 1, Universal)
     //->
     // | 1 2 |
     static immutable c = [1, 2];
-    import std.stdio;
     assert(iota(2, 2).antidiagonal == c);
 }
 
@@ -1682,7 +1674,7 @@ Slice!(FieldIterator!(ndIotaField!N), N)
     (size_t[N] lengths...)
     if (N)
 {
-    return FieldIterator!(ndIotaField!N)(0, ndIotaField!N(lengths[1 .. $])).sliced(lengths);
+    return typeof(return)(lengths, FieldIterator!(ndIotaField!N)(ndIotaField!N(lengths[1 .. $])));
 }
 
 ///
@@ -1747,7 +1739,6 @@ auto linspace(T, size_t N)(size_t[N] lengths, T[2][N] intervals...)
 version(mir_test) unittest
 {
     import mir.ndslice;
-    // import std.stdio: writefln;
 
     enum fmt = "%(%(%.2f %)\n%)\n";
 
@@ -1822,7 +1813,7 @@ Slice!(FieldIterator!(RepeatField!T), M, Universal)
     return typeof(return)(
         ls,
         sizediff_t[M].init,
-        typeof(return).Iterator(0, RepeatField!T(cast(RepeatField!T.UT) value)));
+        typeof(return).Iterator(RepeatField!T(cast(RepeatField!T.UT) value)));
 }
 
 /// ditto
@@ -2121,7 +2112,7 @@ auto bitwise
     static if (simplified)
         return Ret(structure_, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field)));
     else
-        return Ret(structure_, It(0, BitField!Iterator(slice._iterator)));
+        return Ret(structure_, It(BitField!Iterator(slice._iterator)));
 }
 
 /// ditto
@@ -2159,7 +2150,7 @@ version(mir_test) unittest
 version(mir_test) unittest
 {
     size_t[10] data;
-    auto slice = FieldIterator!(size_t[])(0, data[]).sliced(10);
+    auto slice = FieldIterator!(size_t[])(data[]).sliced(10);
     slice.popFrontExactly(2);
     auto bits_normal = data[].sliced.bitwise;
     auto bits = slice.bitwise;
@@ -2224,7 +2215,7 @@ auto bitpack
     static if (simplified)
         return Ret(structure, It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field)));
     else
-        return Ret(structure, It(0, BitpackField!(Iterator, pack)(slice._iterator)));
+        return Ret(structure, It(BitpackField!(Iterator, pack)(slice._iterator)));
 }
 
 /// ditto
@@ -3400,7 +3391,6 @@ version(mir_test) unittest
     // 4 5  6  7
     // 8 9 10 11
     auto s = iota(3, 4);
-    import std.stdio;
     assert(iota(3, 4).byDim!0.diff == [
         [4, 4, 4, 4], 
         [4, 4, 4, 4]]);
@@ -4324,7 +4314,7 @@ See_also: $(LREF stairs).
 +/
 Slice!(TripletIterator!(Iterator, kind)) triplets(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
 {
-    return typeof(return)(slice.length, typeof(return).Iterator(0, slice));
+    return typeof(return)([slice.length], typeof(return).Iterator(0, slice));
 }
 
 /// ditto
