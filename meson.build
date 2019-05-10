@@ -21,6 +21,7 @@ mir_algorithm_src = [
     'source/mir/array/allocation.d',
     'source/mir/combinatorics/package.d',
     'source/mir/container/binaryheap.d',
+    'source/mir/cpp_export/numeric.d',
     'source/mir/graph/package.d',
     'source/mir/graph/tarjan.d',
     'source/mir/interpolate/constant.d',

@@ -1,7 +1,6 @@
 // Written in the D programming language.
 /**
-This is a submodule of $(MREF std, algorithm).
-It contains generic _iteration algorithms.
+This module contains generic _iteration algorithms.
 $(SCRIPT inhibitQuickIndex = 1;)
 
 $(BOOKTABLE $(H2 Function),

@@ -32,6 +32,7 @@ PACKAGE_mir = range series numeric type_info
 
 PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_array = allocation
+PACKAGE_mir_cpp_export = numeric
 PACKAGE_mir_combinatorics = package
 PACKAGE_mir_container = binaryheap
 PACKAGE_mir_graph = tarjan package

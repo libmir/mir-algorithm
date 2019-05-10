@@ -21,7 +21,7 @@ version(D_Exceptions)
 
 /++
 +/
-enum FindRootStatus
+enum mir_find_root_status
 {
     /// Success
     success,
@@ -33,9 +33,12 @@ enum FindRootStatus
     nanY,
 }
 
+/// ditto
+alias FindRootStatus = mir_find_root_status;
+
 /++
 +/
-struct FindRootResult(T)
+struct mir_find_root_result(T)
 {
     /// Left bound
     T ax = 0;
@@ -45,16 +48,18 @@ struct FindRootResult(T)
     T ay = 0;
     /// `f(bx)` or `f(bx).fabs.fmin(T.max / 2).copysign(f(bx))`.
     T by = 0;
+    /// Amount of target function calls.
+    uint iterations;
 
 @safe pure @nogc scope const @property:
 
     /++
     Returns: self
     Required_versions:`D_Exceptions`
-    Throws: `Exception` if $(LREF FindRootResult.status) isn't $(LREF FindRootStatus.success).
+    Throws: `Exception` if $(LREF FindRootResult.status) isn't $(LREF mir_find_root_status.success).
     +/
     version(D_Exceptions)
-    ref validate() return
+    ref validate() inout return
     {
         with(FindRootStatus) final switch(status)
         {
@@ -65,10 +70,10 @@ struct FindRootResult(T)
         }
     }
 
-nothrow:
+extern(C++) nothrow:
 
     /++
-    Returns: $(LREF FindRootStatus)
+    Returns: $(LREF mir_find_root_status)
     +/
     FindRootStatus status()
     {
@@ -99,6 +104,9 @@ nothrow:
         return !(ay.fabs > by.fabs) ? ay : by;
     }
 }
+
+/// ditto
+alias FindRootResult = mir_find_root_result;
 
 /++
 Find root of a real function f(x) by bracketing, allowing the
@@ -137,6 +145,9 @@ ax = Left bound of initial range of `f` known to contain the root.
 bx = Right bound of initial range of `f` known to contain the root.
 fax = Value of `f(ax)` (optional).
 fbx = Value of `f(bx)` (optional).
+lowerBound = lower bound for interval extension (optional)
+upperBound = upper bound for interval extension (optional)
+maxIterations = appr. maximum allowed number of function calls.
 
 Returns: $(LREF FindRootResult)
 +/
@@ -144,8 +155,12 @@ Returns: $(LREF FindRootResult)
 FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     const T ax,
     const T bx,
-    const T fax = -T.nan,
-    const T fbx = +T.nan)
+    const T fax = T.nan,
+    const T fbx = T.nan,
+    const T lowerBound = T.nan,
+    const T upperBound = T.nan,
+    uint maxIterations = T.sizeof * 16,
+    )
     if (
         isFloatingPoint!T && __traits(compiles, T(f(T.init))) &&
         (
@@ -155,11 +170,7 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     ))
 {
     if (false) // break attributes
-    {
-        T y = f(T(123));
-        static if (!is(typeof(tolerance) == typeof(null)))
-            bool b = tolerance(T(123), T(123));
-    }
+        T y = f(T(1));
     scope funInst = delegate(T x) {
         return T(f(x));
     };
@@ -167,16 +178,16 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
 
     static if (is(typeof(tolerance) == typeof(null)))
     {
-        return findRootImpl(ax, bx, fax, fbx, fun, null);
+        alias tol = tolerance;
     }
     else
     {
-        scope tolInst = delegate(T a, T b) {
-            return bool(tolerance(a, b));
-        };
+        if (false) // break attributes
+            bool b = tolerance(T(1), T(1));
+        scope tolInst = delegate(T a, T b) { return bool(tolerance(a, b)); };
         scope tol = tolInst.trustedAllAttr;
-        return findRootImpl(ax, bx, fax, fbx, fun, tol);
     }
+    return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, fun, tol);
 }
 
 ///
@@ -184,7 +195,6 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
 version(mir_test) @safe unittest
 {
     import mir.math.common: log, exp;
-
 
     auto logRoot = findRoot!log(0, double.infinity).validate.x;
     assert(logRoot == 1);
@@ -198,54 +208,162 @@ version(mir_test) @safe unittest
     assert(fabs(approxLogRoot - 1) < 1e-5);
 }
 
-@fmamath
-private FindRootResult!float findRootImpl(
+/// With adaptive bounds
+version(mir_test) @safe unittest
+{
+    import mir.math.common: log, exp, fabs;
+
+    auto logRoot = findRoot!log(
+            10, 10, // assume we have one initial point
+            double.nan, double.nan, // fa, fb aren't provided by user
+            -double.infinity, double.infinity, // all space is available for the bounds extension.
+        ).validate.x;
+    assert(logRoot == 1);
+
+    auto shift = 1;
+    alias expm1Fun = (double x) => exp(x) - shift;
+    auto expm1RootRet = findRoot!expm1Fun
+        (
+            11, 10, // reversed order for interval is always OK
+            expm1Fun(11), expm1Fun(10), // the order must be the same as bounds
+            0, double.infinity, // space for the bounds extension.
+        ).validate;
+    assert(expm1Fun(expm1RootRet.x) == 0);
+
+    auto approxLogRoot = findRoot!(log, (a, b) => fabs(a - b) < 1e-5)(
+            -1e10, +1e10,
+            double.nan, double.nan,
+            0, double.infinity,
+        ).validate.x;
+    assert(fabs(approxLogRoot - 1) < 1e-5);
+}
+
+/// ditto
+unittest
+{
+    import core.stdc.tgmath: atan;
+    import mir.math.common;
+    import std.meta: AliasSeq;
+
+    const double[2][3] boundaries = [
+        [0.4, 0.6],
+        [1.4, 1.6],
+        [0.1, 2.1]];
+    
+    enum root = 1.0;
+
+    foreach(fun; AliasSeq!(
+        (double x) => x ^^ 2 - root,
+        (double x) => root - x ^^ 2,
+        (double x) => atan(x - root),
+        (double x) => sin(x - root),
+    ))
+    {
+        foreach(ref bounds; boundaries)
+        {
+            auto result = findRoot!fun(
+                bounds[0], bounds[1],
+                double.nan, double.nan, // f(a) and f(b) not provided
+                -10, 10, // user provided outer bounds
+            );
+            assert(result.validate.x == root);
+        }
+    }
+}
+
+/++
+With adaptive bounds and single initial point.
+Reverse outer bound order controls first step direction
+in case of `f(a) == f(b)`.
++/
+unittest
+{
+	enum root = 1.0;
+
+    // roots are +/- `root`
+    alias fun = (double x) => x * x - root;
+
+	double lowerBound = -10.0;
+	double upperBound = 10.0;
+
+    assert(
+        findRoot!fun(
+            0, 0, // initial interval
+            double.nan, double.nan,
+            lowerBound, upperBound,
+            // positive direction has higher priority
+        ).validate.x == root
+    );
+
+    assert(
+        findRoot!fun(
+            0, 0, // initial interval
+            double.nan, double.nan,
+            upperBound, lowerBound,
+            // reversed order
+        ).validate.x == -root // other root
+    );
+}
+
+/// $(LREF findRoot) implementations.
+export @fmamath FindRootResult!float findRootImpl(
     float ax,
     float bx,
     float fax,
     float fbx,
-    scope const float delegate(float) @safe pure nothrow @nogc f,
-    scope const bool delegate(float, float) @safe pure nothrow @nogc tolerance = null, //can be null
+    float lowerBound,
+    float upperBound,
+    uint maxIterations,
+    scope float delegate(float) @safe pure nothrow @nogc f,
+    scope bool delegate(float, float) @safe pure nothrow @nogc tolerance, //can be null
 ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findRootImplGen!float(ax, bx, fax, fbx, f, tolerance);
+    return findRootImplGen!float(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, f, tolerance);
 }
 
-@fmamath
-private FindRootResult!double findRootImpl(
+/// ditto
+export @fmamath FindRootResult!double findRootImpl(
     double ax,
     double bx,
     double fax,
     double fbx,
-    scope const double delegate(double) @safe pure nothrow @nogc f,
-    scope const bool delegate(double, double) @safe pure nothrow @nogc tolerance = null, //can be null
+    double lowerBound,
+    double upperBound,
+    uint maxIterations,
+    scope double delegate(double) @safe pure nothrow @nogc f,
+    scope bool delegate(double, double) @safe pure nothrow @nogc tolerance, //can be null
 ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findRootImplGen!double(ax, bx, fax, fbx, f, tolerance);
+    return findRootImplGen!double(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, f, tolerance);
 }
 
-@fmamath
-private FindRootResult!real findRootImpl(
+/// ditto
+export @fmamath FindRootResult!real findRootImpl(
     real ax,
     real bx,
     real fax,
     real fbx,
-    scope const real delegate(real) @safe pure nothrow @nogc f,
-    scope const bool delegate(real, real) @safe pure nothrow @nogc tolerance = null, //can be null
+    real lowerBound,
+    real upperBound,
+    uint maxIterations,
+    scope real delegate(real) @safe pure nothrow @nogc f,
+    scope bool delegate(real, real) @safe pure nothrow @nogc tolerance, //can be null
 ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findRootImplGen!real(ax, bx, fax, fbx, f, tolerance);
+    return findRootImplGen!real(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, f, tolerance);
 }
 
-@fmamath
-private FindRootResult!T findRootImplGen(T)(
-    const T ax,
-    const T bx,
-    const T fax,
-    const T fbx,
+private @fmamath FindRootResult!T findRootImplGen(T)(
+    T a,
+    T b,
+    T fa,
+    T fb,
+    T lb,
+    T ub,
+    uint maxIterations,
     scope const T delegate(T) @safe pure nothrow @nogc f,
     scope const bool delegate(T, T) @safe pure nothrow @nogc tolerance, //can be null
 )
@@ -255,28 +373,27 @@ private FindRootResult!T findRootImplGen(T)(
     // Author: Don Clugston. This code is (heavily) modified from TOMS748
     // (www.netlib.org).  The changes to improve the worst-cast performance are
     // entirely original.
-    // Author 2: Ilya Yaroshenko (API improvements, infinity and huge numbers handing, compiled code size reduction)
+    
+    // Author: Ilya Yaroshenko (Bounds extension logic,
+    // API improvements, infinity and huge numbers handing, compiled code size reduction)
 
-    T a, b, d;  // [a .. b] is our current bracket. d is the third best guess.
-    T fa, fb, fd; // Values of f at a, b, d.
+    T d;  // [a .. b] is our current bracket. d is the third best guess.
+    T fd; // Value of f at d.
     bool done = false; // Has a root been found?
+    uint iterations;
 
-    // Allow ax and bx to be provided in reverse order
-    if (ax <= bx)
+    static void swap(ref T a, ref T b)
     {
-        a = ax; fa = fax;
-        b = bx; fb = fbx;
-    }
-    else
-    {
-        a = bx; fa = fbx;
-        b = ax; fb = fax;
+        T t = a; a = b; b = t;
     }
 
     bool exit()
     {
         pragma(inline, false);
-        return done || b == nextUp(a) || tolerance !is null && tolerance(a, b);
+        return done
+            || iterations >= maxIterations
+            || b == nextUp(a)
+            || tolerance !is null && tolerance(a, b);
     }
 
     // Test the function at point c; update brackets accordingly
@@ -284,6 +401,7 @@ private FindRootResult!T findRootImplGen(T)(
     {
         pragma(inline, false);
         T fc = f(c);
+        iterations++;
         if (fc == 0 || fc != fc) // Exact solution, or NaN
         {
             a = c;
@@ -320,24 +438,19 @@ private FindRootResult!T findRootImplGen(T)(
     static T secantInterpolate(T a, T b, T fa, T fb)
     {
         pragma(inline, false);
-        if (( ((a - b) == a) && b != 0) || (a != 0 && ((b - a) == b)))
+        if (a - b == a && b != 0
+         || b - a == b && a != 0)
         {
             // Catastrophic cancellation
-            if (a == 0)
-                a = copysign(T(0), b);
-            else if (b == 0)
-                b = copysign(T(0), a);
-            else if (signbit(a) != signbit(b))
-                return 0;
-            T c = ieeeMean(a, b);
-            return c;
+            return ieeeMean(a, b);
         }
         // avoid overflow
-        if (b - a == T.infinity)
-            return b + a;
-        T c = a - (fa / (fb - fa)) * (b - a);
-        if (c == a || c == b || c != c)
-            return a.half + b.half;
+        T m = fa - fb;
+        T wa = fa / m;
+        T wb = fb / m;
+        T c = b * wa - a * wb;
+        if (c == a || c == b || c != c || c.fabs == T.infinity)
+            c = a.half + b.half;
         return c;
     }
 
@@ -375,6 +488,14 @@ private FindRootResult!T findRootImplGen(T)(
     int baditer = 1; // Num bisections to take if an iteration is bad.
     T c, e;  // e is our fourth best guess
     T fe;
+    bool left;
+
+    // Allow a and b to be provided in reverse order
+    if (a > b)
+    {
+        swap(a, b);
+        swap(fa, fb);
+    }
 
     if (a != a || b != b)
     {
@@ -382,14 +503,49 @@ private FindRootResult!T findRootImplGen(T)(
         goto whileloop;
     }
 
-    if (a == -T.infinity)
+    if (lb != lb)
     {
-        a = -T.max;
+        lb = a;
+    }
+
+    if (ub != ub)
+    {
+        ub = b;
+    }
+
+    if (lb > ub)
+    {
+        swap(lb, ub);
+        left = true;
+    }
+
+    if (lb == -T.infinity)
+    {
+        lb = -T.max;
+    }
+
+    if (ub == +T.infinity)
+    {
+        ub = +T.max;
+    }
+
+    if (!(lb <= a))
+    {
+        a = lb;
+        fa = T.nan;
+    }
+
+    if (!(b <= ub))
+    {
+        a = lb;
         fa = T.nan;
     }
 
     if (fa != fa)
+    {
         fa = f(a);
+        iterations++;
+    }
 
     // On the first iteration we take a secant step:
     if (fa == 0 || fa != fa)
@@ -400,14 +556,18 @@ private FindRootResult!T findRootImplGen(T)(
         goto whileloop;
     }
 
-    if (b == +T.infinity)
-    {
-        b = +T.max;
-        fb = T.nan;
-    }
-
     if (fb != fb)
-        fb = f(b);
+    {
+        if (a == b)
+        {
+            fb = fa;
+        }
+        else
+        {
+            fb = f(b);
+            iterations++;
+        }
+    }
 
     if (fb == 0 || fb != fb)
     {
@@ -417,10 +577,87 @@ private FindRootResult!T findRootImplGen(T)(
         goto whileloop;
     }
 
+    // extend inner boundaries
     if (fa.signbit == fb.signbit)
     {
-        done = true;
-        goto whileloop;
+        T lx = a;
+        T ux = b;
+        T ly = fa;
+        T uy = fb;
+        const sb = fa.signbit;
+
+        for(;;)
+        {
+            bool lw = lb < lx;
+            bool uw = ux < ub;
+            
+            if (!lw && !uw || iterations >= maxIterations)
+            {
+                done = true;
+                goto whileloop;
+            }
+            
+            if (lw && (!uw || ly.fabs < uy.fabs || ly.fabs == uy.fabs && left))
+            {
+                left = false;
+                T mx = ieeeMean(lb, lx);
+                if (mx == lx)
+                    mx = lb;
+                T my = f(mx);
+                iterations++;
+                if (my == 0)
+                {
+                    a = b = mx;
+                    fa = fb = my;
+                    done = true;
+                    goto whileloop;
+                }
+                if (mx != mx)
+                {
+                    lb = mx;
+                    continue;
+                }
+                if (my.signbit == sb)
+                {
+                    lx = mx;
+                    ly = my;
+                    continue;
+                }
+                a = mx;
+                fa = my;
+                break;
+            }
+            else
+            {
+                left = true;
+                T mx = ieeeMean(ub, ux);
+                if (mx == ux)
+                    mx = ub;
+                T my = f(mx);
+                iterations++;
+                if (my == 0)
+                {
+                    a = b = mx;
+                    fa = fb = my;
+                    done = true;
+                    goto whileloop;
+                }
+                if (mx != mx)
+                {
+                    ub = mx;
+                    continue;
+                }
+                if (my.signbit == sb)
+                {
+                    ux = mx;
+                    uy = my;
+                    continue;
+                }
+                b = mx;
+                fb = my;
+                break;
+            }
+        }
     }
 
     fa = fa.fabs.fmin(T.max / 2).copysign(fa);
@@ -518,34 +755,13 @@ whileloop:
         // probably false.
         if (c == a || c == b || c != c || fabs(c - u) > (b - a) * 0.5f)
         {
-            if ((a-b) == a || (b-a) == b)
+            if ((a - b) == a || (b - a) == b)
             {
-                if ((a>0 && b<0) || (a<0 && b>0))
-                    c = 0;
-                else
-                {
-                    T p1 = void, p2 = void;
-                    if (a == 0)
-                    {
-                        p1 = copysign(T(0), b);
-                        p2 = b;
-                    }
-                    else if (b == 0)
-                    {
-                        p1 = copysign(T(0), a);
-                        p2 = a;
-                    }
-                    else
-                    {
-                        p1 = a;
-                        p2 = b;
-                    }
-                    c = ieeeMean(p1, p2);
-                }
+                c = ieeeMean(a, b);
             }
             else
             {
-                c = a + (b - a) * 0.5f;
+                c = a.half + b.half;
             }
         }
         e = d;
@@ -560,9 +776,11 @@ whileloop:
         // yet, or if we don't yet know what the exponent is,
         // perform a binary chop.
 
-        if ((a == 0 || b == 0 ||
-            (fabs(a) >= 0.5f * fabs(b) && fabs(b) >= 0.5f * fabs(a)))
-            &&  (b - a) < 0.25f * (b0 - a0))
+        if ((a == 0
+          || b == 0
+          || fabs(a) >= 0.5f * fabs(b)
+          && fabs(b) >= 0.5f * fabs(a))
+          && b - a < 0.25f * (b0 - a0))
         {
             baditer = 1;
             continue;
@@ -572,31 +790,17 @@ whileloop:
         // pathological function. Perform a number of bisections equal to the
         // total number of consecutive bad iterations.
 
-        if ((b - a) < 0.25f * (b0 - a0))
+        if (b - a < 0.25f * (b0 - a0))
             baditer = 1;
         foreach (int QQ; 0 .. baditer)
         {
             e = d;
             fe = fd;
-
-            T w;
-            if ((a>0 && b<0) || (a<0 && b>0))
-                w = 0;
-            else
-            {
-                T usea = a;
-                T useb = b;
-                if (a == 0)
-                    usea = copysign(T(0), b);
-                else if (b == 0)
-                    useb = copysign(T(0), a);
-                w = ieeeMean(usea, useb);
-            }
-            bracket(w);
+            bracket(ieeeMean(a, b));
         }
         ++baditer;
     }
-    return typeof(return)(a, b, fa, fb);
+    return typeof(return)(a, b, fa, fb, iterations);
 }
 
 version(mir_test) @safe unittest
@@ -824,7 +1028,7 @@ struct FindLocalMinResult(T)
     /++
     Returns: self
     Required_versions:`D_Exceptions`
-    Throws: `Exception` if $(LREF FindRootResult.status) isn't $(LREF FindRootStatus.success).
+    Throws: `Exception` if $(LREF FindRootResult.status) isn't $(LREF mir_find_root_status.success).
     +/
     version(D_Exceptions)
     ref validate() return
@@ -838,10 +1042,10 @@ struct FindLocalMinResult(T)
         }
     }
 
-nothrow:
+extern(C++) nothrow:
 
     /++
-    Returns: $(LREF FindRootStatus)
+    Returns: $(LREF mir_find_root_status)
     +/
     FindRootStatus status()
     {
