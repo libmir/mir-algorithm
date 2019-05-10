@@ -7,6 +7,7 @@
 #include "mir/rcarray.h"
 #include "mir/rcptr.h"
 #include "mir/ndslice.h"
+#include "mir/numeric.h"
 
 namespace Space
 {
@@ -19,6 +20,7 @@ namespace Space
 void testSeries();
 void testRCPtr();
 void testPM();
+void testFindRoot();
 
 int main()
 {
@@ -173,4 +175,14 @@ void testPM()
     auto s = mir_rcptr<S>(c);
     assert(c.getContext()->counter == 2);
     assert(s->d == 3);
+}
+
+void testFindRoot()
+{
+    std::function<double(double)> func = [](double x)  { return x * x - 1; };
+    std::function<bool(double, double)> tolerance = [](double a, double b) { return b - a < 1e-6; };
+    double a = 0;
+    double b = 10e100;
+    auto result = mir_find_root(func, tolerance, a, b);
+    assert(result.validate().x() == 1);
 }
