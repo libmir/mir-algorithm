@@ -135,7 +135,8 @@ pp733-744 (1993).  Fortran code available from $(HTTP
 www.netlib.org,www.netlib.org) as algorithm TOMS478.
 
 Params:
-f = Function to be analyzed. `f(ax)` and `f(bx)` should have opposite signs.
+f = Function to be analyzed. `f(ax)` and `f(bx)` should have opposite signs, or `lowerBound` and/or `upperBound`
+    should be defined to perform initial interval extension.
 tolerance = Defines an early termination condition. Receives the
             current upper and lower bounds on the root. The
             delegate must return `true` when these bounds are
