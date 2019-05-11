@@ -152,7 +152,6 @@ maxIterations = Appr. maximum allowed number of function calls (inluciding funct
 steps = Number of nodes in the left side and right side regular grids (optional). If it equals to `0` (default),
         then the algorithm uses `ieeeMean` for searching. The algorithm performs searching if
         `sgn(fax)` equals to `sgn(fbx)` and at least one outer bound allows to extend the inner initial range.
-        Algorithm 
 
 Returns: $(LREF FindRootResult)
 +/
