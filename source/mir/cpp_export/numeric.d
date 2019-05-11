@@ -1,7 +1,7 @@
 /++
-This module contans extern C wrappers for $(MREF mir, numeric).
+This module contans extern C++ wrappers for $(MREF mir, numeric).
 +/
-module mir.c.numeric;
+module mir.cpp_export.numeric;
 
 import mir.numeric: findRootImpl, mir_find_root_result;
 
@@ -20,6 +20,7 @@ mir_find_root_result!float mir_find_root(
     float lowerBound,
     float upperBound,
     uint maxIterations,
+    uint steps,
     scope CFunction!float f,
     scope const(void)* f_ctx,
     scope CTolerance!float tolerance,
@@ -28,9 +29,9 @@ mir_find_root_result!float mir_find_root(
 {
     pragma(inline, false);
     if (tolerance is null)
-        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, (float x) => f(f_ctx, x), null);
+        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, (float x) => f(f_ctx, x), null);
     else
-        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, (float x) => f(f_ctx, x), (float a, float b) => tolerance(tolerance_ctx, a, b) != 0);
+        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, (float x) => f(f_ctx, x), (float a, float b) => tolerance(tolerance_ctx, a, b) != 0);
 }
 
 /// ditto
@@ -42,6 +43,7 @@ mir_find_root_result!double mir_find_root(
     double lowerBound,
     double upperBound,
     uint maxIterations,
+    uint steps,
     scope CFunction!double f,
     scope const(void)* f_ctx,
     scope CTolerance!double tolerance,
@@ -50,9 +52,9 @@ mir_find_root_result!double mir_find_root(
 {
     pragma(inline, false);
     if (tolerance is null)
-        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, (double x) => f(f_ctx, x), null);
+        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, (double x) => f(f_ctx, x), null);
     else
-        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, (double x) => f(f_ctx, x), (double a, double b) => tolerance(tolerance_ctx, a, b) != 0);
+        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, (double x) => f(f_ctx, x), (double a, double b) => tolerance(tolerance_ctx, a, b) != 0);
 }
 
 /// ditto
@@ -64,6 +66,7 @@ mir_find_root_result!real mir_find_root(
     real lowerBound,
     real upperBound,
     uint maxIterations,
+    uint steps,
     scope CFunction!real f,
     scope const(void)* f_ctx,
     scope CTolerance!real tolerance,
@@ -72,7 +75,7 @@ mir_find_root_result!real mir_find_root(
 {
     pragma(inline, false);
     if (tolerance is null)
-        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, (real x) => f(f_ctx, x), null);
+        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, (real x) => f(f_ctx, x), null);
     else
-        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, (real x) => f(f_ctx, x), (real a, real b) => tolerance(tolerance_ctx, a, b) != 0);
+        return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, (real x) => f(f_ctx, x), (real a, real b) => tolerance(tolerance_ctx, a, b) != 0);
 }

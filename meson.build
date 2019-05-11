@@ -96,6 +96,7 @@ if get_option('with_test')
         d_unittest: true,
         d_module_versions: ['mir_test'],
         link_args: '-main',
+        # d_args: ['-d-debug'],
         dependencies: required_deps,
     )
 

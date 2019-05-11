@@ -136,18 +136,22 @@ www.netlib.org,www.netlib.org) as algorithm TOMS478.
 
 Params:
 f = Function to be analyzed. `f(ax)` and `f(bx)` should have opposite signs.
-tolerance = tolerance = Defines an early termination condition. Receives the
+tolerance = Defines an early termination condition. Receives the
             current upper and lower bounds on the root. The
             delegate must return `true` when these bounds are
             acceptable. If this function always returns `false` or
             it is null, full machine precision will be achieved.
-ax = Left bound of initial range of `f` known to contain the root.
-bx = Right bound of initial range of `f` known to contain the root.
+ax = Left inner bound of initial range of `f` known to contain the root.
+bx = Right inner bound of initial range of `f` known to contain the root. Can be equal to `ax`.
 fax = Value of `f(ax)` (optional).
 fbx = Value of `f(bx)` (optional).
-lowerBound = lower bound for interval extension (optional)
-upperBound = upper bound for interval extension (optional)
-maxIterations = appr. maximum allowed number of function calls.
+lowerBound = Lower outer bound for interval extension (optional)
+upperBound = Upper outer bound for interval extension (optional)
+maxIterations = Appr. maximum allowed number of function calls (inluciding function calls for grid).
+steps = Number of nodes in the left side and right side regular grids (optional). If it equals to `0` (default),
+        then the algorithm uses `ieeeMean` for searching. The algorithm performs searching if
+        `sgn(fax)` equals to `sgn(fbx)` and at least one outer bound allows to extend the inner initial range.
+        Algorithm 
 
 Returns: $(LREF FindRootResult)
 +/
@@ -160,6 +164,7 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
     const T lowerBound = T.nan,
     const T upperBound = T.nan,
     uint maxIterations = T.sizeof * 16,
+    uint steps = 0,
     )
     if (
         isFloatingPoint!T && __traits(compiles, T(f(T.init))) &&
@@ -187,7 +192,7 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
         scope tolInst = delegate(T a, T b) { return bool(tolerance(a, b)); };
         scope tol = tolInst.trustedAllAttr;
     }
-    return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, fun, tol);
+    return findRootImpl(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, fun, tol);
 }
 
 ///
@@ -242,7 +247,7 @@ version(mir_test) @safe unittest
 unittest
 {
     import core.stdc.tgmath: atan;
-    import mir.math.common;
+    import mir.math;
     import std.meta: AliasSeq;
 
     const double[2][3] boundaries = [
@@ -256,7 +261,6 @@ unittest
         (double x) => x ^^ 2 - root,
         (double x) => root - x ^^ 2,
         (double x) => atan(x - root),
-        (double x) => sin(x - root),
     ))
     {
         foreach(ref bounds; boundaries)
@@ -264,11 +268,42 @@ unittest
             auto result = findRoot!fun(
                 bounds[0], bounds[1],
                 double.nan, double.nan, // f(a) and f(b) not provided
-                -10, 10, // user provided outer bounds
+                -double.max, double.max, // user provided outer bounds
             );
             assert(result.validate.x == root);
         }
     }
+
+    foreach(ref bounds; boundaries)
+    {
+        auto result = findRoot!(x => sin(x - root))(
+            bounds[0], bounds[1],
+            double.nan, double.nan, // f(a) and f(b) not provided
+            -10, 10, // user provided outer bounds
+            100, // max iterations,
+            10, // steps for grid
+        );
+        assert(result.validate.x == root);
+    }
+    // single initial point, grid, positive direction
+    auto result = findRoot!((double x ) => sin(x - root))(
+        0.1, 0.1, // initial point, a = b
+        double.nan, double.nan, // f(a) = f(b) not provided
+        -100.0, 100.0, // user provided outer bounds
+        150, // max iterations,
+        100, // number of steps for grid
+    );
+    assert(result.validate.x == root);
+
+    // single initial point, grid, negative direction
+    result = findRoot!((double x ) => sin(x - root))(
+        0.1, 0.1, // initial point a = b
+        double.nan, double.nan, // f(a) = f(b) not provided
+        100.0, -100.0, // user provided outer bounds, reversed order
+        150, // max iterations,
+        100, // number of steps for grid
+    );
+    assert(result.validate.x == double(root - PI)); // Left side root!
 }
 
 /++
@@ -314,12 +349,13 @@ export @fmamath FindRootResult!float findRootImpl(
     float lowerBound,
     float upperBound,
     uint maxIterations,
+    uint steps,
     scope float delegate(float) @safe pure nothrow @nogc f,
     scope bool delegate(float, float) @safe pure nothrow @nogc tolerance, //can be null
 ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findRootImplGen!float(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, f, tolerance);
+    return findRootImplGen!float(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, f, tolerance);
 }
 
 /// ditto
@@ -331,12 +367,13 @@ export @fmamath FindRootResult!double findRootImpl(
     double lowerBound,
     double upperBound,
     uint maxIterations,
+    uint steps,
     scope double delegate(double) @safe pure nothrow @nogc f,
     scope bool delegate(double, double) @safe pure nothrow @nogc tolerance, //can be null
 ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findRootImplGen!double(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, f, tolerance);
+    return findRootImplGen!double(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, f, tolerance);
 }
 
 /// ditto
@@ -348,12 +385,13 @@ export @fmamath FindRootResult!real findRootImpl(
     real lowerBound,
     real upperBound,
     uint maxIterations,
+    uint steps,
     scope real delegate(real) @safe pure nothrow @nogc f,
     scope bool delegate(real, real) @safe pure nothrow @nogc tolerance, //can be null
 ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findRootImplGen!real(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, f, tolerance);
+    return findRootImplGen!real(ax, bx, fax, fbx, lowerBound, upperBound, maxIterations, steps, f, tolerance);
 }
 
 private @fmamath FindRootResult!T findRootImplGen(T)(
@@ -364,9 +402,10 @@ private @fmamath FindRootResult!T findRootImplGen(T)(
     T lb,
     T ub,
     uint maxIterations,
+    uint steps,
     scope const T delegate(T) @safe pure nothrow @nogc f,
     scope const bool delegate(T, T) @safe pure nothrow @nogc tolerance, //can be null
-)
+) @safe pure nothrow @nogc
     if (isFloatingPoint!T)
 {
     version(LDC) pragma(inline, true);
@@ -577,6 +616,16 @@ private @fmamath FindRootResult!T findRootImplGen(T)(
         goto whileloop;
     }
 
+    if (fa.fabs < fb.fabs)
+    {
+        left = true;
+    }
+    else
+    if (fa.fabs > fb.fabs)
+    {
+        left = false;
+    }
+
     // extend inner boundaries
     if (fa.signbit == fb.signbit)
     {
@@ -586,23 +635,43 @@ private @fmamath FindRootResult!T findRootImplGen(T)(
         T uy = fb;
         const sb = fa.signbit;
 
-        for(;;)
+        import mir.ndslice.topology: linspace;
+
+        typeof(linspace!T([2], [lx, lb])) lgrid, ugrid;
+        if (steps)
+        {
+            lgrid = linspace!T([steps + 1], [lx, lb]);
+            lgrid.popFront;
+            ugrid = linspace!T([steps + 1], [ux, ub]);
+            ugrid.popFront;
+        }
+
+        for(T mx;;)
         {
             bool lw = lb < lx;
             bool uw = ux < ub;
-            
+
             if (!lw && !uw || iterations >= maxIterations)
             {
                 done = true;
                 goto whileloop;
             }
-            
-            if (lw && (!uw || ly.fabs < uy.fabs || ly.fabs == uy.fabs && left))
+
+            if (lw && (!uw || left))
             {
-                left = false;
-                T mx = ieeeMean(lb, lx);
-                if (mx == lx)
-                    mx = lb;
+                if (lgrid.empty)
+                {
+                    mx = ieeeMean(lb, lx);
+                    if (mx == lx)
+                        mx = lb;
+                }
+                else
+                {
+                    mx = lgrid.front;
+                    lgrid.popFront;
+                    if (mx == lx)
+                        continue;
+                }
                 T my = f(mx);
                 iterations++;
                 if (my == 0)
@@ -621,18 +690,33 @@ private @fmamath FindRootResult!T findRootImplGen(T)(
                 {
                     lx = mx;
                     ly = my;
+                    if (lgrid.empty)
+                    {
+                        left = ly.fabs < uy.fabs;
+                    }
                     continue;
                 }
                 a = mx;
                 fa = my;
+                b = lx;
+                fb = ly;
                 break;
             }
             else
             {
-                left = true;
-                T mx = ieeeMean(ub, ux);
-                if (mx == ux)
-                    mx = ub;
+                if (ugrid.empty)
+                {
+                    mx = ieeeMean(ub, ux);
+                    if (mx == ux)
+                        mx = ub;
+                }
+                else
+                {
+                    mx = ugrid.front;
+                    ugrid.popFront;
+                    if (mx == ux)
+                        continue;
+                }
                 T my = f(mx);
                 iterations++;
                 if (my == 0)
@@ -651,10 +735,16 @@ private @fmamath FindRootResult!T findRootImplGen(T)(
                 {
                     ux = mx;
                     uy = my;
+                    if (ugrid.empty)
+                    {
+                        left = !(ly.fabs > uy.fabs);
+                    }
                     continue;
                 }
                 b = mx;
                 fb = my;
+                a = ux;
+                fa = uy;
                 break;
             }
         }
