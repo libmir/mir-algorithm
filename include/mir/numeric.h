@@ -88,6 +88,7 @@ mir_find_root_result<float> mir_find_root(
     float lower_bound,
     float upper_bound,
     unsigned int maxIterations,
+    unsigned int steps,
     float (*f)(const void* ctx, float x),
     const void* f_ctx = NULL,
     bool (*tolerance)(const void* ctx, float a, float b) = NULL,
@@ -102,6 +103,7 @@ mir_find_root_result<double> mir_find_root(
     double lower_bound,
     double upper_bound,
     unsigned int maxIterations,
+    unsigned int steps,
     double (*f)(const void* ctx, double x),
     const void* f_ctx = NULL,
     bool (*tolerance)(const void* ctx, double a, double b) = NULL,
@@ -116,6 +118,7 @@ mir_find_root_result<long double> mir_find_root(
     long double lower_bound,
     long double upper_bound,
     unsigned int maxIterations,
+    unsigned int steps,
     long double (*f)(const void* ctx, long double x),
     const void* f_ctx = NULL,
     bool (*tolerance)(const void* ctx, long double a, long double b) = NULL,
@@ -132,7 +135,8 @@ mir_find_root_result<T> mir_find_root(
     const T fb = std::numeric_limits<T>::quiet_NaN(),
     const T lower_bound = std::numeric_limits<T>::quiet_NaN(),
     const T upper_bound = std::numeric_limits<T>::quiet_NaN(),
-    int maxIterations = sizeof(T) * 16
+    unsigned int maxIterations = sizeof(T) * 16,
+    unsigned int steps = 0
 )
 {
     return mir_find_root(
@@ -143,10 +147,39 @@ mir_find_root_result<T> mir_find_root(
         lower_bound,
         upper_bound,
         maxIterations,
+        steps,
         &mir_internal_find_root_f<T>,
         &f,
         &mir_internal_find_root_tolerance<T>,
         &tolerance
+    );
+}
+
+template<class T>
+mir_find_root_result<T> mir_find_root(
+    const std::function<T(T)>& f,
+    const T absoluteTolerance,
+    const T a,
+    const T b,
+    const T fa = std::numeric_limits<T>::quiet_NaN(),
+    const T fb = std::numeric_limits<T>::quiet_NaN(),
+    const T lower_bound = std::numeric_limits<T>::quiet_NaN(),
+    const T upper_bound = std::numeric_limits<T>::quiet_NaN(),
+    unsigned int maxIterations = sizeof(T) * 16,
+    unsigned int steps = 0
+)
+{
+    return mir_find_root<T>(
+        f,
+        [absoluteTolerance](T a, T b) { return b - a < absoluteTolerance; },
+        a,
+        b,
+        fa,
+        fb,
+        lower_bound,
+        upper_bound,
+        maxIterations,
+        steps
     );
 }
 

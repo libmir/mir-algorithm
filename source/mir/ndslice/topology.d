@@ -1768,6 +1768,9 @@ version(mir_test) unittest
     auto s = linspace!double([5], [1.0, 2.0]);
     assert(s == [1.0, 1.25, 1.5, 1.75, 2.0]);
 
+    // reverse order
+    assert(linspace!double([5], [2.0, 1.0]) == s.retro);
+
     // remove endpoint
     s.popBack;
     assert(s == [1.0, 1.25, 1.5, 1.75]);

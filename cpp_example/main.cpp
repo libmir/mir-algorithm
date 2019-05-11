@@ -185,4 +185,7 @@ void testFindRoot()
     double b = 10e100;
     auto result = mir_find_root(func, tolerance, a, b);
     assert(result.validate().x() == 1);
+
+    // with relative tolerance
+    assert(mir_find_root(func, 1e-6, a, b).validate().x());
 }
