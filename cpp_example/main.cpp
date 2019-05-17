@@ -21,6 +21,7 @@ void testSeries();
 void testRCPtr();
 void testPM();
 void testFindRoot();
+void testStringView();
 
 int main()
 {
@@ -92,6 +93,7 @@ int main()
     testSeries();
     testRCPtr();
     testPM();
+    testStringView();
 
     return 0;
 }
@@ -188,4 +190,15 @@ void testFindRoot()
 
     // with relative tolerance
     assert(mir_find_root(func, 1e-6, a, b).validate().x());
+}
+
+void testStringView()
+{
+    auto ref = std::string_view("Hi");
+    auto b = mir_rcarray_from_string(ref);
+    auto c = mir_rcarray_from_string(std::string("Hi"));
+    auto d = mir_rcarray_from_string("Hi");
+    assert(ref == mir_get_string_view(b));
+    assert(ref == mir_get_string_view(c));
+    assert(ref == mir_get_string_view(d));
 }

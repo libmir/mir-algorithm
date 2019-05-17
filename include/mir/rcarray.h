@@ -2,15 +2,18 @@
 
 #define MIR_RCARRAY
 
-#include <utility>
-#include <cassert>
-#include <initializer_list>
-#include <stdexcept>
-#include <vector>
-#include <iterator>
-#include <iostream>
 #include "mir/ndslice.h"
 #include "mir/rcptr.h"
+#include <cassert>
+#include <cstring>
+#include <initializer_list>
+#include <iostream>
+#include <iterator>
+#include <stdexcept>
+#include <string_view>
+#include <string>
+#include <utility>
+#include <vector>
 
 template <typename T>
 struct mir_rci;
@@ -117,7 +120,7 @@ public:
         rhs.__reset();
     }
 
-    mir_rcarray<const T>& light_const() noexcept { return *(mir_rcarray<const T>*)this; }
+    mir_rcarray<const T> light_const() const noexcept { return *(mir_rcarray<const T>*)this; }
     mir_rcarray(std::initializer_list<T> list) : mir_rcarray(list.begin(), list.end()) {}
     template<class E, class Allocator> mir_rcarray(const std::vector<E, Allocator>& vector) : mir_rcarray(vector.begin(), vector.end()) {}
     mir_rcarray& operator=(std::nullptr_t) noexcept { if (_payload) mir_rc_decrease_counter(_context()); _payload = nullptr; return *this; }
@@ -137,7 +140,6 @@ public:
     const T* cend() const noexcept { return this->cbegin() + this->size(); }
 };
 
-
 template <typename T>
 struct mir_rci
 {
@@ -156,7 +158,7 @@ struct mir_rci
     mir_rci() {}
     mir_rci(std::nullptr_t) {}
 
-    mir_rci<const T>& light_const() { return *(mir_rci<const T>*)this; }
+    mir_rci<const T> light_const() const noexcept { return *(mir_rci<const T>*)this; }
 
     T* operator->()
     {
@@ -258,5 +260,47 @@ template <
     mir_slice_kind kind
 >
 mir_slice<mir_rci<const T>, N, kind> mir_light_const(const mir_slice<mir_rci<T>, N, kind>& s) { return *(mir_slice<mir_rci<const T>, N, kind>*)&s; }
+
+template<
+    class CharT, 
+    class Traits
+>
+mir_rcarray<CharT> mir_rcarray_from_string(std::basic_string_view<CharT, Traits> str)
+{
+    mir_rcarray<CharT> ret;
+    size_t length = str.size();
+    if (length != 0)
+    {
+        ret = mir_rcarray<CharT>(length, true, false);
+        std::memcpy(ret.data(), str.data(), length);
+    }
+    return ret;
+}
+
+template<
+    class CharT
+>
+mir_rcarray<CharT> mir_rcarray_from_string(const CharT* str)
+{
+    return mir_rcarray_from_string(std::basic_string_view<CharT>(str));
+}
+
+template<
+    class CharT, 
+    class Traits,
+    class Allocator
+>
+mir_rcarray<CharT> mir_rcarray_from_string(const std::basic_string<CharT, Traits, Allocator>& str)
+{
+    return mir_rcarray_from_string((std::basic_string_view<CharT, Traits>)str);
+}
+
+template<
+    class CharT
+>
+std::basic_string_view<CharT> mir_get_string_view(mir_rcarray<CharT> str)
+{
+    return std::basic_string_view<CharT>(str.data(), str.size());
+}
 
 #endif
