@@ -196,8 +196,8 @@ void testStringView()
 {
     auto ref = std::string_view("Hi");
     auto b = mir_rcarray_from_string(ref);
-    auto c = mir_rcarray_from_string(std::string("Hi"));
-    auto d = mir_rcarray_from_string("Hi");
+    mir_rcarray<char> c = mir_rcarray_from_string(std::string("Hi"));
+    mir_rcarray<const char> d = mir_rcarray_from_string("Hi");
     assert(ref == mir_get_string_view(b));
     assert(ref == mir_get_string_view(c));
     assert(ref == mir_get_string_view(d));

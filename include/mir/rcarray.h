@@ -99,23 +99,23 @@ public:
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
     mir_rcarray& operator=(const mir_rcarray<Q>& rhs) noexcept
     {
-        if (_payload != rhs.get())
+        if (_payload != rhs.data())
         {
             if (_payload) mir_rc_decrease_counter(_context());
-            _payload = (T*) rhs.get();
+            _payload = (T*) rhs.data();
             if (_payload) mir_rc_increase_counter(_context());;
         }
         return *this;
     }
 
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
-    mir_rcarray(const mir_rcarray<Q>& rhs) noexcept : _payload(rhs.get())
+    mir_rcarray(const mir_rcarray<Q>& rhs) noexcept : _payload(rhs.data())
     {
         if (_payload) mir_rc_increase_counter(_context());
     }
 
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value && std::is_same<const Q, T>::value>::type>
-    mir_rcarray(mir_rcarray<Q>&& rhs) noexcept : _payload(rhs.get())
+    mir_rcarray(mir_rcarray<Q>&& rhs) noexcept : _payload(rhs.data())
     {
         rhs.__reset();
     }
@@ -299,6 +299,14 @@ template<
     class CharT
 >
 std::basic_string_view<CharT> mir_get_string_view(mir_rcarray<CharT> str)
+{
+    return std::basic_string_view<CharT>(str.data(), str.size());
+}
+
+template<
+    class CharT
+>
+std::basic_string_view<CharT> mir_get_string_view(mir_rcarray<const CharT> str)
 {
     return std::basic_string_view<CharT>(str.data(), str.size());
 }
