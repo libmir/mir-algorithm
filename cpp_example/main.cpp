@@ -201,4 +201,5 @@ void testStringView()
     assert(ref == mir_get_string_view(b));
     assert(ref == mir_get_string_view(c));
     assert(ref == mir_get_string_view(d));
+    assert(typeid((mir_get_string_view(c))) == typeid((mir_get_string_view(d))));
 }
