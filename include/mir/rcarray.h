@@ -44,6 +44,11 @@ private:
 
 public:
 
+    size_t __counter() const noexcept
+    {
+        return _payload == nullptr ? 0 : _context()->counter;
+    }
+
     mir_slice<mir_rci<T>> asSlice()
     {
         return {{size()}, mir_rci<T>(*this)};
@@ -118,6 +123,12 @@ public:
     mir_rcarray(mir_rcarray<Q>&& rhs) noexcept : _payload(rhs.data())
     {
         rhs.__reset();
+    }
+
+    template<class CharT, class Traits, class = typename std::enable_if<std::is_same<const CharT, const T>::value>::type>
+    operator std::basic_string_view<CharT, Traits>() const noexcept
+    {
+        return mir_get_string_view(*this);
     }
 
     mir_rcarray<const T> light_const() const noexcept { return *(mir_rcarray<const T>*)this; }
@@ -246,6 +257,8 @@ struct mir_rci
         return mir_rci(_iterator + index, _array);
     }
 
+    
+
     bool operator==(const mir_rci& rhs) const { return _iterator == rhs._iterator; }
     bool operator!=(const mir_rci& rhs) const { return _iterator != rhs._iterator; }
     bool operator<(const mir_rci& rhs) const { return _iterator < rhs._iterator; }
@@ -271,7 +284,7 @@ mir_rcarray<CharT> mir_rcarray_from_string(std::basic_string_view<CharT, Traits>
     size_t length = str.size();
     if (length != 0)
     {
-        ret = mir_rcarray<CharT>(length, true, false);
+        ret = mir_rcarray<CharT>(length, false);
         std::memcpy(ret.data(), str.data(), length);
     }
     return ret;
