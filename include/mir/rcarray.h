@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include<stdexcept>
 
 template <typename T>
 struct mir_rci;
@@ -44,6 +45,12 @@ private:
 
 public:
 
+    using iterator = T*;
+    using const_iterator = const T*;
+    using value_type = T;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
     size_t __counter() const noexcept
     {
         return _payload == nullptr ? 0 : _context()->counter;
@@ -52,6 +59,12 @@ public:
     mir_slice<mir_rci<T>> asSlice()
     {
         return {{size()}, mir_rci<T>(*this)};
+    }
+
+    mir_slice<mir_rci<T>, 2> asSlice(size_t length0, size_t length1)
+    {
+        assert(length0 * length1 == size());
+        return {{length0, length1}, mir_rci<T>(*this)};
     }
 
     mir_rcarray() noexcept {}
@@ -84,7 +97,12 @@ public:
     }
 
     template <class RAIter> 
-    mir_rcarray(RAIter ibegin, RAIter iend) : mir_rcarray((size_t)(iend - ibegin), nullptr)
+    mir_rcarray(RAIter ibegin, RAIter iend) : mir_rcarray(ibegin, iend, (size_t)(iend - ibegin))
+    {
+    }
+
+    template <class RAIter> 
+    mir_rcarray(RAIter ibegin, RAIter iend, size_t length) : mir_rcarray(length, nullptr)
     {
         if (_payload == nullptr)
             return; // zero length
@@ -143,12 +161,20 @@ public:
     const T& operator[](size_t index) const noexcept { assert(index < this->size()); return _payload[index]; }
     T* data() noexcept { return _payload; }
     const T* data() const noexcept { return _payload; }
-    T* begin() noexcept { return _payload; }
-    const T* begin() const noexcept { return _payload; }
-    const T* cbegin() const noexcept { return _payload; }
-    T* end() noexcept { return this->begin() + this->size(); }
-    const T* end() const noexcept { return this->begin() + this->size(); }
-    const T* cend() const noexcept { return this->cbegin() + this->size(); }
+
+    iterator begin() noexcept { return _payload; }
+    const_iterator begin() const noexcept { return _payload; }
+    const_iterator cbegin() const noexcept { return _payload; }
+    iterator end() noexcept { return this->begin() + this->size(); }
+    const_iterator end() const noexcept { return this->begin() + this->size(); }
+    const_iterator cend() const noexcept { return this->cbegin() + this->size(); }
+
+    reverse_iterator rbegin() noexcept { return reverse_iterator(this->begin()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(this->begin()); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(this->begin()); }
+    reverse_iterator rend() noexcept { return reverse_iterator(this->end()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(this->end()); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(this->end()); }
 };
 
 template <typename T>
@@ -252,12 +278,20 @@ struct mir_rci
         return mir_rci(_iterator + index, _array);
     }
 
-    mir_rci operator-(ptrdiff_t index) const
+    mir_rci operator-(ptrdiff_t index)
     {
-        return mir_rci(_iterator + index, _array);
+        return mir_rci(_iterator - index, _array);
     }
 
-    
+    mir_rci<const T> operator+(ptrdiff_t index) const
+    {
+        return mir_rci<const T>(_iterator + index, _array);
+    }
+
+    mir_rci<const T> operator-(ptrdiff_t index) const
+    {
+        return mir_rci<const T>(_iterator - index, _array);
+    }
 
     bool operator==(const mir_rci& rhs) const { return _iterator == rhs._iterator; }
     bool operator!=(const mir_rci& rhs) const { return _iterator != rhs._iterator; }

@@ -89,6 +89,87 @@ struct mir_slice<Iterator, N, mir_slice_kind::contiguous>
 template <
     typename Iterator
 >
+struct mir_slice<Iterator, 2, mir_slice_kind::contiguous>
+{
+    mir_size_t _lengths[2] = {};
+    static const mir_ptrdiff_t _strides[0];
+    Iterator _iterator = nullptr;
+
+    template <unsigned int d = 0>
+    size_t size() const noexcept
+    {
+        return _lengths[d];
+    }
+
+    template <unsigned int d = 0>
+    bool empty() const noexcept
+    {
+        return _lengths[d] == 0;
+    }
+
+    size_t elements_count() const noexcept
+    {
+        return _lengths[0] * _lengths[1];
+    }
+
+    auto&& at(mir_size_t index0, mir_size_t index1) noexcept
+    {
+        assert(index0 < this->size<0>());
+        assert(index1 < this->size<1>());
+        return _iterator[index0 * _lengths[1] + index1];
+    }
+
+    auto&& at(mir_size_t index0, mir_size_t index1) const noexcept
+    {
+        assert(index0 < this->size<0>());
+        assert(index1 < this->size<1>());
+        return _iterator[index0 * _lengths[1] + index1];
+    }
+
+    auto&& operator()(mir_size_t index0, mir_size_t index1) noexcept
+    {
+        return at(index0, index1);
+    }
+
+    auto&& operator()(mir_size_t index0, mir_size_t index1) const noexcept
+    {
+        return at(index0, index1);
+    }
+
+    Iterator begin() noexcept
+    {
+        return _iterator;
+    }
+
+    auto begin() const noexcept
+    {
+        return _iterator;
+    }
+
+    auto cbegin() const noexcept
+    {
+        return _iterator;
+    }
+
+    Iterator end() noexcept
+    {
+        return _iterator + _lengths[0] * _lengths[1];
+    }
+
+    auto end() const noexcept
+    {
+        return _iterator + _lengths[0] * _lengths[1];
+    }
+
+    auto cend() const noexcept
+    {
+        return _iterator + _lengths[0] * _lengths[1];
+    }
+};
+
+template <
+    typename Iterator
+>
 struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
 {
     mir_size_t _lengths[1] = {};
