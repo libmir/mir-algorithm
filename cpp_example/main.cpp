@@ -26,6 +26,9 @@ void testStringView();
 int main()
 {
     mir_slice<double*, 2> matrix = Space::eye(3);
+    matrix(1, 2) = 4;
+    assert(matrix.row(1)[2] == 4);
+    assert(matrix.col(2)[1] == 4);
     Space::printMatrix(matrix);
     std::free(matrix._iterator);
 
