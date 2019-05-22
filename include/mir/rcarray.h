@@ -14,7 +14,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include<stdexcept>
+#include <stdexcept>
 
 template <typename T>
 struct mir_rci;
@@ -63,7 +63,8 @@ public:
 
     mir_slice<mir_rci<T>, 2> asSlice(size_t length0, size_t length1)
     {
-        assert(length0 * length1 == size());
+        if (length0 * length1 != size())
+            throw std::out_of_range("mir_rcarray:asSlice(l1, l2): length product does not match the array length");
         return {{length0, length1}, mir_rci<T>(*this)};
     }
 
@@ -155,10 +156,10 @@ public:
     mir_rcarray& operator=(std::nullptr_t) noexcept { if (_payload) mir_rc_decrease_counter(_context()); _payload = nullptr; return *this; }
     size_t size() const noexcept { return _payload ? _context()->length : 0; }
     size_t empty() const noexcept { return size() == 0; }
-    T& at(size_t index) noexcept { assert(index < this->size()); return _payload[index]; }
-    const T& at(size_t index) const noexcept { assert(index < this->size()); return _payload[index]; }
-    T& operator[](size_t index) noexcept { assert(index < this->size()); return _payload[index]; }
-    const T& operator[](size_t index) const noexcept { assert(index < this->size()); return _payload[index]; }
+    T& at(size_t index) { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
+    const T& at(size_t index) const { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
+    T& operator[](size_t index) { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
+    const T& operator[](size_t index) const { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
     T* data() noexcept { return _payload; }
     const T* data() const noexcept { return _payload; }
 

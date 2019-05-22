@@ -95,13 +95,23 @@ struct mir_slice<Iterator, 2, mir_slice_kind::contiguous>
     static const mir_ptrdiff_t _strides[0];
     Iterator _iterator = nullptr;
 
-    template <unsigned int d = 0>
+    size_t size() const noexcept
+    {
+        return _lengths[0] * _lengths[1];
+    }
+
+    template <unsigned int d>
     size_t size() const noexcept
     {
         return _lengths[d];
     }
 
-    template <unsigned int d = 0>
+    bool empty() const noexcept
+    {
+        return _lengths[0] * _lengths[1] == 0;
+    }
+
+    template <unsigned int d>
     bool empty() const noexcept
     {
         return _lengths[d] == 0;
@@ -114,15 +124,19 @@ struct mir_slice<Iterator, 2, mir_slice_kind::contiguous>
 
     auto&& at(mir_size_t index0, mir_size_t index1) noexcept
     {
-        assert(index0 < this->size<0>());
-        assert(index1 < this->size<1>());
+        if (index0 >= this->size<0>())
+            throw std::out_of_range("mir_slice<*, 2>: out of range at the first dimension");
+        if (index1 >= this->size<1>())
+            throw std::out_of_range("mir_slice<*, 2>: out of range at the second dimension");
         return _iterator[index0 * _lengths[1] + index1];
     }
 
     auto&& at(mir_size_t index0, mir_size_t index1) const noexcept
     {
-        assert(index0 < this->size<0>());
-        assert(index1 < this->size<1>());
+        if (index0 >= this->size<0>())
+            throw std::out_of_range("mir_slice<*, 2>: out of range at the first dimension");
+        if (index1 >= this->size<1>())
+            throw std::out_of_range("mir_slice<*, 2>: out of range at the second dimension");
         return _iterator[index0 * _lengths[1] + index1];
     }
 
@@ -188,25 +202,27 @@ struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
         return _lengths[d] == 0;
     }
 
-    auto&& at(mir_size_t index) noexcept
+    auto&& at(mir_size_t index)
     {
 
-        assert(index < this->size());
+        if (index >= this->size())
+            throw std::out_of_range("mir_slice: out of range");
         return _iterator[index];
     }
 
-    auto&& at(mir_size_t index) const noexcept
+    auto&& at(mir_size_t index) const
     {
-        assert(index < this->size());
+        if (index >= this->size())
+            throw std::out_of_range("mir_slice: out of range");
         return _iterator[index];
     }
 
-    auto&& operator[](mir_size_t index) noexcept
+    auto&& operator[](mir_size_t index)
     {
         return at(index);
     }
 
-    auto&& operator[](mir_size_t index) const noexcept
+    auto&& operator[](mir_size_t index) const
     {
         return at(index);
     }
@@ -256,13 +272,15 @@ struct mir_slice<Iterator, 1, mir_slice_kind::universal>
     auto&& at(mir_size_t index) noexcept
     {
 
-        assert(index < this->size());
+        if (index >= this->size())
+            throw std::out_of_range("mir_slice: out of range");
         return _iterator[index * _strides[0]];
     }
 
     auto&& at(mir_size_t index) const noexcept
     {
-        assert(index < this->size());
+        if (index >= this->size())
+            throw std::out_of_range("mir_slice: out of range");
         return _iterator[index * _strides[0]];
     }
 
