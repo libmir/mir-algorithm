@@ -366,6 +366,9 @@ version(mir_test)
 
     auto dataframe = slice!(double, Date, string)(4, 3);
 
+    static assert(is(typeof(dataframe) ==
+        Slice!(double*, 2, Contiguous, Date*, string*)));
+
     // Dataframe labels are contiguous 1-dimensional slices.
 
     // Fill row labels
