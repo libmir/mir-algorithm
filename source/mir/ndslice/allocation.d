@@ -276,8 +276,64 @@ template slice(Args...)
     }
 }
 
+///
+version(mir_test)
+@safe pure nothrow unittest
+{
+    import mir.ndslice.slice: Slice;
+    auto tensor = slice!int(5, 6, 7);
+    assert(tensor.length == 5);
+    assert(tensor.length!1 == 6);
+    assert(tensor.elementCount == 5 * 6 * 7);
+    static assert(is(typeof(tensor) == Slice!(int*, 3)));
+}
+
+/// 2D DataFrame example
+version(mir_test)
+@safe pure unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.allocation: slice;
+
+    import std.datetime.date;
+
+    auto dataframe = slice!(double, Date, string)(4, 3);
+    assert(dataframe.length == 4);
+    assert(dataframe.length!1 == 3);
+    assert(dataframe.elementCount == 4 * 3);
+
+    static assert(is(typeof(dataframe) ==
+        Slice!(double*, 2, Contiguous, Date*, string*)));
+
+    // Dataframe labels are contiguous 1-dimensional slices.
+
+    // Fill row labels
+    dataframe.label[] = [
+        Date(2019, 1, 24),
+        Date(2019, 2, 2),
+        Date(2019, 2, 4),
+        Date(2019, 2, 5),
+    ];
+
+    assert(dataframe.label!0[2] == Date(2019, 2, 4));
+
+    // Fill column labels
+    dataframe.label!1[] = ["income", "outcome", "balance"];
+
+    assert(dataframe.label!1[2] == "balance");
+
+    // Change label element
+    dataframe.label!1[2] = "total";
+    assert(dataframe.label!1[2] == "total");
+
+    // Attach a newly allocated label
+    dataframe.label!1 = ["Income", "Outcome", "Balance"].sliced;
+
+    assert(dataframe.label!1[2] == "Balance");
+}
+
 /++
-GC-Allocates an an n-dimensional slice.
+GC-Allocates an n-dimensional slice.
 Params:
     lengths = List of lengths for each dimension.
     init = Value to initialize with (optional).
@@ -318,24 +374,13 @@ auto slice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 version(mir_test)
 @safe pure nothrow unittest
 {
-    import mir.ndslice.slice: Slice;
-    auto tensor = slice!int(5, 6, 7);
-    assert(tensor.length == 5);
-    assert(tensor.elementCount == 5 * 6 * 7);
-    static assert(is(typeof(tensor) == Slice!(int*, 3)));
+    auto tensor = slice([2, 3], 5);
+    assert(tensor.elementCount == 2 * 3);
+    assert(tensor[1, 1] == 5);
 
     // creates duplicate using `slice`
     auto dup = tensor.slice;
     assert(dup == tensor);
-}
-
-///
-version(mir_test)
-@safe pure nothrow unittest
-{
-    auto tensor = slice([2, 3], 5);
-    assert(tensor.elementCount == 2 * 3);
-    assert(tensor[1, 1] == 5);
 }
 
 /// ditto
@@ -362,47 +407,6 @@ version(mir_test)
     assert(tensor == [3, 3].iota);
 
     static assert(is(typeof(tensor) == Slice!(ptrdiff_t*, 2)));
-}
-
-/// 2D DataFrame example
-version(mir_test)
-@safe pure unittest
-{
-    import mir.ndslice.slice;
-    import mir.ndslice.allocation: slice;
-
-    import std.datetime.date;
-
-    auto dataframe = slice!(double, Date, string)(4, 3);
-
-    static assert(is(typeof(dataframe) ==
-        Slice!(double*, 2, Contiguous, Date*, string*)));
-
-    // Dataframe labels are contiguous 1-dimensional slices.
-
-    // Fill row labels
-    dataframe.label[] = [
-        Date(2019, 1, 24),
-        Date(2019, 2, 2),
-        Date(2019, 2, 4),
-        Date(2019, 2, 5),
-    ];
-
-    assert(dataframe.label!0[2] == Date(2019, 2, 4));
-
-    // Fill column labels
-    dataframe.label!1[] = ["income", "outcome", "balance"];
-
-    assert(dataframe.label!1[2] == "balance");
-
-    // Change label element
-    dataframe.label!1[2] = "total";
-    assert(dataframe.label!1[2] == "total");
-
-    // Attach a newly allocated label
-    dataframe.label!1 = ["Income", "Outcome", "Balance"].sliced;
-
-    assert(dataframe.label!1[2] == "Balance");
 }
 
 /++
