@@ -638,28 +638,28 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
 {
 @optmath:
 
-    ///
+    /// $(LREF SliceKind)
     enum SliceKind kind = kind_;
 
-    ///
+    /// Dimensions count
     enum size_t N = N_;
 
-    ///
+    /// Strides count
     enum size_t S = kind == Universal ? N : kind == Canonical ? N - 1 : 0;
 
-    ///
+    /// Labels count.
     enum size_t L = Labels_.length;
 
-    ///
+    /// Data iterator type
     alias Iterator = Iterator_;
 
-    ///
+    /// This type
     alias This = Slice!(Iterator, N, kind);
 
-    ///
+    /// Data element type
     alias DeepElement = typeof(Iterator.init[size_t.init]);
 
-    ///
+    /// Label Iterators types
     alias Labels = Labels_;
 
     ///
@@ -680,7 +680,7 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
         }
     }
 
-    package(mir):
+package(mir):
 
     enum doUnittest = is(Iterator == int*) && N == 1 && kind == Contiguous;
 
@@ -731,9 +731,9 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
         public enum ptrdiff_t[S] _strides = ptrdiff_t[S].init;
     }
 
-    ///
+    /// Data Iterator
     public Iterator _iterator;
-    ///
+    /// Labels iterators
     public Labels _labels;
 
     sizediff_t backIndex(size_t dimension = 0)() @safe @property scope const
@@ -904,7 +904,10 @@ public:
         assert(slice == [[1, 99], [5, 6]]);
     }
 
-    ///
+    /++
+    Returns: View with stripped out reference counted context.
+    The lifetime of the result mustn't be longer then the lifetime of the original slice.
+    +/
     auto lightScope()() scope return @property
     {
         return Slice!(LightScopeOf!Iterator, N, kind)(_structure, .lightScope(_iterator));
@@ -922,33 +925,65 @@ public:
         return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightScope(_iterator));
     }
 
-    ///
+    /// Returns: Mutable slice over immutable data.
     Slice!(LightImmutableOf!Iterator, N, kind) lightImmutable()() scope return immutable @property
     {
         return typeof(return)(_structure, .lightImmutable(_iterator));
     }
 
-    /// ditto
+    /// Returns: Mutable slice over const data.
     Slice!(LightConstOf!Iterator, N, kind) lightConst()() scope return const @property @trusted
     {
         return typeof(return)(_structure, .lightConst(_iterator));
     }
 
     /// ditto
-    auto lightConst()() scope return immutable @property
+    Slice!(LightImmutableOf!Iterator, N, kind) lightConst()() scope return immutable @property
     {
         return this.lightImmutable;
     }
 
+    /// Label for the dimensions 'd'. By default returns the row label.
+    Slice!(Labels[d])
+        label(size_t d = 0)() @property
+        if (d <= L)
+    {
+        return typeof(return)(_lengths[d], _labels[d]);
+    }
+
     /// ditto
+    void label(size_t d = 0)(Slice!(Labels[d]) rhs) @property
+        if (d <= L)
+    {
+        import core.lifetime: move;
+        assert(rhs.length == _lengths[d], "ndslice: labels dimension mismatch");
+        _labels[d] = rhs._iterator.move;
+    }
+
+    /// ditto
+    Slice!(LightConstOf!(Labels[d]))
+        label(size_t d = 0)() @property const
+        if (d <= L)
+    {
+        return typeof(return)(_lengths[d].lightConst, _labels[d]);
+    }
+
+    /// ditto
+    Slice!(LightImmutableOf!(Labels[d]))
+        label(size_t d = 0)() @property immutable
+        if (d <= L)
+    {
+        return typeof(return)(_lengths[d].lightImmutable, _labels[d]);
+    }
+
+    /// `opIndex` overload for const slice
     auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes)
     {
         return lightConst.opIndex(indexes);
     }
-
-    /// ditto
-    auto ref opIndex(Indexes...)(Indexes indexes) scope return immutable @trusted
+    /// `opIndex` overload for immutable slice
+    auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes)
     {
         return lightImmutable.opIndex(indexes);
@@ -1057,14 +1092,6 @@ public:
     auto iterator()() inout scope return @property
     {
         return _iterator;
-    }
-
-    /++
-    +/
-    auto label(size_t dimension)() scope return @trusted inout @property
-        if (dimension <= L)
-    {
-        return label.sliced(_lengths[dimension]);
     }
 
     static if (kind == Contiguous && isPointer!Iterator)
@@ -2146,7 +2173,7 @@ public:
         // equivalent to:
         // import mir.ndslice.topology: indexed;
         // sli.indexed(indx)[] = 1;
-        sli[idx][] = 1;
+        sli[idx] = 1;
 
         assert(sli == [
             [0, 0, 1],
@@ -2603,8 +2630,8 @@ public:
         +/
         void opIndexAssign(T, Slices...)(T[] value, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
-                && !isDynamicArray!DeepElement
-                && DynamicArrayDimensionsCount!(T[]) <= typeof(this.opIndex(slices)).N)
+                && (!isDynamicArray!DeepElement || isDynamicArray!T)
+                && DynamicArrayDimensionsCount!(T[]) - DynamicArrayDimensionsCount!DeepElement <= typeof(this.opIndex(slices)).N)
         {
             auto sl = this.lightScope.opIndex(slices);
             sl.opIndexOpAssignImplArray!""(value);
@@ -2697,6 +2724,7 @@ public:
         void opIndexAssign(T, Slices...)(T value, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElement)
+                && DynamicArrayDimensionsCount!T == DynamicArrayDimensionsCount!DeepElement
                 && !isSlice!T
                 && !isConcatenation!T)
         {
@@ -2889,8 +2917,8 @@ public:
         +/
         void opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices) scope return
             if (isFullPureSlice!Slices
-                && !isDynamicArray!DeepElement
-                && DynamicArrayDimensionsCount!(T[]) <= typeof(this.opIndex(slices)).N)
+                && (!isDynamicArray!DeepElement || isDynamicArray!T)
+                && DynamicArrayDimensionsCount!(T[]) - DynamicArrayDimensionsCount!DeepElement <= typeof(this.opIndex(slices)).N)
         {
             auto sl = this.lightScope.opIndex(slices);
             sl.opIndexOpAssignImplArray!op(value);
@@ -2966,6 +2994,7 @@ public:
         void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices) scope return
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElement)
+                && DynamicArrayDimensionsCount!T == DynamicArrayDimensionsCount!DeepElement
                 && !isSlice!T
                 && !isConcatenation!T)
         {
