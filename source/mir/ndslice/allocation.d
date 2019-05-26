@@ -365,6 +365,9 @@ version(mir_test)
     import std.datetime.date;
 
     auto dataframe = slice!(double, Date, string)(4, 3);
+
+    // Dataframe labels are contiguous 1-dimensional slices.
+
     // Fill row labels
     dataframe.label[] = [
         Date(2019, 1, 24),
@@ -373,11 +376,21 @@ version(mir_test)
         Date(2019, 2, 5),
     ];
 
+    assert(dataframe.label!0[2] == Date(2019, 2, 4));
+
     // Fill column labels
     dataframe.label!1[] = ["income", "outcome", "balance"];
 
+    assert(dataframe.label!1[2] == "balance");
+
+    // Change label element
+    dataframe.label!1[2] = "total";
+    assert(dataframe.label!1[2] == "total");
+
     // Attach a newly allocated label
-    dataframe.label!1 = ["income", "outcome", "balance"].sliced;
+    dataframe.label!1 = ["Income", "Outcome", "Balance"].sliced;
+
+    assert(dataframe.label!1[2] == "Balance");
 }
 
 /++
