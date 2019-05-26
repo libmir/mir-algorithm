@@ -368,6 +368,9 @@ version(mir_test)
 version(mir_test)
 @safe pure unittest
 {
+    import mir.ndslice.slice;
+    import mir.ndslice.allocation: slice;
+
     import std.datetime.date;
 
     auto dataframe = slice!(double, Date, string)(4, 3);
