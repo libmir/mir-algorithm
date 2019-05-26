@@ -61,6 +61,7 @@ import mir.ndslice.iterator: FieldIterator;
 import mir.ndslice.slice;
 import mir.rc.array;
 import std.traits;
+import std.meta: staticMap;
 
 @optmath:
 
@@ -224,41 +225,66 @@ pure nothrow @nogc unittest
     static assert(is(typeof(tensor) == Slice!(RCI!int, 3)));
 }
 
+private alias Pointer(T) = T*;
+private alias Pointers(Args...) = staticMap!(Pointer, Args);
+
 /++
 GC-Allocates an an n-dimensional slice.
-Params:
-    lengths = List of lengths for each dimension.
-    init = Value to initialize with (optional).
-    slice = Slice to copy shape and data from (optional).
-Returns:
-    n-dimensional slice
 +/
-Slice!(T*, N)
-    slice(T, size_t N)(size_t[N] lengths...)
+template slice(Args...)
+    if (Args.length)
 {
-    immutable len = lengths.lengthsProduct;
-    return new T[len].sliced(lengths);
+    ///
+    alias LabelTypes = Args[1 .. $];
+    ///
+    alias T = Args[0];
+
+    /++
+    Params:
+        lengths = List of lengths for each dimension.
+        init = Value to initialize with (optional).
+        slice = Slice to copy shape and data from (optional).
+    Returns:
+        n-dimensional slice
+    +/
+    Slice!(T*, N, Contiguous, Pointers!LabelTypes)
+        slice(size_t N)(size_t[N] lengths...)
+        if (N >= LabelTypes.length)
+    {
+        auto shape = lengths; // DMD variadic bug workaround
+        immutable len = shape.lengthsProduct;
+        auto ret = typeof(return)(shape, len == 0 ? null : (()@trusted=>new T[len].ptr)());
+        foreach (i, L; LabelTypes) // static
+            ret._labels[i] = (()@trusted=>new L[shape[i]].ptr)();
+        return ret;
+    }
+
+    /// ditto
+    Slice!(T*, N, Contiguous, Pointers!LabelTypes)
+        slice(size_t N)(size_t[N] lengths, T init)
+        if (N >= LabelTypes.length)
+    {
+        import mir.conv: emplaceRef;
+        import std.array : uninitializedArray;
+        immutable len = lengths.lengthsProduct;
+        auto arr = uninitializedArray!(Unqual!T[])(len);
+        foreach (ref e; arr)
+            emplaceRef(e, init);
+        auto ret = typeof(return)(lengths, len == 0 ? null : (()@trusted=>cast(T*)arr.ptr)());
+        foreach (i, L; LabelTypes) // static
+            ret._labels[i] = (()@trusted=>new L[shape[i]].ptr)();
+        return ret;
+    }
 }
 
 /// ditto
 Slice!(T*, N)
-    slice(T, size_t N)(size_t[N] lengths, T init)
+    slice(size_t N, T)(size_t[N] lengths, T init)
 {
-    immutable len = lengths.lengthsProduct;
-    static if (!hasElaborateAssign!T)
-    {
-        import std.array : uninitializedArray;
-        auto arr = uninitializedArray!(Unqual!T[])(len);
-    }
-    else
-    {
-        auto arr = new Unqual!T[len];
-    }
-    arr[] = init;
-    auto ret = .sliced(cast(T[])arr, lengths);
-    return ret;
+    return .slice!T(lengths, init);
 }
 
+// TODO: make it a dataframe compatible. This function performs copy.
 /// ditto
 auto slice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 {
@@ -330,6 +356,28 @@ version(mir_test)
     assert(tensor == [3, 3].iota);
 
     static assert(is(typeof(tensor) == Slice!(ptrdiff_t*, 2)));
+}
+
+/// 2D DataFrame example
+version(mir_test)
+@safe pure unittest
+{
+    import std.datetime.date;
+
+    auto dataframe = slice!(double, Date, string)(4, 3);
+    // Fill row labels
+    dataframe.label[] = [
+        Date(2019, 1, 24),
+        Date(2019, 2, 2),
+        Date(2019, 2, 4),
+        Date(2019, 2, 5),
+    ];
+
+    // Fill column labels
+    dataframe.label!1[] = ["income", "outcome", "balance"];
+
+    // Attach a newly allocated label
+    dataframe.label!1 = ["income", "outcome", "balance"].sliced;
 }
 
 /++
