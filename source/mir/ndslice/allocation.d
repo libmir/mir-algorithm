@@ -17,7 +17,7 @@ $(T2 uninitSlice, Allocates an uninitialized slice using GC. )
 )
 
 $(BOOKTABLE $(H2 Ref counted allocation utilities),
-$(T2 rcslice, Allocates an an n-dimensional reference-counted (thread-safe) slice.)
+$(T2 rcslice, Allocates an n-dimensional reference-counted (thread-safe) slice.)
 $(T2 bitRcslice, Allocates a bitwise packed n-dimensional reference-counted (thread-safe) boolean slice.)
 $(T2 mininitRcslice, Allocates a minimally initialized n-dimensional reference-counted (thread-safe) slice.)
 )
@@ -66,7 +66,7 @@ import std.meta: staticMap;
 @optmath:
 
 /++
-Allocates an an n-dimensional reference-counted (thread-safe) slice.
+Allocates an n-dimensional reference-counted (thread-safe) slice.
 Params:
     lengths = List of lengths for each dimension.
     init = Value to initialize with (optional).
@@ -229,7 +229,7 @@ private alias Pointer(T) = T*;
 private alias Pointers(Args...) = staticMap!(Pointer, Args);
 
 /++
-GC-Allocates an an n-dimensional slice.
+GC-Allocates an n-dimensional slice.
 +/
 template slice(Args...)
     if (Args.length)
@@ -243,9 +243,8 @@ template slice(Args...)
     Params:
         lengths = List of lengths for each dimension.
         init = Value to initialize with (optional).
-        slice = Slice to copy shape and data from (optional).
     Returns:
-        n-dimensional slice
+        initialzed n-dimensional slice
     +/
     Slice!(T*, N, Contiguous, Pointers!LabelTypes)
         slice(size_t N)(size_t[N] lengths...)
@@ -277,7 +276,14 @@ template slice(Args...)
     }
 }
 
-/// ditto
+/++
+GC-Allocates an an n-dimensional slice.
+Params:
+    lengths = List of lengths for each dimension.
+    init = Value to initialize with (optional).
+Returns:
+    initialzed n-dimensional slice
++/
 Slice!(T*, N)
     slice(size_t N, T)(size_t[N] lengths, T init)
 {
