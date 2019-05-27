@@ -89,7 +89,7 @@ slices of `Slice!(kind, [N - K, K], Iterator)` type by packing
 the last `K` dimensions of the top dimension pack,
 and the type of element of $(LREF flattened) is `Slice!(Iterator, K)`.
 Another way to use $(LREF pack) is transposition of dimension packs using
-$(LREF evertPack). 
+$(LREF evertPack).
 Examples of use of subspace selectors are available for selectors,
 $(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementCount).
 
@@ -138,7 +138,7 @@ See_also:
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
 +/
-auto universal(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+auto universal(Iterator, size_t N, SliceKind kind, Labels...)(Slice!(Iterator, N, kind, Labels) slice)
 {
     static if (kind == Universal)
     {
@@ -151,7 +151,7 @@ auto universal(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sli
     }
     else
     {
-        alias Ret = Slice!(Iterator,  N, Universal);
+        alias Ret = Slice!(Iterator, N, Universal, Labels);
         size_t[Ret.N] lengths;
         auto strides = sizediff_t[Ret.S].init;
         foreach (i; Iota!(slice.N))
@@ -172,7 +172,7 @@ auto universal(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sli
                     ball *= slice._lengths[i];
             }
         }
-        return Ret(lengths, strides, slice._iterator);
+        return Ret(lengths, strides, slice._iterator, slice._labels);
     }
 }
 
@@ -195,6 +195,26 @@ version(mir_test) unittest
     assert(slice._strides == [3, 1]);
 }
 
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.allocation: slice;
+
+    auto dataframe = slice!(double, int, string)(2, 3);
+    dataframe.label[] = [1, 2];
+    dataframe.label!1[] = ["Label1", "Label2", "Label3"];
+
+    auto universaldf = dataframe.universal;
+    assert(universaldf._lengths == [2, 3]);
+    assert(universaldf._strides == [3, 1]);
+
+    assert(is(typeof(universaldf) ==
+        Slice!(double*, 2, Universal, int*, string*)));
+    assert(universaldf.label!0[0] == 1);
+    assert(universaldf.label!1[1] == "Label2");
+}
+
 /++
 Converts a slice to canonical kind.
 
@@ -207,10 +227,10 @@ See_also:
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
 +/
-Slice!(Iterator, N, N == 1 ? Contiguous : Canonical)
+Slice!(Iterator, N, N == 1 ? Contiguous : Canonical, Labels)
     canonical
-    (Iterator, size_t N, SliceKind kind)
-    (Slice!(Iterator, N, kind) slice)
+    (Iterator, size_t N, SliceKind kind, Labels...)
+    (Slice!(Iterator, N, kind, Labels) slice)
     if (kind == Contiguous || kind == Canonical)
 {
     static if (kind == Canonical || N == 1)
@@ -228,7 +248,7 @@ Slice!(Iterator, N, N == 1 ? Contiguous : Canonical)
             ball *= slice._lengths[i + 1];
             strides[i] = ball;
         }
-        return Ret(lengths, strides, slice._iterator);
+        return Ret(lengths, strides, slice._iterator, slice._labels);
     }
 }
 
@@ -240,6 +260,26 @@ version(mir_test) unittest
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
     assert(slice._lengths == [2, 3]);
     assert(slice._strides == [3]);
+}
+
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.allocation: slice;
+
+    auto dataframe = slice!(double, int, string)(2, 3);
+    dataframe.label[] = [1, 2];
+    dataframe.label!1[] = ["Label1", "Label2", "Label3"];
+
+    auto canonicaldf = dataframe.canonical;
+    assert(canonicaldf._lengths == [2, 3]);
+    assert(canonicaldf._strides == [3]);
+
+    assert(is(typeof(canonicaldf) ==
+        Slice!(double*, 2, Canonical, int*, string*)));
+    assert(canonicaldf.label!0[0] == 1);
+    assert(canonicaldf.label!1[1] == "Label2");
 }
 
 /++
@@ -254,10 +294,10 @@ See_also:
     $(LREF canonical),
     $(LREF assumeContiguous).
 +/
-Slice!(Iterator, N, Canonical)
+Slice!(Iterator, N, Canonical, Labels)
     assumeCanonical
-    (Iterator, size_t N, SliceKind kind)
-    (Slice!(Iterator, N, kind) slice)
+    (Iterator, size_t N, SliceKind kind, Labels...)
+    (Slice!(Iterator, N, kind, Labels) slice)
 {
     static if (kind == Contiguous)
         return slice.canonical;
@@ -273,7 +313,7 @@ Slice!(Iterator, N, Canonical)
             lengths[i] = slice._lengths[i];
         foreach (i; Iota!(Ret.S))
             strides[i] = slice._strides[i];
-        return Ret(lengths, strides, slice._iterator);
+        return Ret(lengths, strides, slice._iterator, slice._labels);
     }
 }
 
@@ -287,6 +327,25 @@ version(mir_test) unittest
     assert(slice._strides == [3]);
 }
 
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.allocation: slice;
+
+    auto dataframe = slice!(double, int, string)(2, 3);
+    dataframe.label[] = [1, 2];
+    dataframe.label!1[] = ["Label1", "Label2", "Label3"];
+
+    auto assmcanonicaldf = dataframe.assumeCanonical;
+    assert(assmcanonicaldf._lengths == [2, 3]);
+    assert(assmcanonicaldf._strides == [3]);
+
+    assert(is(typeof(assmcanonicaldf) ==
+        Slice!(double*, 2, Canonical, int*, string*)));
+    assert(assmcanonicaldf.label!0[0] == 1);
+    assert(assmcanonicaldf.label!1[1] == "Label2");
+}
 
 /++
 Converts a slice to contiguous kind (unsafe).
@@ -300,16 +359,16 @@ See_also:
     $(LREF canonical),
     $(LREF assumeCanonical).
 +/
-Slice!(Iterator, N)
+Slice!(Iterator, N, Contiguous, Labels)
     assumeContiguous
-    (Iterator, size_t N, SliceKind kind)
-    (Slice!(Iterator, N, kind) slice)
+    (Iterator, size_t N, SliceKind kind, Labels...)
+    (Slice!(Iterator, N, kind, Labels) slice)
 {
     static if (kind == Contiguous)
         return slice;
     else
     {
-        return typeof(return)(slice._lengths, slice._iterator);
+        return typeof(return)(slice._lengths, slice._iterator, slice._labels);
     }
 }
 
@@ -321,6 +380,26 @@ version(mir_test) unittest
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
     assert(slice._lengths == [2, 3]);
     static assert(slice._strides.length == 0);
+}
+
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.slice;
+    import mir.ndslice.allocation: slice;
+
+    auto dataframe = slice!(double, int, string)(2, 3);
+    dataframe.label[] = [1, 2];
+    dataframe.label!1[] = ["Label1", "Label2", "Label3"];
+
+    auto assmcontdf = dataframe.canonical.assumeContiguous;
+    assert(assmcontdf._lengths == [2, 3]);
+    static assert(assmcontdf._strides.length == 0);
+
+    assert(is(typeof(assmcontdf) ==
+        Slice!(double*, 2, Contiguous, int*, string*)));
+    assert(assmcontdf.label!0[0] == 1);
+    assert(assmcontdf.label!1[1] == "Label2");
 }
 
 /++
@@ -656,7 +735,7 @@ Returns:
     1-dimensional slice composed of diagonal elements
 See_also: $(LREF antidiagonal)
 +/
-Slice!(Iterator, 1, N == 1 ? kind : Universal) 
+Slice!(Iterator, 1, N == 1 ? kind : Universal)
     diagonal
     (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice)
@@ -887,7 +966,7 @@ Returns:
 
 See_also: $(SUBREF chunks, ._chunks)
 +/
-Slice!(SliceIterator!(Iterator, N, N == 1 ? Universal : min(kind, Canonical)), N, Universal) 
+Slice!(SliceIterator!(Iterator, N, N == 1 ? Universal : min(kind, Canonical)), N, Universal)
     blocks
     (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice, size_t[N] rlengths_...)
@@ -1016,7 +1095,7 @@ Params:
 Returns:
     packed `N`-dimensional slice composed of `N`-dimensional slices
 +/
-Slice!(SliceIterator!(Iterator, N, N == 1 ? kind : min(kind, Canonical)), N, Universal) 
+Slice!(SliceIterator!(Iterator, N, N == 1 ? kind : min(kind, Canonical)), N, Universal)
     windows
     (Iterator, size_t N, SliceKind kind)
     (Slice!(Iterator, N, kind) slice, size_t[N] rlengths...)
@@ -1387,7 +1466,7 @@ nothrow @nogc @safe pure version(mir_test) unittest
     assert(err == ReshapeError.empty);
 }
 
-nothrow @nogc @safe pure 
+nothrow @nogc @safe pure
 version(mir_test) unittest
 {
     auto pElements = iota(3, 4, 5, 6, 7)
@@ -1440,7 +1519,7 @@ Slice!Iterator
 }
 
 /// ditto
-Slice!(StrideIterator!Iterator) 
+Slice!(StrideIterator!Iterator)
     flattened
     (Iterator)
     (Slice!(Iterator,  1, Universal) slice)
@@ -1938,7 +2017,7 @@ auto cycle(size_t loopLength, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind
     else
         return CycleField!(Iterator, loopLength)(slice._iterator).slicedField(length);
 }
- 
+
 /// ditto
 auto cycle(T)(T[] array, size_t length)
 {
@@ -2149,7 +2228,7 @@ version(mir_test) unittest
     assert(bits.length == data.length * size_t.sizeof * 8);
     bits[111] = true;
     assert(bits[111]);
-    
+
     bits.popFront;
     assert(bits[110]);
     bits[] = true;
@@ -2170,7 +2249,7 @@ version(mir_test) unittest
     bits[111] = true;
     assert(bits[111]);
     assert(bits_normal[111 + size_t.sizeof * 2 * 8]);
-    
+
     bits.popFront;
     assert(bits[110]);
     bits[] = true;
@@ -2353,7 +2432,7 @@ Params:
     fun = One or more functions.
 See_Also:
     $(LREF cached), $(LREF vmap), $(LREF indexed),
-    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip),
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 template map(fun...)
@@ -2387,7 +2466,7 @@ template map(fun...)
             {
                 return map(array.sliced);
             }
-            
+
             /// ditto
             auto map(T)(T withAsSlice)
                 if (hasAsSlice!T)
@@ -2410,7 +2489,7 @@ template map(fun...)
             {
                 return array.sliced;
             }
-            
+
             /// ditto
             auto map(T)(T withAsSlice)
                 if (hasAsSlice!T)
@@ -2557,7 +2636,7 @@ Params:
     callable = callable object, structure, delegate, or function pointer.
 See_Also:
     $(LREF cached), $(LREF map), $(LREF indexed),
-    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip), 
+    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip),
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
 @optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
@@ -2590,7 +2669,7 @@ version(mir_test) unittest
     import mir.ndslice.topology : iota;
 
     static struct Mul {
-        double factor; this(double f) { factor = f; } 
+        double factor; this(double f) { factor = f; }
         auto opCall(long x) const {return x * factor; }
         auto lightConst()() const @property { return Mul(factor); }
     }
@@ -2814,7 +2893,7 @@ version(mir_test) unittest
     auto sl = v.cached(cache, flags);
 
     static assert(is(DeepElementType!(typeof(sl)) == immutable int));
-    
+
     assert(funCalls == []);
     assert(sl[1] == 2); // remember result
     assert(funCalls == [1]);
@@ -2881,7 +2960,7 @@ version(mir_test) unittest
             return 2 ^^ i;
         })
         .cachedGC;
-    
+
     assert(funCalls == []);
     assert(sl[1] == 2); // remember result
     assert(funCalls == [1]);
@@ -2919,7 +2998,7 @@ version(mir_test) unittest
         .cachedGC;
 
     static assert(is(DeepElementType!(typeof(sl)) == immutable int));
-    
+
     assert(funCalls == []);
     assert(sl[1] == 2); // remember result
     assert(funCalls == [1]);
@@ -2963,7 +3042,7 @@ template as(T)
     {
         return as(array.sliced);
     }
-    
+
     /// ditto
     auto as(S)(S withAsSlice)
         if (hasAsSlice!S)
@@ -3046,7 +3125,7 @@ auto indexed(Field, S)(Field source, S indexes)
     auto indexes = [4, 3, 1, 2, 0, 4];
     auto ind = source.indexed(indexes);
     assert(ind == [5, 4, 2, 3, 1, 5]);
-    
+
     assert(ind.retro == source.indexed(indexes.retro));
 
     ind[3] += 10; // for index 2
@@ -3352,7 +3431,7 @@ version(mir_test) unittest
 {
     auto data = 10.iota;
     auto sw = data.slide!(3, "a + 2 * b + c");
-    
+
     import mir.utility: max;
     assert(sw.length == max(0, cast(ptrdiff_t)data.length - 3 + 1));
     assert(sw == sw.length.iota.map!"(a + 1) * 4");
@@ -3405,11 +3484,11 @@ version(mir_test) unittest
     auto s = iota(3, 4);
     import std.stdio;
     assert(iota(3, 4).byDim!0.diff == [
-        [4, 4, 4, 4], 
+        [4, 4, 4, 4],
         [4, 4, 4, 4]]);
     assert(iota(3, 4).byDim!1.diff == [
         [1, 1, 1],
-        [1, 1, 1], 
+        [1, 1, 1],
         [1, 1, 1]]);
 }
 
@@ -3816,12 +3895,12 @@ template byDim(Dimensions...)
 {
     import mir.ndslice.internal : isSize_t;
     import std.meta : allSatisfy;
-    
+
     static if (!allSatisfy!(isSize_t, Dimensions))
     {
         import std.meta : staticMap;
         import mir.ndslice.internal : toSize_t;
-    
+
         alias byDim = .byDim!(staticMap!(toSize_t, Dimensions));
     }
     else
@@ -3838,9 +3917,9 @@ template byDim(Dimensions...)
         {
             import mir.ndslice.topology : ipack;
             import mir.ndslice.internal : DimensionsCountCTError;
-            
+
             mixin DimensionsCountCTError;
-            
+
             static if (N == 1)
             {
                 return slice;
@@ -3873,7 +3952,7 @@ version(mir_test) unittest
     // | 4 |
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
-    
+
     //  ------------
     // | 0  1  2  3 |
     // | 4  5  6  7 |
@@ -3885,7 +3964,7 @@ version(mir_test) unittest
     assert(x.front == iota(4));
     x.popFront;
     assert(x.front == iota([4], 4));
-    
+
     //  ---------
     // | 0  4  8 |
     // | 1  5  9 |
@@ -3944,7 +4023,7 @@ version(mir_test) unittest
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
     size_t[1] shape5 = [5];
-    
+
     //  ----------------
     // |  0  1  2  3  4 |
     // |  5  6  7  8  9 |
@@ -3967,7 +4046,7 @@ version(mir_test) unittest
     assert(x.front == iota([4, 5]));
     x.popFront;
     assert(x.front == iota([4, 5], (4 * 5)));
-    
+
     //  ----------------
     // |  0  1  2  3  4 |
     // | 20 21 22 23 24 |
@@ -3992,7 +4071,7 @@ version(mir_test) unittest
     assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
     y.popFront;
     assert(y.front.front == iota([5], 5));
-    
+
     //  -------------
     // |  0  5 10 15 |
     // | 20 25 30 35 |
@@ -4072,7 +4151,7 @@ version(mir_test) unittest
     // | 4 |
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
-    
+
     //  ------------
     // | 0  1  2  3 |
     // | 4  5  6  7 |
@@ -4084,7 +4163,7 @@ version(mir_test) unittest
     assert(x.front == iota(4));
     x.popFront;
     assert(x.front == iota([4], 4));
-    
+
     //  ---------
     // | 0  4  8 |
     // | 1  5  9 |
@@ -4128,7 +4207,7 @@ version(mir_test) unittest
     assert(x.front == iota(4));
     x.popFront;
     assert(x.front == iota([4], 4));
-    
+
     //  ---------
     // | 0  4  8 |
     // | 1  5  9 |
@@ -4212,7 +4291,7 @@ version(mir_test)
         void x(double x) @property
         {
             _x = x;
-        } 
+        }
 
         /// Field support
         double y;
@@ -4258,7 +4337,7 @@ template orthogonalReduceField(alias fun)
         {
             return orthogonalReduceField(initialValue, array.sliced);
         }
-        
+
         /// ditto
         auto orthogonalReduceField(I, T)(I initialValue, T withAsSlice)
             if (hasAsSlice!T)
@@ -4286,7 +4365,7 @@ unittest
     c[len.iota.strided!0(13)][] = true;
 
     // this is valid since bitslices above are oroginal slices of allocated memory.
-    auto and = 
+    auto and =
         orthogonalReduceField!"a & b"(size_t.max, [
             a.iterator._field._field, // get raw data pointers
             b.iterator._field._field,
