@@ -195,6 +195,7 @@ version(mir_test) unittest
     assert(slice._strides == [3, 1]);
 }
 
+///
 @safe pure nothrow
 version(mir_test) unittest
 {
@@ -262,6 +263,7 @@ version(mir_test) unittest
     assert(slice._strides == [3]);
 }
 
+///
 @safe pure nothrow
 version(mir_test) unittest
 {
@@ -327,6 +329,7 @@ version(mir_test) unittest
     assert(slice._strides == [3]);
 }
 
+///
 @safe pure nothrow
 version(mir_test) unittest
 {
@@ -382,6 +385,7 @@ version(mir_test) unittest
     static assert(slice._strides.length == 0);
 }
 
+///
 @safe pure nothrow
 version(mir_test) unittest
 {
