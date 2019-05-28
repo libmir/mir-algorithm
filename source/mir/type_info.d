@@ -53,8 +53,10 @@ ref immutable(mir_type_info) mir_get_type_info(T)()
     else
     static if (hasDestructor!T)
     {
+        import std.traits: SetFunctionAttributes, functionAttributes;
+        alias fun = void function(void*) @safe pure nothrow @nogc;
         extern(C)
-        static void destroy_impl(void* ptr) @safe pure nothrow @nogc
+        static void destroy_impl(void* ptr) nothrow @nogc
         {
             static if (is(T == class))
                 T inst() return @trusted
@@ -72,7 +74,7 @@ ref immutable(mir_type_info) mir_get_type_info(T)()
                 destroy!false(inst());
         }
 
-        static immutable ti = mir_type_info(&destroy_impl, sizeof);
+        static immutable ti = mir_type_info(cast(SetFunctionAttributes!(fun, "C", functionAttributes!fun))&destroy_impl, sizeof);
         return ti;
     }
     else
