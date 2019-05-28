@@ -491,6 +491,9 @@ struct Structure(size_t N)
 
 private alias LightConstOfLightScopeOf(Iterator) = LightConstOf!(LightScopeOf!Iterator);
 private alias LightImmutableOfLightConstOf(Iterator) = LightImmutableOf!(LightScopeOf!Iterator);
+private alias ImmutableOfUnqualOfPointerTarget(Iterator) = immutable(Unqual!(PointerTarget!Iterator))*;
+private alias ConstOfUnqualOfPointerTarget(Iterator) = const(Unqual!(PointerTarget!Iterator))*;
+
 /++
 Presents an n-dimensional view over a range.
 
@@ -1018,16 +1021,13 @@ public:
     {
         private alias ConstThis = Slice!(const(Unqual!(PointerTarget!Iterator))*, N, kind);
         private alias ImmutableThis = Slice!(immutable(Unqual!(PointerTarget!Iterator))*, N, kind);
-        private alias ImmutableOfUnqualOfPointerTarget(Iterator) = immutable(Unqual!(PointerTarget!Iterator))*;
-        private alias ConstOfUnqualOfPointerTarget(Iterator) = const(Unqual!(PointerTarget!Iterator))*;
 
         /++
         Cast to const and immutable slices in case of underlying range is a pointer.
         +/
         auto toImmutable()() scope return immutable @trusted pure nothrow @nogc
         {
-            alias It = immutable(Unqual!(PointerTarget!Iterator))*;
-            return Slice!(It, N, kind, staticMap!(ImmutableOfUnqualOfPointerTarget, Labels))
+            return Slice!(ImmutableOfUnqualOfPointerTarget!Iterator, N, kind, staticMap!(ImmutableOfUnqualOfPointerTarget, Labels))
                 (_structure, _iterator, _labels);
         }
 
@@ -1035,8 +1035,7 @@ public:
         auto toConst()() scope return const @trusted pure nothrow @nogc
         {
             version(LDC) pragma(inline, true);
-            alias It = const(Unqual!(PointerTarget!Iterator))*;
-            return Slice!(It, N, kind, staticMap!(ConstOfUnqualOfPointerTarget, Labels))
+            return Slice!(ConstOfUnqualOfPointerTarget!Iterator, N, kind, staticMap!(ConstOfUnqualOfPointerTarget, Labels))
                 (_structure, _iterator, _labels);
         }
 
