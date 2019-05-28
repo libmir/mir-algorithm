@@ -1017,7 +1017,7 @@ public:
         return lightImmutable.opIndex(indexes);
     }
 
-    static if (isPointer!Iterator)
+    static if (allSatisfy!(isPointer, Iterator, Labels))
     {
         private alias ConstThis = Slice!(const(Unqual!(PointerTarget!Iterator))*, N, kind);
         private alias ImmutableThis = Slice!(immutable(Unqual!(PointerTarget!Iterator))*, N, kind);
