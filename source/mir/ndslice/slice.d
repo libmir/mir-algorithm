@@ -1010,7 +1010,7 @@ public:
     }
 
     /// Strips label and returns an immutable slice
-    auto valuesImmutablet()()
+    auto valuesImmutable()()
     {
         return (cast(immutable)Slice!(Iterator, N, kind)(_structure, _iterator)).toImmutable;
     }
@@ -3750,4 +3750,20 @@ version(mir_test) pure nothrow unittest
     auto immdf2 = (cast(immutable)df).toImmutable;
     assert(immdf2.label!0[0] == 1);
     assert(immdf2.label!1[1] == 2);
+}
+
+version(mir_test) pure nothrow unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: universal;
+
+    auto df = slice!(double, int, int)(2, 3).universal;
+    auto values = df.values;
+    assert(is(typeof(values) == Slice! (double*, 2, Universal)));
+
+    auto constvalues = df.valuesConst;
+    assert(is(typeof(constvalues) == Slice!(ConstOfUnqualOfPointerTarget!(double*), 2, Universal)));
+
+    auto immvalues = df.valuesImmutable;
+    assert(is(typeof(immvalues) == Slice!(ImmutableOfUnqualOfPointerTarget!(double*), 2, Universal)));
 }
