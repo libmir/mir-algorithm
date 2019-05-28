@@ -49,6 +49,26 @@ public import mir.primitives: DeepElementType;
 
 @optmath:
 
+package template CallForEach(alias Func)
+{
+    static template CallForEachImpl(args...)
+    {
+        static if (args.length)
+        {
+            @property auto ref apply()()
+            {
+                return Func(args[0]);
+            }
+            alias CallForEachImpl = AliasSeq!(CallForEachImpl!(args[1..$]));
+        }
+        else
+            alias CallForEachImpl = AliasSeq!();
+    }
+    alias CallForEach = CallForEachImpl;
+}
+
+private alias LightScopeForEach = CallForEach!lightScope;
+
 /++
 Checks if type T has asSlice property and its returns a slices.
 Aliases itself to a dimension count 
@@ -910,7 +930,7 @@ public:
     +/
     auto lightScope()() scope return @property
     {
-        return Slice!(LightScopeOf!Iterator, N, kind)(_structure, .lightScope(_iterator));
+        return Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))(_structure, .lightScope(_iterator), LightScopeForEach!_labels);
     }
 
     /// ditto
@@ -3425,6 +3445,13 @@ private bool _checkAssignLengths(
     assert(!_checkAssignLengths(iota(2, 2), iota(2, 3)));
     assert(!_checkAssignLengths(iota(2, 2), iota(3, 2)));
     assert(!_checkAssignLengths(iota(2, 2), iota(3, 3)));
+}
+
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    auto df = slice!(double, int, int)(2,4);
+    auto lsdf = df.lightScope;
 }
 
 pure nothrow version(mir_test) unittest
