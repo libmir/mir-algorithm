@@ -489,6 +489,8 @@ struct Structure(size_t N)
     sizediff_t[N] strides;
 }
 
+private alias LightConstOfLightScopeOf(Iterator) = LightConstOf!(LightScopeOf!Iterator);
+private alias LightImmutableOfLightConstOf(Iterator) = LightImmutableOf!(LightScopeOf!Iterator);
 /++
 Presents an n-dimensional view over a range.
 
@@ -918,8 +920,6 @@ public:
         assert(slice == [[1, 99], [5, 6]]);
     }
 
-    private alias LightConstOfLightScopeOf(Iterator) = LightConstOf!(LightScopeOf!Iterator);
-    private alias LightImmutableOfLightConstOf(Iterator) = LightImmutableOf!(LightScopeOf!Iterator);
     /++
     Returns: View with stripped out reference counted context.
     The lifetime of the result mustn't be longer then the lifetime of the original slice.
@@ -3717,7 +3717,7 @@ version(mir_test) unittest
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
-    auto df = slice!(double,int,int)(2,3);
+    auto df = slice!(double, int, int)(2, 3);
     df.label[] = [1, 2];
     df.label!1[] = [1, 2, 3];
     auto lsdf = df.lightScope;
@@ -3729,7 +3729,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: universal;
-    auto df = slice!(double,int,int)(2,3).universal;
+    auto df = slice!(double, int, int)(2, 3).universal;
     df.label[] = [1, 2];
     df.label!1[] = [1, 2, 3];
     auto immdf = (cast(immutable)df).lightImmutable;
@@ -3741,7 +3741,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: universal;
-    auto df = slice!(double,int,int)(2,3).universal;
+    auto df = slice!(double, int, int)(2, 3).universal;
     df.label[] = [1, 2];
     df.label!1[] = [1, 2, 3];
     auto immdf = df.lightConst;
@@ -3753,7 +3753,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: universal;
-    auto df = slice!(double,int,int)(2,3).universal;
+    auto df = slice!(double, int, int)(2, 3).universal;
     df.label[] = [1, 2];
     df.label!1[] = [1, 2, 3];
     auto immdf = df.toConst;
@@ -3765,7 +3765,7 @@ version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: universal;
-    auto df = slice!(double,int,int)(2,3).universal;
+    auto df = slice!(double, int, int)(2, 3).universal;
     df.label[] = [1, 2];
     df.label!1[] = [1, 2, 3];
     auto immdf = (cast(immutable)df).toImmutable;
