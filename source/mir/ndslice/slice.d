@@ -997,6 +997,12 @@ public:
         return typeof(return)(_lengths[d].lightImmutable, _labels[d]);
     }
 
+    /// Strips label off the DataFrame
+    auto stripLabels()()
+    {
+        return Slice!(Iterator, N, kind)(_structure, _iterator);
+    }
+
     /// `opIndex` overload for const slice
     auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes)
@@ -1916,7 +1922,14 @@ public:
         }
         import mir.algorithm.iteration : equal;
         static if (__traits(compiles, this.lightScope))
-            return equal(this.lightScope, rslice.lightScope);
+        {
+            static if(this.L != rslice.L)
+                return false;
+            foreach(i; Iota!(this.L))
+                if(this.label!i != rslice.label!i)
+                    return false;
+            return equal(this.lightScope.stripLabels(), rslice.lightScope.stripLabels());           
+        }
         else
             return equal(*cast(This*)&this, *cast(This*)&rslice);
     }
