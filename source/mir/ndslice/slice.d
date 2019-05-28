@@ -3714,7 +3714,7 @@ version(mir_test) unittest
     assert(vector == [5, 7, 9]);
 }
 
-version(mir_test) unittest
+version(mir_test) pure nothrow unittest
 {
     import mir.ndslice.allocation: slice;
     auto df = slice!(double, int, int)(2, 3);
@@ -3723,52 +3723,20 @@ version(mir_test) unittest
     auto lsdf = df.lightScope;
     assert(lsdf.label!0[0] == 1);
     assert(lsdf.label!1[1] == 2);
-}
 
-version(mir_test) unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: universal;
-    auto df = slice!(double, int, int)(2, 3).universal;
-    df.label[] = [1, 2];
-    df.label!1[] = [1, 2, 3];
     auto immdf = (cast(immutable)df).lightImmutable;
     assert(immdf.label!0[0] == 1);
     assert(immdf.label!1[1] == 2);
-}
 
-version(mir_test) unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: universal;
-    auto df = slice!(double, int, int)(2, 3).universal;
-    df.label[] = [1, 2];
-    df.label!1[] = [1, 2, 3];
-    auto immdf = df.lightConst;
-    assert(immdf.label!0[0] == 1);
-    assert(immdf.label!1[1] == 2);
-}
+    auto constdf = df.lightConst;
+    assert(constdf.label!0[0] == 1);
+    assert(constdf.label!1[1] == 2);
 
-version(mir_test) unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: universal;
-    auto df = slice!(double, int, int)(2, 3).universal;
-    df.label[] = [1, 2];
-    df.label!1[] = [1, 2, 3];
-    auto immdf = df.toConst;
-    assert(immdf.label!0[0] == 1);
-    assert(immdf.label!1[1] == 2);
-}
+    auto constdf2 = df.toConst;
+    assert(constdf2.label!0[0] == 1);
+    assert(constdf2.label!1[1] == 2);
 
-version(mir_test) unittest
-{
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: universal;
-    auto df = slice!(double, int, int)(2, 3).universal;
-    df.label[] = [1, 2];
-    df.label!1[] = [1, 2, 3];
-    auto immdf = (cast(immutable)df).toImmutable;
-    assert(immdf.label!0[0] == 1);
-    assert(immdf.label!1[1] == 2);
+    auto immdf2 = (cast(immutable)df).toImmutable;
+    assert(immdf2.label!0[0] == 1);
+    assert(immdf2.label!1[1] == 2);
 }
