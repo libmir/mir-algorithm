@@ -918,41 +918,46 @@ public:
         assert(slice == [[1, 99], [5, 6]]);
     }
 
+    private alias LightConstOfLightScopeOf(Iterator) = LightConstOf!(LightScopeOf!Iterator);
+    private alias LightImmutableOfLightConstOf(Iterator) = LightImmutableOf!(LightScopeOf!Iterator);
     /++
     Returns: View with stripped out reference counted context.
     The lifetime of the result mustn't be longer then the lifetime of the original slice.
     +/
     auto lightScope()() scope return @property
     {
-        return Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))(_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
+        return Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))
+            (_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
     }
 
     /// ditto
     auto lightScope()() scope const return @property
     {
-        return Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightScope(_iterator));
+        return Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightConstOfLightScopeOf, Labels))
+            (_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
     }
 
     /// ditto
     auto lightScope()() scope immutable return @property
     {
-        return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightScope(_iterator));
+        return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightImmutableOfLightConstOf(Labels)))
+            (_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
     }
 
     /// Returns: Mutable slice over immutable data.
-    Slice!(LightImmutableOf!Iterator, N, kind) lightImmutable()() scope return immutable @property
+    Slice!(LightImmutableOf!Iterator, N, kind, staticMap!(LightImmutableOf, Labels)) lightImmutable()() scope return immutable @property
     {
-        return typeof(return)(_structure, .lightImmutable(_iterator));
+        return typeof(return)(_structure, .lightImmutable(_iterator), CallForEach!(.lightImmutable, _labels));
     }
 
     /// Returns: Mutable slice over const data.
-    Slice!(LightConstOf!Iterator, N, kind) lightConst()() scope return const @property @trusted
+    Slice!(LightConstOf!Iterator, N, kind, staticMap!(LightConstOf, Labels)) lightConst()() scope return const @property @trusted
     {
-        return typeof(return)(_structure, .lightConst(_iterator));
+        return typeof(return)(_structure, .lightConst(_iterator), CallForEach!(.lightConst, _labels));
     }
 
     /// ditto
-    Slice!(LightImmutableOf!Iterator, N, kind) lightConst()() scope return immutable @property
+    Slice!(LightImmutableOf!Iterator, N, kind, staticMap!(LightImmutableOf, Labels)) lightConst()() scope return immutable @property
     {
         return this.lightImmutable;
     }
@@ -1007,6 +1012,8 @@ public:
     {
         private alias ConstThis = Slice!(const(Unqual!(PointerTarget!Iterator))*, N, kind);
         private alias ImmutableThis = Slice!(immutable(Unqual!(PointerTarget!Iterator))*, N, kind);
+        private alias ImmutableOfUnqualOfPointerTarget(Iterator) = immutable(Unqual!(PointerTarget!Iterator))*;
+        private alias ConstOfUnqualOfPointerTarget(Iterator) = const(Unqual!(PointerTarget!Iterator))*;
 
         /++
         Cast to const and immutable slices in case of underlying range is a pointer.
@@ -1014,7 +1021,8 @@ public:
         auto toImmutable()() scope return immutable @trusted pure nothrow @nogc
         {
             alias It = immutable(Unqual!(PointerTarget!Iterator))*;
-            return Slice!(It, N, kind)(_structure, _iterator);
+            return Slice!(It, N, kind, staticMap!(ImmutableOfUnqualOfPointerTarget, Labels))
+                (_structure, _iterator, _labels);
         }
 
         /// ditto
@@ -1022,7 +1030,8 @@ public:
         {
             version(LDC) pragma(inline, true);
             alias It = const(Unqual!(PointerTarget!Iterator))*;
-            return Slice!(It, N, kind)(_structure, _iterator);
+            return Slice!(It, N, kind, staticMap!(ConstOfUnqualOfPointerTarget, Labels))
+                (_structure, _iterator, _labels);
         }
 
         static if (!is(Slice!(const(Unqual!(PointerTarget!Iterator))*, N, kind) == This))
@@ -3699,9 +3708,25 @@ version(mir_test) unittest
     assert(vector == [5, 7, 9]);
 }
 
-unittest
+version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
-    auto df = slice!(double, int,int)(2,4);
+    auto df = slice!(double,int,int)(2,3);
+    df.label[] = [1, 2];
+    df.label!1[] = [1, 2, 3];
     auto lsdf = df.lightScope;
+    assert(lsdf.label!0[0] == 1);
+    assert(lsdf.label!1[1] == 2);
+}
+
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: universal;
+    auto df = slice!(double,int,int)(2,3).universal;
+    df.label[] = [1, 2];
+    df.label!1[] = [1, 2, 3];
+    auto immdf = (cast(immutable)df).lightImmutable;
+    assert(immdf.label!0[0] == 1);
+    assert(immdf.label!1[1] == 2);
 }
