@@ -39,7 +39,7 @@ export extern(C) void mir_type_info_init(ref mir_type_info ti, typeof(mir_type_i
 
 /++
 +/
-ref immutable(mir_type_info) mir_get_type_info(T)()
+ref immutable(mir_type_info) mir_get_type_info(T)() @trusted
 {
     static if (is(T == class))
         enum sizeof = __traits(classInstanceSize, T);
@@ -56,7 +56,7 @@ ref immutable(mir_type_info) mir_get_type_info(T)()
         import std.traits: SetFunctionAttributes, functionAttributes;
         alias fun = void function(void*) @safe pure nothrow @nogc;
         extern(C)
-        static void destroy_impl(void* ptr) nothrow @nogc
+        static void destroy_impl(void* ptr) nothrow
         {
             static if (is(T == class))
                 T inst() return @trusted

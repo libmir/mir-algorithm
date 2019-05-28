@@ -162,7 +162,7 @@ package mixin template CommonRCImpl()
     }
 
     ///
-    ~this() nothrow @nogc
+    ~this() nothrow
     {
         static if (hasDestructor!T)
         {

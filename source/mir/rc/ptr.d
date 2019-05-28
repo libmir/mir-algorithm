@@ -281,13 +281,14 @@ private struct _test_unpure_system_dest_s__ {
         ++numStructs;
     }
 
-    ~this() @system @nogc nothrow {
+    ~this() @system nothrow {
+        auto d = new int[2];
         --numStructs;
     }
 }
 
 version(mir_test)
-@system @nogc nothrow
+@system nothrow
 unittest
 {
     import mir.rc.array;
