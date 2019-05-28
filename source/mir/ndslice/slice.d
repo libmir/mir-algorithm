@@ -49,25 +49,19 @@ public import mir.primitives: DeepElementType;
 
 @optmath:
 
-package template CallForEach(alias Func)
+package template CallForEach(alias Func, args...)
 {
-    static template CallForEachImpl(args...)
+    static if (args.length)
     {
-        static if (args.length)
+        @property auto ref apply(alias F)()
         {
-            @property auto ref apply()()
-            {
-                return Func(args[0]);
-            }
-            alias CallForEachImpl = AliasSeq!(CallForEachImpl!(args[1..$]));
+            return F(args[0]);
         }
-        else
-            alias CallForEachImpl = AliasSeq!();
+        alias CallForEach = AliasSeq!(apply!Func, CallForEach!(Func, args[1..$]));
     }
-    alias CallForEach = CallForEachImpl;
+    else
+        alias CallForEach = AliasSeq!();
 }
-
-private alias LightScopeForEach = CallForEach!lightScope;
 
 /++
 Checks if type T has asSlice property and its returns a slices.
@@ -930,7 +924,7 @@ public:
     +/
     auto lightScope()() scope return @property
     {
-        return Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))(_structure, .lightScope(_iterator), LightScopeForEach!_labels);
+        return Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))(_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
     }
 
     /// ditto
