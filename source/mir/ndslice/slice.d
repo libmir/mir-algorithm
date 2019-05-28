@@ -47,22 +47,6 @@ import std.traits;
 
 public import mir.primitives: DeepElementType;
 
-@optmath:
-
-package template CallForEach(alias Func, args...)
-{
-    static if (args.length)
-    {
-        @property auto ref apply(alias F)()
-        {
-            return F(args[0]);
-        }
-        alias CallForEach = AliasSeq!(apply!Func, CallForEach!(Func, args[1..$]));
-    }
-    else
-        alias CallForEach = AliasSeq!();
-}
-
 /++
 Checks if type T has asSlice property and its returns a slices.
 Aliases itself to a dimension count 
@@ -929,22 +913,31 @@ public:
     +/
     auto lightScope()() scope return @property
     {
-        return Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))
-            (_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
+        auto ret = Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))
+            (_structure, .lightScope(_iterator));
+        foreach(i; Iota!L)
+            ret._labels[i] = .lightScope(_labels[i]);
+        return ret;
     }
 
     /// ditto
     auto lightScope()() scope const return @property
     {
-        return Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightConstOfLightScopeOf, Labels))
-            (_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
+        auto ret = Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightConstOfLightScopeOf, Labels))
+            (_structure, .lightScope(_iterator));
+        foreach(i; Iota!L)
+            ret._labels[i] = .lightScope(_labels[i]);
+        return ret;
     }
 
     /// ditto
     auto lightScope()() scope immutable return @property
     {
-        return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightImmutableOfLightConstOf(Labels)))
-            (_structure, .lightScope(_iterator), CallForEach!(.lightScope, _labels));
+        auto ret =  Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightImmutableOfLightConstOf(Labels)))
+            (_structure, .lightScope(_iterator));
+        foreach(i; Iota!L)
+            ret._labels[i] = .lightScope(_labels[i]);
+        return ret;
     }
 
     /// Returns: Mutable slice over immutable data.
@@ -952,7 +945,7 @@ public:
     {
         auto ret = typeof(return)(_structure, .lightImmutable(_iterator));
         foreach(i; Iota!L)
-            ret._labels[i] =  .lightImmutable(_labels[i]);
+            ret._labels[i] = .lightImmutable(_labels[i]);
         return ret;
     }
 
@@ -961,7 +954,7 @@ public:
     {
         auto ret = typeof(return)(_structure, .lightConst(_iterator));
         foreach(i; Iota!L)
-            ret._labels[i] =  .lightConst(_labels[i]);
+            ret._labels[i] = .lightConst(_labels[i]);
         return ret;
     }
 
@@ -3455,13 +3448,6 @@ private bool _checkAssignLengths(
     assert(!_checkAssignLengths(iota(2, 2), iota(3, 3)));
 }
 
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.allocation: slice;
-    auto df = slice!(double, int, int)(2,4);
-    auto lsdf = df.lightScope;
-}
-
 pure nothrow version(mir_test) unittest
 {
     auto slice = new int[15].slicedField(5, 3);
@@ -3716,7 +3702,9 @@ version(mir_test) unittest
 version(mir_test) pure nothrow unittest
 {
     import mir.ndslice.allocation: slice;
-    auto df = slice!(double, int, int)(2, 3);
+    import mir.ndslice.topology: universal;
+
+    auto df = slice!(double, int, int)(2, 3).universal;
     df.label[] = [1, 2];
     df.label!1[] = [1, 2, 3];
     auto lsdf = df.lightScope;
