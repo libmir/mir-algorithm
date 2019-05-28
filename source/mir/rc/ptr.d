@@ -269,3 +269,29 @@ unittest
     assert(s._counter == 2);
     assert(s.e == 3);
 }
+
+version(unittest):
+
+private struct _test_unpure_system_dest_s__ {
+    static int numStructs;
+    int i;
+
+    this(this This)(int i) {
+        this.i = i;
+        ++numStructs;
+    }
+
+    ~this() @system nothrow {
+        auto d = new int[2];
+        --numStructs;
+    }
+}
+
+version(mir_test)
+@system nothrow
+unittest
+{
+    import mir.rc.array;
+    auto ptr = createRC!_test_unpure_system_dest_s__(42);
+    auto arr = rcarray!_test_unpure_system_dest_s__(3);
+}

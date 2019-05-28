@@ -82,7 +82,7 @@ struct mir_rcarray(T)
     }
 
     ///
-    auto asSlice() @property @safe
+    auto asSlice() @property
     {
         import mir.ndslice.slice: mir_slice;
         alias It = mir_rci!T;
@@ -397,7 +397,7 @@ struct mir_rci(T)
     }
 
     ///
-    ref opAssign(typeof(null)) scope return pure nothrow @nogc @trusted
+    ref opAssign(typeof(null)) scope return nothrow
     {
         pragma(inline, true);
         _iterator = null;
@@ -414,7 +414,7 @@ struct mir_rci(T)
     }
 
     ///
-    ref opAssign(Q)(return mir_rci!Q rhs) scope return pure nothrow @nogc @trusted
+    ref opAssign(Q)(return mir_rci!Q rhs) scope return nothrow
         if (isImplicitlyConvertible!(Q*, T*))
     {
         static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
@@ -424,15 +424,15 @@ struct mir_rci(T)
     }
 
     ///
-    mir_rci!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
+    mir_rci!(const T) lightConst()() scope return const nothrow @property
     { return typeof(return)(_iterator, _array.lightConst); }
 
     ///
-    mir_rci!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
+    mir_rci!(immutable T) lightImmutable()() scope return immutable nothrow @property
     { return typeof(return)(_iterator, _array.lightImmutable); }
 
     ///   
-    ref inout(T) opUnary(string op : "*")() inout scope return @trusted
+    ref inout(T) opUnary(string op : "*")() inout scope return
     {
         debug
         {
