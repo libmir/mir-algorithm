@@ -3698,3 +3698,10 @@ version(mir_test) unittest
     vector.ndassign!"+"= scalar;
     assert(vector == [5, 7, 9]);
 }
+
+unittest
+{
+    import mir.ndslice.allocation: slice;
+    auto df = slice!(double, int,int)(2,4);
+    auto lsdf = df.lightScope;
+}
