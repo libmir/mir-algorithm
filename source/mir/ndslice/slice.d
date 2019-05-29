@@ -998,21 +998,21 @@ public:
     }
 
     /// Strips label off the DataFrame
-    auto values()()
+    auto values()() @property
     {
         return Slice!(Iterator, N, kind)(_structure, _iterator);
     }
 
-    /// Strips label and returns const slice
-    auto valuesConst()()
+    /// ditto
+    auto values()() @property const
     {
-        return Slice!(Iterator, N, kind)(_structure, _iterator).toConst;
+        return Slice!(LightConstOf!Iterator, N, kind)(_structure, .lightConst(_iterator));
     }
 
-    /// Strips label and returns an immutable slice
-    auto valuesImmutable()()
+    /// ditto
+    auto values()() @property immutable
     {
-        return (cast(immutable)Slice!(Iterator, N, kind)(_structure, _iterator)).toImmutable;
+        return Slice!(LightImmutableOf!Iterator, N, kind)(_structure, .lightImmutable(_iterator));
     }
 
     /// `opIndex` overload for const slice
@@ -1936,10 +1936,12 @@ public:
         import mir.algorithm.iteration : equal;
         static if (__traits(compiles, this.lightScope))
         {
-            foreach(i; Iota!(min(this.L, rslice.L)))
-                if(this.label!i != rslice.label!i)
+            auto slice1 = this.lightScope;
+            auto slice2 = rslice.lightScope;
+            foreach(i; Iota!(min(slice1.L, slice2.L)))
+                if(slice1.label!i != slice2.label!i)
                     return false;
-            return equal(this.lightScope.values, rslice.lightScope.values);           
+            return equal(slice1.values, slice2.values);           
         }
         else
             return equal(*cast(This*)&this, *cast(This*)&rslice);
@@ -3758,12 +3760,12 @@ version(mir_test) pure nothrow unittest
     import mir.ndslice.topology: universal;
 
     auto df = slice!(double, int, int)(2, 3).universal;
-    auto values = df.values;
-    assert(is(typeof(values) == Slice! (double*, 2, Universal)));
+    df[] = 5;
 
-    auto constvalues = df.valuesConst;
-    assert(is(typeof(constvalues) == Slice!(ConstOfUnqualOfPointerTarget!(double*), 2, Universal)));
-
-    auto immvalues = df.valuesImmutable;
-    assert(is(typeof(immvalues) == Slice!(ImmutableOfUnqualOfPointerTarget!(double*), 2, Universal)));
+    Slice!(double*, 2, Universal) values = df.values;
+    assert(values[0][0] == 5);
+    Slice!(LightConstOf!(double*), 2, Universal) constvalues = df.values;
+    assert(constvalues[0][0] == 5);
+    Slice!(LightImmutableOf!(double*), 2, Universal) immvalues = (cast(immutable)df).values;
+    assert(immvalues[0][0] == 5);
 }
