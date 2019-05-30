@@ -22,6 +22,7 @@ void testRCPtr();
 void testPM();
 void testFindRoot();
 void testStringView();
+void testDestructorView();
 
 int main()
 {
@@ -97,6 +98,7 @@ int main()
     testRCPtr();
     testPM();
     testStringView();
+    testDestructorView();
 
     return 0;
 }
@@ -207,4 +209,23 @@ void testStringView()
     assert(typeid((mir_get_string_view(c))) == typeid((mir_get_string_view(d))));
     ref = c; // implicit conversion
     ref = d; // implicit conversion
+}
+
+static int CD_i;
+
+struct CD
+{
+    double d;
+    ~CD() noexcept
+    {
+        CD_i++;
+    }
+};
+
+void testDestructorView()
+{
+    auto s = new mir_rcarray<CD>(10);
+    delete s;
+    printf("%d\n", CD_i);
+    assert(CD_i == 10);
 }
