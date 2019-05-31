@@ -39,7 +39,7 @@ struct mir_rcarray(T)
     private alias _thisPtr = _payload;
 
     ///
-    void proxySwap(ref typeof(this) rhs) pure nothrow @nogc @safe
+    void proxySwap(ref scope typeof(this) rhs) scope pure nothrow @nogc @trusted
     {
         auto t = this._payload;
         this._payload = rhs._payload;
@@ -50,19 +50,19 @@ struct mir_rcarray(T)
     mixin CommonRCImpl;
 
     ///
-    size_t length() @trusted scope pure nothrow @nogc const @property
+    size_t length() @safe scope pure nothrow @nogc const @property
     {
         return _payload !is null ? context.length : 0;
     }
 
     ///
-    inout(T)* ptr() @system scope inout
+    inout(T)* ptr() @safe scope inout return
     {
         return _payload;
     }
 
     ///
-    ref opIndex(size_t i) @trusted scope inout
+    ref inout(T) opIndex(size_t i) @trusted scope inout return
     {
         assert(_payload);
         assert(i < context.length);
@@ -70,23 +70,54 @@ struct mir_rcarray(T)
     }
 
     ///
-    inout(T)[] opIndex() @trusted scope inout
+    inout(T)[] opIndex() @trusted scope inout return
     {
         return _payload !is null ?  _payload[0 .. context.length] : null;
     }
 
     ///
-    size_t opDollar(size_t pos : 0)() @trusted scope pure nothrow @nogc const
+    size_t opDollar(size_t pos : 0)() @safe scope pure nothrow @nogc const
     {
         return length;
     }
 
     ///
-    auto asSlice() @property
+    auto asSlice() @property @safe
     {
         import mir.ndslice.slice: mir_slice;
         alias It = mir_rci!T;
-        return mir_slice!It([length], It(this));
+        return mir_slice!It([length], It(_payload, this));
+    }
+
+    /// ditto
+    auto asSlice(size_t N)(size_t[N] lengths...) @safe
+        if (N)
+    {
+        import mir.ndslice.internal: lengthsProduct;
+        import mir.ndslice.slice: mir_slice;
+        alias It = mir_rci!T;
+
+        assert (lengths.lengthsProduct == length);
+
+        auto _lengths = lengths;
+        return mir_slice!(It, N)(_lengths, It(_payload, this));
+    }
+
+    private Unqual!T[] _init_(size_t length, scope Unqual!T* initValue, bool initialize, bool deallocate) @trusted pure nothrow @nogc
+    {
+        static if (is(T == class) || is(T == interface))
+            auto ctx = mir_rc_create(mir_get_type_info!T, length, initValue, initialize, deallocate);
+        else
+            auto ctx = mir_rc_create(mir_get_type_info!T, length, initValue ? initValue : mir_get_payload_ptr!T, initialize, deallocate);
+        if (!ctx)
+        {
+            version(D_Exceptions)
+                throw allocationError;
+            else
+                assert(0, allocationExcMsg);
+        }
+        _payload = cast(T*)(ctx + 1);
+        return cast(Unqual!T[])_payload[0 .. length];
     }
 
     /++
@@ -95,41 +126,70 @@ struct mir_rcarray(T)
         initialize = Flag, don't initialize memory with default value if `false`.
         deallocate = Flag, never deallocates memory if `false`.
     +/
-    this(size_t length, bool initialize = true, bool deallocate = true) @trusted @nogc
+    this(size_t length, bool initialize = true, bool deallocate = true) @safe @nogc pure nothrow
     {
         if (length == 0)
             return;
-        Unqual!T[] ar;
-        () @trusted {
-            static if (is(T == class) || is(T == interface))
-                auto ctx = mir_rc_create(mir_get_type_info!T, length, mir_get_payload_ptr!T, initialize, deallocate);
-            else
-                auto ctx = mir_rc_create(mir_get_type_info!T, length, mir_get_payload_ptr!T, initialize, deallocate);
-            if (!ctx)
-            {
-                version(D_Exceptions)
-                    throw allocationError;
-                else
-                    assert(0, allocationExcMsg);
-            }
-            _payload = cast(T*)(ctx + 1);
-            ar = cast(Unqual!T[])_payload[0 .. length];
-        } ();
-        if (initialize || hasElaborateAssign!T)
+        _init_(length, null, initialize || hasElaborateAssign!T, deallocate);
+    }
+
+    /++
+    Params:
+        length = array length
+        initValue = value to initialize with.
+        deallocate = Flag, never deallocates memory if `false`.
+    +/
+    this(size_t length, scope Unqual!T* initValue, bool deallocate = true)
+    {
+        if (length == 0)
+            return;
+        auto ar = _init_(length, initValue, !hasElaborateDestructor!T, deallocate);
+        static if (hasElaborateAssign!T)
         {
-            import mir.conv: uninitializedFillDefault;
-            uninitializedFillDefault(ar);
+            foreach (ref e; ar)
+            {
+                import mir.conv: emplaceRef;
+                emplaceRef!T(e, *initValue);
+            }
         }
     }
 
-    static if (isImplicitlyConvertible!(const T, T))
-        static if (isImplicitlyConvertible!(const Unqual!T, T))
-            private alias V = const Unqual!T;
-        else
-            private alias V = const T;
-    else
-        private alias V = T;
+    ///
+    this(Range)(size_t length, ref Range range, bool deallocate = true)
+        if (isIterable!Range && !isArray!Range)
+    {
+        if (length == 0)
+            return;
+        auto ar = _init_(length, null, !hasElaborateDestructor!T, deallocate);
+        foreach (ref e; range)
+        {
+            import mir.conv: emplaceRef;
+            assert(!ar.empty);
+            emplaceRef!T(ar[0], e);
+            ar = ar[1 .. $];
+        }
+        assert(ar.empty);
+    }
 
+    ///
+    this(Range)(ref Range range, bool deallocate = true)
+        if (isIterable!Range && !isArray!Range && hasLength!Range)
+    {
+        this(range.length, range, deallocate);
+    }
+
+    ///
+    this(T[] array, bool deallocate = true)
+    {
+        if (length == 0)
+            return;
+        auto ar = _init_(length, null, !hasElaborateDestructor!T, deallocate);
+        foreach (size_t i; 0 .. array.length)
+        {
+            import mir.conv: emplaceRef;
+            emplaceRef!T(ar[i], array[i]);
+        }
+    }
 }
 
 /// ditto
@@ -370,34 +430,18 @@ struct mir_rci(T)
     RCArray!T _array;
 
     ///
-    this(RCArray!T array)
+    inout(T)* lightScope() @safe scope return inout @property
     {
-        import mir.utility: swap;
-        this._iterator = (()@trusted => array.ptr)();
-        swap(this._array, array);
-    }
-
-    ///
-    this(T* _iterator, RCArray!T array)
-    {
-        import mir.utility: swap;
-        this._iterator = _iterator;
-        swap(this._array, array);
-    }
-
-    ///
-    inout(T)* lightScope()() scope return inout @property @trusted
-    {
-        debug
+        debug {(() @trusted {
         {
             assert(_array._payload <= _iterator);
             assert(_iterator is null || _iterator <= _array._payload + _array.length);
-        }
+        }})();}
         return _iterator;
     }
 
     ///
-    ref opAssign(typeof(null)) scope return nothrow
+    ref opAssign(typeof(null)) @safe scope return nothrow
     {
         pragma(inline, true);
         _iterator = null;
@@ -406,7 +450,7 @@ struct mir_rci(T)
     }
 
     ///
-    ref opAssign(return typeof(this) rhs) scope return @trusted
+    ref opAssign(typeof(this) rhs) scope return
     {
         _iterator = rhs._iterator;
         _array.proxySwap(rhs._array);
@@ -414,7 +458,7 @@ struct mir_rci(T)
     }
 
     ///
-    ref opAssign(Q)(return mir_rci!Q rhs) scope return nothrow
+    ref opAssign(Q)(mir_rci!Q rhs) scope return nothrow
         if (isImplicitlyConvertible!(Q*, T*))
     {
         static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
@@ -424,11 +468,11 @@ struct mir_rci(T)
     }
 
     ///
-    mir_rci!(const T) lightConst()() scope return const nothrow @property
+    mir_rci!(const T) lightConst() @safe const nothrow @property
     { return typeof(return)(_iterator, _array.lightConst); }
 
     ///
-    mir_rci!(immutable T) lightImmutable()() scope return immutable nothrow @property
+    mir_rci!(immutable T) lightImmutable() @safe immutable nothrow @property
     { return typeof(return)(_iterator, _array.lightImmutable); }
 
     ///   

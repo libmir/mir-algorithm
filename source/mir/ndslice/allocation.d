@@ -74,11 +74,10 @@ Returns:
     n-dimensional slice
 +/
 Slice!(RCI!T, N)
-    rcslice(T, size_t N)(size_t[N] lengths...)
+    rcslice(T, size_t N)(size_t[N] lengths...) @safe pure nothrow @nogc
 {
     immutable len = lengths.lengthsProduct;
-    auto _lengths = lengths;
-    return typeof(return)(_lengths, RCI!T(RCArray!T(len)));
+    return RCArray!T(len).asSlice(lengths);
 }
 
 /// ditto
@@ -205,11 +204,10 @@ Params:
 Returns:
     contiguous minimally initialized n-dimensional reference-counted (thread-safe) slice
 +/
-Slice!(RCI!T, N) mininitRcslice(T, size_t N)(size_t[N] lengths...)
+Slice!(RCI!T, N) mininitRcslice(T, size_t N)(size_t[N] lengths...) @safe pure nothrow @nogc
 {
     immutable len = lengths.lengthsProduct;
-    auto _lengths = lengths;
-    return Slice!(RCI!T, N)(_lengths, RCI!T(mininitRcarray!T(len)));
+    return mininitRcarray!T(len).asSlice(lengths);
 }
 
 ///

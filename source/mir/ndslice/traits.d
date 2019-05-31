@@ -235,11 +235,38 @@ template isIterator(T)
         {
 
         }
+        foo(a[3]);
         foo(a[sizediff_t(3)]);
         auto c = a + sizediff_t(3);
         auto d = a - sizediff_t(3);
         a += sizediff_t(3);
         a -= sizediff_t(3);
         foo(*a);
+    });
+}
+
+///
+template isMutableIterator(T)
+{
+    enum isMutableIterator = isIterator!T && __traits(compiles, (T a, T b)
+    {
+        *a = *b;
+        a[3] = b[sizediff_t(3)];
+        a[sizediff_t(3)] = b[3];
+        static assert(is(typeof(*a) == typeof(a[3])));
+        static assert(is(typeof(*a) == typeof(a[sizediff_t(3)])));
+    });
+}
+
+///
+template isByRefIterator(T)
+{
+    enum isByRefIterator = isIterator!T && __traits(compiles, (T a)
+    {
+        auto r = &*a;
+        auto d = &a[sizediff_t(3)];
+        auto c = &a[(3)];
+        static assert(is(typeof(r) == typeof(d)));
+        static assert(is(typeof(d) == typeof(c)));
     });
 }

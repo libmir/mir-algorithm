@@ -1270,19 +1270,19 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
-    Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() @trusted scope return @property
+    Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() return @property
     {
         return typeof(return)(lightScopeIndex, _data.lightScope);
     }
 
     /// ditto
-    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted scope return const @property
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() return const @property
     {
         return typeof(return)(lightScopeIndex, _data.lightScope);
     }
 
     /// ditto
-    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted scope return immutable @property
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() return immutable @property
     {
         return typeof(return)(lightScopeIndex, _data.lightScope);
     }

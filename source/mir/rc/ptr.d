@@ -60,21 +60,25 @@ struct mir_rcptr(T)
     alias _get_value this;
 
     static if (is(T == class) || is(T == interface))
+    {
         ///
         pragma(inline, true)
-        inout(T) _get_value() scope inout @property
+        inout(T) _get_value() inout scope return @property
         {
             assert(this, getExcMsg);
             return _value;
         }
+    }
     else
+    {
         ///
         pragma(inline, true)
-        ref inout(T) _get_value() scope inout @property
+        ref inout(T) _get_value() scope return inout @property
         {
             assert(this, getExcMsg);
             return *_value;
         }
+    }
 
     ///
     void proxySwap(ref typeof(this) rhs) pure nothrow @nogc @safe
@@ -214,12 +218,12 @@ version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
-    static interface I { ref double bar() @safe pure nothrow @nogc; }
+    static interface I { ref double bar() return @safe pure nothrow @nogc; }
     static abstract class D { int index; }
     static class C : D, I
     {
         double value;
-        ref double bar() @safe pure nothrow @nogc { return value; }
+        ref double bar() { return value; }
         this(double d) { value = d; }
     }
     auto a = createRC!C(10);
@@ -268,6 +272,8 @@ unittest
     auto s = a._shareAs!S; // RCPtr!S
     assert(s._counter == 2);
     assert(s.e == 3);
+    a.s.e = 4;
+    assert(s.e == 4);
 }
 
 version(unittest):

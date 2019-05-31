@@ -905,19 +905,19 @@ public:
     }
 
     ///
-    auto lightScope()() scope return @property
+    auto lightScope()() return @property
     {
         return Slice!(LightScopeOf!Iterator, N, kind)(_structure, .lightScope(_iterator));
     }
 
     /// ditto
-    auto lightScope()() scope const return @property
+    auto lightScope()() const return @property
     {
         return Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightScope(_iterator));
     }
 
     /// ditto
-    auto lightScope()() scope immutable return @property
+    auto lightScope()() immutable return @property
     {
         return Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind)(_structure, .lightScope(_iterator));
     }
