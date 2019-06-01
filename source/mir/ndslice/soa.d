@@ -41,7 +41,7 @@ struct mir_soa_record(Iterator)
     // @property _value_
     static if (isByRefIterator!Iterator)
     {
-        ref _value() @property return
+        ref inout(typeof(Iterator.init[0])) _value() @property inout scope return
         {
             return *_iterator;
         }
@@ -61,6 +61,8 @@ struct mir_soa_record(Iterator)
             }
         }
     }
+
+    alias _value this;
 }
 
 /// ditto
@@ -86,15 +88,15 @@ struct mir_soa_named_iterator(string[] names, Iterators...)
     {
         static if (isByRefIterator!Iterator)
         {
-            mixin (`ref ` ~ name ~ `() @property return { return *_iterator; }`);
+            mixin (`ref ` ~ name ~ `() @property scope return { return *_iterator; }`);
         }
         else
         {
-            mixin (`auto ref ` ~ name ~ `() @property return { return *_iterator; }`);
+            mixin (`auto ref ` ~ name ~ `() @property scope return { return *_iterator; }`);
 
             static if (isMutableIterator!Iterator)
             {
-                mixin (`auto ref ` ~ name ~ `(V)(auto ref V value) @property return { return *_iterator = value; }`);
+                mixin (`auto ref ` ~ name ~ `(V)(auto ref V value) @property scope return { return *_iterator = value; }`);
             }
         }
     }

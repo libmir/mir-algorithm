@@ -278,7 +278,7 @@ unittest
 
 version(unittest):
 
-private struct _test_unpure_system_dest_s__ {
+package struct _test_unpure_system_dest_s__ {
     static int numStructs;
     int i;
 

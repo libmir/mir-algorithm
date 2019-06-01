@@ -74,7 +74,7 @@ Returns:
     n-dimensional slice
 +/
 Slice!(RCI!T, N)
-    rcslice(T, size_t N)(size_t[N] lengths...) @safe pure nothrow @nogc
+    rcslice(T, size_t N)(size_t[N] lengths...)
 {
     immutable len = lengths.lengthsProduct;
     return RCArray!T(len).asSlice(lengths);

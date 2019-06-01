@@ -698,3 +698,4 @@ version(mir_test)
     S[1] d = [S(1)];
     auto r = rcarray(d);
 }
+
