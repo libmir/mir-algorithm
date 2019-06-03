@@ -275,55 +275,57 @@ struct mir_series
     ThisIterator cend() const noexcept { return {_data.size(), *this}; }
 };
 
-// don't sort
-template <
-    typename IndexIterator,
-    typename Iterator,
-    mir_size_t N = 1,
-    mir_slice_kind kind = mir_slice_kind::contiguous
->
-mir_series<IndexIterator, Iterator, N, kind>
-    mir_make_series(mir_slice<IndexIterator> index, mir_slice<Iterator, N, kind> data)
+namespace mir
 {
-    assert(data._lengths[0] == index._lengths[0]);
-    return { data, index._iterator };
-}
-
-template<
-    class Key,
-    class Value,
-    class Allocator
->
-mir_series<mir_rci<Key>,mir_rci<Value>>
-    mir_make_series(const std::map<Key, Value, std::less<Key>, Allocator>& map)
-{
-    auto index = mir_rcarray<Key>(map.size()).asSlice();
-    auto data = mir_rcarray<Value>(map.size()).asSlice();
-    size_t i = 0;
-    for (const auto&[key, value] : map)
+    // don't sort
+    template <
+        typename IndexIterator,
+        typename Iterator,
+        mir_size_t N = 1,
+        mir_slice_kind kind = mir_slice_kind::contiguous
+    >
+    mir_series<IndexIterator, Iterator, N, kind>
+        make_series(mir_slice<IndexIterator> index, mir_slice<Iterator, N, kind> data)
     {
-        index[i] = key;
-        data[i] = value;
-        i++;
+        assert(data._lengths[0] == index._lengths[0]);
+        return { data, index._iterator };
     }
-    return mir_make_series(index, data);
+
+    template<
+        class Key,
+        class Value,
+        class Allocator
+    >
+    mir_series<mir_rci<Key>,mir_rci<Value>>
+        make_series(const std::map<Key, Value, std::less<Key>, Allocator>& map)
+    {
+        auto index = mir_rcarray<Key>(map.size()).asSlice();
+        auto data = mir_rcarray<Value>(map.size()).asSlice();
+        size_t i = 0;
+        for (const auto&[key, value] : map)
+        {
+            index[i] = key;
+            data[i] = value;
+            i++;
+        }
+        return make_series(index, data);
+    }
+
+    template <
+        typename I,
+        typename T,
+        mir_size_t N,
+        mir_slice_kind kind
+    >
+    mir_series<const I*, const T*, N, kind> light_const(const mir_series<I*, T*, N, kind> s) { return *(mir_series<const I*, const T*, N, kind>*)&s; }
+
+    template <
+        typename I,
+        typename T,
+        mir_size_t N,
+        mir_slice_kind kind
+    >
+    mir_series<mir_rci<const I>, mir_rci<const T>, N, kind> light_const(const mir_series<mir_rci<I>, mir_rci<T>, N, kind> s) { return *(mir_series<mir_rci<const I>, mir_rci<const T>, N, kind>*)&s; }
 }
-
-template <
-    typename I,
-    typename T,
-    mir_size_t N,
-    mir_slice_kind kind
->
-mir_series<const I*, const T*, N, kind> mir_light_const(const mir_series<I*, T*, N, kind> s) { return *(mir_series<const I*, const T*, N, kind>*)&s; }
-
-template <
-    typename I,
-    typename T,
-    mir_size_t N,
-    mir_slice_kind kind
->
-mir_series<mir_rci<const I>, mir_rci<const T>, N, kind> mir_light_const(const mir_series<mir_rci<I>, mir_rci<T>, N, kind> s) { return *(mir_series<mir_rci<const I>, mir_rci<const T>, N, kind>*)&s; }
-
 
 #endif

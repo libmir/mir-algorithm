@@ -9,13 +9,6 @@
 #include <cstdlib>
 #include <type_traits>
 
-template<class T>
-struct mir_type_info_g
-{
-    void (*destructor)(T&);
-    int size;
-};
-
 struct mir_type_info
 {
     void (*destructor)(void*);
@@ -46,6 +39,13 @@ extern "C"
 }
 namespace mir
 {
+    template<class T>
+    struct type_info_g
+    {
+        void (*destructor)(T&);
+        int size;
+    };
+
     template<class T, bool dest = std::is_destructible<T>::value>
     struct Destructor
     {
@@ -84,22 +84,25 @@ private:
     mir_rc_context* _context = nullptr;
     using U = typename std::remove_all_extents<T>::type;
     static constexpr void (*destr)(U&) = std::is_destructible<T>::value ? &mir::Destructor<U>::destroy : nullptr;
-    static constexpr mir_type_info_g<U> typeInfoT = {destr, sizeof(T)};
+    static constexpr mir::type_info_g<U> typeInfoT = {destr, sizeof(T)};
 
 public:
 
+    using element_type = T;
+
     mir_rcptr() noexcept {}
     mir_rcptr(std::nullptr_t) noexcept {}
+    mir_rcptr(const mir_rc_context* context, T* payload) noexcept : _payload(payload), _context((mir_rc_context*)context) { if (_context) mir_rc_increase_counter(_context); }
     ~mir_rcptr() noexcept { if (_context) mir_rc_decrease_counter(_context); }
-    mir_rcptr(const mir_rcptr& rhs) noexcept : _payload(rhs._payload), _context((mir_rc_context*)rhs._context)  { if (_context) mir_rc_increase_counter(_context); }
-    mir_rcptr(mir_rcptr&& rhs) noexcept : _payload(rhs._payload), _context(rhs._context) { rhs.__reset(); }
+    mir_rcptr(const mir_rcptr& rhs) noexcept : _payload(rhs._payload), _context((mir_rc_context*)rhs.getContext())  { if (_context) mir_rc_increase_counter(_context); }
+    mir_rcptr(mir_rcptr&& rhs) noexcept : _payload(rhs._payload), _context(rhs.getContext()) { rhs.__reset(); }
     mir_rcptr& operator=(const mir_rcptr& rhs) noexcept
     {
         if (_payload != rhs._payload)
         {
             if (_context) mir_rc_decrease_counter(_context);
             _payload = (T*) rhs._payload;
-            _context = (mir_rc_context*) rhs._context;
+            _context = (mir_rc_context*) rhs.getContext();
             if (_context) mir_rc_increase_counter(_context);;
         }
         return *this;
@@ -115,7 +118,7 @@ public:
         if (ret._context == nullptr)
             throw std::bad_alloc();
         ret._payload = (T*)(ret._context + 1);
-        ::new(ret.get<U>()) U(std::forward<Args>(args)...);
+        ::new((U*)ret._payload) U(std::forward<Args>(args)...);
         return ret;
     }
 
@@ -129,7 +132,7 @@ public:
         {
             if (_context) mir_rc_decrease_counter(_context);
             _payload = rhsv;
-            _context = (mir_rc_context*) rhs._context;
+            _context = (mir_rc_context*) rhs.getContext();
             if (_context) mir_rc_increase_counter(_context);
         }
         return *this;
@@ -150,11 +153,22 @@ public:
     mir_rcptr<const T> light_const() const noexcept { return *(mir_rcptr<const T>*)this; }
 
     template<class Q>
+    Q* get()
+    {
+        if (_payload == nullptr)
+            return nullptr;
+        auto ret = dynamic_cast<Q*>(_payload);
+        if (ret != nullptr)
+            return ret;
+        throw std::bad_cast();
+    }
+
+    template<class Q>
     Q* get() const
     {
         if (_payload == nullptr)
             return nullptr;
-        auto ret = dynamic_cast<Q*>((T*)_payload);
+        auto ret = dynamic_cast<Q*>(_payload);
         if (ret != nullptr)
             return ret;
         throw std::bad_cast();
@@ -164,6 +178,8 @@ public:
     mir_rcptr& operator=(std::nullptr_t) noexcept { if (_context) mir_rc_decrease_counter(_context); __reset(); return *this; }
     T& operator*() noexcept { assert(_payload != nullptr); return *_payload; }
     T* operator->() noexcept { assert(_payload != nullptr); return _payload; }
+    T* get() noexcept { return _payload; }
+    const T* get() const noexcept { return _payload; }
     const mir_rc_context* getContext() const noexcept { return _context; }
     const T& operator*() const noexcept { assert(_payload != nullptr); return *_payload; }
     const T* operator->() const noexcept { assert(_payload != nullptr); return _payload; }
@@ -176,10 +192,44 @@ public:
     explicit operator bool() const noexcept { return _payload != nullptr; }
 };
 
-template<class T, class ...Args> 
-mir_rcptr<T> mir_make_shared(Args&& ...args)
+namespace mir
 {
-    return mir_rcptr<T>::make_shared(std::forward<Args>(args)...);
+    template<class T, class ...Args> 
+    mir_rcptr<T> make_shared(Args&& ...args)
+    {
+        return mir_rcptr<T>::make_shared(std::forward<Args>(args)...);
+    }
+
+    template< class T, class U > 
+    mir_rcptr<T> static_pointer_cast( const mir_rcptr<U>& r ) noexcept
+    {
+        auto p = static_cast<typename mir_rcptr<T>::element_type*>(r.get());
+        return mir_rcptr<T>(r.getContext(), p);
+    }
+
+    template< class T, class U > 
+    mir_rcptr<T> dynamic_pointer_cast( const mir_rcptr<U>& r ) noexcept
+    {
+        if (auto p = dynamic_cast<typename mir_rcptr<T>::element_type*>(r.get())) {
+            return mir_rcptr<T>(r.getContext(), p);
+        } else {
+            return mir_rcptr<T>();
+        }
+    }
+
+    template< class T, class U > 
+    mir_rcptr<T> const_pointer_cast( const mir_rcptr<U>& r ) noexcept
+    {
+        auto p = const_cast<typename mir_rcptr<T>::element_type*>(r.get());
+        return mir_rcptr<T>(r.getContext(), p);
+    }
+
+    template< class T, class U > 
+    mir_rcptr<T> reinterpret_pointer_cast( const mir_rcptr<U>& r ) noexcept
+    {
+        auto p = reinterpret_cast<typename mir_rcptr<T>::element_type*>(r.get());
+        return mir_rcptr<T>(r.getContext(), p);
+    }
 }
 
 namespace std
