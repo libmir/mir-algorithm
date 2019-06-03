@@ -112,7 +112,7 @@ void testSeries()
     map[5] = 10.0;
     map[10] = 11.0;
 
-    auto series = mir_make_series(map);
+    auto series = mir::make_series(map);
 
     assert(series[1].first == 2);
     assert(series[1].second == 5);
@@ -165,8 +165,8 @@ struct C : S { double j = 3; C(double d, double k) : S(d) { k = j; }; };
 
 void testRCPtr()
 {
-    auto s = mir_make_shared<S>(3.0);
-    auto e = mir_make_shared<S>(5.0);
+    auto s = mir::make_shared<S>(3.0);
+    auto e = mir::make_shared<S>(5.0);
     s = e;
     (*e).d = 4;
     assert(s->d == 4);
@@ -177,7 +177,7 @@ void testRCPtr()
 
 void testPM()
 {
-    auto c = mir_make_shared<C>(3.0, 4);
+    auto c = mir::make_shared<C>(3.0, 4);
     assert(c.getContext()->counter == 1);
     auto s = mir_rcptr<S>(c);
     assert(c.getContext()->counter == 2);
@@ -200,13 +200,13 @@ void testFindRoot()
 void testStringView()
 {
     auto ref = std::string_view("Hi");
-    auto b = mir_rcarray_from_string(ref);
-    mir_rcarray<char> c = mir_rcarray_from_string(std::string("Hi"));
-    mir_rcarray<const char> d = mir_rcarray_from_string("Hi");
-    assert(ref == mir_get_string_view(b));
-    assert(ref == mir_get_string_view(c));
-    assert(ref == mir_get_string_view(d));
-    assert(typeid((mir_get_string_view(c))) == typeid((mir_get_string_view(d))));
+    auto b = mir::rcarray_from_string(ref);
+    mir_rcarray<char> c = mir::rcarray_from_string(std::string("Hi"));
+    mir_rcarray<const char> d = mir::rcarray_from_string("Hi");
+    assert(ref == mir::get_string_view(b));
+    assert(ref == mir::get_string_view(c));
+    assert(ref == mir::get_string_view(d));
+    assert(typeid((mir::get_string_view(c))) == typeid((mir::get_string_view(d))));
     ref = c; // implicit conversion
     ref = d; // implicit conversion
 }
