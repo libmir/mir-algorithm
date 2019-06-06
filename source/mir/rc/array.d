@@ -50,6 +50,33 @@ struct mir_rcarray(T)
     mixin CommonRCImpl;
 
     ///
+    ~this() nothrow
+    {
+        static if (hasDestructor!T)
+        {
+            if (false) // break @safe and pure attributes
+            {
+                Unqual!T* object;
+                (*object).__xdtor();
+            }
+        }
+        if (this)
+        {
+            (() @trusted { mir_rc_decrease_counter(context); })();
+            debug _reset;
+        }
+    }
+
+    ///
+    this(this) scope @trusted pure nothrow @nogc
+    {
+        if (this)
+        {
+            mir_rc_increase_counter(context);
+        }
+    }
+
+    ///
     size_t length() @trusted scope pure nothrow @nogc const @property
     {
         return _payload !is null ? context.length : 0;
