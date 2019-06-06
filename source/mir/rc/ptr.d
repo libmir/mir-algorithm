@@ -5,6 +5,7 @@ module mir.rc.ptr;
 
 import mir.rc.context;
 import mir.type_info;
+import std.traits;
 
 private static immutable allocationExcMsg = "mir_rcptr: out of memory error.";
 private static immutable getExcMsg = "mir_rcptr: trying to use null value.";
@@ -24,8 +25,6 @@ The implementation never adds roots into the GC.
 +/
 struct mir_rcptr(T)
 {
-    import std.traits;
-
     static if (is(T == class) || is(T == interface) || is(T == struct) || is(T == union))
         static assert(!__traits(isNested, T), "mir_rcptr does not support nested types.");
 
@@ -87,79 +86,35 @@ struct mir_rcptr(T)
         rhs._context = t1;
     }
 
-    /++
-    +/
-    auto _shareMember(string member, Args...)(auto ref Args args)
+    ///
+    mixin CommonRCImpl;
+
+    ///
+    ~this() nothrow
     {
-        void foo(A)(auto ref A) {}
-        static if (args.length)
+        static if (hasDestructor!T)
         {
-            // breaks safaty
-            if (false) foo(__traits(getMember, _get_value, member)(forward!args));
-
-            return (()@trusted => _withContext(__traits(getMember, _get_value, member)(forward!args)))();
+            if (false) // break @safe and pure attributes
+            {
+                Unqual!T* object;
+                (*object).__xdtor();
+            }
         }
-        else
+        if (this)
         {
-            // breaks safaty
-            if (false) foo(__traits(getMember, _get_value, member));
-
-            return (()@trusted => _withContext(__traits(getMember, _get_value, member)))();
+            (() @trusted { mir_rc_decrease_counter(context); })();
+            debug _reset;
         }
-    }
-
-    /++
-    Construct a shared pointer of a required type with a current context.
-    Provides polymorphism abilities for classes and structures with `alias this` syntax.
-    +/
-    .mir_rcptr!R _shareAs(R)() @trusted
-        if (isImplicitlyConvertible!(T, R))
-    {
-        return _withContext(cast(R)_get_value);
-    }
-
-    /// ditto
-    .mir_rcptr!(const R) _shareAs(R)() @trusted const
-        if (isImplicitlyConvertible!(const T, const R))
-    {
-        return _withContext(cast(const R)_get_value);
-    }
-
-    /// ditto
-    .mir_rcptr!(immutable R) _shareAs(R)() @trusted immutable
-        if (isImplicitlyConvertible!(immutable T, immutable R))
-    {
-        return _withContext(cast(immutable R)_get_value);
-    }
-
-    /++
-    Returns: shared pointer constructed with current context. 
-    +/
-    @system .mir_rcptr!R _withContext(R)(return R value) return const
-        if (is(R == class) || is(R == interface))
-    {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        typeof(return) ret;
-        ret._value = cast()value;
-        ret._context = cast(mir_rc_context*)_context;
-        ret.__postblit;
-        return ret.move;
-    }
-
-    ///ditto
-    @system .mir_rcptr!R _withContext(R)(return ref R value) return const
-        if (!is(R == class) && !is(R == interface))
-    {
-        import std.algorithm.mutation: move;
-        typeof(return) ret;
-        ret._value = &value;
-        ret._context = cast(mir_rc_context*)_context;
-        ret.__postblit;
-        return ret.move;
     }
 
     ///
-    mixin CommonRCImpl;
+    this(this) scope @trusted pure nothrow @nogc
+    {
+        if (this)
+        {
+            mir_rc_increase_counter(context);
+        }
+    }
 
     static if (!is(T == interface) && !__traits(isAbstractClass, T))
     {
@@ -185,6 +140,76 @@ struct mir_rcptr(T)
 
 ///
 alias RCPtr = mir_rcptr;
+
+/++
++/
+auto shareMember(string member, T, Args...)(return mir_rcptr!T context, auto ref Args args)
+{
+    void foo(A)(auto ref A) {}
+    static if (args.length)
+    {
+        // breaks safaty
+        if (false) foo(__traits(getMember, context._get_value, member)(forward!args));
+        return (()@trusted => createRCWithContext(context, __traits(getMember, context._get_value, member)(forward!args)))();
+    }
+    else
+    {
+        // breaks safaty
+        if (false) foo(__traits(getMember, context._get_value, member));
+        return (()@trusted => createRCWithContext(context, __traits(getMember, context._get_value, member)))();
+    }
+}
+
+/++
+Returns: shared pointer constructed with current context. 
++/
+@system .mir_rcptr!R createRCWithContext(R, F)(return const mir_rcptr!F context, return R value)
+    if (is(R == class) || is(R == interface))
+{
+    typeof(return) ret;
+    ret._value = cast()value;
+    ret._context = cast(mir_rc_context*)context._context;
+    (*cast(mir_rcptr!F*)&context)._value = null;
+    (*cast(mir_rcptr!F*)&context)._context = null;
+    return ret;
+}
+
+///ditto
+@system .mir_rcptr!R createRCWithContext(R, F)(return const mir_rcptr!F context, return ref R value)
+    if (!is(R == class) && !is(R == interface))
+{
+    typeof(return) ret;
+    ret._value = &value;
+    ret._context = cast(mir_rc_context*)context._context;
+    (*cast(mir_rcptr!F*)&context)._value = null;
+    (*cast(mir_rcptr!F*)&context)._context = null;
+    return ret;
+}
+
+/++
+Construct a shared pointer of a required type with a current context.
+Provides polymorphism abilities for classes and structures with `alias this` syntax.
++/
+mir_rcptr!R castTo(R, T)(return mir_rcptr!T context) @trusted
+    if (isImplicitlyConvertible!(T, R))
+{
+    return createRCWithContext(context, cast(R)context._get_value);
+}
+
+/// ditto
+mir_rcptr!(const R) castTo(R, T)(return const mir_rcptr!T context) @trusted const
+    if (isImplicitlyConvertible!(const T, const R))
+{
+    return createRCWithContext(*cast(mir_rcptr!T*)&context, cast(const R)context._get_value);
+}
+
+/// ditto
+mir_rcptr!(immutable R) castTo(R, T)(return immutable mir_rcptr!T context) @trusted immutable
+    if (isImplicitlyConvertible!(immutable T, immutable R))
+{
+    return createRCWithContext(*cast(mir_rcptr!T*)&context, cast(immutable R)context._get_value);
+}
+
 
 ///
 template createRC(T)
@@ -229,18 +254,19 @@ unittest
     assert((*b).value == 10);
     b.value = 100; // access via alias this syntax
     assert(a.value == 100);
+    assert(a._counter == 2);
 
-    auto d = a._shareAs!D; //RCPtr!D
+    auto d = a.castTo!D; //RCPtr!D
     import std.stdio;
     assert(d._counter == 3);
     d.index = 234;
     assert(a.index == 234);
-    auto i = a._shareAs!I; //RCPtr!I
+    auto i = a.castTo!I; //RCPtr!I
     assert(i.bar == 100);
     assert(i._counter == 4);
 
-    auto v = a._shareMember!"value"; //RCPtr!double
-    auto w = a._shareMember!"bar"; //RCPtr!double
+    auto v = a.shareMember!"value"; //RCPtr!double
+    auto w = a.shareMember!"bar"; //RCPtr!double
     assert(i._counter == 6);
     assert(*v == 100);
     ()@trusted{assert(&*w is &*v);}();
@@ -265,7 +291,7 @@ unittest
     }
 
     auto a = createRC!C(10, S(3));
-    auto s = a._shareAs!S; // RCPtr!S
+    auto s = a.castTo!S; // RCPtr!S
     assert(s._counter == 2);
     assert(s.e == 3);
 }

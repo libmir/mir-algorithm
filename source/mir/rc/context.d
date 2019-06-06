@@ -162,33 +162,6 @@ package mixin template CommonRCImpl()
     }
 
     ///
-    ~this() nothrow
-    {
-        static if (hasDestructor!T)
-        {
-            if (false) // break @safe and pure attributes
-            {
-                Unqual!T* object;
-                (*object).__xdtor();
-            }
-        }
-        if (this)
-        {
-            (() @trusted { mir_rc_decrease_counter(context); })();
-            debug _reset;
-        }
-    }
-
-    ///
-    this(this) scope @trusted pure nothrow @nogc
-    {
-        if (this)
-        {
-            mir_rc_increase_counter(context);
-        }
-    }
-
-    ///
     ref opAssign(typeof(null)) scope return
     {
         this = typeof(this).init;
