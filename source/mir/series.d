@@ -1550,7 +1550,7 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
         static if (is(typeof(ret) == typeof(return)))
             return ret;
         else
-            return ()@trusted{ return cast(R) ret; }();
+            return ()@trusted{ return *cast(R*) &ret; }();
     }
     import mir.ndslice.allocation: uninitSlice;
     Series!(Unqual!K*, Unqual!V*) ret = series(length.uninitSlice!(Unqual!K), length.uninitSlice!(Unqual!V));
@@ -1566,7 +1566,7 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
     static if (is(typeof(ret) == typeof(return)))
         return ret;
     else
-        return ()@trusted{ return cast(R) ret; }();
+        return ()@trusted{ return *cast(R*) &ret; }();
 }
 
 /// ditto
@@ -2508,12 +2508,12 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
                     .sliced(shape)))();
     }
 
-    static if (N == 2) // fast path
+    static if (C == 2) // fast path
     {
         alias algo = troykaSeriesImpl!(
-            (auto scope ref key, auto scope return ref left) => left,
-            (auto scope ref key, auto scope return ref left, auto scope return ref right) => left,
-            (auto scope ref key, auto scope return ref right) => right,
+            ref (scope ref key, scope return ref left) => left,
+            ref (scope ref key, scope return ref left, scope return ref right) => left,
+            ref (scope ref key, scope return ref right) => right,
         );
         algo!(I, E)(seriesTuple[0], seriesTuple[1], ret.lightScope);
     }
@@ -2522,7 +2522,7 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
         unionSeriesImpl!(I, E)(seriesTuple, ret.lightScope);
     }
 
-    return () @trusted {return cast(R) ret; }();
+    return () @trusted {return *cast(R*) &ret; }();
 }
 
 /**
