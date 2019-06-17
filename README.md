@@ -1,4 +1,3 @@
-[![Gitter](https://img.shields.io/gitter/room/libmir/public.svg)](https://gitter.im/libmir/public)
 [![codecov.io](https://codecov.io/github/libmir/mir-algorithm/coverage.svg?branch=master)](https://codecov.io/github/libmir/mir-algorithm?branch=master)
 [![Build Status](https://travis-ci.org/libmir/mir-algorithm.svg?branch=master)](https://travis-ci.org/libmir/mir-algorithm)
 [![Circle CI](https://circleci.com/gh/libmir/mir-algorithm.svg?style=svg)](https://circleci.com/gh/libmir/mir-algorithm)
