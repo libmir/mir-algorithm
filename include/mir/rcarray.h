@@ -14,7 +14,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <stdexcept>
 
 template <typename T>
 struct mir_rci;
