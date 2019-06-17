@@ -8,7 +8,7 @@ environment:
   #   DVersion: 2.080.0
   #   arch: x86
   - DC: ldc
-    DVersion: '1.15.0'
+    DVersion: '1.16.0-beta2'
     arch: x64
 
 matrix:
