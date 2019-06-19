@@ -2511,9 +2511,9 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
     static if (C == 2) // fast path
     {
         alias algo = troykaSeriesImpl!(
-            ref (scope ref key, scope return ref left) => left,
-            ref (scope ref key, scope return ref left, scope return ref right) => left,
-            ref (scope ref key, scope return ref right) => right,
+            (scope ref key, scope return ref left) => left,
+            (scope ref key, scope return ref left, scope return ref right) => left,
+            (scope ref key, scope return ref right) => right,
         );
         algo!(I, E)(seriesTuple[0], seriesTuple[1], ret.lightScope);
     }
