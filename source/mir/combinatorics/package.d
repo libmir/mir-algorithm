@@ -7,8 +7,9 @@ License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
 */
 module mir.combinatorics;
 
-import std.traits;
 import mir.primitives: hasLength;
+import mir.qualifier;
+import std.traits;
 
 ///
 version(mir_test) unittest
@@ -221,6 +222,24 @@ struct IndexedRoR(Collection, Range)
     {
         this.c = collection;
         this.r = range;
+    }
+
+    ///
+    auto lightScope()()
+    {
+        return IndexedRoR!(LightScopeOf!Collection, LightScopeOf!Range)(.lightScope(c), .lightScope(r));
+    }
+
+    ///
+    auto lightScope()() const
+    {
+        return IndexedRoR!(LightConstOf!(LightScopeOf!Collection), LightConstOf!(LightScopeOf!Range))(.lightScope(c), .lightScope(r));
+    }
+
+    ///
+    auto lightConst()() const
+    {
+        return IndexedRoR!(LightConstOf!Collection, LightConstOf!Range)(.lightConst(c), .lightConst(r));
     }
 
     /// Input range primitives
