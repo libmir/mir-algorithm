@@ -473,10 +473,26 @@ struct Structure(size_t N)
     sizediff_t[N] strides;
 }
 
-private alias LightConstOfLightScopeOf(Iterator) = LightConstOf!(LightScopeOf!Iterator);
-private alias LightImmutableOfLightConstOf(Iterator) = LightImmutableOf!(LightScopeOf!Iterator);
-private alias ImmutableOfUnqualOfPointerTarget(Iterator) = immutable(Unqual!(PointerTarget!Iterator))*;
-private alias ConstOfUnqualOfPointerTarget(Iterator) = const(Unqual!(PointerTarget!Iterator))*;
+package(mir) alias LightConstOfLightScopeOf(Iterator) = LightConstOf!(LightScopeOf!Iterator);
+package(mir) alias LightImmutableOfLightConstOf(Iterator) = LightImmutableOf!(LightScopeOf!Iterator);
+package(mir) alias ImmutableOfUnqualOfPointerTarget(Iterator) = immutable(Unqual!(PointerTarget!Iterator))*;
+package(mir) alias ConstOfUnqualOfPointerTarget(Iterator) = const(Unqual!(PointerTarget!Iterator))*;
+
+package(mir) template allLightScope(args...)
+{
+    static if (args.length)
+    {
+        alias arg = args[0];
+        @optmath @property ls()()
+        {
+            import mir.qualifier: lightScope;
+            return lightScope(arg);
+        }
+        alias allLightScope = AliasSeq!(ls, allLightScope!(args[1..$]));
+    }
+    else
+        alias allLightScope = AliasSeq!();
+}
 
 /++
 Presents an n-dimensional view over a range.

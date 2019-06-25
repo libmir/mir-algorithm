@@ -20,11 +20,12 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate;
 
-import std.traits: isInstanceOf;
-import mir.primitives;
 import mir.functional: RefTuple;
-import mir.ndslice.slice: Slice, Contiguous;
 import mir.math.common: optmath;
+import mir.ndslice.slice: Slice, Contiguous;
+import mir.primitives;
+import mir.qualifier;
+import std.traits: isInstanceOf;
 
 @optmath:
 
@@ -115,6 +116,12 @@ struct Interp1(Range, Interpolant)
     private Interpolant _interpolant;
     /// Current interpolation interval. $(RED For internal use.)
     private size_t _interval;
+
+    ///
+    auto lightScope()
+    {
+        return Interp1!(LightScopeOf!Range, LightScopeOf!Interpolant)(.lightScope(_range), .lightScope(_interpolant), _interval);
+    }
 
     static if (hasLength!Range)
     /// Length (optional)

@@ -45,7 +45,6 @@ Macros:
  */
 module mir.algorithm.iteration;
 
-import mir.primitives;
 import mir.functional: naryFun;
 import mir.internal.utility;
 import mir.math.common: optmath;
@@ -54,6 +53,7 @@ import mir.ndslice.internal;
 import mir.ndslice.iterator: FieldIterator, RetroIterator;
 import mir.ndslice.slice;
 import mir.primitives;
+import mir.qualifier;
 import std.meta;
 import std.range.primitives: isInputRange, isBidirectionalRange, isInfinite, isForwardRange, ElementType;
 import std.traits;
@@ -567,14 +567,20 @@ template frontOf(size_t N)
     }
 }
 
-template allFlattened(size_t N)
- if (N)
+package(mir) template allFlattened(args...)
 {
-    enum  i = N - 1;
-    static if (i)
-        enum allFlattened = .allFlattened!i ~ ("slices[" ~ i.stringof ~ "].flattened, ");
+    static if (args.length)
+    {
+        alias arg = args[0];
+        @optmath @property ls()()
+        {
+            import mir.ndslice.topology: flattened;
+            return flattened(arg);
+        }
+        alias allFlattened = AliasSeq!(ls, allFlattened!(args[1..$]));
+    }
     else
-        enum allFlattened = "slices[" ~ i.stringof ~ "].flattened, ";
+        alias allFlattened = AliasSeq!();
 }
 
 private template areAllContiguousSlices(Slices...)
@@ -707,7 +713,7 @@ template reduce(alias fun)
         static if (areAllContiguousSlices!Slices)
         {
             import mir.ndslice.topology: flattened;
-            return mixin(`.reduce!fun(seed, ` ~ allFlattened!(Slices.length) ~`)`);
+            return .reduce!fun(seed, allFlattened!(allLightScope!slices));
         }
         else
         {
@@ -717,7 +723,7 @@ template reduce(alias fun)
                 alias UT = Unqual!S;
             else
                 alias UT = S;
-            return reduceImpl!(fun, UT, Slices)(seed, slices);
+            return reduceImpl!(fun, UT, Slices)(seed, allLightScope!slices);
         }
     }
     else version(Mir_disable_inlining_in_reduce)
@@ -730,7 +736,7 @@ template reduce(alias fun)
         static if (areAllContiguousSlices!Slices)
         {
             import mir.ndslice.topology: flattened;
-            return mixin(`.reduce!fun(seed, ` ~ allFlattened!(Slices.length) ~`)`);
+            return .reduce!fun(seed, allFlattened!(allLightScope!slices));
         }
         else
         {
@@ -740,7 +746,7 @@ template reduce(alias fun)
                 alias UT = Unqual!S;
             else
                 alias UT = S;
-            return reduceImpl!(nonInlinedNaryFun!fun, UT, Slices)(seed, slices);
+            return reduceImpl!(nonInlinedNaryFun!fun, UT, Slices)(seed, allLightScope!slices);
         }
     }
     else
@@ -953,13 +959,13 @@ template each(alias fun)
         static if (areAllContiguousSlices!Slices)
         {
             import mir.ndslice.topology: flattened;
-            mixin(`.each!fun(` ~ allFlattened!(Slices.length) ~`);`);
+            .each!fun(allFlattened!(allLightScope!slices));
         }
         else
         {
             if (slices[0].anyEmpty)
                 return;
-            eachImpl!fun(slices);
+            eachImpl!fun(allLightScope!slices);
         }
     }
     else
@@ -1083,7 +1089,7 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
                 {
                     if (matrix.length) do
                     {
-                        eachImpl!fun(matrix.front!0, matrix.front!1);
+                        eachImpl!fun(matrix.lightScope.front!0, matrix.lightScope.front!1);
                         matrix.popFront!1;
                         matrix.popFront!0;
                         // hint for optimizer
@@ -1097,8 +1103,8 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
                     {
                         assert(!matrix.empty!0);
                         assert(!matrix.empty!1);
-                        auto l = matrix.front!1;
-                        auto u = matrix.front!0;
+                        auto l = matrix.lightScope.front!1;
+                        auto u = matrix.lightScope.front!0;
                         matrix.popFront!1;
                         matrix.popFront!0;
                         l.popFront;
@@ -1236,7 +1242,7 @@ template isSymmetric(alias fun = "a == b")
                 return false;
             if (matrix.length) do
             {
-                if (!allImpl!fun(matrix.front!0, matrix.front!1))
+                if (!allImpl!fun(matrix.lightScope.front!0, matrix.lightScope.front!1))
                 {
                     return false;
                 }
@@ -1280,7 +1286,7 @@ bool minPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref size_t[
         }
         else
         {
-            if (minPosImpl!(fun, Iterator, N - 1, kind)(backwardIndex[1 .. $], iterator, slice.front))
+            if (minPosImpl!(fun, LightScopeOf!Iterator, N - 1, kind)(backwardIndex[1 .. $], iterator, lightScope(slice).front))
             {
                 backwardIndex[0] = slice.length;
                 found = true;
@@ -1315,7 +1321,7 @@ bool[2] minmaxPosImpl(alias fun, Iterator, size_t N, SliceKind kind)(scope ref s
         }
         else
         {
-            auto r = minmaxPosImpl!(fun, Iterator, N - 1, kind)(backwardIndex[1 .. $], iterator, slice.front);
+            auto r = minmaxPosImpl!(fun, LightScopeOf!Iterator, N - 1, kind)(backwardIndex[1 .. $], iterator, lightScope(slice).front);
             if (r[0])
             {
                 backwardIndex[0][0] = slice.length;
@@ -1365,7 +1371,7 @@ template minmaxPos(alias pred = "a < b")
             size_t[2][N] ret;
             auto it = slice._iterator;
             Iterator[2] iterator = [it, it];
-            minmaxPosImpl!(pred, Iterator, N, kind)(ret, iterator, slice);
+            minmaxPosImpl!(pred, Iterator, N, kind)(ret, iterator, lightScope(slice));
             foreach (i; Iota!N)
             {
                 pret[0]._lengths[i] = ret[i][0];
@@ -1443,7 +1449,7 @@ template minmaxIndex(alias pred = "a < b")
             }
             auto it = slice._iterator;
             Iterator[2] iterator = [it, it];
-            minmaxPosImpl!(pred, Iterator, N, kind)(ret, iterator, slice);
+            minmaxPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret, iterator, lightScope(slice));
             foreach (i; Iota!N)
             {
                 pret[0][i] = slice._lengths[i] - ret[i][0];
@@ -1503,7 +1509,7 @@ template minPos(alias pred = "a < b")
         typeof(return) ret = { _iterator : slice._iterator };
         if (!slice.anyEmpty)
         {
-            minPosImpl!(pred, Iterator, N, kind)(ret._lengths, ret._iterator, slice);
+            minPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret._lengths, ret._iterator, lightScope(slice));
         }
         auto strides = slice.strides;
         foreach(i; Iota!(0, ret.S))
@@ -1575,7 +1581,7 @@ template minIndex(alias pred = "a < b")
         if (!slice.anyEmpty)
         {
             ret = slice.shape;
-            minPosImpl!(pred, Iterator, N, kind)(ret, slice._iterator, slice);
+            minPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret, slice._iterator, lightScope(slice));
             foreach (i; Iota!N)
                 ret[i] = slice._lengths[i] - ret[i];
         }
@@ -1727,7 +1733,7 @@ template findIndex(alias pred)
             slices.checkShapesMatch;
         size_t[DimensionCount!(Slices[0])] ret = -1;
         auto lengths = slices[0].shape;
-        if (!slices[0].anyEmpty && findImpl!pred(ret, slices))
+        if (!slices[0].anyEmpty && findImpl!pred(ret, allLightScope!slices))
             foreach (i; Iota!(DimensionCount!(Slices[0])))
                 ret[i] = lengths[i] - ret[i];
         static if (DimensionCount!(Slices[0]) > 1)
@@ -1824,7 +1830,7 @@ template find(alias pred)
             slices.checkShapesMatch;
         size_t[DimensionCount!(Slices[0])] ret;
         if (!slices[0].anyEmpty)
-            findImpl!pred(ret, slices);
+            findImpl!pred(ret, allLightScope!slices);
         static if (DimensionCount!(Slices[0]) > 1)
             return ret;
         else
@@ -1951,7 +1957,7 @@ size_t anyImpl(alias fun, Slices...)(scope Slices slices)
     {
         // pragma(msg, S);
         import mir.ndslice.topology: retro;
-        return .anyImpl!fun(slices[0].retro);
+        return .anyImpl!fun(lightScope(slices[0]).retro);
     }
     else
     {
@@ -2003,11 +2009,11 @@ template any(alias pred = "a")
         static if (areAllContiguousSlices!Slices)
         {
             import mir.ndslice.topology: flattened;
-            return mixin(`.any!pred(` ~ allFlattened!(Slices.length) ~`)`);
+            return .any!pred(allFlattened!(allLightScope!slices));
         }
         else
         {
-            return !slices[0].anyEmpty && anyImpl!pred(slices);
+            return !slices[0].anyEmpty && anyImpl!pred(allLightScope!slices);
         }
     }
     else
@@ -2104,14 +2110,14 @@ size_t allImpl(alias fun, Slices...)(scope Slices slices)
 {
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
     {
-        return BitSliceAccelerator!(Field, I)(slices[0]).all;
+        return BitSliceAccelerator!(LightScopeOf!Field, I)(lightScope(slices[0])).all;
     }
     else
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))), Field, I))
     {
         // pragma(msg, S);
         import mir.ndslice.topology: retro;
-        return .allImpl!fun(slices[0].retro);
+        return .allImpl!fun(lightScope(slices[0]).retro);
     }
     else
     {
@@ -2163,11 +2169,11 @@ template all(alias pred = "a")
         static if (areAllContiguousSlices!Slices)
         {
             import mir.ndslice.topology: flattened;
-            return mixin(`.all!pred(` ~ allFlattened!(Slices.length) ~`)`);
+            return .all!pred(allFlattened!(allLightScope!slices));
         }
         else
         {
-            return slices[0].anyEmpty || allImpl!pred(slices);
+            return slices[0].anyEmpty || allImpl!pred(allLightScope!slices);
         }
     }
     else
@@ -2298,13 +2304,13 @@ template count(alias fun)
         static if (areAllContiguousSlices!Slices)
         {
             import mir.ndslice.topology: flattened;
-            return mixin(`.count!fun(` ~ allFlattened!(Slices.length) ~`)`);
+            return .count!fun(allFlattened!(allLightScope!slices));
         }
         else
         {
             if (slices[0].anyEmpty)
                 return 0;
-            return countImpl!(fun, Slices)(slices);
+            return countImpl!(fun)(allLightScope!slices);
         }
     }
     else
@@ -2421,7 +2427,7 @@ template equal(alias pred = "a == b")
                         goto False;
             }
         }
-        return all!pred(slices);
+        return all!pred(allLightScope!slices);
         False: return false;
     }
     else
@@ -2459,6 +2465,21 @@ version(mir_test) unittest
 
     assert(!equal(sl1[0 .. $ - 1], sl1));
     assert(!equal(sl1[0 .. $, 0 .. $ - 1], sl1));
+}
+
+@safe pure nothrow @nogc
+version(mir_test) unittest
+{
+    import mir.algorithm.iteration: equal;
+    import mir.math.common: approxEqual;
+    import mir.ndslice.allocation: rcslice;
+    import mir.ndslice.topology: as, iota;
+    
+    auto x = 5.iota.as!double.rcslice;
+    auto y = x.rcslice;
+    
+    assert(equal(x, y));
+    assert(equal!approxEqual(x, y));
 }
 
 ptrdiff_t cmpImpl(alias pred, A, B)
@@ -2534,7 +2555,7 @@ template cmp(alias pred = "a < b")
         }
         if (b)
             return 1;
-        return cmpImpl!pred(sl1, sl2);
+        return cmpImpl!pred(lightScope(sl1), lightScope(sl2));
     }
     else
         alias cmp = .cmp!(naryFun!pred);
@@ -2608,7 +2629,7 @@ size_t countImpl(alias fun, Slices...)(scope Slices slices)
     {
         // pragma(msg, S);
         import mir.ndslice.topology: retro;
-        ret = .countImpl!fun(slices[0].retro);
+        ret = .countImpl!fun(lightScope(slices[0]).retro);
     }
     else
     do
@@ -2635,7 +2656,7 @@ private template selectBackOf(size_t N, string input)
     {
         enum i = N - 1;
         enum selectBackOf = selectBackOf!(i, input) ~
-                     "slices[" ~ i.stringof ~ "].selectBack!0(" ~ input ~ "), ";
+                     "lightScope(slices[" ~ i.stringof ~ "]).selectBack!0(" ~ input ~ "), ";
     }
 }
 
@@ -2647,7 +2668,7 @@ private template frontSelectFrontOf(size_t N, string input)
     {
         enum i = N - 1;
         enum frontSelectFrontOf = frontSelectFrontOf!(i, input) ~
-            "slices[" ~ i.stringof ~ "].front!0.selectFront!0(" ~ input ~ "), ";
+            "lightScope(slices[" ~ i.stringof ~ "]).front!0.selectFront!0(" ~ input ~ "), ";
     }
 }
 
@@ -3114,7 +3135,7 @@ private template frontSelectBackOf(size_t N, string input)
     {
         enum i = N - 1;
         enum frontSelectBackOf = frontSelectBackOf!(i, input) ~
-               "slices[" ~ i.stringof ~ "].front.selectBack!0(" ~ input ~ "), ";
+               "lightScope(slices[" ~ i.stringof ~ "]).front.selectBack!0(" ~ input ~ "), ";
     }
 }
 
@@ -3126,7 +3147,7 @@ private template selectFrontOf(size_t N, string input)
     {
         enum i = N - 1;
         enum selectFrontOf = selectFrontOf!(i, input) ~
-                    "slices[" ~ i.stringof ~ "].selectFront!0(" ~ input ~ "), ";
+                    "lightScope(slices[" ~ i.stringof ~ "]).selectFront!0(" ~ input ~ "), ";
     }
 }
 
