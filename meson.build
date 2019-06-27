@@ -55,6 +55,7 @@ mir_algorithm_src = [
     'source/mir/rc/context.d',
     'source/mir/rc/package.d',
     'source/mir/rc/ptr.d',
+    'source/mir/rc/slim_ptr.d',
     'source/mir/series.d',
     'source/mir/type_info.d',
 ]
