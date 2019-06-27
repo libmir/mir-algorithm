@@ -41,9 +41,19 @@ struct mir_series
         return _data;
     }
 
+    auto data() const noexcept
+    {
+        return mir::light_const(_data);
+    }
+
     mir_slice<IndexIterator> index() noexcept
     {
         return {{_data._lengths[0]}, _index};
+    }
+
+    auto index() const noexcept
+    {
+        return mir_slice<decltype(mir::light_const(_index))> {{_data._lengths[0]}, mir::light_const(_index)};
     }
 
     size_t size() const noexcept

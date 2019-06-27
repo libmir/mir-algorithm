@@ -306,6 +306,11 @@ struct mir_rci
 namespace mir
 {
     template <
+        typename T
+    >
+    mir_rci<const T> light_const(const mir_rci<T>& s) { return *(mir_rci<const T>*)&s; }
+
+    template <
         typename T,
         mir_size_t N,
         mir_slice_kind kind

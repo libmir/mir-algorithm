@@ -6,6 +6,7 @@
 #include "mir/series.h"
 #include "mir/rcarray.h"
 #include "mir/rcptr.h"
+#include "mir/slim_rcptr.h"
 #include "mir/ndslice.h"
 #include "mir/numeric.h"
 
@@ -18,6 +19,7 @@ namespace Space
 }
 
 void testSeries();
+void testSRCPtr();
 void testRCPtr();
 void testPM();
 void testFindRoot();
@@ -95,6 +97,7 @@ int main()
     al = a;
 
     testSeries();
+    testSRCPtr();
     testRCPtr();
     testPM();
     testStringView();
@@ -162,6 +165,18 @@ void testSeries()
 
 struct S { double d = 0; S() {}; S(double e) : d(e) {} };
 struct C : S { double j = 3; C(double d, double k) : S(d) { k = j; }; };
+
+void testSRCPtr()
+{
+    auto s = mir::make_slim_shared<S>(3.0);
+    auto e = mir::make_slim_shared<S>(5.0);
+    s = e;
+    (*e).d = 4;
+    assert(s->d == 4);
+    assert(s.getContext()->counter == 2);
+    s = nullptr;
+    assert(e.getContext()->counter == 1);
+}
 
 void testRCPtr()
 {
