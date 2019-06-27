@@ -313,6 +313,11 @@ struct mir_slice<Iterator, 1, mir_slice_kind::universal>
 namespace mir
 {
     template <
+        typename T
+    >
+    const T* light_const(const T* ptr) { return ptr; }
+
+    template <
         typename T,
         mir_size_t N,
         mir_slice_kind kind

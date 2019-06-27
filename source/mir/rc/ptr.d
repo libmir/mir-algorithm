@@ -1,5 +1,7 @@
 /++
 $(H1 Thread-safe reference-counted shared pointers).
+
+This implementation supports class and struct (`alias this`) polymorphism.
 +/
 module mir.rc.ptr;
 
@@ -18,6 +20,8 @@ version (D_Exceptions)
 
 /++
 Thread safe reference counting array.
+
+This implementation supports class and struct (`alias this`) polymorphism.
 
 `__xdtor` if any is used to destruct objects.
 
@@ -118,7 +122,7 @@ struct mir_rcptr(T)
 
     static if (!is(T == interface) && !__traits(isAbstractClass, T))
     {
-        private this(Args...)(auto ref Args args) @trusted
+        private this(Args...)(auto ref Args args)
         {
             () @trusted {
                 _context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
