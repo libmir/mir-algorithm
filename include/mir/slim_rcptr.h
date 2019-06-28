@@ -62,7 +62,7 @@ public:
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value>::type>
     mir_slim_rcptr& operator=(const mir_slim_rcptr<Q>& rhs) noexcept
     {
-        auto rhsv = rhs.template get<T>();
+        auto rhsv = rhs.get();
         if (_payload != rhsv)
         {
             if (_payload) mir_rc_decrease_counter(getContext());
@@ -73,40 +73,18 @@ public:
     }
 
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value>::type>
-    mir_slim_rcptr(const mir_slim_rcptr<Q>& rhs) noexcept : _payload(rhs.template get<T>())
+    mir_slim_rcptr(const mir_slim_rcptr<Q>& rhs) noexcept : _payload(rhs.get())
     {
         if (_payload) mir_rc_increase_counter(getContext());
     }
 
     template<class Q, class = typename std::enable_if<!std::is_same<Q, T>::value>::type>
-    mir_slim_rcptr(mir_slim_rcptr<Q>&& rhs) noexcept : _payload(rhs.template get<T>())
+    mir_slim_rcptr(mir_slim_rcptr<Q>&& rhs) noexcept : _payload(rhs.get())
     {
         rhs.__reset();
     }
 
     mir_slim_rcptr<const T> light_const() const noexcept { return *(mir_slim_rcptr<const T>*)this; }
-
-    template<class Q>
-    Q* get()
-    {
-        if (_payload == nullptr)
-            return nullptr;
-        auto ret = static_cast<Q*>(_payload);
-        if (ret != nullptr)
-            return ret;
-        throw std::bad_cast();
-    }
-
-    template<class Q>
-    Q* get() const
-    {
-        if (_payload == nullptr)
-            return nullptr;
-        auto ret = static_cast<Q*>(_payload);
-        if (ret != nullptr)
-            return ret;
-        throw std::bad_cast();
-    }
 
     mir_rc_context* getContext() noexcept { return _payload ? (mir_rc_context*)_payload - 1 : nullptr; }
     mir_slim_rcptr& operator=(std::nullptr_t) noexcept { if (_payload) mir_rc_decrease_counter(getContext()); __reset(); return *this; }
