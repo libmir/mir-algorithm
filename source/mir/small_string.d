@@ -6,7 +6,7 @@ The module contains self-contained generic small string implementaton.
 $(LREF SmallString) supports ASDF - Json Serialisation Library.
 
 See also `include/mir/small_series.h` for a C++ version of this type.
-Both C++ and D versions has the same ABI and name mangling.
+Both C++ and D implementations have the same ABI and name mangling.
 
 Copyright: Copyright © 2019, Symmetry Investments, Kaleidic Associates Advisory Limited
 Authors:   Ilya Yaroshenko
