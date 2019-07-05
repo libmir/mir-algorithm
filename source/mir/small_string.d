@@ -19,7 +19,7 @@ private static immutable errorMsg = "Cannot create SmallString: input string exc
 version(D_Exceptions)
     private static immutable exception = new Exception(errorMsg);
 
-extern(C++, mir):
+extern(C++, "mir"):
 
 /++
 Self-contained generic Small String implementaton.
