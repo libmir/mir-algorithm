@@ -49,29 +49,30 @@ extern(D):
 
 @safe pure @nogc:
 
-    ///
+    /// Constructor
     this(typeof(null))
     {
     }
 
-    ///
+    /// ditto
     this(scope const(char)[] str)
     {
         this.opAssign(str);
     }
 
-    ///
+    /// ditto
     this(uint n)(SmallString!n str)
     {
         this.opAssign(str);
     }
 
-    ///
+    /// ditto
     this(uint n)(ref scope const SmallString!n str)
     {
         this.opAssign(str);
     }
 
+    /// ditto
     this(Range)(auto ref Range str)
         if (isIterable!Range)
     {
@@ -87,13 +88,14 @@ extern(D):
         }
     }
 
+    /// `=` operator
     ref typeof(this) opAssign(typeof(null)) return
     {
         _data = '\0';
         return this;
     }
 
-    ///
+    /// ditto
     ref typeof(this) opAssign(scope const(char)[] str) return @trusted
     {
         if (str.length > _data.sizeof)
@@ -108,21 +110,21 @@ extern(D):
         return this;
     }
 
-    ///
+    /// ditto
     ref typeof(this) opAssign(ref scope const SmallString rhs) return
     {
         _data = rhs._data;
         return this;
     }
     
-    ///
+    /// ditto
     ref typeof(this) opAssign(SmallString rhs) return
     {
         _data = rhs._data;
         return this;
     }
 
-    ///
+    /// ditto
     ref typeof(this) opAssign(uint n)(ref scope const SmallString!n rhs) return
         if (n != maxLength)
     {
@@ -145,7 +147,7 @@ extern(D):
         }
     }
 
-    ///
+    /// ditto
     ref typeof(this) opAssign(uint n)(SmallString!n rhs) return
         if (n != maxLength)
     {
@@ -171,7 +173,13 @@ extern(D):
 
 scope nothrow:
 
-    ///
+    /++
+    Returns an scope common string.
+
+    The property is used as common string representation self alias.
+
+    The alias helps with `[]`, `[i]`, `[i .. j]`, `==`, and `!=` operations and implicit conversion to strings.
+    +/
     inout(char)[] asArray() inout @trusted return @property
     {
         size_t i;
@@ -192,7 +200,7 @@ const:
         return asArray;
     }
 
-    ///
+    /// Comparisons operator overloads
     int opCmp(ref scope const typeof(this) rhs) @trusted
     {
         if (__ctfe)
@@ -209,19 +217,22 @@ const:
 
     }
 
-    ///
+    /// ditto
     int opCmp(scope const(char)[] str)
     {
         import mir.algorithm.iteration: cmp;
         return cast(int) cmp(asArray, str);
     }
 
-    ///
+    /++
+    Checks if the string is empty (null).
+    +/
     bool opCast(T : bool)()
     {
         return cast(bool) _data[0] != 0;
     }
 
+    /// Hash implementation
     size_t toHash()
     {
         return hashOf(_data[]);
