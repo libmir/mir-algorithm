@@ -486,7 +486,7 @@ template transitionIndex(alias test = "a < b")
             v = value to test with. It is passed to second argument.
         +/
         size_t transitionIndex(Iterator, SliceKind kind, V)
-            (auto ref scope Slice!(Iterator, 1, kind) slice, auto ref scope const V v)
+            (auto ref Slice!(Iterator, 1, kind) slice, auto ref scope const V v)
         {
             size_t first = 0, count = slice.length;
             while (count > 0)
@@ -551,7 +551,7 @@ Params:
     r = The slice/array to index.
 Returns: Index slice/array.
 +/
-Slice!(I*) makeIndex(I = size_t, alias less = "a < b", Iterator, SliceKind kind)(scope Slice!(Iterator, 1, kind) r)
+Slice!(I*) makeIndex(I = size_t, alias less = "a < b", Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) r)
 {
     import mir.functional: naryFun;
     import mir.ndslice.allocation: slice;

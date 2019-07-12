@@ -503,13 +503,13 @@ scope const:
 Сount bits until set bit count is reached. Works with ndslices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
 Returns: bit count if set bit count is reached or `-1` otherwise.
 +/
-sizediff_t nBitsToCount(Field, I)(scope Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
+sizediff_t nBitsToCount(Field, I)(Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
 {
     return BitSliceAccelerator!(Field, I)(bitSlice).nBitsToCount(count);
 }
 
 ///ditto
-sizediff_t nBitsToCount(Field, I)(scope Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))) bitSlice, size_t count)
+sizediff_t nBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))) bitSlice, size_t count)
 {
     import mir.ndslice.topology: retro;
     return BitSliceAccelerator!(Field, I)(bitSlice.retro).retroNBitsToCount(count);
@@ -1071,7 +1071,7 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
         Params:
             matrix = Square matrix.
         +/
-        auto eachUploPair(Iterator, SliceKind kind)(scope Slice!(Iterator, 2, kind) matrix)
+        auto eachUploPair(Iterator, SliceKind kind)(Slice!(Iterator, 2, kind) matrix)
         in
         {
             assert(matrix.length!0 == matrix.length!1, "matrix must be square.");

@@ -348,7 +348,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     +/
     Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(yIterator, N, ykind) values,
+        Slice!(yIterator, N, ykind) values,
         SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
         in T valueOfBoundaryConditions = 0,
         )
@@ -367,7 +367,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     +/
     Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(yIterator, N, ykind) values,
+        Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T boundaries,
         )
     {
@@ -386,7 +386,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     +/
     Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(yIterator, N, ykind) values,
+        Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T rBoundary,
         SplineBoundaryCondition!T lBoundary,
         )
@@ -492,7 +492,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     Assigns function values to the internal memory.
     $(RED For internal use.)
     +/
-    void _values(SliceKind kind, Iterator)(scope Slice!(Iterator, N, kind) values) scope @property @trusted
+    void _values(SliceKind kind, Iterator)(Slice!(Iterator, N, kind) values) scope @property @trusted
     {
         assert(values.shape == _data.shape, "'values' should have the same shape as the .gridShape");
         pickDataSubslice(_data, 0)[] = values;
@@ -772,10 +772,10 @@ Constraints:
     `temp` must have length greater or equal to points less minus one.
 +/
 void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
-    scope Slice!(IP, 1, gkind) points,
-    scope Slice!(IV, 1, vkind) values,
-    scope Slice!(IS, 1, skind) slopes,
-    scope Slice!(T*) temp,
+    Slice!(IP, 1, gkind) points,
+    Slice!(IV, 1, vkind) values,
+    Slice!(IS, 1, skind) slopes,
+    Slice!(T*) temp,
     SplineBoundaryCondition!F lbc,
     SplineBoundaryCondition!F rbc,
     ) @trusted

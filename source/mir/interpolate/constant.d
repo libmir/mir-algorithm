@@ -82,7 +82,7 @@ template constant(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIt
     +/
     Constant!(T, N, GridIterators) constant(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(yIterator, 1, ykind) values
+        Slice!(yIterator, 1, ykind) values
         ) pure @trusted
     {
         static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 

@@ -46,7 +46,7 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
     +/
     @fmamath Spline!(T, N, GridIterators) pchip(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(yIterator, N, ykind) values) @safe
+        Slice!(yIterator, N, ykind) values) @safe
     {
         static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         auto ret = Spline!T(grid);
@@ -133,9 +133,9 @@ Constraints:
     `points`, `values`, and `slopes` must have the same length >= 3
 +/
 void pchipSlopes(IG, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
-    scope Slice!(IG, 1, gkind) points,
-    scope Slice!(IV, 1, vkind) values,
-    scope Slice!(IS, 1, skind) slopes) @trusted
+    Slice!(IG, 1, gkind) points,
+    Slice!(IV, 1, vkind) values,
+    Slice!(IS, 1, skind) slopes) @trusted
 {
     if (points.length < 3)
         assert(0);

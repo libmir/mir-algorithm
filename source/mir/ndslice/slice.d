@@ -2518,7 +2518,7 @@ public:
     static if (isMutable!DeepElement)
     {
         private void opIndexOpAssignImplSlice(string op, RIterator, size_t RN, SliceKind rkind)
-            (scope Slice!(RIterator, RN, rkind) value) scope
+            (Slice!(RIterator, RN, rkind) value) scope
         {
             static if (N > 1 && RN == N && kind == Contiguous && rkind == Contiguous)
             {
@@ -2574,7 +2574,7 @@ public:
         Assignment of a value of `Slice` type to a $(B fully defined slice).
         +/
         void opIndexAssign(RIterator, size_t RN, SliceKind rkind, Slices...)
-            (scope Slice!(RIterator, RN, rkind) value, Slices slices) scope return
+            (Slice!(RIterator, RN, rkind) value, Slices slices) scope return
             if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
             auto sl = this.lightScope.opIndex(slices);
@@ -3464,8 +3464,8 @@ private bool _checkAssignLengths(
     size_t LN, size_t RN,
     SliceKind lkind, SliceKind rkind,
     )
-    (scope Slice!(LIterator, LN, lkind) ls,
-     scope Slice!(RIterator, RN, rkind) rs)
+    (Slice!(LIterator, LN, lkind) ls,
+     Slice!(RIterator, RN, rkind) rs)
 {
     static if (isInstanceOf!(SliceIterator, LIterator))
     {
@@ -3791,4 +3791,14 @@ version(mir_test) pure nothrow unittest
     assert(constvalues[0][0] == 5);
     Slice!(LightImmutableOf!(double*), 2, Universal) immvalues = (cast(immutable)df).values;
     assert(immvalues[0][0] == 5);
+}
+
+version(mir_test) @safe unittest
+{
+    import mir.ndslice.allocation;
+    auto a = rcslice!double([2, 3], 0);
+    auto b = rcslice!double([2, 3], 0);
+    a[1, 2] = 3;
+    b[] = a;
+    assert(a == b);
 }
