@@ -76,7 +76,7 @@ Lagrange!(T, maxDerivative) lagrange(uint maxDerivative = 0, T, X)(scope const T
 
 /// ditto
 Lagrange!(Unqual!(Slice!(YIterator, 1, ykind).DeepElement), maxDerivative)
-    lagrange(uint maxDerivative = 0, XIterator, SliceKind xkind, YIterator, SliceKind ykind)(scope Slice!(XIterator, 1, xkind) x, scope Slice!(YIterator, 1, ykind) y) @trusted
+    lagrange(uint maxDerivative = 0, XIterator, SliceKind xkind, YIterator, SliceKind ykind)(Slice!(XIterator, 1, xkind) x, Slice!(YIterator, 1, ykind) y) @trusted
     if (maxDerivative < 16)
 {
     alias T = Unqual!(Slice!(YIterator, 1, ykind).DeepElement);
@@ -188,7 +188,7 @@ scope const:
             const idx = tuple[0];
             const grid = _grid[].sliced;
             const inversedBarycentricWeights = _inversedBarycentricWeights[].sliced;
-            scope Slice!(const(T)*)[derivative + 1] values;
+            Slice!(const(T)*)[derivative + 1] values;
             foreach (i; Iota!(derivative + 1))
                 values[i] = _normalizedValues[i][].sliced;
             const T[2] pd = [
@@ -252,7 +252,7 @@ scope const:
 +/
 pragma(inline, false)
 @nogc
-RCArray!(immutable T) inversedBarycentricWeights(T)(scope Slice!(const(T)*) x)
+RCArray!(immutable T) inversedBarycentricWeights(T)(Slice!(const(T)*) x)
     if (isFloatingPoint!T)
 {
     const n = x.length;

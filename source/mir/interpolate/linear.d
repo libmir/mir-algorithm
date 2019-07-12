@@ -58,7 +58,7 @@ template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
     +/
     Linear!(T, N, GridIterators) linear(yIterator, SliceKind ykind)(
         GridVectors grid,
-        scope Slice!(yIterator, N, ykind) values,
+        Slice!(yIterator, N, ykind) values,
         ) pure @trusted
     {
         static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
