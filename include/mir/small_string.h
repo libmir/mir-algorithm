@@ -23,7 +23,7 @@ namespace mir
 
         SmallString(const std::string& str) : SmallString((std::string_view)str) {}
         SmallString(const char* str) : SmallString(std::string_view(str)) {}
-        std::string_view str() const noexcept { return std::string_view(_data, _data[maxLength] ? maxLength : std::strlen(_data)); }
+        std::string_view str() const noexcept { return std::string_view(_data, _data[maxLength - 1] ? maxLength : std::strlen(_data)); }
         operator std::string_view() const noexcept { return str(); }
         operator bool() const noexcept { return _data[0] != 0; }
         bool operator !() const noexcept { return _data[0] == 0; }
