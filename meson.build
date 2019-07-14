@@ -1,21 +1,11 @@
 project('mir-algorithm', 'cpp', 'd', version : '3.4.0', license: 'BSL-1.0',
         default_options : ['cpp_std=c++1z'])
 
+subprojects = ['mir-core']
 
-add_project_arguments([
-    '-dip25',
-    '-dip1000',
-    '-dip1008',
-    ], language: 'd')
+has_cpp_headers = true
 
-
-mir_algorithm_dir = include_directories('source/', 'include/')
-
-mir_core_dep = dependency('mir-core', fallback : ['mir-core', 'mir_core_dep'])
-
-required_deps = [mir_core_dep]
-
-mir_algorithm_src = [
+sources = [
     'source/mir/algorithm/iteration.d',
     'source/mir/algorithm/setops.d',
     'source/mir/array/allocation.d',
@@ -61,9 +51,28 @@ mir_algorithm_src = [
     'source/mir/type_info.d',
 ]
 
+add_project_arguments([
+    '-preview=dip1000',
+    '-preview=dip1008',
+    ], language: 'd')
+
+required_deps = []
+
+foreach p : subprojects 
+    required_deps += dependency(p, fallback : [p, p.underscorify() + '_dep'])
+endforeach
+
+directories = ['source']
+
+if has_cpp_headers
+    directories += 'include'
+endif
+
+directories = include_directories(directories)
+
 mir_algorithm_lib = library(meson.project_name(),
-    mir_algorithm_src,
-    include_directories: mir_algorithm_dir,
+    sources,
+    include_directories: directories,
     install: true,
     version: meson.project_version(),
     dependencies: required_deps,
@@ -71,14 +80,16 @@ mir_algorithm_lib = library(meson.project_name(),
 
 mir_algorithm_dep = declare_dependency(
     link_with: [mir_algorithm_lib],
-    include_directories: mir_algorithm_dir,
+    include_directories: directories,
     dependencies: required_deps,
 )
 
-install_subdir('include/',
-    strip_directory :true,
-    install_dir: 'include/',
-)
+if has_cpp_headers
+    install_subdir('include/',
+        strip_directory :true,
+        install_dir: 'include/',
+    )
+endif
 
 install_subdir('source/',
     strip_directory : true,
@@ -86,23 +97,22 @@ install_subdir('source/',
 )
 
 import('pkgconfig').generate(mir_algorithm_lib,
-    description: 'Mir Algorithm - Dlang Core Library for Math and Finance.',
+    description: 'Mir Algorithm - Dlang Core Library.',
     subdirs: 'd/' + meson.project_name(),
 )
 
 if get_option('with_test')
 
-    mir_algorithm_test_exe = executable(meson.project_name() + '-test',
-        mir_algorithm_src,
-        include_directories: mir_algorithm_dir,
+    test_exe = executable(meson.project_name() + '-test',
+        sources,
+        include_directories: directories,
         d_unittest: true,
         d_module_versions: ['mir_test'],
         link_args: '-main',
-        # d_args: ['-d-debug'],
         dependencies: required_deps,
     )
 
-    test(meson.project_name() + '-test', mir_algorithm_test_exe)
+    test(meson.project_name() + '-test', test_exe)
 
     subdir('cpp_example')
 

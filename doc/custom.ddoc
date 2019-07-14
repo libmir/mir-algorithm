@@ -95,7 +95,7 @@ NAVIGATION=
 $(DIVID cssmenu, $(UL
     $(MENU https://github.com/libmir/mir-algorithm, Github)
     $(MENU https://github.com/libmir/mir-algorithm/issues, Issues)
-    $(MENU https://gitter.im/libmir/public , Chat)
+    $(MENU https://forum.dlang.org/group/learn , Forum)
     $(MENU_W_SUBMENU_LINK $(ROOT_DIR)mir.html, Mir Projects)
       $(MIR_PROJECTS)
     $(MENU https://dlang.org, Dlang)
@@ -104,11 +104,16 @@ _=
 
 MIR_PROJECTS=
 $(SUBMENU_MANUAL
-    $(SUBMENU_LINK http://docs.mir.dlang.io, Mir)
     $(SUBMENU_LINK http://mir-algorithm.libmir.org, Mir Algorithm)
-    $(SUBMENU_LINK http://docs.cpuid.dlang.io, CPUID)
-    $(SUBMENU_LINK http://docs.glas.dlang.io, GLAS)
-    $(SUBMENU_LINK http://docs.random.dlang.io, Random Numbers Generators)
+    $(SUBMENU_LINK http://mir-core.libmir.org, Mir Core)
+    $(SUBMENU_LINK http://mir-runtime.libmir.org, Mir Runtime)
+    $(SUBMENU_LINK http://mir-random.libmir.org, Mir Random)
+    $(SUBMENU_LINK http://mir-optim.libmir.org, Mir Optim)
+    $(SUBMENU_LINK http://mir-cpuid.libmir.org, Mir CPUID)
+    $(SUBMENU_LINK http://mir-blas.libmir.org, Mir BLAS)
+    $(SUBMENU_LINK http://mir-lapacl.libmir.org, Mir LAPACK)
+    $(SUBMENU_LINK http://mir.libmir.org, Mir)
+    $(SUBMENU_LINK http://asdf.libmir.org, ASDF - JSON library)
 )
 _=
 
