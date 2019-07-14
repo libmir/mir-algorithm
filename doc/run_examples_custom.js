@@ -11,7 +11,7 @@ function wrapIntoMain(code) {
     var currentPackage = $('body')[0].id;
     // BUMP mir-algorithm image here: https://github.com/dlang-tour/core-exec/blob/master/Dockerfile
     // run.dlang.io frontend: https://github.com/dlang-tour/core/blob/master/public/static/js/tour-controller.js#L398
-    var codeOut = '/+dub.sdl:\ndependency "mir-algorithm" version="~>'+currentVersion+'"\n+/\n';
+    var codeOut = '/+dub.sdl:\ndependency "'+currentLibrary+'" version="~>'+currentVersion+'"\n+/\n';
 
     // dynamically wrap into main if needed
     if (code.indexOf("void main") >= 0) {
