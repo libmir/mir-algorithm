@@ -142,7 +142,7 @@ struct mir_rcarray(T)
             _payload = cast(T*)(ctx + 1);
             ar = cast(Unqual!T[])_payload[0 .. length];
         } ();
-        if (initialize || hasElaborateAssign!T)
+        if (initialize || hasElaborateAssign!(Unqual!T))
         {
             import mir.conv: uninitializedFillDefault;
             uninitializedFillDefault(ar);
@@ -295,11 +295,10 @@ template rcarray(T)
         {
             auto ret = RCArray!T(range.length, false);
             import mir.conv: emplaceRef;
-            static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
             size_t i;
             foreach(ref e; range)
                 ret[i++].emplaceRef!T(e);
-            return move(ret);
+            return ret;
         }
     }
 
@@ -322,7 +321,7 @@ template rcarray(T)
         if (hasIndirections!V)
     {
         auto ret = mir_rcarray!T(values.length, false, deallocate);
-        static if (!hasElaborateAssign!T && is(Unqual!V == Unqual!T))
+        static if (!hasElaborateAssign!(Unqual!T) && is(Unqual!V == Unqual!T))
         {
             ()@trusted {
                 import core.stdc.string: memcpy;
@@ -336,8 +335,7 @@ template rcarray(T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        return move(ret);
+        return ret;
     }
 
     /// ditto
@@ -345,7 +343,7 @@ template rcarray(T)
         if (!hasIndirections!V)
     {
         auto ret = mir_rcarray!T(values.length, false);
-        static if (!hasElaborateAssign!T && is(Unqual!V == Unqual!T))
+        static if (!hasElaborateAssign!(Unqual!T) && is(Unqual!V == Unqual!T))
         {
             ()@trusted {
                 import core.stdc.string: memcpy;
@@ -359,8 +357,7 @@ template rcarray(T)
             foreach (i, ref e; values)
                 lhs[i].emplaceRef!T(e);
         }
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        return move(ret);
+        return ret;
     }
 }
 
@@ -399,17 +396,15 @@ struct mir_rci(T)
     ///
     this(RCArray!T array)
     {
-        import mir.utility: swap;
         this._iterator = (()@trusted => array.ptr)();
-        swap(this._array, array);
+        this._array.proxySwap(array);
     }
 
     ///
     this(T* _iterator, RCArray!T array)
     {
-        import mir.utility: swap;
         this._iterator = _iterator;
-        swap(this._array, array);
+        this._array.proxySwap(array);
     }
 
     ///
