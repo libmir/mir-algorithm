@@ -3740,3 +3740,13 @@ version(none)
     const(int)[] var = [0, 1, 1, 2];
     assert(var.uniq.equal([0, 1, 2]));
 }
+
+@safe version(mir_test) unittest {
+    import mir.ndslice.allocation;
+    import mir.math.common: approxEqual;
+    auto x = rcslice!double(2);
+    auto y = rcslice!double(2);
+    x[] = [2, 3];
+    y[] = [2, 3];
+    assert(equal!approxEqual(x,y));  
+}
