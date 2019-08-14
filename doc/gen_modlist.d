@@ -5,7 +5,7 @@
  * License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors: $(WEB code.dawg.eu, Martin Nowak)
  */
-import std.algorithm, std.file, std.path, std.stdio, std.string, std.range;
+import std.algorithm, std.file, std.path, std.stdio, std.string, std.range, std.exception;
 
 struct Tree
 {
@@ -73,7 +73,7 @@ struct Tree
     ref Tree opIndex(string part)
     {
         auto tail = leaves.find!((tr, pkg) => tr.name == pkg)(part);
-        assert(!tail.empty, part);
+        enforce(!tail.empty, part);
         return tail.front;
     }
 

@@ -3022,7 +3022,7 @@ public:
             import mir.ndslice.allocation : slice;
             import mir.ndslice.topology : blocks;
             auto a = slice!int(4, 4);
-            a.blocks(2, 2)[].opIndexOpAssign!"+"([[0, 1], [2, 3]]);
+            a.blocks(2, 2)[] += [[0, 1], [2, 3]];
 
             assert(a ==
                     [[0, 0, 1, 1],

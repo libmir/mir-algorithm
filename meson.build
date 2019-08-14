@@ -1,55 +1,62 @@
 project('mir-algorithm', 'cpp', 'd', version : '3.4.0', license: 'BSL-1.0',
         default_options : ['cpp_std=c++1z'])
 
+description = 'Mir Algorithm - Dlang Core Library'
+
 subprojects = ['mir-core']
 
 has_cpp_headers = true
 
-sources = [
-    'source/mir/algorithm/iteration.d',
-    'source/mir/algorithm/setops.d',
-    'source/mir/array/allocation.d',
-    'source/mir/combinatorics/package.d',
-    'source/mir/container/binaryheap.d',
-    'source/mir/cpp_export/numeric.d',
-    'source/mir/graph/package.d',
-    'source/mir/graph/tarjan.d',
-    'source/mir/interpolate/constant.d',
-    'source/mir/interpolate/linear.d',
-    'source/mir/interpolate/package.d',
-    'source/mir/interpolate/pchip.d',
-    'source/mir/interpolate/spline.d',
-    'source/mir/interpolate/utility.d',
-    'source/mir/math/func/expdigamma.d',
-    'source/mir/math/numeric.d',
-    'source/mir/math/sum.d',
-    'source/mir/ndslice/allocation.d',
-    'source/mir/ndslice/chunks.d',
-    'source/mir/ndslice/concatenation.d',
-    'source/mir/ndslice/connect/cpython.d',
-    'source/mir/ndslice/dynamic.d',
-    'source/mir/ndslice/field.d',
-    'source/mir/ndslice/fuse.d',
-    'source/mir/ndslice/internal.d',
-    'source/mir/ndslice/iterator.d',
-    'source/mir/ndslice/mutation.d',
-    'source/mir/ndslice/ndfield.d',
-    'source/mir/ndslice/package.d',
-    'source/mir/ndslice/slice.d',
-    'source/mir/ndslice/sorting.d',
-    'source/mir/ndslice/topology.d',
-    'source/mir/ndslice/traits.d',
-    'source/mir/numeric.d',
-    'source/mir/range.d',
-    'source/mir/rc/array.d',
-    'source/mir/rc/context.d',
-    'source/mir/rc/package.d',
-    'source/mir/rc/ptr.d',
-    'source/mir/rc/slim_ptr.d',
-    'source/mir/series.d',
-    'source/mir/small_string.d',
-    'source/mir/type_info.d',
+sources_list = [
+    'mir/algorithm/iteration',
+    'mir/algorithm/setops',
+    'mir/array/allocation',
+    'mir/combinatorics/package',
+    'mir/container/binaryheap',
+    'mir/cpp_export/numeric',
+    'mir/graph/package',
+    'mir/graph/tarjan',
+    'mir/interpolate/constant',
+    'mir/interpolate/linear',
+    'mir/interpolate/package',
+    'mir/interpolate/pchip',
+    'mir/interpolate/spline',
+    'mir/interpolate/utility',
+    'mir/math/func/expdigamma',
+    'mir/math/numeric',
+    'mir/math/sum',
+    'mir/ndslice/allocation',
+    'mir/ndslice/chunks',
+    'mir/ndslice/concatenation',
+    'mir/ndslice/connect/cpython',
+    'mir/ndslice/dynamic',
+    'mir/ndslice/field',
+    'mir/ndslice/fuse',
+    'mir/ndslice/internal',
+    'mir/ndslice/iterator',
+    'mir/ndslice/mutation',
+    'mir/ndslice/ndfield',
+    'mir/ndslice/package',
+    'mir/ndslice/slice',
+    'mir/ndslice/sorting',
+    'mir/ndslice/topology',
+    'mir/ndslice/traits',
+    'mir/numeric',
+    'mir/range',
+    'mir/rc/array',
+    'mir/rc/context',
+    'mir/rc/package',
+    'mir/rc/ptr',
+    'mir/rc/slim_ptr',
+    'mir/series',
+    'mir/small_string',
+    'mir/type_info',
 ]
+
+sources = []
+foreach s : sources_list
+    sources += 'source/' + s + '.d'
+endforeach
 
 add_project_arguments([
     '-preview=dip1000',
@@ -97,7 +104,7 @@ install_subdir('source/',
 )
 
 import('pkgconfig').generate(mir_algorithm_lib,
-    description: 'Mir Algorithm - Dlang Core Library.',
+    description: description,
     subdirs: 'd/' + meson.project_name(),
 )
 
@@ -117,3 +124,108 @@ if get_option('with_test')
     subdir('cpp_example')
 
 endif
+
+tags = run_command('python3', 'stable_and_latest_tags.py').stdout().split()
+stable_tag = tags[0]
+latest_tag = tags[1]
+
+docs_config =  latest_tag + '.ddoc'
+latest_file = custom_target('latest_target',
+            build_by_default: true,
+            input : [],
+            output : docs_config,
+            capture: true,
+            command: ['echo',
+                '\nLATEST=' + latest_tag +
+                '\nLATEST_STABLE=' + stable_tag +
+                '\nPROJECT=' + meson.project_name() +
+                '\nMETA_DESCRIPTION=' + description
+            ])
+
+d_compiler = meson.get_compiler('d').get_id()
+if d_compiler == 'gcc'
+    d_compiler = 'gdmd'
+elif d_compiler == 'llvm'
+    d_compiler = 'ldmd2'
+endif
+
+root = meson.source_root()
+
+menu = custom_target('menu_target',
+            build_by_default: true,
+            input : files('docgen/gen_modlist.d'),
+            output : 'mir.ddoc',
+            capture: true,
+            command: [d_compiler, '-run', '@INPUT0@', join_paths(root, 'source')])
+
+includes = ['-I' + join_paths(root, 'source')]
+foreach sub_name : subprojects
+    includes += '-I' + join_paths(root, 'subprojects', sub_name, 'source')
+endforeach
+
+extra_args = [d_compiler, '-w', '-c', '-o-',
+        docs_config,
+        join_paths(root, 'docgen/macros.ddoc'),
+        join_paths(root, 'docgen/html.ddoc'),
+        join_paths(root, 'docgen/dlang.org.ddoc'),
+        join_paths(root, 'docgen/std.ddoc'),
+        join_paths(root, 'docgen/custom.ddoc'),
+        includes,
+        '-Df@OUTPUT@', '@INPUT@']
+
+documented_unittests = custom_target('documented_unittests',
+            output: 'documented_unittests',
+            command: [
+                'dub',
+                'run',
+                'dtools:tests_extractor',
+                '--build=release',
+                '--',
+                '-i',
+                join_paths(root, 'source'),
+                '-o',
+                '@OUTPUT@'
+            ])
+
+i = 0
+foreach source : sources_list
+
+    test_exe = executable(source.underscorify()+'-doc',
+        sources[i],
+        include_directories: directories,
+        d_unittest: true,
+        d_module_versions: ['mir_test'],
+        link_args: '-main',
+        dependencies: mir_algorithm_dep,
+    )
+
+    test(source.underscorify() + '-doc-test', test_exe)
+
+    i += 1
+endforeach
+
+htmls = []
+
+foreach f : sources_list
+    s = []
+    foreach e : f.split('/')
+        if e != 'package'
+            s += e
+        endif
+    endforeach
+    htmls += '_'.join(s) + '.html'
+endforeach
+
+htmls = ['index.html'] + htmls
+sources = ['index.d'] + sources
+
+i = 0
+foreach source : sources
+    custom_target('doc_target_' + i.to_string(),
+            build_by_default: true,
+            input : source,
+            output : htmls[i],
+            depends: [menu, latest_file],
+            command: extra_args)
+    i += 1
+endforeach
