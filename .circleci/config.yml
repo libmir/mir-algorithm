@@ -9,7 +9,7 @@ jobs:
       - image: libmir/circle-dlang
     steps:
       - checkout
-      - run: cp /docgen docgen && cp//web web
+      - run: cp  /docgen docgen && cp /web web
       - run: meson build
       - run: ninja -C build test
       - mirci/persist_docs:
