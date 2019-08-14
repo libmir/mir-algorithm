@@ -125,7 +125,7 @@ if get_option('with_test')
 
 endif
 
-tags = run_command('python3', 'stable_and_latest_tags.py').stdout().split()
+tags = run_command('python3', 'docgen/stable_and_latest_tags.py').stdout().split()
 stable_tag = tags[0]
 latest_tag = tags[1]
 
