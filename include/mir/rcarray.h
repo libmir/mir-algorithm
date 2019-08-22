@@ -159,6 +159,8 @@ public:
     size_t empty() const noexcept { return size() == 0; }
     T& at(size_t index) { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
     const T& at(size_t index) const { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
+    T& backward(size_t index) { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[size() - 1 - index]; }
+    const T& backward(size_t index) const { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[size() - 1 - index]; }
     T& operator[](size_t index) { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
     const T& operator[](size_t index) const { if (index >= this->size()) throw std::out_of_range("mir_rcarray: out of range"); return _payload[index]; }
     T* data() noexcept { return _payload; }

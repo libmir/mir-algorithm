@@ -48,6 +48,10 @@ int main()
     assert(al[1] == 6);
     assert(al[2] == 4);
 
+    assert(al.backward(2) == 5);
+    assert(al.backward(1) == 6);
+    assert(al.backward(0) == 4);
+
     assert(av[0] == 5);
     assert(av[1] == 6);
     assert(av[2] == 4);
