@@ -171,6 +171,35 @@ extern(D):
         return this;
     }
 
+    ///
+    ref typeof(this) append(scope const(char)[] str) @trusted
+    {
+        auto length = asArray.length;
+        if (length + str.length > maxLength)
+            throw exception;
+        auto p = _data.ptr + length;
+        if (__ctfe)
+            p[0 .. str.length] = str;
+        else
+            memcpy(p, str.ptr, str.length);
+        return this;
+    }
+
+    /// ditto
+    alias opOpAssign(string op : "~") = append;
+
+    ///
+    SmallString concat(scope const(char)[] str) scope const
+    {
+        SmallString c = this;
+        c.append(str);
+        return c; 
+    }
+
+    /// ditto
+    alias opBinary(string op : "~") = concat;
+
+
 scope nothrow:
 
     /++
@@ -240,7 +269,7 @@ const:
 }
 
 ///
-@safe pure version(mir_test) unittest
+@safe pure @nogc version(mir_test) unittest
 {
     SmallString!16 s16;
     assert(!s16);
@@ -268,4 +297,14 @@ const:
 
     assert(s8.opCmp("Hey") < 0);
     assert(s8.opCmp(s8) == 0);
+}
+
+/// Concatenation
+@safe pure @nogc version(mir_test) unittest
+{
+    auto a = SmallString!16("asdf");
+    a ~= " ";
+    auto b = a ~ "qwerty";
+    static assert(is(typeof(b) == SmallString!16));
+    assert(b == "asdf qwerty");
 }
