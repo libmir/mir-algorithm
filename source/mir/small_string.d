@@ -172,6 +172,16 @@ extern(D):
     }
 
     ///
+    ref typeof(this) append(char c) @trusted
+    {
+        auto length = asArray.length;
+        if (length == maxLength)
+            throw exception;
+        _data[length] = c;
+        return this;
+    }
+
+    ///
     ref typeof(this) append(scope const(char)[] str) @trusted
     {
         auto length = asArray.length;
@@ -184,6 +194,9 @@ extern(D):
             memcpy(p, str.ptr, str.length);
         return this;
     }
+
+    /// ditto
+    alias put = append;
 
     /// ditto
     alias opOpAssign(string op : "~") = append;
@@ -307,4 +320,7 @@ const:
     auto b = a ~ "qwerty";
     static assert(is(typeof(b) == SmallString!16));
     assert(b == "asdf qwerty");
+    b.put('!');
+    b.put("!");
+    assert(b == "asdf qwerty!!");
 }
