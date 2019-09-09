@@ -162,10 +162,18 @@ struct SmallArray(T, uint maxLength)
     }
 
     ///
+    ref typeof(this) append(T elem)
+    {
+        if (_length == maxLength)
+            throw exception;
+        _data[_length++] = elem;
+        return this;
+    }
+
+    ///
     ref typeof(this) append(V[] array)
     {
-        auto length = asArray.length;
-        if (length + array.length > maxLength)
+        if (_length + array.length > maxLength)
             throw exception;
         _data[_length .. _length + array.length] = array;
         _length += array.length;
@@ -269,6 +277,7 @@ const:
     auto b = a ~ "qwerty";
     static assert(is(typeof(b) == SmallArray!(char, 16)));
     assert(b == "asdf qwerty");
+    b.put('!');
     b.put("!");
-    assert(b == "asdf qwerty!");
+    assert(b == "asdf qwerty!!");
 }
