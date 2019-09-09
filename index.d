@@ -36,6 +36,7 @@ $(BOOKTABLE ,
     $(LEADINGROW Interconnection with other languages)
     $(TR $(TDNW $(MREF mir,ndslice,connect,cpython)) $(TD Utilities for $(HTTPS docs.python.org/3/c-api/buffer.html, Python Buffer Protocol)))
     $(LEADINGROW Accessories)
+    $(TR $(TDNW $(MREF mir,small_array)) Generic Small Arrays)
     $(TR $(TDNW $(MREF mir,small_string)) Generic Small Strings)
     $(TR $(TDNW $(MREF mir,array,allocation)) $(TD `std.array` reworked for Mir))
     $(TR $(TDNW $(MREF mir,range)) $(TD Ranges))

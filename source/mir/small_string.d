@@ -186,6 +186,9 @@ extern(D):
     }
 
     /// ditto
+    alias put = append;
+
+    /// ditto
     alias opOpAssign(string op : "~") = append;
 
     ///
@@ -307,4 +310,6 @@ const:
     auto b = a ~ "qwerty";
     static assert(is(typeof(b) == SmallString!16));
     assert(b == "asdf qwerty");
+    b.put("!");
+    assert(b == "asdf qwerty!");
 }
