@@ -261,20 +261,20 @@ RCArray!V rcarray(T = void, V)(scope V[] values...)
 RCArray!V rcarray(T = void, V)(V[] values, bool deallocate)
     if (is(T == void) && hasIndirections!V)
 {
-    return .rcarray!V(values);
+    return .rcarray!V(values, deallocate);
 }
 
 /// ditto
 RCArray!V rcarray(T = void, V)(scope V[] values, bool deallocate)
     if (is(T == void) && !hasIndirections!V)
 {
-    return .rcarray!V(values);
+    return .rcarray!V(values, deallocate);
 }
 
 /++
 +/
 template rcarray(T)
-    if(!is(T : E[], E) && !is(T == void))
+    if(!is(T == E[], E) && !is(T == void))
 {
     ///
     auto rcarray(Range)(ref Range range)
@@ -675,4 +675,14 @@ version(mir_test)
 
     S[1] d = [S(1)];
     auto r = rcarray(d);
+}
+
+version(mir_test)
+unittest
+{
+    import mir.small_string;
+    alias S = SmallString!32u;
+    auto ars = [S("123"), S("422")];
+    alias R = mir_rcarray!S;
+    auto rc = ars.rcarray!S;
 }
