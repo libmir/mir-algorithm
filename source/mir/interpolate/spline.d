@@ -60,6 +60,12 @@ import mir.ndslice.traits;
         11.94324989,  16.45633939,  17.59185094,   4.86340188,
         17.8565408 ,   2.81856494]));
 
+    /// set both boundary second derivatives to 3
+    interpolant = spline!double(x, y, SplineBoundaryType.secondDerivative, 3);
+    assert(xs.vmap(interpolant).all!approxEqual([
+        9.94191781,  5.4223652 , 10.69666392,  0.1971149 , 11.93868415,
+        16.46378847, 17.56521661,  4.97656997, 17.39645585, 4.54316446]));
+
     /// set both boundary derivatives to 3
     interpolant = spline!double(x, y, SplineBoundaryType.firstDerivative, 3);
     assert(xs.vmap(interpolant).all!approxEqual([
@@ -452,7 +458,6 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     GridIterators _grid;
 
     import mir.utility: min, max;
-    package enum alignment = min(64u, F[2 ^^ N].sizeof).max(size_t.sizeof);
 
     /++
     +/
@@ -504,30 +509,23 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     Params:
         lbc = left boundary condition
         rbc = right boundary condition
+        temp = temporal buffer length points count (optional)
 
     $(RED For internal use.)
     +/
     void _computeDerivatives()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) scope @trusted nothrow @nogc
     {
-        import mir.internal.memory;
         import mir.algorithm.iteration: maxLength;
         auto ml = this._data.maxLength;
-        auto temp_ptr = cast(F*) alignedAllocate(F[2 ^^ (N - 1)].sizeof * ml, alignment);
-        if (temp_ptr is null)
-            assert(0);
-        debug
-        {
-            temp_ptr.sliced(ml)[] = F.init;
-        }
-        _computeDerivativesTemp(lbc, rbc, temp_ptr.sliced(ml));
-        alignedFree(temp_ptr);
+        auto temp = RCArray!F(ml);
+        auto tempSlice = temp[].sliced;
+        _computeDerivativesTemp(lbc, rbc, tempSlice);
     }
 
     /// ditto
     pragma(inline, false)
     void _computeDerivativesTemp()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) scope @system nothrow @nogc
     {
-        import mir.internal.memory;
         import mir.algorithm.iteration: maxLength, each;
         import mir.ndslice.topology: map, byDim, evertPack;
 
@@ -535,7 +533,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
         static if (N == 1)
         {
-            splineSlopes!(F, F)(_grid.sliced(_data._lengths[0]), pickDataSubslice(_data, 0), pickDataSubslice(_data, 1), temp, lbc, rbc);
+            splineSlopes!(F, F)(_grid.sliced(_data._lengths[0]), pickDataSubslice(_data, 0), pickDataSubslice(_data, 1), temp[0 .. _data._lengths[0]], lbc, rbc);
         }
         else
         foreach_reverse(i, ref x; _grid)
@@ -551,7 +549,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
                         auto y = pickDataSubslice(d, l);
                         auto s = pickDataSubslice(d, L + l);
                         // debug printf("ptr = %ld, stride = %ld, stride = %ld, d = %ld i = %ld l = %ld\n", d.iterator, d._stride!0, y._stride!0, d.length, i, l);
-                        splineSlopes!(F, F)(x.sliced(_data._lengths[i]), y, s, temp, lbc, rbc);
+                        splineSlopes!(F, F)(x.sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], lbc, rbc);
                         // debug{
                         //     (cast(void delegate() @nogc)(){
                         //     writeln("y = ", y);
@@ -785,170 +783,166 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     assert (points.length >= 2);
     assert (points.length == values.length);
     assert (points.length == slopes.length);
-    assert (temp.length + 1 >= points.length);
+    assert (temp.length == points.length);
 
     auto n = points.length;
 
-    auto pd = points.diff;
-    auto vd = values.diff;
 
-    auto xd = cast() pd.front;
-    auto yd = cast() vd.front;
-    auto dd = yd / xd;
+    typeof(slopes[0]) first, last;
 
-    // static if (N == 2)
-    // {
-    //     if (slopes.length!1 != values.length!1)
-    //         assert(0);
-    //     if (values.empty!1)
-    //         return;
-    // }
+    auto xd = points.diff;
+    auto yd = values.diff;
 
     /// special case
     static assert(SplineBoundaryType.notAKnot == 0);
-    with(SplineBoundaryType)
-    if (_expect(n == 3 && (rbc.type | lbc.type) == 0, false))
+    if (n <= 3
+        && (rbc.type == SplineBoundaryType.parabolic || rbc.type == SplineBoundaryType.notAKnot)
+        && (lbc.type == SplineBoundaryType.parabolic || lbc.type == SplineBoundaryType.notAKnot)
+    )
     {
         import mir.interpolate.utility;
-        // static if (N == 1)
+        if (n == 3)
         {
             auto parabola = parabolaKernel(points[0], points[1], points[2], values[0], values[1], values[2]);
             slopes[0] = parabola.withDerivative(points[0])[1];
             slopes[1] = parabola.withDerivative(points[1])[1];
             slopes[2] = parabola.withDerivative(points[2])[1];
         }
-        // else
-        // {
-        //     foreach (i; 0 .. values.length!1)
-        //     {
-        //         auto parabolaDerivative = parabolaKernel!1(points[0], points[1], points[2], values[0][i], values[1][i], values[2][i]);
-        //         slopes[0][i] = parabolaDerivative(points[0]);
-        //         slopes[1][i] = parabolaDerivative(points[1]);
-        //         slopes[2][i] = parabolaDerivative(points[2]);
-        //     }
-        // }
+        else
+        {
+            assert(slopes.length == 2);
+            slopes.back = slopes.front = yd.front / xd.front;
+            assert(0);
+        }
         return;
     }
 
-    with(SplineBoundaryType) switch(lbc.type)
+    with(SplineBoundaryType) final switch(lbc.type)
     {
     case periodic:
 
-        if (n > 2)
-        {
-            assert(0);
-        }
-        goto lsimple;
+        assert(0);
 
     case notAKnot:
 
         if (n > 2)
         {
-            auto b = pd[1];
-            auto c = points.diff!2.front;
-            auto d = ((xd + 2 * c) * b * dd + xd * xd * (vd[1] / b)) / c;
-            auto r = b;
-            temp[0] = c / r;
-            slopes[0].ndassign = d / r;
+            auto dx0 = xd[0];
+            auto dx1 = xd[1];
+            auto dy0 = yd[0];
+            auto dy1 = yd[1];
+            auto dd0 = dy0 / dx0;
+            auto dd1 = dy1 / dx1;
+
+            slopes.front = dx1;
+            first = dx0 + dx1;
+            temp.front = ((dx0 + 2 * first) * dx1 * dd0 + dx0 ^^ 2 * dd1) / first;
             break;
         }
+        else
+        {
+            slopes.front = 1;
+            first = 0;
+            temp.front = yd.front / xd.front;
 
-    lsimple:
-
-        temp.front = 0;
-        slopes.front.ndassign = dd;
+        }
         break;
     
     case firstDerivative:
 
-        temp.front = 0;
-        slopes.front.ndassign = lbc.value;
+        slopes.front = 1;
+        first = 0;
+        temp.front = lbc.value;
         break;
 
     case secondDerivative:
 
-        temp[0] = 0.5f;
-        slopes[0].ndassign = 1.5f * dd - 0.25f * lbc.value * xd;
+        slopes.front = 2;
+        first = 1;
+        temp.front = 3 * (yd.front / xd.front) - 0.5 * lbc.value * xd.front;
         break;
 
     case parabolic:
 
-        if (n > 2 || rbc.type == SplineBoundaryType.periodic)
-        {
-            temp[0] = 1;
-            slopes[0].ndassign = 2 * dd;
-            break;
-        }
-
-        slopes[0].ndassign = slopes[1].ndassign = dd;
-        return;
-
-    default: assert(0);
+        slopes.front = 2;
+        first = 1;
+        temp.front = 2 * (yd.front / xd.front);
+        break;
     }
 
-    foreach (i; 1 .. n - 1)
-    {
-        auto xq = pd[i];
-        auto a = xq;
-        auto b = 2 * (xd + xq);
-        auto c = xd;
-        auto r = b - a * temp[i - 1];
-        temp[i] = c / r;
-        auto yq = vd[i];
-        auto dq = yq / xq;
-        auto d = 3 * (dq * xd + dd * xq);
-        slopes[i].ndassign = (d - a * slopes[i - 1]) / r;
-        xd = xq;
-        yd = yq;
-        dd = dq;
-    }
-
-    with(SplineBoundaryType) switch(rbc.type)
+    with(SplineBoundaryType) final switch(rbc.type)
     {
     case periodic:
-        if (n > 2)
-        {
-            assert(0);
-        }
-        goto rsimple;
+        assert(0);
 
     case notAKnot:
         if (n > 2)
         {
-            auto a = points.diff!2[n - 3];
-            auto b = pd[n - 3];
-            auto r = b - a * temp[n - 2];
-            auto d = ((xd + 2 * a) * b * dd + xd * xd * (vd[n - 3] / b)) / a;
-            slopes[n - 1].ndassign = (d - a * slopes[n - 2]) / r;
-            break;
+            auto dx0 = xd[$ - 1];
+            auto dx1 = xd[$ - 2];
+            auto dy0 = yd[$ - 1];
+            auto dy1 = yd[$ - 2];
+            auto dd0 = dy0 / dx0;
+            auto dd1 = dy1 / dx1;
+            slopes.back = dx1;
+            last = dx0 + dx1;
+            temp.back = ((dx0 + 2 * last) * dx1 * dd0 + dx0 ^^ 2 * dd1) / last;
         }
-
-    rsimple:
-
-        slopes[n - 1].ndassign = dd;
+        else
+        {
+            slopes.back = 1;
+            last = 0;
+            temp.back = yd.back / xd.back;
+        }
         break;
-
+    
     case firstDerivative:
 
-        slopes[n - 1].ndassign = rbc.value;
+        slopes.back = 1;
+        last = 0;
+        temp.back = rbc.value;
         break;
 
     case secondDerivative:
 
-        slopes[n - 1].ndassign = (3 * dd + 0.5f * rbc.value * xd - slopes[n - 2]) / (2 - temp[n - 2]);
+        slopes.back = 2;
+        last = 1;
+        temp.back = 3 * (yd.back / xd.back) + 0.5 * rbc.value * xd.back;
         break;
 
     case parabolic:
 
-        slopes[n - 1].ndassign = (2 * dd - slopes[n - 2]) / (1 - temp[n - 2]);
+        slopes.back = 2;
+        last = 1;
+        temp.back = 2 * (yd.back / xd.back);
         break;
-
-    default: assert(0);
     }
+
+    foreach (i; 1 .. n - 1)
+    {
+        auto dx0 = xd[i - 1];
+        auto dx1 = xd[i - 0];
+        auto dy0 = yd[i - 1];
+        auto dy1 = yd[i - 0];
+        slopes[i] = 2 * (dx0 + dx1);
+        temp[i] = 3 * (dy0 / dx0 * dx1 + dy1 / dx1 * dx0);
+    }
+
+    foreach (i; 0 .. n - 1)
+    {
+        auto c = i ==     0 ? first : xd[i - 1];
+        auto a = i == n - 2 ?  last : xd[i + 1];
+        auto w = a / slopes[i];
+        slopes[i + 1] -= w * c;
+        temp[i + 1] -= w * temp[i];
+    }
+
+    slopes.back = temp.back / slopes.back;
 
     foreach_reverse (i; 0 .. n - 1)
     {
-        slopes[i].ndassign !"-"= temp[i] * slopes[i + 1];
+        auto c = i ==     0 ? first : xd[i - 1];
+        slopes[i] = (temp[i] - c * slopes[i + 1]) / slopes[i];
     }
 }
 

@@ -112,7 +112,6 @@ struct Constant(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIter
     GridIterators _grid;
 
     import mir.utility: min, max;
-    package enum alignment = min(64u, F.sizeof).max(size_t.sizeof);
 
     /++
     +/

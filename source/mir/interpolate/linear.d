@@ -200,7 +200,6 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     GridIterators _grid;
 
     import mir.utility: min, max;
-    package enum alignment = min(64u, F.sizeof).max(size_t.sizeof);
 
     /++
     +/
