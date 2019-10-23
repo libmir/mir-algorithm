@@ -1175,6 +1175,12 @@ private F akimaTail(F)(in F d2, in F d3)
     return akimaSlope(d0, d1, d2, d3);
 }
 
+private F akimaTail(F)(in F d1, in F d2, in F d3)
+{
+    auto d0 = 2 * d1 - d2;
+    return akimaSlope(d0, d1, d2, d3);
+}
+
 private F akimaSlope(F)(in F d0, in F d1, in F d2, in F d3)
 {
     if (d1 == d2)
