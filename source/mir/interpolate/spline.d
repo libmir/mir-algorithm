@@ -1095,6 +1095,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     with(SplineKind) final switch(kind)
     {
         case c2:
+
             foreach (i; 1 .. n - 1)
             {
                 auto dx0 = xd[i - 1];
@@ -1105,9 +1106,16 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
                 temp[i] = 3 * (dy0 / dx0 * dx1 + dy1 / dx1 * dx0);
             }
             break;
+
         case cardinal:
-            // TODO
+
+            foreach (i; 1 .. n - 1)
+            {
+                slopes[i] = 1;
+                temp[i] = (1 - param) * ((values[i + 1] - values[i - 1]) / (points[i + 1] - points[i - 1]));
+            }
             break;
+
         case monotone:
             {
                 auto step0 = cast()xd[0];
@@ -1142,11 +1150,24 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
                 }
             }
             break;
+
         case doubleQuadratic:
             // TODO
             break;
         case akima:
-            // TODO
+
+            // if (n > 3)
+            // {
+            //     F d3 = dd[2];
+            //     F d2 = dd[1];
+            //     F d1 = dd[0];
+            //     F d0 = 2 * d1 - d2;
+            //     foreach (i; 1 .. n - 1)
+            //     {
+            //         slopes[i] = 1;
+            //         temp[i] = akimaSlope(dd[i - 1], dd[i - 0], dd[i + 1], dd[i + 2]);
+            //     }
+            // }
             break;
     }
 
