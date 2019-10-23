@@ -803,16 +803,15 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         import mir.interpolate.utility;
         if (n == 3)
         {
-            auto parabola = parabolaKernel(points[0], points[1], points[2], values[0], values[1], values[2]);
-            slopes[0] = parabola.withDerivative(points[0])[1];
-            slopes[1] = parabola.withDerivative(points[1])[1];
-            slopes[2] = parabola.withDerivative(points[2])[1];
+            auto derivatives = parabolaDerivatives(points[0], points[1], points[2], values[0], values[1], values[2]);
+            slopes[0] = derivatives[0];
+            slopes[1] = derivatives[1];
+            slopes[2] = derivatives[2];
         }
         else
         {
             assert(slopes.length == 2);
             slopes.back = slopes.front = yd.front / xd.front;
-            assert(0);
         }
         return;
     }
