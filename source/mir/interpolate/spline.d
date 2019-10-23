@@ -26,7 +26,7 @@ import std.meta;
 import mir.primitives;
 import mir.functional;
 import mir.internal.utility: Iota;
-import mir.math.common: fmamath;
+import mir.math.common;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.ndslice.traits;
@@ -913,6 +913,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     auto xd = points.diff;
     auto yd = values.diff;
+    auto dd = yd / xd;
 
     with(SplineKind) final switch(kind)
     {
@@ -950,6 +951,16 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
             lbc.type = SplineBoundaryType.parabolic;
         if (rbc.type == SplineBoundaryType.notAKnot)
             rbc.type = SplineBoundaryType.parabolic;
+
+        if (n == 2)
+        {
+            if (lbc.type == SplineBoundaryType.monotone
+             || lbc.type == SplineBoundaryType.akima)
+                lbc.type = SplineBoundaryType.parabolic;
+            if (rbc.type == SplineBoundaryType.monotone
+             || rbc.type == SplineBoundaryType.akima)
+                rbc.type = SplineBoundaryType.parabolic;
+        }
         /// special case
         if (rbc.type == SplineBoundaryType.parabolic
          && lbc.type == SplineBoundaryType.parabolic)
@@ -979,26 +990,16 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     case notAKnot:
 
-        if (n > 2)
-        {
-            auto dx0 = xd[0];
-            auto dx1 = xd[1];
-            auto dy0 = yd[0];
-            auto dy1 = yd[1];
-            auto dd0 = dy0 / dx0;
-            auto dd1 = dy1 / dx1;
+        auto dx0 = xd[0];
+        auto dx1 = xd[1];
+        auto dy0 = yd[0];
+        auto dy1 = yd[1];
+        auto dd0 = dy0 / dx0;
+        auto dd1 = dy1 / dx1;
 
-            slopes.front = dx1;
-            first = dx0 + dx1;
-            temp.front = ((dx0 + 2 * first) * dx1 * dd0 + dx0 ^^ 2 * dd1) / first;
-            break;
-        }
-        else
-        {
-            slopes.front = 1;
-            first = 0;
-            temp.front = yd.front / xd.front;
-        }
+        slopes.front = dx1;
+        first = dx0 + dx1;
+        temp.front = ((dx0 + 2 * first) * dx1 * dd0 + dx0 ^^ 2 * dd1) / first;
         break;
     
     case firstDerivative:
@@ -1012,27 +1013,28 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
         slopes.front = 2;
         first = 1;
-        temp.front = 3 * (yd.front / xd.front) - 0.5 * lbc.value * xd.front;
+        temp.front = 3 * dd.front - 0.5 * lbc.value * xd.front;
         break;
 
     case parabolic:
 
         slopes.front = 2;
         first = 1;
-        temp.front = 2 * (yd.front / xd.front);
+        temp.front = 2 * dd.front;
         break;
     
     case monotone:
+
         slopes.front = 1;
         first = 0;
-        temp.front = pchipTail(xd[0], xd[1], yd[0]/xd[0], yd[1]/xd[1]);
+        temp.front = pchipTail(xd[0], xd[1], dd[0], dd[1]);
         break;
 
     case akima:
-        // TODO
-        slopes.front = 2;
-        first = 1;
-        temp.front = 2 * (yd.front / xd.front);
+
+        slopes.front = 1;
+        first = 0;
+        temp.back = akimaTail(dd[0], dd[1]);
         break;
     }
 
@@ -1042,24 +1044,16 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         assert(0);
 
     case notAKnot:
-        if (n > 2)
-        {
-            auto dx0 = xd[$ - 1];
-            auto dx1 = xd[$ - 2];
-            auto dy0 = yd[$ - 1];
-            auto dy1 = yd[$ - 2];
-            auto dd0 = dy0 / dx0;
-            auto dd1 = dy1 / dx1;
-            slopes.back = dx1;
-            last = dx0 + dx1;
-            temp.back = ((dx0 + 2 * last) * dx1 * dd0 + dx0 ^^ 2 * dd1) / last;
-        }
-        else
-        {
-            slopes.back = 1;
-            last = 0;
-            temp.back = yd.back / xd.back;
-        }
+
+        auto dx0 = xd[$ - 1];
+        auto dx1 = xd[$ - 2];
+        auto dy0 = yd[$ - 1];
+        auto dy1 = yd[$ - 2];
+        auto dd0 = dy0 / dx0;
+        auto dd1 = dy1 / dx1;
+        slopes.back = dx1;
+        last = dx0 + dx1;
+        temp.back = ((dx0 + 2 * last) * dx1 * dd0 + dx0 ^^ 2 * dd1) / last;
         break;
     
     case firstDerivative:
@@ -1073,75 +1067,87 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
         slopes.back = 2;
         last = 1;
-        temp.back = 3 * (yd.back / xd.back) + 0.5 * rbc.value * xd.back;
+        temp.back = 3 * dd.back + 0.5 * rbc.value * xd.back;
         break;
 
     case parabolic:
 
         slopes.back = 2;
         last = 1;
-        temp.back = 2 * (yd.back / xd.back);
+        temp.back = 2 * dd.back;
         break;
 
     case monotone:
+
         slopes.back = 1;
         last = 0;
-        temp.back = pchipTail(xd[$ - 1], xd[$ - 2], yd[$ - 1] / xd[$ - 1], yd[$ - 2] / xd[$ - 2]);
+        temp.back = pchipTail(xd[$ - 1], xd[$ - 2], dd[$ - 1], dd[$ - 2]);
         break;
 
     case akima:
-        // TODO
-        slopes.back = 2;
-        last = 1;
-        temp.back = 2 * (yd.back / xd.back);
+
+        slopes.back = 1;
+        last = 0;
+        temp.back = akimaTail(dd[$ - 1], dd[$ - 2]);
         break;
     }
 
-    if (kind == SplineKind.monotone)
+    with(SplineKind) final switch(kind)
     {
-        auto step0 = cast()(points[1] - points[0]);
-        auto step1 = cast()(points[2] - points[1]);
-        auto diff0 = cast()(values[1] - values[0]);
-        auto diff1 = cast()(values[2] - values[1]);
-        diff0 /= step0;
-        diff1 /= step1;
+        case c2:
+            foreach (i; 1 .. n - 1)
+            {
+                auto dx0 = xd[i - 1];
+                auto dx1 = xd[i - 0];
+                auto dy0 = yd[i - 1];
+                auto dy1 = yd[i - 0];
+                slopes[i] = 2 * (dx0 + dx1);
+                temp[i] = 3 * (dy0 / dx0 * dx1 + dy1 / dx1 * dx0);
+            }
+            break;
+        case cardinal:
+            // TODO
+            break;
+        case monotone:
+            {
+                auto step0 = cast()xd[0];
+                auto step1 = cast()xd[1];
+                auto diff0 = cast()yd[0];
+                auto diff1 = cast()yd[1];
+                diff0 /= step0;
+                diff1 /= step1;
 
-        for(size_t i = 1;;)
-        {
-            import mir.math.common: copysign;
-            slopes[i] = 1;
-            if (diff0 && diff1 && copysign(1f, diff0) == copysign(1f, diff1))
-            {
-                auto w0 = step1 * 2 + step0;
-                auto w1 = step0 * 2 + step1;
-                temp[i] = (w0 + w1) / (w0 / diff0 + w1 / diff1);
+                for(size_t i = 1;;)
+                {
+                    slopes[i] = 1;
+                    if (diff0 && diff1 && copysign(1f, diff0) == copysign(1f, diff1))
+                    {
+                        auto w0 = step1 * 2 + step0;
+                        auto w1 = step0 * 2 + step1;
+                        temp[i] = (w0 + w1) / (w0 / diff0 + w1 / diff1);
+                    }
+                    else
+                    {
+                        temp[i] = 0;
+                    }
+                    if (++i == n - 1)
+                    {
+                        break;
+                    }
+                    step0 = step1;
+                    diff0 = diff1;
+                    step1 = xd[i];
+                    diff1 = yd[i];
+                    diff1 /= step1;
+                }
             }
-            else
-            {
-                temp[i] = 0;
-            }
-            if (++i == n - 1)
-            {
-                break;
-            }
-            step0 = step1;
-            diff0 = diff1;
-            step1 = points[i + 1] - points[i + 0];
-            diff1 = values[i + 1] - values[i + 0];
-            diff1 /= step1;
-        }
-    }
-    else
-    {
-        foreach (i; 1 .. n - 1)
-        {
-            auto dx0 = xd[i - 1];
-            auto dx1 = xd[i - 0];
-            auto dy0 = yd[i - 1];
-            auto dy1 = yd[i - 0];
-            slopes[i] = 2 * (dx0 + dx1);
-            temp[i] = 3 * (dy0 / dx0 * dx1 + dy1 / dx1 * dx0);
-        }
+            break;
+        case doubleQuadratic:
+            // TODO
+            break;
+        case akima:
+            // TODO
+            break;
     }
 
     foreach (i; 0 .. n - 1)
@@ -1160,6 +1166,31 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         auto c = i ==     0 ? first : kind == SplineKind.c2 ? xd[i - 1] : 0;
         slopes[i] = (temp[i] - c * slopes[i + 1]) / slopes[i];
     }
+}
+
+private F akimaTail(F)(in F d2, in F d3)
+{
+    auto d1 = 2 * d2 - d3;
+    auto d0 = 2 * d1 - d2;
+    return akimaSlope(d0, d1, d2, d3);
+}
+
+private F akimaSlope(F)(in F d0, in F d1, in F d2, in F d3)
+{
+    if (d1 == d2)
+        return d1;
+    if (d0 == d1 && d2 == d3)
+        return (d1 + d2) * 0.5f;
+    if (d0 == d1)
+        return d1;
+    if (d2 == d3)
+        return d2;
+    auto w0 = fabs(d1 - d0);
+    auto w1 = fabs(d3 - d2);
+    auto ws = w0 + w1;
+    w0 /= ws;
+    w1 /= ws;
+    return w0 * d2 + w1 * d1;
 }
 
 ///
