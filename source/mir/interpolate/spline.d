@@ -345,7 +345,7 @@ version(mir_test)
 
     auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
     auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
-    auto interpolant = spline!double(x, y, SplineKind.monotone);
+    auto interpolant = spline!double(x, y, SplineType.monotone);
 
     auto xs = x[0 .. $ - 1] + 0.5;
 
@@ -389,11 +389,11 @@ version(mir_test)
         5.558593750000000,
         17.604662698412699,
         ];
-    auto interpolant = spline!double(points, values, SplineKind.monotone);
+    auto interpolant = spline!double(points, values, SplineType.monotone);
 
     auto pointsR = slice(-points.retro);
     auto valuesR = values.retro.slice;
-    auto interpolantR = spline!double(pointsR, valuesR, SplineKind.monotone);
+    auto interpolantR = spline!double(pointsR, valuesR, SplineType.monotone);
 
     version(X86_64)
     assert(map!interpolant(points[0 .. $ - 1] +  0.5) == map!interpolantR(pointsR.retro[0 .. $ - 1] - 0.5));
@@ -426,13 +426,13 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         in T valueOfBoundaryConditions = 0,
         )
     {
-        return spline(grid, values, SplineKind.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
+        return spline(grid, values, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
     }
 
     Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
         GridVectors grid,
         Slice!(yIterator, N, ykind) values,
-        SplineKind kind,
+        SplineType kind,
         in T param = 0,
         SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
         in T valueOfBoundaryConditions = 0,
@@ -454,7 +454,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         GridVectors grid,
         Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T boundaries,
-        SplineKind kind = SplineKind.c2,
+        SplineType kind = SplineType.c2,
         in T param = 0,
         )
     {
@@ -476,7 +476,7 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T rBoundary,
         SplineBoundaryCondition!T lBoundary,
-        SplineKind kind = SplineKind.c2,
+        SplineType kind = SplineType.c2,
         in T param = 0,
         )
     {
@@ -539,7 +539,7 @@ struct SplineBoundaryCondition(T)
 
 /++
 +/
-enum SplineKind
+enum SplineType
 {
     /++
     +/
@@ -632,7 +632,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     $(RED For internal use.)
     +/
-    void _computeDerivatives(SplineKind kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) scope @trusted nothrow @nogc
+    void _computeDerivatives(SplineType kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) scope @trusted nothrow @nogc
     {
         import mir.algorithm.iteration: maxLength;
         auto ml = this._data.maxLength;
@@ -643,7 +643,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     /// ditto
     pragma(inline, false)
-    void _computeDerivativesTemp(SplineKind kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) scope @system nothrow @nogc
+    void _computeDerivativesTemp(SplineType kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) scope @system nothrow @nogc
     {
         import mir.algorithm.iteration: maxLength, each;
         import mir.ndslice.topology: map, byDim, evertPack;
@@ -893,7 +893,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     Slice!(IV, 1, vkind) values,
     Slice!(IS, 1, skind) slopes,
     Slice!(T*) temp,
-    SplineKind kind,
+    SplineType kind,
     F param,
     SplineBoundaryCondition!F lbc,
     SplineBoundaryCondition!F rbc,
@@ -915,7 +915,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     auto yd = values.diff;
     auto dd = yd / xd;
 
-    with(SplineKind) final switch(kind)
+    with(SplineType) final switch(kind)
     {
         case c2:
             break;
@@ -1092,7 +1092,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         break;
     }
 
-    with(SplineKind) final switch(kind)
+    with(SplineType) final switch(kind)
     {
         case c2:
 
@@ -1173,8 +1173,8 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     foreach (i; 0 .. n - 1)
     {
-        auto c = i ==     0 ? first : kind == SplineKind.c2 ? xd[i - 1] : 0;
-        auto a = i == n - 2 ?  last : kind == SplineKind.c2 ? xd[i + 1] : 0;
+        auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
+        auto a = i == n - 2 ?  last : kind == SplineType.c2 ? xd[i + 1] : 0;
         auto w = a / slopes[i];
         slopes[i + 1] -= w * c;
         temp[i + 1] -= w * temp[i];
@@ -1184,7 +1184,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     foreach_reverse (i; 0 .. n - 1)
     {
-        auto c = i ==     0 ? first : kind == SplineKind.c2 ? xd[i - 1] : 0;
+        auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
         slopes[i] = (temp[i] - c * slopes[i + 1]) / slopes[i];
     }
 }
