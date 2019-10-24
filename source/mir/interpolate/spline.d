@@ -899,7 +899,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     SplineBoundaryCondition!F rbc,
     ) @trusted
 {
-    import mir.ndslice.topology: diff, ipack;
+    import mir.ndslice.topology: diff, zip, slide;
 
     assert (points.length >= 2);
     assert (points.length == values.length);
@@ -914,6 +914,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     auto xd = points.diff;
     auto yd = values.diff;
     auto dd = yd / xd;
+    auto dd2 = points.zip(values).slide!(3, "(c[1] - a[1]) / (c[0] - a[0])");
 
     with(SplineType) final switch(kind)
     {
@@ -1114,7 +1115,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
             foreach (i; 1 .. n - 1)
             {
                 slopes[i] = 1;
-                temp[i] = (1 - param) * ((values[i + 1] - values[i - 1]) / (points[i + 1] - points[i - 1]));
+                temp[i] = (1 - param) * dd2[i - 1];
             }
             break;
 
@@ -1154,7 +1155,12 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
             break;
 
         case doubleQuadratic:
-            // TODO
+            foreach (i; 1 .. n - 1)
+            {
+                slopes[i] = 1;
+                temp[i] = dd[i - 1] + dd[i + 1] - dd2[i - 1];
+            }
+
             break;
         case akima:
             {
@@ -1179,7 +1185,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     {
         auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
         auto a = i == n - 2 ?  last : kind == SplineType.c2 ? xd[i + 1] : 0;
-        auto w = a / slopes[i];
+        auto w = slopes[i] == 1 ? a : a / slopes[i];
         slopes[i + 1] -= w * c;
         temp[i + 1] -= w * temp[i];
     }
@@ -1189,7 +1195,8 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     foreach_reverse (i; 0 .. n - 1)
     {
         auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
-        slopes[i] = (temp[i] - c * slopes[i + 1]) / slopes[i];
+        auto v = temp[i] - c * slopes[i + 1];
+        slopes[i] = slopes[i]  == 1 ? v : v / slopes[i];
     }
 }
 
