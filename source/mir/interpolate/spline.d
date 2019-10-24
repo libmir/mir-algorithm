@@ -95,6 +95,22 @@ import mir.ndslice.traits;
     assert(xs.vmap(interpolant).all!approxEqual(
         [11.40871379,  2.64278898,  9.55774317,  4.84791141, 11.24842121,
          16.16794267, 18.58060557,  5.2531411 , 17.45509005,  1.86992521]));
+
+    /// Double Quadratic spline
+    interpolant = spline!double(x, y, SplineType.doubleQuadratic);
+    import mir.interpolate.utility: ParabolaKernel;
+    auto kernel1 = ParabolaKernel!double(x[2], x[3], x[4],        y[2], y[3], y[4]);
+    auto kernel2 = ParabolaKernel!double(      x[3], x[4], x[5],        y[3], y[4], y[5]);
+    // weighted sum of quadratic functions
+    auto c = 0.35; // from [0 .. 1]
+    auto xp = c * x[3] + (1 - c) * x[4];
+    auto yp = c * kernel1(xp) + (1 - c) * kernel2(xp);
+    assert(interpolant(xp).approxEqual(yp));
+    // check parabolic extrapolation of the boundary intervals
+    kernel1 = ParabolaKernel!double(x[0], x[1], x[2], y[0], y[1], y[2]);
+    kernel2 = ParabolaKernel!double(x[$ - 3], x[$ - 2], x[$ - 1], y[$ - 3], y[$ - 2], y[$ - 1]);
+    assert(interpolant(x[0] - 23.421).approxEqual(kernel1(x[0] - 23.421)));
+    assert(interpolant(x[$ - 1] + 23.421).approxEqual(kernel2(x[$ - 1] + 23.421)));
 }
 
 ///
@@ -406,6 +422,38 @@ version(mir_test)
 }
 
 /++
+Cubic Spline types.
+
+The first derivatives are guaranteed to be continuous for all cubic splines.
++/
+enum SplineType
+{
+    /++
+    Spline with contiguous second derivative.
+    +/
+    c2,
+    /++
+    $(HTTPS en.wikipedia.org/wiki/Cubic_Hermite_spline#Cardinal_spline, Cardinal) and Catmull–Rom splines.
+    +/
+    cardinal,
+    /++
+    The interpolant preserves monotonicity in the interpolation data and does not overshoot if the data is not smooth.
+    It is also known as   $(HTTPS docs.scipy.org/doc/scipy-0.18.1/reference/generated/scipy.interpolate.PchipInterpolator.html, PCHIP)
+    in numpy and Matlab.
+    +/
+    monotone,
+    /++
+    Weighted sum of two nearbor quadratic functions.
+    It is used in $(HTTPS s3-eu-west-1.amazonaws.com/og-public-downloads/smile-interpolation-extrapolation.pdf, financial analysis).
+    +/
+    doubleQuadratic,
+    /++
+    $(HTTPS en.wikipedia.org/wiki/Akima_spline, Akima spline).
+    +/
+    akima,
+}
+
+/++
 Constructs multivariate cubic spline in symmetrical form with nodes on rectilinear grid.
 Result has continues second derivatives throughout the curve / nd-surface.
 +/
@@ -452,6 +500,9 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
         boundaries = $(LREF SplineBoundaryCondition) for both tails.
+        kind = $(LREF SplineType) type of cubic spline.
+        param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+            Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -473,6 +524,9 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         values = `f(x)` values for interpolant
         rBoundary = $(LREF SplineBoundaryCondition) for left tail.
         lBoundary = $(LREF SplineBoundaryCondition) for right tail.
+        kind = $(LREF SplineType) type of cubic spline.
+        param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+            Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -495,35 +549,41 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
 }
 
 /++
-Cubic Spline  Boundary Condition Type
+Cubic Spline Boundary Condition Type.
 
-See_also: $(LREF SplineBoundaryCondition)
+See_also: $(LREF SplineBoundaryCondition) $(LREF SplineType)
 +/
 enum SplineBoundaryType
 {
     /++
-     not implemented
+    Not implemented.
     +/
     periodic = -1,
     /++
-     (default)
+    Not-a-knot (or cubic) boundary condition.
+    It is an aggresive boundary condition that is used only for C2 splines and is default for all API calls.
+    For other then C2 splines `notAKnot` is changed internally to
+    a default boundary type for used $(LREF SplineType).
     +/
     notAKnot,
     /++
-     set the first derivative
+    Set the first derivative.
     +/
     firstDerivative,
     /++
-     set the second derivative
+    Set the second derivative.
     +/
     secondDerivative,
     /++
+    Default for Cardinal and Double-Quadratic splines.
     +/
     parabolic,
     /++
+    Default for monotone (aka PHCIP ) splines.
     +/
     monotone,
     /++
+    Default for Akima splines.
     +/
     akima,
 }
@@ -539,29 +599,6 @@ struct SplineBoundaryCondition(T)
     SplineBoundaryType type = SplineBoundaryType.notAKnot;
     /// value (default is 0)
     T value = 0;
-}
-
-// private auto iter(alias s) = s.iterator;
-
-/++
-+/
-enum SplineType
-{
-    /++
-    +/
-    c2,
-    /++
-    +/
-    cardinal,
-    /++
-    +/
-    monotone,
-    /++
-    +/
-    doubleQuadratic,
-    /++
-    +/
-    akima,
 }
 
 /++
@@ -1025,7 +1062,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     case parabolic:
 
-        slopes.front = 2;
+        slopes.front = 1;
         first = 1;
         temp.front = 2 * dd.front;
         break;
@@ -1080,7 +1117,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     case parabolic:
 
-        slopes.back = 2;
+        slopes.back = 1;
         last = 1;
         temp.back = 2 * dd.back;
         break;
@@ -1165,7 +1202,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
             foreach (i; 1 .. n - 1)
             {
                 slopes[i] = 1;
-                temp[i] = dd[i - 1] + dd[i + 1] - dd2[i - 1];
+                temp[i] = dd[i - 1] + dd[i] - dd2[i - 1];
             }
             break;
 
