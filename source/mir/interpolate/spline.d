@@ -925,6 +925,9 @@ Params:
     values = `f(x)` values for interpolant
     slopes = uninitialized ndslice to write slopes into
     temp = uninitialized temporary ndslice
+    kind = $(LREF SplineType) type of cubic spline.
+    param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+        Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
     lbc = left boundary condition
     rbc = right boundary condition
 Constraints:
