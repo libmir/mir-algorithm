@@ -562,7 +562,7 @@ enum SplineBoundaryType
     /++
     Not-a-knot (or cubic) boundary condition.
     It is an aggresive boundary condition that is used only for C2 splines and is default for all API calls.
-    For other then C2 splines `notAKnot` is changed internally to
+    For other then C2 splines, `notAKnot` is changed internally to
     a default boundary type for used $(LREF SplineType).
     +/
     notAKnot,
