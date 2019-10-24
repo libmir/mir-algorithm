@@ -51,7 +51,7 @@ template pchip(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridItera
         GridVectors grid,
         Slice!(yIterator, N, ykind) values) @safe
     {
-        return spline!T(grid, values, SplineKind.monotone);
+        return spline!T(grid, values, SplineType.monotone);
     }
 }
 

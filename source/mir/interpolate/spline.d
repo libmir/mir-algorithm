@@ -1036,6 +1036,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         first = 0;
         temp.back = akimaTail(dd[0], dd[1]);
         break;
+
     }
 
     with(SplineBoundaryType) final switch(rbc.type)
@@ -1090,6 +1091,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         last = 0;
         temp.back = akimaTail(dd[$ - 1], dd[$ - 2]);
         break;
+
     }
 
     with(SplineType) final switch(kind)
@@ -1155,20 +1157,22 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
             // TODO
             break;
         case akima:
-
-            // if (n > 3)
-            // {
-            //     F d3 = dd[2];
-            //     F d2 = dd[1];
-            //     F d1 = dd[0];
-            //     F d0 = 2 * d1 - d2;
-            //     foreach (i; 1 .. n - 1)
-            //     {
-            //         slopes[i] = 1;
-            //         temp[i] = akimaSlope(dd[i - 1], dd[i - 0], dd[i + 1], dd[i + 2]);
-            //     }
-            // }
-            break;
+            {
+                auto d3 = dd[1];
+                auto d2 = dd[0];
+                auto d1 = 2 * d2 - d3;
+                auto d0 = d1;
+                foreach (i; 1 .. n - 1)
+                {
+                    d0 = d1;
+                    d1 = d2;
+                    d2 = d3;
+                    d3 = i == n - 2 ? 2 * d2 - d1 : dd[i + 1];
+                    slopes[i] = 1;
+                    temp[i] = akimaSlope(d0, d1, d2, d3);
+                }
+                break;
+            }
     }
 
     foreach (i; 0 .. n - 1)
@@ -1192,12 +1196,6 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 private F akimaTail(F)(in F d2, in F d3)
 {
     auto d1 = 2 * d2 - d3;
-    auto d0 = 2 * d1 - d2;
-    return akimaSlope(d0, d1, d2, d3);
-}
-
-private F akimaTail(F)(in F d1, in F d2, in F d3)
-{
     auto d0 = 2 * d1 - d2;
     return akimaSlope(d0, d1, d2, d3);
 }
