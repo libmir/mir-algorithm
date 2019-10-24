@@ -89,6 +89,12 @@ import mir.ndslice.traits;
             12.37135558,   4.99638066,  10.74362441,   0.16008641,
             11.94073593,  16.47908148,  17.49841853,   5.26600921,
             16.21796051,   8.96102894]));
+    
+    /// Akima spline
+    interpolant = spline!double(x, y, SplineType.akima);
+    assert(xs.vmap(interpolant).all!approxEqual(
+        [11.40871379,  2.64278898,  9.55774317,  4.84791141, 11.24842121,
+         16.16794267, 18.58060557,  5.2531411 , 17.45509005,  1.86992521]));
 }
 
 ///
@@ -1035,7 +1041,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
         slopes.front = 1;
         first = 0;
-        temp.back = akimaTail(dd[0], dd[1]);
+        temp.front = akimaTail(dd[0], dd[1]);
         break;
 
     }
@@ -1155,13 +1161,14 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
             break;
 
         case doubleQuadratic:
+
             foreach (i; 1 .. n - 1)
             {
                 slopes[i] = 1;
                 temp[i] = dd[i - 1] + dd[i + 1] - dd2[i - 1];
             }
-
             break;
+
         case akima:
             {
                 auto d3 = dd[1];
