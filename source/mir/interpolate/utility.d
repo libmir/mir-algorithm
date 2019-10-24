@@ -230,3 +230,23 @@ unittest
     assert(p.opCall!2(13)[2].approxEqual(s(13)));
     assert(p.opCall!3(13)[3].approxEqual(18));
 }
+
+
+package auto pchipTail(T)(in T step0, in T step1, in T diff0, in T diff1)
+{
+    import mir.math.common: copysign, fabs;
+    if (!diff0)
+    {
+        return 0;
+    }
+    auto slope = ((step0 * 2 + step1) * diff0 - step0 * diff1) / (step0 + step1);
+    if (copysign(1f, slope) != copysign(1f, diff0))
+    {
+        return 0;
+    }
+    if ((copysign(1f, diff0) != copysign(1f, diff1)) && (fabs(slope) > fabs(diff0 * 3)))
+    {
+        return diff0 * 3;
+    }
+    return slope;
+}

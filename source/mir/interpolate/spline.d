@@ -26,7 +26,7 @@ import std.meta;
 import mir.primitives;
 import mir.functional;
 import mir.internal.utility: Iota;
-import mir.math.common: fmamath;
+import mir.math.common;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.ndslice.traits;
@@ -89,6 +89,28 @@ import mir.ndslice.traits;
             12.37135558,   4.99638066,  10.74362441,   0.16008641,
             11.94073593,  16.47908148,  17.49841853,   5.26600921,
             16.21796051,   8.96102894]));
+    
+    /// Akima spline
+    interpolant = spline!double(x, y, SplineType.akima);
+    assert(xs.vmap(interpolant).all!approxEqual(
+        [11.40871379,  2.64278898,  9.55774317,  4.84791141, 11.24842121,
+         16.16794267, 18.58060557,  5.2531411 , 17.45509005,  1.86992521]));
+
+    /// Double Quadratic spline
+    interpolant = spline!double(x, y, SplineType.doubleQuadratic);
+    import mir.interpolate.utility: ParabolaKernel;
+    auto kernel1 = ParabolaKernel!double(x[2], x[3], x[4],        y[2], y[3], y[4]);
+    auto kernel2 = ParabolaKernel!double(      x[3], x[4], x[5],        y[3], y[4], y[5]);
+    // weighted sum of quadratic functions
+    auto c = 0.35; // from [0 .. 1]
+    auto xp = c * x[3] + (1 - c) * x[4];
+    auto yp = c * kernel1(xp) + (1 - c) * kernel2(xp);
+    assert(interpolant(xp).approxEqual(yp));
+    // check parabolic extrapolation of the boundary intervals
+    kernel1 = ParabolaKernel!double(x[0], x[1], x[2], y[0], y[1], y[2]);
+    kernel2 = ParabolaKernel!double(x[$ - 3], x[$ - 2], x[$ - 1], y[$ - 3], y[$ - 2], y[$ - 1]);
+    assert(interpolant(x[0] - 23.421).approxEqual(kernel1(x[0] - 23.421)));
+    assert(interpolant(x[$ - 1] + 23.421).approxEqual(kernel2(x[$ - 1] + 23.421)));
 }
 
 ///
@@ -332,6 +354,105 @@ unittest
     // assert(appreq(d[1][1][1], y_x0x1x2));
 }
 
+
+/// Monotone PCHIP
+version(mir_test)
+@safe unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: vmap;
+
+    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
+    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
+    auto interpolant = spline!double(x, y, SplineType.monotone);
+
+    auto xs = x[0 .. $ - 1] + 0.5;
+
+    () @trusted {
+        auto ys = xs.vmap(interpolant);
+
+        assert(ys.all!approxEqual([
+            5.333333333333334,
+            2.500000000000000,
+            10.000000000000000,
+            4.288971807628524,
+            11.202580845771145,
+            16.250000000000000,
+            17.962962962962962,
+            5.558593750000000,
+            17.604662698412699,
+            ]));
+    }();
+}
+
+// Check direction equality
+version(mir_test)
+@safe unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.topology: retro, map;
+
+    auto points = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
+    auto values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
+
+    auto results = [
+        5.333333333333334,
+        2.500000000000000,
+        10.000000000000000,
+        4.288971807628524,
+        11.202580845771145,
+        16.250000000000000,
+        17.962962962962962,
+        5.558593750000000,
+        17.604662698412699,
+        ];
+    auto interpolant = spline!double(points, values, SplineType.monotone);
+
+    auto pointsR = slice(-points.retro);
+    auto valuesR = values.retro.slice;
+    auto interpolantR = spline!double(pointsR, valuesR, SplineType.monotone);
+
+    version(X86_64)
+    assert(map!interpolant(points[0 .. $ - 1] +  0.5) == map!interpolantR(pointsR.retro[0 .. $ - 1] - 0.5));
+}
+
+/++
+Cubic Spline types.
+
+The first derivatives are guaranteed to be continuous for all cubic splines.
++/
+enum SplineType
+{
+    /++
+    Spline with contiguous second derivative.
+    +/
+    c2,
+    /++
+    $(HTTPS en.wikipedia.org/wiki/Cubic_Hermite_spline#Cardinal_spline, Cardinal) and Catmull–Rom splines.
+    +/
+    cardinal,
+    /++
+    The interpolant preserves monotonicity in the interpolation data and does not overshoot if the data is not smooth.
+    It is also known as   $(HTTPS docs.scipy.org/doc/scipy-0.18.1/reference/generated/scipy.interpolate.PchipInterpolator.html, PCHIP)
+    in numpy and Matlab.
+    +/
+    monotone,
+    /++
+    Weighted sum of two nearbor quadratic functions.
+    It is used in $(HTTPS s3-eu-west-1.amazonaws.com/og-public-downloads/smile-interpolation-extrapolation.pdf, financial analysis).
+    +/
+    doubleQuadratic,
+    /++
+    $(HTTPS en.wikipedia.org/wiki/Akima_spline, Akima spline).
+    +/
+    akima,
+}
+
 /++
 Constructs multivariate cubic spline in symmetrical form with nodes on rectilinear grid.
 Result has continues second derivatives throughout the curve / nd-surface.
@@ -359,7 +480,19 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         in T valueOfBoundaryConditions = 0,
         )
     {
-        return spline(grid, values, SplineBoundaryCondition!T(typeOfBoundaries, valueOfBoundaryConditions));
+        return spline(grid, values, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
+    }
+
+    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
+        GridVectors grid,
+        Slice!(yIterator, N, ykind) values,
+        SplineType kind,
+        in T param = 0,
+        SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
+        in T valueOfBoundaryConditions = 0,
+        )
+    {
+        return spline(grid, values, SplineBoundaryCondition!T(typeOfBoundaries, valueOfBoundaryConditions), kind, param);
     }
 
     /++
@@ -367,6 +500,9 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
         boundaries = $(LREF SplineBoundaryCondition) for both tails.
+        kind = $(LREF SplineType) type of cubic spline.
+        param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+            Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -375,9 +511,11 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         GridVectors grid,
         Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T boundaries,
+        SplineType kind = SplineType.c2,
+        in T param = 0,
         )
     {
-        return spline(grid, values, boundaries, boundaries);
+        return spline(grid, values, boundaries, boundaries, kind, param);
     }
 
     /++
@@ -386,6 +524,9 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         values = `f(x)` values for interpolant
         rBoundary = $(LREF SplineBoundaryCondition) for left tail.
         lBoundary = $(LREF SplineBoundaryCondition) for right tail.
+        kind = $(LREF SplineType) type of cubic spline.
+        param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+            Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
     Constraints:
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
@@ -395,33 +536,56 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T rBoundary,
         SplineBoundaryCondition!T lBoundary,
+        SplineType kind = SplineType.c2,
+        in T param = 0,
         )
     {
         static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
         auto ret = typeof(return)(grid);
         ret._values = values;
-        ret._computeDerivatives(rBoundary, lBoundary);
+        ret._computeDerivatives(kind, param, rBoundary, lBoundary);
         return ret.move;
     }
 }
 
 /++
-Cubic Spline  Boundary Condition Type
+Cubic Spline Boundary Condition Type.
 
-See_also: $(LREF SplineBoundaryCondition)
+See_also: $(LREF SplineBoundaryCondition) $(LREF SplineType)
 +/
 enum SplineBoundaryType
 {
-    /// not implemented
+    /++
+    Not implemented.
+    +/
     periodic = -1,
-    /// (default)
+    /++
+    Not-a-knot (or cubic) boundary condition.
+    It is an aggresive boundary condition that is used only for C2 splines and is default for all API calls.
+    For other then C2 splines, `notAKnot` is changed internally to
+    a default boundary type for used $(LREF SplineType).
+    +/
     notAKnot,
-    /// set the first derivative
+    /++
+    Set the first derivative.
+    +/
     firstDerivative,
-    /// set the second derivative
+    /++
+    Set the second derivative.
+    +/
     secondDerivative,
-    ///
+    /++
+    Default for Cardinal and Double-Quadratic splines.
+    +/
     parabolic,
+    /++
+    Default for monotone (aka PHCIP ) splines.
+    +/
+    monotone,
+    /++
+    Default for Akima splines.
+    +/
+    akima,
 }
 
 /++
@@ -436,8 +600,6 @@ struct SplineBoundaryCondition(T)
     /// value (default is 0)
     T value = 0;
 }
-
-// private auto iter(alias s) = s.iterator;
 
 /++
 Multivariate cubic spline with nodes on rectilinear grid.
@@ -465,7 +627,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     {
         size_t length = 1;
         size_t[N] shape;
-        enum  msg =  "spline/pchip interpolant: minimal allowed length for the grid equals 2.";
+        enum  msg =  "spline interpolant: minimal allowed length for the grid equals 2.";
         version(D_Exceptions)
             static immutable exc = new Exception(msg);
         foreach(i, ref x; grid)
@@ -513,18 +675,18 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
     $(RED For internal use.)
     +/
-    void _computeDerivatives()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) scope @trusted nothrow @nogc
+    void _computeDerivatives(SplineType kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) scope @trusted nothrow @nogc
     {
         import mir.algorithm.iteration: maxLength;
         auto ml = this._data.maxLength;
         auto temp = RCArray!F(ml);
         auto tempSlice = temp[].sliced;
-        _computeDerivativesTemp(lbc, rbc, tempSlice);
+        _computeDerivativesTemp(kind, param, lbc, rbc, tempSlice);
     }
 
     /// ditto
     pragma(inline, false)
-    void _computeDerivativesTemp()(SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) scope @system nothrow @nogc
+    void _computeDerivativesTemp(SplineType kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) scope @system nothrow @nogc
     {
         import mir.algorithm.iteration: maxLength, each;
         import mir.ndslice.topology: map, byDim, evertPack;
@@ -533,7 +695,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
         static if (N == 1)
         {
-            splineSlopes!(F, F)(_grid.sliced(_data._lengths[0]), pickDataSubslice(_data, 0), pickDataSubslice(_data, 1), temp[0 .. _data._lengths[0]], lbc, rbc);
+            splineSlopes!(F, F)(_grid.sliced(_data._lengths[0]), pickDataSubslice(_data, 0), pickDataSubslice(_data, 1), temp[0 .. _data._lengths[0]], kind, param, lbc, rbc);
         }
         else
         foreach_reverse(i, ref x; _grid)
@@ -549,7 +711,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
                         auto y = pickDataSubslice(d, l);
                         auto s = pickDataSubslice(d, L + l);
                         // debug printf("ptr = %ld, stride = %ld, stride = %ld, d = %ld i = %ld l = %ld\n", d.iterator, d._stride!0, y._stride!0, d.length, i, l);
-                        splineSlopes!(F, F)(x.sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], lbc, rbc);
+                        splineSlopes!(F, F)(x.sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lbc, rbc);
                         // debug{
                         //     (cast(void delegate() @nogc)(){
                         //     writeln("y = ", y);
@@ -564,9 +726,9 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 @trusted:
 
     ///
-    Spline lightConst()() const @property { return *cast(Spline*)&this; }
+    Spline lightConst() const @property { return *cast(Spline*)&this; }
     ///
-    Spline lightImmutable()() immutable @property { return *cast(Spline*)&this; }
+    Spline lightImmutable() immutable @property { return *cast(Spline*)&this; }
 
     ///
     GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
@@ -585,7 +747,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     }
 
     ///
-    size_t[N] gridShape()() scope const @property
+    size_t[N] gridShape() scope const @property
     {
         return _data.shape;
     }
@@ -763,6 +925,9 @@ Params:
     values = `f(x)` values for interpolant
     slopes = uninitialized ndslice to write slopes into
     temp = uninitialized temporary ndslice
+    kind = $(LREF SplineType) type of cubic spline.
+    param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+        Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
     lbc = left boundary condition
     rbc = right boundary condition
 Constraints:
@@ -774,11 +939,13 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     Slice!(IV, 1, vkind) values,
     Slice!(IS, 1, skind) slopes,
     Slice!(T*) temp,
+    SplineType kind,
+    F param,
     SplineBoundaryCondition!F lbc,
     SplineBoundaryCondition!F rbc,
     ) @trusted
 {
-    import mir.ndslice.topology: diff, ipack;
+    import mir.ndslice.topology: diff, zip, slide;
 
     assert (points.length >= 2);
     assert (points.length == values.length);
@@ -792,28 +959,74 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     auto xd = points.diff;
     auto yd = values.diff;
+    auto dd = yd / xd;
+    auto dd2 = points.zip(values).slide!(3, "(c[1] - a[1]) / (c[0] - a[0])");
 
-    /// special case
-    static assert(SplineBoundaryType.notAKnot == 0);
-    if (n <= 3
-        && (rbc.type == SplineBoundaryType.parabolic || rbc.type == SplineBoundaryType.notAKnot)
-        && (lbc.type == SplineBoundaryType.parabolic || lbc.type == SplineBoundaryType.notAKnot)
-    )
+    with(SplineType) final switch(kind)
     {
-        import mir.interpolate.utility;
-        if (n == 3)
+        case c2:
+            break;
+        case cardinal:
+            if (lbc.type == SplineBoundaryType.notAKnot)
+                lbc.type = SplineBoundaryType.parabolic;
+            if (rbc.type == SplineBoundaryType.notAKnot)
+                rbc.type = SplineBoundaryType.parabolic;
+            break;
+        case monotone:
+            if (lbc.type == SplineBoundaryType.notAKnot)
+                lbc.type = SplineBoundaryType.monotone;
+            if (rbc.type == SplineBoundaryType.notAKnot)
+                rbc.type = SplineBoundaryType.monotone;
+            break;
+        case doubleQuadratic:
+            if (lbc.type == SplineBoundaryType.notAKnot)
+                lbc.type = SplineBoundaryType.parabolic;
+            if (rbc.type == SplineBoundaryType.notAKnot)
+                rbc.type = SplineBoundaryType.parabolic;
+            break;
+        case akima:
+            if (lbc.type == SplineBoundaryType.notAKnot)
+                lbc.type = SplineBoundaryType.akima;
+            if (rbc.type == SplineBoundaryType.notAKnot)
+                rbc.type = SplineBoundaryType.akima;
+            break;
+    }
+
+    if (n <= 3)
+    {
+        if (lbc.type == SplineBoundaryType.notAKnot)
+            lbc.type = SplineBoundaryType.parabolic;
+        if (rbc.type == SplineBoundaryType.notAKnot)
+            rbc.type = SplineBoundaryType.parabolic;
+
+        if (n == 2)
         {
-            auto derivatives = parabolaDerivatives(points[0], points[1], points[2], values[0], values[1], values[2]);
-            slopes[0] = derivatives[0];
-            slopes[1] = derivatives[1];
-            slopes[2] = derivatives[2];
+            if (lbc.type == SplineBoundaryType.monotone
+             || lbc.type == SplineBoundaryType.akima)
+                lbc.type = SplineBoundaryType.parabolic;
+            if (rbc.type == SplineBoundaryType.monotone
+             || rbc.type == SplineBoundaryType.akima)
+                rbc.type = SplineBoundaryType.parabolic;
         }
-        else
+        /// special case
+        if (rbc.type == SplineBoundaryType.parabolic
+         && lbc.type == SplineBoundaryType.parabolic)
         {
-            assert(slopes.length == 2);
-            slopes.back = slopes.front = yd.front / xd.front;
+            import mir.interpolate.utility;
+            if (n == 3)
+            {
+                auto derivatives = parabolaDerivatives(points[0], points[1], points[2], values[0], values[1], values[2]);
+                slopes[0] = derivatives[0];
+                slopes[1] = derivatives[1];
+                slopes[2] = derivatives[2];
+            }
+            else
+            {
+                assert(slopes.length == 2);
+                slopes.back = slopes.front = yd.front / xd.front;
+            }
+            return;
         }
-        return;
     }
 
     with(SplineBoundaryType) final switch(lbc.type)
@@ -824,27 +1037,16 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     case notAKnot:
 
-        if (n > 2)
-        {
-            auto dx0 = xd[0];
-            auto dx1 = xd[1];
-            auto dy0 = yd[0];
-            auto dy1 = yd[1];
-            auto dd0 = dy0 / dx0;
-            auto dd1 = dy1 / dx1;
+        auto dx0 = xd[0];
+        auto dx1 = xd[1];
+        auto dy0 = yd[0];
+        auto dy1 = yd[1];
+        auto dd0 = dy0 / dx0;
+        auto dd1 = dy1 / dx1;
 
-            slopes.front = dx1;
-            first = dx0 + dx1;
-            temp.front = ((dx0 + 2 * first) * dx1 * dd0 + dx0 ^^ 2 * dd1) / first;
-            break;
-        }
-        else
-        {
-            slopes.front = 1;
-            first = 0;
-            temp.front = yd.front / xd.front;
-
-        }
+        slopes.front = dx1;
+        first = dx0 + dx1;
+        temp.front = ((dx0 + 2 * first) * dx1 * dd0 + dx0 ^^ 2 * dd1) / first;
         break;
     
     case firstDerivative:
@@ -858,15 +1060,30 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
         slopes.front = 2;
         first = 1;
-        temp.front = 3 * (yd.front / xd.front) - 0.5 * lbc.value * xd.front;
+        temp.front = 3 * dd.front - 0.5 * lbc.value * xd.front;
         break;
 
     case parabolic:
 
-        slopes.front = 2;
+        slopes.front = 1;
         first = 1;
-        temp.front = 2 * (yd.front / xd.front);
+        temp.front = 2 * dd.front;
         break;
+    
+    case monotone:
+
+        slopes.front = 1;
+        first = 0;
+        temp.front = pchipTail(xd[0], xd[1], dd[0], dd[1]);
+        break;
+
+    case akima:
+
+        slopes.front = 1;
+        first = 0;
+        temp.front = akimaTail(dd[0], dd[1]);
+        break;
+
     }
 
     with(SplineBoundaryType) final switch(rbc.type)
@@ -875,24 +1092,16 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         assert(0);
 
     case notAKnot:
-        if (n > 2)
-        {
-            auto dx0 = xd[$ - 1];
-            auto dx1 = xd[$ - 2];
-            auto dy0 = yd[$ - 1];
-            auto dy1 = yd[$ - 2];
-            auto dd0 = dy0 / dx0;
-            auto dd1 = dy1 / dx1;
-            slopes.back = dx1;
-            last = dx0 + dx1;
-            temp.back = ((dx0 + 2 * last) * dx1 * dd0 + dx0 ^^ 2 * dd1) / last;
-        }
-        else
-        {
-            slopes.back = 1;
-            last = 0;
-            temp.back = yd.back / xd.back;
-        }
+
+        auto dx0 = xd[$ - 1];
+        auto dx1 = xd[$ - 2];
+        auto dy0 = yd[$ - 1];
+        auto dy1 = yd[$ - 2];
+        auto dd0 = dy0 / dx0;
+        auto dd1 = dy1 / dx1;
+        slopes.back = dx1;
+        last = dx0 + dx1;
+        temp.back = ((dx0 + 2 * last) * dx1 * dd0 + dx0 ^^ 2 * dd1) / last;
         break;
     
     case firstDerivative:
@@ -906,32 +1115,124 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
         slopes.back = 2;
         last = 1;
-        temp.back = 3 * (yd.back / xd.back) + 0.5 * rbc.value * xd.back;
+        temp.back = 3 * dd.back + 0.5 * rbc.value * xd.back;
         break;
 
     case parabolic:
 
-        slopes.back = 2;
+        slopes.back = 1;
         last = 1;
-        temp.back = 2 * (yd.back / xd.back);
+        temp.back = 2 * dd.back;
         break;
+
+    case monotone:
+
+        slopes.back = 1;
+        last = 0;
+        temp.back = pchipTail(xd[$ - 1], xd[$ - 2], dd[$ - 1], dd[$ - 2]);
+        break;
+
+    case akima:
+
+        slopes.back = 1;
+        last = 0;
+        temp.back = akimaTail(dd[$ - 1], dd[$ - 2]);
+        break;
+
     }
 
-    foreach (i; 1 .. n - 1)
+    with(SplineType) final switch(kind)
     {
-        auto dx0 = xd[i - 1];
-        auto dx1 = xd[i - 0];
-        auto dy0 = yd[i - 1];
-        auto dy1 = yd[i - 0];
-        slopes[i] = 2 * (dx0 + dx1);
-        temp[i] = 3 * (dy0 / dx0 * dx1 + dy1 / dx1 * dx0);
+        case c2:
+
+            foreach (i; 1 .. n - 1)
+            {
+                auto dx0 = xd[i - 1];
+                auto dx1 = xd[i - 0];
+                auto dy0 = yd[i - 1];
+                auto dy1 = yd[i - 0];
+                slopes[i] = 2 * (dx0 + dx1);
+                temp[i] = 3 * (dy0 / dx0 * dx1 + dy1 / dx1 * dx0);
+            }
+            break;
+
+        case cardinal:
+
+            foreach (i; 1 .. n - 1)
+            {
+                slopes[i] = 1;
+                temp[i] = (1 - param) * dd2[i - 1];
+            }
+            break;
+
+        case monotone:
+            {
+                auto step0 = cast()xd[0];
+                auto step1 = cast()xd[1];
+                auto diff0 = cast()yd[0];
+                auto diff1 = cast()yd[1];
+                diff0 /= step0;
+                diff1 /= step1;
+
+                for(size_t i = 1;;)
+                {
+                    slopes[i] = 1;
+                    if (diff0 && diff1 && copysign(1f, diff0) == copysign(1f, diff1))
+                    {
+                        auto w0 = step1 * 2 + step0;
+                        auto w1 = step0 * 2 + step1;
+                        temp[i] = (w0 + w1) / (w0 / diff0 + w1 / diff1);
+                    }
+                    else
+                    {
+                        temp[i] = 0;
+                    }
+                    if (++i == n - 1)
+                    {
+                        break;
+                    }
+                    step0 = step1;
+                    diff0 = diff1;
+                    step1 = xd[i];
+                    diff1 = yd[i];
+                    diff1 /= step1;
+                }
+            }
+            break;
+
+        case doubleQuadratic:
+
+            foreach (i; 1 .. n - 1)
+            {
+                slopes[i] = 1;
+                temp[i] = dd[i - 1] + dd[i] - dd2[i - 1];
+            }
+            break;
+
+        case akima:
+            {
+                auto d3 = dd[1];
+                auto d2 = dd[0];
+                auto d1 = 2 * d2 - d3;
+                auto d0 = d1;
+                foreach (i; 1 .. n - 1)
+                {
+                    d0 = d1;
+                    d1 = d2;
+                    d2 = d3;
+                    d3 = i == n - 2 ? 2 * d2 - d1 : dd[i + 1];
+                    slopes[i] = 1;
+                    temp[i] = akimaSlope(d0, d1, d2, d3);
+                }
+                break;
+            }
     }
 
     foreach (i; 0 .. n - 1)
     {
-        auto c = i ==     0 ? first : xd[i - 1];
-        auto a = i == n - 2 ?  last : xd[i + 1];
-        auto w = a / slopes[i];
+        auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
+        auto a = i == n - 2 ?  last : kind == SplineType.c2 ? xd[i + 1] : 0;
+        auto w = slopes[i] == 1 ? a : a / slopes[i];
         slopes[i + 1] -= w * c;
         temp[i + 1] -= w * temp[i];
     }
@@ -940,9 +1241,35 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     foreach_reverse (i; 0 .. n - 1)
     {
-        auto c = i ==     0 ? first : xd[i - 1];
-        slopes[i] = (temp[i] - c * slopes[i + 1]) / slopes[i];
+        auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
+        auto v = temp[i] - c * slopes[i + 1];
+        slopes[i] = slopes[i]  == 1 ? v : v / slopes[i];
     }
+}
+
+private F akimaTail(F)(in F d2, in F d3)
+{
+    auto d1 = 2 * d2 - d3;
+    auto d0 = 2 * d1 - d2;
+    return akimaSlope(d0, d1, d2, d3);
+}
+
+private F akimaSlope(F)(in F d0, in F d1, in F d2, in F d3)
+{
+    if (d1 == d2)
+        return d1;
+    if (d0 == d1 && d2 == d3)
+        return (d1 + d2) * 0.5f;
+    if (d0 == d1)
+        return d1;
+    if (d2 == d3)
+        return d2;
+    auto w0 = fabs(d1 - d0);
+    auto w1 = fabs(d3 - d2);
+    auto ws = w0 + w1;
+    w0 /= ws;
+    w1 /= ws;
+    return w0 * d2 + w1 * d1;
 }
 
 ///
@@ -954,7 +1281,7 @@ struct SplineKernel(X)
     X wq = 0;
 
     ///
-    this()(X x0, X x1, X x)
+    this(X x0, X x1, X x)
     {
         step = x1 - x0;
         auto c0 = x - x0;
@@ -1008,4 +1335,23 @@ struct SplineKernel(X)
     alias withDerivative = opCall!1;
     ///
     alias withTwoDerivatives = opCall!2;
+}
+
+package T pchipTail(T)(in T step0, in T step1, in T diff0, in T diff1)
+{
+    import mir.math.common: copysign, fabs;
+    if (!diff0)
+    {
+        return 0;
+    }
+    auto slope = ((step0 * 2 + step1) * diff0 - step0 * diff1) / (step0 + step1);
+    if (copysign(1f, slope) != copysign(1f, diff0))
+    {
+        return 0;
+    }
+    if ((copysign(1f, diff0) != copysign(1f, diff1)) && (fabs(slope) > fabs(diff0 * 3)))
+    {
+        return diff0 * 3;
+    }
+    return slope;
 }
