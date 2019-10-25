@@ -211,9 +211,12 @@ RefTuple!(T, size_t) atInterval(T)(in T value, size_t intervalIndex)
 ///
 version(mir_test) unittest
 {
+    import mir.ndslice.allocation;
     import mir.ndslice.slice;
     import mir.interpolate.spline;
-    auto interpolant = spline!double([0.0, 1, 2].idup.sliced, [3, 4, -10].idup.sliced);
+    static immutable x = [0.0, 1, 2];
+    static immutable y = [3.0, 4, -10];
+    auto interpolant = spline!double(x.rcslice, y.sliced);
     assert(interpolant(1.3) != interpolant(1.3.atInterval(0)));
     assert(interpolant(1.3) == interpolant(1.3.atInterval(1)));
 }
