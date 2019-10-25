@@ -13,7 +13,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.spline;
 
-import core.lifetime: move; 
+import core.lifetime: move;
 import mir.functional;
 import mir.internal.utility;
 import mir.interpolate;
@@ -427,6 +427,7 @@ Cubic Spline types.
 
 The first derivatives are guaranteed to be continuous for all cubic splines.
 +/
+extern(C++, "mir", "interpolate")
 enum SplineType
 {
     /++
@@ -550,6 +551,7 @@ Cubic Spline Boundary Condition Type.
 
 See_also: $(LREF SplineBoundaryCondition) $(LREF SplineType)
 +/
+extern(C++, "mir", "interpolate")
 enum SplineBoundaryType
 {
     /++
@@ -590,6 +592,7 @@ Cubic Spline  Boundary Condition
 
 See_also: $(LREF SplineBoundaryType)
 +/
+extern(C++, "mir", "interpolate")
 struct SplineBoundaryCondition(T)
 {
     /// type (default is $(LREF SplineBoundaryType.notAKnot))
@@ -601,6 +604,7 @@ struct SplineBoundaryCondition(T)
 /++
 Multivariate cubic spline with nodes on rectilinear grid.
 +/
+extern(C++, "mir", "interpolate")
 struct Spline(F, size_t N = 1, X = F)
     if (N && N <= 6)
 {
