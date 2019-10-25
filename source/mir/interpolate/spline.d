@@ -790,7 +790,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         static if (N > 1 && derivative) pragma(msg, "Warning: multivariate cubic spline with derivatives was not tested!!!");
         
         /++
-        `(x)` and `[x]` operators.
+        `(x)` operator.
         Complexity:
             `O(log(points.length))`
         +/

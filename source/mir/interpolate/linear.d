@@ -13,14 +13,18 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.linear;
 
-import std.traits;
-import mir.primitives;
-import mir.ndslice.slice;
-import mir.math.common: optmath;
+import core.lifetime: move; 
+import mir.functional;
 import mir.internal.utility;
-
-public import mir.interpolate: atInterval;
 import mir.interpolate;
+import mir.math.common: optmath;
+import mir.ndslice.slice;
+import mir.primitives;
+import mir.rc.array;
+import mir.utility: min, max;
+import std.meta: AliasSeq, staticMap;
+import std.traits;
+public import mir.interpolate: atInterval;
 
 @optmath:
 
@@ -28,91 +32,73 @@ import mir.interpolate;
 Constructs multivariate linear interpolant with nodes on rectilinear grid.
 
 Params:
-    T = element floating point type
-    N = arity (dimension) number
-    grid = N `x` values for interpolation
-    values = `f(x)` values for interpolation
+    grid = `x` values for interpolant
+    values = `f(x)` values for interpolant
 
 Constraints:
     `grid`, `values` must have the same length >= 2
 
 Returns: $(LREF Linear)
 +/
-template linear(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
-    if (mir.internal.utility.isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
+Linear!(F, N, X) linear(F, size_t N = 1, X = F)
+    (Repeat!(N, Slice!(RCI!(immutable X))) grid, Slice!(RCI!(const F), N) data)
 {
-    import std.meta: AliasSeq;
-
-    private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    private alias GridVectors = Linear!(T, N, GridIterators).GridVectors;
-
-@optmath:
-
-    /++
-    Params:
-        grid = immutable `x` values for interpolant
-        values = `f(x)` values for interpolant
-    Constraints:
-        `grid` and `values` must have the same length >= 2
-    Returns: $(LREF Spline)
-    +/
-    Linear!(T, N, GridIterators) linear(yIterator, SliceKind ykind)(
-        GridVectors grid,
-        Slice!(yIterator, N, ykind) values,
-        ) pure @trusted
-    {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        auto ret = typeof(return)(grid);
-        ret._data[] = values;
-        return ret.move;
-    }
+    return typeof(return)(forward!grid, data.move);
 }
-
 
 /// R -> R: Linear interpolation
 version(mir_test)
-@safe pure unittest
+@safe pure @nogc unittest
 {
     import mir.algorithm.iteration;
     import mir.ndslice;
     import mir.math.common: approxEqual;
 
-    immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
-    immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
-    auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
+    static immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
+    static immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
+    static immutable xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
 
-    auto interpolation = linear!double(x.sliced, y.sliced);
+    auto interpolant = linear!double(x.rcslice!(immutable double), y.rcslice!(const double));
 
-    auto data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
+    static immutable data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
 
-    assert(all!((a, b) => approxEqual(a, b, 1e-4, 1e-4))(xs.sliced.map!interpolation, data));
+    assert(xs.sliced.vmap(interpolant).all!((a, b) => approxEqual(a, b, 1e-4, 1e-4))(data));
 }
 
 /// R^2 -> R: Bilinear interpolation
 version(mir_test)
-@safe pure unittest
+@safe pure @nogc unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice;
     alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
 
-    ///// set test function ////
-    const double y_x0 = 2;
-    const double y_x1 = -7;
-    const double y_x0x1 = 3;
+    //// set test function ////
+    enum y_x0 = 2;
+    enum y_x1 = -7;
+    enum y_x0x1 = 3;
 
     // this function should be approximated very well
     alias f = (x0, x1) => y_x0 * x0 + y_x1 * x1 + y_x0x1 * x0 * x1 - 11;
 
     ///// set interpolant ////
-    auto x0 = [-1.0, 2, 8, 15].idup.sliced;
-    auto x1 = [-4.0, 2, 5, 10, 13].idup.sliced;
-    auto grid = cartesian(x0, x1);
+    static immutable x0 = [-1.0, 2, 8, 15];
+    static immutable x1 = [-4.0, 2, 5, 10, 13];
 
-    auto interpolant = linear!(double, 2)(x0, x1, grid.map!f);
+    auto grid = cartesian(x0, x1)
+        .map!f
+        .rcslice
+        .lightConst;
+
+    auto interpolant = 
+        linear!(double, 2)(
+            x0.rcslice!(immutable double),
+            x1.rcslice!(immutable double),
+            grid
+        );
 
     ///// compute test data ////
-    auto test_grid = cartesian(x0 + 1.23, x1 + 3.23);
+    auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23);
     auto real_data = test_grid.map!f;
     ()@trusted{
         auto interp_data = test_grid.vmap(interpolant);
@@ -141,26 +127,35 @@ version(mir_test)
     alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
 
     ///// set test function ////
-    const y_x0 = 2;
-    const y_x1 = -7;
-    const y_x2 = 5;
-    const y_x0x1 = 10;
-    const y_x0x1x2 = 3;
+    enum y_x0 = 2;
+    enum y_x1 = -7;
+    enum y_x2 = 5;
+    enum y_x0x1 = 10;
+    enum y_x0x1x2 = 3;
 
     // this function should be approximated very well
-    alias f = (x0, x1, x2) => y_x0 * x0 + y_x1 * x1 + y_x2 * x2
-         + y_x0x1 * x0 * x1 + y_x0x1x2 * x0 * x1 * x2 - 11;
+    static auto f(double x0, double x1, double x2)
+    {
+        return y_x0 * x0 + y_x1 * x1 + y_x2 * x2 + y_x0x1 * x0 * x1 + y_x0x1x2 * x0 * x1 * x2 - 11;
+    }
 
     ///// set interpolant ////
-    auto x0 = [-1.0, 2, 8, 15].idup.sliced;
-    auto x1 = [-4.0, 2, 5, 10, 13].idup.sliced;
-    auto x2 = [3, 3.7, 5].idup.sliced;
-    auto grid = cartesian(x0, x1, x2);
+    static immutable x0 = [-1.0, 2, 8, 15];
+    static immutable x1 = [-4.0, 2, 5, 10, 13];
+    static immutable x2 = [3, 3.7, 5];
+    auto grid = cartesian(x0, x1, x2)
+        .map!f
+        .as!(const double)
+        .rcslice;
 
-    auto interpolant = linear!(double, 3)(x0, x1, x2, grid.map!f);
+    auto interpolant = linear!(double, 3)(
+            x0.rcslice!(immutable double),
+            x1.rcslice!(immutable double),
+            x2.rcslice!(immutable double),
+            grid);
 
     ///// compute test data ////
-    auto test_grid = cartesian(x0 + 1.23, x1 + 3.23, x2 - 3);
+    auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23, x2.sliced - 3);
     auto real_data = test_grid.map!f;
     ()@trusted{
         auto interp_data = test_grid.vmap(interpolant);
@@ -185,60 +180,57 @@ version(mir_test)
 /++
 Multivariate linear interpolant with nodes on rectilinear grid.
 +/
-struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
-    if (N && N <= 6 && NextGridIterators.length == N - 1)
+extern(C++, "mir", "interpolate")
+struct Linear(F, size_t N = 1, X = F)
+    if (N && N <= 6)
 {
-    import mir.rc.array;
-    import std.meta: AliasSeq, staticMap;
+@optmath:
 
-    package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    package alias GridVectors = staticMap!(GridVector, GridIterators);
-
-    /// $(RED For internal use.)
-    mir_slice!(mir_rci!F, N) _data;
+    /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
+    Slice!(RCI!(const F), N) _data;
     /// Grid iterators. $(RED For internal use.)
-    GridIterators _grid;
+    RCI!(immutable X)[N] _grid;
 
-    import mir.utility: min, max;
+extern(D):
 
     /++
     +/
-    this(GridVectors grid) @safe @nogc
+    this(Repeat!(N, Slice!(RCI!(immutable X))) grid, Slice!(RCI!(const F), N) data) @safe @nogc
     {
-        size_t length = 1;
-        size_t[N] shape;
-        enum  msg =  "linear interpolant: minimal allowed length for the grid equals 2.";
+        enum  msg_min =  "linear interpolant: minimal allowed length for the grid equals 2.";
+        enum  msg_eq =  "linear interpolant: X and Y values length should be equal.";
         version(D_Exceptions)
-            static immutable exc = new Exception(msg);
+        {
+            static immutable exc_min = new Exception(msg_min);
+            static immutable exc_eq = new Exception(msg_eq);
+        }
         foreach(i, ref x; grid)
         {
             if (x.length < 2)
             {
-                version(D_Exceptions)
-                    throw exc;
-                else
-                    assert(0, msg);
+                version(D_Exceptions) throw exc_min;
+                else assert(0, msg_min);
             }
-            length *= shape[i] = x.length;
+            if (x.length != data._lengths[i])
+            {
+                version(D_Exceptions) throw exc_eq;
+                else assert(0, msg_eq);
+            }
+            _grid[i] = x._iterator.move;
         }
-
-        auto rca = mir_rcarray!F(length);
-        this._data = rca.asSlice.sliced(shape);
-        this._grid = staticMap!(iter, grid);
+        _data = data.move;
     }
 
 @trusted:
 
     ///
     Linear lightConst()() const @property { return *cast(Linear*)&this; }
-    ///
-    Linear lightImmutable()() immutable @property { return *cast(Linear*)&this; }
 
     ///
-    GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
+    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {
-        return _grid[dimension].sliced(_data._lengths[dimension]);
+        return _grid[dimension].lightConst.sliced(_data._lengths[dimension]);
     }
 
     /++
@@ -264,14 +256,12 @@ struct Linear(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         if (derivative <= derivativeOrder)
     {
         /++
-        `(x)` and `[x]` operators.
+        `(x)` operator.
         Complexity:
             `O(log(grid.length))`
         +/
         auto opCall(X...)(in X xs) scope const @trusted
             if (X.length == N)
-            // @FUTURE@
-            // X.length == N || derivative == 0 && X.length && X.length <= N
         {
             import mir.functional: AliasCall;
             import mir.ndslice.topology: iota;
