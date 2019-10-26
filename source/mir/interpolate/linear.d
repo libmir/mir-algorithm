@@ -100,12 +100,9 @@ version(mir_test)
     ///// compute test data ////
     auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23);
     auto real_data = test_grid.map!f;
-    ()@trusted{
-        auto interp_data = test_grid.vmap(interpolant);
-
-        ///// verify result ////
-        assert(all!appreq(interp_data, real_data));
-    }();
+    auto interp_data = test_grid.vmap(interpolant);
+    ///// verify result ////
+    assert(all!appreq(interp_data, real_data));
 
     //// check derivatives ////
     auto z0 = 1.23;
@@ -157,12 +154,9 @@ version(mir_test)
     ///// compute test data ////
     auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23, x2.sliced - 3);
     auto real_data = test_grid.map!f;
-    ()@trusted{
-        auto interp_data = test_grid.vmap(interpolant);
-
-        ///// verify result ////
-        assert(all!appreq(interp_data, real_data));
-    }();
+    auto interp_data = test_grid.vmap(interpolant);
+    ///// verify result ////
+    assert(all!appreq(interp_data, real_data));
 
     //// check derivatives ////
     auto z0 = 1.23;
