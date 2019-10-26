@@ -64,9 +64,9 @@ Constraints:
 Returns: $(LREF Constant)
 +/
 Constant!(F, N, X) constant(F, size_t N = 1, X = F)
-    (Repeat!(N, Slice!(RCI!(immutable X))) grid, Slice!(RCI!(const F), N) data)
+    (Repeat!(N, Slice!(RCI!(immutable X))) grid, Slice!(RCI!(const F), N) values)
 {
-    return typeof(return)(forward!grid, data.move);
+    return typeof(return)(forward!grid, values.move);
 }
 
 /++
