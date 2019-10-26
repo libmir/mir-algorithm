@@ -1,7 +1,9 @@
 /++
 $(H2 Cubic Spline Interpolation)
 
-See_also: $(REF_ALTTEXT $(TT interp1), interp1, mir, interpolate)
+The module provides common C2 splines, monotone (PCHIP) splines, Akima splines and others.
+
+See_also: $(LREF SplineType), $(REF_ALTTEXT $(TT interp1), interp1, mir, interpolate)
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited and Ilya Yaroshenko
