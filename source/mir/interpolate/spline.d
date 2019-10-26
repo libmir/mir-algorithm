@@ -396,7 +396,7 @@ version(mir_test)
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: rcslice;
-    import mir.ndslice.topology: retro, map;
+    import mir.ndslice.topology: retro, vmap;
 
     static immutable points = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
     static immutable values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
@@ -419,7 +419,7 @@ version(mir_test)
     auto interpolantR = spline!double(pointsR, valuesR, SplineType.monotone);
 
     version(X86_64)
-    assert(map!interpolant(points[0 .. $ - 1].sliced +  0.5) == map!interpolantR(pointsR.retro[0 .. $ - 1] - 0.5));
+    assert(vmap(points[0 .. $ - 1].sliced +  0.5, interpolant) == vmap(pointsR.retro[0 .. $ - 1] - 0.5, interpolantR));
 }
 
 /++

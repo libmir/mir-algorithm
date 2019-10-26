@@ -2645,8 +2645,8 @@ See_Also:
 +/
 @optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
     (
-        scope return Slice!(Iterator, N, kind) slice,
-        scope return Callable callable,
+        Slice!(Iterator, N, kind) slice,
+        Callable callable,
     )
 {
     alias It = VmapIterator!(Iterator, Callable);
@@ -2654,13 +2654,13 @@ See_Also:
 }
 
 /// ditto
-auto vmap(T, Callable)(scope return T[] array, scope return Callable callable)
+auto vmap(T, Callable)(T[] array, Callable callable)
 {
     return vmap(array.sliced, callable);
 }
 
 /// ditto
-auto vmap(T, Callable)(scope return T withAsSlice, scope return Callable callable)
+auto vmap(T, Callable)(T withAsSlice, Callable callable)
     if (hasAsSlice!T)
 {
     return vmap(withAsSlice.asSlice, callable);
