@@ -105,6 +105,20 @@ auto rcslice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice
     return *(() @trusted => cast(Slice!(RCI!E, N)*) &result)();
 }
 
+/// ditto
+auto rcslice(T)(T[] array)
+{
+    return rcslice(array.sliced);
+}
+
+/// ditto
+auto rcslice(T, I)(I[] array)
+    if  (!isImplicitlyConvertible!(I[], T[]))
+{
+    import mir.ndslice.topology: as;
+    return rcslice(array.sliced.as!T);
+}
+
 ///
 version(mir_test)
 @safe pure nothrow @nogc unittest

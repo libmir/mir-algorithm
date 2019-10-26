@@ -13,88 +13,96 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.spline;
 
-public import mir.interpolate: atInterval;
+import core.lifetime: move;
+import mir.functional;
+import mir.internal.utility;
 import mir.interpolate;
 import mir.interpolate: Repeat;
-
-// Rectilinear grid - default
-// Regular grid - linspace
-// Cartesian grid with uniblocks - iota
-
-import std.traits;
-import std.meta;
-import mir.primitives;
-import mir.functional;
-import mir.internal.utility: Iota;
 import mir.math.common;
-import mir.ndslice.internal;
 import mir.ndslice.slice;
-import mir.ndslice.traits;
+import mir.primitives;
+import mir.rc.array;
+import mir.utility: min, max;
+import std.meta: AliasSeq, staticMap;
+import std.traits: Unqual;
+public import mir.interpolate: atInterval;
 
-@fmamath:
+@optmath:
 
 ///
-@trusted pure version(mir_test) unittest
+@safe pure @nogc version(mir_test) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: rcslice;
     import mir.ndslice.topology: vmap;
 
-    auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
+    static immutable xdata = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
+    auto x = xdata.rcslice;
+    static immutable ydata = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto y = ydata.sliced;
 
     auto interpolant = spline!double(x, y); // constructs Spline
     auto xs = x + 0.5;                     // input X values for cubic spline
 
-    /// not-a-knot (default)
-    assert(xs.vmap(interpolant).all!approxEqual([
+    static immutable test_data0 = [
         -0.68361541,   7.28568719,  10.490694  ,   0.36192032,
         11.91572713,  16.44546433,  17.66699525,   4.52730869,
-        19.22825394,  -2.3242592 ]));
+        19.22825394,  -2.3242592 ];
+    /// not-a-knot (default)
+    assert(xs.vmap(interpolant).all!approxEqual(test_data0));
 
-    /// natural cubic spline
-    interpolant = spline!double(x, y, SplineBoundaryType.secondDerivative);
-    assert(xs.vmap(interpolant).all!approxEqual([
+    static immutable test_data1 = [
         10.85298372,   5.26255911,  10.71443229,   0.1824536 ,
         11.94324989,  16.45633939,  17.59185094,   4.86340188,
-        17.8565408 ,   2.81856494]));
+        17.8565408 ,   2.81856494];
+    /// natural cubic spline
+    interpolant = spline!double(x, y, SplineBoundaryType.secondDerivative);
+    assert(xs.vmap(interpolant).all!approxEqual(test_data1));
 
+    static immutable test_data2 = [
+        9.94191781,  5.4223652 , 10.69666392,  0.1971149 , 11.93868415,
+        16.46378847, 17.56521661,  4.97656997, 17.39645585, 4.54316446];
     /// set both boundary second derivatives to 3
     interpolant = spline!double(x, y, SplineBoundaryType.secondDerivative, 3);
-    assert(xs.vmap(interpolant).all!approxEqual([
-        9.94191781,  5.4223652 , 10.69666392,  0.1971149 , 11.93868415,
-        16.46378847, 17.56521661,  4.97656997, 17.39645585, 4.54316446]));
+    assert(xs.vmap(interpolant).all!approxEqual(test_data2));
 
-    /// set both boundary derivatives to 3
-    interpolant = spline!double(x, y, SplineBoundaryType.firstDerivative, 3);
-    assert(xs.vmap(interpolant).all!approxEqual([
+    static immutable test_data3 = [
         16.45728263,   4.27981687,  10.82295092,   0.09610695,
         11.95252862,  16.47583126,  17.49964521,   5.26561539,
-        16.21803478,   8.96104974]));
+        16.21803478,   8.96104974];
+    /// set both boundary derivatives to 3
+    interpolant = spline!double(x, y, SplineBoundaryType.firstDerivative, 3);
+    assert(xs.vmap(interpolant).all!approxEqual(test_data3));
 
+    static immutable test_data4 = [
+            16.45730084,   4.27966112,  10.82337171,   0.09403945,
+            11.96265209,  16.44067375,  17.6374694 ,   4.67438921,
+            18.6234452 ,  -0.05582876];
     /// different boundary conditions
     interpolant = spline!double(x, y,
             SplineBoundaryCondition!double(SplineBoundaryType.firstDerivative, 3),
             SplineBoundaryCondition!double(SplineBoundaryType.secondDerivative, -5));
-    assert(xs.vmap(interpolant).all!approxEqual([
-            16.45730084,   4.27966112,  10.82337171,   0.09403945,
-            11.96265209,  16.44067375,  17.6374694 ,   4.67438921,
-            18.6234452 ,  -0.05582876]));
+    assert(xs.vmap(interpolant).all!approxEqual(test_data4));
+    
+
+    static immutable test_data5 = [
+            12.37135558,   4.99638066,  10.74362441,   0.16008641,
+            11.94073593,  16.47908148,  17.49841853,   5.26600921,
+            16.21796051,   8.96102894];
     // ditto
     interpolant = spline!double(x, y,
             SplineBoundaryCondition!double(SplineBoundaryType.secondDerivative, -5),
             SplineBoundaryCondition!double(SplineBoundaryType.firstDerivative, 3));
-    assert(xs.vmap(interpolant).all!approxEqual([
-            12.37135558,   4.99638066,  10.74362441,   0.16008641,
-            11.94073593,  16.47908148,  17.49841853,   5.26600921,
-            16.21796051,   8.96102894]));
+    assert(xs.vmap(interpolant).all!approxEqual(test_data5));
     
+    static immutable test_data6 = [
+        11.40871379,  2.64278898,  9.55774317,  4.84791141, 11.24842121,
+        16.16794267, 18.58060557,  5.2531411 , 17.45509005,  1.86992521];
     /// Akima spline
     interpolant = spline!double(x, y, SplineType.akima);
-    assert(xs.vmap(interpolant).all!approxEqual(
-        [11.40871379,  2.64278898,  9.55774317,  4.84791141, 11.24842121,
-         16.16794267, 18.58060557,  5.2531411 , 17.45509005,  1.86992521]));
+    assert(xs.vmap(interpolant).all!approxEqual(test_data6));
 
     /// Double Quadratic spline
     interpolant = spline!double(x, y, SplineType.doubleQuadratic);
@@ -123,8 +131,8 @@ import mir.ndslice.traits;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap, map;
 
-    auto x = [-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
-    auto y = [
+    auto x = rcarray!(immutable double)(-1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22).asSlice;
+    auto y = rcarray(
        8.77842512,
        7.96429686,
        7.77074363,
@@ -134,75 +142,72 @@ import mir.ndslice.traits;
        1.48167283,
        2.8267636 ,
        0.40200172,
-       7.78980608].sliced;
-    
+       7.78980608).asSlice;
+
     auto interpolant = x.spline!double(y); // default boundary condition is 'not-a-knot'
 
     auto xs = x + 0.5;
 
-    ()@trusted{
+    auto ys = xs.vmap(interpolant);
 
-        auto ys = xs.vmap(interpolant);
-
-        auto r =
-        [ 5.56971848,
-            9.30342403,
-            4.44139761,
+    auto r =
+       [5.56971848,
+        9.30342403,
+        4.44139761,
         -0.74740285,
-            3.00994108,
-            1.50750417,
-            1.73144979,
-            2.64860361,
-            0.64413911,
+        3.00994108,
+        1.50750417,
+        1.73144979,
+        2.64860361,
+        0.64413911,
         10.81768928];
 
-        assert(all!approxEqual(ys, r));
+    assert(all!approxEqual(ys, r));
 
-        // first derivative
-        auto d1 = xs.vmap(interpolant.aliasCall!"withDerivative").map!"a[1]";
-        auto r1 =
-        [-4.51501279,
-            2.15715986,
-            -7.28363308,
-            -2.14050449,
-            0.03693092,
-            -0.49618999,
-            0.58109933,
-            -0.52926703,
-            0.7819035 ,
-            6.70632693];
-        assert(all!approxEqual(d1, r1));
+    // first derivative
+    auto d1 = xs.vmap(interpolant.aliasCall!"withDerivative").map!"a[1]";
+    auto r1 =
+       [-4.51501279,
+        2.15715986,
+        -7.28363308,
+        -2.14050449,
+        0.03693092,
+        -0.49618999,
+        0.58109933,
+        -0.52926703,
+        0.7819035 ,
+        6.70632693];
+    assert(all!approxEqual(d1, r1));
 
-        // second derivative
-        auto d2 = xs.vmap(interpolant.aliasCall!"withTwoDerivatives").map!"a[2]";
-        auto r2 =
-        [ 7.07104751,
-            -2.62293241,
-            -0.01468508,
-            5.70609505,
-            -2.02358911,
-            0.72142061,
-            0.25275483,
-            -0.6133589 ,
-            1.26894416,
-            2.68067146];
-        assert(all!approxEqual(d2, r2));
+    // second derivative
+    auto d2 = xs.vmap(interpolant.aliasCall!"withTwoDerivatives").map!"a[2]";
+    auto r2 =
+       [7.07104751,
+        -2.62293241,
+        -0.01468508,
+        5.70609505,
+        -2.02358911,
+        0.72142061,
+        0.25275483,
+        -0.6133589 ,
+        1.26894416,
+        2.68067146];
+    assert(all!approxEqual(d2, r2));
 
-        // third derivative (6 * a)
-        auto d3 = xs.vmap(interpolant.aliasCall!("opCall", 3)).map!"a[3]";
-        auto r3 =
-        [-3.23132664,
-            -3.23132664,
-            14.91047457,
-            -3.46891432,
-            1.88520325,
-            -0.16559031,
-            -0.44056064,
-            0.47057577,
-            0.47057577,
-            0.47057577];
-        assert(all!approxEqual(d3, r3));
-    }();
+    // third derivative (6 * a)
+    auto d3 = xs.vmap(interpolant.aliasCall!("opCall", 3)).map!"a[3]";
+    auto r3 =
+       [-3.23132664,
+        -3.23132664,
+        14.91047457,
+        -3.46891432,
+        1.88520325,
+        -0.16559031,
+        -0.44056064,
+        0.47057577,
+        0.47057577,
+        0.47057577];
+    assert(all!approxEqual(d3, r3));
 }
 
 /// R -> R: Cubic interpolation
@@ -213,11 +218,11 @@ version(mir_test)
     import mir.math.common: approxEqual;
     import mir.ndslice;
 
-    immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
-    auto y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
+    static immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
+    static immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
     auto xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
 
-    auto interpolation = spline!double(x.sliced, y.sliced);
+    auto interpolation = spline!double(x.rcslice, y.sliced);
 
     auto data = 
       [ 0.0011    ,  0.003     ,  0.0064    ,  0.01042622,  0.0144    ,
@@ -227,9 +232,7 @@ version(mir_test)
         0.03314357,  0.03335896,  0.03355892,  0.03375674,  0.03396413,
         0.03419436,  0.03446018,  0.03477529,  0.03515072,  0.0356    ];
 
-    ()@trusted{
-        assert(all!approxEqual(xs.sliced.vmap(interpolation), data));
-    }();
+    assert(all!approxEqual(xs.sliced.vmap(interpolation), data));
 }
 
 /// R^2 -> R: Bicubic interpolation
@@ -249,14 +252,14 @@ unittest
     alias f = (x0, x1) => y_x0 * x0 + y_x1 * x1 + y_x0x1 * x0 * x1 - 11;
 
     ///// set interpolant ////
-    auto x0 = [-1.0, 2, 8, 15].idup.sliced;
-    auto x1 = [-4.0, 2, 5, 10, 13].idup.sliced;
+    static immutable x0 = [-1.0, 2, 8, 15];
+    static immutable x1 = [-4.0, 2, 5, 10, 13];
     auto grid = cartesian(x0, x1);
 
-    auto interpolant = spline!(double, 2)(x0, x1, grid.map!f);
+    auto interpolant = spline!(double, 2)(x0.rcslice, x1.rcslice, grid.map!f);
 
     ///// compute test data ////
-    auto test_grid = cartesian(x0 + 1.23, x1 + 3.23);
+    auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23);
     // auto test_grid = cartesian(x0 + 0, x1 + 0);
     auto real_data = test_grid.map!f;
     auto interp_data = test_grid.vmap(interpolant);
@@ -295,26 +298,26 @@ unittest
     alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
 
     ///// set test function ////
-    const y_x0 = 2;
-    const y_x1 = -7;
-    const y_x2 = 5;
-    const y_x0x1 = 10;
-    const y_x0x1x2 = 3;
+    enum y_x0 = 2;
+    enum y_x1 = -7;
+    enum y_x2 = 5;
+    enum y_x0x1 = 10;
+    enum y_x0x1x2 = 3;
 
     // this function should be approximated very well
     alias f = (x0, x1, x2) => y_x0 * x0 + y_x1 * x1 + y_x2 * x2
          + y_x0x1 * x0 * x1 + y_x0x1x2 * x0 * x1 * x2 - 11;
 
     ///// set interpolant ////
-    auto x0 = [-1.0, 2, 8, 15].idup.sliced;
-    auto x1 = [-4.0, 2, 5, 10, 13].idup.sliced;
-    auto x2 = [3, 3.7, 5].idup.sliced;
+    static immutable x0 = [-1.0, 2, 8, 15];
+    static immutable x1 = [-4.0, 2, 5, 10, 13];
+    static immutable x2 = [3, 3.7, 5];
     auto grid = cartesian(x0, x1, x2);
 
-    auto interpolant = spline!(double, 3)(x0, x1, x2, grid.map!f);
+    auto interpolant = spline!(double, 3)(x0.rcslice, x1.rcslice, x2.rcslice, grid.map!f);
 
     ///// compute test data ////
-    auto test_grid = cartesian(x0 + 1.23, x1 + 3.23, x2 - 3);
+    auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23, x2.sliced - 3);
     auto real_data = test_grid.map!f;
     auto interp_data = test_grid.vmap(interpolant);
 
@@ -361,31 +364,29 @@ version(mir_test)
 {
     import mir.math.common: approxEqual;
     import mir.algorithm.iteration: all;
-    import mir.ndslice.allocation: slice;
+    import mir.ndslice.allocation: rcslice;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: vmap;
 
-    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
-    auto interpolant = spline!double(x, y, SplineType.monotone);
+    static immutable x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
+    static immutable y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto interpolant = spline!double(x.rcslice, y.sliced, SplineType.monotone);
 
-    auto xs = x[0 .. $ - 1] + 0.5;
+    auto xs = x[0 .. $ - 1].sliced + 0.5;
 
-    () @trusted {
-        auto ys = xs.vmap(interpolant);
+    auto ys = xs.vmap(interpolant);
 
-        assert(ys.all!approxEqual([
-            5.333333333333334,
-            2.500000000000000,
-            10.000000000000000,
-            4.288971807628524,
-            11.202580845771145,
-            16.250000000000000,
-            17.962962962962962,
-            5.558593750000000,
-            17.604662698412699,
-            ]));
-    }();
+    assert(ys.all!approxEqual([
+        5.333333333333334,
+        2.500000000000000,
+        10.000000000000000,
+        4.288971807628524,
+        11.202580845771145,
+        16.250000000000000,
+        17.962962962962962,
+        5.558593750000000,
+        17.604662698412699,
+        ]));
 }
 
 // Check direction equality
@@ -394,11 +395,11 @@ version(mir_test)
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
-    import mir.ndslice.allocation: slice;
-    import mir.ndslice.topology: retro, map;
+    import mir.ndslice.allocation: rcslice;
+    import mir.ndslice.topology: retro, vmap;
 
-    auto points = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
-    auto values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
+    static immutable points = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
+    static immutable values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
 
     auto results = [
         5.333333333333334,
@@ -411,14 +412,14 @@ version(mir_test)
         5.558593750000000,
         17.604662698412699,
         ];
-    auto interpolant = spline!double(points, values, SplineType.monotone);
+    auto interpolant = spline!double(points.rcslice, values.sliced, SplineType.monotone);
 
-    auto pointsR = slice(-points.retro);
-    auto valuesR = values.retro.slice;
+    auto pointsR = rcslice(-points.retro);
+    auto valuesR = values.retro.rcslice;
     auto interpolantR = spline!double(pointsR, valuesR, SplineType.monotone);
 
     version(X86_64)
-    assert(map!interpolant(points[0 .. $ - 1] +  0.5) == map!interpolantR(pointsR.retro[0 .. $ - 1] - 0.5));
+    assert(vmap(points[0 .. $ - 1].sliced +  0.5, interpolant) == vmap(pointsR.retro[0 .. $ - 1] - 0.5, interpolantR));
 }
 
 /++
@@ -426,6 +427,7 @@ Cubic Spline types.
 
 The first derivatives are guaranteed to be continuous for all cubic splines.
 +/
+extern(C++, "mir", "interpolate")
 enum SplineType
 {
     /++
@@ -457,12 +459,9 @@ enum SplineType
 Constructs multivariate cubic spline in symmetrical form with nodes on rectilinear grid.
 Result has continues second derivatives throughout the curve / nd-surface.
 +/
-template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIterators = Repeat!(N - 1, FirstGridIterator))
+template spline(T, size_t N = 1, X = T)
     if (isFloatingPoint!T && is(T == Unqual!T) && N <= 6)
 {
-    private alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    private alias GridVectors = Spline!(T, N, GridIterators).GridVectors;
-
     /++
     Params:
         grid = immutable `x` values for interpolant
@@ -473,8 +472,8 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
-        GridVectors grid,
+    Spline!(T, N, X) spline(yIterator, SliceKind ykind)(
+        Repeat!(N, Slice!(RCI!(immutable X))) grid,
         Slice!(yIterator, N, ykind) values,
         SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
         in T valueOfBoundaryConditions = 0,
@@ -483,8 +482,8 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         return spline(grid, values, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
     }
 
-    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
-        GridVectors grid,
+    Spline!(T, N, X) spline(yIterator, SliceKind ykind)(
+        Repeat!(N, Slice!(RCI!(immutable X))) grid,
         Slice!(yIterator, N, ykind) values,
         SplineType kind,
         in T param = 0,
@@ -507,8 +506,8 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
-        GridVectors grid,
+    Spline!(T, N, X) spline(yIterator, SliceKind ykind)(
+        Repeat!(N, Slice!(RCI!(immutable X))) grid,
         Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T boundaries,
         SplineType kind = SplineType.c2,
@@ -531,8 +530,8 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         `grid` and `values` must have the same length >= 3
     Returns: $(LREF Spline)
     +/
-    Spline!(T, N, GridIterators) spline(yIterator, SliceKind ykind)(
-        GridVectors grid,
+    Spline!(T, N, X) spline(yIterator, SliceKind ykind)(
+        Repeat!(N, Slice!(RCI!(immutable X))) grid,
         Slice!(yIterator, N, ykind) values,
         SplineBoundaryCondition!T rBoundary,
         SplineBoundaryCondition!T lBoundary,
@@ -540,11 +539,10 @@ template spline(T, size_t N = 1, FirstGridIterator = immutable(T)*, NextGridIter
         in T param = 0,
         )
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        auto ret = typeof(return)(grid);
+        auto ret = typeof(return)(forward!grid);
         ret._values = values;
         ret._computeDerivatives(kind, param, rBoundary, lBoundary);
-        return ret.move;
+        return ret;
     }
 }
 
@@ -553,6 +551,7 @@ Cubic Spline Boundary Condition Type.
 
 See_also: $(LREF SplineBoundaryCondition) $(LREF SplineType)
 +/
+extern(C++, "mir", "interpolate")
 enum SplineBoundaryType
 {
     /++
@@ -593,6 +592,7 @@ Cubic Spline  Boundary Condition
 
 See_also: $(LREF SplineBoundaryType)
 +/
+extern(C++, "mir", "interpolate")
 struct SplineBoundaryCondition(T)
 {
     /// type (default is $(LREF SplineBoundaryType.notAKnot))
@@ -604,26 +604,22 @@ struct SplineBoundaryCondition(T)
 /++
 Multivariate cubic spline with nodes on rectilinear grid.
 +/
-struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterators...)
-    if (N && N <= 6 && NextGridIterators.length == N - 1)
+extern(C++, "mir", "interpolate")
+struct Spline(F, size_t N = 1, X = F)
+    if (N && N <= 6)
 {
     import mir.rc.array;
 
-    package alias GridIterators = AliasSeq!(FirstGridIterator, NextGridIterators);
-    package alias GridVectors = staticMap!(GridVector, GridIterators);
-
-@fmamath:
-
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
-    mir_slice!(mir_rci!(F[2 ^^ N]), N) _data;
+    Slice!(RCI!(F[2 ^^ N]), N) _data;
     /// Grid iterators. $(RED For internal use.)
-    GridIterators _grid;
+    RCI!(immutable X)[N] _grid;
 
-    import mir.utility: min, max;
+@optmath extern(D):
 
     /++
     +/
-    this(GridVectors grid) @safe @nogc
+    this(Repeat!(N, Slice!(RCI!(immutable X))) grid) @safe @nogc
     {
         size_t length = 1;
         size_t[N] shape;
@@ -634,17 +630,14 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         {
             if (x.length < 2)
             {
-                version(D_Exceptions)
-                    throw exc;
-                else
-                    assert(0, msg);
+                version(D_Exceptions) throw exc;
+                else assert(0, msg);
             }
             length *= shape[i] = x.length;
+            this._grid[i] = x._iterator.move;
         }
-
-        auto rca = mir_rcarray!(F[2 ^^ N])(length);
-        this._data = rca.asSlice.sliced(shape);
-        this._grid = staticMap!(iter, grid);
+        import mir.ndslice.allocation: rcslice;
+        this._data = shape.rcslice!(F[2 ^^ N]);
     }
 
     package static auto pickDataSubslice(D)(auto scope ref D data, size_t index) @trusted
@@ -695,10 +688,10 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
 
         static if (N == 1)
         {
-            splineSlopes!(F, F)(_grid.sliced(_data._lengths[0]), pickDataSubslice(_data, 0), pickDataSubslice(_data, 1), temp[0 .. _data._lengths[0]], kind, param, lbc, rbc);
+            splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data, 0), pickDataSubslice(_data, 1), temp[0 .. _data._lengths[0]], kind, param, lbc, rbc);
         }
         else
-        foreach_reverse(i, ref x; _grid)
+        foreach_reverse(i; Iota!N)
         {
             // if (i == _grid.length - 1)
             _data
@@ -711,7 +704,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
                         auto y = pickDataSubslice(d, l);
                         auto s = pickDataSubslice(d, L + l);
                         // debug printf("ptr = %ld, stride = %ld, stride = %ld, d = %ld i = %ld l = %ld\n", d.iterator, d._stride!0, y._stride!0, d.length, i, l);
-                        splineSlopes!(F, F)(x.sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lbc, rbc);
+                        splineSlopes!(F, F)(_grid[i].sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lbc, rbc);
                         // debug{
                         //     (cast(void delegate() @nogc)(){
                         //     writeln("y = ", y);
@@ -731,10 +724,10 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
     Spline lightImmutable() immutable @property { return *cast(Spline*)&this; }
 
     ///
-    GridVectors[dimension] grid(size_t dimension = 0)() scope return const @property
+    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() scope return const @property
         if (dimension < N)
     {
-        return _grid[dimension].sliced(_data._lengths[dimension]);
+        return _grid[dimension].lightConst.sliced(_data._lengths[dimension]);
     }
 
     /++
@@ -790,7 +783,7 @@ struct Spline(F, size_t N = 1, FirstGridIterator = immutable(F)*, NextGridIterat
         static if (N > 1 && derivative) pragma(msg, "Warning: multivariate cubic spline with derivatives was not tested!!!");
         
         /++
-        `(x)` and `[x]` operators.
+        `(x)` operator.
         Complexity:
             `O(log(points.length))`
         +/

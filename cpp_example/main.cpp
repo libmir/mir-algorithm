@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <vector>
 #include <map>
+#include "mir/interpolate.h"
 #include "mir/series.h"
 #include "mir/rcarray.h"
 #include "mir/rcptr.h"

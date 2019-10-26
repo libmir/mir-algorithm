@@ -78,12 +78,14 @@ template findInterval(size_t dimension = 0)
 ///
 version(mir_test) unittest
 {
+    import mir.ndslice.allocation: rcslice;
+    import mir.ndslice.topology: as;
     import mir.ndslice.slice: sliced;
     import mir.interpolate.linear;
 
-    auto x = [0.0, 1, 2].idup.sliced;
-    auto y = [10.0, 2, 4].idup.sliced;
-    auto interpolation = linear!double(x, y);
+    static immutable x = [0.0, 1, 2];
+    static immutable y = [10.0, 2, 4];
+    auto interpolation = linear!double(x.rcslice, y.as!(const double).rcslice);
     assert(interpolation.findInterval(1.0) == 1);
 }
 
@@ -161,44 +163,32 @@ version(mir_test)
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
-    import mir.ndslice.allocation: slice;
+    import mir.ndslice.allocation: rcslice;
     import mir.interpolate: interp1;
-    import mir.interpolate.pchip;
+    import mir.interpolate.spline;
 
-    auto x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22].idup.sliced;
-    auto y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6].idup.sliced;
-    auto interpolation = pchip!double(x, y);
+    static immutable x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
+    static immutable y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto interpolation = spline!double(x.rcslice, y.sliced, SplineType.monotone);
 
-    auto xs = slice(x[0 .. $ - 1] + 0.5);
+    auto xs = x[0 .. $ - 1].sliced + 0.5;
 
     auto ys = xs.interp1(interpolation);
-
-    // assert(ys.approxEqual([
-    //     5.333333333333334,
-    //     2.500000000000000,
-    //     10.000000000000000,
-    //     4.288971807628524,
-    //     11.202580845771145,
-    //     16.250000000000000,
-    //     17.962962962962962,
-    //     5.558593750000000,
-    //     17.604662698412699,
-    //     ]));
 }
 
-@safe version(mir_test) unittest
+@safe pure @nogc version(mir_test) unittest
 {
     import mir.interpolate.linear;
     import mir.ndslice;
     import mir.math.common: approxEqual;
 
-    immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
-    immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
-    immutable xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
+    static immutable x = [0, 1, 2, 3, 5.00274, 7.00274, 10.0055, 20.0137, 30.0192];
+    static immutable y = [0.0011, 0.0011, 0.0030, 0.0064, 0.0144, 0.0207, 0.0261, 0.0329, 0.0356,];
+    static immutable xs = [1, 2, 3, 4.00274, 5.00274, 6.00274, 7.00274, 8.00548, 9.00548, 10.0055, 11.0055, 12.0082, 13.0082, 14.0082, 15.0082, 16.011, 17.011, 18.011, 19.011, 20.0137, 21.0137, 22.0137, 23.0137, 24.0164, 25.0164, 26.0164, 27.0164, 28.0192, 29.0192, 30.0192];
 
-    auto interpolation = linear!double(x.sliced, y.sliced);
+    auto interpolation = linear!double(x.rcslice, y.as!(const double).rcslice);
 
-    auto data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
+    static immutable data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
 
     () @trusted {
         assert(all!((a, b) => approxEqual(a, b, 1e-4, 1e-4))(xs.interp1(interpolation), data));
@@ -221,9 +211,12 @@ RefTuple!(T, size_t) atInterval(T)(in T value, size_t intervalIndex)
 ///
 version(mir_test) unittest
 {
+    import mir.ndslice.allocation;
     import mir.ndslice.slice;
     import mir.interpolate.spline;
-    auto interpolant = spline!double([0.0, 1, 2].idup.sliced, [3, 4, -10].idup.sliced);
+    static immutable x = [0.0, 1, 2];
+    static immutable y = [3.0, 4, -10];
+    auto interpolant = spline!double(x.rcslice, y.sliced);
     assert(interpolant(1.3) != interpolant(1.3.atInterval(0)));
     assert(interpolant(1.3) == interpolant(1.3.atInterval(1)));
 }

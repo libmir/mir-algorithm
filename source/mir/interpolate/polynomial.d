@@ -14,6 +14,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.interpolate.polynomial;
 
 public import mir.interpolate: atInterval;
+import core.lifetime: move;
 import mir.functional: RefTuple;
 import mir.internal.utility : isFloatingPoint, Iota;
 import mir.interpolate: findInterval;
@@ -68,28 +69,30 @@ version(mir_test)
 /++
 Constructs barycentric lagrange interpolant.
 +/
-Lagrange!(T, maxDerivative) lagrange(uint maxDerivative = 0, T, X)(scope const T[] x, scope const X[] y)
+Lagrange!(T, maxDerivative) lagrange(uint maxDerivative = 0, T, X)(scope const X[] x, scope const T[] y)
     if (maxDerivative < 16)
 {
-    return x.sliced.lagrange!maxDerivative(y.sliced);
+    import mir.ndslice.allocation: rcslice;
+    return x.rcslice!(immutable X).lagrange!maxDerivative(y.sliced);
 }
 
 /// ditto
-Lagrange!(Unqual!(Slice!(YIterator, 1, ykind).DeepElement), maxDerivative)
-    lagrange(uint maxDerivative = 0, XIterator, SliceKind xkind, YIterator, SliceKind ykind)(Slice!(XIterator, 1, xkind) x, Slice!(YIterator, 1, ykind) y) @trusted
+Lagrange!(Unqual!(Slice!(Iterator, 1, kind).DeepElement), maxDerivative, X)
+    lagrange(uint maxDerivative = 0, X, Iterator, SliceKind kind)(Slice!(RCI!(immutable X)) x, Slice!(Iterator, 1, kind) y) @trusted
     if (maxDerivative < 16)
 {
-    alias T = Unqual!(Slice!(YIterator, 1, ykind).DeepElement);
-    return Lagrange!(T, maxDerivative)(rcarray!(immutable T)(x), rcarray!T(y));
+    alias T = Unqual!(Slice!(Iterator, 1, kind).DeepElement);
+    return Lagrange!(T, maxDerivative)(x.move, rcarray!T(y));
 }
 
 /++
 +/
-struct Lagrange(T, uint maxAdditionalFunctions = 0)
+extern(C++, "mir", "interpolate")
+struct Lagrange(T, uint maxAdditionalFunctions = 0, X = T)
     if (isFloatingPoint!T && maxAdditionalFunctions < 16)
 {
     /// $(RED for internal use only.)
-    RCArray!(immutable T) _grid;
+    Slice!(RCI!(immutable X)) _grid;
     /// $(RED for internal use only.)
     RCArray!(immutable T) _inversedBarycentricWeights;
     /// $(RED for internal use only.)
@@ -97,13 +100,13 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
     /// $(RED for internal use only.)
     T[maxAdditionalFunctions + 1] _asums;
 
-@optmath @safe pure @nogc:
+@optmath @safe pure @nogc extern(D):
 
     /++
     Complexity: `O(N)`
     +/
     pragma(inline, false)
-    this(RCArray!(immutable T) grid, RCArray!T values, RCArray!(immutable T) inversedBarycentricWeights)
+    this(Slice!(RCI!(immutable X)) grid, RCArray!T values, RCArray!(immutable T) inversedBarycentricWeights)
     {
         import mir.algorithm.iteration: all;
         assert(grid.length > 1);
@@ -114,22 +117,21 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
         {
             enum T md = T.min_normal / T.epsilon;
             static immutable exc = new Exception(msg);
-            if (!grid[].diff.all!(a => md <= a && a <= T.max))
+            if (!grid.lightScope.diff.all!(a => md <= a && a <= T.max))
                 throw exc;
         }
         swap(_grid, grid);
         swap(_inversedBarycentricWeights, inversedBarycentricWeights);
         swap(_normalizedValues[0], values);
-        auto x = _grid[].sliced;
         auto w = _inversedBarycentricWeights[].sliced;
         foreach (_; Iota!maxAdditionalFunctions)
         {
             auto y = _normalizedValues[_][].sliced;
             static if (_ == 0)
                 _asums[_] = y.asumNorm;
-            _normalizedValues[_ + 1] = RCArray!T(x.length, true, false);
+            _normalizedValues[_ + 1] = RCArray!T(_grid.length, true, false);
             auto d = _normalizedValues[_ + 1][].sliced;
-            polynomialDerivativeValues(d, x, y, w);
+            polynomialDerivativeValues(d, _grid.lightScope, y, w);
             _asums[_ + 1] = d.asumNorm * _asums[_];
         }
     }
@@ -137,10 +139,10 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0)
     /++
     Complexity: `O(N^^2)`
     +/
-    this(RCArray!(immutable T) grid, RCArray!T values)
+    this(Slice!(RCI!(immutable X)) grid, RCArray!T values)
     {
         static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
-        auto weights = grid[].sliced.inversedBarycentricWeights;
+        auto weights = grid.lightScope.inversedBarycentricWeights;
         this(grid.move, values.move, weights.move);
     }
 
@@ -154,7 +156,7 @@ scope const:
     @property
     {
         ///
-        ref const(RCArray!(immutable T)) grid() { return _grid; }
+        ref const(Slice!(RCI!(immutable X))) grid() { return _grid; }
         ///
         ref const(RCArray!(immutable T)) inversedBarycentricWeights() { return _inversedBarycentricWeights; }
         ///
@@ -186,14 +188,13 @@ scope const:
 
             const x = tuple[1];
             const idx = tuple[0];
-            const grid = _grid[].sliced;
             const inversedBarycentricWeights = _inversedBarycentricWeights[].sliced;
             Slice!(const(T)*)[derivative + 1] values;
             foreach (i; Iota!(derivative + 1))
                 values[i] = _normalizedValues[i][].sliced;
             const T[2] pd = [
-                T(x - grid[idx + 0]).fabs,
-                T(x - grid[idx + 1]).fabs,
+                T(x - _grid[idx + 0]).fabs,
+                T(x - _grid[idx + 1]).fabs,
             ];
             ptrdiff_t fastIndex =
                 pd[0] < T.min_normal ? idx + 0 :
@@ -215,9 +216,9 @@ scope const:
             }
             T d = 0;
             T[derivative + 1] n = 0;
-            foreach (i; 0 .. grid.length)
+            foreach (i; 0 .. _grid.length)
             {
-                T w = 1 / (inversedBarycentricWeights[i] * (x - grid[i]));
+                T w = 1 / (inversedBarycentricWeights[i] * (x - _grid[i]));
                 d += w;
                 foreach (_; Iota!(derivative + 1))
                     n[_] += w * values[_][i];
