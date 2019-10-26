@@ -155,26 +155,26 @@ struct Interp1(Range, Interpolant)
     }
 }
 
-// /++
-// PCHIP interpolation.
-// +/
-// version(mir_test)
-// @safe unittest
-// {
-//     import mir.math.common: approxEqual;
-//     import mir.ndslice.slice: sliced;
-//     import mir.ndslice.allocation: slice;
-//     import mir.interpolate: interp1;
-//     import mir.interpolate.pchip;
+/++
+PCHIP interpolation.
++/
+version(mir_test)
+@safe unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: rcslice;
+    import mir.interpolate: interp1;
+    import mir.interpolate.spline;
 
-//     static immutable x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
-//     static immutable y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
-//     auto interpolation = pchip!double(x, y);
+    static immutable x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
+    static immutable y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto interpolation = spline!double(x.rcslice, y.sliced, SplineType.monotone);
 
-//     auto xs = slice(x[0 .. $ - 1].sliced + 0.5);
+    auto xs = x[0 .. $ - 1].sliced + 0.5;
 
-//     auto ys = xs.interp1(interpolation);
-// }
+    auto ys = xs.interp1(interpolation);
+}
 
 @safe pure @nogc version(mir_test) unittest
 {
