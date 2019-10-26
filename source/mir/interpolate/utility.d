@@ -96,8 +96,10 @@ Returns: `[f'(x0), f'(x1), f'(x2)]`
 +/
 Unqual!(typeof(X.init - Y.init))[3] parabolaDerivatives(X, Y)(in X x0, in X x1, in X x2, in Y y0, in Y y1, in Y y2)
 {
-    auto p = parabolaKernel(x0, x1, x2, y0, y1, y2);
-    return [p.opCall!1(x0)[1], p.opCall!1(x1)[1], p.opCall!1(x2)[1]];
+    auto d0 = (y2 - y1) / (x2 - x1);
+    auto d1 = (y0 - y2) / (x0 - x2);
+    auto d2 = (y1 - y0) / (x1 - x0);
+    return [d1 + d2 - d0, d0 + d2 - d1, d0 + d1 - d2];
 }
 
 ///
