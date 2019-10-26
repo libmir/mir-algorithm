@@ -151,7 +151,7 @@ public import mir.interpolate: atInterval;
     auto ys = xs.vmap(interpolant);
 
     auto r =
-    [ 5.56971848,
+       [5.56971848,
         9.30342403,
         4.44139761,
         -0.74740285,
@@ -167,7 +167,7 @@ public import mir.interpolate: atInterval;
     // first derivative
     auto d1 = xs.vmap(interpolant.aliasCall!"withDerivative").map!"a[1]";
     auto r1 =
-    [-4.51501279,
+       [-4.51501279,
         2.15715986,
         -7.28363308,
         -2.14050449,
@@ -182,7 +182,7 @@ public import mir.interpolate: atInterval;
     // second derivative
     auto d2 = xs.vmap(interpolant.aliasCall!"withTwoDerivatives").map!"a[2]";
     auto r2 =
-    [ 7.07104751,
+       [7.07104751,
         -2.62293241,
         -0.01468508,
         5.70609505,
@@ -197,7 +197,7 @@ public import mir.interpolate: atInterval;
     // third derivative (6 * a)
     auto d3 = xs.vmap(interpolant.aliasCall!("opCall", 3)).map!"a[3]";
     auto r3 =
-    [-3.23132664,
+       [-3.23132664,
         -3.23132664,
         14.91047457,
         -3.46891432,
