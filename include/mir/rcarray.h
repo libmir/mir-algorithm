@@ -187,6 +187,12 @@ struct mir_rci
     using Iterator = T*;
     using Array = mir_rcarray<T>;
 
+    using difference_type = ptrdiff_t;
+    using value_type = T;
+    using pointer = T*;
+    using reference = T&;
+    using iterator_category = std::random_access_iterator_tag;
+
     Iterator _iterator = nullptr;
     mir_rcarray<T> _array;
 
@@ -237,13 +243,13 @@ struct mir_rci
         return *this;
     }
 
-    mir_rci& operator+=(mir_ptrdiff_t shift)
+    mir_rci& operator+=(ptrdiff_t shift)
     {
         _iterator += shift;
         return *this;
     }
 
-    mir_rci& operator-=(mir_ptrdiff_t shift)
+    mir_rci& operator-=(ptrdiff_t shift)
     {
         _iterator -= shift;
         return *this;
@@ -261,6 +267,11 @@ struct mir_rci
         auto ret = *this;
         --_iterator;
         return ret;
+    }
+
+    ptrdiff_t operator-(const mir_rci& shift)
+    {
+        return _iterator - shift._iterator;
     }
 
     T& operator[](size_t index)

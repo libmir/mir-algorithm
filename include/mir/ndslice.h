@@ -40,6 +40,21 @@ enum class mir_slice_kind : int
     contiguous = 2
 };
 
+template <typename T>
+struct mir_rci;
+
+namespace mir {
+    template <
+        typename T
+    >
+    const T* light_const(const T* ptr) { return ptr; }
+
+    template <
+        typename T
+    >
+    mir_rci<const T> light_const(const mir_rci<T>& s);
+}
+
 template <
     typename Iterator,
     mir_size_t N = 1,
@@ -172,12 +187,12 @@ struct mir_slice<Iterator, 2, mir_slice_kind::contiguous>
 
     auto begin() const noexcept
     {
-        return _iterator;
+        return mir::light_const(_iterator);
     }
 
     auto cbegin() const noexcept
     {
-        return _iterator;
+        return begin();
     }
 
     Iterator end() noexcept
@@ -187,12 +202,12 @@ struct mir_slice<Iterator, 2, mir_slice_kind::contiguous>
 
     auto end() const noexcept
     {
-        return _iterator + _lengths[0] * _lengths[1];
+        return mir::light_const(_iterator) + _lengths[0] * _lengths[1];
     }
 
     auto cend() const noexcept
     {
-        return _iterator + _lengths[0] * _lengths[1];
+        return end();
     }
 };
 
@@ -204,6 +219,11 @@ struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
     mir_size_t _lengths[1] = {};
     static const mir_ptrdiff_t _strides[0];
     Iterator _iterator = nullptr;
+
+    using iterator = Iterator;
+    using const_iterator = Iterator;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
     template <unsigned int d = 0>
     size_t size() const noexcept
@@ -247,6 +267,11 @@ struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
         return _iterator;
     }
 
+    auto begin() const noexcept
+    {
+        return mir::light_const(_iterator);
+    }
+
     auto cbegin() const noexcept
     {
         return _iterator;
@@ -257,10 +282,22 @@ struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
         return _iterator + _lengths[0];
     }
 
+    auto end() const noexcept
+    {
+        return mir::light_const(_iterator) + _lengths[0];
+    }
+
     auto cend() const noexcept
     {
-        return _iterator + _lengths[0];
+        return end();
     }
+
+    reverse_iterator rbegin() noexcept { return reverse_iterator(this->begin()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(this->begin()); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(this->begin()); }
+    reverse_iterator rend() noexcept { return reverse_iterator(this->end()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(this->end()); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(this->end()); }
 };
 
 template <
@@ -312,11 +349,6 @@ struct mir_slice<Iterator, 1, mir_slice_kind::universal>
 
 namespace mir
 {
-    template <
-        typename T
-    >
-    const T* light_const(const T* ptr) { return ptr; }
-
     template <
         typename T,
         mir_size_t N,
