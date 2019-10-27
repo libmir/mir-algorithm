@@ -269,7 +269,7 @@ struct mir_rci
         return ret;
     }
 
-    ptrdiff_t operator-(const mir_rci& shift)
+    ptrdiff_t operator-(const mir_rci& shift) const
     {
         return _iterator - shift._iterator;
     }
@@ -288,24 +288,14 @@ struct mir_rci
         return _iterator[index];
     }
 
-    mir_rci operator+(ptrdiff_t index)
+    mir_rci operator+(ptrdiff_t index) const
     {
         return mir_rci(_iterator + index, _array);
     }
 
-    mir_rci operator-(ptrdiff_t index)
+    mir_rci operator-(ptrdiff_t index) const
     {
         return mir_rci(_iterator - index, _array);
-    }
-
-    mir_rci<const T> operator+(ptrdiff_t index) const
-    {
-        return mir_rci<const T>(_iterator + index, _array);
-    }
-
-    mir_rci<const T> operator-(ptrdiff_t index) const
-    {
-        return mir_rci<const T>(_iterator - index, _array);
     }
 
     bool operator==(const mir_rci& rhs) const { return _iterator == rhs._iterator; }
