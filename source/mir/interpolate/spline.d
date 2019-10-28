@@ -29,7 +29,7 @@ import std.meta: AliasSeq, staticMap;
 import std.traits: Unqual;
 public import mir.interpolate: atInterval;
 
-@optmath:
+@fmamath:
 
 ///
 @safe pure @nogc version(mir_test) unittest
@@ -617,7 +617,7 @@ struct Spline(F, size_t N = 1, X = F)
     /// Grid iterators. $(RED For internal use.)
     RCI!(immutable X)[N] _grid;
 
-@optmath extern(D):
+@fmamath extern(D):
 
     /++
     +/
