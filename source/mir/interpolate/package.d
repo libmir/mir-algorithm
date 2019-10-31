@@ -63,12 +63,12 @@ template findInterval(size_t dimension = 0)
         static if (dimension)
         {
             immutable sizediff_t len = interpolant.intervalCount!dimension - 1;
-            auto grid = interpolant.grid!dimension[1 .. $][0 .. len];
+            auto grid = interpolant.gridScopeView!dimension[1 .. $][0 .. len];
         }
         else
         {
             immutable sizediff_t len = interpolant.intervalCount - 1;
-            auto grid = interpolant.grid[][1 .. $][0 .. len];
+            auto grid = interpolant.gridScopeView[1 .. $][0 .. len];
         }
         assert(len >= 0);
         return grid.transitionIndex!"a <= b"(x);
@@ -94,9 +94,9 @@ Lazy interpolation shell with linear complexity.
 
 Params:
     range = sorted range
-    interpolant = interpolant structure with `.grid` method.
+    interpolant = interpolant structure with `.gridScopeView` method.
 Complexity:
-    `O(range.length + interpolant.grid.length)` to evaluate all elements.
+    `O(range.length + interpolant.gridScopeView.length)` to evaluate all elements.
 Returns:
     Lazy input range.
 See_also:
@@ -145,7 +145,7 @@ struct Interp1(Range, Interpolant)
         assert(!empty);
         auto x = _range.front;
         return (x) @trusted {
-            auto points = _interpolant.grid;
+            auto points = _interpolant.gridScopeView;
             sizediff_t len = _interpolant.intervalCount - 1;
             assert(len >= 0);
             while (x > points[_interval + 1] && _interval < len)
@@ -200,7 +200,7 @@ Optimization utility that can be used with interpolants if
 x should be extrapolated at interval given.
 
 By default interpolants uses binary search to find appropriate interval,
-it has `O(log(.grid.length))` complexity.
+it has `O(log(.gridScopeView.length))` complexity.
 If an interval is given, interpolant uses it instead of binary search.
 +/
 RefTuple!(T, size_t) atInterval(T)(in T value, size_t intervalIndex)

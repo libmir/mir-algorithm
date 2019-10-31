@@ -158,6 +158,8 @@ scope const:
         ///
         ref const(Slice!(RCI!(immutable X))) grid() { return _grid; }
         ///
+        immutable(X)[] gridScopeView() scope return const @property @trusted { return _grid.lightScope.field; }
+        ///
         ref const(RCArray!(immutable T)) inversedBarycentricWeights() { return _inversedBarycentricWeights; }
         ///
         ref const(RCArray!T)[maxAdditionalFunctions + 1] normalizedValues() { return _normalizedValues; }

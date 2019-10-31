@@ -125,6 +125,13 @@ extern(D):
         return _grid[dimension].lightConst.sliced(_data._lengths[dimension]);
     }
 
+    ///
+    immutable(X)[] gridScopeView(size_t dimension = 0)() scope return const @property @trusted
+        if (dimension < N)
+    {
+        return _grid[dimension]._iterator[0 .. _data._lengths[dimension]];
+    }
+
     /++
     Returns: intervals count.
     +/
