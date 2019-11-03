@@ -70,6 +70,7 @@ template mean(string summation)
 version(mir_test) @safe pure nothrow unittest
 {
     assert(mean([1.0, 2, 3]) == 2);
+    assert(mean([1.0 + 3i, 2, 3]) == 2 + 1i);
 }
 
 /++
