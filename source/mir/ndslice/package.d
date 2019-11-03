@@ -481,6 +481,7 @@ public import mir.ndslice.concatenation;
 public import mir.ndslice.chunks;
 public import mir.ndslice.dynamic;
 public import mir.ndslice.field;
+public import mir.ndslice.filling;
 public import mir.ndslice.fuse;
 public import mir.ndslice.iterator;
 public import mir.ndslice.ndfield;
