@@ -48,6 +48,7 @@ PACKAGE_mir_ndslice = \
 	concatenation\
 	dynamic\
 	field\
+	filling\
 	fuse\
 	iterator\
 	mutation\
