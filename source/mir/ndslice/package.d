@@ -172,6 +172,13 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
     )
 )
 
+$(TR $(TDNW $(SUBMODULE filling) $(BR)
+    $(SMALL Specialized initialisation routines))
+     $(TD
+        $(SUBREF filling, fillVandermonde)
+    )
+)
+
 $(TR $(TDNW $(SUBMODULE fuse) $(BR)
     $(SMALL Data fusing (stacking)
         $(BR) See also $(SUBMODULE concatenation) submodule.

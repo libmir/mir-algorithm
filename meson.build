@@ -40,6 +40,7 @@ mir_algorithm_src = [
     'source/mir/ndslice/connect/cpython.d',
     'source/mir/ndslice/dynamic.d',
     'source/mir/ndslice/field.d',
+    'source/mir/ndslice/filling.d',
     'source/mir/ndslice/fuse.d',
     'source/mir/ndslice/internal.d',
     'source/mir/ndslice/iterator.d',

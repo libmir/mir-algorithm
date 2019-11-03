@@ -271,9 +271,11 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
         return ret;
     }
 
-    import mir.ndslice.topology: universal;
+    import mir.ndslice.filling: fillVandermonde;
+    import mir.ndslice.allocation: uninitSlice;
     auto x = [1.0, 2, 3, 4, 5].sliced;
-    auto v = vandermondeMatrix(x);
+    auto v = uninitSlice!double(x.length, x.length);
+    v.fillVandermonde(x);
     assert(v ==
         [[  1.0,   1,   1,   1,   1],
          [  1.0,   2,   4,   8,  16],
