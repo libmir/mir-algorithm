@@ -260,17 +260,6 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
 /// $(LINK2 https://en.wikipedia.org/wiki/Vandermonde_matrix, Vandermonde matrix)
 @safe pure nothrow version(mir_test) unittest
 {
-    auto vandermondeMatrix(Slice!(double*) x)
-        @safe nothrow pure
-    {
-        import mir.ndslice.allocation: slice;
-        auto ret = slice!double(x.length, x.length);
-        foreach (i; 0 .. x.length)
-        foreach (j; 0 .. x.length)
-            ret[i][j] = x[i] ^^ j;
-        return ret;
-    }
-
     import mir.ndslice.filling: fillVandermonde;
     import mir.ndslice.allocation: uninitSlice;
     auto x = [1.0, 2, 3, 4, 5].sliced;

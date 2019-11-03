@@ -20,6 +20,7 @@ Fills a matrix with the terms of a geometric progression in each row.
 Params:
     matrix = `m × n` matrix to fill
     vec = vector of progression coefficients length of `m`
+See_also: $(LINK2 https://en.wikipedia.org/wiki/Vandermonde_matrix, Vandermonde matrix)
 +/
 void fillVandermonde(F, SliceKind matrixKind, SliceKind kind)(Slice!(F*, 2, matrixKind) matrix, Slice!(const(F)*, 1, kind) vec)
 in {
