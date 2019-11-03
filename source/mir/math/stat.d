@@ -142,7 +142,7 @@ template simpleLinearRegression(Summation summation = Summation.kbn)
 
     /// ditto
     @optmath
-    typeof(X.init * Y.init)[2]
+    sumType!(Y[])[2]
     simpleLinearRegression(X, Y)(scope const X[] x, scope const Y[] y) @safe
     {
         return .simpleLinearRegression!summation(x.sliced, y.sliced);
