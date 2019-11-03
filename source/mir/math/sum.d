@@ -964,7 +964,7 @@ public:
         else
         static if (isPointer!Iterator && kind == Contiguous)
         {
-            this.put(r.iterator[0 .. r.length]);
+            this.put(r.field);
         }
         else
         static if (summation == Summation.fast && N == 1)
@@ -1652,7 +1652,7 @@ unittest
     }
 }
 
-/**
+/++
 Sums elements of `r`, which must be a finite
 iterable.
 
@@ -1661,13 +1661,11 @@ value, but its type will be used if it is not specified.
 
 Note that these specialized summing algorithms execute more primitive operations
 than vanilla summation. Therefore, if in certain cases maximum speed is required
-at expense of precision, one can use $(XREF, numeric_summation, Summation.fast).
+at expense of precision, one can use $(LREF, Summation.fast).
 
 Returns:
     The sum of all the elements in the range r.
-
-See_Also: $(XREFMODULE, numeric_summation) contains detailed documentation and examples about available summation algorithms.
- */
++/
 template sum(F, Summation summation = Summation.appropriate)
     if (isFloatingPoint!F && isMutable!F)
 {
@@ -1964,7 +1962,7 @@ private T summationInitValue(T)()
     }
 }
 
-private template sumType(Range)
+package template sumType(Range)
 {
     import mir.ndslice.slice: isSlice, DeepElementType;
     static if (isSlice!Range)
