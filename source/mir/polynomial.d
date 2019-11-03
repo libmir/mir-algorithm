@@ -37,7 +37,7 @@ struct Polynomial(F)
     {
         /++
         Params:
-            X = `x` point
+            x = `x` point
         +/
         @optmath typeof(F.init * X.init * 1f + F.init) opCall(X)(in X x)
         {
@@ -52,10 +52,10 @@ struct Polynomial(F)
                 ret = cast(typeof(return)) c;
                 while (--i >= derivative)
                 {
-                    ret *= x;
                     c = cast()coefficients[i];
                     static foreach (d; Iota!derivative)
                         c *= i - d;
+                    ret *= x;
                     ret += c;
                 }
             }
