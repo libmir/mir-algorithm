@@ -51,7 +51,7 @@ mir_algorithm_src = [
     'source/mir/ndslice/topology.d',
     'source/mir/ndslice/traits.d',
     'source/mir/numeric.d',
-    'source/mir/polinomial.d',
+    'source/mir/polynomial.d',
     'source/mir/range.d',
     'source/mir/rc/array.d',
     'source/mir/rc/context.d',
