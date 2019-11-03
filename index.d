@@ -20,6 +20,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,math,numeric)) $(TD Simple numeric algorithms))
     $(TR $(TDNW $(MREF mir,math,sum)★) $(TD Various precise summation algorithms))
     $(TR $(TDNW $(MREF mir,math,constant)) $(TD Math constants))
+    $(TR $(TDNW $(MREF mir,polynomial)) $(TD Polynomial ref-counted structure))
     $(LEADINGROW Reference counting)
     $(TR $(TDNW $(MREF mir,rc,array)) $(TD Thread safe reference count array and the iterator to adopt it to ndslice.))
     $(TR $(TDNW $(MREF mir,rc,ptr)) $(TD Thread safe reference count pointer for strucs and objects.))
