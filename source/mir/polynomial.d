@@ -46,12 +46,14 @@ struct Polynomial(F)
             if (coefficients)
             {
                 ptrdiff_t i = coefficients.length - 1;
+                assert(i >= 0);
                 auto c = cast()coefficients[i];
                 static foreach (d; Iota!derivative)
                     c *= i - d;
                 ret = cast(typeof(return)) c;
-                while (--i >= derivative)
+                while (--i >= cast(ptrdiff_t)derivative)
                 {
+                    assert(i < coefficients.length);
                     c = cast()coefficients[i];
                     static foreach (d; Iota!derivative)
                         c *= i - d;
