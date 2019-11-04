@@ -16,6 +16,7 @@ Authors:   Ilya Yaroshenko
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
+#include <iterator>
 
 #if INTPTR_MAX == INT32_MAX
     #define mir_size_t unsigned int
