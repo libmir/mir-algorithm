@@ -39,7 +39,7 @@ struct Polynomial(F)
         Params:
             x = `x` point
         +/
-        @optmath typeof(F.init * X.init * 1f + F.init) opCall(X)(in X x)
+        @optmath typeof(F.init * X.init * 1f + F.init) opCall(X)(in X x) const
         {
             import mir.internal.utility: Iota;
             auto ret = cast(typeof(return))0;

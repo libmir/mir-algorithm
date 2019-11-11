@@ -19,7 +19,7 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 module mir.math.stat;
 
 import core.lifetime: move;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
 import std.range.primitives: isInputRange;
@@ -34,7 +34,7 @@ Returns:
 template mean(Summation summation = Summation.appropriate)
 {
     ///
-    @safe @optmath sumType!Range
+    @safe @fmamath sumType!Range
     mean(Range)(Range r)
         if (hasLength!Range
          || summation == Summation.appropriate
@@ -87,7 +87,7 @@ template simpleLinearRegression(Summation summation = Summation.kbn)
     Returns:
         The pair of shift and slope of the linear curve.
     +/
-    @optmath
+    @fmamath
     sumType!YRange[2]
     simpleLinearRegression(XRange, YRange)(XRange x, YRange y) @safe
         if (isInputRange!XRange && isInputRange!YRange && !(isArray!XRange && isArray!YRange) && isFloatingPoint!(sumType!YRange))
@@ -142,7 +142,7 @@ template simpleLinearRegression(Summation summation = Summation.kbn)
     }
 
     /// ditto
-    @optmath
+    @fmamath
     sumType!(Y[])[2]
     simpleLinearRegression(X, Y)(scope const X[] x, scope const Y[] y) @safe
     {
