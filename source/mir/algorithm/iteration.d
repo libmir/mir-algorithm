@@ -551,21 +551,11 @@ private void checkShapesMatch(
         {
             import mir.ndslice.fuse: fuseShape;
             static assert(slices[i].fuseShape.length >= N);
-            assert(slices[i].fuseShape[0 .. N] == slices[0].shape, msgShape);
+            assert(cast(size_t[N])slices[i].fuseShape[0 .. N] == slices[0].shape, msgShape);
         }
     }
 }
 
-template frontOf(size_t N)
-{
-    static if (N == 0)
-        enum frontOf = "";
-    else
-    {
-        enum i = N - 1;
-        enum frontOf = frontOf!i ~ "slices[" ~ i.stringof ~ "].front, ";
-    }
-}
 
 package(mir) template allFlattened(args...)
 {
@@ -587,9 +577,17 @@ private template areAllContiguousSlices(Slices...)
 {
     import mir.ndslice.traits: isContiguousSlice;
      static if (allSatisfy!(isContiguousSlice, Slices))
-        enum areAllContiguousSlices = Slices[0].N > 1;
+        enum areAllContiguousSlices = Slices[0].N > 1 && areAllContiguousSlicesImpl!(Slices[0].N, Slices[1 .. $]);
      else
         enum areAllContiguousSlices = false;
+}
+
+private template areAllContiguousSlicesImpl(size_t N, Slices...)
+{
+     static if (Slices.length == 0)
+        enum areAllContiguousSlicesImpl = true;
+     else
+        enum areAllContiguousSlicesImpl = Slices[0].N == N && areAllContiguousSlicesImpl!(N, Slices[1 .. $]);
 }
 
 version(LDC) {}
@@ -663,9 +661,9 @@ S reduceImpl(alias fun, S, Slices...)(S seed, scope Slices slices)
     do
     {
         static if (DimensionCount!(Slices[0]) == 1)
-            seed = mixin("fun(seed, " ~ frontOf!(Slices.length) ~ ")");
+            seed = fun(seed, frontOf!slices);
         else
-            seed = mixin(".reduceImpl!fun(seed," ~ frontOf!(Slices.length) ~ ")");
+            seed = .reduceImpl!fun(seed, frontOf!slices);
         foreach_reverse(ref slice; slices)
             slice.popFront;
     }
@@ -920,9 +918,9 @@ void eachImpl(alias fun, Slices...)(scope Slices slices)
     do
     {
         static if (DimensionCount!(Slices[0]) == 1)
-            mixin("fun(" ~ frontOf!(Slices.length) ~ ");");
+            fun(frontOf!slices);
         else
-            mixin(".eachImpl!fun(" ~ frontOf!(Slices.length) ~ ");");
+            .eachImpl!fun(frontOf!slices);
         foreach_reverse(i; Iota!(Slices.length))
             slices[i].popFront;
     }
@@ -1678,7 +1676,7 @@ bool findImpl(alias fun, size_t N, Slices...)(scope ref size_t[N] backwardIndex,
         {
             static if (DimensionCount!(Slices[0]) == 1)
             {
-                if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                if (fun(frontOf!slices))
                 {
                     backwardIndex[0] = slices[0].length;
                     return true;
@@ -1686,7 +1684,7 @@ bool findImpl(alias fun, size_t N, Slices...)(scope ref size_t[N] backwardIndex,
             }
             else
             {
-                if (mixin("findImpl!fun(backwardIndex[1 .. $], " ~ frontOf!(Slices.length) ~ ")"))
+                if (findImpl!fun(backwardIndex[1 .. $], frontOf!slices))
                 {
                     backwardIndex[0] = slices[0].length;
                     return true;
@@ -1965,12 +1963,12 @@ size_t anyImpl(alias fun, Slices...)(scope Slices slices)
         {
             static if (DimensionCount!(Slices[0]) == 1)
             {
-                if (mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                if (fun(frontOf!slices))
                     return true;
             }
             else
             {
-                if (mixin("anyImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
+                if (anyImpl!fun(frontOf!slices))
                     return true;
             }
             foreach_reverse(ref slice; slices)
@@ -2125,12 +2123,12 @@ size_t allImpl(alias fun, Slices...)(scope Slices slices)
         {
             static if (DimensionCount!(Slices[0]) == 1)
             {
-                if (!mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+                if (!fun(frontOf!slices))
                     return false;
             }
             else
             {
-                if (!mixin("allImpl!fun(" ~ frontOf!(Slices.length) ~ ")"))
+                if (!allImpl!fun(frontOf!slices))
                     return false;
             }
             foreach_reverse(ref slice; slices)
@@ -2636,40 +2634,16 @@ size_t countImpl(alias fun, Slices...)(scope Slices slices)
     {
         static if (DimensionCount!(Slices[0]) == 1)
         {
-            if(mixin("fun(" ~ frontOf!(Slices.length) ~ ")"))
+            if(fun(frontOf!slices))
                 ret++;
         }
         else
-            ret += mixin(".countImpl!fun(" ~ frontOf!(Slices.length) ~ ")");
+            ret += .countImpl!fun(frontOf!slices);
         foreach_reverse(ref slice; slices)
             slice.popFront;
     }
     while(!slices[0].empty);
     return ret;
-}
-
-private template selectBackOf(size_t N, string input)
-{
-    static if (N == 0)
-        enum selectBackOf = "";
-    else
-    {
-        enum i = N - 1;
-        enum selectBackOf = selectBackOf!(i, input) ~
-                     "lightScope(slices[" ~ i.stringof ~ "]).selectBack!0(" ~ input ~ "), ";
-    }
-}
-
-private template frontSelectFrontOf(size_t N, string input)
-{
-    static if (N == 0)
-        enum frontSelectFrontOf = "";
-    else
-    {
-        enum i = N - 1;
-        enum frontSelectFrontOf = frontSelectFrontOf!(i, input) ~
-            "lightScope(slices[" ~ i.stringof ~ "]).front!0.selectFront!0(" ~ input ~ "), ";
-    }
 }
 
 /++
@@ -2756,7 +2730,7 @@ template eachLower(alias fun)
             if ((n + k) < m)
             {
                 val = m - (n + k);
-                mixin(".eachImpl!fun(" ~ selectBackOf!(Slices.length, "val") ~ ");");
+                .eachImpl!fun(selectBackOf!(val, slices));
             }
 
             size_t i;
@@ -2771,7 +2745,7 @@ template eachLower(alias fun)
             do
             {
                 val = i - k + 1;
-                mixin(".eachImpl!fun(" ~ frontSelectFrontOf!(Slices.length, "val") ~ ");");
+                .eachImpl!fun(frontSelectFrontOf!(val, slices));
 
                 foreach(ref slice; slices)
                         slice.popFront!0;
@@ -3127,30 +3101,6 @@ version(mir_test) unittest
         [ 6,  7, 18]]);
 }
 
-private template frontSelectBackOf(size_t N, string input)
-{
-    static if (N == 0)
-        enum frontSelectBackOf = "";
-    else
-    {
-        enum i = N - 1;
-        enum frontSelectBackOf = frontSelectBackOf!(i, input) ~
-               "lightScope(slices[" ~ i.stringof ~ "]).front.selectBack!0(" ~ input ~ "), ";
-    }
-}
-
-private template selectFrontOf(size_t N, string input)
-{
-    static if (N == 0)
-        enum selectFrontOf = "";
-    else
-    {
-        enum i = N - 1;
-        enum selectFrontOf = selectFrontOf!(i, input) ~
-                    "lightScope(slices[" ~ i.stringof ~ "]).selectFront!0(" ~ input ~ "), ";
-    }
-}
-
 /++
 The call `eachUpper!(fun)(slice1, ..., sliceN)` evaluates `fun` on the upper
 triangle in `slice1, ..., sliceN`, respectively.
@@ -3223,7 +3173,7 @@ template eachUpper(alias fun)
             if (k < 0)
             {
                 val = -k;
-                mixin(".eachImpl!fun(" ~ selectFrontOf!(Slices.length, "val") ~ ");");
+                .eachImpl!fun(selectFrontOf!(val, slices));
 
                 foreach(ref slice; slices)
                     slice.popFrontExactly!0(-k);
@@ -3233,7 +3183,7 @@ template eachUpper(alias fun)
             do
             {
                 val = (n - k) - i;
-                mixin(".eachImpl!fun(" ~ frontSelectBackOf!(Slices.length, "val") ~ ");");
+                .eachImpl!fun(frontSelectBackOf!(val, slices));
 
                 foreach(ref slice; slices)
                     slice.popFront;

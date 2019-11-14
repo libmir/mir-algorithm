@@ -337,3 +337,94 @@ pure nothrow version(mir_test) unittest
     assert(lengthsProduct(lengths) == 60);
     assert(lengthsProduct([3, 4, 5]) == 60);
 }
+
+
+package(mir) template frontOf(args...)
+{
+    static if (args.length == 0)
+        enum frontOf = args;
+    else
+    {
+        alias arg = args[0];
+        @optmath @property auto ref ls()()
+        {
+            return arg.front;
+        }
+        alias frontOf = AliasSeq!(ls, frontOf!(args[1..$]));
+    }
+}
+
+package(mir) template frontOfDim(size_t dim, args...)
+{
+    static if (args.length == 0)
+        enum frontOfDim = args;
+    else
+    {
+        alias arg = args[0];
+        @optmath @property auto ref ls()
+        {
+            return arg.front!dim;
+        }
+        alias frontOfDim = AliasSeq!(ls, frontOfDim!(dim, args[1..$]));
+    }
+}
+
+package(mir) template selectFrontOf(alias input, args...)
+{
+    static if (args.length == 0)
+        enum selectFrontOf = args;
+    else
+    {
+        alias arg = args[0];
+        @optmath @property auto ref ls()()
+        {
+            return arg.lightScope.selectFront!0(input);
+        }
+        alias selectFrontOf = AliasSeq!(ls, selectFrontOf!(input, args[1..$]));
+    }
+}
+
+package(mir) template selectBackOf(alias input, args...)
+{
+    static if (args.length == 0)
+        enum selectBackOf = args;
+    else
+    {
+        alias arg = args[0];
+        @optmath @property auto ref ls()()
+        {
+            return arg.selectBack!0(input);
+        }
+        alias selectBackOf = AliasSeq!(ls, selectBackOf!(input, args[1..$]));
+    }
+}
+
+package(mir) template frontSelectFrontOf(alias input, args...)
+{
+    static if (args.length == 0)
+        enum frontSelectFrontOf = args;
+    else
+    {
+        alias arg = args[0];
+        @optmath @property auto ref ls()()
+        {
+            return arg.lightScope.front.selectFront!0(input);
+        }
+        alias frontSelectFrontOf = AliasSeq!(ls, frontSelectFrontOf!(input, args[1..$]));
+    }
+}
+
+package(mir) template frontSelectBackOf(alias input, args...)
+{
+    static if (args.length == 0)
+        enum frontSelectBackOf = args;
+    else
+    {
+        alias arg = args[0];
+        @optmath @property auto ref ls()()
+        {
+            return arg.lightScope.front.selectBack!0(input);
+        }
+        alias frontSelectBackOf = AliasSeq!(ls, frontSelectBackOf!(input, args[1..$]));
+    }
+}

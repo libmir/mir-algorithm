@@ -1459,38 +1459,75 @@ public:
         return _lengths[dimension] == 0;
     }
 
-    ///ditto
     static if (N == 1)
-    auto ref front(size_t dimension = 0)() scope return @trusted @property
-        if (dimension == 0)
     {
-        assert(!empty!dimension);
-        return *_iterator;
+        ///ditto
+        auto ref front(size_t dimension = 0)() scope return @trusted @property
+            if (dimension == 0)
+        {
+            assert(!empty!dimension);
+            return *_iterator;
+        }
+
+        ///ditto
+        auto ref front(size_t dimension = 0)() scope return @trusted @property const
+            if (dimension == 0)
+        {
+            assert(!empty!dimension);
+            return *_iterator.lightScope;
+        }
+
+        ///ditto
+        auto ref front(size_t dimension = 0)() scope return @trusted @property immutable
+            if (dimension == 0)
+        {
+            assert(!empty!dimension);
+            return *_iterator.lightScope;
+        }
     }
     else
-    Element!dimension front(size_t dimension = 0)() scope return @property
-        if (dimension < N)
     {
-        typeof(return)._Structure structure_ = typeof(return)._Structure.init;
-
-        foreach (i; Iota!(typeof(return).N))
+        /// ditto
+        Element!dimension front(size_t dimension = 0)() scope return @property
+            if (dimension < N)
         {
-            enum j = i >= dimension ? i + 1 : i;
-            structure_[0][i] = _lengths[j];
+            typeof(return)._Structure structure_ = typeof(return)._Structure.init;
+
+            foreach (i; Iota!(typeof(return).N))
+            {
+                enum j = i >= dimension ? i + 1 : i;
+                structure_[0][i] = _lengths[j];
+            }
+
+            static if (!typeof(return).S || typeof(return).S + 1 == S)
+                alias s = _strides;
+            else
+                auto s = strides;
+
+            foreach (i; Iota!(typeof(return).S))
+            {
+                enum j = i >= dimension ? i + 1 : i;
+                structure_[1][i] = s[j];
+            }
+
+            return typeof(return)(structure_, _iterator);
         }
 
-        static if (!typeof(return).S || typeof(return).S + 1 == S)
-            alias s = _strides;
-        else
-            auto s = strides;
-
-        foreach (i; Iota!(typeof(return).S))
+        ///ditto
+        auto front(size_t dimension = 0)() scope return @trusted @property const
+            if (dimension < N)
         {
-            enum j = i >= dimension ? i + 1 : i;
-            structure_[1][i] = s[j];
+            assert(!empty!dimension);
+            return this.lightConst.front!dimension;
         }
 
-        return typeof(return)(structure_, _iterator);
+        ///ditto
+        auto front(size_t dimension = 0)() scope return @trusted @property immutable
+            if (dimension < N)
+        {
+            assert(!empty!dimension);
+            return this.lightImmutable.front!dimension;
+        }
     }
 
     static if (N == 1 && isMutable!DeepElement && !hasAccessByRef)

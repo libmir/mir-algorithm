@@ -211,28 +211,6 @@ version(mir_test) unittest
     assert(s.slicedNdField == s.length.iota);
 }
 
-template frontOf(size_t N)
-{
-    static if (N == 0)
-        enum frontOf = "";
-    else
-    {
-        enum i = N - 1;
-        enum frontOf = frontOf!i ~ "slices[" ~ i.stringof ~ "].front!d, ";
-    }
-}
-
-template frontOfSt(size_t N)
-{
-    static if (N == 0)
-        enum frontOfSt = "";
-    else
-    {
-        enum i = N - 1;
-        enum frontOfSt = frontOfSt!i ~ "st._slices[" ~ i.stringof ~ "].front!d, ";
-    }
-}
-
 ///
 enum bool isConcatenation(T) = is(T : Concatenation!(dim, Slices), size_t dim, Slices...);
 ///
@@ -359,9 +337,9 @@ struct Concatenation(size_t dim, Slices...)
         }
         else
         {
+            import mir.ndslice.internal: frontOfDim;
             enum elemDim = d < dim ? dim - 1 : dim;
-            alias slices = _slices;
-            return mixin(`concatenation!elemDim(` ~ frontOf!(Slices.length) ~ `)`);
+            return concatenation!elemDim(frontOfDim!(d, _slices));
         }
     }
 
@@ -402,8 +380,10 @@ auto applyFront(size_t d = 0, alias fun, size_t dim, Slices...)(Concatenation!(d
     }
     else
     {
+        import mir.ndslice.internal: frontOfDim;
         enum elemDim = d < dim ? dim - 1 : dim;
-        return fun(mixin(`concatenation!elemDim(` ~ frontOfSt!(Slices.length) ~ `)`));
+        auto slices = st._slices;
+        return fun(concatenation!elemDim(frontOfDim!(d, slices)));
     }
 }
 

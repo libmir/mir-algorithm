@@ -16,11 +16,12 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.fuse;
 
+import mir.internal.utility;
 import mir.ndslice.slice;
 import mir.primitives;
-import mir.internal.utility;
-import std.traits;
+import mir.qualifier;
 import std.meta;
+import std.traits;
 
 import mir.math.common: optmath;
 
@@ -172,12 +173,25 @@ unittest
     assert(ror.fuse!(2, 1) == nd.transposed!(2, 1));
 }
 
+/// Work with RC Arrays of RC Arrays
+unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: map;
+    import mir.rc.array;
+
+    Slice!(const(double)*, 2) conv(RCArray!(const RCArray!(const double)) a)
+    {
+        return a[].map!"a[]".fuse;
+    }
+}
+
 private template fuseDimensionCount(R)
 {
     static if (is(typeof(R.init.shape) : size_t[N], size_t N) && (isDynamicArray!R || __traits(hasMember, R, "front")))
     {
         import mir.ndslice.topology: repeat;
-        enum size_t fuseDimensionCount = N + fuseDimensionCount!(typeof(mixin("R.init" ~ ".front".repeat(N).fuseCells.field)));
+        enum size_t fuseDimensionCount = N + fuseDimensionCount!(DeepElementType!R);
     }
     else
         enum size_t fuseDimensionCount = 0;

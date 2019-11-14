@@ -218,6 +218,9 @@ struct IndexedRoR(Collection, Range)
     private Range r;
 
     ///
+    alias DeepElement = ForeachType!Range;
+
+    ///
     this()(Collection collection, Range range)
     {
         this.c = collection;
@@ -243,7 +246,7 @@ struct IndexedRoR(Collection, Range)
     }
 
     /// Input range primitives
-    auto ref front()() @property
+    auto front()() @property
     {
         import mir.ndslice.slice: isSlice, sliced;
         import mir.ndslice.topology: indexed;
@@ -408,6 +411,9 @@ struct Permutations(T)
     private T[] indices, state;
     private bool _empty;
     private size_t _max_states = 1, _pos;
+
+    ///
+    alias DeepElement = const T;
 
     /**
     state should have the length of `n - 1`,
@@ -642,12 +648,12 @@ struct CartesianPower(T)
 {
     import mir.ndslice.slice: Slice;
 
-private:
-    T[] _state;
-    size_t n;
-    size_t _max_states, _pos;
+    private T[] _state;
+    private size_t n;
+    private size_t _max_states, _pos;
 
-public:
+    ///
+    alias DeepElement = const T;
 
     /// state should have the length of `repeat`
     this()(size_t n, T[] state) @safe pure nothrow @nogc
@@ -893,12 +899,12 @@ struct Combinations(T)
 {
     import mir.ndslice.slice: Slice;
 
-private:
-    T[] state;
-    size_t n;
-    size_t max_states, pos;
+    private T[] state;
+    private size_t n;
+    private size_t max_states, pos;
 
-public:
+    ///
+    alias DeepElement = const T;
 
     /// state should have the length of `repeat`
     this()(size_t n, T[] state) @safe pure nothrow @nogc
@@ -1221,12 +1227,12 @@ struct CombinationsRepeat(T)
 {
     import mir.ndslice.slice: Slice;
 
-private:
-    T[] state;
-    size_t n;
-    size_t max_states, pos;
+    private T[] state;
+    private size_t n;
+    private size_t max_states, pos;
 
-public:
+    ///
+    alias DeepElement = const T;
 
     /// state should have the length of `repeat`
     this()(size_t n, T[] state) @safe pure nothrow @nogc
