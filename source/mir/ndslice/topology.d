@@ -1516,9 +1516,10 @@ Slice!Iterator
     }
     else
     {
+        import core.lifetime: move;
         size_t[typeof(return).N] lengths;
         lengths[0] = slice.elementCount;
-        return typeof(return)(lengths, slice._iterator);
+        return typeof(return)(lengths, slice._iterator.move);
     }
 }
 

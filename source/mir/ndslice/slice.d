@@ -253,7 +253,8 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
             iterator += 34;
             iterator -= 34;
         }
-        return Slice!(C, N)(_lengths, iterator);
+        import core.lifetime: move;
+        return Slice!(C, N)(_lengths, iterator.move);
     }
 }
 
@@ -343,7 +344,8 @@ Slice!(Iterator, N, kind)
         import mir.ndslice.topology: iota;
         structure[1] = structure[0].iota.strides;
     }
-    return typeof(return)(structure, slice._iterator);
+    import core.lifetime: move;
+    return typeof(return)(structure, slice._iterator.move);
 }
 
 ///

@@ -177,6 +177,7 @@ unittest
 unittest
 {
     import mir.ndslice.fuse;
+    import mir.ndslice.slice;
     import mir.ndslice.topology: map;
     import mir.rc.array;
 
