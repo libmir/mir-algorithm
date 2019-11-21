@@ -387,6 +387,9 @@ Thread safe reference counting iterator.
 +/
 struct mir_rci(T)
 {
+    import mir.ndslice.slice: Slice;
+    import mir.ndslice.iterator: IotaIterator;
+
     ///
     T* _iterator;
 
@@ -477,6 +480,36 @@ struct mir_rci(T)
             assert(_iterator + index <= _array._payload + _array.length);
         }
         return _iterator[index];
+    }
+
+    /// Returns: slice type of `Slice!(IotaIterator!size_t)`
+    Slice!(IotaIterator!size_t) opSlice(size_t dimension)(size_t i, size_t j) @safe scope const
+        if (dimension == 0)
+    in
+    {
+        assert(i <= j, "RCI!T.opSlice!0: the left opSlice boundary must be less than or equal to the right bound.");
+    }
+    body
+    {
+        return typeof(return)(j - i, typeof(return).Iterator(i));
+    }
+
+    /// Returns: ndslice on top of the refcounted iterator
+    auto opIndex(Slice!(IotaIterator!size_t) slice)
+    {
+        import core.lifetime: move;
+        auto it = this;
+        it += slice._iterator._index;
+        return Slice!(RCI!T)(slice.length, it.move);
+    }
+
+    /// ditto
+    auto opIndex(Slice!(IotaIterator!size_t) slice) const
+    {
+        import core.lifetime: move;
+        auto it = lightConst;
+        it += slice._iterator._index;
+        return Slice!(RCI!(const T))(slice.length,  it.move);
     }
 
     ///   

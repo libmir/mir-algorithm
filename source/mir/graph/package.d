@@ -17,6 +17,7 @@ import mir.math.common: optmath;
 @optmath:
 
 import mir.series;
+import mir.rc.array;
 import mir.ndslice.iterator: ChopIterator;
 
 ///
@@ -25,6 +26,13 @@ alias GraphIterator(I = uint, J = size_t) = ChopIterator!(size_t*, uint*);
 alias Graph(I = uint, J = size_t) = Slice!(GraphIterator!(I, J));
 ///
 alias GraphSeries(T, I = uint, J = size_t) = Series!(T*, GraphIterator!(I, J));
+
+///
+alias RCGraphIterator(I = uint, J = size_t) = ChopIterator!(RCI!size_t, RCI!uint);
+///
+alias RCGraph(I = uint, J = size_t) = Slice!(RCGraphIterator!(I, J));
+///
+alias RCGraphSeries(T, I = uint, J = size_t) = Series!(RCI!T, RCGraphIterator!(I, J));
 
 /++
 Param:

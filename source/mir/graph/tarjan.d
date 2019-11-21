@@ -32,6 +32,7 @@ The implementation is loop based. It does not use recursion and does not have st
 Complexity: worst-case `O(|V| + |E|)`.
 
 Params:
+    RC = nogc mode, refcounted output
     graph = components (ndslice) sorted in the direction of traversal of the graph. Each component is an array of indeces.
 Returns:
     components (ndslice of arrays of indexes)
@@ -44,7 +45,7 @@ See_also:
     $(SUBREF utility, graph)
 +/
 pragma(inline, false)
-auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
+auto tarjan(bool RC = false, G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
     if (isUnsigned!I)
 {
     import mir.utility: min;
@@ -87,35 +88,49 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
         }
     }
 
-    bool[] onStack = new bool[graph.length];
-    I[] stack;
-    IndexNode[] indeces;
-    LoopNode[] loopStack;
-    I index;
+    
     sizediff_t stackIndex;
     sizediff_t backStackIndex = graph.length;
     sizediff_t componentBackStackIndex = graph.length + 1;
 
-    if (__ctfe)
+    static if (RC)
     {
-        stack = new I[graph.length];
-        indeces = new IndexNode[graph.length];
-        loopStack = new LoopNode[componentBackStackIndex];
+        import mir.rc.array;
+        auto onStack = RCArray!bool(graph.length);
+        auto stack = RCArray!I(graph.length, true);
+        auto indeces = RCArray!IndexNode(graph.length, true);
+        auto loopStack = RCArray!LoopNode(componentBackStackIndex, true);
     }
     else
     {
-        () @trusted {
-            import std.array: uninitializedArray;
+        I[] stack;
+        IndexNode[] indeces;
+        LoopNode[] loopStack;
 
-            stack = uninitializedArray!(I[])(graph.length);
-            indeces = uninitializedArray!(IndexNode[])(graph.length);
-            loopStack = uninitializedArray!(LoopNode[])(componentBackStackIndex);
-        } ();
+        bool[] onStack = new bool[graph.length];
+        if (__ctfe)
+        {
+
+            stack = new I[graph.length];
+            indeces = new IndexNode[graph.length];
+            loopStack = new LoopNode[componentBackStackIndex];
+        }
+        else
+        {
+            () @trusted {
+                import std.array: uninitializedArray;
+
+                stack = uninitializedArray!(I[])(graph.length);
+                indeces = uninitializedArray!(IndexNode[])(graph.length);
+                loopStack = uninitializedArray!(LoopNode[])(componentBackStackIndex);
+            } ();
+        }
     }
 
     foreach(ref node; indeces)
         node.index = undefined;
 
+    I index;
     foreach(size_t v; 0u .. graph.length)
     {
         if (indeces[v].isUndefined)
@@ -191,26 +206,42 @@ auto tarjan(G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
         }
     }
 
-    S[] pairwiseIndex;
-    if (__ctfe)
+    const indexLength = graph.length + 1 - componentBackStackIndex + 1;
+    static if (RC)
     {
-        pairwiseIndex = new S[graph.length - componentBackStackIndex + 1];
+        auto pairwiseIndex = RCArray!S(indexLength, true);
     }
     else
     {
-        () @trusted {
-            import std.array: uninitializedArray;
-            pairwiseIndex = uninitializedArray!(S[])(graph.length + 1 - componentBackStackIndex + 1);
-        } ();
+        S[] pairwiseIndex;
+        if (__ctfe)
+        {
+            pairwiseIndex = new S[indexLength];
+        }
+        else
+        {
+            () @trusted {
+                import std.array: uninitializedArray;
+                pairwiseIndex = uninitializedArray!(S[])(indexLength);
+            } ();
+        }
     }
-    foreach (i, ref e; loopStack[componentBackStackIndex .. $])
+    foreach (i, ref e; loopStack[][componentBackStackIndex .. $])
     {
         pairwiseIndex[i] = e.index;
     }
     pairwiseIndex[$ - 1] = cast(I) graph.length;
 
     import mir.ndslice.topology: chopped;
-    return (()@trusted {return stack.ptr; }()).chopped(pairwiseIndex);
+    static if (RC)
+    {
+        import core.lifetime: move;
+        return chopped(RCI!I(stack.move), pairwiseIndex.asSlice);
+    }
+    else
+    {
+        return (()@trusted {return stack.ptr; }()).chopped(pairwiseIndex);
+    }
 }
 
 /++
@@ -241,14 +272,21 @@ pure version(mir_test) unittest
         "11": [],
     ].graphSeries;
 
-    auto components = gs.data.tarjan;
 
-    assert(components == [
+    static immutable result = [
         [0],
         [1, 2, 5, 4, 3, 6],
         [10],
         [7, 8, 9],
-        [11]]);
+        [11]];
+
+    // chec GC interface
+    auto components = gs.data.tarjan;
+    assert(components == result);
+    // check @nogc interface
+    // Note: The lambda function is used here to show @nogc mode explicitly.
+    auto rccomponents = (() @nogc => gs.data.tarjan!true )();
+    assert(rccomponents == result);
 }
 
 /++
