@@ -3209,7 +3209,7 @@ in
             assert(b);
 }
 do {
-
+    import core.lifetime: move;
     sizediff_t length = bounds._lengths[0] <= 1 ? 0 : bounds._lengths[0] - 1;
     static if (hasLength!Sliceable)
     {
@@ -3222,7 +3222,7 @@ do {
         }
     }
 
-    return typeof(return)([size_t(length)], ChopIterator!(Iterator, Sliceable)(bounds._iterator, sliceable));
+    return typeof(return)([size_t(length)], ChopIterator!(Iterator, Sliceable)(bounds._iterator.move, sliceable.move));
 }
 
 /// ditto
