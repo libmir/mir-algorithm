@@ -14,8 +14,6 @@ module mir.graph;
 
 import mir.math.common: optmath;
 
-@optmath:
-
 import mir.series;
 import mir.rc.array;
 import mir.ndslice.iterator: ChopIterator;
@@ -34,13 +32,20 @@ alias RCGraph(I = uint, J = size_t) = Slice!(RCGraphIterator!(I, J));
 ///
 alias RCGraphSeries(T, I = uint, J = size_t) = Series!(RCI!T, RCGraphIterator!(I, J));
 
+private static immutable exc_msg = "graphSeries: graph should contains keys for all vertixes";
+version(D_Exceptions)
+{
+    private static immutable exception = new Exception(exc_msg);
+}
+
 /++
-Param:
+Params:
     aaGraph = graph that is represented as associative array
 Returns:
     A graph series composed of keys (sorted `.index`) and arrays of indeces (`.data`)
 Complexity: `O(log(V) (V + E))`
 +/
+@optmath
 GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aaGraph)
 {
     import mir.array.allocation: array;
@@ -62,7 +67,13 @@ GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aa
         {
             import mir.ndslice.sorting: transitionIndex;
             auto index = keys.transitionIndex(elem);
-            assert(index < keys.length, "graphSeries: aaGraph should contains keys for all vertixes");
+            if (index >= keys.length)
+            {
+                version(D_Exceptions)
+                    throw exception;
+                else
+                    assert(0, exc_msg);
+            }
             data[dataIndex++] = cast(I) index;
         }
     }
@@ -86,4 +97,68 @@ pure version(mir_test) unittest
         [0],    // b
         [1],    // c
     ]);
+}
+
+/++
+Params:
+    graph = graph that is represented a series
+Returns:
+    A graph as an arrays of indeces
+Complexity: `O(log(V) (V + E))`
++/
+@optmath
+RCGraph!(I, J) rcgraph(I = uint, J = size_t, KeyIterator, RangeIterator)(Series!(KeyIterator, RangeIterator) graph)
+{
+    import mir.array.allocation: array;
+    import mir.ndslice.sorting;
+    import mir.ndslice;
+    auto scopeGraph = graph.lightScope;
+    auto keys = scopeGraph.index;
+    auto graphData = scopeGraph.data;
+    size_t dataLength;
+    foreach (ref v; graphData)
+        dataLength += v.length;
+    auto data = rcslice!I(dataLength);
+    auto components = rcslice!J(keys.length + 1);
+    size_t dataIndex;
+
+    foreach (i; 0 .. keys.length)
+    {
+        components[i] = cast(J) dataIndex;
+        foreach(ref elem; graphData[i])
+        {
+            import mir.ndslice.sorting: transitionIndex;
+            auto index = keys.transitionIndex(elem);
+            if (index >= keys.length)
+            {
+                version(D_Exceptions)
+                    throw exception;
+                else
+                    assert(0, exc_msg);
+            }
+            data[dataIndex++] = cast(I) index;
+        }
+    }
+    components[keys.length] = dataIndex; 
+    return data._iterator.chopped(components);
+}
+
+///
+@safe pure @nogc version(mir_test)
+unittest
+{
+    static immutable keys = ["a", "b", "c"];
+    static immutable data = [
+        ["b", "c"],
+        ["a"],
+        ["b"],
+    ];
+
+    static immutable graphValue = [
+        [1, 2], // a
+        [0],    // b
+        [1],    // c
+    ];
+
+    assert (series(keys, data).rcgraph == graphValue);
 }
