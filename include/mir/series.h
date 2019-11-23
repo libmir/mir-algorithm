@@ -71,6 +71,11 @@ struct mir_series
         return {_index[index], _data[index]};
     }
 
+    Observation backward(mir_size_t index) const noexcept
+    {
+        return {_index[size() - 1 - index], _data[size() - 1 - index]};
+    }
+
     Observation operator[](mir_size_t index) const noexcept
     {
         return {_index[index], _data[index]};

@@ -253,6 +253,16 @@ struct mir_slice<Iterator, 1, mir_slice_kind::contiguous>
         return _iterator[index];
     }
 
+    auto&& backward(mir_size_t index)
+    {
+        return at(size() - 1 - index);
+    }
+
+    auto&& backward(mir_size_t index) const
+    {
+        return at(size() - 1 - index);
+    }
+
     auto&& operator[](mir_size_t index)
     {
         return at(index);
