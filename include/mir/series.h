@@ -71,9 +71,25 @@ struct mir_series
         return {_index[index], _data[index]};
     }
 
+    Observation backward(mir_size_t index) const noexcept
+    {
+        return {_index[size() - 1 - index], _data[size() - 1 - index]};
+    }
+
     Observation operator[](mir_size_t index) const noexcept
     {
         return {_index[index], _data[index]};
+    }
+
+    mir_series slice(mir_size_t a, mir_size_t b)
+    {
+        if (a > b)
+            throw std::out_of_range("series::slice: a > b");
+        if (b > size())
+            throw std::out_of_range("series::slice: b > size()");
+        auto newIndex = _index;
+        newIndex += a;
+        return { {{b - a}, _data._iterator}, std::move(newIndex) };
     }
 
     template <class T>
