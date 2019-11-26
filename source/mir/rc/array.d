@@ -116,6 +116,31 @@ struct mir_rcarray(T)
         return mir_slice!It([length], It(this));
     }
 
+    ///
+    auto asSlice() const @property
+    {
+        import mir.ndslice.slice: mir_slice;
+        alias It = mir_rci!(const T);
+        return mir_slice!It([length], It(this.lightConst));
+    }
+
+    ///
+    auto asSlice() immutable @property
+    {
+        import mir.ndslice.slice: mir_slice;
+        alias It = mir_rci!(immutable T);
+        return mir_slice!It([length], It(this.lightImmutable));
+    }
+
+    ///
+    auto moveToSlice() @property
+    {
+        import core.lifetime: move;
+        import mir.ndslice.slice: mir_slice;
+        alias It = mir_rci!T;
+        return mir_slice!It([length], It(move(this)));
+    }
+
     /++
     Params:
         length = array length
@@ -190,25 +215,6 @@ unittest
     static assert(is(typeof(fs) == Slice!(double*)));
 }
 
-///
-version(mir_test)
-@safe pure @nogc nothrow
-unittest
-{
-    RCArray!double a = rcarray!double(1.0, 2, 5, 3);
-    assert(a[0] == 1);
-    assert(a[$ - 1] == 3);
-
-    auto s = rcarray!char("hello!");
-    assert(s[0] == 'h');
-    assert(s[$ - 1] == '!');
-
-    alias rcstring = rcarray!(immutable char);
-    auto r = rcstring("string");
-    assert(r[0] == 's');
-    assert(r[$ - 1] == 'g');
-}
-
 private template LikeArray(Range)
 {
     static if (__traits(identifier, Range) == "mir_slice")
@@ -224,14 +230,14 @@ private template LikeArray(Range)
 
 ///
 auto rcarray(T = void, Range)(ref Range range)
-    if (is(T == void) && hasLength!Range && !is(Range == LightScopeOf!Range))
+    if (is(T == void) && !is(Range == LightScopeOf!Range))
 {
     return .rcarray(range.lightScope);
 }
 
 /// ditto
 auto rcarray(T = void, Range)(Range range)
-    if (is(T == void) && hasLength!Range && isIterable!Range && is(Range == LightScopeOf!Range) && !isArray!Range)
+    if (is(T == void) && isIterable!Range && is(Range == LightScopeOf!Range) && !isArray!Range)
 {
     static if (LikeArray!Range)
     {
@@ -271,33 +277,63 @@ RCArray!V rcarray(T = void, V)(scope V[] values, bool deallocate)
     return .rcarray!V(values, deallocate);
 }
 
-/++
-+/
+/// ditto
 template rcarray(T)
     if(!is(T == E[], E) && !is(T == void))
 {
     ///
     auto rcarray(Range)(ref Range range)
-        if (hasLength!Range && !is(Range == LightScopeOf!Range))
+        if (!is(Range == LightScopeOf!Range))
     {
         return .rcarray!T(range.lightScope);
     }
 
     /// ditto
     auto rcarray(Range)(Range range)
-        if (hasLength!Range && isIterable!Range && is(Range == LightScopeOf!Range) && !isArray!Range)
+        if (isIterable!Range && is(Range == LightScopeOf!Range) && !isArray!Range)
     {
+        import std.range.primitives: isInputRange;
         static if (LikeArray!Range)
         {
             return .rcarray!T(range.field);
         }
+        else static if (hasLength!Range)
+        {
+            import mir.conv: emplaceRef;
+            auto ret = RCArray!T(range.length, false);
+            size_t i;
+            static if (isInputRange!Range)
+                for (; !range.empty; range.popFront)
+                    ret[i++].emplaceRef!T(range.front);
+            else
+            static if (isPointer!Range)
+                foreach (e; *range)
+                    ret[i++].emplaceRef!T(e);
+            else
+                foreach (e; range)
+                    ret[i++].emplaceRef!T(e);
+            return ret;
+        }
         else
         {
-            auto ret = RCArray!T(range.length, false);
+            import mir.appender: ScopedBuffer;
             import mir.conv: emplaceRef;
-            size_t i;
-            foreach(ref e; range)
-                ret[i++].emplaceRef!T(e);
+            ScopedBuffer!T a;
+            static if (isInputRange!Range)
+                for (; !range.empty; range.popFront)
+                    a.put(range.front);
+            else
+            static if (isPointer!Range)
+                foreach (e; *range)
+                    a.put(e);
+            else
+                foreach (e; range)
+                    a.put(e);
+            scope values = a.data;
+            auto ret = RCArray!T(values.length, false);
+            ()@trusted {
+                a.moveDataAndEmplaceTo(ret[]);
+            }();
             return ret;
         }
     }
@@ -361,6 +397,37 @@ template rcarray(T)
     }
 }
 
+///
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    RCArray!double a = rcarray!double(1.0, 2, 5, 3);
+    assert(a[0] == 1);
+    assert(a[$ - 1] == 3);
+
+    auto s = rcarray!char("hello!");
+    assert(s[0] == 'h');
+    assert(s[$ - 1] == '!');
+
+    alias rcstring = rcarray!(immutable char);
+    auto r = rcstring("string");
+    assert(r[0] == 's');
+    assert(r[$ - 1] == 'g');
+}
+
+/// With Input Ranges
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import std.algorithm.iteration: filter;
+    static immutable numbers = [3, 2, 5, 2, 3, 7, 3];
+    static immutable filtered = [5.0, 7];
+    auto result = numbers.filter!(a => a > 3).rcarray!(immutable double);
+    static assert(is(typeof(result) == RCArray!(immutable double)));
+    assert (result[] == filtered);
+}
 
 /++
 Params:
@@ -557,16 +624,16 @@ alias RCI = mir_rci;
 version(mir_test)
 @safe @nogc unittest
 {
+
     import mir.ndslice.traits: isIterator;
     import mir.ndslice.slice;
     import mir.rc.array;
-    auto array = mir_rcarray!double(10);
-    auto slice = array.asSlice;
+    auto slice = mir_rcarray!double(10).asSlice;
     static assert(isIterator!(RCI!double));
     static assert(is(typeof(slice) == Slice!(RCI!double)));
     auto matrix = slice.sliced(2, 5);
     static assert(is(typeof(matrix) == Slice!(RCI!double, 2)));
-    array[7] = 44;
+    slice[7] = 44;
     assert(matrix[1, 2] == 44);
 }
 

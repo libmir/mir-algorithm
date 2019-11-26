@@ -112,6 +112,16 @@ auto toSlice(T)(T[] val)
 
 /// ditto
 auto toSlice(T)(T val)
+    if (hasAsSlice!T || __traits(hasMember, T, "moveToSlice"))
+{
+    static if (__traits(hasMember, T, "moveToSlice"))
+        return val.moveToSlice;
+    else
+        return val.asSlice;
+}
+
+/// ditto
+auto toSlice(T)(ref T val)
     if (hasAsSlice!T)
 {
     return val.asSlice;

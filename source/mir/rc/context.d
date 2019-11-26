@@ -191,6 +191,10 @@ package mixin template CommonRCImpl()
     { return *cast(typeof(return)*) &this; }
 
     ///
+    ThisTemplate!(const Unqual!T) moveToConst()() scope return @nogc nothrow @trusted @property
+    { return move(*cast(typeof(return)*) &this); }
+
+    ///
     pragma(inline, true)
     size_t _counter() @trusted scope pure nothrow @nogc const @property
     {
