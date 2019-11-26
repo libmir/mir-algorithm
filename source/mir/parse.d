@@ -168,15 +168,6 @@ version (mir_test) unittest
     }
 }
 
-///
-version (mir_test) unittest
-{
-    import std.meta: AliasSeq;
-    foreach (T; AliasSeq!(byte, short, int, long))
-    {
-    }
-}
-
 alias r1 = parseUnsignedImpl!(uint, string);
 alias r2 = parseUnsignedImpl!(ulong, string);
 alias r3 = parseSignedImpl!(int, string);
