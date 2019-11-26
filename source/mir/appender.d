@@ -71,8 +71,10 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     else
         private alias R = T;
 
+    ///
     @disable this(this);
 
+    ///
     ~this()
     {
         import mir.internal.memory: free;
@@ -80,6 +82,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         (() @trusted => free(cast(void*)_buffer.ptr))();
     }
 
+    ///
     void popBackN(size_t n)
     {
         sizediff_t t = _currentLength - n;
@@ -90,6 +93,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         _currentLength = t;
     }
 
+    ///
     void put(R e) @safe scope
     {
         auto cl = _currentLength;
@@ -98,6 +102,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     static if (T.sizeof > 8 || hasElaborateAssign!T)
+    ///
     void put(ref R e) scope
     {
         auto cl = _currentLength;
@@ -106,6 +111,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     static if (!hasElaborateAssign!T && isAssignable!(T, const T))
+    ///
     void put(scope const(T)[] e) scope
     {
         auto cl = _currentLength;
@@ -118,6 +124,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     static if (!hasElaborateAssign!T && !isAssignable!(T, const T))
+    ///
     void put()(scope T[] e) scope
     {
         auto cl = _currentLength;
@@ -132,6 +139,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
             })();
     }
 
+    ///
     void put(Iterable)(Iterable range) scope
         if (isIterable!Iterable && !isArray!Iterable)
     {
@@ -161,6 +169,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         }
     }
 
+    ///
     void reset() scope nothrow
     {
         this.__dtor;
@@ -168,9 +177,23 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         _buffer = null;
     }
 
+    ///
     T[] data() @property @safe scope
     {
         return _buffer.length ? _buffer[0 .. _currentLength] : _scopeBuffer[0 .. _currentLength];
+    }
+
+    /++
+    Copies data into an array of the same length using `memcpy` C routine.
+    Shrinks the length to `0`.
+    +/
+    void moveDataAndEmplaceTo(T[] array) @system
+    in {
+        assert(array.length == _currentLength);
+    }
+    body {
+        memcpy(cast(void*)array.ptr, data.ptr, _currentLength * T.sizeof);
+        _currentLength = 0;
     }
 }
 

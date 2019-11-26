@@ -332,10 +332,8 @@ template rcarray(T)
             scope values = a.data;
             auto ret = RCArray!T(values.length, false);
             ()@trusted {
-                import core.stdc.string: memcpy;
-                memcpy(cast(void*)ret.ptr, cast(const void*)values.ptr, values.length * T.sizeof);
+                a.moveDataAndEmplaceTo(ret[]);
             }();
-            a.emplaceRef();
             return ret;
         }
     }
