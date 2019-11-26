@@ -28,7 +28,19 @@ ARTWORK_DIR=$(DOC_SOURCE_DIR)/artwork
 # packages and their modules.
 MIR_PACKAGES = mir mir/rc mir/ndslice mir/ndslice/connect mir/math mir/math/func mir/array mir/interpolate mir/graph mir/combinatorics mir/container mir/algorithm
 
-PACKAGE_mir = range series numeric type_info small_string small_array polynomial
+PACKAGE_mir = \
+	range \
+	series \
+	numeric \
+	type_info \
+	small_string \
+	small_array \
+	polynomial \
+	format\
+	parse\
+	appender\
+	exception\
+	traits\
 
 PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_array = allocation

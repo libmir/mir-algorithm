@@ -20,9 +20,11 @@ buildType "unittest-release" {
 	versions "mir_test"
 }
 
+dflags "-preview=dip1008"
+
 configuration "default" {
 }
 
 configuration "dips" {
-    dflags "-preview=dip1000" "-preview=dip1008"
+    dflags "-preview=dip1000"
 }

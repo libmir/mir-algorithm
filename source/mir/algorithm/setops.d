@@ -8,7 +8,11 @@ Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Ya
  */
 module mir.algorithm.setops;
 
+import core.lifetime: move;
 import mir.functional: naryFun;
+import mir.primitives;
+import mir.qualifier;
+import std.range.primitives: isRandomAccessRange;
 
 /**
 Merges multiple sets. The input sets are passed as a
@@ -43,6 +47,7 @@ want to pass a duplicate to $(D MultiwayMerge) (and perhaps cache the
 duplicate in between calls).
  */
 struct MultiwayMerge(alias less, RangeOfRanges)
+    if (isRandomAccessRange!RangeOfRanges)
 {
     import mir.primitives;
     import mir.container.binaryheap;
@@ -66,12 +71,24 @@ struct MultiwayMerge(alias less, RangeOfRanges)
     ///
     this(RangeOfRanges ror)
     {
-        import std.algorithm.mutation : remove, SwapStrategy;
+        import std.algorithm.mutation : swapAt;
 
         // Preemptively get rid of all empty ranges in the input
         // No need for stability either
         //Build the heap across the range
-        _heap = typeof(_heap)(ror.remove!("a.empty", SwapStrategy.unstable));
+        auto temp = ror.lightScope;
+        for (;!temp.empty;)
+        {
+            if (!temp.empty)
+            {
+                temp.popFront;
+                continue;
+            }
+            move(temp.back, temp.front);
+            temp.popBack;
+            ror.popBack;
+        }
+        _heap = typeof(_heap)(ror.move);
     }
 
     ///
@@ -100,7 +117,7 @@ MultiwayMerge!(naryFun!less, RangeOfRanges) multiwayMerge
 (alias less = "a < b", RangeOfRanges)
 (RangeOfRanges ror)
 {
-    return typeof(return)(ror);
+    return typeof(return)(move(ror));
 }
 
 ///
@@ -152,7 +169,7 @@ auto multiwayUnion(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
     import mir.functional: not;
     import mir.algorithm.iteration : Uniq;
 
-    return Uniq!(not!less, typeof(multiwayMerge!less(ror)))(multiwayMerge!less(ror));
+    return Uniq!(not!less, typeof(multiwayMerge!less(ror)))(multiwayMerge!less(move(ror)));
 }
 
 ///
@@ -199,10 +216,20 @@ pragma(inline, false)
 size_t unionLength(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
 {
     size_t length;
-    auto u = ror.multiwayUnion!less;
+    auto u = move(ror).multiwayUnion!less;
     if (!u.empty) do {
         length++;
         u.popFront;
     } while(!u.empty);
     return length;
+}
+
+/++
++/
+auto rcunion(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
+{
+    import mir.rc.array;
+    auto length = unionLength!less(ror.lightScope);
+    auto u = multiwayUnion!less(ror.move);
+    
 }
