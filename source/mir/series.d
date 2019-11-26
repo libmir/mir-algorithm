@@ -139,7 +139,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     auto data = slice!double([index.length, 2], 0); // initialized to 0 value
     auto series = index.series(data);
 
-    series[0 .. $, 0][].opIndexAssign(series0); // fill first column
+    series[0 .. $, 0][] = series0; // fill first column
     series[0 .. $, 1][] = series1; // fill second column
 
     assert(data == [

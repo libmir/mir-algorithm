@@ -63,7 +63,7 @@ insertBack), the $(D BinaryHeap) may grow by adding elements to the
 container.
 +/
 struct BinaryHeap(alias less = "a < b", Store)
-if (isRandomAccessRange!(Store) || isRandomAccessRange!(typeof(Store.init[])))
+if (isRandomAccessRange!Store || isRandomAccessRange!(typeof(Store.init[])))
 {
     import mir.utility : min;
     import mir.functional : naryFun;

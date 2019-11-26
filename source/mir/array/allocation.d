@@ -113,8 +113,8 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticAr
     }
     else
     {
-        import std.array: appender;
-        auto a = appender!(E[])();
+        import mir.appender: ScopedBuffer;
+        ScopedBuffer!E a;
         static if (isInputRange!Range)
             for (; !r.empty; r.popFront)
                 a.put(r.front);
@@ -125,7 +125,7 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticAr
         else
             foreach (e; r)
                 a.put(e);
-        return a.data;
+        return .array(a.data);
     }
 }
 
