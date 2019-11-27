@@ -51,7 +51,7 @@ PACKAGE_mir_interpolate = package constant linear spline utility polynomial
 PACKAGE_mir_math = sum numeric stat
 PACKAGE_mir_math_func = expdigamma
 PACKAGE_mir_ndslice_connect = cpython
-PACKAGE_mir_rc = package ptr array context
+PACKAGE_mir_rc = package ptr array context slim_ptr
 
 PACKAGE_mir_ndslice = \
 	allocation\
