@@ -175,8 +175,6 @@ version(mir_test)
 Allocates an n-dimensional reference-counted (thread-safe) slice without memory initialisation.
 Params:
     lengths = List of lengths for each dimension.
-    init = Value to initialize with (optional).
-    slice = Slice to copy shape and data from (optional).
 Returns:
     n-dimensional slice
 +/
