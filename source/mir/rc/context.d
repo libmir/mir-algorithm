@@ -192,7 +192,10 @@ package mixin template CommonRCImpl()
 
     ///
     ThisTemplate!(const Unqual!T) moveToConst()() scope return @nogc nothrow @trusted @property
-    { return move(*cast(typeof(return)*) &this); }
+    {
+        import core.lifetime: move;
+        return move(*cast(typeof(return)*) &this);
+    }
 
     ///
     pragma(inline, true)
