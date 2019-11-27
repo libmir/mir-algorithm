@@ -31,7 +31,6 @@ mir_algorithm_src = [
     'source/mir/interpolate/constant.d',
     'source/mir/interpolate/linear.d',
     'source/mir/interpolate/package.d',
-    'source/mir/interpolate/pchip.d',
     'source/mir/interpolate/spline.d',
     'source/mir/interpolate/utility.d',
     'source/mir/math/func/expdigamma.d',

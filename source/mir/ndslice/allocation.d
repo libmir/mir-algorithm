@@ -172,6 +172,36 @@ version(mir_test)
 }
 
 /++
+Allocates an n-dimensional reference-counted (thread-safe) slice without memory initialisation.
+Params:
+    lengths = List of lengths for each dimension.
+    init = Value to initialize with (optional).
+    slice = Slice to copy shape and data from (optional).
+Returns:
+    n-dimensional slice
++/
+Slice!(RCI!T, N)
+    uninitRCslice(T, size_t N)(size_t[N] lengths...)
+{
+    immutable len = lengths.lengthsProduct;
+    auto _lengths = lengths;
+    return typeof(return)(_lengths, RCI!T(RCArray!T(len, false)));
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    import mir.ndslice.slice: Slice;
+    import mir.rc.array: RCI;
+    auto tensor = uninitRCslice!int(5, 6, 7);
+    tensor[] = 1;
+    assert(tensor.length == 5);
+    assert(tensor.elementCount == 5 * 6 * 7);
+    static assert(is(typeof(tensor) == Slice!(RCI!int, 3)));
+}
+
+/++
 Allocates a bitwise packed n-dimensional reference-counted (thread-safe) boolean slice.
 Params:
     lengths = List of lengths for each dimension.

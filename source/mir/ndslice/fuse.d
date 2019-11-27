@@ -28,24 +28,29 @@ import mir.math.common: optmath;
 @optmath:
 
 /++
-Fuses ndrange `r` into GC-allocated ndslice. Can be used to join rows or columns into a matrix.
+Fuses ndrange `r` into GC-allocated (`fuse`) or RC-allocated (`rcfuse`) ndslice. Can be used to join rows or columns into a matrix.
 
 Params:
     Dimensions = (optional) indexes of dimensions to be brought to the first position
 Returns:
     ndslice
 +/
-template fuse(Dimensions...)
+///
+alias fuse(Dimensions...) = fuseImpl!(false, Dimensions);
+///
+alias rcfuse(Dimensions...) = fuseImpl!(true, Dimensions);
+/// ditto
+template fuseImpl(bool RC, Dimensions...)
 {
     import mir.ndslice.internal: isSize_t, toSize_t;
     static if (!allSatisfy!(isSize_t, Dimensions))
-        alias fuse = .fuse!(staticMap!(toSize_t, Dimensions));
+        alias fuseImpl = .fuseImpl!(RC, staticMap!(toSize_t, Dimensions));
     else
     /++
     Params:
         r = parallelotope (ndrange) with length/shape and input range primitives.
     +/
-    @optmath Slice!(FuseElementType!NDRange*, fuseDimensionCount!NDRange) fuse(NDRange)(NDRange r)
+    @optmath auto fuseImpl(NDRange)(NDRange r)
         if (hasShape!NDRange)
     {
         import mir.conv: emplaceRef;
@@ -54,8 +59,17 @@ template fuse(Dimensions...)
         auto shape = fuseShape(r);
         alias T = FuseElementType!NDRange;
         alias UT = Unqual!T;
-        alias R = typeof(return);
-        Slice!(UT*, fuseDimensionCount!NDRange) ret;
+        static if (RC)
+        {
+            import mir.rc.array: RCI;
+            alias R = Slice!(RCI!T, fuseDimensionCount!NDRange);
+            Slice!(RCI!UT, fuseDimensionCount!NDRange) ret;
+        }
+        else
+        {
+            alias R = Slice!(T*, fuseDimensionCount!NDRange);
+            Slice!(UT*, fuseDimensionCount!NDRange) ret;
+        }
         static if (Dimensions.length)
         {
             import mir.ndslice.topology: iota;
@@ -72,40 +86,66 @@ template fuse(Dimensions...)
                     return ar;
                 }(perm)
             );
-            if (__ctfe)
+            static if (RC)
             {
-                ret = shapep.slice!UT;
-                ret.transposed!InverseDimensions.each!"a = b"(r);
+                ret = shapep.uninitRcslice!UT;
+                ret.lightScope.transposed!InverseDimensions.each!(emplaceRef!T)(r);
             }
             else
             {
-                ret = shapep.uninitSlice!UT;
-                ret.transposed!InverseDimensions.each!(emplaceRef!T)(r);
+                if (__ctfe)
+                {
+                    ret = shapep.slice!UT;
+                    ret.transposed!InverseDimensions.each!"a = b"(r);
+                }
+                else
+                {
+                    ret = shapep.uninitSlice!UT;
+                    ret.transposed!InverseDimensions.each!(emplaceRef!T)(r);
+                }
+
             }
         }
         else
         {
-            if (__ctfe)
+            static if (RC)
             {
-                ret = shape.slice!UT;
-                ret.each!"a = b"(r);
+                ret = shape.uninitRCslice!UT;
+                ret.lightScope.each!(emplaceRef!T)(r);
             }
             else
             {
-                ret = shape.uninitSlice!UT;
-                ret.each!(emplaceRef!T)(r);
+                if (__ctfe)
+                {
+                    ret = shape.slice!UT;
+                    ret.each!"a = b"(r);
+                }
+                else
+                {
+                    ret = shape.uninitSlice!UT;
+                    ret.each!(emplaceRef!T)(r);
+                }
             }
         }
-        return R(ret._structure, (() @trusted => cast(T*)ret._iterator)());
+        static if (RC)
+        {
+            import core.lifetime: move;
+            return move(*(() @trusted => cast(R*)&ret)());
+        }
+        else
+        {
+            return *(() @trusted => cast(R*)&ret)();
+        }
     }
 }
 
 ///
-unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.fuse;
-    import mir.ndslice.topology: iota;
     import mir.ndslice.slice : Contiguous, Slice;
+    import mir.ndslice.topology: iota;
+    import mir.rc.array: RCI;
 
     enum ror = [
             [0, 1, 2, 3],
@@ -117,14 +157,19 @@ unittest
     //  8  9 10 11
     auto matrix = ror.fuse;
 
+    auto rcmatrix = ror.rcfuse; // nogc version
+
     assert(matrix == [3, 4].iota);
+    assert(rcmatrix == [3, 4].iota);
     static assert(ror.fuse == [3, 4].iota); // CTFE-able
+
     // matrix is contiguos
     static assert(is(typeof(matrix) == Slice!(int*, 2)));
+    static assert(is(typeof(rcmatrix) == Slice!(RCI!int, 2)));
 }
 
 /// Transposed
-unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
@@ -153,7 +198,7 @@ unittest
 
 
 /// 3D
-unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
@@ -174,7 +219,7 @@ unittest
 }
 
 /// Work with RC Arrays of RC Arrays
-unittest
+@safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice;

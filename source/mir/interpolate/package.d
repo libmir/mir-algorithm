@@ -101,7 +101,7 @@ Returns:
     Lazy input range.
 See_also:
     $(SUBREF linear, linear),
-    $(SUBREF pchip, pchip).
+    $(SUBREF spline, spline).
 +/
 auto interp1(Range, Interpolant)(Range range, Interpolant interpolant, size_t interval = 0)
 {
