@@ -281,6 +281,8 @@ RCArray!V rcarray(T = void, V)(scope V[] values, bool deallocate)
 template rcarray(T)
     if(!is(T == E[], E) && !is(T == void))
 {
+    import std.range.primitives: isInputRange, isInfinite;
+
     ///
     auto rcarray(Range)(ref Range range)
         if (!is(Range == LightScopeOf!Range))
@@ -290,9 +292,8 @@ template rcarray(T)
 
     /// ditto
     auto rcarray(Range)(Range range)
-        if (isIterable!Range && is(Range == LightScopeOf!Range) && !isArray!Range)
+        if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isArray!Range || isPointer!Range && (isInputRange!(PointerTarget!Range) || isIterable!(PointerTarget!Range)))
     {
-        import std.range.primitives: isInputRange;
         static if (LikeArray!Range)
         {
             return .rcarray!T(range.field);

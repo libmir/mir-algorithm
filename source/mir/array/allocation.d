@@ -40,7 +40,7 @@ import std.range.primitives: isInfinite, isInputRange, ElementType;
  *      allocated and initialized array
  */
 auto array(Range)(Range r)
-if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticArray!Range || isPointer!Range && isIterable!(PointerTarget!Range))
+if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticArray!Range || isPointer!Range && (isInputRange!(PointerTarget!Range) || isIterable!(PointerTarget!Range)))
 {
     static if (isIterable!Range)
         alias E = ForeachType!Range;
