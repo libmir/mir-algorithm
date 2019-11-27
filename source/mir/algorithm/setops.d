@@ -221,13 +221,3 @@ size_t unionLength(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
     } while(!u.empty);
     return length;
 }
-
-/++
-+/
-auto rcunion(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
-{
-    import mir.rc.array;
-    auto length = unionLength!less(ror.lightScope);
-    auto u = multiwayUnion!less(ror.move);
-    
-}
