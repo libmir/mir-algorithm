@@ -5,6 +5,39 @@ Most of the API Requires DIP1008.
 +/
 module mir.exception;
 
+version(D_Exceptions):
+
+///
+auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
+{
+    import mir.functional: forward;
+    import mir.utility: _expect;
+    static if (__traits(compiles, arg !is null))
+    {
+        if (_expect(arg !is null, true))
+            return forward!arg[0];
+    }
+    else
+    {
+        if (_expect(cast(bool)arg, true))
+            return forward!arg[0];
+    }
+    static immutable exception = new Exception(fmt, file, line);
+    throw exception;
+}
+
+///
+@safe pure nothrow @nogc
+version (mir_test) unittest
+{
+    import mir.exception;
+    try enforce!"Msg"(false);
+    catch(Exception e) assert(e.msg == "Msg");
+}
+
+static if (__traits(compiles, (()@nogc {throw new Exception("");})()))
+{
+
 /++
 +/
 class MirException : Exception
@@ -123,33 +156,6 @@ version (mir_test) unittest
 //     catch(Exception e) assert(e.msg == "Msg");
 // }
 
-///
-auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
-{
-    import mir.functional: forward;
-    import mir.utility: _expect;
-    static if (__traits(compiles, arg !is null))
-    {
-        if (_expect(arg !is null, true))
-            return forward!arg[0];
-    }
-    else
-    {
-        if (_expect(cast(bool)arg, true))
-            return forward!arg[0];
-    }
-    static immutable exception = new Exception(fmt, file, line);
-    throw exception;
-}
-
-///
-@safe pure nothrow @nogc
-version (mir_test) unittest
-{
-    import mir.exception;
-    try enforce!"Msg"(false);
-    catch(Exception e) assert(e.msg == "Msg");
-}
 
 /++
 +/
@@ -282,4 +288,6 @@ private const(char)[] initilizePayload(ref return char[maxMsgLen] payload, scope
     else
         (() @trusted => memcpy(payload.ptr, msg.ptr, msg.length))();
     return payload[0 .. msg.length];
+}
+
 }
