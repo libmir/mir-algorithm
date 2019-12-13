@@ -1,7 +1,7 @@
 /++
 `@nogc` exceptions and errors definitions.
 
-Most of API Required DIP1008.
+Most of the API Requires DIP1008.
 +/
 module mir.exception;
 
