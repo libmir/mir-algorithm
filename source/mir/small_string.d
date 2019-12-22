@@ -111,14 +111,14 @@ extern(D):
     }
 
     /// ditto
-    ref typeof(this) opAssign(ref scope const SmallString rhs) return
+    ref typeof(this) opAssign(ref scope const SmallString rhs) return nothrow
     {
         _data = rhs._data;
         return this;
     }
     
     /// ditto
-    ref typeof(this) opAssign(SmallString rhs) return
+    ref typeof(this) opAssign(SmallString rhs) return nothrow
     {
         _data = rhs._data;
         return this;

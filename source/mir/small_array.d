@@ -102,14 +102,14 @@ struct SmallArray(T, uint maxLength)
     }
 
     /// ditto
-    ref typeof(this) opAssign(ref SmallArray rhs) return
+    ref typeof(this) opAssign(ref SmallArray rhs) return nothrow
     {
         _data = rhs._data;
         return this;
     }
     
     /// ditto
-    ref typeof(this) opAssign(SmallArray rhs) return
+    ref typeof(this) opAssign(SmallArray rhs) return nothrow
     {
         _data = rhs._data;
         return this;
