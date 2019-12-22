@@ -53,13 +53,13 @@ struct SmallArray(T, uint maxLength)
     }
 
     /// ditto
-    this(SmallArray array) nothrow
+    this(const SmallArray array) nothrow
     {
         this.opAssign(array);
     }
 
     /// ditto
-    this(uint n)(SmallArray!(T, n) array)
+    this(uint n)(const SmallArray!(T, n) array)
     {
         this.opAssign(array);
     }
@@ -116,7 +116,7 @@ struct SmallArray(T, uint maxLength)
     }
     
     /// ditto
-    ref typeof(this) opAssign(SmallArray rhs) return nothrow
+    ref typeof(this) opAssign(const SmallArray rhs) return nothrow
     {
         _length = rhs._length;
         _data = rhs._data;
@@ -147,7 +147,7 @@ struct SmallArray(T, uint maxLength)
     }
 
     /// ditto
-    ref typeof(this) opAssign(uint n)(SmallArray!(T, n) rhs) return
+    ref typeof(this) opAssign(uint n)(const SmallArray!(T, n) rhs) return
         if (n != maxLength)
     {
         static if (n < maxLength)

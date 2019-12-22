@@ -61,13 +61,13 @@ extern(D):
     }
 
     /// ditto
-    this(SmallString str) nothrow
+    this(const SmallString str) nothrow
     {
         this.opAssign(str);
     }
 
     /// ditto
-    this(uint n)(SmallString!n str)
+    this(uint n)(const SmallString!n str)
     {
         this.opAssign(str);
     }
@@ -124,7 +124,7 @@ extern(D):
     }
     
     /// ditto
-    ref typeof(this) opAssign(SmallString rhs) return nothrow
+    ref typeof(this) opAssign(const SmallString rhs) return nothrow
     {
         _data = rhs._data;
         return this;
@@ -149,12 +149,13 @@ extern(D):
                 version(D_Exceptions) throw exception;
                 else assert(0, errorMsg);
             }
-            _data = cast(char[0 .. maxLength])(rhs._data[0 .. maxLength]);
+            _data = cast(char[maxLength])(rhs._data[0 .. maxLength]);
         }
+        return this;
     }
 
     /// ditto
-    ref typeof(this) opAssign(uint n)(SmallString!n rhs) return
+    ref typeof(this) opAssign(uint n)(const SmallString!n rhs) return
         if (n != maxLength)
     {
         static if (n < maxLength)
@@ -329,4 +330,11 @@ const:
     b.put('!');
     b.put("!");
     assert(b == "asdf qwerty!!");
+}
+
+@safe pure @nogc nothrow version(mir_test) unittest
+{
+    import mir.conv: emplaceRef;
+    SmallString!32 a, b;
+    emplaceRef!(const SmallString!32)(a, cast(const)b);
 }
