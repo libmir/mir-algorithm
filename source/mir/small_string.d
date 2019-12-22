@@ -61,6 +61,12 @@ extern(D):
     }
 
     /// ditto
+    this(SmallString str) nothrow
+    {
+        this.opAssign(str);
+    }
+
+    /// ditto
     this(uint n)(SmallString!n str)
     {
         this.opAssign(str);
