@@ -133,7 +133,7 @@ struct mir_slim_rcptr(T)
             } ();
             import mir.functional: forward;
             import mir.conv: emplace;
-            emplace!T(_value, forward!args);
+            cast(void) emplace!T(_value, forward!args);
         }
     }
 }
