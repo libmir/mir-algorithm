@@ -36,10 +36,11 @@ PACKAGE_mir = \
 	small_string \
 	small_array \
 	polynomial \
-	format\
-	parse\
-	appender\
-	exception\
+	format \
+	parse \
+	appender \
+	exception \
+	variant \
 
 PACKAGE_mir_algorithm = iteration setops
 PACKAGE_mir_array = allocation
