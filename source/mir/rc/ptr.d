@@ -9,13 +9,13 @@ import mir.rc.context;
 import mir.type_info;
 import std.traits;
 
-private static immutable allocationExcMsg = "mir_rcptr: out of memory error.";
-private static immutable getExcMsg = "mir_rcptr: trying to use null value.";
+package static immutable allocationExcMsg = "mir_rcptr: out of memory error.";
+package static immutable getExcMsg = "mir_rcptr: trying to use null value.";
 
 version (D_Exceptions)
 {
     import core.exception: OutOfMemoryError, InvalidMemoryOperationError;
-    private static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
+    package static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
 }
 
 /++
@@ -34,17 +34,17 @@ struct mir_rcptr(T)
 
     ///
     static if (is(T == class) || is(T == interface))
-        private Unqual!T _value;
+        package Unqual!T _value;
     else
-        private T* _value;
-    private mir_rc_context* _context;
+        package T* _value;
+    package mir_rc_context* _context;
 
-    private ref inout(mir_rc_context) context() inout scope return @trusted @property
+    package ref inout(mir_rc_context) context() inout scope return @trusted @property
     {
         return *_context;
     }
 
-    private void _reset()
+    package void _reset()
     {
         _value = null;
         _context = null;
@@ -55,7 +55,7 @@ struct mir_rcptr(T)
         return cast(inout(void)*) _value;
     }
 
-    private alias ThisTemplate = .mir_rcptr;
+    package alias ThisTemplate = .mir_rcptr;
 
     /// ditto
     alias opUnary(string op : "*") = _get_value;
@@ -122,7 +122,7 @@ struct mir_rcptr(T)
 
     static if (!is(T == interface) && !__traits(isAbstractClass, T))
     {
-        private this(Args...)(auto ref Args args)
+        package this(Args...)(auto ref Args args)
         {
             () @trusted {
                 _context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
@@ -146,28 +146,30 @@ struct mir_rcptr(T)
 alias RCPtr = mir_rcptr;
 
 /++
+Returns: shared pointer of the member and the context from the current pointer. 
 +/
 auto shareMember(string member, T, Args...)(return mir_rcptr!T context, auto ref Args args)
 {
+    import core.lifetime: move;
     void foo(A)(auto ref A) {}
     static if (args.length)
     {
         // breaks safaty
         if (false) foo(__traits(getMember, context._get_value, member)(forward!args));
-        return (()@trusted => createRCWithContext(context, __traits(getMember, context._get_value, member)(forward!args)))();
+        return (()@trusted => createRCWithContext(__traits(getMember, context._get_value, member)(forward!args), context.move))();
     }
     else
     {
         // breaks safaty
         if (false) foo(__traits(getMember, context._get_value, member));
-        return (()@trusted => createRCWithContext(context, __traits(getMember, context._get_value, member)))();
+        return (()@trusted => createRCWithContext(__traits(getMember, context._get_value, member), context.move))();
     }
 }
 
 /++
 Returns: shared pointer constructed with current context. 
 +/
-@system .mir_rcptr!R createRCWithContext(R, F)(return const mir_rcptr!F context, return R value)
+@system .mir_rcptr!R createRCWithContext(R, F)(return R value, return const mir_rcptr!F context)
     if (is(R == class) || is(R == interface))
 {
     typeof(return) ret;
@@ -179,7 +181,7 @@ Returns: shared pointer constructed with current context.
 }
 
 ///ditto
-@system .mir_rcptr!R createRCWithContext(R, F)(return const mir_rcptr!F context, return ref R value)
+@system .mir_rcptr!R createRCWithContext(R, F)(return ref R value, return const mir_rcptr!F context)
     if (!is(R == class) && !is(R == interface))
 {
     typeof(return) ret;
@@ -197,21 +199,24 @@ Provides polymorphism abilities for classes and structures with `alias this` syn
 mir_rcptr!R castTo(R, T)(return mir_rcptr!T context) @trusted
     if (isImplicitlyConvertible!(T, R))
 {
-    return createRCWithContext(context, cast(R)context._get_value);
+    import core.lifetime: move;
+    return createRCWithContext(cast(R)context._get_value, move(context));
 }
 
 /// ditto
-mir_rcptr!(const R) castTo(R, T)(return const mir_rcptr!T context) @trusted const
+mir_rcptr!(const R) castTo(R, T)(return const mir_rcptr!T context) @trusted
     if (isImplicitlyConvertible!(const T, const R))
 {
-    return createRCWithContext(*cast(mir_rcptr!T*)&context, cast(const R)context._get_value);
+    import core.lifetime: move;
+    return createRCWithContext(cast(const R)context._get_value, move(*cast(mir_rcptr!T*)&context));
 }
 
 /// ditto
-mir_rcptr!(immutable R) castTo(R, T)(return immutable mir_rcptr!T context) @trusted immutable
+mir_rcptr!(immutable R) castTo(R, T)(return immutable mir_rcptr!T context) @trusted
     if (isImplicitlyConvertible!(immutable T, immutable R))
 {
-    return createRCWithContext(*cast(mir_rcptr!T*)&context, cast(immutable R)context._get_value);
+    import core.lifetime: move;
+    return createRCWithContext(cast(immutable R)context._get_value, move(*cast(mir_rcptr!T*)&context));
 }
 
 
@@ -302,7 +307,7 @@ unittest
 
 version(unittest):
 
-private struct _test_unpure_system_dest_s__ {
+package struct _test_unpure_system_dest_s__ {
     static int numStructs;
     int i;
 

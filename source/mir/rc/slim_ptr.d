@@ -9,13 +9,13 @@ import mir.rc.context;
 import mir.type_info;
 import std.traits;
 
-private static immutable allocationExcMsg = "mir_slim_rcptr: out of memory error.";
-private static immutable getExcMsg = "mir_slim_rcptr: trying to use null value.";
+package static immutable allocationExcMsg = "mir_slim_rcptr: out of memory error.";
+package static immutable getExcMsg = "mir_slim_rcptr: trying to use null value.";
 
 version (D_Exceptions)
 {
     import core.exception: OutOfMemoryError, InvalidMemoryOperationError;
-    private static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
+    package static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
 }
 
 /++
@@ -34,17 +34,17 @@ struct mir_slim_rcptr(T)
 
     ///
     static if (is(T == class) || is(T == interface))
-        private Unqual!T _value;
+        package Unqual!T _value;
     else
-        private T* _value;
+        package T* _value;
 
-    private ref inout(mir_rc_context) context() inout scope return pure nothrow @nogc @trusted @property
+    package ref inout(mir_rc_context) context() inout scope return pure nothrow @nogc @trusted @property
     {
         assert(_value);
         return (cast(inout(mir_rc_context)*)_value)[-1];
     }
 
-    private void _reset()
+    package void _reset()
     {
         _value = null;
     }
@@ -54,7 +54,7 @@ struct mir_slim_rcptr(T)
         return cast(inout(void)*) _value;
     }
 
-    private alias ThisTemplate = .mir_slim_rcptr;
+    package alias ThisTemplate = .mir_slim_rcptr;
 
     /// ditto
     alias opUnary(string op : "*") = _get_value;
@@ -118,7 +118,7 @@ struct mir_slim_rcptr(T)
 
     static if (!is(T == interface) && !__traits(isAbstractClass, T))
     {
-        private this(Args...)(auto ref Args args)
+        package this(Args...)(auto ref Args args)
         {
             () @trusted {
                 auto context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
@@ -212,7 +212,7 @@ unittest
 
 version(unittest):
 
-private struct _test_unpure_system_dest_s__ {
+package struct _test_unpure_system_dest_s__ {
     static int numStructs;
     int i;
 

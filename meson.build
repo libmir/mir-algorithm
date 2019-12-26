@@ -67,6 +67,7 @@ mir_algorithm_src = [
     'source/mir/small_array.d',
     'source/mir/small_string.d',
     'source/mir/type_info.d',
+    'source/mir/variant.d',
 ]
 
 mir_algorithm_lib = library(meson.project_name(),

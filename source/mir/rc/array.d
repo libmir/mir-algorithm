@@ -9,12 +9,12 @@ import mir.rc.context;
 import mir.type_info;
 import std.traits;
 
-private static immutable allocationExcMsg = "mir_rcarray: out of memory error.";
+package static immutable allocationExcMsg = "mir_rcarray: out of memory error.";
 
 version (D_Exceptions)
 {
     import core.exception: OutOfMemoryError;
-    private static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
+    package static immutable allocationError = new OutOfMemoryError(allocationExcMsg);
 }
 
 /++
@@ -27,16 +27,16 @@ The implementation never adds roots into the GC.
 struct mir_rcarray(T)
 {
     ///
-    private T* _payload;
-    private ref inout(mir_rc_context) context() inout scope return pure nothrow @nogc @trusted @property
+    package T* _payload;
+    package ref inout(mir_rc_context) context() inout scope return pure nothrow @nogc @trusted @property
     {
         assert(_payload);
         return (cast(inout(mir_rc_context)*)_payload)[-1];
     }
-    private void _reset() { _payload = null; }
+    package void _reset() { _payload = null; }
 
-    private alias ThisTemplate = .mir_rcarray;
-    private alias _thisPtr = _payload;
+    package alias ThisTemplate = .mir_rcarray;
+    package alias _thisPtr = _payload;
 
     ///
     void proxySwap(ref typeof(this) rhs) pure nothrow @nogc @safe
@@ -176,11 +176,11 @@ struct mir_rcarray(T)
 
     static if (isImplicitlyConvertible!(const T, T))
         static if (isImplicitlyConvertible!(const Unqual!T, T))
-            private alias V = const Unqual!T;
+            package alias V = const Unqual!T;
         else
-            private alias V = const T;
+            package alias V = const T;
     else
-        private alias V = T;
+        package alias V = T;
 
 }
 
@@ -215,7 +215,7 @@ unittest
     static assert(is(typeof(fs) == Slice!(double*)));
 }
 
-private template LikeArray(Range)
+package template LikeArray(Range)
 {
     static if (__traits(identifier, Range) == "mir_slice")
     {
