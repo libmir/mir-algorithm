@@ -76,12 +76,13 @@ struct MultiwayMerge(alias less, RangeOfRanges)
         auto temp = ror.lightScope;
         for (;!temp.empty;)
         {
-            if (!temp.empty)
+            if (!temp.front.empty)
             {
                 temp.popFront;
                 continue;
             }
-            move(temp.back, temp.front);
+            import mir.utility: swap;
+            swap(temp.back, temp.front);
             temp.popBack;
             ror.popBack;
         }
