@@ -122,7 +122,7 @@ struct mir_rcptr(T)
 
     static if (!is(T == interface) && !__traits(isAbstractClass, T))
     {
-        package this(Args...)(auto ref Args args)
+        package(mir) this(Args...)(auto ref Args args)
         {
             () @trusted {
                 _context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
