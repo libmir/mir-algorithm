@@ -22,7 +22,7 @@ Compatible with BetterC mode.
 struct Variant(Types...)
     if (Types.length)
 {
-    import core.lifetime: move;
+    import mir.utility: swap;
     import mir.conv: emplaceRef;
     import std.meta: anySatisfy;
     import std.traits: Largest, hasElaborateDestructor, hasElaborateAssign;
@@ -77,14 +77,6 @@ pure nothrow @nogc:
         type = 0;
     }
 
-    ///
-    void opAssign(Variant value)
-    {
-        static if (hasDestructor)
-            __dtor;
-        emplaceRef(this, move(value));
-    }
-
     static foreach (i, T; Types)
     ///
     void opAssign(T value)
@@ -92,7 +84,8 @@ pure nothrow @nogc:
         static if (hasDestructor)
             __dtor;
         type = i + 1;
-        emplaceRef(trustedGet!T, move(value));
+        emplaceRef(trustedGet!T);
+        swap(trustedGet!T, value);
     }
 
     static foreach (i, T; Types)
@@ -100,7 +93,8 @@ pure nothrow @nogc:
     this(T value)
     {
         type = i + 1;
-        emplaceRef(trustedGet!T, move(value));
+        emplaceRef(trustedGet!T);
+        swap(trustedGet!T, value);
     }
 
     static foreach (i, T; Types)
@@ -133,10 +127,20 @@ pure nothrow @nogc:
         return *cast(inout(T)*)payload.ptr;
     }
 
-    ///
-    bool empty() const @property
+    /++
+    Returns: true for the unassigned instance.
+    +/
+    bool empty() nothrow const @property
     {
         return type == 0;
+    }
+
+    /++
+    Returns: zero if the instance is unassigned and type index starting with 1 otherwise.
+    +/
+    uint typeId() nothrow const @property
+    {
+        return type;
     }
 }
 
@@ -149,7 +153,7 @@ template visit(alias visitor, bool forceAllTypes = true)
 {
     import std.traits: Unqual;
     ///
-    auto ref visit(V, Args)(auto ref V variant, auto ref Args args)
+    auto ref visit(V, Args...)(auto ref V variant, auto ref Args args)
         if (is(Unqual!V : Variant!Types, Types))
     {
         import mir.functional: forward;
@@ -186,7 +190,7 @@ template optionalVisit(alias visitor)
 {
     import std.traits: Unqual;
     ///
-    bool optionalVisit(Result, V, Args)(out Result result, auto ref V variant, auto ref Args args)
+    bool optionalVisit(Result, V, Args...)(out Result result, auto ref V variant, auto ref Args args)
         if (is(Unqual!V : Variant!Types, Types))
     {
         import mir.functional: forward;
