@@ -465,14 +465,108 @@ void medianOf(alias less, Iterator)
     }
 }
 
+/++
+Returns: `true` if a sorted array contains the value.
 
+Params:
+    test = strict ordering symmetric predicate
 
+For non-symmetric predicates please use a structure with two `opCall`s or an alias of two global functions,
+that correponds to `(array[i], value)` and `(value, array[i])` cases.
+
+See_also: $(LREF transitionIndex).
++/
+template assumeSortedContains(alias test = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!test, test))
+    {
+@optmath:
+        /++
+        Params:
+            slice = sorted one-dimensional slice or array.
+            v = value to test with. It is passed to second argument.
+        +/
+        bool assumeSortedContains(Iterator, SliceKind kind, V)
+            (auto ref Slice!(Iterator, 1, kind) slice, auto ref scope const V v)
+        {
+            auto ti = transitionIndex!test(slice, v);
+            return ti < slice.length && !test(v, slice[ti]);
+        }
+
+        /// ditto
+        bool assumeSortedContains(T, V)(scope T[] ar, auto ref scope const V v)
+        {
+            return .assumeSortedContains!test(ar.sliced, v);
+        }
+    }
+    else
+        alias assumeSortedContains = .assumeSortedContains!(naryFun!test);
+}
+
+/++
+Returns: the smallest index of a sorted array such
+    that the index corresponds to the arrays element at the index according to the predicate
+    and array length if the array doesn't contain corresponding element.
+
+Params:
+    test = strict ordering symmetric predicate.
+
+For non-symmetric predicates please use a structure with two `opCall`s or an alias of two global functions,
+that correponds to `(array[i], value)` and `(value, array[i])` cases.
+
+See_also: $(LREF transitionIndex).
++/
+template assumeSortedEqualIndex(alias test = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!test, test))
+    {
+@optmath:
+        /++
+        Params:
+            slice = sorted one-dimensional slice or array.
+            v = value to test with. It is passed to second argument.
+        +/
+        size_t assumeSortedEqualIndex(Iterator, SliceKind kind, V)
+            (auto ref Slice!(Iterator, 1, kind) slice, auto ref scope const V v)
+        {
+            auto ti = transitionIndex!test(slice, v);
+            return ti < slice.length && !test(v, slice[ti]) ? ti : slice.length;
+        }
+
+        /// ditto
+        size_t assumeSortedEqualIndex(T, V)(scope T[] ar, auto ref scope const V v)
+        {
+            return .assumeSortedEqualIndex!test(ar.sliced, v);
+        }
+    }
+    else
+        alias assumeSortedEqualIndex = .assumeSortedEqualIndex!(naryFun!test);
+}
+
+///
+version(mir_test)
+@safe pure unittest
+{
+    // sorted: a < b
+    auto a = [0, 1, 2, 3, 4, 6];
+
+    assert(a.assumeSortedEqualIndex(2) == 2);
+    assert(a.assumeSortedEqualIndex(5) == a.length);
+
+    // <= non strict predicates doesn't work
+    assert(a.assumeSortedEqualIndex!"a <= b"(2) == a.length);
+}
 
 /++
 Computes transition index using binary search.
 It is low-level API for lower and upper bounds of a sorted array.
 
-See_also: $(SUBREF topology, flattened).
+Params:
+    test = ordering predicate for (`(array[i], value)`) pairs.
+
+See_also: $(SUBREF topology, assumeSortedEqualIndex).
 +/
 template transitionIndex(alias test = "a < b")
 {
@@ -517,6 +611,7 @@ template transitionIndex(alias test = "a < b")
 }
 
 ///
+version(mir_test)
 @safe pure unittest
 {
     // sorted: a < b
@@ -570,6 +665,7 @@ I[] makeIndex(I = size_t, alias less = "a < b", T)(scope T[] r)
 }
 
 ///
+version(mir_test)
 @system unittest
 {
     import mir.algorithm.iteration: all;
