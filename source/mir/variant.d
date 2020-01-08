@@ -32,7 +32,7 @@ struct Variant(Types...)
     private void[Largest!Types.sizeof] payload = void;
     private uint type; // 0 for unininit value, index = type - 1
     private enum hasDestructor = anySatisfy!(hasElaborateDestructor, Types);
-pure nothrow @nogc:
+
     static if (hasDestructor)
     ~this()
     {
