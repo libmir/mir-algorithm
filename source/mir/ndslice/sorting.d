@@ -507,7 +507,7 @@ template assumeSortedContains(alias test = "a < b")
 /++
 Returns: the smallest index of a sorted array such
     that the index corresponds to the arrays element at the index according to the predicate
-    and array length if the array doesn't contain corresponding element.
+    and `-1` if the array doesn't contain corresponding element.
 
 Params:
     test = strict ordering symmetric predicate.
@@ -528,15 +528,15 @@ template assumeSortedEqualIndex(alias test = "a < b")
             slice = sorted one-dimensional slice or array.
             v = value to test with. It is passed to second argument.
         +/
-        size_t assumeSortedEqualIndex(Iterator, SliceKind kind, V)
+        sizediff_t assumeSortedEqualIndex(Iterator, SliceKind kind, V)
             (auto ref Slice!(Iterator, 1, kind) slice, auto ref scope const V v)
         {
             auto ti = transitionIndex!test(slice, v);
-            return ti < slice.length && !test(v, slice[ti]) ? ti : slice.length;
+            return ti < slice.length && !test(v, slice[ti]) ? ti : -1;
         }
 
         /// ditto
-        size_t assumeSortedEqualIndex(T, V)(scope T[] ar, auto ref scope const V v)
+        sizediff_t assumeSortedEqualIndex(T, V)(scope T[] ar, auto ref scope const V v)
         {
             return .assumeSortedEqualIndex!test(ar.sliced, v);
         }
@@ -553,10 +553,10 @@ version(mir_test)
     auto a = [0, 1, 2, 3, 4, 6];
 
     assert(a.assumeSortedEqualIndex(2) == 2);
-    assert(a.assumeSortedEqualIndex(5) == a.length);
+    assert(a.assumeSortedEqualIndex(5) == -1);
 
     // <= non strict predicates doesn't work
-    assert(a.assumeSortedEqualIndex!"a <= b"(2) == a.length);
+    assert(a.assumeSortedEqualIndex!"a <= b"(2) == -1);
 }
 
 /++
