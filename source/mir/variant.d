@@ -165,7 +165,7 @@ template visit(alias visitor, bool forceAllTypes = true)
                 else
                     assert(0, variantNulllExceptionMsg);
             static foreach (i, T; V._Types)
-            static if (forceAllTypes || __traits(compiles, { return visitor(variant.trustedGet!T, forward!args); }))
+            static if (forceAllTypes || __traits(compiles, visitor(variant.trustedGet!T, forward!args)))
             {
                 case i + 1:
                     return visitor(variant.trustedGet!T, forward!args);
@@ -197,7 +197,7 @@ template optionalVisit(alias visitor)
         switch (variant.type)
         {
             static foreach (i, T; V._Types)
-            static if (__traits(compiles, { result = visitor(variant.trustedGet!T, forward!args); }))
+            static if (__traits(compiles, result = visitor(variant.trustedGet!T, forward!args)))
             {
                 case i + 1:
                     result = visitor(variant.trustedGet!T, forward!args);
