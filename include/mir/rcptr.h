@@ -72,6 +72,13 @@ namespace mir
 
         // template<class = typename std::enable_if<std::is_destructible<T>::value>::type>
 
+    template<class U>
+    static const mir_type_info* typeInfoT_()
+    {
+        static constexpr void (*destr)(U&) = std::is_destructible<U>::value ? &Destructor<U>::destroy : nullptr;
+        static constexpr type_info_g<U> value = {destr, sizeof(U)};
+        return (const mir_type_info*)&value;
+    }
 }
 
 // Does not support allocators for now
@@ -83,8 +90,6 @@ private:
     T* _payload = nullptr;
     mir_rc_context* _context = nullptr;
     using U = typename std::remove_all_extents<T>::type;
-    static constexpr void (*destr)(U&) = std::is_destructible<T>::value ? &mir::Destructor<U>::destroy : nullptr;
-    static constexpr mir::type_info_g<U> typeInfoT = {destr, sizeof(T)};
 
 public:
 
@@ -114,7 +119,7 @@ public:
         using U = typename std::remove_const<T>::type;
         static_assert( std::is_constructible<U, Args...>::value, "Can't construct object in mir_rcptr constructor" );
         mir_rcptr ret;
-        ret._context = mir_rc_create((const mir_type_info*)&typeInfoT, 1);
+        ret._context = mir_rc_create(mir::typeInfoT_<U>(), 1);
         if (ret._context == nullptr)
             throw std::bad_alloc();
         ret._payload = (T*)(ret._context + 1);

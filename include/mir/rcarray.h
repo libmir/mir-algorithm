@@ -25,8 +25,6 @@ private:
 
     T* _payload = nullptr;
     using U = typename std::remove_all_extents<T>::type;
-    static constexpr void (*destr)(U&) = std::is_destructible<T>::value ? &mir::Destructor<U>::destroy : nullptr;
-    static constexpr mir::type_info_g<U> typeInfoT = {destr, sizeof(T)};
 
     void _cpp_copy_constructor(const mir_rcarray& rhs) noexcept;
     mir_rcarray& _cpp_assign(const mir_rcarray& rhs) noexcept;
@@ -38,7 +36,7 @@ private:
     {
         if (length == 0)
             return;
-        auto context = mir_rc_create((const mir_type_info*)&typeInfoT, length, nullptr, false, deallocate);
+        auto context = mir_rc_create(mir::typeInfoT_<U>(), length, nullptr, false, deallocate);
         if (context == nullptr)
             throw std::bad_alloc();
         _payload = (T*)(context + 1);

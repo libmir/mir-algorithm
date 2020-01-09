@@ -12,8 +12,6 @@ private:
 
     T* _payload = nullptr;
     using U = typename std::remove_all_extents<T>::type;
-    static constexpr void (*destr)(U&) = std::is_destructible<T>::value ? &mir::Destructor<U>::destroy : nullptr;
-    static constexpr mir::type_info_g<U> typeInfoT = {destr, sizeof(T)};
 
 public:
 
@@ -49,7 +47,7 @@ public:
         using U = typename std::remove_const<T>::type;
         static_assert( std::is_constructible<U, Args...>::value, "Can't construct object in mir_slim_rcptr constructor" );
         mir_slim_rcptr ret;
-        auto context = mir_rc_create((const mir_type_info*)&typeInfoT, 1);
+        auto context = mir_rc_create(mir::typeInfoT_<U>(), 1);
         if (context == nullptr)
             throw std::bad_alloc();
         ret._payload = (T*)(context + 1);
