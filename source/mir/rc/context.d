@@ -10,7 +10,7 @@ import mir.type_info;
 struct mir_rc_context
 {
     ///
-    void* allocator;
+    extern (C) void function(mir_rc_context*) @system nothrow @nogc pure deallocator;
     ///
     immutable(mir_type_info)* typeInfo;
     ///
@@ -68,6 +68,7 @@ export extern(C)
 void mir_rc_delete(ref mir_rc_context context)
     @system nothrow @nogc pure
 {
+    assert(context.deallocator);
     with(context)
     {
         with(typeInfo)
@@ -75,16 +76,18 @@ void mir_rc_delete(ref mir_rc_context context)
             if (destructor)
             {
                 auto ptr = cast(void*)(&context + 1);
-                foreach(i; 0 .. length)
+                auto i = length;
+                assert(i);
+                do
                 {
                     destructor(ptr);
                     ptr += size;
                 }
+                while(--i);
             }
         }
     }
-    import mir.internal.memory: free;
-    free(&context);
+    context.deallocator(&context);
 }
 
 /++
@@ -98,14 +101,14 @@ mir_rc_context* mir_rc_create(
     bool deallocate = true,
     ) @system nothrow @nogc pure
 {
-    import mir.internal.memory: malloc;
+    import mir.internal.memory: malloc, free;
     import core.stdc.string: memset, memcpy;
 
     assert(length);
     auto size = length * typeInfo.size;
     if (auto context = cast(mir_rc_context*)malloc(mir_rc_context.sizeof + size))
     {
-        context.allocator = null;
+        context.deallocator = &free;
         context.typeInfo = &typeInfo;
         context.counter = deallocate;
         context.length = length;
