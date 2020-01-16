@@ -578,7 +578,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
 
 
     /++
-    This function uses a search with policy sp to find the largest left subrange on which 
+    This function uses a search with policy sp to find the largest right subrange on which 
     `t > key` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
