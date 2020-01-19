@@ -1787,8 +1787,7 @@ Optimization:
     use the last dimension (row index).
     This will slightly optimize the code.
 --------
-// $-1 instead of 0
-if (backwardIndex[$-1])
+if (backwardIndex)
 {
     auto elem1 = slice1.backward(backwardIndex);
     //...
