@@ -34,7 +34,7 @@ struct Variant(Types...)
     private enum hasDestructor = anySatisfy!(hasElaborateDestructor, Types);
 
     static if (hasDestructor)
-    ~this()
+    ~this() @safe
     {
         S: switch (type)
         {

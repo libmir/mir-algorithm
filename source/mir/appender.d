@@ -26,7 +26,7 @@ private extern(C) @system nothrow @nogc pure void* memcpy(scope void* s1, scope 
 struct ScopedBuffer(T, size_t bytes = 4096)
     if (bytes)
 {
-    import std.traits: Unqual, isIterable, hasElaborateAssign, isAssignable, isArray;
+    import std.traits: Unqual, isMutable, isIterable, hasElaborateAssign, isAssignable, isArray;
     import mir.primitives: hasLength;
     import mir.conv: emplaceRef;
 
@@ -94,11 +94,19 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
-    void put(R e) @safe scope
+    void put(T e) @safe scope
     {
         auto cl = _currentLength;
         prepare(1);
-        emplaceRef!(Unqual!T)(data[cl], e);
+        static if (isMutable!T)
+        {
+            import core.lifetime: move;
+            emplaceRef!(Unqual!T)(data[cl], e.move);
+        }
+        else
+        {
+            emplaceRef!(Unqual!T)(data[cl], e);
+        }
     }
 
     static if (T.sizeof > 8 || hasElaborateAssign!T)
