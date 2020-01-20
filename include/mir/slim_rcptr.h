@@ -11,7 +11,7 @@ struct mir_slim_rcptr
 private:
 
     T* _payload = nullptr;
-    using U = typename std::remove_all_extents<T>::type;
+    using U = typename std::remove_const<T>::type;
 
 public:
 

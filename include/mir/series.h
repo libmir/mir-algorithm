@@ -33,8 +33,8 @@ struct mir_series
     /// Data / Value type aliases
     using Data = typename std::remove_reference<decltype(_data._iterator[0])>::type;
     
-    using UnqualIndex = typename std::remove_all_extents<Index>::type;
-    using UnqualData = typename std::remove_all_extents<Data>::type;
+    using UnqualIndex = typename std::remove_const<Index>::type;
+    using UnqualData = typename std::remove_const<Data>::type;
 
     using Observation = std::pair<Index, Data>;
     // using ConstObservation = std::pair<const Index, const Data>;

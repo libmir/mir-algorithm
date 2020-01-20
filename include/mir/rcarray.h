@@ -24,7 +24,7 @@ struct mir_rcarray
 private:
 
     T* _payload = nullptr;
-    using U = typename std::remove_all_extents<T>::type;
+    using U = typename std::remove_const<T>::type;
 
     void _cpp_copy_constructor(const mir_rcarray& rhs) noexcept;
     mir_rcarray& _cpp_assign(const mir_rcarray& rhs) noexcept;

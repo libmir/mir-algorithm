@@ -89,7 +89,7 @@ private:
 
     T* _payload = nullptr;
     mir_rc_context* _context = nullptr;
-    using U = typename std::remove_all_extents<T>::type;
+    using U = typename std::remove_const<T>::type;
 
 public:
 
@@ -205,7 +205,7 @@ private:
 
     T* _payload = nullptr;
     mir_rc_context* _context = nullptr;
-    using U = typename std::remove_all_extents<T>::type;
+    using U = typename std::remove_const<T>::type;
     static constexpr void (*destr)(U&) = std::is_destructible<T>::value ? &mir::Destructor<U>::destroy : nullptr;
     static constexpr mir::type_info_g<U> typeInfoT = {destr, sizeof(T)};
 
@@ -322,7 +322,7 @@ private:
 
     T* _payload = nullptr;
     mir_rc_context* _context = nullptr;
-    using U = typename std::remove_all_extents<T>::type;
+    using U = typename std::remove_const<T>::type;
     static constexpr void (*destr)(U&) = std::is_destructible<T>::value ? &mir::Destructor<U>::destroy : nullptr;
     static constexpr mir::type_info_g<U> typeInfoT = {destr, sizeof(T)};
 
