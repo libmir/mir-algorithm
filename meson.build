@@ -3,9 +3,7 @@ project('mir-algorithm', 'cpp', 'd', version : '3.4.0', license: 'BSL-1.0',
 
 
 add_project_arguments([
-    '-dip25',
-    '-dip1000',
-    '-dip1008',
+    '-preview=dip1008',
     ], language: 'd')
 
 

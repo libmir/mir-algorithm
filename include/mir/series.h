@@ -32,6 +32,9 @@ struct mir_series
     using Index = typename std::remove_reference<decltype(_index[0])>::type;
     /// Data / Value type aliases
     using Data = typename std::remove_reference<decltype(_data._iterator[0])>::type;
+    
+    using UnqualIndex = typename std::remove_all_extents<Index>::type;
+    using UnqualData = typename std::remove_all_extents<Data>::type;
 
     using Observation = std::pair<Index, Data>;
     // using ConstObservation = std::pair<const Index, const Data>;
@@ -92,8 +95,7 @@ struct mir_series
         return { {{b - a}, _data._iterator}, std::move(newIndex) };
     }
 
-    template <class T>
-    size_t transition_index_less(const T& val) const
+    size_t transition_index_less(const Index& val) const
     {
         size_t first = 0, count = size();
         while (count > 0)
@@ -112,8 +114,7 @@ struct mir_series
         return first;
     }
 
-    template <class T>
-    size_t transition_index_less_or_equal(const T& val) const
+    size_t transition_index_less_or_equal(const Index& val) const
     {
         size_t first = 0, count = size();
         while (count > 0)
@@ -132,15 +133,13 @@ struct mir_series
         return first;
     }
 
-    template <class T>
-    bool contains(const T& key) const
+    bool contains(const Index& key) const
     {
         size_t idx = transition_index_less(key);
         return idx < _data._lengths[0] && _index[idx] == key;
     }
 
-    template <class T, class Value>
-    bool try_get(const T& key, Value& val) const
+    bool try_get(const Index& key, UnqualData& val) const
     {
         size_t idx = transition_index_less(key);
         auto cond = idx < _data._lengths[0] && _index[idx] == key;
@@ -149,8 +148,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T>
-    const Data* try_get_ptr(const T& key) const
+    const Data* try_get_ptr(const Index& key) const
     {
         size_t idx = transition_index_less(key);
         auto cond = idx < _data._lengths[0] && _index[idx] == key;
@@ -159,8 +157,7 @@ struct mir_series
         return nullptr;
     }
 
-    template <class T>
-    auto&& get(const T& key)
+    auto&& get(const Index& key)
     {
         size_t idx = transition_index_less(key);
         auto cond = idx < _data._lengths[0] && _index[idx] == key;
@@ -169,8 +166,7 @@ struct mir_series
         throw std::out_of_range("series::get:  key not found");
     }
 
-    template <class T>
-    auto&& get(const T& key) const
+    auto&& get(const Index& key) const
     {
         size_t idx = transition_index_less(key);
         auto cond = idx < _data._lengths[0] && _index[idx] == key;
@@ -179,8 +175,7 @@ struct mir_series
         throw std::out_of_range("series::get:  key not found");
     }
 
-    template <class T, class Value>
-    bool try_get_next(const T& key, Value& val) const
+    bool try_get_next(const Index& key, UnqualData& val) const
     {
         size_t idx = transition_index_less(key);
         auto cond = idx < _data._lengths[0];
@@ -189,8 +184,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
-    bool try_get_next_update_key(T& key, Value& val) const
+    bool try_get_next_update_key(UnqualIndex& key, UnqualData& val) const
     {
         size_t idx = transition_index_less(key);
         auto cond = idx < _data._lengths[0];
@@ -202,8 +196,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
-    bool try_get_prev(const T& key, Value& val) const
+    bool try_get_prev(const Index& key, UnqualData& val) const
     {
         size_t idx = transition_index_less_or_equal(key) - 1;
         auto cond = 0 <= (ptrdiff_t) idx;
@@ -212,8 +205,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
-    bool try_get_prev_update_key(T& key, Value& val) const
+    bool try_get_prev_update_key(UnqualIndex& key, UnqualData& val) const
     {
         size_t idx = transition_index_less_or_equal(key) - 1;
         auto cond = 0 <= (ptrdiff_t) idx;
@@ -225,8 +217,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
-    bool try_get_first(const T& lowerBound, const T& upperBound, Value& val) const
+    bool try_get_first(const Index& lowerBound, const Index& upperBound, UnqualData& val) const
     {
         size_t idx = transition_index_less(lowerBound);
         auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
@@ -235,8 +226,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
-    bool try_get_first_update_lower(T& lowerBound, const T& upperBound, Value& val) const
+    bool try_get_first_update_lower(UnqualIndex& lowerBound, const Index& upperBound, UnqualData& val) const
     {
         size_t idx = transition_index_less(lowerBound);
         auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
@@ -248,8 +238,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
-    bool try_get_last(const T& lowerBound, const T& upperBound, Value& val) const
+    bool try_get_last(const Index& lowerBound, const Index& upperBound, UnqualData& val) const
     {
         size_t idx = transition_index_less_or_equal(upperBound) - 1;
         auto cond = 0 <= (ptrdiff_t) idx && lowerBound <= _index[idx];
@@ -258,8 +247,7 @@ struct mir_series
         return cond;
     }
 
-    template <class T, class Value>
-    bool try_get_last_update_upper(const T& lowerBound, T& upperBound, Value& val) const
+    bool try_get_last_update_upper(const Index& lowerBound, UnqualIndex& upperBound, UnqualData& val) const
     {
         size_t idx = transition_index_less_or_equal(upperBound) - 1;
         auto cond = 0 <= (ptrdiff_t) idx && lowerBound <= _index[idx];
