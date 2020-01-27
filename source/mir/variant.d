@@ -5,7 +5,7 @@ module mir.variant;
 
 private static immutable variantExceptionMsg = "mir.variant: the variant stores other type then requested.";
 private static immutable variantNulllExceptionMsg = "mir.variant: the variant is empty and doesn't store any value.";
-private static immutable variantMemberExceptionMsg = "mir.variant: the variant is stores the type that isn't compatible with the user proveded visitor and arguments.";
+private static immutable variantMemberExceptionMsg = "mir.variant: the variant is stores the type that isn't compatible with the user provided visitor and arguments.";
 
 version (D_Exceptions)
 {
@@ -13,6 +13,8 @@ version (D_Exceptions)
     private static immutable variantNulllException = new Exception(variantNulllExceptionMsg);
     private static immutable variantMemberException = new Exception(variantMemberExceptionMsg);
 }
+
+private enum int alignOf(T) = T.alignof;
 
 /++
 Variant Type (aka Algebraic Type) with clever member access.
@@ -22,14 +24,15 @@ Compatible with BetterC mode.
 struct Variant(Types...)
     if (Types.length)
 {
-    import mir.utility: swap;
+    import mir.utility: max, swap;
     import mir.conv: emplaceRef;
-    import std.meta: anySatisfy;
-    import std.traits: Largest, hasElaborateDestructor, hasElaborateAssign;
+    import std.meta: anySatisfy, staticMap;
+    import std.traits: Largest, hasElaborateDestructor, hasElaborateAssign, hasElaborateCopyConstructor;
 
     private alias _Types = Types;
 
-    private void[Largest!Types.sizeof] payload = void;
+    align(max(4, staticMap!(alignOf, Types)))
+    private ubyte[Largest!Types.sizeof] payload;
     private uint type; // 0 for unininit value, index = type - 1
     private enum hasDestructor = anySatisfy!(hasElaborateDestructor, Types);
 
@@ -46,18 +49,17 @@ struct Variant(Types...)
             }
             default: break;
         }
-        type = 0;
     }
 
-    static if (anySatisfy!(hasElaborateAssign, Types))
+    static if (anySatisfy!(hasElaborateCopyConstructor, Types))
     this(this)
     {
         S: switch (type)
         {
-            static foreach (i, T; Types) static if (hasElaborateAssign!T)
+            static foreach (i, T; Types) static if (hasElaborateCopyConstructor!T)
             {
                 case i + 1:
-                    __ctor(trustedGet!T);
+                    trustedGet!T.__xpostblit();
                     break S;
             }
             default: break;
@@ -74,6 +76,7 @@ struct Variant(Types...)
     {
         static if (hasDestructor)
             __dtor;
+        payload[] = 0;
         type = 0;
     }
 
@@ -84,7 +87,15 @@ struct Variant(Types...)
         static if (hasDestructor)
             __dtor;
         type = i + 1;
-        emplaceRef(trustedGet!T);
+        static if (__traits(isZeroInit, T))
+        {
+            payload[] = 0;
+        }
+        else
+        {
+            emplaceRef(trustedGet!T);
+            payload[T.sizeof .. $] = 0;
+        }
         swap(trustedGet!T, value);
     }
 
@@ -93,13 +104,14 @@ struct Variant(Types...)
     this(T value)
     {
         type = i + 1;
-        emplaceRef(trustedGet!T);
+        static if (!__traits(isZeroInit, T))
+            emplaceRef(trustedGet!T);
         swap(trustedGet!T, value);
     }
 
     static foreach (i, T; Types)
     ///
-    ref inout(E) get(E : T)() @property return inout
+    ref inout(T) get(E : T)() @property return inout
     {
         import mir.utility: _expect;
         if (_expect(i + 1 != type, false))
@@ -121,7 +133,7 @@ struct Variant(Types...)
 
     static foreach (i, T; Types)
     /// Zero cost always nothrow `get` alternative
-    ref inout(E) trustedGet(E : T)() @trusted @property return inout nothrow
+    ref inout(T) trustedGet(E : T)() @trusted @property return inout nothrow
     {
         assert (i + 1 == type);
         return *cast(inout(T)*)payload.ptr;

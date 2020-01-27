@@ -149,7 +149,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
 
     ///
     void put(Iterable)(Iterable range) scope
-        if (isIterable!Iterable && !isArray!Iterable)
+        if (isIterable!Iterable && (!isArray!Iterable || hasElaborateAssign!T))
     {
         static if (hasLength!Iterable)
         {
