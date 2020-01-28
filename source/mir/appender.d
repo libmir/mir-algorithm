@@ -26,7 +26,7 @@ private extern(C) @system nothrow @nogc pure void* memcpy(scope void* s1, scope 
 struct ScopedBuffer(T, size_t bytes = 4096)
     if (bytes)
 {
-    import std.traits: Unqual, isMutable, isIterable, hasElaborateAssign, isAssignable, isArray;
+    import std.traits: Unqual, isMutable, isStaticArray, isIterable, hasElaborateAssign, isAssignable, isArray;
     import mir.primitives: hasLength;
     import mir.conv: emplaceRef;
 
@@ -88,7 +88,6 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         sizediff_t t = _currentLength - n;
         if (t < 0)
             assert(0, "ScopedBffer.popBackN: n is too large.");
-            import mir.exception;
         data[t .. _currentLength]._mir_destroy;
         _currentLength = t;
     }
@@ -97,15 +96,15 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     void put(T e) @safe scope
     {
         auto cl = _currentLength;
-        prepare(1);
+        auto d = prepare(1);
         static if (isMutable!T)
         {
             import core.lifetime: move;
-            emplaceRef!(Unqual!T)(data[cl], e.move);
+            emplaceRef!(Unqual!T)(d[cl], e.move);
         }
         else
         {
-            emplaceRef!(Unqual!T)(data[cl], e);
+            emplaceRef!(Unqual!T)(d[cl], e);
         }
     }
 
@@ -118,57 +117,32 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         emplaceRef!(Unqual!T)(d[cl], e);
     }
 
-    static if (!hasElaborateAssign!T && isAssignable!(T, const T))
+    static if (!hasElaborateAssign!T)
     ///
-    void put(scope const(T)[] e) scope
+    void put(scope R[] e) scope
     {
         auto cl = _currentLength;
         auto d = prepare(e.length);
-        auto len = e.length * T.sizeof;
         if (!__ctfe)
-            (()@trusted=>memcpy(cast(void*)(d.ptr + cl), e.ptr, len))();
+            (()@trusted=>memcpy(cast(void*)(d.ptr + cl), e.ptr, e.length * T.sizeof))();
         else
-            (()@trusted { (d.ptr + cl)[0 .. len] = e[0 .. len]; })();
-    }
-
-    static if (!hasElaborateAssign!T && !isAssignable!(T, const T))
-    ///
-    void put()(scope T[] e) scope
-    {
-        auto cl = _currentLength;
-        auto d = prepare(e.length);
-        auto len = e.length * T.sizeof;
-        if (!__ctfe)
-            (()@trusted=>memcpy(cast(void*)(d.ptr + cl), e.ptr, len))();
-        else
-            (()@trusted {
-                foreach(i; 0 .. cl)
-                    d[i].emplaceRef!T(e[i]);
-            })();
+            static if (isMutable!T)
+                (()@trusted=> d[cl .. cl + e.length] = e)();
+            else
+                assert(0);
     }
 
     ///
     void put(Iterable)(Iterable range) scope
-        if (isIterable!Iterable && (!isArray!Iterable || hasElaborateAssign!T))
+        if (isIterable!Iterable && !isStaticArray!Iterable && (!isArray!Iterable || hasElaborateAssign!T))
     {
         static if (hasLength!Iterable)
         {
             auto cl = _currentLength;
             auto d = prepare(range.length);
-            static if (is(Iterable : R[]) && !hasElaborateAssign!T)
-            {
-                auto len = range.length * T.sizeof;
-                if (!__ctfe)
-                    (()@trusted=>memcpy(d.ptr + cl, e.ptr, len))();
-                else
-                    (()@trusted { (d.ptr + cl)[0 .. len] = e[0 .. len]; })();
-            }
-            else
-            {
-                foreach(ref e; range)
-                    emplaceRef!(Unqual!T)(d[cl++], e);
-                assert(_currentLength == cl);
-            }
+            foreach(ref e; range)
+                emplaceRef!(Unqual!T)(d[cl++], e);
+            assert(_currentLength == cl);
         }
         else
         {
