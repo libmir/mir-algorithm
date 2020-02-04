@@ -385,7 +385,7 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
         assert(j <= length!dimensionIndex,
               "Chunks.opSlice!" ~ dimensionIndex.stringof ~ errorMsg);
     }
-    body
+    do
     {
         return typeof(return)(j - i, typeof(return).Iterator(i));
     }
@@ -401,7 +401,7 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
         assert(j <= length!dimensionIndex,
               "Chunks.opSlice!" ~ dimensionIndex.stringof ~ errorMsg);
     }
-    body
+    do
     {
         return typeof(return)(i, j);
     }
@@ -593,7 +593,7 @@ in
         assert(follower._chunkLengths[dimmensionIndex] == master._chunkLengths[dimmensionIndex]);
     }
 }
-body
+do
 {
     master._slice.popFrontExactly!(isChunks!Master[dimmensionIndex])(master._chunkLengths[dimmensionIndex]);
     foreach (i, ref follower; followers)

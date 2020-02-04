@@ -557,7 +557,7 @@ struct mir_rci(T)
     {
         assert(i <= j, "RCI!T.opSlice!0: the left opSlice boundary must be less than or equal to the right bound.");
     }
-    body
+    do
     {
         return typeof(return)(j - i, typeof(return).Iterator(i));
     }

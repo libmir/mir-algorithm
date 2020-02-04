@@ -2083,7 +2083,7 @@ public:
         assert(j <= _lengths[dimension],
               "Slice.opSlice!" ~ dimension.stringof ~ errorMsg);
     }
-    body
+    do
     {
         return typeof(return)(j - i, typeof(return).Iterator(i));
     }

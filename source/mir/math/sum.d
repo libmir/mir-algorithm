@@ -468,7 +468,7 @@ struct Summator(T, Summation summation)
         {
             debug(numeric) assert(!partials.length || .isFinite(s));
         }
-        body
+        do
         {
             bool _break;
             foreach_reverse (i, y; partials)
@@ -486,7 +486,7 @@ struct Summator(T, Summation summation)
         {
             debug(numeric) assert(.isFinite(result));
         }
-        body
+        do
         {
             F x = s;
             s = x + y;
@@ -996,7 +996,7 @@ public:
     in {
         assert(.isFinite(x));
     }
-    body {
+    do {
         size_t i;
         foreach (y; partials[])
         {

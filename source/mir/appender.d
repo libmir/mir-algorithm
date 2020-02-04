@@ -173,7 +173,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     in {
         assert(array.length == _currentLength);
     }
-    body {
+    do {
         memcpy(cast(void*)array.ptr, data.ptr, _currentLength * T.sizeof);
         _currentLength = 0;
     }

@@ -1074,7 +1074,7 @@ template eachUploPair(alias fun, bool includeDiagonal = false)
         {
             assert(matrix.length!0 == matrix.length!1, "matrix must be square.");
         }
-        body
+        do
         {
             static if (kind == Contiguous)
             {

@@ -1178,7 +1178,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         assert(j - i <= _data._lengths[dimension],
               "Series.opSlice!" ~ dimension.stringof ~ errorMsg);
     }
-    body
+    do
     {
         return typeof(return)(j - i, typeof(return).Iterator(i));
     }

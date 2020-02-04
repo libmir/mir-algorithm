@@ -95,7 +95,7 @@ template simpleLinearRegression(Summation summation = Summation.kbn)
         static if (hasLength!XRange && hasLength!YRange)
             assert(x.length == y.length);
     }
-    body {
+    do {
         alias X = typeof(sumType!XRange.init * sumType!XRange.init);
         alias Y = sumType!YRange;
         enum summationX = !__traits(isIntegral, X) ? summation : Summation.naive;
