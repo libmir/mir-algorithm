@@ -571,10 +571,10 @@ ref W print(C = char, W, T)(scope return ref W w, scope const T c)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    static struct A { scope const void toString(C, W)(scope ref W w) { w.put(C('a')); } }
-    static struct S { scope const void toString(W)(scope ref W w) { w.put("s"); } }
-    static struct D { scope const void toString(Dg)(scope Dg sink) { sink("d"); } }
-    static struct F { scope const const(char)[] toString()() return { return "f"; } }
+    static struct A { scope void toString(C, W)(scope ref W w) const { w.put(C('a')); } }
+    static struct S { scope void toString(W)(scope ref W w) const { w.put("s"); } }
+    static struct D { scope void toString(Dg)(scope Dg sink) const { sink("d"); } }
+    static struct F { scope const(char)[] toString()() const return { return "f"; } }
     static struct G { const(char)[] s = "g"; alias s this; }
 
     import mir.appender: ScopedBuffer;
@@ -639,10 +639,10 @@ ref W print(C = char, W, T)(scope return ref W w, scope const T c)
 @safe pure nothrow
 version (mir_test) unittest
 {
-    static class A { scope const void toString(C, W)(scope ref W w) { w.put(C('a')); } }
-    static class S { scope const void toString(W)(scope ref W w) { w.put("s"); } }
-    static class D { scope const void toString(Dg)(scope Dg sink) { sink("d"); } }
-    static class F { scope const const(char)[] toString()() return { return "f"; } }
+    static class A { scope void toString(C, W)(scope ref W w) const { w.put(C('a')); } }
+    static class S { scope void toString(W)(scope ref W w) const { w.put("s"); } }
+    static class D { scope void toString(Dg)(scope Dg sink) const { sink("d"); } }
+    static class F { scope const(char)[] toString()() const return { return "f"; } }
     static class G { const(char)[] s = "g"; alias s this; }
 
     import mir.appender: ScopedBuffer;
