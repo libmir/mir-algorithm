@@ -176,7 +176,7 @@ struct HexAddress(T)
             w.advance(printHexAddress(value, w.getBuffer(N).getStaticBuf!N, cast(bool) switchLU));
         }
         else
-        { 
+        {
             C[N] buf = void;
             printHexAddress(value, buf, cast(bool) switchLU);
             w.put(buf[]);

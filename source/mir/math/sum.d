@@ -1475,7 +1475,7 @@ public:
     }
 
     ///
-    
+
     version(mir_test)
     @nogc nothrow unittest
     {
@@ -1491,7 +1491,7 @@ public:
         assert(s1.sum() == -1);
     }
 
-    
+
     version(mir_test)
     @nogc nothrow unittest
     {
@@ -1516,7 +1516,7 @@ public:
         }
     }
 
-    
+
     version(mir_test)
     @nogc nothrow unittest
     {

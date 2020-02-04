@@ -2457,7 +2457,7 @@ version(mir_test) unittest
     assert(equal(sl1, sl1));
     assert(sl1 == sl1); //can also use opEquals for two Slices
     assert(equal!"2 * a == b + c"(sl1, sl1, sl1));
-    
+
     assert(equal!"a < b"(sl1, sl2));
 
     assert(!equal(sl1[0 .. $ - 1], sl1));
@@ -2471,10 +2471,10 @@ version(mir_test) unittest
     import mir.math.common: approxEqual;
     import mir.ndslice.allocation: rcslice;
     import mir.ndslice.topology: as, iota;
-    
+
     auto x = 5.iota.as!double.rcslice;
     auto y = x.rcslice;
-    
+
     assert(equal(x, y));
     assert(equal!approxEqual(x, y));
 }
@@ -2692,8 +2692,8 @@ template eachLower(alias fun)
             function applied.
         +/
         void eachLower(Inputs...)(scope Inputs inputs)
-            if (((Inputs.length > 1) && 
-                 (isIntegral!(Inputs[$ - 1]))) || 
+            if (((Inputs.length > 1) &&
+                 (isIntegral!(Inputs[$ - 1]))) ||
                 (Inputs.length))
         {
             import mir.ndslice.traits : isMatrix;
@@ -3133,8 +3133,8 @@ template eachUpper(alias fun)
             function applied.
         +/
         void eachUpper(Inputs...)(scope Inputs inputs)
-            if (((Inputs.length > 1) && 
-                 (isIntegral!(Inputs[$ - 1]))) || 
+            if (((Inputs.length > 1) &&
+                 (isIntegral!(Inputs[$ - 1]))) ||
                 (Inputs.length))
         {
             import mir.ndslice.traits : isMatrix;
@@ -3697,5 +3697,5 @@ version(none)
     auto y = rcslice!double(2);
     x[] = [2, 3];
     y[] = [2, 3];
-    assert(equal!approxEqual(x,y));  
+    assert(equal!approxEqual(x,y));
 }

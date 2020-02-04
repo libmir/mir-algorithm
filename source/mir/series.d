@@ -34,7 +34,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     import mir.algorithm.setops: multiwayUnion;
 
     import std.datetime: Date;
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
     import std.exception: collectExceptionMsg;
 
     //////////////////////////////////////
@@ -54,7 +54,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
         Date(2017, 05, 01)];
 
     auto data1 = [10.0, 20, 50];
-    auto series1 = index1.series(data1);    
+    auto series1 = index1.series(data1);
 
     //////////////////////////////////////
     // asSlice method
@@ -80,29 +80,29 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     // Exceptions handlers
     assert(series0.get(refDate) == 3);
     assert(series0.get(refDate, new Exception("My exception msg")) == 3);
-    assert(series0.getVerbose(refDate) == 3);    
-    assert(series0.getExtraVerbose(refDate, "My exception msg") == 3);    
+    assert(series0.getVerbose(refDate) == 3);
+    assert(series0.getExtraVerbose(refDate, "My exception msg") == 3);
 
     assert(collectExceptionMsg!Exception(
             series0.get(missingDate)
         ) == "Series double[Date]: Missing required key");
-    
+
     assert(collectExceptionMsg!Exception(
             series0.get(missingDate, new Exception("My exception msg"))
         ) == "My exception msg");
-    
+
     assert(collectExceptionMsg!Exception(
             series0.getVerbose(missingDate)
         ) == "Series double[Date]: Missing 2016-Mar-01 key");
-    
+
     assert(collectExceptionMsg!Exception(
             series0.getExtraVerbose(missingDate, "My exception msg")
         ) == "My exception msg. Series double[Date]: Missing 2016-Mar-01 key");
 
     // assign with get*
-    series0.get(refDate) = 100; 
-    assert(series0.get(refDate) == 100); 
-    series0.get(refDate) = 3; 
+    series0.get(refDate) = 100;
+    assert(series0.get(refDate) == 100);
+    series0.get(refDate) = 3;
 
     // tryGet
     double val;
@@ -366,7 +366,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /++
-    Data is any ndslice with only one constraints, 
+    Data is any ndslice with only one constraints,
     `data` and `index` lengths should be equal.
     +/
     auto data()() @property @trusted
@@ -561,7 +561,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /++
-    This function uses a search with policy sp to find the largest left subrange on which 
+    This function uses a search with policy sp to find the largest left subrange on which
     `t < key` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
@@ -578,7 +578,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
 
 
     /++
-    This function uses a search with policy sp to find the largest right subrange on which 
+    This function uses a search with policy sp to find the largest right subrange on which
     `t > key` is true for all `t`.
     The search schedule and its complexity are documented in `std.range.SearchPolicy`.
     +/
@@ -771,7 +771,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         {
             if (cond)
                 return &_data[idx];
-            return null; 
+            return null;
         }
         else
         {
@@ -1236,7 +1236,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ref opAssign(RIndexIterator, RIterator)(Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
         this._data._structure = rvalue._data._structure;
         this._data._iterator = rvalue._data._iterator.move;
         this._index = rvalue._index.move;
@@ -1396,11 +1396,11 @@ alias Series = mir_series;
     assert(cseries.upperBound(2) == cseries[2 .. $]);
 
     // slicing type deduction for const / immutable series
-    static assert(is(typeof(series[]) == 
+    static assert(is(typeof(series[]) ==
         Series!(int*, double*)));
-    static assert(is(typeof(cseries[]) == 
+    static assert(is(typeof(cseries[]) ==
         Series!(const(int)*, const(double)*)));
-    static assert(is(typeof((cast(immutable) series)[]) == 
+    static assert(is(typeof((cast(immutable) series)[]) ==
         Series!(immutable(int)*, immutable(double)*)));
 
     /// slicing
@@ -1478,7 +1478,7 @@ alias Series = mir_series;
 
     auto fun(Map a = null)
     {
-        
+
     }
 }
 
@@ -1531,7 +1531,7 @@ Returns:
 See_also: $(LREF assocArray)
 */
 Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     import mir.conv: to;
     const size_t length = aa.length;
@@ -1571,21 +1571,21 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
 
 /// ditto
 Series!(RK*, RV*) series(K, V, RK = const K, RV = const V)(const V[K] aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     return .series!(K, V, RK, RV)((()@trusted => cast(V[K]) aa)());
 }
 
 /// ditto
 Series!(RK*, RV*)  series( K, V, RK = immutable K, RV = immutable V)(immutable V[K] aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     return .series!(K, V, RK, RV)((()@trusted => cast(V[K]) aa)());
 }
 
 /// ditto
 auto series(K, V)(V[K]* aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     return series(*a);
 }
@@ -1624,7 +1624,7 @@ Returns:
 See_also: $(LREF assocArray)
 */
 auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     import mir.rc.array;
     import mir.conv: to;
@@ -1639,7 +1639,7 @@ auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
         emplaceRef!V(it._data.front, kv.value.to!V);
         it.popFront;
     }
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
     .sort(ret.lightScope);
     static if (is(typeof(ret) == R))
         return ret;
@@ -1649,7 +1649,7 @@ auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
 
 /// ditto
 auto rcseries(K, V, RK = const K, RV = const V)(const V[K] aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     return .rcseries!(K, V, RK, RV)((()@trusted => cast(V[K]) aa)());
 }
@@ -1663,7 +1663,7 @@ auto  rcseries( K, V, RK = immutable K, RV = immutable V)(immutable V[K] aa)
 
 /// ditto
 auto rcseries(K, V)(V[K]* aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     return rcseries(*a);
 }
@@ -1732,7 +1732,7 @@ Series!(K*, V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K] a
 
 /// ditto
 Series!(K*, V*) makeSeries(Allocator, K, V)(auto ref Allocator allocator, V[K]* aa)
-    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init))) 
+    if (is(typeof(K.init < K.init)) && is(typeof(Unqual!K.init < Unqual!K.init)))
 {
     return makeSeries(allocator, *a);
 }
@@ -1752,7 +1752,7 @@ pure nothrow version(mir_test) unittest
 
     auto indexArray = s.index.field;
     auto dataArray = s.data.field;
-    
+
     assert(s.index == [1, 2, 3]);
     assert(s.data == [1.5, 2.9, 3.3]);
     assert(s.data[s.findIndex(2)] == 2.9);
@@ -2229,7 +2229,7 @@ Merges multiple (time) series into one.
 Makes exactly one memory allocation for two series union
 and two memory allocation for three and more series union.
 
-Params: 
+Params:
     seriesTuple = variadic static array of composed of series, each series must be sorted.
 Returns: sorted GC-allocated series.
 See_also $(LREF Series.opBinary) $(LREF makeUnionSeries)
@@ -2407,7 +2407,7 @@ auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(
 Initialize preallocated series using union of multiple (time) series.
 Doesn't make any allocations.
 
-Params: 
+Params:
     seriesTuple = dynamic array composed of series.
     uninitSeries = uninitialized series with exactly required length.
 */
@@ -2457,7 +2457,7 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
     foreach (i; Iota!C)
         indeces[i] = seriesTuple[i].index;
 
-    immutable len = indeces[].unionLength; 
+    immutable len = indeces[].unionLength;
 
     alias I = typeof(seriesTuple[0].index.front);
     alias E = typeof(seriesTuple[0].data.front);
@@ -2531,7 +2531,7 @@ Params:
     aa = associative array
     series = series
 Returns:
-    associative array 
+    associative array
 */
 ref V[K] insertOrAssign(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, auto ref Series!(IndexIterator, Iterator, N, kind) series) @property
 {
@@ -2558,7 +2558,7 @@ Params:
     aa = associative array
     series = series
 Returns:
-    associative array 
+    associative array
 */
 ref V[K] insert(V, K, IndexIterator, Iterator, size_t N, SliceKind kind)(return ref V[K] aa, auto ref Series!(IndexIterator, Iterator, N, kind) series) @property
 {

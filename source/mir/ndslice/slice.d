@@ -49,7 +49,7 @@ public import mir.primitives: DeepElementType;
 
 /++
 Checks if type T has asSlice property and its returns a slices.
-Aliases itself to a dimension count 
+Aliases itself to a dimension count
 +/
 template hasAsSlice(T)
 {
@@ -380,7 +380,7 @@ Creates an n-dimensional slice-shell over a field.
 Params:
     field = A field. The length of the
         array should be equal to or less then the product of
-        lengths. 
+        lengths.
     lengths = A list of lengths for each dimension.
 Returns:
     n-dimensional slice
@@ -742,7 +742,7 @@ package(mir):
         ///
         public alias _Structure = AliasSeq!(size_t[N], ptrdiff_t[S]);
         ///
-        _Structure _structure; 
+        _Structure _structure;
         ///
         public alias _lengths = _structure[0];
         ///
@@ -753,7 +753,7 @@ package(mir):
         ///
         public alias _Structure = AliasSeq!(size_t[N]);
         ///
-        _Structure _structure; 
+        _Structure _structure;
         ///
         public alias _lengths = _structure[0];
         ///
@@ -859,7 +859,7 @@ public:
         //     this._lengths = lengths;
         //     this._iterator = iterator;
         // }
-    // } 
+    // }
 
     // version(LDC)
     //     private enum classicConstructor = true;
@@ -908,7 +908,7 @@ public:
 
         // auto fun(Array a = null)
         // {
-            
+
         // }
     // }
 
@@ -1548,7 +1548,7 @@ public:
         auto ref front(size_t dimension = 0, T)(T value) scope return @trusted @property
             if (dimension == 0)
         {
-            // check assign safety 
+            // check assign safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
             {
                 return t = v;
@@ -1604,7 +1604,7 @@ public:
         auto ref back(size_t dimension = 0, T)(T value) scope return @trusted @property
             if (dimension == 0)
         {
-            // check assign safety 
+            // check assign safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
             {
                 return t = v;
@@ -1896,7 +1896,7 @@ public:
         static if (kind == Contiguous && dimension)
         {
             import mir.ndslice.topology: canonical;
-            auto ret = this.canonical;    
+            auto ret = this.canonical;
         }
         else
         {
@@ -1930,7 +1930,7 @@ public:
         static if (kind == Contiguous && dimension)
         {
             import mir.ndslice.topology: canonical;
-            auto ret = this.canonical;    
+            auto ret = this.canonical;
         }
         else
         {
@@ -1962,7 +1962,7 @@ public:
         static if (kind == Contiguous && dimension)
         {
             import mir.ndslice.topology: canonical;
-            auto ret = this.canonical;    
+            auto ret = this.canonical;
         }
         else
         {
@@ -2004,7 +2004,7 @@ public:
             foreach(i; Iota!(min(slice1.L, slice2.L)))
                 if(slice1.label!i != slice2.label!i)
                     return false;
-            return equal(slice1.values, slice2.values);           
+            return equal(slice1.values, slice2.values);
         }
         else
             return equal(*cast(This*)&this, *cast(This*)&rslice);
@@ -2812,7 +2812,7 @@ public:
                         sl[0 .. slice.length].opIndexAssign(slice);
                     else
                         sl[0 .. slice.length].opIndexOpAssign!op(slice);
-                    
+
                     sl = sl[slice.length .. $];
                 }
                 assert(sl.empty);
@@ -2888,7 +2888,7 @@ public:
         +/
         auto ref opIndexAssign(T)(T value, size_t[N] _indexes...) scope return @trusted
         {
-            // check assign safety 
+            // check assign safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
             {
                 return t = v;
@@ -2921,7 +2921,7 @@ public:
         +/
         auto ref opIndexOpAssign(string op, T)(T value, size_t[N] _indexes...) scope return @trusted
         {
-            // check op safety 
+            // check op safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
             {
                 return mixin(`t` ~ op ~ `= v`);
@@ -3056,7 +3056,7 @@ public:
 
         static if (doUnittest)
         /// Packed slices
-        @safe pure nothrow 
+        @safe pure nothrow
         version(mir_test) unittest
         {
             import mir.ndslice.allocation : slice;
@@ -3160,7 +3160,7 @@ public:
             // @@@workaround@@@ for Issue 16473
             //if (op == `++` || op == `--`)
         {
-            // check op safety 
+            // check op safety
             static auto ref fun(DeepElement t) @safe
             {
                 return mixin(op ~ `t`);
@@ -3773,10 +3773,10 @@ version(mir_test) unittest
     import mir.ndslice.topology: iota;
     import mir.ndslice.allocation: slice;
     auto scalar = 3;
-    auto vector = 3.iota.slice; // [0, 1, 2] 
+    auto vector = 3.iota.slice; // [0, 1, 2]
 
     // scalar = 5;
-    scalar.ndassign = 5; 
+    scalar.ndassign = 5;
     assert(scalar == 5);
 
     // vector[] = vector * 2;

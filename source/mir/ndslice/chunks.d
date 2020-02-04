@@ -30,7 +30,7 @@ Creates $(LREF Chunks).
 
 Params:
     Dimensions = compile time list of dimensions to chunk
-    
+
 See_also: $(SUBREF topology, blocks) $(SUBREF fuse, fuseCells)
 +/
 template chunks(Dimensions...)
@@ -130,7 +130,7 @@ version(mir_test) unittest
     // 100 101 102 103 104 105 106 107 108 109
     auto sl = iota(11, 10); // [0, 1, .. 10]
 
-    //   ----------------   ----------------   -------- 
+    //   ----------------   ----------------   --------
     //  |  0   1   2   3 | |  4   5   6   7 | |  8   9 |
     //  | 10  11  12  13 | | 14  15  16  17 | | 18  19 |
     //  | 20  21  22  23 | | 24  25  26  27 | | 28  29 |
@@ -145,7 +145,7 @@ version(mir_test) unittest
     //  |----------------| |----------------| |--------|
     //  | 90  91  92  93 | | 94  95  96  97 | | 98  99 |
     //  |100 101 102 103 | |104 105 106 107 | |108 109 |
-    //   ----------------   ----------------   -------- 
+    //   ----------------   ----------------   --------
     // Chunk columns first, then blocks rows.
     auto ch = sl.chunks!(1, 0)(4, 3);
 
@@ -190,12 +190,12 @@ version(mir_test) unittest
     //  30  31  32  33  34  35  36  37  38  39
     auto sl = iota(4, 10); // [0, 1, .. 10]
 
-    //   ----------------   ----------------   -------- 
+    //   ----------------   ----------------   --------
     //  |  0   1   2   3 | |  4   5   6   7 | |  8   9 |
     //  | 10  11  12  13 | | 14  15  16  17 | | 18  19 |
     //  | 20  21  22  23 | | 24  25  26  27 | | 28  29 |
     //  | 30  31  32  33 | | 34  35  36  37 | | 38  39 |
-    //   ----------------   ----------------   -------- 
+    //   ----------------   ----------------   --------
     // Chunk columns
     auto ch = sl.chunks!1(4);
 
@@ -519,7 +519,7 @@ struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Cont
         assert(sl.i <= _slice._lengths[dimension]);
         assert(sl.chunkLength == _chunkLengths[dimensionIndex]);
         assert(sl.length == _slice._lengths[dimension]);
-        
+
         enum dimension = dimensions[dimensionIndex];
         auto chl = _chunkLengths[dimensionIndex];
         auto len = sl.i * chl;

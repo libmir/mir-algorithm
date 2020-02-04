@@ -180,7 +180,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
 }
 
 ///
-@safe pure nothrow @nogc 
+@safe pure nothrow @nogc
 version (mir_test) unittest
 {
     ScopedBuffer!char buf;
@@ -193,7 +193,7 @@ version (mir_test) unittest
 }
 
 /// immutable
-@safe pure nothrow @nogc 
+@safe pure nothrow @nogc
 version (mir_test) unittest
 {
     ScopedBuffer!(immutable char) buf;
@@ -205,7 +205,7 @@ version (mir_test) unittest
     assert(buf.data == "cs");
 }
 
-@safe pure nothrow @nogc 
+@safe pure nothrow @nogc
 version (mir_test) unittest
 {
     ScopedBuffer!(char, 3) buf;
