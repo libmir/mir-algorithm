@@ -510,7 +510,7 @@ struct mir_rci(T)
     ref opAssign(Q)(return mir_rci!Q rhs) scope return nothrow
         if (isImplicitlyConvertible!(Q*, T*))
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
         _iterator = rhs._iterator;
         _array = move(rhs._array);
         return this;
@@ -524,7 +524,7 @@ struct mir_rci(T)
     mir_rci!(immutable T) lightImmutable()() scope return immutable nothrow @property
     { return typeof(return)(_iterator, _array.lightImmutable); }
 
-    ///   
+    ///
     ref inout(T) opUnary(string op : "*")() inout scope return
     {
         debug
@@ -537,7 +537,7 @@ struct mir_rci(T)
         return *_iterator;
     }
 
-    ///   
+    ///
     ref inout(T) opIndex(ptrdiff_t index) inout scope return @trusted
     {
         debug
@@ -557,7 +557,7 @@ struct mir_rci(T)
     {
         assert(i <= j, "RCI!T.opSlice!0: the left opSlice boundary must be less than or equal to the right bound.");
     }
-    body
+    do
     {
         return typeof(return)(j - i, typeof(return).Iterator(i));
     }
@@ -580,12 +580,12 @@ struct mir_rci(T)
         return Slice!(RCI!(const T))(slice.length,  it.move);
     }
 
-    ///   
+    ///
     void opUnary(string op)() scope
         if (op == "--" || op == "++")
     { mixin(op ~ "_iterator;"); }
 
-    ///   
+    ///
     void opOpAssign(string op)(ptrdiff_t index) scope
         if (op == "-" || op == "+")
     { mixin("_iterator " ~ op ~ "= index;"); }
@@ -595,25 +595,25 @@ struct mir_rci(T)
         if (op == "+" || op == "-")
     { return mir_rci!T(_iterator + index, _array); }
 
-    ///   
+    ///
     mir_rci!(const T) opBinary(string op)(ptrdiff_t index) const
         if (op == "+" || op == "-")
     { return mir_rci!T(_iterator + index, _array); }
 
-    ///   
+    ///
     mir_rci!(immutable T) opBinary(string op)(ptrdiff_t index) immutable
         if (op == "+" || op == "-")
     { return mir_rci!T(_iterator + index, _array); }
 
-    ///   
+    ///
     ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     { return this._iterator - right._iterator; }
 
-    ///   
+    ///
     bool opEquals()(scope ref const typeof(this) right) scope const
     { return this._iterator == right._iterator; }
 
-    ///   
+    ///
     ptrdiff_t opCmp()(scope ref const typeof(this) right) scope const
     { return this._iterator - right._iterator; }
 }

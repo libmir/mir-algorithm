@@ -980,7 +980,7 @@ in
         assert(length > 0, "length of dimension = " ~ i.stringof ~ " must be positive"
             ~ tailErrorMessage!());
 }
-body
+do
 {
     size_t[N] lengths;
     size_t[N] rlengths = rlengths_;
@@ -1109,7 +1109,7 @@ in
         assert(length > 0, "length of dimension = " ~ i.stringof ~ " must be positive"
             ~ tailErrorMessage!());
 }
-body
+do
 {
     size_t[N] rls = rlengths;
     size_t[N] lengths;
@@ -2070,7 +2070,7 @@ in
 {
     assert (factor > 0, "factor must be positive.");
 }
-body
+do
 {
     static if (kind == Contiguous)
         return slice.universal.stride(factor);

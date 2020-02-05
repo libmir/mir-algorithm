@@ -72,7 +72,7 @@ RCPtr!F toRCPtrAt(F)(return RCArray!F array, size_t index) @trusted
 in {
     assert(index < array.length, "toRCPtrAt: index should be less then array.length");
 }
-body {
+do {
     typeof(return) ret;
     ret._value = array._payload + index;
     ret._context = &array.context();
@@ -102,7 +102,7 @@ RCPtr!F toRCPtrAt(F)(return Slice!(RCI!F) array, size_t index) @trusted
 in {
     assert(index < array.length, "toRCPtrAt: index should be less then array.length");
 }
-body {
+do {
     typeof(return) ret;
     ret._value = array._iterator._iterator + index;
     ret._context = &array._iterator._array.context();

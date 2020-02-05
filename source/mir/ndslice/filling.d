@@ -26,7 +26,7 @@ void fillVandermonde(F, SliceKind matrixKind, SliceKind kind)(Slice!(F*, 2, matr
 in {
     assert(matrix.length == vec.length);
 }
-body {
+do {
     import mir.conv: to;
 
     foreach (v; matrix)

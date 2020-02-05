@@ -938,7 +938,7 @@ Returns:
 +/
 Slice!(Iterator, N, kind) dropToHypercube(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     if (kind == Canonical || kind == Universal)
-body
+do
 {
     size_t length = slice._lengths[0];
     foreach (i; Iota!(1, N))
