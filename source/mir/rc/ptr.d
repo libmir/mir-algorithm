@@ -152,6 +152,7 @@ auto shareMember(string member, T, Args...)(return mir_rcptr!T context, auto ref
 {
     import core.lifetime: move;
     void foo(A)(auto ref A) {}
+    assert(context != null);
     static if (args.length)
     {
         // breaks safaty
