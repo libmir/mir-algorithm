@@ -10,17 +10,17 @@ version(D_Exceptions):
 ///
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
 {
-    import mir.functional: forward;
+    import core.lifetime: forward;
     import mir.utility: _expect;
     static if (__traits(compiles, arg !is null))
     {
         if (_expect(arg !is null, true))
-            return forward!arg[0];
+            return forward!arg;
     }
     else
     {
         if (_expect(cast(bool)arg, true))
-            return forward!arg[0];
+            return forward!arg;
     }
     static immutable exception = new Exception(fmt, file, line);
     throw exception;
@@ -132,7 +132,7 @@ version (mir_test) unittest
 // ///
 // auto ref enforce(T)(scope auto return ref T arg, lazy scope const(char)[] msg, string file = __FILE__, int line = __LINE__) @nogc
 // {
-//     import mir.functional: forward;
+//     import core.lifetime: forward;
 //     import mir.utility: _expect;
 //     static if (__traits(compiles, arg !is null))
 //     {

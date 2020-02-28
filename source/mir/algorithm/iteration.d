@@ -3590,7 +3590,7 @@ struct Uniq(alias pred, Range)
     // this()(auto ref Range input)
     // {
     //     alias AliasSeq(T...) = T;
-    //     import mir.functional: forward;
+    //     import core.lifetime: forward;
     //     AliasSeq!_input = forward!input;
     // }
 

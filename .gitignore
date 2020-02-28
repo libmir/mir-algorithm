@@ -30,3 +30,5 @@ mir-algorithm-test-dips
 subprojects/mir-core
 mir-core
 mir-algorithm-test-dip1008
+test
+test.d

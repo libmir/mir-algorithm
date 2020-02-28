@@ -633,7 +633,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     auto get(Index, Value)(auto ref scope const Index key, Value _default) const
         if (!is(Value : const(Exception)))
     {
-        import mir.functional: forward;
+        import core.lifetime: forward;
         return this.lightScope.get(key, forward!_default);
     }
 
@@ -641,7 +641,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     auto get(Index, Value)(auto ref scope const Index key, Value _default) immutable
         if (!is(Value : const(Exception)))
     {
-        import mir.functional: forward;
+        import core.lifetime: forward;
         return this.lightScope.get(key, forward!_default);
     }
 

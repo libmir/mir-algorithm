@@ -135,7 +135,7 @@ struct mir_rcptr(T)
                 }
                 _value = cast(typeof(_value))(_context + 1);
             } ();
-            import mir.functional: forward;
+            import core.lifetime: forward;
             import mir.conv: emplace;
             cast(void) emplace!T(_value, forward!args);
         }
@@ -227,7 +227,7 @@ template createRC(T)
     ///
     mir_rcptr!T createRC(Args...)(auto ref Args args)
     {
-        import mir.functional: forward;
+        import core.lifetime: forward;
         return mir_rcptr!T(forward!args);
     }
 }

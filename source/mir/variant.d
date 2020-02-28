@@ -168,7 +168,7 @@ template visit(alias visitor, bool forceAllTypes = true)
     auto ref visit(V, Args...)(auto ref V variant, auto ref Args args)
         if (is(Unqual!V : Variant!Types, Types))
     {
-        import mir.functional: forward;
+        import core.lifetime: forward;
         switch (variant.type)
         {
             case 0:
@@ -205,7 +205,7 @@ template optionalVisit(alias visitor)
     bool optionalVisit(Result, V, Args...)(out Result result, auto ref V variant, auto ref Args args)
         if (is(Unqual!V : Variant!Types, Types))
     {
-        import mir.functional: forward;
+        import core.lifetime: forward;
         switch (variant.type)
         {
             static foreach (i, T; V._Types)
