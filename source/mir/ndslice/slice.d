@@ -2079,7 +2079,7 @@ public:
     {
         assert(i <= j,
             "Slice.opSlice!" ~ dimension.stringof ~ ": the left opSlice boundary must be less than or equal to the right bound.");
-        enum errorMsg = ": right opSlice boundary must equal to the length of the given dimension.";
+        enum errorMsg = ": right opSlice boundary must be less than or equal to the length of the given dimension.";
         assert(j <= _lengths[dimension],
               "Slice.opSlice!" ~ dimension.stringof ~ errorMsg);
     }
