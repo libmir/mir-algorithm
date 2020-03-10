@@ -230,6 +230,14 @@ $(TR $(TDNW $(SUBMODULE sorting)
     )
 )
 
+$(TR $(TDNW $(SUBMODULE mutation)
+        $(BR) $(SMALL Mutation utilities))
+     $(TD
+        $(SUBREF mutation, copyMinor)
+        $(SUBREF mutation, reverseInPlace)
+    )
+)
+
 $(TR $(TDNW $(SUBMODULE iterator)
         $(BR) $(SMALL Declarations))
      $(TD
@@ -477,13 +485,14 @@ module mir.ndslice;
 
 public import mir.algorithm.iteration;
 public import mir.ndslice.allocation;
-public import mir.ndslice.concatenation;
 public import mir.ndslice.chunks;
+public import mir.ndslice.concatenation;
 public import mir.ndslice.dynamic;
 public import mir.ndslice.field;
 public import mir.ndslice.filling;
 public import mir.ndslice.fuse;
 public import mir.ndslice.iterator;
+public import mir.ndslice.mutation;
 public import mir.ndslice.ndfield;
 public import mir.ndslice.slice;
 public import mir.ndslice.topology;
