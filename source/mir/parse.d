@@ -33,7 +33,8 @@ T fromString(T, Range)(scope auto ref Range r)
 }
 
 ///
-@safe pure @nogc version (mir_test) unittest
+version(mir_test)
+@safe pure @nogc unittest
 {
     assert("123".fromString!int == 123);
 
@@ -44,6 +45,20 @@ T fromString(T, Range)(scope auto ref Range r)
     s = "123";
     assert(s[].fromString!int == 123);
     assert(s == "123");
+}
+
+///
+bool fromString(T, Range)(scope auto ref Range r, ref T value)
+{
+    return parse!T(r, value) && r.empty;
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    int value;
+    assert("123".fromString(value) && value == 123);
 }
 
 /++
