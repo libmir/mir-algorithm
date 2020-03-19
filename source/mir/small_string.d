@@ -194,11 +194,10 @@ extern(D):
         auto length = asArray.length;
         if (length + str.length > maxLength)
             throw exception;
-        auto p = _data.ptr + length;
         if (__ctfe)
-            p[0 .. str.length] = str;
+            _data[length .. str.length + length] = str;
         else
-            memcpy(p, str.ptr, str.length);
+            memcpy(_data.ptr + length, str.ptr, str.length);
         return this;
     }
 
