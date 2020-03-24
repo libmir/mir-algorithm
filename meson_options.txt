@@ -1,1 +1,2 @@
 option('with_test', type : 'boolean', value : false)
+option('with_doc', type : 'boolean', value : false)

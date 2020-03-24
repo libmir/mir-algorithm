@@ -1,4 +1,4 @@
-project('mir-algorithm', 'cpp', 'd', version : '3.4.0', license: 'BSL-1.0',
+project('mir-algorithm', 'cpp', 'd', version : '3.7.0', license: 'BSL-1.0',
         default_options : ['cpp_std=c++1z'])
 
 description = 'Mir Algorithm - Dlang Core Library'
@@ -11,59 +11,59 @@ add_project_arguments([
 
 has_cpp_headers = true
 
-sources = [
-    'mir/algorithm/iteration.d',
-    'mir/algorithm/setops.d',
-    'mir/appender.d',
-    'mir/array/allocation.d',
-    'mir/combinatorics/package.d',
-    'mir/container/binaryheap.d',
-    'mir/cpp_export/numeric.d',
-    'mir/exception.d',
-    'mir/format_impl.d',
-    'mir/format.d',
-    'mir/graph/package.d',
-    'mir/graph/tarjan.d',
-    'mir/interpolate/constant.d',
-    'mir/interpolate/linear.d',
-    'mir/interpolate/package.d',
-    'mir/interpolate/spline.d',
-    'mir/interpolate/utility.d',
-    'mir/math/func/expdigamma.d',
-    'mir/math/numeric.d',
-    'mir/math/stat.d',
-    'mir/math/sum.d',
-    'mir/ndslice/allocation.d',
-    'mir/ndslice/chunks.d',
-    'mir/ndslice/concatenation.d',
-    'mir/ndslice/connect/cpython.d',
-    'mir/ndslice/dynamic.d',
-    'mir/ndslice/field.d',
-    'mir/ndslice/filling.d',
-    'mir/ndslice/fuse.d',
-    'mir/ndslice/internal.d',
-    'mir/ndslice/iterator.d',
-    'mir/ndslice/mutation.d',
-    'mir/ndslice/ndfield.d',
-    'mir/ndslice/package.d',
-    'mir/ndslice/slice.d',
-    'mir/ndslice/sorting.d',
-    'mir/ndslice/topology.d',
-    'mir/ndslice/traits.d',
-    'mir/numeric.d',
-    'mir/parse.d',
-    'mir/polynomial.d',
-    'mir/range.d',
-    'mir/rc/array.d',
-    'mir/rc/context.d',
-    'mir/rc/package.d',
-    'mir/rc/ptr.d',
-    'mir/rc/slim_ptr.d',
-    'mir/series.d',
-    'mir/small_array.d',
-    'mir/small_string.d',
-    'mir/type_info.d',
-    'mir/variant.d',
+sources_list = [
+    'mir/algorithm/iteration',
+    'mir/algorithm/setops',
+    'mir/appender',
+    'mir/array/allocation',
+    'mir/combinatorics/package',
+    'mir/container/binaryheap',
+    'mir/cpp_export/numeric',
+    'mir/exception',
+    'mir/format_impl',
+    'mir/format',
+    'mir/graph/package',
+    'mir/graph/tarjan',
+    'mir/interpolate/constant',
+    'mir/interpolate/linear',
+    'mir/interpolate/package',
+    'mir/interpolate/spline',
+    'mir/interpolate/utility',
+    'mir/math/func/expdigamma',
+    'mir/math/numeric',
+    'mir/math/stat',
+    'mir/math/sum',
+    'mir/ndslice/allocation',
+    'mir/ndslice/chunks',
+    'mir/ndslice/concatenation',
+    'mir/ndslice/connect/cpython',
+    'mir/ndslice/dynamic',
+    'mir/ndslice/field',
+    'mir/ndslice/filling',
+    'mir/ndslice/fuse',
+    'mir/ndslice/internal',
+    'mir/ndslice/iterator',
+    'mir/ndslice/mutation',
+    'mir/ndslice/ndfield',
+    'mir/ndslice/package',
+    'mir/ndslice/slice',
+    'mir/ndslice/sorting',
+    'mir/ndslice/topology',
+    'mir/ndslice/traits',
+    'mir/numeric',
+    'mir/parse',
+    'mir/polynomial',
+    'mir/range',
+    'mir/rc/array',
+    'mir/rc/context',
+    'mir/rc/package',
+    'mir/rc/ptr',
+    'mir/rc/slim_ptr',
+    'mir/series',
+    'mir/small_array',
+    'mir/small_string',
+    'mir/type_info',
+    'mir/variant',
 ]
 
 sources = []
@@ -138,107 +138,111 @@ if get_option('with_test')
 
 endif
 
-tags = run_command('python3', 'docgen/stable_and_latest_tags.py').stdout().split()
-stable_tag = tags[0]
-latest_tag = tags[1]
+if get_option('with_doc')
 
-docs_config =  latest_tag + '.ddoc'
-latest_file = custom_target('latest_target',
-            build_by_default: true,
-            input : [],
-            output : docs_config,
-            capture: true,
-            command: ['echo',
-                '\nLATEST=' + latest_tag +
-                '\nLATEST_STABLE=' + stable_tag +
-                '\nPROJECT=' + meson.project_name() +
-                '\nMETA_DESCRIPTION=' + description
-            ])
+    tags = run_command('python3', 'docgen/stable_and_latest_tags.py').stdout().split()
+    stable_tag = tags[0]
+    latest_tag = tags[1]
 
-d_compiler = meson.get_compiler('d').get_id()
-if d_compiler == 'gcc'
-    d_compiler = 'gdmd'
-elif d_compiler == 'llvm'
-    d_compiler = 'ldmd2'
-endif
+    docs_config =  latest_tag + '.ddoc'
+    latest_file = custom_target('latest_target',
+                build_by_default: true,
+                input : [],
+                output : docs_config,
+                capture: true,
+                command: ['echo',
+                    '\nLATEST=' + latest_tag +
+                    '\nLATEST_STABLE=' + stable_tag +
+                    '\nPROJECT=' + meson.project_name() +
+                    '\nMETA_DESCRIPTION=' + description
+                ])
 
-root = meson.source_root()
+    d_compiler = meson.get_compiler('d').get_id()
+    if d_compiler == 'gcc'
+        d_compiler = 'gdmd'
+    elif d_compiler == 'llvm'
+        d_compiler = 'ldmd2'
+    endif
 
-menu = custom_target('menu_target',
-            build_by_default: true,
-            input : files('docgen/gen_modlist.d'),
-            output : 'mir.ddoc',
-            capture: true,
-            command: [d_compiler, '-run', '@INPUT0@', join_paths(root, 'source')])
+    root = meson.source_root()
 
-includes = ['-I' + join_paths(root, 'source')]
-foreach sub_name : subprojects
-    includes += '-I' + join_paths(root, 'subprojects', sub_name, 'source')
-endforeach
+    menu = custom_target('menu_target',
+                build_by_default: true,
+                input : files('docgen/gen_modlist.d'),
+                output : 'mir.ddoc',
+                capture: true,
+                command: [d_compiler, '-run', '@INPUT0@', join_paths(root, 'source')])
 
-extra_args = [d_compiler, '-w', '-c', '-o-',
-        docs_config,
-        join_paths(root, 'docgen/macros.ddoc'),
-        join_paths(root, 'docgen/html.ddoc'),
-        join_paths(root, 'docgen/dlang.org.ddoc'),
-        join_paths(root, 'docgen/std.ddoc'),
-        join_paths(root, 'docgen/custom.ddoc'),
-        includes,
-        '-Df@OUTPUT@', '@INPUT@']
-
-documented_unittests = custom_target('documented_unittests',
-            output: 'documented_unittests',
-            command: [
-                'dub',
-                'run',
-                'dtools:tests_extractor',
-                '--build=release',
-                '--',
-                '-i',
-                join_paths(root, 'source'),
-                '-o',
-                '@OUTPUT@'
-            ])
-
-i = 0
-foreach source : sources_list
-
-    test_exe = executable(source.underscorify()+'-doc',
-        sources[i],
-        include_directories: directories,
-        d_unittest: true,
-        d_module_versions: ['mir_test'],
-        link_args: '-main',
-        dependencies: mir_algorithm_dep,
-    )
-
-    test(source.underscorify() + '-doc-test', test_exe)
-
-    i += 1
-endforeach
-
-htmls = []
-
-foreach f : sources_list
-    s = []
-    foreach e : f.split('/')
-        if e != 'package'
-            s += e
-        endif
+    includes = ['-I' + join_paths(root, 'source')]
+    foreach sub_name : subprojects
+        includes += '-I' + join_paths(root, 'subprojects', sub_name, 'source')
     endforeach
-    htmls += '_'.join(s) + '.html'
-endforeach
 
-htmls = ['index.html'] + htmls
-sources = ['index.d'] + sources
+    extra_args = [d_compiler, '-w', '-c', '-o-',
+            docs_config,
+            join_paths(root, 'docgen/macros.ddoc'),
+            join_paths(root, 'docgen/html.ddoc'),
+            join_paths(root, 'docgen/dlang.org.ddoc'),
+            join_paths(root, 'docgen/std.ddoc'),
+            join_paths(root, 'docgen/custom.ddoc'),
+            includes,
+            '-Df@OUTPUT@', '@INPUT@']
 
-i = 0
-foreach source : sources
-    custom_target('doc_target_' + i.to_string(),
-            build_by_default: true,
-            input : source,
-            output : htmls[i],
-            depends: [menu, latest_file],
-            command: extra_args)
-    i += 1
-endforeach
+    documented_unittests = custom_target('documented_unittests',
+                output: 'documented_unittests',
+                command: [
+                    'dub',
+                    'run',
+                    'dtools:tests_extractor',
+                    '--build=release',
+                    '--',
+                    '-i',
+                    join_paths(root, 'source'),
+                    '-o',
+                    '@OUTPUT@'
+                ])
+
+    i = 0
+    foreach source : sources_list
+
+        test_exe = executable(source.underscorify()+'-doc',
+            sources[i],
+            include_directories: directories,
+            d_unittest: true,
+            d_module_versions: ['mir_test'],
+            link_args: '-main',
+            dependencies: mir_algorithm_dep,
+        )
+
+        test(source.underscorify() + '-doc-test', test_exe)
+
+        i += 1
+    endforeach
+
+    htmls = []
+
+    foreach f : sources_list
+        s = []
+        foreach e : f.split('/')
+            if e != 'package'
+                s += e
+            endif
+        endforeach
+        htmls += '_'.join(s) + '.html'
+    endforeach
+
+    htmls = ['index.html'] + htmls
+    sources = ['index.d'] + sources
+
+    i = 0
+    foreach source : sources
+        custom_target('doc_target_' + i.to_string(),
+                build_by_default: true,
+                input : source,
+                output : htmls[i],
+                depends: [menu, latest_file],
+                command: extra_args)
+        i += 1
+    endforeach
+
+endif
