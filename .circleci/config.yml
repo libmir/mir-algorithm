@@ -11,7 +11,7 @@ jobs:
       - checkout
       - run: cp -r /docgen docgen && cp -r /web web
       - run: meson build -D with_test=true -D with_doc=true
-      - run: ninja -C build test
+      - run: ninja -C build test -j1
       - mirci/persist_docs:
           from: web
 

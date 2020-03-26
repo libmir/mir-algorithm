@@ -69,6 +69,7 @@ endforeach
 
 add_project_arguments([
     '-preview=dip1008',
+    '-lowmem',
 ], language: 'd')
 
 required_deps = []
