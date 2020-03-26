@@ -1,30 +1,35 @@
 version: 2.1
 
 orbs:
-  mirci: libmir/upload_docs@0.0.0
+    mirci: libmir/upload_docs@0.0.0
 
 jobs:
-  build:
-    docker:
-      - image: libmir/circle-dlang
-    steps:
-      - checkout
-      - run: cp -r /docgen docgen && cp -r /web web
-      - run: meson build -D with_test=true -D with_doc=true
-      - run: ninja -C build test -j1
-      - mirci/persist_docs:
-          from: web
-
+    build:
+        docker:
+        - image: libmir/circle-dlang
+        steps:
+        - checkout
+        - run: cp -r /docgen docgen && cp -r /web web
+        - run: meson build --default-library=static -D with_test=true -D with_doc=true
+        - run: ninja -C build test -j1
+        - mirci/persist_docs:
+            from: web
+        filters:
+            tags:
+                only: /^v(\d)+(\.(\d)+)+$/
+    
 workflows:
-  version: 2
-  build-deploy:
-    jobs:
-      - build
-      - mirci/upload_docs_job:
-          from: web
-          to: mir-algorithm.libmir.org
-          requires:
+    version: 2
+    build-deploy:
+        jobs:
+        - build
+        - mirci/upload_docs_job:
+            from: web
+            to: mir-algorithm.libmir.org
+            requires:
             - build
-          filters:
-            branches:
-              only: master
+            filters:
+                branches:
+                    only: master
+                tags:
+                    only: /^v(\d)+(\.(\d)+)+$/
