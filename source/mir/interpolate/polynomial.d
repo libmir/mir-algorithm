@@ -87,7 +87,6 @@ Lagrange!(Unqual!(Slice!(Iterator, 1, kind).DeepElement), maxDerivative, X)
 
 /++
 +/
-extern(C++, "mir", "interpolate")
 struct Lagrange(T, uint maxAdditionalFunctions = 0, X = T)
     if (isFloatingPoint!T && maxAdditionalFunctions < 16)
 {

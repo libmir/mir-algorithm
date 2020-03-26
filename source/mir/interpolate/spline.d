@@ -606,7 +606,6 @@ struct SplineBoundaryCondition(T)
 /++
 Multivariate cubic spline with nodes on rectilinear grid.
 +/
-extern(C++, "mir", "interpolate")
 struct Spline(F, size_t N = 1, X = F)
     if (N && N <= 6)
 {

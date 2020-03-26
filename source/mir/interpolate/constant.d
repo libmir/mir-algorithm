@@ -72,7 +72,6 @@ Constant!(F, N, X) constant(F, size_t N = 1, X = F)
 /++
 Multivariate constant interpolant with nodes on rectilinear grid.
 +/
-extern(C++, "mir", "interpolate")
 struct Constant(F, size_t N = 1, X = F)
     if (N && N <= 6)
 {

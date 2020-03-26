@@ -174,7 +174,6 @@ version(mir_test)
 /++
 Multivariate linear interpolant with nodes on rectilinear grid.
 +/
-extern(C++, "mir", "interpolate")
 struct Linear(F, size_t N = 1, X = F)
     if (N && N <= 6)
 {

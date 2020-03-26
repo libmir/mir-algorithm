@@ -5,10 +5,6 @@ description = 'Mir Algorithm - Dlang Core Library'
 
 subprojects = ['mir-core']
 
-add_project_arguments([
-    '-preview=dip1008',
-    ], language: 'd')
-
 has_cpp_headers = true
 
 sources_list = [
@@ -72,9 +68,8 @@ foreach s : sources_list
 endforeach
 
 add_project_arguments([
-    '-preview=dip1000',
     '-preview=dip1008',
-    ], language: 'd')
+], language: 'd')
 
 required_deps = []
 
@@ -90,7 +85,7 @@ endif
 
 directories = include_directories(directories)
 
-mir_algorithm_lib = library(meson.project_name(),
+this_lib = library(meson.project_name(),
     sources,
     include_directories: directories,
     install: true,
@@ -98,11 +93,13 @@ mir_algorithm_lib = library(meson.project_name(),
     dependencies: required_deps,
 )
 
-mir_algorithm_dep = declare_dependency(
-    link_with: [mir_algorithm_lib],
+this_dep = declare_dependency(
+    link_with: [this_lib],
     include_directories: directories,
     dependencies: required_deps,
 )
+
+test_versions = ['mir_test']
 
 if has_cpp_headers
     install_subdir('include/',
@@ -116,10 +113,13 @@ install_subdir('source/',
     install_dir: 'include/d/' + meson.project_name(),
 )
 
-import('pkgconfig').generate(mir_algorithm_lib,
+import('pkgconfig').generate(this_lib,
     description: description,
     subdirs: 'd/' + meson.project_name(),
 )
+
+mir_algorithm_dep = this_dep
+mir_algorithm_lib = this_lib
 
 if get_option('with_test')
 
@@ -127,7 +127,7 @@ if get_option('with_test')
         sources,
         include_directories: directories,
         d_unittest: true,
-        d_module_versions: ['mir_test'],
+        d_module_versions: test_versions,
         link_args: '-main',
         dependencies: required_deps,
     )
@@ -162,6 +162,8 @@ if get_option('with_doc')
         d_compiler = 'gdmd'
     elif d_compiler == 'llvm'
         d_compiler = 'ldmd2'
+    else
+        d_compiler = 'dmd'
     endif
 
     root = meson.source_root()
@@ -180,41 +182,43 @@ if get_option('with_doc')
 
     extra_args = [d_compiler, '-w', '-c', '-o-',
             docs_config,
+            'mir.ddoc',
             join_paths(root, 'docgen/macros.ddoc'),
             join_paths(root, 'docgen/html.ddoc'),
             join_paths(root, 'docgen/dlang.org.ddoc'),
             join_paths(root, 'docgen/std.ddoc'),
             join_paths(root, 'docgen/custom.ddoc'),
             includes,
-            '-Df@OUTPUT@', '@INPUT@']
-
-    documented_unittests = custom_target('documented_unittests',
-                output: 'documented_unittests',
-                command: [
-                    'dub',
-                    'run',
-                    'dtools:tests_extractor',
-                    '--build=release',
-                    '--',
-                    '-i',
-                    join_paths(root, 'source'),
-                    '-o',
-                    '@OUTPUT@'
-                ])
+            '-Dfweb/@OUTPUT@', '@INPUT@']
 
     i = 0
     foreach source : sources_list
 
-        test_exe = executable(source.underscorify()+'-doc',
-            sources[i],
-            include_directories: directories,
-            d_unittest: true,
-            d_module_versions: ['mir_test'],
-            link_args: '-main',
-            dependencies: mir_algorithm_dep,
+        test_name = 'documented_unittests_' + source.underscorify()
+        test_source_name = test_name + '.d'
+
+        test_source = custom_target(test_name,
+            output: test_source_name,
+            input: sources[i],
+            capture: true,
+            command: [
+                'dtools_tests_extractor',
+                # '--betterC',
+                '-i',
+                '@INPUT@',
+            ]
         )
 
-        test(source.underscorify() + '-doc-test', test_exe)
+        test_exe = executable(test_name + '_exe',
+            test_source,
+            include_directories: directories,
+            d_unittest: true,
+            d_module_versions: test_versions,
+            link_args: '-main',
+            dependencies: this_dep,
+        )
+
+        test(source + ' documented unittest', test_exe)
 
         i += 1
     endforeach
@@ -241,7 +245,8 @@ if get_option('with_doc')
                 input : source,
                 output : htmls[i],
                 depends: [menu, latest_file],
-                command: extra_args)
+                command: extra_args,
+            )
         i += 1
     endforeach
 
