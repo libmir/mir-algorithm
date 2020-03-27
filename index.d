@@ -20,7 +20,6 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,math,numeric)) $(TD Simple numeric algorithms))
     $(TR $(TDNW $(MREF mir,math,sum)) $(TD Various precise summation algorithms))
     $(TR $(TDNW $(MREF mir,math,stat)) $(TD Basic API for statistics))
-    $(TR $(TDNW $(MREF mir,math,constant)) $(TD Math constants))
     $(TR $(TDNW $(MREF mir,polynomial)) $(TD Polynomial ref-counted structure))
     $(TR $(TDNW $(MREF mir,interpolate)★) $(TD Interpolation algorithms))
     $(LEADINGROW Reference counting)

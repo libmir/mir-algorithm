@@ -2,15 +2,9 @@
 
 set -euo pipefail
 
-dub fetch dtools
-
 # extract examples
-dub run dtools:tests_extractor -- -i source -o out
-
-git clone https://github.com/libmir/mir-core
-
 # compile the examples
 for file in $(find out -name "*.d") ; do
     echo "Testing: $file"
-    $DMD -unittest -Isource -Imir-core/source -preview=dip1008 -c -o- "$file"
+    dmd -de -lowmem -debug -unittest -mcpu=native -Isubprojects/mir-core/source -Isource -main -preview=dip1008 -run "$file"
 done

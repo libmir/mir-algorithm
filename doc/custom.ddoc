@@ -1,6 +1,5 @@
 _=
 META_KEYWORDS=algorithm mir libmir numeric blas array vector tensor numpy math stats
-META_DESCRIPTION=Generic Linear Algebra Subprograms
 ROOT_DIR =
 SUBNAV=
 $(SUBNAV_TEMPLATE
@@ -12,17 +11,16 @@ $(SUBNAV_TEMPLATE
 )
 _=
 
-PROJECT=algorithm
 PAGE_TOOLS=
 $(DIVID tools, $(DIV,
 	$(DIVC tip smallprint,
-		$(HTMLTAG3 a, href="https://github.com/libmir/mir-algorithm/issues", Report a bug)
+		$(HTMLTAG3 a, href="https://github.com/libmir/$(PROJECT)/issues", Report a bug)
 		$(DIV,
-			If you spot a problem with this page, click here to create a Github issue.
+			If you spot a problem with this page, click here to create a GitHub issue.
 		)
 	)
 	$(DIVC tip smallprint,
-		<a href="https://github.com/libmir/mir-algorithm/edit/master/$(SRCFILENAME)">Improve this page</a>
+		<a href="https://github.com/libmir/$(PROJECT)/blob/master/source/$(SRCFILENAME)">Improve this page</a>
 		$(DIV,
 			Quickly fork, edit online, and submit a pull request for this page.
 			Requires a signed-in GitHub account. This works well for small changes.
@@ -53,6 +51,7 @@ $(EXTRA_HEADERS)
 <body id='$(TITLE)' class='$(BODYCLASS)'>
 $(SCRIPT document.body.className += ' have-javascript';
 var currentVersion = "$(LATEST_STABLE)";
+var currentLibrary = "$(PROJECT)";
 )
 $(DIVID top, $(DIVC helper, $(DIVC helper expand-container,
     <a href="$(ROOT_DIR)menu.html" title="Menu" class="hamburger expand-toggle"><span>Menu</span></a>
@@ -82,9 +81,9 @@ _=
 SEARCH_BOX=
     $(DIVID search-box,
         <form method="get" action="https://google.com/search">
-            <input type="hidden" id="domains" name="domains" value="dlang.org">
+            <input type="hidden" id="domains" name="domains" value="$(PROJECT).libmir.org">
             <input type="hidden" id="sourceid" name="sourceid" value="google-search">
-            <input type="hidden" id="sitesearch" name="sitesearch" value="algorithm.dlang.io">
+            <input type="hidden" id="sitesearch" name="sitesearch" value="$(PROJECT).libmir.org">
             $(SPANID search-query, <input id="q" name="q" placeholder="Search">)
             $(SPANID search-submit, <button type="submit"><i class="fa fa-search"></i><span>go</span></button>)
         </form>
@@ -93,22 +92,27 @@ _=
 
 NAVIGATION=
 $(DIVID cssmenu, $(UL
-    $(MENU https://github.com/libmir/mir-algorithm, Github)
-    $(MENU https://github.com/libmir/mir-algorithm/issues, Issues)
-    $(MENU https://gitter.im/libmir/public , Chat)
-    $(MENU_W_SUBMENU_LINK $(ROOT_DIR)mir.html, Mir Projects)
+    $(MENU_W_SUBMENU_LINK $(ROOT_DIR)mir.html, Mir Libraries)
       $(MIR_PROJECTS)
+    $(MENU https://github.com/libmir/$(PROJECT), GitHub)
+    $(MENU https://forum.dlang.org/group/learn , Forum)
+    $(MENU https://github.com/libmir/$(PROJECT)/issues, Open Issue)
     $(MENU https://dlang.org, Dlang)
 ))
 _=
 
 MIR_PROJECTS=
 $(SUBMENU_MANUAL
-    $(SUBMENU_LINK http://docs.mir.dlang.io, Mir)
     $(SUBMENU_LINK http://mir-algorithm.libmir.org, Mir Algorithm)
-    $(SUBMENU_LINK http://docs.cpuid.dlang.io, CPUID)
-    $(SUBMENU_LINK http://docs.glas.dlang.io, GLAS)
-    $(SUBMENU_LINK http://docs.random.dlang.io, Random Numbers Generators)
+    $(SUBMENU_LINK http://mir-core.libmir.org, Mir Core)
+    $(SUBMENU_LINK http://mir-runtime.libmir.org, Mir Runtime)
+    $(SUBMENU_LINK http://mir-random.libmir.org, Mir Random)
+    $(SUBMENU_LINK http://mir-optim.libmir.org, Mir Optim)
+    $(SUBMENU_LINK http://mir-cpuid.libmir.org, Mir CPUID)
+    $(SUBMENU_LINK http://mir-blas.libmir.org, Mir BLAS)
+    $(SUBMENU_LINK http://mir-lapacl.libmir.org, Mir LAPACK)
+    $(SUBMENU_LINK http://mir.libmir.org, Mir)
+    $(SUBMENU_LINK http://asdf.libmir.org, ASDF - JSON library)
 )
 _=
 
