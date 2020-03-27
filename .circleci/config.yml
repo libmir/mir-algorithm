@@ -9,7 +9,7 @@ jobs:
         - image: libmir/circle-dlang
         steps:
         - checkout
-        - run: cp -r /docgen docgen && cp -r /web web && cp /meson_options.txt ./ && cat ./meson.build >> meson.build
+        - run: cat meson.build.1 >> meson.build
         - run: meson build --default-library=static -D with_test=true -D with_doc=true
         - run: ninja -C build test -j1
         - mirci/persist_docs:
