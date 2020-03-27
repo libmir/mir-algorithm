@@ -9,6 +9,8 @@ jobs:
         - image: libmir/circle-dlang
         steps:
         - checkout
+        - run: ls
+        - run: pwd
         - run: cat meson.build.1 >> meson.build
         - run: meson build --default-library=static -D with_test=true -D with_doc=true
         - run: ninja -C build test -j1
