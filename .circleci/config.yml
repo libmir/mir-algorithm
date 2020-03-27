@@ -13,7 +13,7 @@ jobs:
         - run: meson build --default-library=static -D with_test=true -D with_doc=true
         - run: ninja -C build test -j1
         - mirci/persist_docs:
-            from: web
+            from: build/web
 
 workflows:
     version: 2
@@ -24,7 +24,7 @@ workflows:
                 tags:
                     only: /^v(\d)+(\.(\d)+)+$/
         - mirci/upload_docs_job:
-            from: web
+            from: build/web
             to: mir-algorithm.libmir.org
             requires:
             - build
