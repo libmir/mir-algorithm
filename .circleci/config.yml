@@ -11,7 +11,7 @@ workflows:
           filters:
             tags:
               only: /^v(\d)+(\.(\d)+)+$/
-      - mirci/upload_docs_job:
+      - mirci/upload_docs:
           to: mir-algorithm.libmir.org
           requires:
             - mirci/test_and_build_docs
