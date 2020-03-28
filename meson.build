@@ -121,3 +121,5 @@ import('pkgconfig').generate(this_lib,
 
 mir_algorithm_dep = this_dep
 mir_algorithm_lib = this_lib
+
+test_subdirs = ['cpp_example']
