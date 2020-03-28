@@ -33,3 +33,4 @@ mir-algorithm-test-dip1008
 test
 test.d
 docgen
+_build_dir_
