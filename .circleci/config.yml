@@ -17,6 +17,6 @@ workflows:
             - mirci/test_and_build_docs
           filters:
             branches:
-              only: master
+              ignore: /.*/
             tags:
               only: /^v(\d)+(\.(\d)+)+$/
