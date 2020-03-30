@@ -35,7 +35,12 @@ version (mir_test) unittest
     catch(Exception e) assert(e.msg == "Msg");
 }
 
-static if (__traits(compiles, (()@nogc {throw new Exception("");})()))
+version(D_Ddoc)
+    private enum _version_D_Ddoc = true;
+else
+    private enum _version_D_Ddoc = false;
+
+static if (_version_D_Ddoc || __traits(compiles, (()@nogc {throw new Exception("");})()))
 {
 
 /++
