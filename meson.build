@@ -75,7 +75,7 @@ add_project_arguments([
 required_deps = []
 
 foreach p : subprojects 
-    required_deps += dependency(p, fallback : [p, p.underscorify() + '_dep'])
+    required_deps += dependency(p, fallback : [p, 'this_dep'])
 endforeach
 
 directories = ['source']
