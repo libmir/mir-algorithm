@@ -115,27 +115,6 @@ struct mir_slim_rcptr(T)
             mir_rc_increase_counter(context);
         }
     }
-
-    static if (!is(T == interface) && !__traits(isAbstractClass, T))
-    {
-        package(mir) this(Args...)(auto ref Args args)
-        {
-            () @trusted {
-                auto context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
-                if (!context)
-                {
-                    version(D_Exceptions)
-                        throw allocationError;
-                    else
-                        assert(0, allocationExcMsg);
-                }
-                _value = cast(typeof(_value))(context + 1);
-            } ();
-            import core.lifetime: forward;
-            import mir.conv: emplace;
-            cast(void) emplace!T(_value, forward!args);
-        }
-    }
 }
 
 ///
@@ -143,12 +122,27 @@ alias SlimRCPtr = mir_slim_rcptr;
 
 ///
 template createSlimRC(T)
+    if (!is(T == interface) && !__traits(isAbstractClass, T))
 {
     ///
     mir_slim_rcptr!T createSlimRC(Args...)(auto ref Args args)
     {
+        typeof(return) ret;
+        with (ret) () @trusted {
+            auto context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
+            if (!context)
+            {
+                version(D_Exceptions)
+                    throw allocationError;
+                else
+                    assert(0, allocationExcMsg);
+            }
+            _value = cast(typeof(_value))(context + 1);
+        } ();
         import core.lifetime: forward;
-        return mir_slim_rcptr!T(forward!args);
+        import mir.conv: emplace;
+        cast(void) emplace!T(ret._value, forward!args);
+        return ret;
     }
 }
 
@@ -208,6 +202,18 @@ unittest
     auto s = a;
     assert(s._counter == 2);
     assert(s.e == 3);
+}
+
+/// Classes with empty constructor
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    static class C
+    {
+        int index = 34;
+    }
+    assert(createSlimRC!C.index == 34);
 }
 
 version(unittest):
