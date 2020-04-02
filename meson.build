@@ -23,6 +23,7 @@ sources_list = [
     'mir/interpolate/constant',
     'mir/interpolate/linear',
     'mir/interpolate/package',
+    'mir/interpolate/polynomial',
     'mir/interpolate/spline',
     'mir/interpolate/utility',
     'mir/math/func/expdigamma',
