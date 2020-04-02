@@ -119,27 +119,6 @@ struct mir_rcptr(T)
             mir_rc_increase_counter(context);
         }
     }
-
-    static if (!is(T == interface) && !__traits(isAbstractClass, T))
-    {
-        package(mir) this(Args...)(auto ref Args args)
-        {
-            () @trusted {
-                _context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
-                if (!_context)
-                {
-                    version(D_Exceptions)
-                        throw allocationError;
-                    else
-                        assert(0, allocationExcMsg);
-                }
-                _value = cast(typeof(_value))(_context + 1);
-            } ();
-            import core.lifetime: forward;
-            import mir.conv: emplace;
-            cast(void) emplace!T(_value, forward!args);
-        }
-    }
 }
 
 ///
@@ -220,15 +199,29 @@ mir_rcptr!(immutable R) castTo(R, T)(return immutable mir_rcptr!T context) @trus
     return createRCWithContext(cast(immutable R)context._get_value, move(*cast(mir_rcptr!T*)&context));
 }
 
-
 ///
 template createRC(T)
+    if (!is(T == interface) && !__traits(isAbstractClass, T))
 {
     ///
     mir_rcptr!T createRC(Args...)(auto ref Args args)
     {
+        typeof(return) ret;
+        with (ret) () @trusted {
+            _context = mir_rc_create(mir_get_type_info!T, 1, mir_get_payload_ptr!T);
+            if (!_context)
+            {
+                version(D_Exceptions)
+                    throw allocationError;
+                else
+                    assert(0, allocationExcMsg);
+            }
+            _value = cast(typeof(_value))(_context + 1);
+        } ();
         import core.lifetime: forward;
-        return mir_rcptr!T(forward!args);
+        import mir.conv: emplace;
+        cast(void) emplace!T(ret._value, forward!args);
+        return ret;
     }
 }
 
@@ -242,6 +235,18 @@ unittest
     assert(*b == 10);
     *b = 100;
     assert(*a == 100);
+}
+
+/// Classes with empty constructor
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    static class C
+    {
+        int index = 34;
+    }
+    assert(createRC!C.index == 34);
 }
 
 ///
@@ -267,7 +272,6 @@ unittest
     assert(a._counter == 2);
 
     auto d = a.castTo!D; //RCPtr!D
-    import std.stdio;
     assert(d._counter == 3);
     d.index = 234;
     assert(a.index == 234);
