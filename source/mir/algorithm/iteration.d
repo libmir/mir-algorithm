@@ -60,7 +60,6 @@ import std.traits;
 
 @optmath:
 
-
 /+
 Bitslice representation for accelerated bitwise algorithm.
 1-dimensional contiguousitslice can be split into three chunks: head bits, body chunks, and tail bits.

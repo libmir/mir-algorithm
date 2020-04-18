@@ -3918,7 +3918,7 @@ template byDim(Dimensions...)
             n-dimensional slice ipacked to allow iteration by dimension
         +/
         @optmath auto byDim(Iterator, size_t N, SliceKind kind)
-                                       (Slice!(Iterator, N, kind) slice)
+            (Slice!(Iterator, N, kind) slice)
         {
             import mir.ndslice.topology : ipack;
             import mir.ndslice.internal : DimensionsCountCTError;
@@ -4238,6 +4238,62 @@ version(mir_test) unittest
     auto slice = iota(3);
     auto x = slice.byDim!0;
     assert(x == slice);
+}
+
+/++
+Adds outer dimension length of 1.
++/
+Slice!(Iterator, N + 1, kind) addOuterDim(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+{
+    import mir.utility: swap;
+    typeof(return) ret;
+    ret._lengths[0 .. N] = slice._lengths;
+    ret._lengths[N] = 1;
+    static if (kind != SliceKind.contiguous)
+        ret._strides[0 .. $ - 1] = slice._strides;
+    swap(ret._iterator, slice._iterator);
+    return ret;
+}
+
+///
+version (mir_test) 
+@safe pure nothrow @nogc
+unittest
+{
+    // [0, 1, 2] -> [[0, 1, 2]]
+    assert([3].iota.addOuterDim == [3, 1].iota);
+    assert([3].iota.universal.addOuterDim == [3, 1].iota);
+    assert([3, 4].iota.addOuterDim == [3, 4, 1].iota);
+    assert([3, 4].iota.canonical.addOuterDim == [3, 4, 1].iota);
+    assert([3, 4].iota.universal.addOuterDim == [3, 4, 1].iota);
+}
+
+/++
+Adds inner dimension length of 1.
++/
+Slice!(Iterator, N + 1, kind) addInnerDim(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+{
+    import mir.utility: swap;
+    typeof(return) ret;
+    ret._lengths[1 .. N + 1] = slice._lengths;
+    ret._lengths[0] = 1;
+    static if (kind != SliceKind.contiguous)
+        ret._strides[1 .. $] = slice._strides;
+    swap(ret._iterator, slice._iterator);
+    return ret;
+}
+
+///
+version (mir_test) 
+@safe pure nothrow @nogc
+unittest
+{
+    // [0, 1, 2] -> [[0], [1], [2]]
+    assert([3].iota.addInnerDim == [1, 3].iota);
+    assert([3].iota.universal.addInnerDim == [1, 3].iota);
+    assert([3, 4].iota.addInnerDim == [1, 3, 4].iota);
+    assert([3, 4].iota.canonical.addInnerDim == [1, 3, 4].iota);
+    assert([3, 4].iota.universal.addInnerDim == [1, 3, 4].iota);
 }
 
 /++
