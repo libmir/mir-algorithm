@@ -1141,8 +1141,6 @@ public:
         If `writer` is set, the resulting string will be written directly
         to it.
 
-        Params:
-            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
         Returns:
             A `string` when not using an output range; `void` otherwise.
       +/
@@ -1198,6 +1196,9 @@ public:
         }
     }
 
+    ///ditto
+    alias toString = toISOExtString;
+
     @safe pure unittest
     {
         import std.array : appender;
@@ -1210,14 +1211,22 @@ public:
         assert(w.data == "19981225");
     }
 
+    @safe unittest
+    {
+        auto date = Date(1999, 7, 6);
+        const cdate = Date(1999, 7, 6);
+        immutable idate = Date(1999, 7, 6);
+        assert(date.toString);
+        assert(cdate.toString);
+        assert(idate.toString);
+    }
+
     version(D_BetterC){} else
     /++
     Converts this $(LREF Date) to a string with the format `YYYY-MM-DD`.
     If `writer` is set, the resulting string will be written directly
     to it.
 
-    Params:
-        writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
     Returns:
         A `string` when not using an output range; `void` otherwise.
       +/
@@ -1293,8 +1302,6 @@ public:
         If `writer` is set, the resulting string will be written directly
         to it.
 
-        Params:
-            writer = A `char` accepting $(REF_ALTTEXT output range, isOutputRange, std, range, primitives)
         Returns:
             A `string` when not using an output range; `void` otherwise.
       +/
@@ -1362,32 +1369,6 @@ public:
         w.clear();
         Date(-10000, 10, 20).toSimpleString(w);
         assert(w.data == "-10000-Oct-20");
-    }
-
-    /++
-    Creates a $(LREF Date) from a string with the format YYYY-MM-DD.
-
-    Params:
-        str = A string formatted in the way that $(LREF .date.toISOExtString) formats dates.
-        value = (optional) result value.
-
-    Throws:
-        $(LREF DateTimeException) if the given string is
-        not in the correct format or if the resulting $(LREF Date) would not
-        be valid. Two arguments overload is `nothrow`.
-    Returns:
-        `bool` on success for two arguments overload, and the resulting date for single argument overdload.
-    +/
-    alias toString = toISOExtString;
-
-    @safe unittest
-    {
-        auto date = Date(1999, 7, 6);
-        const cdate = Date(1999, 7, 6);
-        immutable idate = Date(1999, 7, 6);
-        assert(date.toString());
-        assert(cdate.toString());
-        assert(idate.toString());
     }
 
     /++
