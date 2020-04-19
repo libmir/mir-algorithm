@@ -15,6 +15,7 @@ sources_list = [
     'mir/combinatorics/package',
     'mir/container/binaryheap',
     'mir/cpp_export/numeric',
+    'mir/date',
     'mir/exception',
     'mir/format_impl',
     'mir/format',

@@ -19,6 +19,8 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,small_string)) $(TD Generic Small Strings))
     $(TR $(TDNW $(MREF mir,array,allocation)) $(TD `std.array` reworked for Mir))
     $(TR $(TDNW $(MREF mir,range)) $(TD Ranges))
+    $(LEADINGROW Date and time)
+    $(TR $(TDNW $(MREF mir,date)) $(TD Fast BetterC Date type with Boost ABI and mangling compatability))
     $(LEADINGROW NDarrays and Algorithms)
     $(TR $(TDNW $(MREF mir,ndslice)★) $(TD Package for ndarrays and iteration algorithms.))
     $(TR $(TDNW $(MREF mir,range)) $(TD Additoinal primitive ranges. See also $(MREF mir,ndslice), which contains a lot of range constructos.))
