@@ -310,14 +310,15 @@ Slice!(Iterator, N, Canonical, Labels)
         return slice;
     else
     {
-        alias Ret = typeof(return);
-        size_t[Ret.N] lengths;
-        auto strides = sizediff_t[Ret.S].init;
-        foreach (i; Iota!(slice.N))
-            lengths[i] = slice._lengths[i];
-        foreach (i; Iota!(Ret.S))
-            strides[i] = slice._strides[i];
-        return Ret(lengths, strides, slice._iterator, slice._labels);
+        import mir.utility: swap;
+        assert(slice._lengths[N - 1] <= 1 || slice._strides[N - 1] == 1);
+        typeof(return) ret;
+        ret._lengths = slice._lengths;
+        ret._strides = slice._strides[0 .. $ - 1];
+        swap(ret._iterator, slice._iterator);
+        foreach(i, _; Labels)
+            swap(ret._labels[i], slice._labels[i]);
+        return ret;
     }
 }
 
@@ -373,7 +374,13 @@ Slice!(Iterator, N, Contiguous, Labels)
         return slice;
     else
     {
-        return typeof(return)(slice._lengths, slice._iterator, slice._labels);
+        import mir.utility: swap;
+        typeof(return) ret;
+        ret._lengths = slice._lengths;
+        swap(ret._iterator, slice._iterator);
+        foreach(i, _; Labels)
+            swap(ret._labels[i], slice._labels[i]);
+        return ret;
     }
 }
 
@@ -555,11 +562,12 @@ Slice!(SliceIterator!(Iterator, N, outerKind), M, innerKind)
 evertPack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind)
     (Slice!(SliceIterator!(Iterator, M, innerKind), N, outerKind) slice)
 {
+    import core.lifetime: move;
     return typeof(return)(
         slice._iterator._structure,
         typeof(return).Iterator(
             slice._structure,
-            slice._iterator._iterator));
+            slice._iterator._iterator.move));
 }
 
 ///
@@ -585,7 +593,7 @@ evertPack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind
         slice!int(6)
             .sliced(1,2,3)
             .pack!1
-            .evertPack()
+            .evertPack
         )
          == Slice!(SliceIterator!(int*, 2, Universal), 1)));
 }
@@ -3933,8 +3941,52 @@ template byDim(Dimensions...)
             }
             else
             {
+                import core.lifetime: move;
                 import mir.ndslice.dynamic: transposed;
-                return slice.transposed!Dimensions.ipack!(Dimensions.length);
+                import mir.algorithm.iteration: all;
+
+                auto trans = slice
+                    .move
+                    .transposed!Dimensions;
+                static if (Dimensions.length == N)
+                {
+                    return trans;
+                }
+                else
+                {
+                    auto ret = trans.ipack!(Dimensions.length);
+                    static if ((kind == Contiguous || kind == Canonical && N - Dimensions.length == 1) && [Dimensions].all!(a => a < Dimensions.length))
+                    {
+                        return ret
+                            .move
+                            .evertPack
+                            .assumeContiguous
+                            .evertPack;
+                    }
+                    else
+                    static if (kind == Canonical && [Dimensions].all!(a => a < N - 1))
+                    {
+                        return ret
+                            .move
+                            .evertPack
+                            .assumeCanonical
+                            .evertPack;
+                    }
+                    else
+                    static if ((kind == Contiguous || kind == Canonical && Dimensions.length == 1) && [Dimensions] == [Iota!(N - Dimensions.length, N)])
+                    {
+                        return ret.assumeContiguous;
+                    }
+                    else
+                    static if (kind == Canonical && Dimensions[$-1] == N - 1)
+                    {
+                        return ret.assumeCanonical;
+                    }
+                    else
+                    {
+                        return ret;
+                    }
+                }
             }
         }
     }
@@ -4281,8 +4333,6 @@ template squeeze(sizediff_t axis = 0)
         {
             static if (a == N - 1)
             {
-                pragma(msg, typeof(ret));
-                pragma(msg, typeof(slice));
                 foreach (i; Iota!(0, N - 1))
                     ret._strides[i] = slice._strides[i];
             }

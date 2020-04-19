@@ -646,7 +646,7 @@ struct Spline(F, size_t N = 1, X = F)
         auto strides = data.strides;
         foreach (i; Iota!(strides.length))
             strides[i] *= DeepElementType!D.length;
-        return Slice!(F*, strides.length, Universal)(data.shape, strides, data._iterator._iterator.ptr + index);
+        return Slice!(F*, strides.length, Universal)(data.shape, strides, data._iterator.ptr + index);
     }
 
     /++
@@ -656,7 +656,7 @@ struct Spline(F, size_t N = 1, X = F)
     void _values(SliceKind kind, Iterator)(Slice!(Iterator, N, kind) values) scope @property @trusted
     {
         assert(values.shape == _data.shape, "'values' should have the same shape as the .gridShape");
-        pickDataSubslice(_data, 0)[] = values;
+        pickDataSubslice(_data.lightScope, 0)[] = values;
     }
 
     /++
@@ -689,13 +689,14 @@ struct Spline(F, size_t N = 1, X = F)
 
         static if (N == 1)
         {
-            splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data, 0), pickDataSubslice(_data, 1), temp[0 .. _data._lengths[0]], kind, param, lbc, rbc);
+            splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data.lightScope, 0), pickDataSubslice(_data.lightScope, 1), temp[0 .. _data._lengths[0]], kind, param, lbc, rbc);
         }
         else
         foreach_reverse(i; Iota!N)
         {
             // if (i == _grid.length - 1)
             _data
+                .lightScope
                 .byDim!i
                 .evertPack
                 .each!((d){
