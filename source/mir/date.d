@@ -25,7 +25,7 @@ $(TR $(TD Other) $(TD
 ))
 ))
     License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
-    Authors:   $(HTTP jmdavisprog.com, Jonathan M Davis, Ilya Yaroshenko (boost-like and BetterC rework))
+    Authors:   $(HTTP jmdavisprog.com, Jonathan M Davis), Ilya Yaroshenko (boost-like and BetterC rework)
 +/
 module mir.date;
 
