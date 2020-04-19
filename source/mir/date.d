@@ -400,10 +400,6 @@ struct YearMonthDay
 
     Year 0 is a leap year.
  +/
-alias Date = date;
-
-
-/// ditto
 extern(C++, "boost", "gregorian")
 extern(C++, class)
 struct date
@@ -413,6 +409,7 @@ public:
 
     private enum _julianShift = 1_721_425;
 
+    ///
     uint toHash() @safe pure nothrow @nogc const scope
     {
         return _julianDay;
@@ -2068,6 +2065,9 @@ package:
         return fromString(cast(const(char)[])deserializer);
     }
 }
+
+/// ditto
+alias Date = date;
 
 /++
     Returns the number of days from the current day of the week to the given
