@@ -402,9 +402,9 @@ struct YearMonthDay
  +/
 alias Date = date;
 
+
+/// ditto
 extern(C++, "boost", "gregorian")
-{
-// @serializedAs!(const(char)[])
 extern(C++, class)
 struct date
 {
@@ -2067,7 +2067,6 @@ package:
     {
         return fromString(cast(const(char)[])deserializer);
     }
-}
 }
 
 /++
