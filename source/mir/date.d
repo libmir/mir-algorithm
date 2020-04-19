@@ -1196,21 +1196,6 @@ public:
         }
     }
 
-    ///ditto
-    alias toString = toISOExtString;
-
-    @safe pure unittest
-    {
-        import std.array : appender;
-
-        auto w = appender!(char[])();
-        Date(2010, 7, 4).toISOString(w);
-        assert(w.data == "20100704");
-        w.clear();
-        Date(1998, 12, 25).toISOString(w);
-        assert(w.data == "19981225");
-    }
-
     @safe unittest
     {
         auto date = Date(1999, 7, 6);
@@ -1235,6 +1220,9 @@ public:
         return toStringImpl!toISOExtString;
     }
 
+    ///ditto
+    alias toString = toISOExtString;
+
     ///
     @safe unittest
     {
@@ -1242,6 +1230,18 @@ public:
         assert(Date(1998, 12, 25).toISOExtString() == "1998-12-25");
         assert(Date(0, 1, 5).toISOExtString() == "0000-01-05");
         assert(Date(-4, 1, 5).toISOExtString() == "-0004-01-05");
+    }
+
+    @safe pure unittest
+    {
+        import std.array : appender;
+
+        auto w = appender!(char[])();
+        Date(2010, 7, 4).toISOString(w);
+        assert(w.data == "20100704");
+        w.clear();
+        Date(1998, 12, 25).toISOString(w);
+        assert(w.data == "19981225");
     }
 
     @safe unittest
