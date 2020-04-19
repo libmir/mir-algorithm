@@ -1988,11 +1988,11 @@ public:
     +/
     bool opEquals(scope const ref typeof(this) rslice) @trusted scope const
     {
-        static if (!hasReference!(typeof(this)))
+        static if (__traits(isPOD, typeof(this)))
         {
             if (this._lengths != rslice._lengths)
                 return false;
-            if (this._iterator == rslice._iterator)
+            if (this.strides == rslice.strides && this._iterator == rslice._iterator)
                 return true;
         }
 
@@ -2014,14 +2014,14 @@ public:
     bool opEquals(IteratorR, SliceKind rkind)(auto ref const Slice!(IteratorR, N, rkind) rslice) @trusted scope const
     {
         static if (
-               !hasReference!(typeof(this))
-            && !hasReference!(typeof(rslice))
+               __traits(isPOD, typeof(this))
+            && __traits(isPOD, typeof(rslice))
             && __traits(compiles, this._iterator == rslice._iterator)
             )
         {
             if (this._lengths != rslice._lengths)
                 return false;
-            if (this._iterator == rslice._iterator)
+            if (this.strides == rslice.strides && this._iterator == rslice._iterator)
                 return true;
         }
         import mir.algorithm.iteration : equal;

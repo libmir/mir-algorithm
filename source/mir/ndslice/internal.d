@@ -318,8 +318,6 @@ private enum isReference(P) =
     || isFunctionPointer!P
     || is(P == interface);
 
-enum hasReference(T) = anySatisfy!(isReference, RepresentationTypeTuple!T);
-
 alias ImplicitlyUnqual(T) = Select!(isImplicitlyConvertible!(T, Unqual!T), Unqual!T, T);
 alias ImplicitlyUnqual(T : T*) = T*;
 

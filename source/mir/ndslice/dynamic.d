@@ -497,31 +497,38 @@ template transposed(Dimensions...)
     {
         import mir.algorithm.iteration: any;
         enum s = N;
-        enum hasRowStride = [Dimensions].sliced.any!(a => a + 1 == s);
-        static if (kind == Universal || kind == Canonical && !hasRowStride)
+        static if ([Dimensions] == [Iota!(Dimensions.length)])
         {
-            alias slice = _slice;
-        }
-        else
-        static if (hasRowStride)
-        {
-            import mir.ndslice.topology: universal;
-            auto slice = _slice.universal;
+            return _slice;
         }
         else
         {
-            import mir.ndslice.topology: canonical;
-            auto slice = _slice.canonical;
+            enum hasRowStride = [Dimensions].any!(a => a + 1 == s);
+            static if (kind == Universal || kind == Canonical && !hasRowStride)
+            {
+                alias slice = _slice;
+            }
+            else
+            static if (hasRowStride)
+            {
+                import mir.ndslice.topology: universal;
+                auto slice = _slice.universal;
+            }
+            else
+            {
+                import mir.ndslice.topology: canonical;
+                auto slice = _slice.canonical;
+            }
+            mixin DimensionsCountCTError;
+            foreach (i, dimension; Dimensions)
+                mixin DimensionCTError;
+            static assert(isValidPartialPermutation!(N)([Dimensions]),
+                "Failed to complete permutation of dimensions " ~ Dimensions.stringof
+                ~ tailErrorMessage!());
+            enum perm = completeTranspose!(N)([Dimensions]);
+            static assert(perm.isPermutation, __PRETTY_FUNCTION__ ~ ": internal error.");
+            mixin (_transposedCode);
         }
-        mixin DimensionsCountCTError;
-        foreach (i, dimension; Dimensions)
-            mixin DimensionCTError;
-        static assert(isValidPartialPermutation!(N)([Dimensions]),
-            "Failed to complete permutation of dimensions " ~ Dimensions.stringof
-            ~ tailErrorMessage!());
-        enum perm = completeTranspose!(N)([Dimensions]);
-        static assert(perm.isPermutation, __PRETTY_FUNCTION__ ~ ": internal error.");
-        mixin (_transposedCode);
     }
 }
 

@@ -3934,9 +3934,7 @@ template byDim(Dimensions...)
             else
             {
                 import mir.ndslice.dynamic: transposed;
-                return slice
-                            .transposed!Dimensions
-                            .ipack!(Dimensions.length);
+                return slice.transposed!Dimensions.ipack!(Dimensions.length);
             }
         }
     }
@@ -4254,46 +4252,51 @@ Returns:
     new view of a slice with dimension removed
 See_also: $(LREF unsqueeze), $(LREF iota).
 +/
-Slice!(Iterator, N - 1, kind != Canonical ? kind : axis == 0 ? Universal : N == 2 ? Contiguous : kind)
-    squeeze(sizediff_t axis = 0, Iterator, size_t N, SliceKind kind)
-    (Slice!(Iterator, N, kind) slice)
-    if (-sizediff_t(N) <= axis && axis < sizediff_t(N) && N > 1)
-in {
-    assert(slice._lengths[axis < 0 ? N + axis : axis] == 1);
-}
-do {
-    import mir.utility: swap;
-    enum sizediff_t a = axis < 0 ? N + axis : axis;
-    typeof(return) ret;
-    foreach (i; 0 .. a)
-        ret._lengths[i] = slice._lengths[i];
-    foreach (i; a + 1 .. N)
-        ret._lengths[i - 1] = slice._lengths[i];
-    static if (kind == Universal)
-    {
-        foreach (i; 0 .. a)
-            ret._strides[i] = slice._strides[i];
-        foreach (i; a + 1.. N)
-            ret._strides[i - 1] = slice._strides[i];
+template squeeze(sizediff_t axis = 0)
+{
+    Slice!(Iterator, N - 1, kind != Canonical ? kind : ((axis == N - 1 || axis == -1) ? Universal : (N == 2 ? Contiguous : kind)))
+        squeeze(Iterator, size_t N, SliceKind kind)
+        (Slice!(Iterator, N, kind) slice)
+        if (-sizediff_t(N) <= axis && axis < sizediff_t(N) && N > 1)
+    in {
+        assert(slice._lengths[axis < 0 ? N + axis : axis] == 1);
     }
-    else
-    static if (kind == Canonical)
-    {
-        static if (a == 0)
+    do {
+        import mir.utility: swap;
+        enum sizediff_t a = axis < 0 ? N + axis : axis;
+        typeof(return) ret;
+        foreach (i; Iota!(0, a))
+            ret._lengths[i] = slice._lengths[i];
+        foreach (i; Iota!(a + 1, N))
+            ret._lengths[i - 1] = slice._lengths[i];
+        static if (kind == Universal)
         {
-            foreach (i; 0 .. N - 1)
+            foreach (i; Iota!(0, a))
                 ret._strides[i] = slice._strides[i];
-        }
-        else
-        {
-            foreach (i; 0 .. a - 1)
-                ret._strides[i] = slice._strides[i];
-            foreach (i; a .. N - 1)
+            foreach (i; Iota!(a + 1, N))
                 ret._strides[i - 1] = slice._strides[i];
         }
+        else
+        static if (kind == Canonical)
+        {
+            static if (a == N - 1)
+            {
+                pragma(msg, typeof(ret));
+                pragma(msg, typeof(slice));
+                foreach (i; Iota!(0, N - 1))
+                    ret._strides[i] = slice._strides[i];
+            }
+            else
+            {
+                foreach (i; Iota!(0, a))
+                    ret._strides[i] = slice._strides[i];
+                foreach (i; Iota!(a + 1, N - 1))
+                    ret._strides[i - 1] = slice._strides[i];
+            }
+        }
+        swap(ret._iterator, slice._iterator);
+        return ret;
     }
-    swap(ret._iterator, slice._iterator);
-    return ret;
 }
 
 ///
@@ -4341,48 +4344,91 @@ Returns:
 See_also: $(LREF squeeze), $(LREF iota).
 +/
 Slice!(Iterator, N + 1, kind) unsqueeze(Iterator, size_t N, SliceKind kind)
-    (Slice!(Iterator, N, kind) slice, sizediff_t axis = 0)
+    (Slice!(Iterator, N, kind) slice, sizediff_t axis)
 in {
     assert(-sizediff_t(N + 1) <= axis && axis <= sizediff_t(N));
 }
 do {
     import mir.utility: swap;
     typeof(return) ret;
-    if (axis < 0)
-    {
-        axis += N + 1;
-    }
-    foreach (i; 0 .. axis)
+    auto a = axis < 0 ? axis + N + 1 : axis;
+    foreach (i; 0 .. a)
         ret._lengths[i] = slice._lengths[i];
-    ret._lengths[axis] = 1;
-    foreach (i; axis .. N)
+    ret._lengths[a] = 1;
+    foreach (i; a .. N)
         ret._lengths[i + 1] = slice._lengths[i];
     static if (kind == Universal)
     {
-        foreach (i; 0 .. axis)
+        foreach (i; 0 .. a)
             ret._strides[i] = slice._strides[i];
-        foreach (i; axis .. N)
+        foreach (i; a .. N)
             ret._strides[i + 1] = slice._strides[i];
     }
     else
     static if (kind == Canonical)
     {
-        if (axis == 0)
+        if (a == N)
         {
-            ret._strides[0] = 1;
-            foreach (i; 1 .. N)
-                ret._strides[i] = slice._strides[i - 1];
+            foreach (i; Iota!(0, N - 1))
+                ret._strides[i] = slice._strides[i];
+            ret._strides[N - 1] = 1;
         }
         else
         {
-            foreach (i; 1 .. axis)
-                ret._strides[i - 1] = slice._strides[i - 1];
-            foreach (i; axis .. N)
-                ret._strides[i + 0] = slice._strides[i - 1];
+            foreach (i; 0 .. a)
+                ret._strides[i] = slice._strides[i];
+            foreach (i; a .. N - 1)
+                ret._strides[i + 1] = slice._strides[i];
         }
     }
     swap(ret._iterator, slice._iterator);
     return ret;
+}
+
+/// ditto
+template unsqueeze(sizediff_t axis = 0)
+{
+    Slice!(Iterator, N + 1, kind) unsqueeze(Iterator, size_t N, SliceKind kind)
+        (Slice!(Iterator, N, kind) slice)
+    in {
+        assert(-sizediff_t(N + 1) <= axis && axis <= sizediff_t(N));
+    }
+    do {
+        import mir.utility: swap;
+        typeof(return) ret;
+        enum a = axis < 0 ? axis + N + 1 : axis;
+        foreach (i; Iota!a)
+            ret._lengths[i] = slice._lengths[i];
+        ret._lengths[a] = 1;
+        foreach (i; Iota!(a, N))
+            ret._lengths[i + 1] = slice._lengths[i];
+        static if (kind == Universal)
+        {
+            foreach (i; Iota!a)
+                ret._strides[i] = slice._strides[i];
+            foreach (i; Iota!(a, N))
+                ret._strides[i + 1] = slice._strides[i];
+        }
+        else
+        static if (kind == Canonical)
+        {
+            static if (a == N)
+            {
+                foreach (i; Iota!(0, N - 1))
+                    ret._strides[i] = slice._strides[i];
+                ret._strides[N - 1] = 1;
+            }
+            else
+            {
+                foreach (i; Iota!(0, a))
+                    ret._strides[i] = slice._strides[i];
+                foreach (i; Iota!(a, N - 1))
+                    ret._strides[i + 1] = slice._strides[i];
+            }
+        }
+        swap(ret._iterator, slice._iterator);
+        return ret;
+    }
 }
 
 ///
@@ -4400,11 +4446,17 @@ unittest
 
     // [0, 1, 2] -> [[0], [1], [2]]
     assert([3].iota.unsqueeze(-1) == [3, 1].iota);
+    assert([3].iota.unsqueeze!(-1) == [3, 1].iota);
+
 
     assert([3].iota.universal.unsqueeze(-1) == [3, 1].iota);
+    assert([3].iota.universal.unsqueeze!(-1) == [3, 1].iota);
     assert([3, 4].iota.unsqueeze(-1) == [3, 4, 1].iota);
+    assert([3, 4].iota.unsqueeze!(-1) == [3, 4, 1].iota);
     assert([3, 4].iota.canonical.unsqueeze(-1) == [3, 4, 1].iota);
+    assert([3, 4].iota.canonical.unsqueeze!(-1) == [3, 4, 1].iota);
     assert([3, 4].iota.universal.unsqueeze(-1) == [3, 4, 1].iota);
+    assert([3, 4].iota.universal.unsqueeze!(-1) == [3, 4, 1].iota);
 }
 
 /++
