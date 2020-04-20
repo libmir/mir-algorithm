@@ -171,8 +171,6 @@ See_also:
     $(SUBREF topology, assumeCanonical),
     $(SUBREF topology, assumeContiguous).
 +/
-alias SliceKind = mir_slice_kind;
-/// ditto
 enum mir_slice_kind
 {
     /// A slice has strides for all dimensions.
@@ -182,6 +180,8 @@ enum mir_slice_kind
     /// A slice is a flat contiguous data without strides.
     contiguous,
 }
+/// ditto
+alias SliceKind = mir_slice_kind;
 
 /++
 Alias for $(LREF .SliceKind.universal).
