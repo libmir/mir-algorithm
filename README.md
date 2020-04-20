@@ -18,9 +18,11 @@ Mir library with basic types and algorithms including multidimensional matrixes,
  - [numir](https://github.com/libmir/numir) - mir extension with numpy-like API
 
 #### Blogs
-  - [Mir Blog](http://blog.mir.dlang.io/)
+  - Tasty D - [Multidimensional Arrays in D](https://tastyminerals.github.io/tasty-blog/dlang/2020/03/01/how-to-use-external-libraries-in-d-project.html)
+  - Tasty D - [Using External D Libraries in D Scripts and Projects](https://tastyminerals.github.io/tasty-blog/dlang/2020/03/01/how-to-use-external-libraries-in-d-project.html)
   - Shigeki Karita - [D言語で数値計算 mir-algorithm](https://shigekikarita.github.io/blog/2017/09/22/026.html)
   - Shigeki Karita - [D言語(mir)でNumPyを拡張する](https://qiita.com/ShigekiKarita/items/af84b0ef864608ee1f21) (mir-pybuffer integration)
+  - [Mir Blog](http://blog.mir.dlang.io/) (deprecated)
 
 #### Example (3 sec)
 ```d
