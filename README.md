@@ -12,10 +12,7 @@ Mir Algorithm
 =============
 Mir library with basic types and algorithms including multidimensional matrixes, thread-safe reference counted arrays and pointers.
 
-### Links
- - [API Documentation](http://mir-algorithm.libmir.org)
- - [Lubeck](https://github.com/kaleidicassociates/lubeck) - Linear Algebra Library for Mir Algorithm
- - [numir](https://github.com/libmir/numir) - mir extension with numpy-like API
+#### [API Documentation](http://mir-algorithm.libmir.org)
 
 #### Blogs
   - Tasty D - [Multidimensional Arrays in D](https://tastyminerals.github.io/tasty-blog/dlang/2020/03/01/how-to-use-external-libraries-in-d-project.html)
