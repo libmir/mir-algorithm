@@ -10,7 +10,6 @@
 
 Mir Algorithm
 =============
-Mir library with basic types and algorithms including multidimensional matrixes, thread-safe reference counted arrays and pointers.
 
 #### [API Documentation](http://mir-algorithm.libmir.org)
 
