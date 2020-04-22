@@ -26,24 +26,29 @@ import std.range.primitives: isInputRange;
 import std.traits: isArray, isFloatingPoint;
 
 /++
-Computes the average of `r`, which must be a finite iterable.
+Computes the arithmetic mean of `r`, which must be a finite iterable.
 
 Returns:
-    The average of all the elements in the range r.
+    The arithmetic mean of all the elements in the range r.
 +/
 template mean(Summation summation = Summation.appropriate)
 {
     ///
     @safe @fmamath sumType!Range
     mean(Range)(Range r)
-        if (hasLength!Range
+        if (hasElementCount!Range
+         || hasLength!Range
          || summation == Summation.appropriate
          || summation == Summation.fast
          || summation == Summation.naive)
     {
-        static if (hasLength!Range)
+        static if (hasElementCount!Range || hasLength!Range)
         {
-            auto n = r.length;
+            static if (hasElementCount!Range) {
+                auto n = r.elementCount;
+            } else {
+                auto n = r.length;
+            }
             return sum!summation(r.move) / cast(sumType!Range) n;
         }
         else
@@ -58,6 +63,36 @@ template mean(Summation summation = Summation.appropriate)
             return s / cast(sumType!Range) length;
         }
     }
+    
+    ///
+    @safe @fmamath F
+    mean(Range)(Range r, F seed)
+        if (hasElementCount!Range
+         || hasLength!Range
+         || summation == Summation.appropriate
+         || summation == Summation.fast
+         || summation == Summation.naive)
+    {
+        static if (hasElementCount!Range || hasLength!Range)
+        {
+            static if (hasElementCount!Range) {
+                auto n = r.elementCount;
+            } else {
+                auto n = r.length;
+            }
+            return sum!summation(r.move, seed) / cast(F) n;
+        }
+        else
+        {
+            size_t length;
+            foreach (e; r)
+            {
+                length++;
+                seed += e;
+            }
+            return seed / cast(F) length;
+        }
+    }
 }
 
 ///ditto
@@ -69,8 +104,15 @@ template mean(string summation)
 ///
 version(mir_test) @safe pure nothrow unittest
 {
+    import mir.ndslice.slice : sliced;
+
     assert(mean([1.0, 2, 3]) == 2);
     assert(mean([1.0 + 3i, 2, 3]) == 2 + 1i);
+    
+    assert(mean([0.0, 1, 2, 3, 4, 5].sliced(3, 2)) == 2.5);
+    
+    float seed = 0;
+    assert(is(typeof(mean([1, 2, 3], seed)) == float));
 }
 
 /++
