@@ -22,9 +22,6 @@ matrix:
     - {d: gdc}
 script:
  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
-#  - travis_wait 100 dub test --arch "$ARCH" -c dips
- - ./test_examples.sh
-#  - travis_wait 100 dub test --arch "$ARCH" --build=unittest-release
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)
