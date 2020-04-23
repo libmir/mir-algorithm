@@ -25,6 +25,28 @@ import mir.primitives;
 import std.range.primitives: isInputRange;
 import std.traits: isArray, isFloatingPoint;
 
+private U prod(T : U[N], U, size_t N)(T input)
+    if (N > 0)
+{
+    static if (N == 1) {
+        return input[0];
+    } else {
+        U output = input[0];
+        for (size_t i = 1; i < N; i++)
+            output *= input[i];
+        return output;
+    }
+}
+
+version(mir_test) @safe pure nothrow @nogc unittest
+{
+    size_t[1] x = [3];
+    size_t[2] y = [4, 2];
+    
+    assert(x.prod == 3);
+    assert(y.prod == 8);
+}
+
 /++
 Computes the arithmetic mean of `r`, which must be a finite iterable.
 
@@ -36,16 +58,17 @@ template mean(Summation summation = Summation.appropriate)
     ///
     @safe @fmamath sumType!Range
     mean(Range)(Range r)
-        if (hasElementCount!Range
+        if (hasShape!Range
          || hasLength!Range
          || summation == Summation.appropriate
          || summation == Summation.fast
          || summation == Summation.naive)
     {
-        static if (hasElementCount!Range || hasLength!Range)
+        static if (hasShape!Range || hasLength!Range)
         {
-            static if (hasElementCount!Range) {
-                auto n = r.elementCount;
+            static if (hasShape!Range)
+            {
+                auto n = r.shape.prod;
             } else {
                 auto n = r.length;
             }
@@ -66,17 +89,18 @@ template mean(Summation summation = Summation.appropriate)
     
     ///
     @safe @fmamath F
-    mean(Range)(Range r, F seed)
-        if (hasElementCount!Range
+    mean(Range, F)(Range r, F seed)
+        if (hasShape!Range
          || hasLength!Range
          || summation == Summation.appropriate
          || summation == Summation.fast
          || summation == Summation.naive)
     {
-        static if (hasElementCount!Range || hasLength!Range)
+        static if (hasShape!Range || hasLength!Range)
         {
-            static if (hasElementCount!Range) {
-                auto n = r.elementCount;
+            static if (hasShape!Range)
+            {
+                auto n = r.shape.prod;
             } else {
                 auto n = r.length;
             }
