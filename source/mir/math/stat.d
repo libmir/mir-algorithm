@@ -36,27 +36,13 @@ template mean(Summation summation = Summation.appropriate)
     ///
     @safe @fmamath sumType!Range
     mean(Range)(Range r)
-        if (hasLength!Range
+        if (hasShape!Range
          || summation == Summation.appropriate
          || summation == Summation.fast
          || summation == Summation.naive)
     {
-        static if (hasLength!Range)
-        {
-            auto n = r.length;
-            return sum!summation(r.move) / cast(sumType!Range) n;
-        }
-        else
-        {
-            auto s = cast(typeof(return)) 0;
-            size_t length;
-            foreach (e; r)
-            {
-                length++;
-                s += e;
-            }
-            return s / cast(sumType!Range) length;
-        }
+        auto n = r.elementCount; // elementCount uses shape
+        return sum!summation(r.move) / cast(sumType!Range) n;
     }
 }
 
