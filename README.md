@@ -20,6 +20,8 @@ Mir Algorithm
   - Shigeki Karita - [D言語(mir)でNumPyを拡張する](https://qiita.com/ShigekiKarita/items/af84b0ef864608ee1f21) (mir-pybuffer integration)
   - [Mir Blog](http://blog.mir.dlang.io/) (deprecated)
 
+#### [Mir Type System for .NET](https://github.com/libmir/mir.net)
+
 #### Example (3 sec)
 ```d
 /+dub.sdl:
