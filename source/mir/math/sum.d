@@ -130,7 +130,7 @@ version(mir_test)
     assert(sum(ubyte.max.repeat(100)) == 25_500);
 
     //The result may overflow
-    assert(uint.max.repeat(3).sum()           ==  4_294_967_293U );
+    assert(uint.max.repeat(3).sum           ==  4_294_967_293U );
     //But a seed can be used to change the summation primitive
     assert(uint.max.repeat(3).sum(ulong.init) == 12_884_901_885UL);
 
@@ -169,7 +169,7 @@ nothrow @nogc unittest
     Summator!(real, Summation.precise) s = 0.0;
     s.put(r);
     s -= 1.7L.pow(1000);
-    assert(s.sum() == -1);
+    assert(s.sum == -1);
 }
 
 /// Precise summation with output range
@@ -182,9 +182,9 @@ nothrow @nogc unittest
     auto s = Summator!(float, Summation.precise)(0);
     s += M;
     s += M;
-    assert(float.infinity == s.sum()); //infinity
+    assert(float.infinity == s.sum); //infinity
     auto e = cast(Summator!(double, Summation.precise)) s;
-    assert(e.sum() < double.infinity);
+    assert(e.sum < double.infinity);
     assert(N+N == e.sum()); //finite number
 }
 
@@ -204,7 +204,7 @@ unittest
 
         double avg() @property const
         {
-            return summator.sum() / circularBuffer.length;
+            return summator.sum / circularBuffer.length;
         }
 
         this(double[] buffer)
@@ -1488,7 +1488,7 @@ public:
         foreach (e; r2) s2 -= e;
         s1 -= s2;
         s1 -= 1.7L.pow(1000);
-        assert(s1.sum() == -1);
+        assert(s1.sum == -1);
     }
 
 
