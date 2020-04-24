@@ -424,9 +424,6 @@ struct Summator(T, Summation summation)
 
     @attr:
 
-    static if (summation != Summation.pairwise)
-        @disable this();
-
     static if (summation == Summation.pairwise)
         private enum bool fastPairwise =
             is(F == float) ||
@@ -441,13 +438,13 @@ struct Summator(T, Summation summation)
     static if (summation == Summation.precise)
     {
         import std.internal.scopebuffer;
+        import mir.appender;
         import mir.math.ieee: signbit;
     private:
         enum F M = (cast(F)(2)) ^^ (T.max_exp - 1);
-        F[16] scopeBufferArray = 0;
-        ScopeBuffer!F partials;
+        ScopedBuffer!(F, 16) partials;
         //sum for NaN and infinity.
-        F s;
+        F s = summationInitValue!F;
         //Overflow Degree. Count of 2^^F.max_exp minus count of -(2^^F.max_exp)
         sizediff_t o;
 
@@ -523,11 +520,11 @@ struct Summator(T, Summation summation)
         {
             if (o == 0)
                 return 0;
-            if (partials.length && (o == -1 || o == 1)  && signbit(o * partials[$-1]))
+            if (partials.length && (o == -1 || o == 1)  && signbit(o * partials.data[$-1]))
             {
                 // problem case: decide whether result is representable
                 F x = o * M;
-                F y = partials[$-1] / 2;
+                F y = partials.data[$-1] / 2;
                 F h = x + y;
                 F d = h - x;
                 F l = (y - d) * 2;
@@ -542,7 +539,7 @@ struct Summator(T, Summation summation)
                 else
                 {
                     if (!.isInfinity(cast(T)y) ||
-                        ((partials.length > 1 && !signbit(l * partials[$-2])) && t == l))
+                        ((partials.length > 1 && !signbit(l * partials.data[$-2])) && t == l))
                         return 0;
                 }
             }
@@ -552,23 +549,23 @@ struct Summator(T, Summation summation)
     else
     static if (summation == Summation.kb2)
     {
-        F s;
-        F cs;
-        F ccs;
+        F s = summationInitValue!F;
+        F cs = summationInitValue!F;
+        F ccs = summationInitValue!F;
     }
     else
     static if (summation == Summation.kbn)
     {
-        F s;
-        F c;
+        F s = summationInitValue!F;
+        F c = summationInitValue!F;
     }
     else
     static if (summation == Summation.kahan)
     {
-        F s;
-        F c;
-        F y; // do not declare in the loop/put (algo can be used for matrixes and etc)
-        F t; // ditto
+        F s = summationInitValue!F;
+        F c = summationInitValue!F;
+        F y = summationInitValue!F; // do not declare in the loop/put (algo can be used for matrixes and etc)
+        F t = summationInitValue!F; // ditto
     }
     else
     static if (summation == Summation.pairwise)
@@ -588,12 +585,12 @@ struct Summator(T, Summation summation)
     else
     static if (summation == Summation.naive)
     {
-        F s;
+        F s = summationInitValue!F;
     }
     else
     static if (summation == Summation.fast)
     {
-        F s;
+        F s = summationInitValue!F;
     }
     else
     static assert(0, "Unsupported summation type for std.numeric.Summator.");
@@ -606,7 +603,6 @@ public:
     {
         static if (summation == Summation.precise)
         {
-            partials = scopeBuffer(scopeBufferArray);
             s = 0.0;
             o = 0;
             if (n) put(n);
@@ -664,26 +660,6 @@ public:
         static assert(0);
     }
 
-    // free ScopeBuffer
-    static if (summation == Summation.precise)
-    ~this()
-    {
-        version(LDC) pragma(inline, true);
-        partials.free;
-    }
-
-    // copy ScopeBuffer if necessary
-    static if (summation == Summation.precise)
-    this(this)
-    {
-        auto a = partials[];
-        if (scopeBufferArray.ptr !is a.ptr)
-        {
-            partials = scopeBuffer(scopeBufferArray);
-            partials.put(a);
-        }
-    }
-
     ///Adds `n` to the internal partial sums.
     void put(N)(N n)
         if (__traits(compiles, {T a = n; a = n; a += n;}))
@@ -695,7 +671,8 @@ public:
             if (.isFinite(x))
             {
                 size_t i;
-                foreach (y; partials[])
+                auto partials_data = partials.data;
+                foreach (y; partials_data[])
                 {
                     F h = x + y;
                     if (.isInfinity(cast(T)h))
@@ -736,11 +713,11 @@ public:
                     debug(numeric) assert(l.isFinite);
                     if (l)
                     {
-                        partials[i++] = l;
+                        partials_data[i++] = l;
                     }
                     x = h;
                 }
-                partials.length = i;
+                partials.shrinkTo(i);
                 if (x)
                 {
                     partials.put(x);
@@ -998,7 +975,7 @@ public:
     }
     do {
         size_t i;
-        foreach (y; partials[])
+        foreach (y; partials.data[])
         {
             F h = x + y;
             debug(numeric) assert(.isFinite(h));
@@ -1016,7 +993,7 @@ public:
             debug(numeric) assert(.isFinite(l));
             if (l)
             {
-                partials[i++] = l;
+                partials.data[i++] = l;
             }
             x = h;
         }
@@ -1039,7 +1016,7 @@ public:
         {
             debug(mir_sum)
             {
-                foreach (y; partials[])
+                foreach (y; partials.data[])
                 {
                     assert(y);
                     assert(y.isFinite);
@@ -1048,12 +1025,12 @@ public:
                 import mir.ndslice.slice: sliced;
                 import mir.ndslice.sorting: isSorted;
                 import mir.ndslice.topology: map;
-                assert(partials[].sliced.map!fabs.isSorted);
+                assert(partials.data[].sliced.map!fabs.isSorted);
             }
 
             if (s)
                 return s;
-            auto parts = partials[];
+            auto parts = partials.data[];
             F y = 0.0;
             //pick last
             if (parts.length)
@@ -1139,7 +1116,7 @@ public:
             return s;
         }
         else
-         static assert(0);
+            static assert(0);
     }
 
     version(none)
@@ -1147,7 +1124,7 @@ public:
     F partialsSum()() const
     {
         debug(numeric) partialsDebug;
-        auto parts = partials[];
+        auto parts = partials.data[];
         F y = 0.0;
         //pick last
         if (parts.length)
@@ -1175,8 +1152,7 @@ public:
             auto ret = typeof(return).init;
             ret.s = s;
             ret.o = o;
-            ret.partials = scopeBuffer(ret.scopeBufferArray);
-            foreach (p; partials[])
+            foreach (p; partials.data[])
             {
                 ret.partials.put(p);
             }
@@ -1261,8 +1237,7 @@ public:
     {
         static if (summation == Summation.precise)
         {
-            partials.free;
-            partials = scopeBuffer(scopeBufferArray);
+            partials.reset;
             s = 0.0;
             o = 0;
             if (rhs) put(rhs);
@@ -1334,7 +1309,7 @@ public:
         {
             s += rhs.s;
             o += rhs.o;
-            foreach (f; rhs.partials[])
+            foreach (f; rhs.partials.data[])
                 put(f);
         }
         else
@@ -1431,7 +1406,7 @@ public:
         {
             s -= rhs.s;
             o -= rhs.o;
-            foreach (f; rhs.partials[])
+            foreach (f; rhs.partials.data[])
                 put(-f);
         }
         else
@@ -1667,18 +1642,63 @@ Returns:
     The sum of all the elements in the range r.
 +/
 template sum(F, Summation summation = Summation.appropriate)
-    if (isFloatingPoint!F && isMutable!F)
+    if (isMutable!F)
 {
+    ///
     template sum(Range)
+        if (isIterable!Range)
     {
+        import core.lifetime: move;
+
+        ///
         F sum(Range r)
         {
-            return SummationAlgo!(summation, Range, F)(r);
+            static if (isComplex!F && summation == Summation.precise)
+            {
+                return sum(r, summationInitValue!F);
+            }
+            else
+            {
+                Summator!(F, ResolveSummationType!(summation, Range, sumType!Range)) sum;
+                sum.put(r.move);
+                return sum.sum;
+            }
         }
 
+        ///
         F sum(Range r, F seed)
         {
-            return SummationAlgo!(summation, Range, F)(r, seed);
+            static if (isComplex!F && summation == Summation.precise)
+            {
+                alias T = typeof(F.init.re);
+                auto sumRe = Summator!(T, Summation.precise)(seed.re);
+                auto sumIm = Summator!(T, Summation.precise)(seed.im);
+                import mir.ndslice.slice: isSlice;
+                static if (isSlice!Range)
+                {
+                    import mir.algorithm.iteration: each;
+                    r.each!((auto ref elem)
+                    {
+                        sumRe.put(elem.re);
+                        sumIm.put(elem.im);
+                    });
+                }
+                else
+                {
+                    foreach (ref elem; r)
+                    {
+                        sumRe.put(elem.re);
+                        sumIm.put(elem.im);
+                    }
+                }
+                return sumRe.sum + sumIm.sum * 1fi;
+            }
+            else
+            {
+                auto sum = Summator!(F, ResolveSummationType!(summation, Range, F))(seed);
+                sum.put(r.move);
+                return sum.sum;
+            }
         }
     }
 }
@@ -1686,20 +1706,27 @@ template sum(F, Summation summation = Summation.appropriate)
 ///ditto
 template sum(Summation summation = Summation.appropriate)
 {
+    ///
     auto sum(Range)(Range r)
+        if (isIterable!Range)
     {
-        return SummationAlgo!(summation, Range, sumType!Range)(r);
+        import core.lifetime: move;
+        alias F = sumType!Range;
+        return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move);
     }
 
+    ///
     F sum(Range, F)(Range r, F seed)
+        if (isIterable!Range)
     {
-        return SummationAlgo!(summation, Range, F)(r, seed);
+        import core.lifetime: move;
+        return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move, seed);
     }
 }
 
 ///ditto
 template sum(F, string summation)
-    if (isFloatingPoint!F && isMutable!F)
+    if (isMutable!F)
 {
     mixin("alias sum = .sum!(F, Summation." ~ summation ~ ");");
 }
@@ -1862,78 +1889,21 @@ unittest
     }
 }
 
-/++
-Precise summation.
-+/
-private F sumPrecise(Range, F)(Range r, F seed = summationInitValue!F)
-    if (isFloatingPoint!F || isComplex!F)
+package template ResolveSummationType(Summation summation, Range, F)
 {
-    static if (isFloatingPoint!F)
-    {
-        auto sum = Summator!(F, Summation.precise)(seed);
-        sum.put(r);
-        return sum.sum;
-    }
-    else
-    {
-        alias T = typeof(F.init.re);
-        auto sumRe = Summator!(T, Summation.precise)(seed.re);
-        auto sumIm = Summator!(T, Summation.precise)(seed.im);
-        import mir.ndslice.slice: isSlice;
-        static if (isSlice!Range)
-        {
-            import mir.algorithm.iteration: each;
-            r.each!((auto ref elem)
-            {
-                sumRe.put(elem.re);
-                sumIm.put(elem.im);
-            });
-        }
-        else
-        {
-            foreach (ref elem; r)
-            {
-                sumRe.put(elem.re);
-                sumIm.put(elem.im);
-            }
-        }
-        return sumRe.sum + sumIm.sum * 1fi;
-    }
-}
-
-private template SummationAlgo(Summation summation, Range, F)
-{
-    static if (summation == Summation.precise)
-        alias SummationAlgo = sumPrecise!(Range, F);
-    else
     static if (summation == Summation.appropriate)
     {
         static if (isSummable!(Range, F))
-            alias SummationAlgo = SummationAlgo!(Summation.pairwise, Range, F);
+            enum ResolveSummationType = Summation.pairwise;
         else
         static if (is(F == class) || is(F == struct) || is(F == interface))
-            alias SummationAlgo = SummationAlgo!(Summation.naive, Range, F);
+            enum ResolveSummationType = Summation.naive;
         else
-            alias SummationAlgo = SummationAlgo!(Summation.fast, Range, F);
+            enum ResolveSummationType = Summation.fast;
     }
     else
     {
-        F SummationAlgo(Range r)
-        {
-            static if (__traits(compiles, {Summator!(F, summation) sum;}))
-                Summator!(F, summation) sum;
-            else
-                auto sum = Summator!(F, summation)(summationInitValue!F);
-            sum.put(r);
-            return sum.sum;
-        }
-
-        F SummationAlgo(Range r, F s)
-        {
-            auto sum = Summator!(F, summation)(s);
-            sum.put(r);
-            return sum.sum;
-        }
+        enum ResolveSummationType = summation;
     }
 }
 
