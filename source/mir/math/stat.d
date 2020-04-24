@@ -23,99 +23,160 @@ import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
 import std.range.primitives: isInputRange;
-import std.traits: isArray, isFloatingPoint;
+import std.traits: isArray, isFloatingPoint, isMutable;
 
-private U prod(T : U[N], U, size_t N)(T input)
-    if (N > 0)
+/++
+Output range for mean.
++/
+struct MeanAccumulator(T, Summation summation) 
+    if (isMutable!T)
 {
-    static if (N == 1) {
-        return input[0];
-    } else {
-        U output = input[0];
-        for (size_t i = 1; i < N; i++)
-            output *= input[i];
-        return output;
+    private:
+    
+    Summator!(T, summation) sum;
+    size_t count;
+    
+    public:
+    
+    this()(T x, size_t n = 0) {
+        sum = Summator!(T, summation)(x);
+        count = n;
+    }
+    
+    F mean(F = T)() @property
+    {
+        return sum.sum / cast(F) count;
+    }
+    
+    void put(U)(U x)
+    {
+        this.sum.put(x);
+		size_t n;
+        static if (hasShape!U) {
+        	n = x.elementCount;
+        } else static if (hasLength!U) {
+        	n = x.length;
+        } else {
+            n = 1;    
+        }
+        this.count += n;
     }
 }
 
-version(mir_test) @safe pure nothrow @nogc unittest
+///
+version(mir_test) @safe pure nothrow unittest {
+    import mir.ndslice.slice : sliced;
+
+    MeanAccumulator!(double, Summation.pairwise) x;
+    x.put([0.0, 1, 2, 3, 4].sliced);
+    assert(x.mean == 2);
+    x.put(5);
+    assert(x.mean == 2.5);
+}
+
+version(mir_test) @safe pure nothrow unittest {
+    import mir.ndslice.slice : sliced;
+
+    auto x = MeanAccumulator!(float, Summation.pairwise)(0f, 0);
+    x.put([0, 1, 2, 3, 4].sliced);
+    assert(x.mean == 2);
+    x.put(5);
+    assert(x.mean == 2.5);
+}
+
+private template MeanAlgo(Summation summation, Range, F)
 {
-    size_t[1] x = [3];
-    size_t[2] y = [4, 2];
-    
-    assert(x.prod == 3);
-    assert(y.prod == 8);
+    static if (summation == Summation.precise)
+        alias MeanAlgo = sumPrecise!(Range, F);
+    else
+    static if (summation == Summation.appropriate)
+    {
+        static if (isSummable!(Range, F))
+            alias MeanAlgo = MeanAlgo!(Summation.pairwise, Range, F);
+        else
+        static if (is(F == class) || is(F == struct) || is(F == interface))
+            alias MeanAlgo = MeanAlgo!(Summation.naive, Range, F);
+        else
+            alias MeanAlgo = MeanAlgo!(Summation.fast, Range, F);
+    }
+    else
+    {
+        F MeanAlgo(Range r)
+        {
+            static if (__traits(compiles, {MeanAccumulator!(F, summation) mean;}))
+                MeanAccumulator!(F, summation) mean;
+            else
+                auto mean = MeanAccumulator!(F, summation)(summationInitValue!F);
+            mean.put(r);
+            return mean.mean;
+        }
+
+        F MeanAlgo(Range r, F s, size_t n = 0)
+        {
+            auto mean = MeanAccumulator!(F, summation)(s, n);
+            mean.put(r);
+            return mean.mean;
+        }
+    }
 }
 
 /++
-Computes the arithmetic mean of `r`, which must be a finite iterable.
+Computes the average of `r`, which must be a finite iterable.
+
+Can optionally provide a `seed`, which will be passed to the sum function. In 
+addition, a `seedCount` can optionally be provided. This provides an initial count
+to the mean function. 
 
 Returns:
-    The arithmetic mean of all the elements in the range r.
+    The average of all the elements in the range r.
 +/
+template mean(F, Summation summation = Summation.appropriate)
+{
+    /++
+    Params:
+        r = range
+    +/
+    @safe @fmamath F
+    mean(F, Range)(Range r)
+    {
+        return MeanAlgo!(summation, Range, F)(r);
+    }
+
+    /++
+    Params:
+        r = range
+        seed = seed to pass to sum function
+        seedCount = number of elements associated with seed, optional (default = 0)
+    +/
+    @safe @fmamath F
+    mean(Range)(Range r, F seed, size_t seed_count = 0)
+    {
+        return MeanAlgo!(summation, Range, F)(r, seed, seedCount);
+    }
+}
+
 template mean(Summation summation = Summation.appropriate)
 {
-    ///
+    /++
+    Params:
+        r = range
+    +/
     @safe @fmamath sumType!Range
     mean(Range)(Range r)
-        if (hasShape!Range
-         || hasLength!Range
-         || summation == Summation.appropriate
-         || summation == Summation.fast
-         || summation == Summation.naive)
     {
-        static if (hasShape!Range || hasLength!Range)
-        {
-            static if (hasShape!Range)
-            {
-                auto n = r.shape.prod;
-            } else {
-                auto n = r.length;
-            }
-            return sum!summation(r.move) / cast(sumType!Range) n;
-        }
-        else
-        {
-            auto s = cast(typeof(return)) 0;
-            size_t length;
-            foreach (e; r)
-            {
-                length++;
-                s += e;
-            }
-            return s / cast(sumType!Range) length;
-        }
+        return MeanAlgo!(summation, Range, sumType!Range)(r);
     }
     
-    ///
+    /++
+    Params:
+        r = range
+        seed = seed to pass to sum function
+        seedCount = number of elements associated with seed, optional (default = 0)
+    +/
     @safe @fmamath F
-    mean(Range, F)(Range r, F seed)
-        if (hasShape!Range
-         || hasLength!Range
-         || summation == Summation.appropriate
-         || summation == Summation.fast
-         || summation == Summation.naive)
+    mean(Range, F)(Range r, F seed, size_t seedCount = 0)
     {
-        static if (hasShape!Range || hasLength!Range)
-        {
-            static if (hasShape!Range)
-            {
-                auto n = r.shape.prod;
-            } else {
-                auto n = r.length;
-            }
-            return sum!summation(r.move, seed) / cast(F) n;
-        }
-        else
-        {
-            size_t length;
-            foreach (e; r)
-            {
-                length++;
-                seed += e;
-            }
-            return seed / cast(F) length;
-        }
+        return MeanAlgo!(summation, Range, F)(r, seed, seedCount);
     }
 }
 
@@ -137,6 +198,12 @@ version(mir_test) @safe pure nothrow unittest
     
     float seed = 0;
     assert(is(typeof(mean([1, 2, 3], seed)) == float));
+}
+
+version(mir_test) @safe pure nothrow unittest {
+    assert([1.0, 2, 3, 4].mean == 2.5);
+    assert([1, 2, 3, 4].mean(0f) == 2.5);
+    assert([1, 2, 3, 4].mean(10f, 1) == 4.0);
 }
 
 /++

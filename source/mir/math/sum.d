@@ -1937,7 +1937,7 @@ private template SummationAlgo(Summation summation, Range, F)
     }
 }
 
-private T summationInitValue(T)()
+package T summationInitValue(T)()
 {
     static if (__traits(compiles, {T a = 0.0;}))
     {
