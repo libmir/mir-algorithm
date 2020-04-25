@@ -35,9 +35,9 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     private size_t _currentLength;
     private align(T.alignof) ubyte[_bufferLength * T.sizeof] _scopeBufferPayload = void;
 
-    private ref T[_bufferLength] _scopeBuffer() @trusted scope
+    private ref inout(T[_bufferLength]) _scopeBuffer() inout @trusted scope
     {
-        return *cast(T[_bufferLength]*)&_scopeBufferPayload;
+        return *cast(inout(T[_bufferLength])*)&_scopeBufferPayload;
     }
 
     private T[] prepare(size_t n) @trusted scope
@@ -71,7 +71,19 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     else
         private alias R = T;
 
-    ///
+    /// Copy constructor is enabled only if `T` is mutable type without eleborate assign.
+    static if (isMutable!T && !hasElaborateAssign!T)
+    this(this)
+    {
+        import mir.internal.memory: malloc;
+        if (_buffer.ptr)
+        {
+            auto buffer = (cast(T*)malloc(T.sizeof * _buffer.length))[0 .. _buffer.length];
+            buffer[0 .. _currentLength] = _buffer[0 .. _currentLength];
+            _buffer = buffer;
+        }
+    }
+    else
     @disable this(this);
 
     ///
@@ -79,7 +91,21 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     {
         import mir.internal.memory: free;
         data._mir_destroy;
-        (() @trusted => free(cast(void*)_buffer.ptr))();
+        (() @trusted { if (_buffer.ptr) free(cast(void*)_buffer.ptr); })();
+    }
+
+    ///
+    void shrinkTo(size_t length)
+    {
+        assert(length <= _currentLength);
+        data[length .. _currentLength]._mir_destroy;
+        _currentLength = length;
+    }
+
+    ///
+    size_t length() scope const @property
+    {
+        return _currentLength;
     }
 
     ///
@@ -160,7 +186,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
-    T[] data() @property @safe scope
+    inout(T)[] data() inout @property @safe scope
     {
         return _buffer.length ? _buffer[0 .. _currentLength] : _scopeBuffer[0 .. _currentLength];
     }
