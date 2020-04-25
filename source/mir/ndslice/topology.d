@@ -3987,7 +3987,8 @@ template alongDim(Dimensions...)
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota;
+    import mir.ndslice;
+
     //  ------------
     // | 0  1  2  3 |
     // | 4  5  6  7 |
@@ -4035,8 +4036,8 @@ version(mir_test) unittest
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota, universal, flattened, reshape;
-    import mir.ndslice.dynamic : strided, transposed;
+    import mir.ndslice;
+
     //  ----------------
     // | 0   1  2  3  4 |
     // | 5   6  7  8  9 |
@@ -4054,20 +4055,7 @@ version(mir_test) unittest
     // | 55 56 57 58 59 |
     //  ----------------
     auto slice = iota(3, 4, 5);
-    //->
-    // | 4 5 |
-    //->
-    // | 3 5 |
-    //->
-    // | 3 4 |
-    //->
-    // | 5 4 |
-    //->
-    // | 3 |
-    //->
-    // | 4 |
-    //->
-    // | 5 |
+
     size_t[2] shape45 = [4, 5];
     size_t[2] shape35 = [3, 5];
     size_t[2] shape34 = [3, 4];
@@ -4075,6 +4063,42 @@ version(mir_test) unittest
     size_t[1] shape3 = [3];
     size_t[1] shape4 = [4];
     size_t[1] shape5 = [5];
+
+    //  ----------
+    // |  0 20 40 |
+    // |  5 25 45 |
+    // | 10 30 50 |
+    // | 15 35 55 |
+    //  - - - - -
+    // |  1 21 41 |
+    // |  6 26 46 |
+    // | 11 31 51 |
+    // | 16 36 56 |
+    //  - - - - -
+    // |  2 22 42 |
+    // |  7 27 47 |
+    // | 12 32 52 |
+    // | 17 37 57 |
+    //  - - - - -
+    // |  3 23 43 |
+    // |  8 28 48 |
+    // | 13 33 53 |
+    // | 18 38 58 |
+    //  - - - - -
+    // |  4 24 44 |
+    // |  9 29 49 |
+    // | 14 34 54 |
+    // | 19 39 59 |
+    //  ----------
+    auto a = slice.alongDim!0.transposed;
+    static assert(is(typeof(a) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal), 2, Universal)));
+
+    assert(a.shape == shape54);
+    assert(a.front.shape == shape4);
+    assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed);
+    a.popFront;
+    assert(a.front.front == iota([3], 1, 20));
+
 
     //  ----------------
     // |  0  1  2  3  4 |
@@ -4157,41 +4181,6 @@ version(mir_test) unittest
     assert(z.front == iota([3, 4], 0, 5));
     z.popFront;
     assert(z.front.front == iota([4], 1, 5));
-
-    //  ----------
-    // |  0 20 40 |
-    // |  5 25 45 |
-    // | 10 30 50 |
-    // | 15 35 55 |
-    //  - - - - -
-    // |  1 21 41 |
-    // |  6 26 46 |
-    // | 11 31 51 |
-    // | 16 36 56 |
-    //  - - - - -
-    // |  2 22 42 |
-    // |  7 27 47 |
-    // | 12 32 52 |
-    // | 17 37 57 |
-    //  - - - - -
-    // |  3 23 43 |
-    // |  8 28 48 |
-    // | 13 33 53 |
-    // | 18 38 58 |
-    //  - - - - -
-    // |  4 24 44 |
-    // |  9 29 49 |
-    // | 14 34 54 |
-    // | 19 39 59 |
-    //  ----------
-    auto a = slice.alongDim!0.transposed;
-    static assert(is(typeof(a) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal), 2, Universal)));
-
-    assert(a.shape == shape54);
-    assert(a.front.shape == shape4);
-    assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed);
-    a.popFront;
-    assert(a.front.front == iota([3], 1, 20));
 }
 
 /++
@@ -4301,7 +4290,8 @@ template byDim(Dimensions...)
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota;
+    import mir.ndslice;
+
     //  ------------
     // | 0  1  2  3 |
     // | 4  5  6  7 |
@@ -4349,8 +4339,8 @@ version(mir_test) unittest
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota, universal, flattened, reshape;
-    import mir.ndslice.dynamic : strided, transposed;
+    import mir.ndslice;
+
     //  ----------------
     // | 0   1  2  3  4 |
     // | 5   6  7  8  9 |
@@ -4368,20 +4358,7 @@ version(mir_test) unittest
     // | 55 56 57 58 59 |
     //  ----------------
     auto slice = iota(3, 4, 5);
-    //->
-    // | 4 5 |
-    //->
-    // | 3 5 |
-    //->
-    // | 3 4 |
-    //->
-    // | 5 4 |
-    //->
-    // | 3 |
-    //->
-    // | 4 |
-    //->
-    // | 5 |
+
     size_t[2] shape45 = [4, 5];
     size_t[2] shape35 = [3, 5];
     size_t[2] shape34 = [3, 4];
