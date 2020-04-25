@@ -503,6 +503,7 @@ template transposed(Dimensions...)
         }
         else
         {
+            import core.lifetime: move;
             enum hasRowStride = [Dimensions].any!(a => a + 1 == s);
             static if (kind == Universal || kind == Canonical && !hasRowStride)
             {
@@ -512,12 +513,12 @@ template transposed(Dimensions...)
             static if (hasRowStride)
             {
                 import mir.ndslice.topology: universal;
-                auto slice = _slice.universal;
+                auto slice = _slice.move.universal;
             }
             else
             {
                 import mir.ndslice.topology: canonical;
-                auto slice = _slice.canonical;
+                auto slice = _slice.move.canonical;
             }
             mixin DimensionsCountCTError;
             foreach (i, dimension; Dimensions)
@@ -535,8 +536,9 @@ template transposed(Dimensions...)
 ///ditto
 auto transposed(Iterator, size_t N, SliceKind kind, size_t M)(Slice!(Iterator, N, kind) _slice, size_t[M] dimensions...)
 {
+    import core.lifetime: move;
     import mir.ndslice.topology: universal;
-    auto slice = _slice.universal;
+    auto slice = _slice.move.universal;
 
     mixin (DimensionsCountRTError);
     foreach (dimension; dimensions)
@@ -628,8 +630,9 @@ Returns:
 +/
 Slice!(Iterator, N, Universal) allReversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
 {
+    import core.lifetime: move;
     import mir.ndslice.topology: universal;
-    auto slice = _slice.universal;
+    auto slice = _slice.move.universal;
     foreach (dimension; Iota!N)
     {
         mixin (_reversedCode);

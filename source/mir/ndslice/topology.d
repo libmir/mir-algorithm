@@ -142,6 +142,8 @@ See_also:
 +/
 auto universal(Iterator, size_t N, SliceKind kind, Labels...)(Slice!(Iterator, N, kind, Labels) slice)
 {
+    import core.lifetime: move;
+
     static if (kind == Universal)
     {
         return slice;
@@ -149,7 +151,7 @@ auto universal(Iterator, size_t N, SliceKind kind, Labels...)(Slice!(Iterator, N
     else
     static if (is(Iterator : RetroIterator!It, It))
     {
-        return slice.retro.universal.retro;
+        return slice.move.retro.universal.retro;
     }
     else
     {
@@ -174,7 +176,7 @@ auto universal(Iterator, size_t N, SliceKind kind, Labels...)(Slice!(Iterator, N
                     ball *= slice._lengths[i];
             }
         }
-        return Ret(lengths, strides, slice._iterator, slice._labels);
+        return Ret(lengths, strides, slice._iterator.move, slice._labels);
     }
 }
 
@@ -236,6 +238,8 @@ Slice!(Iterator, N, N == 1 ? Contiguous : Canonical, Labels)
     (Slice!(Iterator, N, kind, Labels) slice)
     if (kind == Contiguous || kind == Canonical)
 {
+    import core.lifetime: move;
+
     static if (kind == Canonical || N == 1)
         return slice;
     else
@@ -251,7 +255,7 @@ Slice!(Iterator, N, N == 1 ? Contiguous : Canonical, Labels)
             ball *= slice._lengths[i + 1];
             strides[i] = ball;
         }
-        return Ret(lengths, strides, slice._iterator, slice._labels);
+        return Ret(lengths, strides, slice._iterator.move, slice._labels);
     }
 }
 
@@ -440,7 +444,8 @@ Slice!(SliceIterator!(Iterator, P, P == 1 && kind == Canonical ? Contiguous : ki
 pack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     if (P && P < N)
 {
-    return slice.ipack!(N - P);
+    import core.lifetime: move;
+    return slice.move.ipack!(N - P);
 }
 
 ///
@@ -474,18 +479,19 @@ Slice!(SliceIterator!(Iterator, N - P, N - P == 1 && kind == Canonical ? Contigu
 ipack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     if (P && P < N)
 {
+    import core.lifetime: move;
     alias Ret = typeof(return);
     alias It = Ret.Iterator;
     alias EN = It.Element.N;
     alias ES = It.Element.S;
-    auto sl = slice.universal;
+    auto sl = slice.move.universal;
     static if (It.Element.kind == Contiguous)
         return Ret(
             cast(   size_t[P]) sl._lengths[0 .. P],
             cast(ptrdiff_t[P]) sl._strides[0 .. P],
             It(
                 cast(size_t[EN]) sl._lengths[P .. $],
-                sl._iterator));
+                sl._iterator.move));
     else
         return Ret(
             cast(   size_t[P]) sl._lengths[0 .. P],
@@ -493,7 +499,7 @@ ipack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sl
             It(
                 cast(   size_t[EN]) sl._lengths[P .. $],
                 cast(ptrdiff_t[ES]) sl._strides[P .. $ - (It.Element.kind == Canonical)],
-                sl._iterator));
+                sl._iterator.move));
 }
 
 ///
@@ -2126,6 +2132,7 @@ auto retro
     (Slice!(Iterator, N, kind) slice)
     @trusted
 {
+    import core.lifetime: move;
     static if (kind == Contiguous || kind == Canonical)
     {
         size_t[slice.N] lengths;
@@ -2145,18 +2152,20 @@ auto retro
         static if (is(Iterator : RetroIterator!It, It))
         {
             alias Ret = Slice!(It, N, kind);
-            return Ret(structure, slice._iterator._iterator - slice.lastIndex);
+            slice._iterator._iterator -= slice.lastIndex;
+            return Ret(structure, slice._iterator._iterator.move);
         }
         else
         {
             alias Ret = Slice!(RetroIterator!Iterator, N, kind);
-            return Ret(structure, RetroIterator!Iterator(slice._iterator + slice.lastIndex));
+            slice._iterator += slice.lastIndex;
+            return Ret(structure, RetroIterator!Iterator(slice._iterator.move));
         }
     }
     else
     {
         import mir.ndslice.dynamic: allReversed;
-        return slice.allReversed;
+        return slice.move.allReversed;
     }
 }
 
@@ -2198,6 +2207,7 @@ auto bitwise
     (Slice!(Iterator, N, kind) slice)
     if (__traits(isIntegral, I) && (kind == Contiguous || kind == Canonical))
 {
+    import core.lifetime: move;
     static if (is(Iterator : FieldIterator!Field, Field))
     {
         enum simplified = true;
@@ -2216,9 +2226,9 @@ auto bitwise
     foreach(i; Iota!(Ret.S))
         structure_[1][i] = slice._strides[i];
     static if (simplified)
-        return Ret(structure_, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field)));
+        return Ret(structure_, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field.move)));
     else
-        return Ret(structure_, It(0, BitField!Iterator(slice._iterator)));
+        return Ret(structure_, It(0, BitField!Iterator(slice._iterator.move)));
 }
 
 /// ditto
@@ -2282,7 +2292,8 @@ Returns: A bitwise field.
 auto bitwiseField(Field, I = typeof(Field.init[size_t.init]))(Field field)
     if (__traits(isUnsigned, I))
 {
-    return BitField!(Field, I)(field);
+    import core.lifetime: move;
+    return BitField!(Field, I)(field.move);
 }
 
 /++
@@ -2300,6 +2311,7 @@ auto bitpack
     (Slice!(Iterator, N, kind) slice)
     if (__traits(isIntegral, I) && (kind == Contiguous || kind == Canonical) && pack > 1)
 {
+    import core.lifetime: move;
     static if (is(Iterator : FieldIterator!Field, Field) && I.sizeof * 8 % pack == 0)
     {
         enum simplified = true;
@@ -2319,9 +2331,9 @@ auto bitpack
     foreach(i; Iota!(Ret.S))
         structure[1][i] = slice._strides[i];
     static if (simplified)
-        return Ret(structure, It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field)));
+        return Ret(structure, It(slice._iterator._index * I.sizeof * 8 / pack, BitpackField!(Field, pack)(slice._iterator._field.move)));
     else
-        return Ret(structure, It(0, BitpackField!(Iterator, pack)(slice._iterator)));
+        return Ret(structure, It(0, BitpackField!(Iterator, pack)(slice._iterator.move)));
 }
 
 /// ditto
@@ -2371,9 +2383,10 @@ bytegroup
     (Slice!(Iterator, N, kind) slice)
     if ((kind == Contiguous || kind == Canonical) && group)
 {
+    import core.lifetime: move;
     auto structure = slice._structure;
     structure[0][$ - 1] /= group;
-    return typeof(return)(structure, BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator));
+    return typeof(return)(structure, BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator.move));
 }
 
 
@@ -2470,10 +2483,11 @@ template map(fun...)
             auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
+                import core.lifetime: move;
                 alias Iterator = typeof(_mapIterator!f(slice._iterator));
                 import mir.ndslice.traits: isIterator;
                 static assert(isIterator!Iterator, "mir.ndslice.map: probably the lambda function contains a compile time bug.");
-                return Slice!(Iterator, N, kind)(slice._structure, _mapIterator!f(slice._iterator));
+                return Slice!(Iterator, N, kind)(slice._structure, _mapIterator!f(slice._iterator.move));
             }
 
             /// ditto
@@ -2660,21 +2674,24 @@ See_Also:
         Callable callable,
     )
 {
+    import core.lifetime: move;
     alias It = VmapIterator!(Iterator, Callable);
-    return Slice!(It, N, kind)(slice._structure, It(slice._iterator, callable));
+    return Slice!(It, N, kind)(slice._structure, It(slice._iterator.move, callable.move));
 }
 
 /// ditto
 auto vmap(T, Callable)(T[] array, Callable callable)
 {
-    return vmap(array.sliced, callable);
+    import core.lifetime: move;
+    return vmap(array.sliced, callable.move);
 }
 
 /// ditto
 auto vmap(T, Callable)(T withAsSlice, Callable callable)
     if (hasAsSlice!T)
 {
-    return vmap(withAsSlice.asSlice, callable);
+    import core.lifetime: move;
+    return vmap(withAsSlice.asSlice, callable.move);
 }
 
 ///
@@ -2805,16 +2822,17 @@ private auto unhideStride
 {
     static if (is(Iterator : StrideIterator!It, It))
     {
+        import core.lifetime: move;
         static if (kind == Universal)
         {
             alias Ret = SliceKind!(It, N, Universal);
             auto strides = slice._strides;
             foreach(i; Iota!(Ret.S))
                 strides[i] = slice._strides[i] * slice._iterator._stride;
-            return Slice!(It, N, Universal)(slice._lengths, strides, slice._iterator._iterator);
+            return Slice!(It, N, Universal)(slice._lengths, strides, slice._iterator._iterator.move);
         }
         else
-            return slice.universal.unhideStride;
+            return slice.move.universal.unhideStride;
     }
     else
         return slice;
@@ -3047,8 +3065,9 @@ template as(T)
             return slice.toConst;
         else
         {
+            import core.lifetime: move;
             import mir.conv: to;
-            return map!(to!T)(slice);
+            return map!(to!T)(slice.move);
         }
     }
 
@@ -3113,10 +3132,11 @@ Slice!(IndexIterator!(Iterator, Field), N, kind)
     indexed(Field, Iterator, size_t N, SliceKind kind)
     (Field source, Slice!(Iterator, N, kind) indexes)
 {
+    import core.lifetime: move;
     return typeof(return)(
             indexes._structure,
             IndexIterator!(Iterator, Field)(
-                indexes._iterator,
+                indexes._iterator.move,
                 source));
 }
 
@@ -3163,9 +3183,10 @@ Slice!(SubSliceIterator!(Iterator, Sliceable), N, kind)
         Slice!(Iterator, N, kind) slices,
     )
 {
+    import core.lifetime: move;
     return typeof(return)(
         slices._structure,
-        SubSliceIterator!(Iterator, Sliceable)(slices._iterator, sliceable)
+        SubSliceIterator!(Iterator, Sliceable)(slices._iterator.move, sliceable.move)
     );
 }
 
@@ -3355,6 +3376,17 @@ Returns:
 auto unzip
     (char name, size_t N, SliceKind kind, Iterators...)
     (Slice!(ZipIterator!Iterators, N, kind) slice)
+{
+    import core.lifetime: move;
+    enum size_t i = name - 'a';
+    static assert(i < Iterators.length, `unzip: constraint: size_t(name - 'a') < Iterators.length`);
+    return Slice!(Iterators[i], N, kind)(slice._structure, slice._iterator._iterators[i].move).unhideStride;
+}
+
+/// ditto
+auto unzip
+    (char name, size_t N, SliceKind kind, Iterators...)
+    (ref Slice!(ZipIterator!Iterators, N, kind) slice)
 {
     enum size_t i = name - 'a';
     static assert(i < Iterators.length, `unzip: constraint: size_t(name - 'a') < Iterators.length`);
@@ -3954,7 +3986,7 @@ template byDim(Dimensions...)
                 }
                 else
                 {
-                    auto ret = trans.ipack!(Dimensions.length);
+                    auto ret = trans.move.ipack!(Dimensions.length);
                     static if ((kind == Contiguous || kind == Canonical && N - Dimensions.length == 1) && [Dimensions].all!(a => a < Dimensions.length))
                     {
                         return ret
@@ -4016,6 +4048,8 @@ version(mir_test) unittest
     // | 8  9 10 11 |
     //  ------------
     auto x = slice.byDim!0;
+    static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t), 1, Universal)));
+
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
     assert(x.front == iota(4));
@@ -4029,6 +4063,8 @@ version(mir_test) unittest
     // | 3  7 11 |
     //  ---------
     auto y = slice.byDim!1;
+    static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal))));
+
     assert(y.shape == shape4);
     assert(y.front.shape == shape3);
     assert(y.front == iota([3], 0, 4));
@@ -4098,6 +4134,8 @@ version(mir_test) unittest
     // | 55 56 57 58 59 |
     //  ----------------
     auto x = slice.byDim!0;
+    static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 2), 1, Universal)));
+
     assert(x.shape == shape3);
     assert(x.front.shape == shape45);
     assert(x.front == iota([4, 5]));
@@ -4122,6 +4160,8 @@ version(mir_test) unittest
     // | 55 56 57 58 59 |
     //  ----------------
     auto y = slice.byDim!1;
+    static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 2, Canonical), 1, Universal)));
+
     assert(y.shape == shape4);
     assert(y.front.shape == shape35);
     int err;
@@ -4151,6 +4191,8 @@ version(mir_test) unittest
     // | 44 49 54 59 |
     //  -------------
     auto z = slice.byDim!2;
+    static assert(is(typeof(z) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 2, Universal))));
+
     assert(z.shape == shape5);
     assert(z.front.shape == shape34);
     assert(z.front == iota([3, 4], 0, 5));
@@ -4184,6 +4226,8 @@ version(mir_test) unittest
     // | 19 39 59 |
     //  ----------
     auto a = slice.byDim!(2, 1);
+    static assert(is(typeof(a) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal), 2, Universal)));
+
     assert(a.shape == shape54);
     assert(a.front.shape == shape4);
     assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed!1);
@@ -4215,6 +4259,8 @@ version(mir_test) unittest
     // | 8  9 10 11 |
     //  ------------
     auto x = slice.byDim!0;
+    static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t), 1, Universal)));
+
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
     assert(x.front == iota(4));
@@ -4228,6 +4274,8 @@ version(mir_test) unittest
     // | 3  7 11 |
     //  ---------
     auto y = slice.byDim!1;
+    static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal))));
+
     assert(y.shape == shape4);
     assert(y.front.shape == shape3);
     assert(y.front == iota([3], 0, 4));
@@ -4259,6 +4307,8 @@ version(mir_test) unittest
     // | 8  9 10 11 |
     //  ------------
     auto x = slice.byDim!0;
+    static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal), 1, Universal)));
+
     assert(x.shape == shape3);
     assert(x.front.shape == shape4);
     assert(x.front == iota(4));
@@ -4272,6 +4322,8 @@ version(mir_test) unittest
     // | 3  7 11 |
     //  ---------
     auto y = slice.byDim!1;
+    static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal), 1, Universal)));
+
     assert(y.shape == shape4);
     assert(y.front.shape == shape3);
     assert(y.front == iota([3], 0, 4));
@@ -4289,6 +4341,7 @@ version(mir_test) unittest
     //  -------
     auto slice = iota(3);
     auto x = slice.byDim!0;
+    static assert (is(typeof(x) == typeof(slice)));
     assert(x == slice);
 }
 
