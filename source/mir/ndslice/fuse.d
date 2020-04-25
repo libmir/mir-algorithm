@@ -23,10 +23,6 @@ import mir.qualifier;
 import std.meta;
 import std.traits;
 
-import mir.math.common: optmath;
-
-@optmath:
-
 /++
 Fuses ndrange `r` into GC-allocated ($(LREF fuse)) or RC-allocated ($(LREF rcfuse)) ndslice.
 Can be used to join rows or columns into a matrix.
@@ -41,7 +37,7 @@ alias fuse(Dimensions...) = fuseImpl!(false, void, Dimensions);
 alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 
 ///
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice : Contiguous, Slice;
@@ -70,7 +66,7 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 }
 
 /// Transposed
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
@@ -99,7 +95,7 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 
 
 /// 3D
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
@@ -120,7 +116,7 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 }
 
 /// Work with RC Arrays of RC Arrays
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice;
@@ -148,7 +144,7 @@ alias fuseAs(T, Dimensions...) = fuseImpl!(false, T, Dimensions);
 alias rcfuseAs(T, Dimensions...) = fuseImpl!(true, T, Dimensions);
 
 ///
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice : Contiguous, Slice;
@@ -185,7 +181,7 @@ template fuseImpl(bool RC, T_, Dimensions...)
     Params:
         r = parallelotope (ndrange) with length/shape and input range primitives.
     +/
-    @optmath auto fuseImpl(NDRange)(NDRange r)
+    auto fuseImpl(NDRange)(NDRange r)
         if (hasShape!NDRange)
     {
         import mir.conv: emplaceRef;
@@ -290,6 +286,11 @@ private template fuseDimensionCount(R)
         enum size_t fuseDimensionCount = 0;
 }
 
+private static immutable shapeExceptionMsg = "fuseShape Exception: elements have different shapes/lengths";
+
+version(D_Exceptions)
+    static immutable shapeException = new Exception(shapeExceptionMsg);
+
 /+
 TODO docs
 +/
@@ -298,7 +299,9 @@ size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
 {
     // auto outerShape = r.shape;
     enum N = r.shape.length;
-    static if (N == typeof(return).length)
+    enum RN = typeof(return).length;
+    enum M = RN - N;
+    static if (M == 0)
     {
         return r.shape;
     }
@@ -310,6 +313,14 @@ size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
         if (!ret[0 .. N].anyEmptyShape)
         {
             ret[N .. $] = fuseShape(mixin("r" ~ ".front".repeat(N).fuseCells.field));
+            import mir.algorithm.iteration: all;
+            if (!all!((a) => cast(size_t[M]) ret[N .. $] == .fuseShape(a))(r))
+            {
+                version (D_Exceptions)
+                    throw shapeException;
+                else
+                    assert(0, shapeExceptionMsg);
+            }
         }
         return ret;
     }
@@ -358,7 +369,7 @@ auto fuseCells(S)(S cells)
 }
 
 /// 1D
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.topology: iota;
     enum ar = [[0, 1], [], [2, 3, 4, 5], [6], [7, 8, 9]];
@@ -367,7 +378,7 @@ auto fuseCells(S)(S cells)
 }
 
 /// 2D
-@safe pure nothrow version(mir_test) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.ndslice.topology: iota;
     import mir.ndslice.chunks;
