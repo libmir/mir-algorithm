@@ -3,16 +3,6 @@ This is a submodule of $(MREF mir,ndslice).
 
 Selectors create new views and iteration patterns over the same data, without copying.
 
-$(BOOKTABLE $(H2 SliceKind Selectors),
-$(TR $(TH Function Name) $(TH Description))
-
-$(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
-$(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
-$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind) (unsafe).)
-$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind) (unsafe).)
-
-)
-
 $(BOOKTABLE $(H2 Sequence Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
@@ -24,7 +14,39 @@ $(T2 ndiota, Contiguous Slice with initial multidimensional index.)
 $(T2 repeat, Slice with identical values)
 )
 
-.
+$(BOOKTABLE $(H2 Shape Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 squeeze, New slice view of an n-dimensional slice with dimension removed)
+$(T2 unsqueeze, New slice view of an n-dimensional slice with a dimension added)
+$(T2 diagonal, 1-dimensional slice composed of diagonal elements)
+$(T2 reshape, New slice view with changed dimensions)
+$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
+$(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
+
+)
+
+$(BOOKTABLE $(H2 Subspace Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 alongDim , Returns a slice that can be iterated along dimension.)
+$(T2 byDim    , Returns a slice that can be iterated by dimension.)
+$(T2 pack     , Returns slice of slices.)
+$(T2 ipack    , Returns slice of slices.)
+$(T2 unpack   , Merges two hight dimension packs. See also $(SUBREF fuse, fuse).)
+$(T2 evertPack, Reverses dimension packs.)
+
+)
+
+$(BOOKTABLE $(H2 SliceKind Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
+$(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
+$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind) (unsafe).)
+$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind) (unsafe).)
+
+)
 
 $(BOOKTABLE $(H2 Products),
 $(TR $(TH Function Name) $(TH Description))
@@ -61,29 +83,6 @@ $(T2 unzip, Selects a slice from a zipped slice.)
 $(T2 zip, Zips slices into a slice of refTuples.)
 )
 
-
-$(BOOKTABLE $(H2 Shape Selectors),
-$(TR $(TH Function Name) $(TH Description))
-
-$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
-$(T2 diagonal, 1-dimensional slice composed of diagonal elements)
-$(T2 reshape, New slice view with changed dimensions)
-$(T2 squeeze, New slice view of an n-dimensional slice with dimension removed)
-$(T2 unsqueeze, New slice view of an n-dimensional slice with a dimension added)
-$(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
-
-)
-
-$(BOOKTABLE $(H2 Subspace Selectors),
-$(TR $(TH Function Name) $(TH Description))
-
-$(T2 pack     , Returns slice of slices.)
-$(T2 ipack    , Returns slice of slices.)
-$(T2 unpack   , Merges two hight dimension packs. See also $(SUBREF fuse, fuse).)
-$(T2 evertPack, Reverses dimension packs.)
-$(T2 byDim    , Returns a slice that can be iterated by dimension. Transposes dimensions on top and then packs them.)
-
-)
 
 Subspace selectors serve to generalize and combine other selectors easily.
 For a slice of `Slice!(Iterator, N, kind)` type `slice.pack!K` creates a slice of
