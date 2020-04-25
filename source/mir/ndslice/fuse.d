@@ -40,6 +40,99 @@ alias fuse(Dimensions...) = fuseImpl!(false, void, Dimensions);
 /// ditto
 alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.slice : Contiguous, Slice;
+    import mir.ndslice.topology: iota;
+    import mir.rc.array: RCI;
+
+    enum ror = [
+            [0, 1, 2, 3],
+            [4, 5, 6, 7],
+            [8, 9,10,11]];
+
+    //  0  1  2  3
+    //  4  5  6  7
+    //  8  9 10 11
+    auto matrix = ror.fuse;
+
+    auto rcmatrix = ror.rcfuse; // nogc version
+
+    assert(matrix == [3, 4].iota);
+    assert(rcmatrix == [3, 4].iota);
+    static assert(ror.fuse == [3, 4].iota); // CTFE-able
+
+    // matrix is contiguos
+    static assert(is(typeof(matrix) == Slice!(int*, 2)));
+    static assert(is(typeof(rcmatrix) == Slice!(RCI!int, 2)));
+}
+
+/// Transposed
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
+    import mir.ndslice.dynamic: transposed;
+    import mir.ndslice.slice : Contiguous, Slice;
+
+    enum ror = [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [8, 9,10,11]];
+
+    //  0  4  8
+    //  1  5  9
+    //  2  6 10
+    //  3  7 11
+    
+    // `!1` brings dimensions under index 1 to the front (0 index).
+    auto matrix = ror.fuse!1;
+
+    assert(matrix == [3, 4].iota.transposed!1);
+    // TODO: CTFE
+    // static assert(ror.fuse!1 == [3, 4].iota.transposed!1); // CTFE-able
+    // matrix is contiguos
+    static assert(is(typeof(matrix) == Slice!(int*, 2)));
+}
+
+
+/// 3D
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: iota;
+    import mir.ndslice.dynamic: transposed;
+
+    auto ror =
+      [[[ 0, 1, 2, 3],
+        [ 4, 5, 6, 7]],
+       [[ 8, 9,10,11],
+        [12,13,14,15]]];
+
+    auto nd = [2, 2, 4].iota;
+
+    assert(ror.fuse == nd);
+    assert(ror.fuse!2 == nd.transposed!2);
+    assert(ror.fuse!(1, 2) == nd.transposed!(1, 2));
+    assert(ror.fuse!(2, 1) == nd.transposed!(2, 1));
+}
+
+/// Work with RC Arrays of RC Arrays
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.slice;
+    import mir.ndslice.topology: map;
+    import mir.rc.array;
+
+    Slice!(const(double)*, 2) conv(RCArray!(const RCArray!(const double)) a)
+    {
+        return a[].map!"a[]".fuse;
+    }
+}
+
 /++
 Fuses ndrange `r` into GC-allocated ($(LREF fuseAs)) or RC-allocated ($(LREF rcfuseAs)) ndslice.
 Can be used to join rows or columns into a matrix.
@@ -53,6 +146,35 @@ Returns:
 alias fuseAs(T, Dimensions...) = fuseImpl!(false, T, Dimensions);
 /// ditto
 alias rcfuseAs(T, Dimensions...) = fuseImpl!(true, T, Dimensions);
+
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.slice : Contiguous, Slice;
+    import mir.ndslice.topology: iota;
+    import mir.rc.array: RCI;
+
+    enum ror = [
+            [0, 1, 2, 3],
+            [4, 5, 6, 7],
+            [8, 9,10,11]];
+
+    //  0  1  2  3
+    //  4  5  6  7
+    //  8  9 10 11
+    auto matrix = ror.fuseAs!double;
+
+    auto rcmatrix = ror.rcfuseAs!double; // nogc version
+
+    assert(matrix == [3, 4].iota);
+    assert(rcmatrix == [3, 4].iota);
+    static assert(ror.fuseAs!double == [3, 4].iota); // CTFE-able
+
+    // matrix is contiguos
+    static assert(is(typeof(matrix) == Slice!(double*, 2)));
+    static assert(is(typeof(rcmatrix) == Slice!(RCI!double, 2)));
+}
 
 ///
 template fuseImpl(bool RC, T_, Dimensions...)
@@ -157,99 +279,6 @@ template fuseImpl(bool RC, T_, Dimensions...)
         alias fuseImpl = .fuseImpl!(RC, T_, staticMap!(toSize_t, Dimensions));
 }
 
-///
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.fuse;
-    import mir.ndslice.slice : Contiguous, Slice;
-    import mir.ndslice.topology: iota;
-    import mir.rc.array: RCI;
-
-    enum ror = [
-            [0, 1, 2, 3],
-            [4, 5, 6, 7],
-            [8, 9,10,11]];
-
-    //  0  1  2  3
-    //  4  5  6  7
-    //  8  9 10 11
-    auto matrix = ror.fuse;
-
-    auto rcmatrix = ror.rcfuse; // nogc version
-
-    assert(matrix == [3, 4].iota);
-    assert(rcmatrix == [3, 4].iota);
-    static assert(ror.fuse == [3, 4].iota); // CTFE-able
-
-    // matrix is contiguos
-    static assert(is(typeof(matrix) == Slice!(int*, 2)));
-    static assert(is(typeof(rcmatrix) == Slice!(RCI!int, 2)));
-}
-
-/// Transposed
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.fuse;
-    import mir.ndslice.topology: iota;
-    import mir.ndslice.dynamic: transposed;
-    import mir.ndslice.slice : Contiguous, Slice;
-
-    enum ror = [
-        [0, 1, 2, 3],
-        [4, 5, 6, 7],
-        [8, 9,10,11]];
-
-    //  0  4  8
-    //  1  5  9
-    //  2  6 10
-    //  3  7 11
-    
-    // `!1` brings dimensions under index 1 to the front (0 index).
-    auto matrix = ror.fuse!1;
-
-    assert(matrix == [3, 4].iota.transposed!1);
-    // TODO: CTFE
-    // static assert(ror.fuse!1 == [3, 4].iota.transposed!1); // CTFE-able
-    // matrix is contiguos
-    static assert(is(typeof(matrix) == Slice!(int*, 2)));
-}
-
-
-/// 3D
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.fuse;
-    import mir.ndslice.topology: iota;
-    import mir.ndslice.dynamic: transposed;
-
-    auto ror =
-      [[[ 0, 1, 2, 3],
-        [ 4, 5, 6, 7]],
-       [[ 8, 9,10,11],
-        [12,13,14,15]]];
-
-    auto nd = [2, 2, 4].iota;
-
-    assert(ror.fuse == nd);
-    assert(ror.fuse!2 == nd.transposed!2);
-    assert(ror.fuse!(1, 2) == nd.transposed!(1, 2));
-    assert(ror.fuse!(2, 1) == nd.transposed!(2, 1));
-}
-
-/// Work with RC Arrays of RC Arrays
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.fuse;
-    import mir.ndslice.slice;
-    import mir.ndslice.topology: map;
-    import mir.rc.array;
-
-    Slice!(const(double)*, 2) conv(RCArray!(const RCArray!(const double)) a)
-    {
-        return a[].map!"a[]".fuse;
-    }
-}
-
 private template fuseDimensionCount(R)
 {
     static if (is(typeof(R.init.shape) : size_t[N], size_t N) && (isDynamicArray!R || __traits(hasMember, R, "front")))
@@ -279,7 +308,9 @@ size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
         typeof(return) ret;
         ret[0 .. N] = r.shape;
         if (!ret[0 .. N].anyEmptyShape)
+        {
             ret[N .. $] = fuseShape(mixin("r" ~ ".front".repeat(N).fuseCells.field));
+        }
         return ret;
     }
 }
