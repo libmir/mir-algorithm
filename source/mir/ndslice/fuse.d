@@ -93,7 +93,6 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
     static assert(is(typeof(matrix) == Slice!(int*, 2)));
 }
 
-
 /// 3D
 @safe pure version(mir_test) unittest
 {

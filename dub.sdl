@@ -1,7 +1,7 @@
 name "mir-algorithm"
 description "Dlang Core Library"
 
-authors "Ilya Yaroshenko" "Sebastian Wilzbach" "Andrei Alexandrescu and Phobos Team (original Phobos code)" "John Michael Hall"
+authors "Ilya Yaroshenko" "John Michael Hall" "Shigeki Karita" "Sebastian Wilzbach" "Andrei Alexandrescu and Phobos Team (original Phobos code)"
 copyright "Copyright © 2016 - 2019, Ilya Yaroshenko; see also information per file."
 license "BSL-1.0"
 

@@ -97,7 +97,7 @@ $(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementCount).
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Copyright: Copyright © 2016-, Ilya Yaroshenko
-Authors:   Ilya Yaroshenko, Shigeki Karita (original numir code)
+Authors:   Ilya Yaroshenko, John Michael Hall, Shigeki Karita (original numir code)
 
 Sponsors: Part of this work has been sponsored by $(LINK2 http://symmetryinvestments.com, Symmetry Investments) and Kaleidic Associates.
 
