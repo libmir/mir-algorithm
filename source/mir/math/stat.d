@@ -64,7 +64,7 @@ struct MeanAccumulator(T, Summation summation)
     ///
     void put()(T x)
     {
-		count++;
+        count++;
         sumAccumulator.put(x);
     }
 }
@@ -86,6 +86,7 @@ version(mir_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.slice : sliced;
+
     MeanAccumulator!(float, Summation.pairwise) x;
     x.put([0, 1, 2, 3, 4].sliced);
     assert(x.mean == 2);

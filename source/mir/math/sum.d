@@ -1707,11 +1707,11 @@ template sum(F, Summation summation = Summation.appropriate)
 template sum(Summation summation = Summation.appropriate)
 {
     ///
-    auto sum(Range)(Range r)
+    sumType!Range sum(Range)(Range r)
         if (isIterable!Range)
     {
         import core.lifetime: move;
-        alias F = sumType!Range;
+        alias F = typeof(return);
         return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move);
     }
 
@@ -1939,7 +1939,13 @@ package template sumType(Range)
         alias T = Unqual!(DeepElementType!(Range.This));
     else
         alias T = Unqual!(ForeachType!Range);
-    alias sumType = typeof(T.init + T.init);
+    static if (__traits(compiles, {
+        auto a = T.init + T.init;
+        a += T.init;
+    }))
+        alias sumType = typeof(T.init + T.init);
+    else
+        static assert(0, "Cann't sum elements of type " ~ T.stringof);
 }
 
 /++
