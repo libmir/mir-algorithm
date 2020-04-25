@@ -126,6 +126,7 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
             $(BR) Advanced constructors
             $(BR) SliceKind conversion utilities))
      $(TD
+        $(SUBREF topology, alongDim)
         $(SUBREF topology, as)
         $(SUBREF topology, assumeCanonical)
         $(SUBREF topology, assumeContiguous)

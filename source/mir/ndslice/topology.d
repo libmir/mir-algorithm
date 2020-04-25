@@ -3,16 +3,6 @@ This is a submodule of $(MREF mir,ndslice).
 
 Selectors create new views and iteration patterns over the same data, without copying.
 
-$(BOOKTABLE $(H2 SliceKind Selectors),
-$(TR $(TH Function Name) $(TH Description))
-
-$(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
-$(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
-$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind) (unsafe).)
-$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind) (unsafe).)
-
-)
-
 $(BOOKTABLE $(H2 Sequence Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
@@ -24,7 +14,39 @@ $(T2 ndiota, Contiguous Slice with initial multidimensional index.)
 $(T2 repeat, Slice with identical values)
 )
 
-.
+$(BOOKTABLE $(H2 Shape Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 squeeze, New slice view of an n-dimensional slice with dimension removed)
+$(T2 unsqueeze, New slice view of an n-dimensional slice with a dimension added)
+$(T2 diagonal, 1-dimensional slice composed of diagonal elements)
+$(T2 reshape, New slice view with changed dimensions)
+$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
+$(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
+
+)
+
+$(BOOKTABLE $(H2 Subspace Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 alongDim , Returns a slice that can be iterated along dimension.)
+$(T2 byDim    , Returns a slice that can be iterated by dimension.)
+$(T2 pack     , Returns slice of slices.)
+$(T2 ipack    , Returns slice of slices.)
+$(T2 unpack   , Merges two hight dimension packs. See also $(SUBREF fuse, fuse).)
+$(T2 evertPack, Reverses dimension packs.)
+
+)
+
+$(BOOKTABLE $(H2 SliceKind Selectors),
+$(TR $(TH Function Name) $(TH Description))
+
+$(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
+$(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
+$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind) (unsafe).)
+$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind) (unsafe).)
+
+)
 
 $(BOOKTABLE $(H2 Products),
 $(TR $(TH Function Name) $(TH Description))
@@ -61,29 +83,6 @@ $(T2 unzip, Selects a slice from a zipped slice.)
 $(T2 zip, Zips slices into a slice of refTuples.)
 )
 
-
-$(BOOKTABLE $(H2 Shape Selectors),
-$(TR $(TH Function Name) $(TH Description))
-
-$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
-$(T2 diagonal, 1-dimensional slice composed of diagonal elements)
-$(T2 reshape, New slice view with changed dimensions)
-$(T2 squeeze, New slice view of an n-dimensional slice with dimension removed)
-$(T2 unsqueeze, New slice view of an n-dimensional slice with a dimension added)
-$(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
-
-)
-
-$(BOOKTABLE $(H2 Subspace Selectors),
-$(TR $(TH Function Name) $(TH Description))
-
-$(T2 pack     , Returns slice of slices.)
-$(T2 ipack    , Returns slice of slices.)
-$(T2 unpack   , Merges two hight dimension packs. See also $(SUBREF fuse, fuse).)
-$(T2 evertPack, Reverses dimension packs.)
-$(T2 byDim    , Returns a slice that can be iterated by dimension. Transposes dimensions on top and then packs them.)
-
-)
 
 Subspace selectors serve to generalize and combine other selectors easily.
 For a slice of `Slice!(Iterator, N, kind)` type `slice.pack!K` creates a slice of
@@ -3924,18 +3923,279 @@ version(mir_test) unittest
 }
 
 /++
-Returns a slice that can be iterated by dimension. Transposes dimensions on top and then packs them.
+Returns a slice that can be iterated along dimension. Transposes other dimensions on top and then packs them.
 
-Combines $(LREF transposed) and $(LREF ipack).
+Combines $(LREF byDim) and $(LREF evertPack).
 
 Params:
-    Dimensions = dimensions to perform iteration on
+    Dimensions = dimensions to iterate along, length of d, `1 <= d < n`
 Returns:
-    n-dimensional slice ipacked to allow iteration by dimension
+    `(n-d)`-dimensional slice composed of d-dimensional slices
 See_also:
-    $(LREF slice),
+    $(LREF byDim),
+    $(LREF iota),
+    $(SUBREF allocation, slice),
     $(LREF ipack),
-    $(LREF transposed).
+    $(SUBREF dynamic, transposed).
++/
+template alongDim(Dimensions...)
+    if (Dimensions.length > 0)
+{
+    import mir.ndslice.internal : isSize_t;
+    import std.meta : allSatisfy;
+
+    static if (allSatisfy!(isSize_t, Dimensions))
+    {
+        import mir.ndslice.slice : Slice, SliceKind;
+        /++
+        Params:
+            slice = input n-dimensional slice, n > d
+        Returns:
+            `(n-d)`-dimensional slice composed of d-dimensional slices
+        +/
+        @optmath auto alongDim(Iterator, size_t N, SliceKind kind)
+            (Slice!(Iterator, N, kind) slice)
+            if (N > Dimensions.length)
+        {
+            import mir.ndslice.topology : ipack;
+            import mir.ndslice.internal : DimensionsCountCTError;
+
+            mixin DimensionsCountCTError;
+
+            static if (N == 1)
+            {
+                return slice;
+            }
+            else
+            {
+                import core.lifetime: move;
+                return slice.move.byDim!Dimensions.evertPack;
+            }
+        }
+    }
+    else
+    {
+        import std.meta : staticMap;
+        import mir.ndslice.internal : toSize_t;
+
+        alias alongDim = .alongDim!(staticMap!(toSize_t, Dimensions));
+    }
+}
+
+/// 2-dimensional slice support
+@safe @nogc pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice;
+
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto slice = iota(3, 4);
+    //->
+    // | 3 |
+    //->
+    // | 4 |
+    size_t[1] shape3 = [3];
+    size_t[1] shape4 = [4];
+
+    //  ------------
+    // | 0  1  2  3 |
+    // | 4  5  6  7 |
+    // | 8  9 10 11 |
+    //  ------------
+    auto x = slice.alongDim!1;
+    static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t), 1, Universal)));
+
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape4);
+    assert(x.front == iota(4));
+    x.popFront;
+    assert(x.front == iota([4], 4));
+
+    //  ---------
+    // | 0  4  8 |
+    // | 1  5  9 |
+    // | 2  6 10 |
+    // | 3  7 11 |
+    //  ---------
+    auto y = slice.alongDim!0;
+    static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal))));
+
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape3);
+    assert(y.front == iota([3], 0, 4));
+    y.popFront;
+    assert(y.front == iota([3], 1, 4));
+}
+
+/// 3-dimensional slice support, N-dimensional also supported
+@safe @nogc pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice;
+
+    //  ----------------
+    // | 0   1  2  3  4 |
+    // | 5   6  7  8  9 |
+    // | 10 11 12 13 14 |
+    // | 15 16 17 18 19 |
+    //  - - - - - - - -
+    // | 20 21 22 23 24 |
+    // | 25 26 27 28 29 |
+    // | 30 31 32 33 34 |
+    // | 35 36 37 38 39 |
+    //  - - - - - - - -
+    // | 40 41 42 43 44 |
+    // | 45 46 47 48 49 |
+    // | 50 51 52 53 54 |
+    // | 55 56 57 58 59 |
+    //  ----------------
+    auto slice = iota(3, 4, 5);
+
+    size_t[2] shape45 = [4, 5];
+    size_t[2] shape35 = [3, 5];
+    size_t[2] shape34 = [3, 4];
+    size_t[2] shape54 = [5, 4];
+    size_t[1] shape3 = [3];
+    size_t[1] shape4 = [4];
+    size_t[1] shape5 = [5];
+
+    //  ----------
+    // |  0 20 40 |
+    // |  5 25 45 |
+    // | 10 30 50 |
+    // | 15 35 55 |
+    //  - - - - -
+    // |  1 21 41 |
+    // |  6 26 46 |
+    // | 11 31 51 |
+    // | 16 36 56 |
+    //  - - - - -
+    // |  2 22 42 |
+    // |  7 27 47 |
+    // | 12 32 52 |
+    // | 17 37 57 |
+    //  - - - - -
+    // |  3 23 43 |
+    // |  8 28 48 |
+    // | 13 33 53 |
+    // | 18 38 58 |
+    //  - - - - -
+    // |  4 24 44 |
+    // |  9 29 49 |
+    // | 14 34 54 |
+    // | 19 39 59 |
+    //  ----------
+    auto a = slice.alongDim!0.transposed;
+    static assert(is(typeof(a) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal), 2, Universal)));
+
+    assert(a.shape == shape54);
+    assert(a.front.shape == shape4);
+    assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed);
+    a.popFront;
+    assert(a.front.front == iota([3], 1, 20));
+
+
+    //  ----------------
+    // |  0  1  2  3  4 |
+    // |  5  6  7  8  9 |
+    // | 10 11 12 13 14 |
+    // | 15 16 17 18 19 |
+    //  - - - - - - - -
+    // | 20 21 22 23 24 |
+    // | 25 26 27 28 29 |
+    // | 30 31 32 33 34 |
+    // | 35 36 37 38 39 |
+    //  - - - - - - - -
+    // | 40 41 42 43 44 |
+    // | 45 46 47 48 49 |
+    // | 50 51 52 53 54 |
+    // | 55 56 57 58 59 |
+    //  ----------------
+    auto x = slice.alongDim!(1, 2);
+    static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 2), 1, Universal)));
+
+    assert(x.shape == shape3);
+    assert(x.front.shape == shape45);
+    assert(x.front == iota([4, 5]));
+    x.popFront;
+    assert(x.front == iota([4, 5], (4 * 5)));
+
+    //  ----------------
+    // |  0  1  2  3  4 |
+    // | 20 21 22 23 24 |
+    // | 40 41 42 43 44 |
+    //  - - - - - - - -
+    // |  5  6  7  8  9 |
+    // | 25 26 27 28 29 |
+    // | 45 46 47 48 49 |
+    //  - - - - - - - -
+    // | 10 11 12 13 14 |
+    // | 30 31 32 33 34 |
+    // | 50 51 52 53 54 |
+    //  - - - - - - - -
+    // | 15 16 17 18 19 |
+    // | 35 36 37 38 39 |
+    // | 55 56 57 58 59 |
+    //  ----------------
+    auto y = slice.alongDim!(0, 2);
+    static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 2, Canonical), 1, Universal)));
+
+    assert(y.shape == shape4);
+    assert(y.front.shape == shape35);
+    int err;
+    assert(y.front == slice.universal.strided!1(4).reshape([3, -1], err));
+    y.popFront;
+    assert(y.front.front == iota([5], 5));
+
+    //  -------------
+    // |  0  5 10 15 |
+    // | 20 25 30 35 |
+    // | 40 45 50 55 |
+    //  - - - - - - -
+    // |  1  6 11 16 |
+    // | 21 26 31 36 |
+    // | 41 46 51 56 |
+    //  - - - - - - -
+    // |  2  7 12 17 |
+    // | 22 27 32 37 |
+    // | 42 47 52 57 |
+    //  - - - - - - -
+    // |  3  8 13 18 |
+    // | 23 28 33 38 |
+    // | 43 48 53 58 |
+    //  - - - - - - -
+    // |  4  9 14 19 |
+    // | 24 29 34 39 |
+    // | 44 49 54 59 |
+    //  -------------
+    auto z = slice.alongDim!(0, 1);
+    static assert(is(typeof(z) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 2, Universal))));
+
+    assert(z.shape == shape5);
+    assert(z.front.shape == shape34);
+    assert(z.front == iota([3, 4], 0, 5));
+    z.popFront;
+    assert(z.front.front == iota([4], 1, 5));
+}
+
+/++
+Returns a slice that can be iterated by dimension. Transposes dimensions on top and then packs them.
+
+Combines $(SUBREF dynamic, transposed), $(LREF ipack), and SliceKind Selectors.
+
+Params:
+    Dimensions = dimensions to perform iteration on, length of d, `1 <= d <= n`
+Returns:
+    d-dimensional slice composed of `(n-d)`-dimensional slices
+See_also:
+    $(LREF alongDim),
+    $(SUBREF allocation, slice),
+    $(LREF ipack),
+    $(SUBREF dynamic, transposed).
 +/
 template byDim(Dimensions...)
     if (Dimensions.length > 0)
@@ -3943,24 +4203,18 @@ template byDim(Dimensions...)
     import mir.ndslice.internal : isSize_t;
     import std.meta : allSatisfy;
 
-    static if (!allSatisfy!(isSize_t, Dimensions))
-    {
-        import std.meta : staticMap;
-        import mir.ndslice.internal : toSize_t;
-
-        alias byDim = .byDim!(staticMap!(toSize_t, Dimensions));
-    }
-    else
+    static if (allSatisfy!(isSize_t, Dimensions))
     {
         import mir.ndslice.slice : Slice, SliceKind;
         /++
         Params:
-            slice = input slice (may not be 1-dimensional slice)
+            slice = input n-dimensional slice, n >= d
         Returns:
-            n-dimensional slice ipacked to allow iteration by dimension
+            d-dimensional slice composed of `(n-d)`-dimensional slices
         +/
         @optmath auto byDim(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
+            if (N >= Dimensions.length)
         {
             import mir.ndslice.topology : ipack;
             import mir.ndslice.internal : DimensionsCountCTError;
@@ -4010,7 +4264,7 @@ template byDim(Dimensions...)
                         return ret.assumeContiguous;
                     }
                     else
-                    static if (kind == Canonical && Dimensions[$-1] == N - 1)
+                    static if ((kind == Contiguous || kind == Canonical) && Dimensions[$-1] == N - 1)
                     {
                         return ret.assumeCanonical;
                     }
@@ -4022,13 +4276,21 @@ template byDim(Dimensions...)
             }
         }
     }
+    else
+    {
+        import std.meta : staticMap;
+        import mir.ndslice.internal : toSize_t;
+
+        alias byDim = .byDim!(staticMap!(toSize_t, Dimensions));
+    }
 }
 
 /// 2-dimensional slice support
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota;
+    import mir.ndslice;
+
     //  ------------
     // | 0  1  2  3 |
     // | 4  5  6  7 |
@@ -4076,8 +4338,8 @@ version(mir_test) unittest
 @safe @nogc pure nothrow
 version(mir_test) unittest
 {
-    import mir.ndslice.topology : iota, universal, flattened, reshape;
-    import mir.ndslice.dynamic : strided, transposed;
+    import mir.ndslice;
+
     //  ----------------
     // | 0   1  2  3  4 |
     // | 5   6  7  8  9 |
@@ -4095,20 +4357,7 @@ version(mir_test) unittest
     // | 55 56 57 58 59 |
     //  ----------------
     auto slice = iota(3, 4, 5);
-    //->
-    // | 4 5 |
-    //->
-    // | 3 5 |
-    //->
-    // | 3 4 |
-    //->
-    // | 5 4 |
-    //->
-    // | 3 |
-    //->
-    // | 4 |
-    //->
-    // | 5 |
+
     size_t[2] shape45 = [4, 5];
     size_t[2] shape35 = [3, 5];
     size_t[2] shape34 = [3, 4];
@@ -4230,7 +4479,7 @@ version(mir_test) unittest
 
     assert(a.shape == shape54);
     assert(a.front.shape == shape4);
-    assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed!1);
+    assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed);
     a.popFront;
     assert(a.front.front == iota([3], 1, 20));
 }
