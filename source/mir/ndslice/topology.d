@@ -109,7 +109,6 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 +/
 module mir.ndslice.topology;
 
-import std.meta;
 
 import mir.internal.utility;
 import mir.math.common: optmath;
@@ -121,6 +120,7 @@ import mir.ndslice.slice;
 import mir.primitives;
 import mir.qualifier;
 import mir.utility: min;
+import std.meta: AliasSeq, allSatisfy, staticMap, templateOr, Repeat;
 
 private immutable choppedExceptionMsg = "bounds passed to chopped are out of sliceable bounds.";
 version (D_Exceptions) private immutable choppedException = new Exception(choppedExceptionMsg);
@@ -3928,7 +3928,7 @@ Returns a slice that can be iterated along dimension. Transposes other dimension
 Combines $(LREF byDim) and $(LREF evertPack).
 
 Params:
-    Dimensions = dimensions to iterate along, length of d, `1 <= d < n`
+    SDimensions = dimensions to iterate along, length of d, `1 <= d < n`. Negative dimensions are supported.
 Returns:
     `(n-d)`-dimensional slice composed of d-dimensional slices
 See_also:
@@ -3938,15 +3938,11 @@ See_also:
     $(LREF ipack),
     $(SUBREF dynamic, transposed).
 +/
-template alongDim(Dimensions...)
-    if (Dimensions.length > 0)
+template alongDim(SDimensions...)
+    if (SDimensions.length > 0)
 {
-    import mir.ndslice.internal : isSize_t;
-    import std.meta : allSatisfy;
-
-    static if (allSatisfy!(isSize_t, Dimensions))
+    static if (allSatisfy!(isSizediff_t, SDimensions))
     {
-        import mir.ndslice.slice : Slice, SliceKind;
         /++
         Params:
             slice = input n-dimensional slice, n > d
@@ -3955,30 +3951,15 @@ template alongDim(Dimensions...)
         +/
         @optmath auto alongDim(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
-            if (N > Dimensions.length)
+            if (N > SDimensions.length)
         {
-            import mir.ndslice.topology : ipack;
-            import mir.ndslice.internal : DimensionsCountCTError;
-
-            mixin DimensionsCountCTError;
-
-            static if (N == 1)
-            {
-                return slice;
-            }
-            else
-            {
-                import core.lifetime: move;
-                return slice.move.byDim!Dimensions.evertPack;
-            }
+            import core.lifetime: move;
+            return slice.move.byDim!SDimensions.evertPack;
         }
     }
     else
     {
-        import std.meta : staticMap;
-        import mir.ndslice.internal : toSize_t;
-
-        alias alongDim = .alongDim!(staticMap!(toSize_t, Dimensions));
+        alias alongDim = .alongDim!(staticMap!(toSizediff_t, SDimensions));
     }
 }
 
@@ -4006,7 +3987,7 @@ version(mir_test) unittest
     // | 4  5  6  7 |
     // | 8  9 10 11 |
     //  ------------
-    auto x = slice.alongDim!1;
+    auto x = slice.alongDim!(-1); // -1 is the last dimension index, the same as 1 for this case.
     static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t), 1, Universal)));
 
     assert(x.shape == shape3);
@@ -4021,7 +4002,7 @@ version(mir_test) unittest
     // | 2  6 10 |
     // | 3  7 11 |
     //  ---------
-    auto y = slice.alongDim!0;
+    auto y = slice.alongDim!0; // alongDim!(-2) is the same for matrices.
     static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal))));
 
     assert(y.shape == shape4);
@@ -4188,7 +4169,7 @@ Returns a slice that can be iterated by dimension. Transposes dimensions on top 
 Combines $(SUBREF dynamic, transposed), $(LREF ipack), and SliceKind Selectors.
 
 Params:
-    Dimensions = dimensions to perform iteration on, length of d, `1 <= d <= n`
+    SDimensions = dimensions to perform iteration on, length of d, `1 <= d <= n`. Negative dimensions are supported.
 Returns:
     d-dimensional slice composed of `(n-d)`-dimensional slices
 See_also:
@@ -4197,15 +4178,11 @@ See_also:
     $(LREF ipack),
     $(SUBREF dynamic, transposed).
 +/
-template byDim(Dimensions...)
-    if (Dimensions.length > 0)
+template byDim(SDimensions...)
+    if (SDimensions.length > 0)
 {
-    import mir.ndslice.internal : isSize_t;
-    import std.meta : allSatisfy;
-
-    static if (allSatisfy!(isSize_t, Dimensions))
+    static if (allSatisfy!(isSizediff_t, SDimensions))
     {
-        import mir.ndslice.slice : Slice, SliceKind;
         /++
         Params:
             slice = input n-dimensional slice, n >= d
@@ -4214,10 +4191,10 @@ template byDim(Dimensions...)
         +/
         @optmath auto byDim(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
-            if (N >= Dimensions.length)
+            if (N >= SDimensions.length)
         {
-            import mir.ndslice.topology : ipack;
-            import mir.ndslice.internal : DimensionsCountCTError;
+
+            alias Dimensions = staticMap!(ShiftNegativeWith!N, SDimensions);
 
             mixin DimensionsCountCTError;
 
@@ -4278,10 +4255,7 @@ template byDim(Dimensions...)
     }
     else
     {
-        import std.meta : staticMap;
-        import mir.ndslice.internal : toSize_t;
-
-        alias byDim = .byDim!(staticMap!(toSize_t, Dimensions));
+        alias byDim = .byDim!(staticMap!(toSizediff_t, SDimensions));
     }
 }
 
@@ -4309,7 +4283,7 @@ version(mir_test) unittest
     // | 4  5  6  7 |
     // | 8  9 10 11 |
     //  ------------
-    auto x = slice.byDim!0;
+    auto x = slice.byDim!0; // byDim!(-2) is the same for matrices.
     static assert(is(typeof(x) == Slice!(SliceIterator!(IotaIterator!sizediff_t), 1, Universal)));
 
     assert(x.shape == shape3);
@@ -4324,7 +4298,7 @@ version(mir_test) unittest
     // | 2  6 10 |
     // | 3  7 11 |
     //  ---------
-    auto y = slice.byDim!1;
+    auto y = slice.byDim!(-1); // -1 is the last dimension index, the same as 1 for this case.
     static assert(is(typeof(y) == Slice!(SliceIterator!(IotaIterator!sizediff_t, 1, Universal))));
 
     assert(y.shape == shape4);
