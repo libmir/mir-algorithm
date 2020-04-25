@@ -489,9 +489,7 @@ See_also: $(LREF swapped), $(LREF everted)
 template transposed(Dimensions...)
     if (Dimensions.length)
 {
-    static if (!allSatisfy!(isSize_t, Dimensions))
-        alias transposed = .transposed!(staticMap!(toSize_t, Dimensions));
-    else
+    static if (allSatisfy!(isSize_t, Dimensions))
     ///
     @optmath auto transposed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
     {
@@ -531,6 +529,8 @@ template transposed(Dimensions...)
             mixin (_transposedCode);
         }
     }
+    else
+        alias transposed = .transposed!(staticMap!(toSize_t, Dimensions));
 }
 
 ///ditto
@@ -662,9 +662,7 @@ Returns:
 template reversed(Dimensions...)
     if (Dimensions.length)
 {
-    static if (!allSatisfy!(isSize_t, Dimensions))
-        alias reversed = .reversed!(staticMap!(toSize_t, Dimensions));
-    else
+    static if (allSatisfy!(isSize_t, Dimensions))
     ///
     @optmath auto reversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice) @trusted
     {
@@ -693,6 +691,8 @@ template reversed(Dimensions...)
         }
         return slice;
     }
+    else
+        alias reversed = .reversed!(staticMap!(toSize_t, Dimensions));
 }
 
 ///ditto
@@ -813,12 +813,10 @@ Returns:
 template strided(Dimensions...)
     if (Dimensions.length)
 {
-    static if (!allSatisfy!(isSize_t, Dimensions))
-        alias strided = .strided!(staticMap!(toSize_t, Dimensions));
-    else
+    static if (allSatisfy!(isSize_t, Dimensions))
     /++
     Params:
-        slice = input slice
+        _slice = input slice
         factors = list of step extension factors
     +/
     @optmath auto strided(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
@@ -849,6 +847,8 @@ template strided(Dimensions...)
         }
         return slice;
     }
+    else
+        alias strided = .strided!(staticMap!(toSize_t, Dimensions));
 }
 
 ///ditto

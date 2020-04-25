@@ -28,24 +28,37 @@ import mir.math.common: optmath;
 @optmath:
 
 /++
-Fuses ndrange `r` into GC-allocated (`fuse`) or RC-allocated (`rcfuse`) ndslice. Can be used to join rows or columns into a matrix.
+Fuses ndrange `r` into GC-allocated ($(LREF fuse)) or RC-allocated ($(LREF rcfuse)) ndslice.
+Can be used to join rows or columns into a matrix.
 
 Params:
     Dimensions = (optional) indexes of dimensions to be brought to the first position
 Returns:
     ndslice
 +/
-///
-alias fuse(Dimensions...) = fuseImpl!(false, Dimensions);
-///
-alias rcfuse(Dimensions...) = fuseImpl!(true, Dimensions);
+alias fuse(Dimensions...) = fuseImpl!(false, void, Dimensions);
 /// ditto
-template fuseImpl(bool RC, Dimensions...)
+alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
+
+/++
+Fuses ndrange `r` into GC-allocated ($(LREF fuseAs)) or RC-allocated ($(LREF rcfuseAs)) ndslice.
+Can be used to join rows or columns into a matrix.
+
+Params:
+    T = output type of ndslice elements
+    Dimensions = (optional) indexes of dimensions to be brought to the first position
+Returns:
+    ndslice
++/
+alias fuseAs(T, Dimensions...) = fuseImpl!(false, T, Dimensions);
+/// ditto
+alias rcfuseAs(T, Dimensions...) = fuseImpl!(true, T, Dimensions);
+
+///
+template fuseImpl(bool RC, T_, Dimensions...)
 {
     import mir.ndslice.internal: isSize_t, toSize_t;
-    static if (!allSatisfy!(isSize_t, Dimensions))
-        alias fuseImpl = .fuseImpl!(RC, staticMap!(toSize_t, Dimensions));
-    else
+    static if (allSatisfy!(isSize_t, Dimensions))
     /++
     Params:
         r = parallelotope (ndrange) with length/shape and input range primitives.
@@ -57,7 +70,10 @@ template fuseImpl(bool RC, Dimensions...)
         import mir.algorithm.iteration: each;
         import mir.ndslice.allocation;
         auto shape = fuseShape(r);
-        alias T = FuseElementType!NDRange;
+        static if (is(T_ == void))
+            alias T = FuseElementType!NDRange;
+        else
+            alias T = T_;
         alias UT = Unqual!T;
         static if (RC)
         {
@@ -137,6 +153,8 @@ template fuseImpl(bool RC, Dimensions...)
             return *(() @trusted => cast(R*)&ret)();
         }
     }
+    else
+        alias fuseImpl = .fuseImpl!(RC, T_, staticMap!(toSize_t, Dimensions));
 }
 
 ///
