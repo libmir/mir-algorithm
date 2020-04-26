@@ -268,22 +268,6 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
     }
 }
 
-/// $(LINK2 https://en.wikipedia.org/wiki/Vandermonde_matrix, Vandermonde matrix)
-@safe pure nothrow version(mir_test) unittest
-{
-    import mir.ndslice.filling: fillVandermonde;
-    import mir.ndslice.allocation: uninitSlice;
-    auto x = [1.0, 2, 3, 4, 5].sliced;
-    auto v = uninitSlice!double(x.length, x.length);
-    v.fillVandermonde(x);
-    assert(v ==
-        [[  1.0,   1,   1,   1,   1],
-         [  1.0,   2,   4,   8,  16],
-         [  1.0,   3,   9,  27,  81],
-         [  1.0,   4,  16,  64, 256],
-         [  1.0,   5,  25, 125, 625]]);
-}
-
 /// Random access range primitives for slices over user defined types
 @safe pure nothrow @nogc version(mir_test) unittest
 {
@@ -298,6 +282,7 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
         auto lightConst()() const @property { return MyIota(); }
         auto lightImmutable()() immutable @property { return MyIota(); }
     }
+
     import mir.ndslice.iterator: FieldIterator;
     alias Iterator = FieldIterator!MyIota;
     alias S = Slice!(Iterator, 2);
