@@ -2634,13 +2634,13 @@ version(mir_test) unittest
 ///
 pure version(mir_test) unittest
 {
-    import std.algorithm.iteration : sum, reduce;
-    import mir.utility : max;
-    import mir.ndslice.dynamic : transposed;
+    import mir.algorithm.iteration: reduce;
+    import mir.math.common: fmax;
+    import mir.math.stat: mean;
+    import mir.math.sum;
     /// Returns maximal column average.
     auto maxAvg(S)(S matrix) {
-        return reduce!max(matrix.universal.transposed.pack!1.map!sum)
-             / double(matrix.length);
+        return reduce!fmax(0.0, matrix.alongDim!1.map!mean);
     }
     // 1 2
     // 3 4

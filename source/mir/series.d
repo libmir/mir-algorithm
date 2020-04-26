@@ -33,8 +33,8 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     import mir.array.allocation: array;
     import mir.algorithm.setops: multiwayUnion;
 
-    import std.datetime: Date;
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
+    import mir.date: Date;
+    import core.lifetime: move;
     import std.exception: collectExceptionMsg;
 
     //////////////////////////////////////
@@ -62,7 +62,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     assert(series0
         .asSlice
         // ref qualifier is optional
-        .map!((ref key, ref value) => key.month == value)
+        .map!((ref key, ref value) => key.yearMonthDay.month == value)
         .all);
 
     //////////////////////////////////////
@@ -85,7 +85,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
 
     assert(collectExceptionMsg!Exception(
             series0.get(missingDate)
-        ) == "Series double[Date]: Missing required key");
+        ) == "Series double[date]: Missing required key");
 
     assert(collectExceptionMsg!Exception(
             series0.get(missingDate, new Exception("My exception msg"))
@@ -93,11 +93,11 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
 
     assert(collectExceptionMsg!Exception(
             series0.getVerbose(missingDate)
-        ) == "Series double[Date]: Missing 2016-Mar-01 key");
+        ) == "Series double[date]: Missing 2016-03-01 key");
 
     assert(collectExceptionMsg!Exception(
             series0.getExtraVerbose(missingDate, "My exception msg")
-        ) == "My exception msg. Series double[Date]: Missing 2016-Mar-01 key");
+        ) == "My exception msg. Series double[date]: Missing 2016-03-01 key");
 
     // assign with get*
     series0.get(refDate) = 100;
@@ -402,7 +402,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     @safe pure nothrow version(mir_test) unittest
     {
-        import std.datetime: Date;
+        import mir.date: Date;
 
         //////////////////////////////////////
         // Constructs two time-series.
@@ -431,7 +431,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     static if (doUnittest)
     @safe pure nothrow version(mir_test) unittest
     {
-        import std.datetime: Date;
+        import mir.date: Date;
 
         //////////////////////////////////////
         // Constructs two time-series.
@@ -1236,7 +1236,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ref opAssign(RIndexIterator, RIterator)(Series!(RIndexIterator, RIterator, N, kind) rvalue) return
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
-        static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
+        import core.lifetime: move;
         this._data._structure = rvalue._data._structure;
         this._data._iterator = rvalue._data._iterator.move;
         this._index = rvalue._index.move;
@@ -1426,7 +1426,7 @@ alias Series = mir_series;
 /// 2-dimensional data
 @safe pure version(mir_test) unittest
 {
-    import std.datetime: Date;
+    import mir.date: Date;
     import mir.ndslice.topology: canonical, iota;
 
     size_t row_length = 5;
@@ -1639,7 +1639,7 @@ auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
         emplaceRef!V(it._data.front, kv.value.to!V);
         it.popFront;
     }
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move;
+    import core.lifetime: move;
     .sort(ret.lightScope);
     static if (is(typeof(ret) == R))
         return ret;
@@ -2243,7 +2243,7 @@ auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Se
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    import std.datetime: Date;
+    import mir.date: Date;
 
     //////////////////////////////////////
     // Constructs two time-series.
@@ -2272,7 +2272,7 @@ auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Se
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    import std.datetime: Date;
+    import mir.date: Date;
 
     //////////////////////////////////////
     // Constructs three time-series.

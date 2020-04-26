@@ -333,8 +333,7 @@ version(mir_test)
 {
     import mir.ndslice.slice;
     import mir.ndslice.allocation: slice;
-
-    import std.datetime.date;
+    import mir.date: Date;
 
     auto dataframe = slice!(double, Date, string)(4, 3);
     assert(dataframe.length == 4);

@@ -67,7 +67,7 @@ if (isRandomAccessRange!Store || isRandomAccessRange!(typeof(Store.init[])))
 {
     import mir.utility : min;
     import mir.functional : naryFun;
-    static if (__VERSION__ >= 2085) import core.lifetime: move; else import std.algorithm.mutation: move; 
+    import core.lifetime: move; 
     import std.algorithm.mutation : swapAt;
 
     static if (isRandomAccessRange!Store)

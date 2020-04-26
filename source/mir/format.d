@@ -191,7 +191,6 @@ pragma(inline, false)
 ref W printEscaped(C = char, W)(scope return ref W w, scope const(char)[] str)
 {
     // TODO: replace with Mir implementation.
-    import std.uni: isGraphical;
     w.put('\"');
     foreach (char c; str[])
     {

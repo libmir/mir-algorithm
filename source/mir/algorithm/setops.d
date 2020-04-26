@@ -122,7 +122,7 @@ MultiwayMerge!(naryFun!less, RangeOfRanges) multiwayMerge
 ///
 @safe nothrow @nogc version(mir_test) unittest
 {
-    import std.algorithm.comparison : equal;
+    import mir.algorithm.iteration: equal;
 
     static a =
     [
@@ -174,7 +174,7 @@ auto multiwayUnion(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
 ///
 @safe version(mir_test) unittest
 {
-    import std.algorithm.comparison : equal;
+    import mir.algorithm.iteration: equal;
 
     // sets
     double[][] a =

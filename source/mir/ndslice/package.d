@@ -608,8 +608,7 @@ version(mir_test) unittest
 
 pure nothrow version(mir_test) unittest
 {
-    import std.algorithm.comparison : equal;
-    import std.range : iota;
+    import mir.ndslice.topology : iota;
     import mir.array.allocation : array;
     auto r = 1000.iota.array;
 
@@ -634,7 +633,7 @@ pure nothrow version(mir_test) unittest
     t1.popBack();
     assert(t1.back == 17);
 
-    assert(t1.equal(iota(12, 18)));
+    assert(t1 == iota([6], 12));
 
     t1.front = 13;
     assert(t1.front == 13);
