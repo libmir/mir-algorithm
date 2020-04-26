@@ -22,7 +22,7 @@ static if (__traits(compiles, (()@nogc {throw new Exception("");})()))
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
 {
     import core.lifetime: forward;
-    import mir.utility: _expect;_version_D_Ddoc
+    import mir.utility: _expect;
     static if (__traits(compiles, arg !is null))
     {
         if (_expect(arg !is null, true))
