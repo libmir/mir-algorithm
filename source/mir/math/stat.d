@@ -360,6 +360,7 @@ template hmean(string summation)
 }
 
 /// Harmonic mean of vector
+version(mir_test)
 pure @safe nothrow @nogc
 unittest
 {
@@ -371,6 +372,7 @@ unittest
 }
 
 /// Harmonic mean of matrix
+version(mir_test)
 pure @safe
 unittest
 {
@@ -383,6 +385,7 @@ unittest
 }
 
 /// Column harmonic mean of matrix
+version(mir_test)
 pure @safe
 unittest
 {
@@ -404,20 +407,372 @@ unittest
 }
 
 /// Can also pass arguments to hmean
-pure @safe
+version(mir_test)
+pure @safe nothrow @nogc
 unittest
 {
-    import mir.ndslice.topology: map, repeat;
+    import mir.ndslice.topology: repeat;
     import mir.math.common: approxEqual;
 
     //Set sum algorithm or output type
-    auto x = [1, 1e-100, 1, -1e-100];
+    static immutable x = [1, 1e-100, 1, -1e-100];
 
     assert(x.hmean!"kb2".approxEqual(2));
     assert(x.hmean!"precise".approxEqual(2));
 
     //Provide the summation type
     assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
+}
+
+///
+enum CentralTendency
+{
+    ///
+    mean,
+    hmean
+    //TODO:
+    ///
+    //median,
+    ///
+    //geometricMean,
+    ///
+    //weightedMean
+}
+
+/++
+Computes the average of `r`.
+
+Select type of average using CentralTendency. Currently implemented options:
+    1) mean
+    2) hmean
+
+Returns:
+    The average of all the elements in the range r.
+    
+See_also: $(SUBREF sum, Summation, mean, hmean)
++/
+template average(F, CentralTendency centralTendency = CentralTendency.mean,
+                 Summation summation = Summation.appropriate)
+    if (isMutable!F)
+{
+    static if (centralTendency == CentralTendency.mean)
+        alias average = mean!(F, summation);
+    else static if (centralTendency == CentralTendency.hmean)
+        alias average = hmean!(F, summation);
+    else
+        static assert(0, "average: CentralTendency." ~ centralTendency.stringof ~ " is not implemented");
+}
+
+/// ditto
+template average(CentralTendency centralTendency = CentralTendency.mean,
+                 Summation summation = Summation.appropriate)
+{
+    static if (centralTendency == CentralTendency.mean)
+        alias average = mean!(summation);
+    else static if (centralTendency == CentralTendency.hmean)
+        alias average = hmean!(summation);
+    else
+        static assert(0, "average: CentralTendency." ~ centralTendency.stringof ~ " is not implemented");
+}
+
+///ditto
+template average(F, string centralTendency, string summation = "appropriate")
+{
+    mixin("alias average = .average!(F, CentralTendency." ~ centralTendency ~ ", Summation." ~ summation ~ ");");
+}
+
+///ditto
+template average(string centralTendency, string summation = "appropriate")
+{
+    mixin("alias average = .average!(CentralTendency." ~ centralTendency ~ ", Summation." ~ summation ~ ");");
+}
+
+/// Generic average of vector
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: approxEqual;
+
+    static immutable x = [20.0, 100.0, 2000.0, 10.0, 5.0, 2.0];
+    
+    assert(x.average!"mean".approxEqual(356.1667));
+    assert(x.average!"hmean".approxEqual(6.97269));
+}
+
+/// Generic average of matrix
+version(mir_test)
+pure @safe
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.fuse: fuse;
+
+    auto x = [
+        [20.0, 100.0, 2000.0], 
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    assert(x.average!"mean".approxEqual(356.1667));
+    assert(x.average!"hmean".approxEqual(6.97269));
+}
+
+/// Column generic average of matrix
+version(mir_test)
+pure @safe
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    auto y_mean = [15.0, 52.5, 1001];
+    auto y_hmean = [13.33333, 9.52381, 3.996004];
+
+    // Use byDim or alongDim with map to compute average of row/column.
+    assert(x.byDim!1.map!(average!"mean").all!approxEqual(y_mean));
+    assert(x.alongDim!0.map!(average!"mean").all!approxEqual(y_mean));
+    
+    assert(x.byDim!1.map!(average!"hmean").all!approxEqual(y_hmean));
+    assert(x.alongDim!0.map!(average!"hmean").all!approxEqual(y_hmean));
+}
+
+/// Can also pass arguments to average
+version(mir_test)
+pure @safe nothrow @nogc
+unittest
+{
+    import mir.ndslice.topology: repeat;
+    import mir.math.common: approxEqual;
+
+    //Set sum algorithm or output type
+    static immutable x = [1, 1e-100, 1, -1e-100];
+
+    assert(x.average!("mean", "kb2").approxEqual(0.5));
+    assert(x.average!("mean", "precise").approxEqual(0.5));
+    
+    assert(x.average!("hmean", "kb2").approxEqual(2));
+    assert(x.average!("hmean", "precise").approxEqual(2));
+
+    //Provide the summation type
+    assert(float.max.repeat(3).average!(double, "mean", "fast").approxEqual(float.max));
+    assert(float.max.repeat(3).average!(double, "hmean", "fast").approxEqual(float.max));
+}
+
+private template centerImpl(F, CentralTendency centralTendency, 
+                            Summation summation)
+{
+    @safe pure nothrow
+    auto centerImpl(Range)(Range r, F average)
+        if (isIterable!Range)
+    {
+        static if (__traits(compiles, r - average)) {
+            return r - average;
+        } else {
+            import mir.ndslice.topology: map;
+            return r.map!(a => a - average);
+        }
+    }
+}
+
+/++
+Centers `r`, which must be a finite iterable.
+
+Returns:
+    The elements in the range r with the average subtracted from them.
++/
+template center(F, CentralTendency centralTendency = CentralTendency.mean,
+                Summation summation = Summation.appropriate)
+{
+    /++
+    Params:
+        r = range
+    +/
+    @safe pure nothrow
+    auto center(Range)(Range r)
+        if (isIterable!Range)
+    {
+        return centerImpl!(F, centralTendency, summation)(r, r.average!(F, centralTendency, summation));
+    }
+    
+    /++
+    Params:
+        r = range
+        average = average
+    +/
+    @safe pure nothrow
+    auto center(Range)(Range r, out F average)
+        if (isIterable!Range)
+    {
+        average = r.average!(F, centralTendency, summation);
+        return centerImpl!(F, centralTendency, summation)(r, average);
+    }
+}
+
+/// ditto
+template center(CentralTendency centralTendency = CentralTendency.mean,
+                Summation summation = Summation.appropriate)
+{
+    /++
+    Params:
+        r = range
+    +/
+    @safe pure nothrow
+    auto center(Range)(Range r)
+        if (isIterable!Range)
+    {
+        return .center!(sumType!Range, centralTendency, summation)(r);
+    }
+    
+    /++
+    Params:
+        r = range
+        average = average
+    +/
+    @safe pure nothrow
+    auto center(Range, T)(Range r, out T average)
+        if (isIterable!Range)
+    {
+        return .center!(T, centralTendency, summation)(r, average);
+    }
+}
+
+///ditto
+template center(F, string centralTendency, string summation = "appropriate")
+{
+    mixin("alias center = .center!(F, CentralTendency." ~ centralTendency ~ ", Summation." ~ summation ~ ");");
+}
+
+///ditto
+template center(string centralTendency, string summation = "appropriate")
+{
+    mixin("alias center = .center!(CentralTendency." ~ centralTendency ~ ", Summation." ~ summation ~ ");");
+}
+
+/// Center vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [0.0, 1, 2, 3, 4, 5].sliced;
+    auto result = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].sliced;
+    assert(x.center.all!approxEqual(result));
+    
+    //Can also output average
+    double mean;
+    auto y = x.center(mean);
+    assert(mean == 2.5);
+}
+
+/// Can center using different averages
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+
+    assert(x.center!"mean".all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].sliced));
+    assert(x.center!"hmean".all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102].sliced));
+}
+
+/// Center matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    
+
+    auto x = [
+        [0.0, 1, 2], 
+        [3.0, 4, 5]
+    ].fuse;
+    
+    auto y = [
+        [-2.5, -1.5, -0.5], 
+        [ 0.5,  1.5,  2.5]
+    ].fuse;
+    
+    assert(x.center.all!approxEqual(y));
+}
+
+/// Column center matrix
+version(mir_test)
+pure @safe
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    auto result = [
+        [ 5.0,  47.5,  999],
+        [-5.0, -47.5, -999]
+    ].fuse;
+
+    // Use byDim with map to compute average of row/column.
+    auto xCenterByDim = x.byDim!1.map!center;
+    auto resultByDim = result.byDim!1;
+    size_t i = 0;
+    import std.stdio : writeln;
+    foreach(e; xCenterByDim) {
+        assert(e.all!approxEqual(resultByDim[i]));
+        i++;
+    }
+
+    auto xCenterAlongDim = x.alongDim!0.map!center;
+    auto resultAlongDim = result.alongDim!0;
+    i = 0;
+    foreach(e; xCenterAlongDim) {
+        assert(e.all!approxEqual(resultAlongDim[i]));
+        i++;
+    }
+}
+
+/// Can also pass arguments to average function used by center
+version(mir_test)
+pure @safe nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.topology: repeat;
+    import mir.math.common: approxEqual;
+
+    //Set sum algorithm or output type
+    static immutable a = [1, 1e100, 1, -1e100];
+
+    auto x = a.sliced * 10_000;
+    auto result = [5000, 1e104 - 5000, 5000, -1e104 - 5000].sliced;
+
+    assert(x.center!("mean", "kbn").all!approxEqual(result));
+    assert(x.center!("mean", "kb2").all!approxEqual(result));
+    assert(x.center!("mean", "precise").all!approxEqual(result));
+
+    //Provide the summation type
+    assert(float.max.repeat(3).center!(double, "mean", "fast").all!approxEqual([0.0, 0, 0].sliced));
 }
 
 /++
