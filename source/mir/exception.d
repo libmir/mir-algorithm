@@ -7,6 +7,9 @@ module mir.exception;
 
 version(D_Exceptions):
 
+static if (__traits(compiles, (()@nogc {throw new Exception("");})()))
+    version = NOGCEXP;
+
 ///
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
 {
@@ -40,9 +43,6 @@ version(D_Ddoc)
 else
     private enum _version_D_Ddoc = false;
 
-static if (_version_D_Ddoc || __traits(compiles, (()@nogc {throw new Exception("");})()))
-{
-
 /++
 +/
 class MirException : Exception
@@ -52,8 +52,9 @@ class MirException : Exception
 }
 
 /// Generic style
+version(NOGCEXP) version (mir_test)
 @safe pure nothrow @nogc
-version (mir_test) unittest
+unittest
 {
     import mir.exception;
     try throw new MirException("Hi D", 2, "!");
@@ -61,8 +62,9 @@ version (mir_test) unittest
 }
 
 /// C++ style
+version(NOGCEXP) version (mir_test)
 @safe pure nothrow @nogc
-version (mir_test) unittest
+unittest
 {
     import mir.exception;
     import mir.format;
@@ -71,8 +73,9 @@ version (mir_test) unittest
 }
 
 /// Low-level style
+version(NOGCEXP) version (mir_test)
 @safe pure nothrow @nogc
-version (mir_test) unittest
+unittest
 {
     import mir.exception;
     import mir.format;
@@ -82,8 +85,9 @@ version (mir_test) unittest
 }
 
 ///
+version(NOGCEXP) version (mir_test)
 @safe pure nothrow @nogc
-version (mir_test) unittest
+unittest
 {
     @safe pure nothrow @nogc 
     bool func(scope const(char)[] msg)
@@ -127,7 +131,7 @@ version (mir_test) unittest
 
 // ///
 // @safe pure nothrow @nogc
-// version (mir_test) unittest
+// version(NOGCEXP) version (mir_test) unittest
 // {
 //     import mir.exception;
 //     try enforce(false, "Hi D", 2, "!");
@@ -154,7 +158,7 @@ version (mir_test) unittest
 
 // ///
 // @safe pure nothrow @nogc
-// version (mir_test) unittest
+// version(NOGCEXP) version (mir_test) unittest
 // {
 //     import mir.exception;
 //     try enforce(false, "Msg");
@@ -172,7 +176,7 @@ class MirError : Error
 
 ///
 @system pure nothrow @nogc
-version (mir_test) unittest
+version(NOGCEXP) version (mir_test) unittest
 {
     @system pure nothrow @nogc 
     bool func(scope const(char)[] msg)
@@ -293,6 +297,4 @@ private const(char)[] initilizePayload(ref return char[maxMsgLen] payload, scope
     else
         (() @trusted => memcpy(payload.ptr, msg.ptr, msg.length))();
     return payload[0 .. msg.length];
-}
-
 }

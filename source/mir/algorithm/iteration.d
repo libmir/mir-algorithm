@@ -536,7 +536,6 @@ private void checkShapesMatch(
     (scope ref const Slices slices)
     if (Slices.length > 1)
 {
-    enum msg = "all arguments must be slices" ~ tailErrorMessage!(fun, pfun);
     enum msgShape = "all slices must have the same shape"  ~ tailErrorMessage!(fun, pfun);
     enum N = slices[0].shape.length;
     foreach (i, Slice; Slices)
@@ -2399,32 +2398,49 @@ template equal(alias pred = "a == b")
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
-    /++
-    Params:
-        slices = Two or more slices, slices, ranges, and arrays.
-
-    Returns:
-        `true` any of the elements verify `pred` and `false` otherwise.
-    +/
-    bool equal(Slices...)(scope Slices slices)
-        if (Slices.length >= 2)
     {
-        enum msg = "all arguments must be slices" ~ tailErrorMessage!();
-        enum msgShape = "all slices must have the same dimension count"  ~ tailErrorMessage!();
-        import mir.internal.utility;
-        foreach (i, Slice; Slices)
+        /++
+        Params:
+            slices = Two or more ndslices, ranges, and arrays.
+
+        Returns:
+            `true` any of the elements verify `pred` and `false` otherwise.
+        +/
+        bool equal(Slices...)(scope Slices slices)
+            if (Slices.length >= 2)
         {
-            // static assert (isSlice!Slice, msg);
-            static if (i)
+            import mir.internal.utility;
+            static if (allSatisfy!(hasShape, Slices))
             {
-                static assert (DimensionCount!(Slices[i]) == DimensionCount!(Slices[0]));
-                foreach (j; Iota!(DimensionCount!(Slices[0])))
-                    if (slices[i].shape[j] != slices[0].shape[j])
+                auto shape0 = slices[0].shape;
+                enum N = DimensionCount!(Slices[0]);
+                foreach (ref slice; slices[1 .. $])
+                {
+                    if (slice.shape != shape0)
                         goto False;
+                }
+                return all!pred(allLightScope!slices);
             }
+            else
+            {
+                for(;;)
+                {
+                    auto empty = slices[0].empty;
+                    foreach (ref slice; slices[1 .. $])
+                    {
+                        if (slice.empty != empty)
+                            goto False;
+                    }
+                    if (empty)
+                        return true;
+                    if (!pred(frontOf!slices))
+                        goto False;
+                    foreach (ref slice; slices)
+                        slice.popFront;
+                }
+            }
+            False: return false;
         }
-        return all!pred(allLightScope!slices);
-        False: return false;
     }
     else
         alias equal = .equal!(naryFun!pred);
@@ -2466,7 +2482,6 @@ version(mir_test) unittest
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
-    import mir.algorithm.iteration: equal;
     import mir.math.common: approxEqual;
     import mir.ndslice.allocation: rcslice;
     import mir.ndslice.topology: as, iota;
@@ -3563,7 +3578,6 @@ if (isInputRange!Range && is(typeof(naryFun!pred(r.front, r.front)) == bool))
 ///
 @safe version(mir_test) unittest
 {
-    import std.algorithm.comparison : equal;
     import std.algorithm.mutation : copy;
 
     int[] arr = [ 1, 2, 2, 2, 2, 3, 4, 4, 4, 5 ];
@@ -3655,7 +3669,6 @@ struct Uniq(alias pred, Range)
 version(none)
 @safe version(mir_test) unittest
 {
-    import std.algorithm.comparison : equal;
     import std.internal.test.dummyrange;
     import std.range;
 
@@ -3683,8 +3696,6 @@ version(none)
 
 @safe version(mir_test) unittest // https://issues.dlang.org/show_bug.cgi?id=17264
 {
-    import std.algorithm.comparison : equal;
-
     const(int)[] var = [0, 1, 1, 2];
     assert(var.uniq.equal([0, 1, 2]));
 }
