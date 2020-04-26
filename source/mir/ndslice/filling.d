@@ -45,7 +45,7 @@ do {
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    import mir.ndslice.filling: fillVandermonde;
+    import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: uninitSlice;
     auto x = [1.0, 2, 3, 4, 5].sliced;
     auto v = uninitSlice!double(x.length, x.length);
