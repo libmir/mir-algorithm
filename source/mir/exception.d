@@ -12,7 +12,8 @@ version(D_Ddoc)
 else
     private enum _version_D_Ddoc = false;
 
-static if (_version_D_Ddoc || __traits(compiles, (()@nogc {throw new Exception("");})()))
+version(D_Ddoc) {} else
+static if (__traits(compiles, (()@nogc {throw new Exception("");})()))
 {
     version = NOGCEXP;
 }
@@ -21,7 +22,7 @@ static if (_version_D_Ddoc || __traits(compiles, (()@nogc {throw new Exception("
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
 {
     import core.lifetime: forward;
-    import mir.utility: _expect;
+    import mir.utility: _expect;_version_D_Ddoc
     static if (__traits(compiles, arg !is null))
     {
         if (_expect(arg !is null, true))
