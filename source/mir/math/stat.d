@@ -22,7 +22,6 @@ import core.lifetime: move;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
-import std.range.primitives: isInputRange;
 import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
 
 /++
@@ -73,7 +72,7 @@ struct MeanAccumulator(T, Summation summation)
 version(mir_test)
 @safe pure nothrow unittest
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     MeanAccumulator!(double, Summation.pairwise) x;
     x.put([0.0, 1, 2, 3, 4].sliced);
@@ -85,7 +84,7 @@ version(mir_test)
 version(mir_test)
 @safe pure nothrow unittest
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     MeanAccumulator!(float, Summation.pairwise) x;
     x.put([0, 1, 2, 3, 4].sliced);
@@ -106,10 +105,10 @@ template mean(F, Summation summation = Summation.appropriate)
     Params:
         r = range
     +/
-    F mean(Range)(Range r)
+    @fmamath F mean(Range)(Range r)
         if (isIterable!Range)
     {
-        MeanAccumulator!(F, ResolveSummationType!(summation, Range, sumType!Range)) mean;
+        MeanAccumulator!(F, ResolveSummationType!(summation, Range, F)) mean;
         mean.put(r.move);
         return mean.mean;
     }
@@ -122,7 +121,7 @@ template mean(Summation summation = Summation.appropriate)
     Params:
         r = range
     +/
-    sumType!Range mean(Range)(Range r)
+    @fmamath sumType!Range mean(Range)(Range r)
         if (isIterable!Range)
     {
         return .mean!(sumType!Range, summation)(r.move);
@@ -145,7 +144,7 @@ template mean(string summation)
 version(mir_test)
 @safe pure nothrow unittest
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     assert(mean([1.0, 2, 3]) == 2);
     assert(mean([1.0 + 3i, 2, 3]) == 2 + 1i);
@@ -160,7 +159,7 @@ version(mir_test)
 @safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
                           2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
@@ -172,7 +171,7 @@ version(mir_test)
 @safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
                           2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
@@ -184,8 +183,8 @@ version(mir_test)
 @safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice.slice : sliced;
-    import mir.ndslice.topology : alongDim, byDim, map;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: alongDim, byDim, map;
 
     static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
                           2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
@@ -204,6 +203,7 @@ unittest
 /// Can also set algorithm or output type
 version(mir_test)
 @safe @nogc pure nothrow
+
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -231,8 +231,8 @@ version(mir_test)
 @safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice.slice : sliced;
-    import std.math : approxEqual;
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
 
     static immutable x = [0, 1, 1, 2, 4, 4,
                           2, 7, 5, 1, 2, 0];
@@ -244,7 +244,7 @@ version(mir_test)
 @safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     static immutable cdouble[] x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i];
     static immutable cdouble result = 2.5 + 3.5i;
@@ -256,7 +256,7 @@ version(mir_test)
 @safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice : alongDim, iota, as, map;
+    import mir.ndslice: alongDim, iota, as, map;
     /*
       [[0,1,2],
        [3,4,5]]
@@ -280,8 +280,8 @@ version(mir_test)
 @safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice.slice : sliced;
-    import mir.ndslice.topology : alongDim, byDim, map;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: alongDim, byDim, map;
 
     static immutable x      = [0.0, 1.00, 1.50, 2.0, 3.5, 4.250,
                                2.0, 7.50, 5.00, 1.0, 1.5, 0.000];
@@ -299,11 +299,132 @@ version(mir_test)
 }
 
 /++
+Computes the harmonic mean of a range.
+
+See_also: $(SUBREF sum, sum)
++/
+template hmean(F, Summation summation = Summation.appropriate)
+{
+    /++
+    Params:
+        r = range
+    Returns:
+        harmonic mean of the range
+    +/
+    @fmamath F hmean(Range)(Range r)
+        if (isIterable!Range)
+    {
+        import mir.ndslice.topology: map;
+        static if (summation == Summation.fast && __traits(compiles, r.move.map!"1.0 / a"))
+        {
+            return 1.0 / r.move.map!"1.0 / a".mean!(F, summation);
+        }
+        else
+        {
+            MeanAccumulator!(F, ResolveSummationType!(summation, Range, F)) imean;
+            foreach (e; r)
+                imean.put(1.0 / e);
+            return 1.0 / imean.mean;
+        }
+    }
+}
+
+/// ditto
+template hmean(Summation summation = Summation.appropriate)
+{
+    /++
+    Params:
+        r = range
+    Returns:
+        harmonic mean of the range
+    +/
+    @fmamath sumType!Range hmean(Range)(Range r)
+        if (isIterable!Range)
+    {
+        return .hmean!(typeof(1.0 / sumType!Range.init), summation)(r.move);
+    }
+}
+
+/// ditto
+template hmean(F, string summation)
+{
+    mixin("alias hmean = .hmean!(F, Summation." ~ summation ~ ");");
+}
+
+/// ditto
+template hmean(string summation)
+{
+    mixin("alias hmean = .hmean!(Summation." ~ summation ~ ");");
+}
+
+/// Harmonic mean of vector
+pure @safe nothrow @nogc
+unittest
+{
+    import mir.math.common: approxEqual;
+
+    static immutable x = [20.0, 100.0, 2000.0, 10.0, 5.0, 2.0];
+
+    assert(x.hmean.approxEqual(6.97269));
+}
+
+/// Harmonic mean of matrix
+pure @safe
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.fuse: fuse;
+
+    auto x = [[20.0, 100.0, 2000.0], [10.0, 5.0, 2.0]].fuse;
+
+    assert(x.hmean.approxEqual(6.97269));
+}
+
+/// Column harmonic mean of matrix
+pure @safe
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [ 10.0, 5.0, 2.0]
+    ].fuse;
+
+    auto y = [13.33333, 9.52381, 3.996004];
+
+    // Use byDim or alongDim with map to compute mean of row/column.
+    assert(x.byDim!1.map!hmean.all!approxEqual(y));
+    assert(x.alongDim!0.map!hmean.all!approxEqual(y));
+}
+
+/// Can also pass arguments to hmean
+pure @safe
+unittest
+{
+    import mir.ndslice.topology: map, repeat;
+    import mir.math.common: approxEqual;
+
+    //Set sum algorithm or output type
+    auto x = [1, 1e-100, 1, -1e-100];
+
+    assert(x.hmean!"kb2".approxEqual(2));
+    assert(x.hmean!"precise".approxEqual(2));
+
+    //Provide the summation type
+    assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
+}
+
+/++
 A linear regression model with a single explanatory variable.
 +/
 template simpleLinearRegression(Summation summation = Summation.kbn)
 {
     import mir.ndslice.slice;
+    import std.range.primitives: isInputRange;
 
     /++
     Params:
@@ -323,7 +444,7 @@ template simpleLinearRegression(Summation summation = Summation.kbn)
     do {
         alias X = typeof(sumType!XRange.init * sumType!XRange.init);
         alias Y = sumType!YRange;
-        enum summationX = !__traits(isIntegral, X) ? summation : Summation.naive;
+        enum summationX = !__traits(isIntegral, X) ? summation: Summation.naive;
         Summator!(X, summationX) xms = 0;
         Summator!(Y, summation) yms = 0;
         Summator!(X, summationX) xxms = 0;
