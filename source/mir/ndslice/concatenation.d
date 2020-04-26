@@ -79,7 +79,7 @@ private template _Expose(size_t maxN, size_t dim)
 /++
 Creates a $(LREF Concatenation) view of multiple slices.
 
-Can be used in combination with itself, $(LREF until), $(SUBREF, allocation, slice),
+Can be used in combination with itself, $(LREF until), $(SUBREF allocation, slice),
 and $(SUBREF slice, Slice) assignment.
 
 Params:

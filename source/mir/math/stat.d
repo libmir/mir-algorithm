@@ -98,6 +98,8 @@ Computes the average of `r`, which must be a finite iterable.
 
 Returns:
     The average of all the elements in the range r.
+
+See_also: $(SUBREF sum, Summation)
 +/
 template mean(F, Summation summation = Summation.appropriate)
 {
@@ -301,7 +303,7 @@ version(mir_test)
 /++
 Computes the harmonic mean of a range.
 
-See_also: $(SUBREF sum, sum)
+See_also: $(SUBREF sum, Summation)
 +/
 template hmean(F, Summation summation = Summation.appropriate)
 {

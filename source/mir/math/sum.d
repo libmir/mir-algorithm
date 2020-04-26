@@ -1636,7 +1636,7 @@ value, but its type will be used if it is not specified.
 
 Note that these specialized summing algorithms execute more primitive operations
 than vanilla summation. Therefore, if in certain cases maximum speed is required
-at expense of precision, one can use $(LREF, Summation.fast).
+at expense of precision, one can use $(LREF Summation.fast).
 
 Returns:
     The sum of all the elements in the range r.

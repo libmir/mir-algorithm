@@ -3125,7 +3125,7 @@ Params:
 Returns:
     n-dimensional slice with the same kind, shape and strides.
 
-See_also: `indexed` is similar to $(LREF, vmap), but a field (`[]`) is used instead of a function (`()`), and order of arguments is reversed.
+See_also: `indexed` is similar to $(LREF vmap), but a field (`[]`) is used instead of a function (`()`), and order of arguments is reversed.
 +/
 Slice!(IndexIterator!(Iterator, Field), N, kind)
     indexed(Field, Iterator, size_t N, SliceKind kind)
