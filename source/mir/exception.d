@@ -12,11 +12,7 @@ version(D_Ddoc)
 else
     private enum _version_D_Ddoc = false;
 
-version(D_Ddoc) {} else
-static if (__traits(compiles, (()@nogc {throw new Exception("");})()))
-{
-    version = NOGCEXP;
-}
+private enum NOGCEXP = __traits(compiles, (()@nogc {throw new Exception("");})());
 
 ///
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
@@ -55,7 +51,7 @@ class MirException : Exception
 }
 
 /// Generic style
-version(NOGCEXP) version (mir_test)
+version (mir_test) static if (NOGCEXP)
 @safe pure nothrow @nogc
 unittest
 {
@@ -65,7 +61,7 @@ unittest
 }
 
 /// C++ style
-version(NOGCEXP) version (mir_test)
+version (mir_test) static if (NOGCEXP)
 @safe pure nothrow @nogc
 unittest
 {
@@ -76,7 +72,7 @@ unittest
 }
 
 /// Low-level style
-version(NOGCEXP) version (mir_test)
+version (mir_test) static if (NOGCEXP)
 @safe pure nothrow @nogc
 unittest
 {
@@ -88,7 +84,7 @@ unittest
 }
 
 ///
-version(NOGCEXP) version (mir_test)
+version (mir_test) static if (NOGCEXP)
 @safe pure nothrow @nogc
 unittest
 {
@@ -134,7 +130,7 @@ unittest
 
 // ///
 // @safe pure nothrow @nogc
-// version(NOGCEXP) version (mir_test) unittest
+// version (mir_test) unittest static if (NOGCEXP)
 // {
 //     import mir.exception;
 //     try enforce(false, "Hi D", 2, "!");
@@ -161,7 +157,7 @@ unittest
 
 // ///
 // @safe pure nothrow @nogc
-// version(NOGCEXP) version (mir_test) unittest
+// version (mir_test) unittest static if (NOGCEXP)
 // {
 //     import mir.exception;
 //     try enforce(false, "Msg");
@@ -179,7 +175,8 @@ class MirError : Error
 
 ///
 @system pure nothrow @nogc
-version(NOGCEXP) version (mir_test) unittest
+version (mir_test) static if (NOGCEXP)
+unittest
 {
     @system pure nothrow @nogc 
     bool func(scope const(char)[] msg)
