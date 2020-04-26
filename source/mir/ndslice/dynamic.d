@@ -764,29 +764,29 @@ auto reversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slic
 
 @safe @nogc pure nothrow version(mir_test) unittest
 {
+    import mir.algorithm.iteration : equal;
+    import mir.ndslice.concatenation : concatenation;
     import mir.ndslice.slice;
     import mir.ndslice.topology;
-    import std.algorithm.comparison : equal;
-    import std.range : chain;
     auto i0 = iota([4], 0); auto r0 = i0.retro;
     auto i1 = iota([4], 4); auto r1 = i1.retro;
     auto i2 = iota([4], 8); auto r2 = i2.retro;
     auto slice = iota(3, 4).universal;
-    assert(slice                   .flattened.equal(chain(i0, i1, i2)));
+    assert(slice                   .flattened.equal(concatenation(i0, i1, i2)));
     // Template
-    assert(slice.reversed!(0)      .flattened.equal(chain(i2, i1, i0)));
-    assert(slice.reversed!(1)      .flattened.equal(chain(r0, r1, r2)));
-    assert(slice.reversed!(0, 1)   .flattened.equal(chain(r2, r1, r0)));
-    assert(slice.reversed!(1, 0)   .flattened.equal(chain(r2, r1, r0)));
-    assert(slice.reversed!(1, 1)   .flattened.equal(chain(i0, i1, i2)));
-    assert(slice.reversed!(0, 0, 0).flattened.equal(chain(i2, i1, i0)));
+    assert(slice.reversed!(0)      .flattened.equal(concatenation(i2, i1, i0)));
+    assert(slice.reversed!(1)      .flattened.equal(concatenation(r0, r1, r2)));
+    assert(slice.reversed!(0, 1)   .flattened.equal(concatenation(r2, r1, r0)));
+    assert(slice.reversed!(1, 0)   .flattened.equal(concatenation(r2, r1, r0)));
+    assert(slice.reversed!(1, 1)   .flattened.equal(concatenation(i0, i1, i2)));
+    assert(slice.reversed!(0, 0, 0).flattened.equal(concatenation(i2, i1, i0)));
     // Function
-    assert(slice.reversed (0)      .flattened.equal(chain(i2, i1, i0)));
-    assert(slice.reversed (1)      .flattened.equal(chain(r0, r1, r2)));
-    assert(slice.reversed (0, 1)   .flattened.equal(chain(r2, r1, r0)));
-    assert(slice.reversed (1, 0)   .flattened.equal(chain(r2, r1, r0)));
-    assert(slice.reversed (1, 1)   .flattened.equal(chain(i0, i1, i2)));
-    assert(slice.reversed (0, 0, 0).flattened.equal(chain(i2, i1, i0)));
+    assert(slice.reversed (0)      .flattened.equal(concatenation(i2, i1, i0)));
+    assert(slice.reversed (1)      .flattened.equal(concatenation(r0, r1, r2)));
+    assert(slice.reversed (0, 1)   .flattened.equal(concatenation(r2, r1, r0)));
+    assert(slice.reversed (1, 0)   .flattened.equal(concatenation(r2, r1, r0)));
+    assert(slice.reversed (1, 1)   .flattened.equal(concatenation(i0, i1, i2)));
+    assert(slice.reversed (0, 0, 0).flattened.equal(concatenation(i2, i1, i0)));
 }
 
 private enum _stridedCode = q{
@@ -919,23 +919,23 @@ pure nothrow version(mir_test) unittest
 
 @safe @nogc pure nothrow version(mir_test) unittest
 {
-    import mir.ndslice.slice;
-    import mir.ndslice.topology;
-    import std.algorithm.comparison : equal;
+    import mir.ndslice;
+    import mir.algorithm.iteration : equal;
+
     import std.range : chain;
     auto i0 = iota([4], 0); auto s0 = stride(i0, 3);
     auto i1 = iota([4], 4); auto s1 = stride(i1, 3);
     auto i2 = iota([4], 8); auto s2 = stride(i2, 3);
     auto slice = iota(3, 4).universal;
-    assert(slice              .flattened.equal(chain(i0, i1, i2)));
+    assert(slice              .flattened.equal(concatenation(i0, i1, i2)));
     // Template
-    assert(slice.strided!0(2) .flattened.equal(chain(i0, i2)));
-    assert(slice.strided!1(3) .flattened.equal(chain(s0, s1, s2)));
-    assert(slice.strided!(0, 1)(2, 3).flattened.equal(chain(s0, s2)));
+    assert(slice.strided!0(2) .flattened.equal(concatenation(i0, i2)));
+    assert(slice.strided!1(3) .flattened.equal(concatenation(s0, s1, s2)));
+    assert(slice.strided!(0, 1)(2, 3).flattened.equal(concatenation(s0, s2)));
     // Function
-    assert(slice.strided(0, 2).flattened.equal(chain(i0, i2)));
-    assert(slice.strided(1, 3).flattened.equal(chain(s0, s1, s2)));
-    assert(slice.strided(0, 2).strided(1, 3).flattened.equal(chain(s0, s2)));
+    assert(slice.strided(0, 2).flattened.equal(concatenation(i0, i2)));
+    assert(slice.strided(1, 3).flattened.equal(concatenation(s0, s1, s2)));
+    assert(slice.strided(0, 2).strided(1, 3).flattened.equal(concatenation(s0, s2)));
 }
 
 /++
