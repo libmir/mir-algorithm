@@ -7,8 +7,15 @@ module mir.exception;
 
 version(D_Exceptions):
 
-static if (__traits(compiles, (()@nogc {throw new Exception("");})()))
+version(D_Ddoc)
+    private enum _version_D_Ddoc = true;
+else
+    private enum _version_D_Ddoc = false;
+
+static if (_version_D_Ddoc || __traits(compiles, (()@nogc {throw new Exception("");})()))
+{
     version = NOGCEXP;
+}
 
 ///
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
@@ -37,11 +44,6 @@ version (mir_test) unittest
     try enforce!"Msg"(false);
     catch(Exception e) assert(e.msg == "Msg");
 }
-
-version(D_Ddoc)
-    private enum _version_D_Ddoc = true;
-else
-    private enum _version_D_Ddoc = false;
 
 /++
 +/
