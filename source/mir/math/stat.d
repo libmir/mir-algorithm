@@ -557,7 +557,7 @@ unittest
 
 /// Can also pass arguments to average function used by center
 version(mir_test)
-//pure @safe nothrow
+pure @safe nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
