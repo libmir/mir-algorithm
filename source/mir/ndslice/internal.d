@@ -343,7 +343,6 @@ pure nothrow version(mir_test) unittest
     assert(lengthsProduct([3, 4, 5]) == 60);
 }
 
-
 package(mir) template frontOf(args...)
 {
     static if (args.length == 0)

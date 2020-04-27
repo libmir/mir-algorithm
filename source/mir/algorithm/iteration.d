@@ -3563,16 +3563,23 @@ bidirectional, $(D uniq) also yields a
 `std,range,primitives`.
 Params:
     pred = Predicate for determining equivalence between range elements.
-    r = An input range of elements to filter.
-Returns:
-    An input range of
-    consecutively unique elements in the original range. If `r` is also a
-    forward range or bidirectional range, the returned range will be likewise.
 */
-Uniq!(naryFun!pred, Range) uniq(alias pred = "a == b", Range)(auto ref Range r)
-if (isInputRange!Range && is(typeof(naryFun!pred(r.front, r.front)) == bool))
+template uniq(alias pred = "a == b")
 {
-    return typeof(return)(r);
+    /++
+    Params:
+        r = An input range of elements to filter.
+    Returns:
+        An input range of
+        consecutively unique elements in the original range. If `r` is also a
+        forward range or bidirectional range, the returned range will be likewise.
+    +/
+    Uniq!(naryFun!pred, Range) uniq(Range)(Range r)
+    if (isInputRange!Range && is(typeof(naryFun!pred(r.front, r.front)) == bool))
+    {
+        import core.lifetime: move;
+        return typeof(return)(r.move);
+    }
 }
 
 ///
@@ -3600,13 +3607,6 @@ struct Uniq(alias pred, Range)
 {
     Range _input;
 
-    // this()(auto ref Range input)
-    // {
-    //     alias AliasSeq(T...) = T;
-    //     import core.lifetime: forward;
-    //     AliasSeq!_input = forward!input;
-    // }
-
     ref opSlice() inout
     {
         return this;
@@ -3623,7 +3623,7 @@ struct Uniq(alias pred, Range)
         while (!_input.empty && pred(last, _input.front));
     }
 
-    @property ElementType!Range front()
+    auto ref front() @property
     {
         assert(!empty, "Attempting to fetch the front of an empty uniq.");
         return _input.front;
@@ -3642,7 +3642,7 @@ struct Uniq(alias pred, Range)
             while (!_input.empty && pred(last, _input.back));
         }
 
-        @property ElementType!Range back() scope return
+        auto ref back() scope return @property
         {
             assert(!empty, "Attempting to fetch the back of an empty uniq.");
             return _input.back;
@@ -3660,7 +3660,8 @@ struct Uniq(alias pred, Range)
 
     static if (isForwardRange!Range)
     {
-        @property typeof(this) save() scope return {
+        @property typeof(this) save() scope return
+        {
             return typeof(this)(_input.save);
         }
     }
@@ -3708,4 +3709,115 @@ version(none)
     x[] = [2, 3];
     y[] = [2, 3];
     assert(equal!approxEqual(x,y));
+}
+
+/++
+Implements the higher order filter function. The predicate is passed to
+`mir.functional.naryFun`, and can either accept a string, or any callable
+that can be executed via `pred(element)`.
+Params:
+    predicate = Function to apply to each element of range
+Returns:
+    `filter!(predicate)(range)` returns a new range containing only elements `x` in `range` for
+    which `predicate(x)` returns `true`.
+See_Also:
+    $(HTTP en.wikipedia.org/wiki/Filter_(higher-order_function), Filter (higher-order function))
+Note:
+    $(RED User and library code MUST call `empty` method ahead each call of pair or one of `front` and `popFront` methods.)
++/
+template filter(alias pred = "a")
+{
+    /++
+    Params:
+        r = An input range of elements to filter.
+    Returns:
+        A new range containing only elements `x` in `range` for which `predicate(x)` returns `true`.
+    +/
+    Filter!(naryFun!pred, Range) filter(Range)(Range r)
+        if (isInputRange!Range)
+    {
+        import core.lifetime: move;
+        return typeof(return)(r.move);
+    }
+}
+
+/// ditto
+struct Filter(alias pred, Range)
+{
+    Range _input;
+    version(assert) bool _freshEmpty;
+
+    ref opSlice() inout
+    {
+        return this;
+    }
+
+    void popFront() scope
+    {
+        assert(!_input.empty, "Attempting to popFront an empty Filter.");
+        assert(_freshEmpty, "Attempting to pop the front of a Filter without calling '.empty' method ahead.");
+        version(assert) _freshEmpty = false;
+        _input.popFront;
+    }
+
+    auto ref front() @property
+    {
+        assert(!_input.empty, "Attempting to fetch the front of an empty Filter.");
+        assert(_freshEmpty, "Attempting to fetch the front of a Filter without calling '.empty' method ahead.");
+        return _input.front;
+    }
+
+    bool empty() @property
+    {
+        version(assert) _freshEmpty = true;
+        for (;;)
+        {
+            if (auto r = _input.empty)
+                return true;
+            if (pred(_input.front))
+                return false;
+            _input.popFront;
+        }
+    }
+
+    static if (isForwardRange!Range)
+    {
+        @property typeof(this) save() scope return
+        {
+            return typeof(this)(_input.save);
+        }
+    }
+}
+
+///
+@safe unittest
+{
+    import mir.algorithm.iteration : equal;
+
+    int[] arr = [ 0, 1, 2, 3, 4, 5 ];
+
+    // Filter below 3
+    auto small = filter!(a => a < 3)(arr);
+    assert(equal(small, [ 0, 1, 2 ]));
+
+    // Filter again, but with Uniform Function Call Syntax (UFCS)
+    auto sum = arr.filter!(a => a < 3);
+    assert(equal(sum, [ 0, 1, 2 ]));
+
+    // Filter with the default predicate
+    auto nonZeros = arr.filter;
+    assert(equal(nonZeros, [ 1, 2, 3, 4, 5 ]));
+
+    // In combination with concatenation() to span multiple ranges
+    import mir.ndslice.concatenation;
+
+    int[] a = [ 3, -2, 400 ];
+    int[] b = [ 100, -101, 102 ];
+    auto r = concatenation(a, b).filter!(a => a > 0);
+    assert(equal(r, [ 3, 400, 100, 102 ]));
+
+    // Mixing convertible types is fair game, too
+    double[] c = [ 2.5, 3.0 ];
+    auto r1 = concatenation(c, a, b).filter!(a => cast(int) a != a);
+    assert(equal(r1, [ 2.5 ]));
 }
