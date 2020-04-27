@@ -3716,10 +3716,10 @@ Implements the higher order filter function. The predicate is passed to
 `mir.functional.naryFun`, and can either accept a string, or any callable
 that can be executed via `pred(element)`.
 Params:
-    predicate = Function to apply to each element of range
+    pred = Function to apply to each element of range
 Returns:
-    `filter!(predicate)(range)` returns a new range containing only elements `x` in `range` for
-    which `predicate(x)` returns `true`.
+    `filter!(pred)(range)` returns a new range containing only elements `x` in `range` for
+    which `pred(x)` returns `true`.
 See_Also:
     $(HTTP en.wikipedia.org/wiki/Filter_(higher-order_function), Filter (higher-order function))
 Note:
@@ -3790,7 +3790,8 @@ struct Filter(alias pred, Range)
 }
 
 ///
-@safe unittest
+version(mir_test)
+@safe pure nothrow unittest
 {
     import mir.algorithm.iteration : equal;
 
