@@ -22,7 +22,7 @@ import core.lifetime: move;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
-import std.traits: isArray, isFloatingPoint, isMutable, isIterable, arity;
+import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
 
 /++
 Output range for mean.
