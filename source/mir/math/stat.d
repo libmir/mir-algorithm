@@ -424,40 +424,48 @@ unittest
     assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
 }
 
-private template centerImpl(F)
-{
-    import mir.ndslice.slice: Slice, SliceKind;
-
-    @safe pure nothrow @nogc
-    auto centerImpl(Iterator, size_t N, SliceKind kind)(
-        Slice!(Iterator, N, kind) slice, F average)
-    {
-        return slice - average;
-    }
-}
-
 /++
-Centers `r`, which must be a finite iterable.
+Centers `slice`, which must be a finite iterable.
 
-By default, `r` is centered by the mean. A custom function may also be provided
+By default, `slice` is centered by the mean. A custom function may also be provided
 using `centralTendency`.
 
 Returns:
-    The elements in the range r with the average subtracted from them.
+    The elements in the slice with the average subtracted from them.
 +/
 
 /// ditto
 template center(alias centralTendency = mean!(Summation.appropriate))
 {
+    import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
     /++
     Params:
-        r = range
+        slice = slie
     +/
     @safe pure nothrow
-    auto center(Range)(Range r)
-        if (isIterable!Range)
+    auto center(Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice)
     {
-        return centerImpl!(sumType!Range)(r, centralTendency(r));
+        import core.lifetime: move;
+        import mir.ndslice.topology: vmap;
+        import mir.ndslice.internal: LeftOp, ImplicitlyUnqual;
+
+        auto m = centralTendency(slice.lightScope);
+        alias T = typeof(m);
+        return slice.move.vmap(LeftOp!("-", ImplicitlyUnqual!T)(m));
+    }
+    
+    /// ditto
+    auto center(T)(T[] array)
+    {
+        return center(array.sliced);
+    }
+
+    /// ditto
+    auto center(T)(T withAsSlice)
+        if (hasAsSlice!T)
+    {
+        return center(withAsSlice.asSlice);
     }
 }
 
@@ -470,23 +478,23 @@ unittest
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
 
-    auto x = [0.0, 1, 2, 3, 4, 5].sliced;
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
     assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    
+    // Can center using different functions
+    assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
 }
 
-/// Can center using different averages
+/// Center dynamic array
 version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
 
-    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
-
-    assert(x.center!mean.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
-    assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
+    auto x = [1.0, 2, 3, 4, 5, 6];
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
 }
 
 /// Center matrix
@@ -498,7 +506,6 @@ unittest
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
     
-
     auto x = [
         [0.0, 1, 2], 
         [3.0, 4, 5]
@@ -570,9 +577,6 @@ unittest
     assert(x.center!(mean!"kbn").all!approxEqual(result));
     assert(x.center!(mean!"kb2").all!approxEqual(result));
     assert(x.center!(mean!"precise").all!approxEqual(result));
-
-    //Provide the summation type
-    assert(float.max.repeat(3).center!(mean!(double, "fast")).all!approxEqual([0.0, 0, 0]));
 }
 
 /++
