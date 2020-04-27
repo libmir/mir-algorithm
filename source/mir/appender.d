@@ -53,7 +53,15 @@ struct ScopedBuffer(T, size_t bytes = 4096)
             else
             {
                 auto newLen = _currentLength << 1;
-                _buffer = (cast(T*)malloc(T.sizeof * newLen))[0 .. newLen];
+                if (auto p = malloc(T.sizeof * newLen))
+                {
+                    _buffer = (cast(T*)p)[0 .. newLen];
+                }
+                else assert(0);
+                version (mir_secure_memory)
+                {
+                    (cast(ubyte[])_buffer)[] = 0;
+                }
                 memcpy(cast(void*)_buffer.ptr, _scopeBuffer.ptr, T.sizeof * (_currentLength - n));
             }
         }
@@ -62,6 +70,10 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         {
             auto newLen = _currentLength << 1;
             _buffer = (cast(T*)realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))[0 .. newLen];
+            version (mir_secure_memory)
+            {
+                (cast(ubyte[])_buffer[_currentLength .. $])[] = 0;
+            }
         }
         return _buffer[0 .. _currentLength];
     }
@@ -78,7 +90,16 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         import mir.internal.memory: malloc;
         if (_buffer.ptr)
         {
-            auto buffer = (cast(T*)malloc(T.sizeof * _buffer.length))[0 .. _buffer.length];
+            typeof(_buffer) buffer;
+            if (auto p = malloc(T.sizeof * _buffer.length))
+            {
+                buffer = (cast(T*)p)[0 .. T.sizeof * _buffer.length];
+            }
+            else assert(0);
+            version (mir_secure_memory)
+            {
+                (cast(ubyte[])buffer)[] = 0;
+            }
             buffer[0 .. _currentLength] = _buffer[0 .. _currentLength];
             _buffer = buffer;
         }

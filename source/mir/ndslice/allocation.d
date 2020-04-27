@@ -496,6 +496,10 @@ auto uninitSlice(T, size_t N)(size_t[N] lengths...)
     immutable len = lengths.lengthsProduct;
     import std.array : uninitializedArray;
     auto arr = uninitializedArray!(T[])(len);
+    version (mir_secure_memory)
+    {()@trusted{
+        (cast(ubyte[])arr)[] = 0;
+    }();}
     return arr.sliced(lengths);
 }
 
@@ -646,6 +650,10 @@ makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] leng
         auto mem = alloc.allocate(len * T.sizeof);
         if (mem.length == 0) assert(0);
         auto array = () @trusted { return cast(T[]) mem; }();
+        version (mir_secure_memory)
+        {() @trusted { 
+            (cast(ubyte[])array)[] = 0;
+        }();}
         return array.sliced(lengths);
     }
     else
@@ -856,7 +864,13 @@ Slice!(T*, N) stdcUninitSlice(T, size_t N)(size_t[N] lengths...)
 {
     import core.stdc.stdlib: malloc;
     immutable len = lengths.lengthsProduct;
-    auto ptr = len ? cast(T*) malloc(len * T.sizeof) : null;
+    auto p = malloc(len * T.sizeof);
+    if (p is null) assert(0);
+    version (mir_secure_memory)
+    {
+        (cast(ubyte*)p)[0 .. len * T.sizeof] = 0;
+    }
+    auto ptr = len ? cast(T*) p : null;
     return ptr.sliced(lengths);
 }
 
@@ -892,6 +906,10 @@ See_also:
 void stdcFreeSlice(T, size_t N)(Slice!(T*, N) slice)
 {
     import core.stdc.stdlib: free;
+    version (mir_secure_memory)
+    {
+        (cast(ubyte[])slice.field)[] = 0;
+    }
     slice._iterator.free;
 }
 
@@ -926,6 +944,10 @@ auto stdcUninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @sys
     immutable len = lengths.lengthsProduct;
     import mir.internal.memory: alignedAllocate;
     auto arr = (cast(T*)alignedAllocate(len * T.sizeof, alignment))[0 .. len];
+    version (mir_secure_memory)
+    {
+        (cast(ubyte[])arr)[] = 0;
+    }
     return arr.sliced(lengths);
 }
 
@@ -951,5 +973,9 @@ See_also:
 void stdcFreeAlignedSlice(T, size_t N)(Slice!(T*, N) slice)
 {
     import mir.internal.memory: alignedFree;
+    version (mir_secure_memory)
+    {
+        (cast(ubyte[])slice.field)[] = 0;
+    }
     slice._iterator.alignedFree;
 }
