@@ -459,19 +459,6 @@ template center(alias centralTendency = mean!(Summation.appropriate))
     {
         return centerImpl!(sumType!Range)(r, centralTendency(r));
     }
-    
-    /++
-    Params:
-        r = range
-        average = average
-    +/
-    @safe pure nothrow
-    auto center(Range, T)(Range r, out T average)
-        if (isIterable!Range)
-    {
-        average = centralTendency(r);
-        return centerImpl!T(r, average);
-    }
 }
 
 /// Center vector
@@ -484,13 +471,7 @@ unittest
     import mir.math.common: approxEqual;
 
     auto x = [0.0, 1, 2, 3, 4, 5].sliced;
-    auto result = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].sliced;
-    assert(x.center.all!approxEqual(result));
-    
-    //Can also output average
-    double avg;
-    auto y = x.center(avg);
-    assert(avg == 2.5);
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
 }
 
 /// Can center using different averages
@@ -504,8 +485,8 @@ unittest
 
     auto x = [1.0, 2, 3, 4, 5, 6].sliced;
 
-    assert(x.center!mean.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].sliced));
-    assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102].sliced));
+    assert(x.center!mean.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
 }
 
 /// Center matrix
@@ -591,7 +572,7 @@ unittest
     assert(x.center!(mean!"precise").all!approxEqual(result));
 
     //Provide the summation type
-    assert(float.max.repeat(3).center!(mean!(double, "fast")).all!approxEqual([0.0, 0, 0].sliced));
+    assert(float.max.repeat(3).center!(mean!(double, "fast")).all!approxEqual([0.0, 0, 0]));
 }
 
 /++
