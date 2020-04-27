@@ -566,7 +566,7 @@ unittest
     import mir.math.common: approxEqual;
 
     //Set sum algorithm or output type
-    static immutable a = [1, 1e100, 1, -1e100];
+    auto a = [1, 1e100, 1, -1e100];
 
     auto x = a.sliced * 10_000;
     auto result = [5000, 1e104 - 5000, 5000, -1e104 - 5000].sliced;
