@@ -3566,38 +3566,66 @@ Params:
 */
 template uniq(alias pred = "a == b")
 {
-    /++
-    Params:
-        r = An input range of elements to filter.
-    Returns:
-        An input range of
-        consecutively unique elements in the original range. If `r` is also a
-        forward range or bidirectional range, the returned range will be likewise.
-    +/
-    Uniq!(naryFun!pred, Range) uniq(Range)(Range r)
-    if (isInputRange!Range && is(typeof(naryFun!pred(r.front, r.front)) == bool))
+    static if (__traits(isSame, naryFun!pred, pred))
     {
-        import core.lifetime: move;
-        return typeof(return)(r.move);
+        /++
+        Params:
+            r = An input range of elements to filter.
+        Returns:
+            An input range of
+            consecutively unique elements in the original range. If `r` is also a
+            forward range or bidirectional range, the returned range will be likewise.
+        +/
+        Uniq!(naryFun!pred, Range) uniq(Range)(Range r)
+         if (isInputRange!Range && !isSlice!Range)
+        {
+            import core.lifetime: move;
+            return typeof(return)(r.move);
+        }
+
+        /// ditto
+        auto uniq(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+        {
+            import mir.ndslice.topology: flattened; 
+            import core.lifetime: move;
+            auto r = slice.move.flattened;
+            return Uniq!(pred, typeof(r))(move(r));
+        }
     }
+    else
+        alias uniq = .uniq!(naryFun!pred);
 }
 
 ///
 @safe version(mir_test) unittest
 {
-    import std.algorithm.mutation : copy;
-
     int[] arr = [ 1, 2, 2, 2, 2, 3, 4, 4, 4, 5 ];
-    assert(equal(uniq(arr), [ 1, 2, 3, 4, 5 ][]));
+    assert(equal(uniq(arr), [ 1, 2, 3, 4, 5 ]));
 
+    import std.algorithm.mutation : copy;
     // Filter duplicates in-place using copy
-    arr.length -= arr.uniq().copy(arr).length;
+    arr.length -= arr.uniq.copy(arr).length;
     assert(arr == [ 1, 2, 3, 4, 5 ]);
 
     // Note that uniqueness is only determined consecutively; duplicated
     // elements separated by an intervening different element will not be
     // eliminated:
     assert(equal(uniq([ 1, 1, 2, 1, 1, 3, 1]), [1, 2, 1, 3, 1]));
+}
+
+/// N-dimensional case
+version(mir_test)
+@safe pure unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: byDim, map, iota;
+
+    auto matrix = [ [1, 2, 2], [2, 2, 3], [4, 4, 4] ].fuse;
+
+    assert(matrix.uniq.equal([ 1, 2, 3, 4 ]));
+
+    // unique elements for each row
+    assert(matrix.byDim!0.map!uniq.equal!equal([ [1, 2], [2, 3], [4] ]));
 }
 
 /++
@@ -3727,18 +3755,32 @@ Note:
 +/
 template filter(alias pred = "a")
 {
-    /++
-    Params:
-        r = An input range of elements to filter.
-    Returns:
-        A new range containing only elements `x` in `range` for which `predicate(x)` returns `true`.
-    +/
-    Filter!(naryFun!pred, Range) filter(Range)(Range r)
-        if (isInputRange!Range)
+    static if (__traits(isSame, naryFun!pred, pred))
     {
-        import core.lifetime: move;
-        return typeof(return)(r.move);
+        /++
+        Params:
+            r = An input range of elements to filter.
+        Returns:
+            A new range containing only elements `x` in `range` for which `predicate(x)` returns `true`.
+        +/
+        Filter!(naryFun!pred, Range) filter(Range)(Range r)
+            if (isInputRange!Range && !isSlice!Range)
+        {
+            import core.lifetime: move;
+            return typeof(return)(r.move);
+        }
+
+        /// ditto
+        auto filter(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+        {
+            import mir.ndslice.topology: flattened; 
+            import core.lifetime: move;
+            auto r = slice.move.flattened;
+            return Filter!(pred, typeof(r))(move(r));
+        }
     }
+    else
+        alias filter = .filter!(naryFun!pred);
 }
 
 /// ditto
@@ -3793,8 +3835,6 @@ struct Filter(alias pred, Range)
 version(mir_test)
 @safe pure nothrow unittest
 {
-    import mir.algorithm.iteration : equal;
-
     int[] arr = [ 0, 1, 2, 3, 4, 5 ];
 
     // Filter below 3
@@ -3821,4 +3861,30 @@ version(mir_test)
     double[] c = [ 2.5, 3.0 ];
     auto r1 = concatenation(c, a, b).filter!(a => cast(int) a != a);
     assert(equal(r1, [ 2.5 ]));
+}
+
+/// N-dimensional filtering
+version(mir_test)
+@safe pure unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: byDim, map;
+
+    auto matrix =
+        [[   3,   -2, 400 ],
+         [ 100, -101, 102 ]].fuse;
+
+    alias filterPositive = filter!"a > 0";
+
+    // filter all elements in the matrix
+    auto r = filterPositive(matrix);
+    assert(equal(r, [ 3, 400, 100, 102 ]));
+
+    // filter all elements for each row
+    auto rr = matrix.byDim!0.map!filterPositive;
+    assert(equal!equal(rr, [ [3, 400], [100, 102] ]));
+
+    // filter all elements for each column
+    auto rc = matrix.byDim!1.map!filterPositive;
+    assert(equal!equal(rc, [ [3, 100], [], [400, 102] ]));
 }
