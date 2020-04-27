@@ -440,9 +440,8 @@ template center(alias centralTendency = mean!(Summation.appropriate))
     import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
     /++
     Params:
-        slice = slie
+        slice = slice
     +/
-    @safe pure nothrow
     auto center(Iterator, size_t N, SliceKind kind)(
         Slice!(Iterator, N, kind) slice)
     {
