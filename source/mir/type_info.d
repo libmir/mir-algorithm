@@ -27,9 +27,7 @@ struct mir_type_info
     int size;
 }
 
-/++
-Convinience function for integration with .NET.
-+/
+deprecated
 export extern(C) void mir_type_info_init(ref mir_type_info ti, typeof(mir_type_info.init.destructor) destructor, int size)
     @safe pure nothrow @nogc
 {

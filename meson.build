@@ -102,7 +102,7 @@ this_dep = declare_dependency(
     dependencies: required_deps,
 )
 
-test_versions = ['mir_test', 'NOGCEXP']
+test_versions = ['mir_test', 'NOGCEXP', 'mir_secure_memory']
 
 if has_cpp_headers
     install_subdir('include/',

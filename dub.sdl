@@ -23,6 +23,10 @@ buildType "unittest-release" {
 configuration "default" {
 }
 
+configuration "secure" {
+    versions "mir_secure_memory"
+}
+
 configuration "dip1008" {
     dflags "-preview=dip1008"
 }

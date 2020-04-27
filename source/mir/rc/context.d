@@ -87,6 +87,12 @@ void mir_rc_delete(ref mir_rc_context context)
             }
         }
     }
+    if (context.counter)
+        assert(0);
+    version (mir_secure_memory)
+    {
+        (cast(ubyte*)(&context + 1))[0 .. context.length * context.typeInfo.size] = 0;
+    }
     context.deallocator(&context);
 }
 
@@ -106,8 +112,14 @@ mir_rc_context* mir_rc_create(
 
     assert(length);
     auto size = length * typeInfo.size;
-    if (auto context = cast(mir_rc_context*)malloc(mir_rc_context.sizeof + size))
+    auto fullSize = mir_rc_context.sizeof + size;
+    if (auto p = malloc(fullSize))
     {
+        version (mir_secure_memory)
+        {
+            (cast(ubyte*)p)[0 .. fullSize] = 0;
+        }
+        auto context = cast(mir_rc_context*)p;
         context.deallocator = &free;
         context.typeInfo = &typeInfo;
         context.counter = deallocate;
