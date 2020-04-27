@@ -445,32 +445,6 @@ using `centralTendency`.
 Returns:
     The elements in the range r with the average subtracted from them.
 +/
-template center(F, alias centralTendency = mean!(F, Summation.appropriate))
-{
-    /++
-    Params:
-        r = range
-    +/
-    @safe pure nothrow
-    auto center(Range)(Range r)
-        if (isIterable!Range)
-    {
-        return centerImpl!F(r, centralTendency(r));
-    }
-    
-    /++
-    Params:
-        r = range
-        average = average
-    +/
-    @safe pure nothrow
-    auto center(Range)(Range r, out F average)
-        if (isIterable!Range)
-    {
-        average = centralTendency(r);
-        return centerImpl!F(r, average);
-    }
-}
 
 /// ditto
 template center(alias centralTendency = mean!(Summation.appropriate))
@@ -483,7 +457,7 @@ template center(alias centralTendency = mean!(Summation.appropriate))
     auto center(Range)(Range r)
         if (isIterable!Range)
     {
-        return .center!(sumType!Range, centralTendency)(r);
+        return centerImpl!(sumType!Range)(r, centralTendency(r));
     }
     
     /++
@@ -496,7 +470,7 @@ template center(alias centralTendency = mean!(Summation.appropriate))
         if (isIterable!Range)
     {
         average = centralTendency(r);
-        return .center!(T, centralTendency)(r, average);
+        return centerImpl!T(r, average);
     }
 }
 
