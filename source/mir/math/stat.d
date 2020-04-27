@@ -433,8 +433,6 @@ using `centralTendency`.
 Returns:
     The elements in the slice with the average subtracted from them.
 +/
-
-/// ditto
 template center(alias centralTendency = mean!(Summation.appropriate))
 {
     import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
