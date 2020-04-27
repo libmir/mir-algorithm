@@ -540,7 +540,6 @@ unittest
     auto xCenterByDim = x.byDim!1.map!center;
     auto resultByDim = result.byDim!1;
     size_t i = 0;
-    import std.stdio : writeln;
     foreach(e; xCenterByDim) {
         assert(e.all!approxEqual(resultByDim[i]));
         i++;
