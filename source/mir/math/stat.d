@@ -521,7 +521,7 @@ version(mir_test)
 pure @safe
 unittest
 {
-    import mir.algorithm.iteration: all;
+    import mir.algorithm.iteration: all, equal;
     import mir.math.common: approxEqual;
     import mir.ndslice: fuse;
     import mir.ndslice.topology: alongDim, byDim, map;
@@ -539,19 +539,11 @@ unittest
     // Use byDim with map to compute average of row/column.
     auto xCenterByDim = x.byDim!1.map!center;
     auto resultByDim = result.byDim!1;
-    size_t i = 0;
-    foreach(e; xCenterByDim) {
-        assert(e.all!approxEqual(resultByDim[i]));
-        i++;
-    }
+    assert(xCenterByDim.equal!(equal!approxEqual)(resultByDim));
 
     auto xCenterAlongDim = x.alongDim!0.map!center;
     auto resultAlongDim = result.alongDim!0;
-    i = 0;
-    foreach(e; xCenterAlongDim) {
-        assert(e.all!approxEqual(resultAlongDim[i]));
-        i++;
-    }
+    assert(xCenterByDim.equal!(equal!approxEqual)(resultAlongDim));
 }
 
 /// Can also pass arguments to average function used by center
