@@ -360,6 +360,7 @@ template hmean(string summation)
 }
 
 /// Harmonic mean of vector
+version(mir_test)
 pure @safe nothrow @nogc
 unittest
 {
@@ -371,6 +372,7 @@ unittest
 }
 
 /// Harmonic mean of matrix
+version(mir_test)
 pure @safe
 unittest
 {
@@ -383,6 +385,7 @@ unittest
 }
 
 /// Column harmonic mean of matrix
+version(mir_test)
 pure @safe
 unittest
 {
@@ -404,20 +407,164 @@ unittest
 }
 
 /// Can also pass arguments to hmean
-pure @safe
+version(mir_test)
+pure @safe nothrow @nogc
 unittest
 {
-    import mir.ndslice.topology: map, repeat;
+    import mir.ndslice.topology: repeat;
     import mir.math.common: approxEqual;
 
     //Set sum algorithm or output type
-    auto x = [1, 1e-100, 1, -1e-100];
+    static immutable x = [1, 1e-100, 1, -1e-100];
 
     assert(x.hmean!"kb2".approxEqual(2));
     assert(x.hmean!"precise".approxEqual(2));
 
     //Provide the summation type
     assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
+}
+
+/++
+Centers `slice`, which must be a finite iterable.
+
+By default, `slice` is centered by the mean. A custom function may also be provided
+using `centralTendency`.
+
+Returns:
+    The elements in the slice with the average subtracted from them.
++/
+template center(alias centralTendency = mean!(Summation.appropriate))
+{
+    import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
+    /++
+    Params:
+        slice = slice
+    +/
+    auto center(Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice)
+    {
+        import core.lifetime: move;
+        import mir.ndslice.topology: vmap;
+        import mir.ndslice.internal: LeftOp, ImplicitlyUnqual;
+
+        auto m = centralTendency(slice.lightScope);
+        alias T = typeof(m);
+        return slice.move.vmap(LeftOp!("-", ImplicitlyUnqual!T)(m));
+    }
+    
+    /// ditto
+    auto center(T)(T[] array)
+    {
+        return center(array.sliced);
+    }
+
+    /// ditto
+    auto center(T)(T withAsSlice)
+        if (hasAsSlice!T)
+    {
+        return center(withAsSlice.asSlice);
+    }
+}
+
+/// Center vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    
+    // Can center using different functions
+    assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
+}
+
+/// Center dynamic array
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6];
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+}
+
+/// Center matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    
+    auto x = [
+        [0.0, 1, 2], 
+        [3.0, 4, 5]
+    ].fuse;
+    
+    auto y = [
+        [-2.5, -1.5, -0.5], 
+        [ 0.5,  1.5,  2.5]
+    ].fuse;
+    
+    assert(x.center.all!approxEqual(y));
+}
+
+/// Column center matrix
+version(mir_test)
+pure @safe
+unittest
+{
+    import mir.algorithm.iteration: all, equal;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    auto result = [
+        [ 5.0,  47.5,  999],
+        [-5.0, -47.5, -999]
+    ].fuse;
+
+    // Use byDim with map to compute average of row/column.
+    auto xCenterByDim = x.byDim!1.map!center;
+    auto resultByDim = result.byDim!1;
+    assert(xCenterByDim.equal!(equal!approxEqual)(resultByDim));
+
+    auto xCenterAlongDim = x.alongDim!0.map!center;
+    auto resultAlongDim = result.alongDim!0;
+    assert(xCenterByDim.equal!(equal!approxEqual)(resultAlongDim));
+}
+
+/// Can also pass arguments to average function used by center
+version(mir_test)
+pure @safe nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.topology: repeat;
+    import mir.math.common: approxEqual;
+
+    //Set sum algorithm or output type
+    auto a = [1, 1e100, 1, -1e100];
+
+    auto x = a.sliced * 10_000;
+    auto result = [5000, 1e104 - 5000, 5000, -1e104 - 5000].sliced;
+
+    assert(x.center!(mean!"kbn").all!approxEqual(result));
+    assert(x.center!(mean!"kb2").all!approxEqual(result));
+    assert(x.center!(mean!"precise").all!approxEqual(result));
 }
 
 /++
