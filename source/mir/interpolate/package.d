@@ -577,7 +577,7 @@ auto vectorize(Kernel, F, size_t N, size_t R)(ref Kernel kernel, ref F[N] a, ref
     // }
     // else
     // {
-        F[N][R] _c = void;//Temporary array in case "c" overlaps "a" and/or "b".
+        F[N][R] _c;//Temporary array in case "c" overlaps "a" and/or "b".
         foreach(i; Iota!N)
         {
             auto r = kernel(a[i], b[i]);

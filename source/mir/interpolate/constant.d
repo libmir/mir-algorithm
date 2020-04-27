@@ -161,7 +161,7 @@ extern(D):
         auto opCall(X...)(in X xs) scope const @trusted
             if (X.length == N)
         {
-            size_t[N] indexes = void;
+            size_t[N] indexes;
             foreach(i; Iota!N)
             {
                 static if (isInterval!(typeof(xs[i])))

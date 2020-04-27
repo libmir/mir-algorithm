@@ -80,10 +80,10 @@ version(mir_test) unittest
     import mir.ndslice.slice: Slice;
     auto bar(ref const Py_buffer view)
     {
-        Slice!(const(double)*, 2) mat = void;
+        Slice!(const(double)*, 2) mat;
         if (auto error = mat.fromPythonBuffer(view))
         {
-            mat = mat.init; // has null pointer
+            // has null pointer
         }
         return mat;
     }
@@ -224,7 +224,7 @@ version(mir_test) unittest
         auto structurePtr = cast(Structure!N*) Structure!N.sizeof.malloc;
         if (!structurePtr)
             assert(0);
-        Py_buffer view = void;
+        Py_buffer view;
 
         if (auto error = slice.toPythonBuffer(view, PyBuf_records_ro, *structurePtr))
         {

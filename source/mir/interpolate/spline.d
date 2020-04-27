@@ -805,8 +805,8 @@ struct Spline(F, size_t N = 1, X = F)
             alias Kernel = AliasCall!(SplineKernel!F, "opCall", derivative);
             enum rp2d = derivative == 3 ? 2 : derivative;
 
-            size_t[N] indexes = void;
-            Kernel[N] kernels = void;
+            size_t[N] indexes;
+            Kernel[N] kernels;
 
             foreach(i; Iota!N)
             {
@@ -823,7 +823,7 @@ struct Spline(F, size_t N = 1, X = F)
                 kernels[i] = SplineKernel!F(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
             }
 
-            align(64) F[2 ^^ N * 2 ^^ N][2] local = void;
+            align(64) F[2 ^^ N * 2 ^^ N][2] local;
 
             void load(sizediff_t i)(const(F[2 ^^ N])* from, F[2 ^^ N]* to)
             {
