@@ -22,7 +22,7 @@ import core.lifetime: move;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
-import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
+import std.traits: isArray, isFloatingPoint, isMutable, isIterable, arity;
 
 /++
 Output range for mean.
@@ -445,7 +445,7 @@ using `centralTendency`.
 Returns:
     The elements in the range r with the average subtracted from them.
 +/
-template center(F, alias centralTendency = mean)
+template center(F, alias centralTendency = mean!(F, Summation.appropriate))
 {
     /++
     Params:
@@ -473,7 +473,7 @@ template center(F, alias centralTendency = mean)
 }
 
 /// ditto
-template center(alias centralTendency = mean)
+template center(alias centralTendency = mean!(Summation.appropriate))
 {
     /++
     Params:
@@ -502,7 +502,7 @@ template center(alias centralTendency = mean)
 
 /// Center vector
 version(mir_test)
-//@safe pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
