@@ -89,7 +89,8 @@ See_also: $(LREF isConvertibleToSlice).
 +/
 auto toSlice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) val)
 {
-    return val;
+    import core.lifetime: move;
+    return val.move;
 }
 
 /// ditto
@@ -133,6 +134,10 @@ template toSlices(args...)
     static if (args.length)
     {
         alias arg = args[0];
+        alias Arg = typeof(arg);
+        static if (isMutable!Arg && isSlice!Arg)
+            alias slc = arg;
+        else
         @optmath @property auto ref slc()()
         {
             return toSlice(arg);
@@ -3306,22 +3311,31 @@ See also $(MREF std, format).
 +/
 version(mir_test) unittest
 {
+    import mir.algorithm.iteration: filter, all;
+    import mir.array.allocation;
+    import mir.exception;
+    import mir.functional: not;
     import mir.ndslice.allocation;
-    import std.algorithm,  std.conv, std.exception, std.format,
-        std.functional, std.string, std.range;
+    import mir.parse;
+    import mir.primitives: empty;
+
+    import std.algorithm: map;
+    import std.string: lineSplitter, split;
+
+        // std.functional, std.string, std.range;
 
     Slice!(int*, 2) toMatrix(string str)
     {
         string[][] data = str.lineSplitter.filter!(not!empty).map!split.array;
 
-        size_t rows    = data   .length.enforce("empty input");
-        size_t columns = data[0].length.enforce("empty first row");
+        size_t rows    = data   .length.enforce!"empty input";
+        size_t columns = data[0].length.enforce!"empty first row";
 
-        data.each!(a => enforce(a.length == columns, "rows have different lengths"));
+        data.all!(a => a.length == columns).enforce!"rows have different lengths";
         auto slice = slice!int(rows, columns);
         foreach (i, line; data)
             foreach (j, num; line)
-                slice[i, j] = num.to!int;
+                slice[i, j] = num.fromString!int;
         return slice;
     }
 
@@ -3331,6 +3345,7 @@ version(mir_test) unittest
     assert(matrix == [[1, 2, 3], [4, 5, 6]]);
 
     // back to text
+    import std.format;
     auto text2 = format("%(%(%s %)\n%)\n", matrix);
     assert(text2 == "1 2 3\n4 5 6\n");
 }

@@ -422,10 +422,10 @@ version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
-    import std.algorithm.iteration: filter;
+    import mir.algorithm.iteration: filter;
     static immutable numbers = [3, 2, 5, 2, 3, 7, 3];
     static immutable filtered = [5.0, 7];
-    auto result = numbers.filter!(a => a > 3).rcarray!(immutable double);
+    auto result = numbers.filter!"a > 3".rcarray!(immutable double);
     static assert(is(typeof(result) == RCArray!(immutable double)));
     assert (result[] == filtered);
 }

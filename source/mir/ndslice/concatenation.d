@@ -89,24 +89,34 @@ Returns: $(LREF Concatenation).
 +/
 auto concatenation(size_t dim = 0, Slices...)(Slices slices)
 {
-    import mir.algorithm.iteration: reduce;
-    import mir.utility: min, max; 
-    enum NOf(S) = S.N;
-    enum NArray = [staticMap!(NOf, Slices)];
-    enum minN = size_t.max.reduce!min(NArray);
-    enum maxN = size_t.min.reduce!max(NArray);
-    static if (minN == maxN)
+    static if (allSatisfy!(templateOr!(isSlice, isConcatenation), Slices))
     {
-        return Concatenation!(dim, Slices)(slices);
+        import mir.algorithm.iteration: reduce;
+        import mir.utility: min, max; 
+        enum NOf(S) = S.N;
+        enum NArray = [staticMap!(NOf, Slices)];
+        enum minN = size_t.max.reduce!min(NArray);
+        enum maxN = size_t.min.reduce!max(NArray);
+        static if (minN == maxN)
+        {
+            import mir.functional: forward;
+            return Concatenation!(dim, Slices)(forward!slices);
+        }
+        else
+        {
+            import core.lifetime: move;
+            static assert(minN + 1 == maxN);
+            alias S = staticMap!(_Expose!(maxN, dim), Slices);
+            Concatenation!(dim, S) ret;
+            foreach (i, ref e; ret._slices)
+                e = _expose!(maxN, dim)(move(slices[i]));
+            return ret;
+        }
     }
     else
     {
-        static assert(minN + 1 == maxN);
-        alias S = staticMap!(_Expose!(maxN, dim), Slices);
-        S s;
-        foreach (i, ref e; s)
-            e = _expose!(maxN, dim)(slices[i]);
-        return Concatenation!(dim, S)(s);
+        import mir.functional: forward;
+        return .concatenation(toSlices!(forward!slices));
     }
 }
 
@@ -222,6 +232,16 @@ struct Concatenation(size_t dim, Slices...)
 {
     @optmath:
 
+
+    /// Slices and sub-concatenations
+    Slices _slices;
+
+    package enum N = typeof(Slices[0].shape).length;
+
+    static assert(dim < N);
+
+    alias DeepElement = CommonType!(staticMap!(DeepElementType, Slices));
+
     ///
     auto lightConst()() const @property
     {
@@ -239,15 +259,6 @@ struct Concatenation(size_t dim, Slices...)
         import mir.qualifier;
         return mixin("Concatenation!(dim, staticMap!(LightImmutableOf, Slices))(%(_slices[%s].lightImmutable,%)].lightImmutable)".format(_slices.length.iota));
     }
-
-    /// Slices and sub-concatenations
-    Slices _slices;
-
-    package enum N = typeof(Slices[0].shape).length;
-
-    static assert(dim < N);
-
-    alias DeepElement = CommonType!(staticMap!(DeepElementType, Slices));
 
     /// Length primitive
     size_t length(size_t d = 0)() const @property
@@ -292,9 +303,9 @@ struct Concatenation(size_t dim, Slices...)
         static if (d == dim)
         {
             foreach(ref slice; _slices)
-                if (slice.empty!d)
-                    return true;
-            return false;
+                if (!slice.empty!d)
+                    return false;
+            return true;
         }
         else
         {

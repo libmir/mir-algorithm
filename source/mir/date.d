@@ -72,6 +72,7 @@ if (units == "months" ||
 }
 
 ///
+version (mir_test)
 @safe unittest
 {
     assert(valid!"hours"(12));
@@ -95,6 +96,7 @@ bool valid(string units)(int year, int month, int day) @safe pure nothrow @nogc
 }
 
 ///
+version (mir_test)
 @safe pure nothrow @nogc unittest
 {
     assert(valid!"days"(2016, 2, 29));
@@ -127,6 +129,7 @@ bool yearIsLeapYear(int year) @safe pure nothrow @nogc
 }
 
 ///
+version (mir_test)
 @safe unittest
 {
     foreach (year; [1, 2, 100, 2001, 2002, 2003, 2005, 2006, 2007, 2009, 2010])
@@ -142,6 +145,7 @@ bool yearIsLeapYear(int year) @safe pure nothrow @nogc
     }
 }
 
+version (mir_test)
 @safe unittest
 {
     import std.format : format;
@@ -215,6 +219,7 @@ version(D_Exceptions)
     private static immutable InvalidString = new DateTimeException("Invalid String");
 }
 
+version (mir_test)
 @safe unittest
 {
     initializeTests();
@@ -324,6 +329,7 @@ struct YearMonthDay
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(YearMonthDay(1999, cast(Month) 1, 1).dayOfYear == 1);
@@ -533,6 +539,7 @@ public:
         return false;
     }
 
+    version (mir_test)
     @safe unittest
     {
         import std.exception : assertNotThrown;
@@ -592,6 +599,7 @@ public:
         _julianDay = day;
     }
 
+    version (mir_test)
     @safe unittest
     {
         import std.range : chain;
@@ -617,6 +625,7 @@ public:
         return this._julianDay - rhs._julianDay;
     }
 
+    version (mir_test)
     @safe unittest
     {
         // Test A.D.
@@ -708,6 +717,7 @@ public:
         return getDayOfWeek(_julianDay);
     }
 
+    version (mir_test)
     @safe unittest
     {
         const cdate = Date(1999, 7, 6);
@@ -727,6 +737,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date(1, 1, 1).dayOfGregorianCal == 1);
@@ -741,6 +752,7 @@ public:
         assert(Date(2010, 12, 31).dayOfGregorianCal == 734_137);
     }
 
+    version (mir_test)
     @safe unittest
     {
         import std.range : chain;
@@ -768,6 +780,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         auto date = Date.init;
@@ -796,6 +809,7 @@ public:
         assert(date == Date(2010, 12, 31));
     }
 
+    version (mir_test)
     @safe unittest
     {
         auto date = Date(1999, 7, 6);
@@ -981,6 +995,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date(1999, 1, 6).endOfQuarter == Date(1999, 3, 31));
@@ -999,6 +1014,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date(1999, 1, 6).endOfMonth == Date(1999, 1, 31));
@@ -1007,6 +1023,7 @@ public:
         assert(Date(2000, 6, 4).endOfMonth == Date(2000, 6, 30));
     }
 
+    version (mir_test)
     @safe unittest
     {
         // Test A.D.
@@ -1084,6 +1101,7 @@ public:
         return _julianDay;
     }
 
+    version (mir_test)
     @safe unittest
     {
         assert(Date(-4713, 11, 24).julianDay == 0);
@@ -1112,6 +1130,7 @@ public:
         return julianDay - 2_400_001;
     }
 
+    version (mir_test)
     @safe unittest
     {
         assert(Date(1858, 11, 17).modJulianDay == 0);
@@ -1150,6 +1169,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date(2010, 7, 4).toISOString() == "20100704");
@@ -1158,6 +1178,7 @@ public:
         assert(Date(-4, 1, 5).toISOString() == "-00040105", Date(-4, 1, 5).toISOString());
     }
 
+    version (mir_test)
     @safe unittest
     {
         // Test A.D.
@@ -1196,6 +1217,7 @@ public:
         }
     }
 
+    version (mir_test)
     @safe unittest
     {
         auto date = Date(1999, 7, 6);
@@ -1224,6 +1246,7 @@ public:
     alias toString = toISOExtString;
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date(2010, 7, 4).toISOExtString() == "2010-07-04");
@@ -1232,6 +1255,7 @@ public:
         assert(Date(-4, 1, 5).toISOExtString() == "-0004-01-05");
     }
 
+    version (mir_test)
     @safe pure unittest
     {
         import std.array : appender;
@@ -1244,6 +1268,7 @@ public:
         assert(w.data == "19981225");
     }
 
+    version (mir_test)
     @safe unittest
     {
         // Test A.D.
@@ -1284,6 +1309,7 @@ public:
         }
     }
 
+    version (mir_test)
     @safe pure unittest
     {
         import std.array : appender;
@@ -1311,6 +1337,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date(2010, 7, 4).toSimpleString() == "2010-Jul-04");
@@ -1319,6 +1346,7 @@ public:
         assert(Date(-4, 1, 5).toSimpleString() == "-0004-Jan-05");
     }
 
+    version (mir_test)
     @safe unittest
     {
         // Test A.D.
@@ -1359,6 +1387,7 @@ public:
         }
     }
 
+    version (mir_test)
     @safe pure unittest
     {
         import std.array : appender;
@@ -1419,6 +1448,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date.fromISOString("20100704") == Date(2010, 7, 4));
@@ -1427,6 +1457,7 @@ public:
         assert(Date.fromISOString("-00040105") == Date(-4, 1, 5));
     }
 
+    version (mir_test)
     @safe unittest
     {
         assertThrown!DateTimeException(Date.fromISOString(""));
@@ -1488,6 +1519,7 @@ public:
     }
 
     // bug# 17801
+    version (mir_test)
     @safe unittest
     {
         import std.conv : to;
@@ -1547,6 +1579,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date.fromISOExtString("2010-07-04") == Date(2010, 7, 4));
@@ -1555,6 +1588,7 @@ public:
         assert(Date.fromISOExtString("-0004-01-05") == Date(-4, 1, 5));
     }
 
+    version (mir_test)
     @safe unittest
     {
         assertThrown!DateTimeException(Date.fromISOExtString(""));
@@ -1614,6 +1648,7 @@ public:
     }
 
     // bug# 17801
+    version (mir_test)
     @safe unittest
     {
         import std.conv : to;
@@ -1692,6 +1727,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
         assert(Date.fromSimpleString("2010-Jul-04") == Date(2010, 7, 4));
@@ -1700,6 +1736,7 @@ public:
         assert(Date.fromSimpleString("-0004-Jan-05") == Date(-4, 1, 5));
     }
 
+    version (mir_test)
     @safe unittest
     {
         assertThrown!DateTimeException(Date.fromSimpleString(""));
@@ -1760,6 +1797,7 @@ public:
     }
 
     // bug# 17801
+    version (mir_test)
     @safe unittest
     {
         import std.conv : to;
@@ -1793,6 +1831,7 @@ public:
     }
 
     ///
+    version (mir_test)
     @safe pure @nogc unittest
     {
         assert(Date.fromString("2010-07-04") == Date(2010, 7, 4));
@@ -1870,6 +1909,7 @@ package:
         return this;
     }
 
+    version (mir_test)
     @safe unittest
     {
         // Test A.D.
@@ -2067,6 +2107,7 @@ int daysToDayOfWeek(DayOfWeek currDoW, DayOfWeek dow) @safe pure nothrow @nogc
 }
 
 ///
+version (mir_test)
 @safe pure nothrow @nogc unittest
 {
     assert(daysToDayOfWeek(DayOfWeek.mon, DayOfWeek.mon) == 0);

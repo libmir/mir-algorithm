@@ -1513,10 +1513,11 @@ Slice!(FlattenedIterator!(Iterator, N, kind))
     (Slice!(Iterator, N, kind) slice)
     if (N != 1 && kind != Contiguous)
 {
+    import core.lifetime: move;
     size_t[typeof(return).N] lengths;
     sizediff_t[typeof(return)._iterator._indexes.length] indexes;
     lengths[0] = slice.elementCount;
-    return typeof(return)(lengths, FlattenedIterator!(Iterator, N, kind)(indexes, slice));
+    return typeof(return)(lengths, FlattenedIterator!(Iterator, N, kind)(indexes, slice.move));
 }
 
 /// ditto
@@ -1544,7 +1545,8 @@ Slice!(StrideIterator!Iterator)
     (Iterator)
     (Slice!(Iterator,  1, Universal) slice)
 {
-    return slice.hideStride;
+    import core.lifetime: move;
+    return slice.move.hideStride;
 }
 
 version(mir_test) unittest

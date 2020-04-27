@@ -3563,28 +3563,48 @@ bidirectional, $(D uniq) also yields a
 `std,range,primitives`.
 Params:
     pred = Predicate for determining equivalence between range elements.
-    r = An input range of elements to filter.
-Returns:
-    An input range of
-    consecutively unique elements in the original range. If `r` is also a
-    forward range or bidirectional range, the returned range will be likewise.
 */
-Uniq!(naryFun!pred, Range) uniq(alias pred = "a == b", Range)(auto ref Range r)
-if (isInputRange!Range && is(typeof(naryFun!pred(r.front, r.front)) == bool))
+template uniq(alias pred = "a == b")
 {
-    return typeof(return)(r);
+    static if (__traits(isSame, naryFun!pred, pred))
+    {
+        /++
+        Params:
+            r = An input range of elements to filter.
+        Returns:
+            An input range of
+            consecutively unique elements in the original range. If `r` is also a
+            forward range or bidirectional range, the returned range will be likewise.
+        +/
+        Uniq!(naryFun!pred, Range) uniq(Range)(Range r)
+         if (isInputRange!Range && !isSlice!Range)
+        {
+            import core.lifetime: move;
+            return typeof(return)(r.move);
+        }
+
+        /// ditto
+        auto uniq(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+        {
+            import mir.ndslice.topology: flattened; 
+            import core.lifetime: move;
+            auto r = slice.move.flattened;
+            return Uniq!(pred, typeof(r))(move(r));
+        }
+    }
+    else
+        alias uniq = .uniq!(naryFun!pred);
 }
 
 ///
 @safe version(mir_test) unittest
 {
-    import std.algorithm.mutation : copy;
-
     int[] arr = [ 1, 2, 2, 2, 2, 3, 4, 4, 4, 5 ];
-    assert(equal(uniq(arr), [ 1, 2, 3, 4, 5 ][]));
+    assert(equal(uniq(arr), [ 1, 2, 3, 4, 5 ]));
 
+    import std.algorithm.mutation : copy;
     // Filter duplicates in-place using copy
-    arr.length -= arr.uniq().copy(arr).length;
+    arr.length -= arr.uniq.copy(arr).length;
     assert(arr == [ 1, 2, 3, 4, 5 ]);
 
     // Note that uniqueness is only determined consecutively; duplicated
@@ -3593,19 +3613,27 @@ if (isInputRange!Range && is(typeof(naryFun!pred(r.front, r.front)) == bool))
     assert(equal(uniq([ 1, 1, 2, 1, 1, 3, 1]), [1, 2, 1, 3, 1]));
 }
 
+/// N-dimensional case
+version(mir_test)
+@safe pure unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: byDim, map, iota;
+
+    auto matrix = [ [1, 2, 2], [2, 2, 3], [4, 4, 4] ].fuse;
+
+    assert(matrix.uniq.equal([ 1, 2, 3, 4 ]));
+
+    // unique elements for each row
+    assert(matrix.byDim!0.map!uniq.equal!equal([ [1, 2], [2, 3], [4] ]));
+}
+
 /++
 Authros: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Yaroshenko (betterC rework)
 +/
 struct Uniq(alias pred, Range)
 {
     Range _input;
-
-    // this()(auto ref Range input)
-    // {
-    //     alias AliasSeq(T...) = T;
-    //     import core.lifetime: forward;
-    //     AliasSeq!_input = forward!input;
-    // }
 
     ref opSlice() inout
     {
@@ -3623,7 +3651,7 @@ struct Uniq(alias pred, Range)
         while (!_input.empty && pred(last, _input.front));
     }
 
-    @property ElementType!Range front()
+    auto ref front() @property
     {
         assert(!empty, "Attempting to fetch the front of an empty uniq.");
         return _input.front;
@@ -3642,7 +3670,7 @@ struct Uniq(alias pred, Range)
             while (!_input.empty && pred(last, _input.back));
         }
 
-        @property ElementType!Range back() scope return
+        auto ref back() scope return @property
         {
             assert(!empty, "Attempting to fetch the back of an empty uniq.");
             return _input.back;
@@ -3660,7 +3688,8 @@ struct Uniq(alias pred, Range)
 
     static if (isForwardRange!Range)
     {
-        @property typeof(this) save() scope return {
+        @property typeof(this) save() scope return
+        {
             return typeof(this)(_input.save);
         }
     }
@@ -3708,4 +3737,154 @@ version(none)
     x[] = [2, 3];
     y[] = [2, 3];
     assert(equal!approxEqual(x,y));
+}
+
+/++
+Implements the higher order filter function. The predicate is passed to
+`mir.functional.naryFun`, and can either accept a string, or any callable
+that can be executed via `pred(element)`.
+Params:
+    pred = Function to apply to each element of range
+Returns:
+    `filter!(pred)(range)` returns a new range containing only elements `x` in `range` for
+    which `pred(x)` returns `true`.
+See_Also:
+    $(HTTP en.wikipedia.org/wiki/Filter_(higher-order_function), Filter (higher-order function))
+Note:
+    $(RED User and library code MUST call `empty` method ahead each call of pair or one of `front` and `popFront` methods.)
++/
+template filter(alias pred = "a")
+{
+    static if (__traits(isSame, naryFun!pred, pred))
+    {
+        /++
+        Params:
+            r = An input range of elements to filter.
+        Returns:
+            A new range containing only elements `x` in `range` for which `predicate(x)` returns `true`.
+        +/
+        Filter!(naryFun!pred, Range) filter(Range)(Range r)
+            if (isInputRange!Range && !isSlice!Range)
+        {
+            import core.lifetime: move;
+            return typeof(return)(r.move);
+        }
+
+        /// ditto
+        auto filter(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+        {
+            import mir.ndslice.topology: flattened; 
+            import core.lifetime: move;
+            auto r = slice.move.flattened;
+            return Filter!(pred, typeof(r))(move(r));
+        }
+    }
+    else
+        alias filter = .filter!(naryFun!pred);
+}
+
+/// ditto
+struct Filter(alias pred, Range)
+{
+    Range _input;
+    version(assert) bool _freshEmpty;
+
+    ref opSlice() inout
+    {
+        return this;
+    }
+
+    void popFront() scope
+    {
+        assert(!_input.empty, "Attempting to popFront an empty Filter.");
+        assert(_freshEmpty, "Attempting to pop the front of a Filter without calling '.empty' method ahead.");
+        version(assert) _freshEmpty = false;
+        _input.popFront;
+    }
+
+    auto ref front() @property
+    {
+        assert(!_input.empty, "Attempting to fetch the front of an empty Filter.");
+        assert(_freshEmpty, "Attempting to fetch the front of a Filter without calling '.empty' method ahead.");
+        return _input.front;
+    }
+
+    bool empty() @property
+    {
+        version(assert) _freshEmpty = true;
+        for (;;)
+        {
+            if (auto r = _input.empty)
+                return true;
+            if (pred(_input.front))
+                return false;
+            _input.popFront;
+        }
+    }
+
+    static if (isForwardRange!Range)
+    {
+        @property typeof(this) save() scope return
+        {
+            return typeof(this)(_input.save);
+        }
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow unittest
+{
+    int[] arr = [ 0, 1, 2, 3, 4, 5 ];
+
+    // Filter below 3
+    auto small = filter!(a => a < 3)(arr);
+    assert(equal(small, [ 0, 1, 2 ]));
+
+    // Filter again, but with Uniform Function Call Syntax (UFCS)
+    auto sum = arr.filter!(a => a < 3);
+    assert(equal(sum, [ 0, 1, 2 ]));
+
+    // Filter with the default predicate
+    auto nonZeros = arr.filter;
+    assert(equal(nonZeros, [ 1, 2, 3, 4, 5 ]));
+
+    // In combination with concatenation() to span multiple ranges
+    import mir.ndslice.concatenation;
+
+    int[] a = [ 3, -2, 400 ];
+    int[] b = [ 100, -101, 102 ];
+    auto r = concatenation(a, b).filter!(a => a > 0);
+    assert(equal(r, [ 3, 400, 100, 102 ]));
+
+    // Mixing convertible types is fair game, too
+    double[] c = [ 2.5, 3.0 ];
+    auto r1 = concatenation(c, a, b).filter!(a => cast(int) a != a);
+    assert(equal(r1, [ 2.5 ]));
+}
+
+/// N-dimensional filtering
+version(mir_test)
+@safe pure unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: byDim, map;
+
+    auto matrix =
+        [[   3,   -2, 400 ],
+         [ 100, -101, 102 ]].fuse;
+
+    alias filterPositive = filter!"a > 0";
+
+    // filter all elements in the matrix
+    auto r = filterPositive(matrix);
+    assert(equal(r, [ 3, 400, 100, 102 ]));
+
+    // filter all elements for each row
+    auto rr = matrix.byDim!0.map!filterPositive;
+    assert(equal!equal(rr, [ [3, 400], [100, 102] ]));
+
+    // filter all elements for each column
+    auto rc = matrix.byDim!1.map!filterPositive;
+    assert(equal!equal(rc, [ [3, 100], [], [400, 102] ]));
 }
