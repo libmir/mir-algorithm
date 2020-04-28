@@ -2476,19 +2476,19 @@ template map(fun...)
         @optmath:
             /++
             Params:
-                slice = An input slice.
+                slice = An ndslice, array, or an input range.
             Returns:
-                a slice with each fun applied to all the elements. If there is more than one
+                ndslice or an input range with each fun applied to all the elements. If there is more than one
                 fun, the element type will be `Tuple` containing one element for each fun.
             +/
             auto map(Iterator, size_t N, SliceKind kind)
                 (Slice!(Iterator, N, kind) slice)
             {
                 import core.lifetime: move;
-                alias Iterator = typeof(_mapIterator!f(slice._iterator));
+                alias MIterator = typeof(_mapIterator!f(slice._iterator));
                 import mir.ndslice.traits: isIterator;
-                static assert(isIterator!Iterator, "mir.ndslice.map: probably the lambda function contains a compile time bug.");
-                return Slice!(Iterator, N, kind)(slice._structure, _mapIterator!f(slice._iterator.move));
+                static assert(isIterator!MIterator, "mir.ndslice.map: probably the lambda function contains a compile time bug.");
+                return Slice!(MIterator, N, kind)(slice._structure, _mapIterator!f(slice._iterator.move));
             }
 
             /// ditto
@@ -2502,6 +2502,16 @@ template map(fun...)
                 if (hasAsSlice!T)
             {
                 return map(withAsSlice.asSlice);
+            }
+
+            /// ditto
+            auto map(Range)(Range r)
+                if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
+            {
+                import core.lifetime: forward;
+                import std.range.primitives: isInputRange;
+                static assert (isInputRange!Range, "map can work with ndslice, array, or an input range.");
+                return MapRange!(f, ImplicitlyUnqual!Range)(forward!r);
             }
         }
         else
@@ -2526,10 +2536,75 @@ template map(fun...)
             {
                 return withAsSlice.asSlice;
             }
+
+            /// ditto
+            ImplicitlyUnqual!Range map(Range)(Range r)
+                if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
+            {
+                return r;
+            }
         }
         else alias map = .map!(naryFun!fun);
     }
     else alias map = .map!(adjoin!fun);
+}
+
+/// ditto
+struct MapRange(alias fun, Range)
+{
+    import std.range.primitives;
+
+    Range _input;
+
+    static if (isInfinite!Range)
+    {
+        enum bool empty = false;
+    }
+    else
+    {
+        bool empty() @property
+        {
+            return _input.empty;
+        }
+    }
+
+    void popFront()
+    {
+        assert(!empty, "Attempting to popFront an empty map.");
+        _input.popFront();
+    }
+
+    auto ref front() @property
+    {
+        assert(!empty, "Attempting to fetch the front of an empty map.");
+        return fun(_input.front);
+    }
+
+    static if (isBidirectionalRange!Range)
+    auto ref back()() @property
+    {
+        assert(!empty, "Attempting to fetch the back of an empty map.");
+        return fun(_input.back);
+    }
+
+    static if (isBidirectionalRange!Range)
+    void popBack()()
+    {
+        assert(!empty, "Attempting to popBack an empty map.");
+        _input.popBack();
+    }
+
+    static if (hasLength!Range)
+    auto length() @property
+    {
+        return _input.length;
+    }
+
+    static if (isForwardRange!Range)
+    auto save()() @property
+    {
+        return typeof(this)(_input.save);
+    }
 }
 
 ///
@@ -2550,7 +2625,15 @@ version(mir_test) unittest
     assert(iota(2, 3).map!"a * 2" == [[0, 2, 4], [6, 8, 10]]);
 }
 
-/// Packed tensors.
+/// Input ranges
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.algorithm.iteration: filter, equal;
+    assert (6.iota.filter!"a % 2".map!"a * 10".equal([10, 30, 50])); 
+}
+
+/// Packed tensors
 @safe pure nothrow
 version(mir_test) unittest
 {
