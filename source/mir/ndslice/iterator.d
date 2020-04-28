@@ -894,6 +894,7 @@ Creates a mapped iterator. Uses `__map` if possible.
 +/
 auto _mapIterator(alias fun, Iterator)(Iterator iterator)
 {
+    import core.lifetime: move;
     static if (__traits(hasMember, Iterator, "__map"))
     {
         static if (is(Iterator : MapIterator!(Iter0, fun0), Iter0, alias fun0)
@@ -901,13 +902,13 @@ auto _mapIterator(alias fun, Iterator)(Iterator iterator)
         {
             // https://github.com/libmir/mir-algorithm/issues/111
             debug(mir) pragma(msg, __FUNCTION__~" not coalescing chained map calls into a single lambda, possibly because of multiple embedded context pointers");
-            return MapIterator!(Iterator, fun)(iterator);
+            return MapIterator!(Iterator, fun)(move(iterator));
         }
         else
             return Iterator.__map!fun(iterator);
     }
     else
-       return MapIterator!(Iterator, fun)(iterator);
+       return MapIterator!(Iterator, fun)(move(iterator));
 }
 
 

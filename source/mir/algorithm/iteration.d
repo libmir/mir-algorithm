@@ -29,6 +29,8 @@ $(T2 reduce, Accumulates all elements.)
 $(T2 uniq, Iterates over the unique elements in a range or an ndslice, which is assumed sorted.)
 )
 
+Transform function is represented by $(NDSLICEREF topology, map).
+
 All operators are suitable to change slices using `ref` argument qualification in a function declaration.
 Note, that string lambdas in Mir are `auto ref` functions.
 

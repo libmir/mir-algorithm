@@ -99,7 +99,7 @@ auto concatenation(size_t dim = 0, Slices...)(Slices slices)
         enum maxN = size_t.min.reduce!max(NArray);
         static if (minN == maxN)
         {
-            import mir.functional: forward;
+            import core.lifetime: forward;
             return Concatenation!(dim, Slices)(forward!slices);
         }
         else
@@ -115,7 +115,7 @@ auto concatenation(size_t dim = 0, Slices...)(Slices slices)
     }
     else
     {
-        import mir.functional: forward;
+        import core.lifetime: forward;
         return .concatenation(toSlices!(forward!slices));
     }
 }

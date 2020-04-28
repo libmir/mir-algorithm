@@ -3386,10 +3386,9 @@ pure nothrow version(mir_test) unittest
 // Operator overloading. # 2
 pure nothrow version(mir_test) unittest
 {
-    import std.algorithm.iteration : map;
+    import mir.ndslice.topology: map, iota;
     import mir.array.allocation : array;
     //import std.bigint;
-    import std.range : iota;
 
     auto matrix = 72
         .iota
@@ -3445,11 +3444,10 @@ version(mir_test) unittest
 // Test for map #1
 version(mir_test) unittest
 {
-    import std.algorithm.iteration : map;
-    import std.range.primitives;
+    import mir.ndslice.topology: map, byDim;
     auto slice = [1, 2, 3, 4].sliced(2, 2);
 
-    auto r = slice.map!(a => a.map!(a => a * 6));
+    auto r = slice.byDim!0.map!(a => a.map!(a => a * 6));
     assert(r.front.front == 6);
     assert(r.front.back == 12);
     assert(r.back.front == 18);
@@ -3458,6 +3456,8 @@ version(mir_test) unittest
     assert(r[0][1] == 12);
     assert(r[1][0] == 18);
     assert(r[1][1] == 24);
+
+    import std.range.primitives;
     static assert(hasSlicing!(typeof(r)));
     static assert(isForwardRange!(typeof(r)));
     static assert(isRandomAccessRange!(typeof(r)));
@@ -3466,11 +3466,9 @@ version(mir_test) unittest
 // Test for map #2
 version(mir_test) unittest
 {
-    import std.algorithm.iteration : map;
+    import mir.ndslice.topology: map, byDim;
     import std.range.primitives;
-    auto data = [1, 2, 3, 4]
-        //.map!(a => a * 2)
-        ;
+    auto data = [1, 2, 3, 4];
     static assert(hasSlicing!(typeof(data)));
     static assert(isForwardRange!(typeof(data)));
     static assert(isRandomAccessRange!(typeof(data)));
@@ -3478,7 +3476,7 @@ version(mir_test) unittest
     static assert(hasSlicing!(typeof(slice)));
     static assert(isForwardRange!(typeof(slice)));
     static assert(isRandomAccessRange!(typeof(slice)));
-    auto r = slice.map!(a => a.map!(a => a * 6));
+    auto r = slice.byDim!0.map!(a => a.map!(a => a * 6));
     static assert(hasSlicing!(typeof(r)));
     static assert(isForwardRange!(typeof(r)));
     static assert(isRandomAccessRange!(typeof(r)));
