@@ -17,6 +17,8 @@ $(T2 equal, Compares two slices for equality.)
 $(T2 filter, Filters elements in a range or an ndslice.)
 $(T2 find, Finds backward index.)
 $(T2 findIndex, Finds index.)
+$(T2 kthSmallest, Finds kth smallest value.)
+$(T2 kthLargest, Finds kth largest value.)
 $(T2 isSymmetric, Checks if the matrix is symmetric.)
 $(T2 maxIndex, Finds index of the maximum.)
 $(T2 maxPos, Finds backward index of the maximum.)
@@ -3890,4 +3892,376 @@ version(mir_test)
     // filter all elements for each column
     auto rc = matrix.byDim!1.map!filterPositive;
     assert(equal!equal(rc, [ [3, 100], [], [400, 102] ]));
+}
+
+@safe pure @nogc nothrow
+private size_t 
+    partition(Iterator, SliceKind kind)(
+        Slice!(Iterator, 1, kind) slice, 
+        size_t left, 
+        size_t right,
+        size_t pivotIndex)
+{
+    import mir.utility: swap;
+    
+    assert(left >= 0, 
+        "partition: left must be bigger than or equal to zero");
+    assert(left < right, 
+        "partition: left must be less than right");
+    assert(right < slice.length, 
+        "partition: right must be less than the length of slice");
+
+    auto pivot = slice[pivotIndex];
+    swap(slice[pivotIndex], slice[right]);
+
+    size_t pIndex = left; 
+    for (size_t i = left; i < right; i++)
+    {
+        if (slice[i] <= pivot)
+        {
+            swap(slice[i], slice[pIndex]);
+            pIndex++;
+        }
+    }
+    swap(slice[pIndex], slice[right]);
+    return pIndex;
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2].sliced;
+
+    auto y = x.partition(0, 4, 4);
+
+    assert(y == 2);
+    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 0, 2, 5, 3].sliced;
+
+    auto y = x.partition(3, 4, 4);
+    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
+}
+
+@safe pure @nogc nothrow
+package auto 
+    quickSelect
+    (alias pivotFunction = (a => (a.length - 1)), Iterator, SliceKind kind)(
+        Slice!(Iterator, 1, kind) slice, 
+        size_t left,
+        size_t right,
+        size_t k) 
+{
+    assert(left >= 0, 
+        "quickSelect: left must be bigger than or equal to zero");
+    assert(left <= right, 
+        "quickSelect: left must be less than or equal to right");
+    assert(right <= slice.length, 
+        "quickSelect: right must be less than the length of slice");
+    assert(k >= 0, 
+        "quickSelect: k must be greater than or equal to zero");
+    assert(k < slice.length, 
+        "quickSelect: k must be less than the length of the slice");
+
+    if (left == right) {
+        return slice[left];
+    }
+    
+    size_t pivotIndex = left + pivotFunction(slice[left..(right + 1)]);
+    pivotIndex = partition(slice, left, right, pivotIndex);
+
+    if (k == pivotIndex) {
+        return slice[pivotIndex];
+    } else if (k < pivotIndex) {
+        return slice.quickSelect!pivotFunction(left, pivotIndex - 1, k);
+    } else {
+        return slice.quickSelect!pivotFunction(pivotIndex + 1, right, k);
+    }
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
+        return slice.length - 1;
+    }
+
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2].sliced;
+    auto y = x.quickSelect(0, 4, 2);
+    
+    assert(y == 2);
+    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
+        return slice.length - 1;
+    }
+    
+    auto x0 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x0.quickSelect(0, 4, 0) == 0);
+    
+    auto x1 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x1.quickSelect(0, 4, 1) == 1);
+    
+    auto x2 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x2.quickSelect(0, 4, 2) == 2);
+    
+    auto x3 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x3.quickSelect(0, 4, 3) == 3);
+
+    auto x4 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x4.quickSelect(0, 4, 4) == 5);
+}
+
+/++
+Finds the kth smallest value in a slice.
+
+This function requires a pivotFunction to pass to the quickselect algorithm. The
+function must return a value that can be used to index the slice. By default, a 
+lambda is provided that returns the index for the last item in the slice.
+
+Params:
+    pivotFunction = function to return index to slice
+    slice = input slice
+    k = value to select smallest. The default (k = 1) returns the minimum.
+
+See_also:
+    $(LREF kthSmallest)
++/
+@safe pure @nogc nothrow
+auto kthSmallest
+    (alias pivotFunction = (a => (a.length - 1)), 
+    Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice, 
+        size_t k = 1)
+{
+    assert(k > 0, 
+        "kthSmallest: k must be greater than or equal to zero");
+    assert(k <= slice.elementCount, 
+        "kthSmallest: k must be less than the number of elements of the slice");
+    
+    import mir.ndslice.topology: flattened;
+    import mir.ndslice.allocation: rcslice;
+
+    auto val = slice.flattened.rcslice;
+
+    return quickSelect!pivotFunction(val, 0, (val.length - 1), k - 1);
+}
+
+/// ditto
+auto kthSmallest
+    (alias pivotFunction = (a => (a.length - 1)), T)(T[] array, size_t k = 1) 
+{
+    return kthSmallest!pivotFunction(array.sliced, k);
+}
+
+/// ditto
+auto kthSmallest
+    (alias pivotFunction = (a => (a.length - 1)), T)(T withAsSlice, size_t k = 1) 
+    if (hasAsSlice!T)
+{
+    return kthSmallest!pivotFunction(withAsSlice.asSlice, k);
+}
+
+/// Find kth smallest for 1-dimensional slice
+version(mir_test)
+@safe pure
+unittest {
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2].sliced;
+    assert(x.kthSmallest(2) == 1);
+    assert(x.equal!approxEqual([3.0, 1, 5, 0, 2]));
+}
+
+/// Find kth smallest for N-dimensional slice
+version(mir_test)
+@safe pure
+unittest {
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2, 6].sliced(3, 2);
+    assert(x.kthSmallest(2) == 1);
+    assert(x.equal!approxEqual([3.0, 1, 5, 0, 2, 6].sliced(3, 2)));
+}
+
+/// Find kth smallest for dynamic array
+version(mir_test)
+@safe pure
+unittest {
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2];
+    assert(x.kthSmallest(2) == 1);
+    assert(x.equal!approxEqual([3.0, 1, 5, 0, 2]));
+}
+
+/// Provide a custom function to kthSmallest
+version(mir_test)
+@safe pure
+unittest {
+    static auto tailPivot
+        (Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
+    {
+        return slice.length - 1;
+    }
+
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2].sliced;
+    assert(x.kthSmallest!tailPivot(2) == 1);
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    auto x0 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x0.kthSmallest(1) == 0);
+
+    auto x1 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x1.kthSmallest(2) == 1);
+
+    auto x2 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x2.kthSmallest(3) == 2);
+
+    auto x3 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x3.kthSmallest(4) == 3);
+
+    auto x4 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x4.kthSmallest(5) == 5);
+}
+
+/++
+Finds the kth largest value in a slice.
+
+This function requires a pivotFunction to pass to the quickselect algorithm. The
+function must return a value that can be used to index the slice. By default, a 
+lambda is provided that returns the index for the last item in the slice.
+
+Params:
+    pivotFunction = function to return index to slice
+    slice = input slice
+    k = value to select largest. The default (k = 1) returns the maximum
+
+See_also:
+    $(LREF kthSmallest)
++/
+@safe pure @nogc nothrow
+auto kthLargest
+    (alias pivotFunction = (a => (a.length - 1)), 
+    Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice, 
+        size_t k = 1)
+{
+    assert(k > 0, 
+        "kthLargest: k must be greater than or equal to zero");
+    assert(k <= slice.elementCount, 
+        "kthLargest: k must be less than the number of elements of the slice");
+    
+    import mir.ndslice.topology: flattened;
+    import mir.ndslice.allocation: rcslice;
+
+    auto val = slice.flattened.rcslice;
+
+    return quickSelect!pivotFunction(val, 0, (val.length - 1), val.length - k);
+}
+
+/// ditto
+auto kthLargest
+    (alias pivotFunction = (a => (a.length - 1)), T)(T[] array, size_t k = 1)
+{
+    return kthLargest!pivotFunction(array.sliced, k);
+}
+
+/// ditto
+auto kthLargest
+    (alias pivotFunction = (a => (a.length - 1)), T)(T withAsSlice, size_t k = 1)
+    if (hasAsSlice!T && hasLength!T)
+{
+    return kthLargest!pivotFunction(withAsSlice.asSlice, k);
+}
+
+/// Find kth largest for 1-dimensional slice
+version(mir_test)
+@safe pure
+unittest {
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2].sliced;
+    assert(x.kthLargest(2) == 3);
+    assert(x.equal!approxEqual([3.0, 1, 5, 0, 2]));
+}
+
+/// Find kth largest for N-dimensional slice
+version(mir_test)
+@safe pure
+unittest {
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2, 6].sliced(3, 2);
+
+    assert(x.kthLargest(2) == 5);
+    assert(x.equal!approxEqual([3.0, 1, 5, 0, 2, 6].sliced(3, 2)));
+}
+
+/// Find kth largest for dynamic array
+version(mir_test)
+@safe pure
+unittest {
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2];
+    assert(x.kthLargest(2) == 3);
+    assert(x.equal!approxEqual([3.0, 1, 5, 0, 2]));
+}
+
+/// Provide a custom function to kthLargest
+version(mir_test)
+@safe pure
+unittest {
+    static auto tailPivot
+        (Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
+    {
+        return slice.length - 1;
+    }
+
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2].sliced;
+    assert(x.kthLargest!tailPivot(2) == 3);
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    auto x0 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x0.kthLargest(1) == 5);
+
+    auto x1 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x1.kthLargest(2) == 3);
+
+    auto x2 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x2.kthLargest(3) == 2);
+
+    auto x3 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x3.kthLargest(4) == 1);
+
+    auto x4 = [3.0, 1, 5, 0, 2].sliced;
+    assert(x4.kthLargest(5) == 0);
 }
