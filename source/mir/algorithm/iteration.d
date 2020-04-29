@@ -3954,7 +3954,7 @@ unittest {
 }
 
 @safe pure @nogc nothrow
-package auto 
+package DeepElementType!(Slice!(Iterator, 1, kind))
     quickSelect
     (alias pivotFunction = (a => (a.length - 1)), Iterator, SliceKind kind)(
         Slice!(Iterator, 1, kind) slice, 
@@ -3992,10 +3992,6 @@ package auto
 version(mir_test)
 @safe pure
 unittest {
-    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
-        return slice.length - 1;
-    }
-
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
 
@@ -4009,10 +4005,6 @@ unittest {
 version(mir_test)
 @safe pure
 unittest {
-    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
-        return slice.length - 1;
-    }
-    
     auto x0 = [3.0, 1, 5, 0, 2].sliced;
     assert(x0.quickSelect(0, 4, 0) == 0);
     
@@ -4029,6 +4021,23 @@ unittest {
     assert(x4.quickSelect(0, 4, 4) == 5);
 }
 
+version(mir_test)
+@safe pure
+unittest {
+    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
+        return slice.length - 1;
+    }
+
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1, 5, 0, 2].sliced;
+    auto y = x.quickSelect!tail(0, 4, 2);
+    
+    assert(y == 2);
+    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
+}
+
 /++
 Finds the kth smallest value in a slice.
 
@@ -4042,14 +4051,14 @@ Params:
     k = value to select smallest. The default (k = 1) returns the minimum.
 
 See_also:
-    $(LREF kthSmallest)
+    $(LREF kthLargest)
 +/
 @safe pure @nogc nothrow
-auto kthSmallest
+DeepElementType!(Slice!(Iterator, N, kind))
+    kthSmallest
     (alias pivotFunction = (a => (a.length - 1)), 
     Iterator, size_t N, SliceKind kind)(
-        Slice!(Iterator, N, kind) slice, 
-        size_t k = 1)
+        Slice!(Iterator, N, kind) slice, size_t k = 1)
 {
     assert(k > 0, 
         "kthSmallest: k must be greater than or equal to zero");
@@ -4065,15 +4074,19 @@ auto kthSmallest
 }
 
 /// ditto
-auto kthSmallest
-    (alias pivotFunction = (a => (a.length - 1)), T)(T[] array, size_t k = 1) 
+DeepElementType!(T[])
+    kthSmallest
+    (alias pivotFunction = (a => (a.length - 1)), T)(
+        T[] array, size_t k = 1) 
 {
     return kthSmallest!pivotFunction(array.sliced, k);
 }
 
 /// ditto
-auto kthSmallest
-    (alias pivotFunction = (a => (a.length - 1)), T)(T withAsSlice, size_t k = 1) 
+DeepElementType!(T.asSlice)
+    kthSmallest
+    (alias pivotFunction = (a => (a.length - 1)), T)(
+        T withAsSlice, size_t k = 1) 
     if (hasAsSlice!T)
 {
     return kthSmallest!pivotFunction(withAsSlice.asSlice, k);
@@ -4131,20 +4144,13 @@ unittest {
 version(mir_test)
 @safe pure
 unittest {
-    auto x0 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x0.kthSmallest(1) == 0);
+    auto x = [3.0, 1, 5, 0, 2].sliced;
 
-    auto x1 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x1.kthSmallest(2) == 1);
-
-    auto x2 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x2.kthSmallest(3) == 2);
-
-    auto x3 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x3.kthSmallest(4) == 3);
-
-    auto x4 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x4.kthSmallest(5) == 5);
+    assert(x.kthSmallest(1) == 0);
+    assert(x.kthSmallest(2) == 1);
+    assert(x.kthSmallest(3) == 2);
+    assert(x.kthSmallest(4) == 3);
+    assert(x.kthSmallest(5) == 5);
 }
 
 /++
@@ -4163,36 +4169,35 @@ See_also:
     $(LREF kthSmallest)
 +/
 @safe pure @nogc nothrow
-auto kthLargest
+DeepElementType!(Slice!(Iterator, N, kind))
+    kthLargest
     (alias pivotFunction = (a => (a.length - 1)), 
     Iterator, size_t N, SliceKind kind)(
-        Slice!(Iterator, N, kind) slice, 
-        size_t k = 1)
+        Slice!(Iterator, N, kind) slice, size_t k = 1)
 {
     assert(k > 0, 
         "kthLargest: k must be greater than or equal to zero");
     assert(k <= slice.elementCount, 
         "kthLargest: k must be less than the number of elements of the slice");
-    
-    import mir.ndslice.topology: flattened;
-    import mir.ndslice.allocation: rcslice;
 
-    auto val = slice.flattened.rcslice;
-
-    return quickSelect!pivotFunction(val, 0, (val.length - 1), val.length - k);
+    return kthSmallest!(pivotFunction, Iterator, N, kind)(slice, slice.elementCount - k + 1);
 }
 
 /// ditto
-auto kthLargest
-    (alias pivotFunction = (a => (a.length - 1)), T)(T[] array, size_t k = 1)
+DeepElementType!(T[])
+    kthLargest
+    (alias pivotFunction = (a => (a.length - 1)), T)(
+        T[] array, size_t k = 1)
 {
     return kthLargest!pivotFunction(array.sliced, k);
 }
 
 /// ditto
-auto kthLargest
-    (alias pivotFunction = (a => (a.length - 1)), T)(T withAsSlice, size_t k = 1)
-    if (hasAsSlice!T && hasLength!T)
+DeepElementType!(T.asSlice)
+    kthLargest
+    (alias pivotFunction = (a => (a.length - 1)), T)(
+        T withAsSlice, size_t k = 1)
+    if (hasAsSlice!T)
 {
     return kthLargest!pivotFunction(withAsSlice.asSlice, k);
 }
@@ -4250,18 +4255,11 @@ unittest {
 version(mir_test)
 @safe pure
 unittest {
-    auto x0 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x0.kthLargest(1) == 5);
+    auto x = [3.0, 1, 5, 0, 2].sliced;
 
-    auto x1 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x1.kthLargest(2) == 3);
-
-    auto x2 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x2.kthLargest(3) == 2);
-
-    auto x3 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x3.kthLargest(4) == 1);
-
-    auto x4 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x4.kthLargest(5) == 0);
+    assert(x.kthLargest(1) == 5);
+    assert(x.kthLargest(2) == 3);
+    assert(x.kthLargest(3) == 2);
+    assert(x.kthLargest(4) == 1);
+    assert(x.kthLargest(5) == 0);
 }
