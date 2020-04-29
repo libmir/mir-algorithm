@@ -676,3 +676,212 @@ version(mir_test)
 
     assert(arr.indexed(index).pairwise!"a < b".all);
 }
+
+/++
+Default function for partitionAt
+
+Params:
+    slice = input 1-dimensional slice
++/
+@trusted pure @nogc nothrow
+template setPivotAt(alias less) {
+    size_t setPivotAt(Iterator, SliceKind kind)
+        (Slice!(Iterator, 1, kind) slice)
+    {
+        size_t len = slice.length;
+
+        auto leftI = slice._iterator;
+        auto midI = leftI + len / 2;
+        auto rightI = leftI + len - 1;
+
+        setPivot!less(len, leftI, midI, rightI);
+        return midI - leftI;
+    }
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    import mir.functional: naryFun;
+    auto x = [3, 1, 5, 2, 0].sliced;
+
+    auto y = setPivotAt!(naryFun!("a < b"))(x);
+    assert(y == 2);
+    assert(x[0 + y] == 5);
+
+    auto z = setPivotAt!(naryFun!("a < b"))(x[1..3]);
+    assert(z == 1);
+    assert(x[1 + z] == 5);
+}
+
+/++
+Partitions a `slice` at a value `k`, such that for each `x` in `slice[0..k]` the 
+function `less(x, slice[k])` is true or `x` equals `slice[k]` and for each `y`  
+in `slice[k..$]` the function `less(slice[k], y)` is true or `y` equals 
+`slice[k]`.
+
+The function returns the value `slice[k]`, which is equivalent to 
+returning the value of `slice[k]` if slice is sorted with `sort!less`.
+
+Can also provide a pivotFunction that is used to choose pivot points in the 
+implementation. The pivotFunction must conform to the following signatures:
+    size_t value = pivotFunction!less(slice, left, right);
+    size_t value = pivotFunction(slice, left, right);
+
+Params:
+    slice = input 1-dimensional slice
+    k = partition value
+Returns: 
+    the value slice[k]
++/
+@safe pure @nogc nothrow
+template partitionAt(alias less = "a < b", 
+                     alias pivotFunction = setPivotAt)
+{
+    import mir.functional: naryFun;
+
+    static if (__traits(isSame, naryFun!less, less))
+    {
+        DeepElementType!(Slice!(Iterator, 1, kind))
+            partitionAt
+            (Iterator, SliceKind kind)(
+                Slice!(Iterator, 1, kind) slice, 
+                size_t k) 
+        {
+            assert(slice.length > 0, 
+                "partitionAt: slice must have length greater than 0");
+            assert(k >= 0, 
+                "partitionAt: k must be greater than or equal to zero");
+            assert(k < slice.length, 
+                "partitionAt: k must be less than the length of the slice");
+
+            if (slice.length == 1) {
+                return slice[0];
+            }
+
+            import std.algorithm.sorting: pivotPartition;
+
+            size_t left = 0;
+            size_t right = slice.length;
+            size_t pivotIndex;
+            
+            for ( ; ; ) {
+                
+                if (right - left == 1) {
+                    return slice[left];
+                }
+
+                static if (__traits(compiles, 
+                                    pivotFunction!less(slice[left..right])))
+                {
+                    pivotIndex = pivotFunction!(less)(slice[left..right]);
+                } else static if (__traits(compiles,
+                                           pivotFunction(slice[left..right]))) {
+                    pivotIndex = pivotFunction(slice[left..right]);
+                } else {
+                    static assert(0, "partitionAt: pivotFunction does not compile");
+                }
+
+                assert(pivotIndex >= 0, 
+                       "partitionAt: pivotFunction must provide a value greater than zero");
+                assert(pivotIndex < (right - left), 
+                       "partitionAt: pivotFunction must provide a value less than (right - left)");
+                pivotIndex = left + pivotPartition!less(slice[left..right], pivotIndex);
+
+                if (k < pivotIndex) {
+                    right = pivotIndex;
+                } else if (k > pivotIndex) {
+                    left = pivotIndex + 1;
+                } else {
+                    return slice[pivotIndex];
+                }
+            }
+        }
+    } else {
+        alias partitionAt = .partitionAt!(naryFun!less, pivotFunction);
+    }
+}
+
+/// Partition 1-dimensional slice at k
+version(mir_test)
+@safe pure
+unittest {
+    size_t k = 2;
+    auto x = [3, 1, 5, 2, 0].sliced;
+    auto y = partitionAt(x, k);
+    assert(y == 2);
+}
+
+/// Can supply alternate ordering function
+version(mir_test)
+@safe pure
+unittest {
+    size_t k = 2;
+    auto x = [3, 1, 5, 2, 0].sliced;
+    auto y = partitionAt!("a > b")(x, k);
+    assert(y == 2);
+}
+
+/// Provide a custom pivot function
+version(mir_test)
+@safe pure
+unittest {
+    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
+        return slice.length - 1;
+    }
+
+    size_t k = 2;
+    auto x = [3, 1, 5, 0, 2].sliced;
+    auto y = x.partitionAt!("a < b", tail)(2);
+    assert(y == 2);
+}
+
+version(unittest) {
+    template checkAllPartitionAt(alias less = "a < b",
+                                 alias pivotFunction = setPivotAt)
+    {
+        import mir.functional: naryFun;
+
+        static if (__traits(isSame, naryFun!less, less))
+        {
+            @safe pure nothrow
+            static bool checkAllPartitionAt
+                (Iterator, SliceKind kind)(
+                    Slice!(Iterator, 1, kind) x)
+            {
+                auto x_sorted = x.dup;
+                x_sorted.sort!less;
+
+                bool result = true;
+
+                size_t k = 0;
+                while (k < x.length)
+                {
+                    auto x_i = x.dup;
+                    if (partitionAt!(less, pivotFunction)(x_i, k) != x_sorted[k]) {
+                        result = false;
+                        break;
+                    }
+                    k++;
+                }
+                return result;
+            }
+        } else {
+            alias checkAllPartitionAt = .checkAllPartitionAt!(naryFun!less, pivotFunction);
+        }
+    }
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    assert(checkAllPartitionAt([3, 1, 5, 2, 0].sliced));
+    assert(checkAllPartitionAt([3, 1, 5, 0, 2].sliced));
+    assert(checkAllPartitionAt([0, 0, 4, 3, 3].sliced));
+    assert(checkAllPartitionAt([5, 1, 5, 1, 5].sliced));
+    assert(checkAllPartitionAt([2, 2, 0, 0, 0].sliced));
+    assert(checkAllPartitionAt([ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced));
+    assert(checkAllPartitionAt([ 4, 18, 16,  0, 15,  6,  2, 17, 10, 16].sliced));
+    assert(checkAllPartitionAt([ 7,  5,  9,  4,  4,  2, 12, 20, 15, 15].sliced));
+    assert(checkAllPartitionAt([17, 87, 58, 50, 34, 98, 25, 77, 88, 79].sliced));
+}

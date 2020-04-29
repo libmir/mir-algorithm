@@ -3893,151 +3893,7 @@ version(mir_test)
     auto rc = matrix.byDim!1.map!filterPositive;
     assert(equal!equal(rc, [ [3, 100], [], [400, 102] ]));
 }
-
-@safe pure @nogc nothrow
-private size_t 
-    partition(Iterator, SliceKind kind)(
-        Slice!(Iterator, 1, kind) slice, 
-        size_t left, 
-        size_t right,
-        size_t pivotIndex)
-{
-    import mir.utility: swap;
-    
-    assert(left >= 0, 
-        "partition: left must be bigger than or equal to zero");
-    assert(left < right, 
-        "partition: left must be less than right");
-    assert(right < slice.length, 
-        "partition: right must be less than the length of slice");
-
-    auto pivot = slice[pivotIndex];
-    swap(slice[pivotIndex], slice[right]);
-
-    size_t pIndex = left; 
-    for (size_t i = left; i < right; i++)
-    {
-        if (slice[i] <= pivot)
-        {
-            swap(slice[i], slice[pIndex]);
-            pIndex++;
-        }
-    }
-    swap(slice[pIndex], slice[right]);
-    return pIndex;
-}
-
-version(mir_test)
-@safe pure
-unittest {
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-
-    auto x = [3.0, 1, 5, 0, 2].sliced;
-
-    auto y = x.partition(0, 4, 4);
-
-    assert(y == 2);
-    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
-}
-
-version(mir_test)
-@safe pure
-unittest {
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-
-    auto x = [1.0, 0, 2, 5, 3].sliced;
-
-    auto y = x.partition(3, 4, 4);
-    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
-}
-
-@safe pure @nogc nothrow
-package DeepElementType!(Slice!(Iterator, 1, kind))
-    quickSelect
-    (alias pivotFunction = (a => (a.length - 1)), Iterator, SliceKind kind)(
-        Slice!(Iterator, 1, kind) slice, 
-        size_t left,
-        size_t right,
-        size_t k) 
-{
-    assert(left >= 0, 
-        "quickSelect: left must be bigger than or equal to zero");
-    assert(left <= right, 
-        "quickSelect: left must be less than or equal to right");
-    assert(right <= slice.length, 
-        "quickSelect: right must be less than the length of slice");
-    assert(k >= 0, 
-        "quickSelect: k must be greater than or equal to zero");
-    assert(k < slice.length, 
-        "quickSelect: k must be less than the length of the slice");
-
-    if (left == right) {
-        return slice[left];
-    }
-    
-    size_t pivotIndex = left + pivotFunction(slice[left..(right + 1)]);
-    pivotIndex = partition(slice, left, right, pivotIndex);
-
-    if (k == pivotIndex) {
-        return slice[pivotIndex];
-    } else if (k < pivotIndex) {
-        return slice.quickSelect!pivotFunction(left, pivotIndex - 1, k);
-    } else {
-        return slice.quickSelect!pivotFunction(pivotIndex + 1, right, k);
-    }
-}
-
-version(mir_test)
-@safe pure
-unittest {
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-
-    auto x = [3.0, 1, 5, 0, 2].sliced;
-    auto y = x.quickSelect(0, 4, 2);
-    
-    assert(y == 2);
-    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
-}
-
-version(mir_test)
-@safe pure
-unittest {
-    auto x0 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x0.quickSelect(0, 4, 0) == 0);
-    
-    auto x1 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x1.quickSelect(0, 4, 1) == 1);
-    
-    auto x2 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x2.quickSelect(0, 4, 2) == 2);
-    
-    auto x3 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x3.quickSelect(0, 4, 3) == 3);
-
-    auto x4 = [3.0, 1, 5, 0, 2].sliced;
-    assert(x4.quickSelect(0, 4, 4) == 5);
-}
-
-version(mir_test)
-@safe pure
-unittest {
-    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
-        return slice.length - 1;
-    }
-
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-
-    auto x = [3.0, 1, 5, 0, 2].sliced;
-    auto y = x.quickSelect!tail(0, 4, 2);
-    
-    assert(y == 2);
-    assert(x.all!approxEqual([1.0, 0, 2, 3, 5]));
-}
-
+/*
 /++
 Finds the kth smallest value in a slice.
 
@@ -4072,9 +3928,11 @@ DeepElementType!(Slice!(Iterator, N, kind))
     } else {
         import mir.ndslice.topology: flattened;
         import mir.ndslice.allocation: rcslice;
+        import mir.ndslice.sorting: partitionAt;
 
-        auto val = slice.flattened.rcslice;
-        return quickSelect!pivotFunction(val, 0, (val.length - 1), k - 1);
+        auto rcval = slice.rcslice.flattened;
+        auto val = rcval.lightScope;
+        return partitionAt!pivotFunction(val, k - 1);
     }
 }
 
@@ -4268,3 +4126,4 @@ unittest {
     assert(x.kthLargest(4) == 1);
     assert(x.kthLargest(5) == 0);
 }
+*/
