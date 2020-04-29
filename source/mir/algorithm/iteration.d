@@ -4064,13 +4064,18 @@ DeepElementType!(Slice!(Iterator, N, kind))
         "kthSmallest: k must be greater than or equal to zero");
     assert(k <= slice.elementCount, 
         "kthSmallest: k must be less than the number of elements of the slice");
-    
-    import mir.ndslice.topology: flattened;
-    import mir.ndslice.allocation: rcslice;
 
-    auto val = slice.flattened.rcslice;
+    if (k == 1) {
+        return slice.minPos.first;
+    } else if (k == slice.elementCount) {
+        return slice.maxPos.first;
+    } else {
+        import mir.ndslice.topology: flattened;
+        import mir.ndslice.allocation: rcslice;
 
-    return quickSelect!pivotFunction(val, 0, (val.length - 1), k - 1);
+        auto val = slice.flattened.rcslice;
+        return quickSelect!pivotFunction(val, 0, (val.length - 1), k - 1);
+    }
 }
 
 /// ditto
