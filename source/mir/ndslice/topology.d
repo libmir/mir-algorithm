@@ -1936,13 +1936,14 @@ Slice!(SliceIterator!(Iterator, N, kind), M, Universal)
     (Slice!(Iterator, N, kind) slice, size_t[M] lengths...)
     if (M)
 {
+    import core.lifetime: move;
     size_t[M] ls = lengths;
     return typeof(return)(
         ls,
         sizediff_t[M].init,
         typeof(return).Iterator(
             slice._structure,
-            slice._iterator));
+            move(slice._iterator)));
 }
 
 ///
