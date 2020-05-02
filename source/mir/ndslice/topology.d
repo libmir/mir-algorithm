@@ -2207,30 +2207,37 @@ Returns: A bitwise slice.
 auto bitwise
     (Iterator, size_t N, SliceKind kind, I = typeof(Iterator.init[size_t.init]))
     (Slice!(Iterator, N, kind) slice)
-    if (__traits(isIntegral, I) && (kind == Contiguous || kind == Canonical))
+    if (__traits(isIntegral, I) && (kind != Universal || N == 1))
 {
     import core.lifetime: move;
-    static if (is(Iterator : FieldIterator!Field, Field))
+    static if (kind == Universal)
     {
-        enum simplified = true;
-        alias It = FieldIterator!(BitField!Field);
+        return slice.move.flattened.bitwise;
     }
     else
     {
-        enum simplified = false;
-        alias It = FieldIterator!(BitField!Iterator);
+        static if (is(Iterator : FieldIterator!Field, Field))
+        {
+            enum simplified = true;
+            alias It = FieldIterator!(BitField!Field);
+        }
+        else
+        {
+            enum simplified = false;
+            alias It = FieldIterator!(BitField!Iterator);
+        }
+        alias Ret = Slice!(It, N, kind);
+        auto structure_ = Ret._Structure.init;
+        foreach(i; Iota!(Ret.N))
+            structure_[0][i] = slice._lengths[i];
+        structure_[0][$ - 1] *= I.sizeof * 8;
+        foreach(i; Iota!(Ret.S))
+            structure_[1][i] = slice._strides[i];
+        static if (simplified)
+            return Ret(structure_, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field.move)));
+        else
+            return Ret(structure_, It(0, BitField!Iterator(slice._iterator.move)));
     }
-    alias Ret = Slice!(It, N, kind);
-    auto structure_ = Ret._Structure.init;
-    foreach(i; Iota!(Ret.N))
-        structure_[0][i] = slice._lengths[i];
-    structure_[0][$ - 1] *= I.sizeof * 8;
-    foreach(i; Iota!(Ret.S))
-        structure_[1][i] = slice._strides[i];
-    static if (simplified)
-        return Ret(structure_, It(slice._iterator._index * I.sizeof * 8, BitField!Field(slice._iterator._field.move)));
-    else
-        return Ret(structure_, It(0, BitField!Iterator(slice._iterator.move)));
 }
 
 /// ditto
@@ -2276,6 +2283,8 @@ version(mir_test) unittest
     bits[111] = true;
     assert(bits[111]);
     assert(bits_normal[111 + size_t.sizeof * 2 * 8]);
+    auto ubits = slice.universal.bitwise;
+    assert(bits == ubits);
 
     bits.popFront;
     assert(bits[110]);
@@ -2893,10 +2902,11 @@ private auto hideStride
     (Iterator, SliceKind kind)
     (Slice!(Iterator, 1, kind) slice)
 {
+    import core.lifetime: move;
     static if (kind == Universal)
         return Slice!(StrideIterator!Iterator)(
             slice._lengths,
-            StrideIterator!Iterator(slice._strides[0], slice._iterator));
+            StrideIterator!Iterator(slice._strides[0], move(slice._iterator)));
     else
         return slice;
 }
