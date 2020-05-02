@@ -678,7 +678,7 @@ version(mir_test)
 }
 
 /++
-Default function for partitionAt
+Default function for topN
 
 Params:
     slice = input 1-dimensional slice
@@ -709,117 +709,141 @@ unittest {
     assert(y == 2);
     assert(x[0 + y] == 5);
 
-    auto z = setPivotAt!(naryFun!("a < b"))(x[1..3]);
+    auto z = setPivotAt!(naryFun!("a < b"))(x[1 .. 3]);
     assert(z == 1);
     assert(x[1 + z] == 5);
 }
 
 /++
-Partitions a `slice` at a value `k`, such that for each `x` in `slice[0..k]` the 
-function `less(x, slice[k])` is true or `x` equals `slice[k]` and for each `y`  
-in `slice[k..$]` the function `less(slice[k], y)` is true or `y` equals 
-`slice[k]`.
+Reorders `slice` such that `slice[nth]` refers to the element that would fall
+there if the range were fully sorted. In addition, it also partitions `slice`
+such that all elements `e1` from `slice[0]` to `slice[nth]` satisfy
+`!less(slice[nth], e1)`, and all elements `e2` from `slice[nth]` to
+`slice[slice.length]` satisfy `!less(e2, slice[nth])`. Effectively, it finds
+the `nth` smallest (according to `less`) elements in `slice`. Performs an
+expected $(BIGOH slice.length) evaluations of `less` and `swap`, with a worst
+case of $(BIGOH slice.length^^2).
 
-The function returns the value `slice[k]`, which is equivalent to 
-returning the value of `slice[k]` if slice is sorted with `sort!less`.
-
-Can also provide a pivotFunction that is used to choose pivot points in the 
-implementation. The pivotFunction must conform to the following signatures:
-    size_t value = pivotFunction!less(slice, left, right);
-    size_t value = pivotFunction(slice, left, right);
+This function implements an iterative, in-place version of the
+$(HTTP en.wikipedia.org/wiki/Quickselect, quickselect) algorithm. It loops
+through a slice, calling a user-provided `pivotFunction` (default
+implementation: setPivotAt) to choose a pivot point. The `pivotFunction` must
+conform to the following signatures:
+    size_t value = pivotFunction!less(slice);
+    size_t value = pivotFunction(slice);
+It then partitions `slice` using `less` at the given pivot point and loops
+through a slice of the original `slice`. It also includes specialization for
+when `nth` equals zero or the length of `slice` minus one (to partition around
+the smallest or largest element of a slice).
 
 Params:
-    slice = input 1-dimensional slice
-    k = partition value
-Returns: 
-    the value slice[k]
+    less = The predicate to sort by.
+    pivotFunction = The pivot strategy to use.
+    slice = The random-access range to reorder.
+    nth = The index of the element that should be in sorted position after the
+        function is finished.
+See_Also:
+    $(LREF pivotPartition), $(LREF setPivotAt)
+
 +/
 @safe pure @nogc nothrow
-template partitionAt(alias less = "a < b", 
-                     alias pivotFunction = setPivotAt)
+template topN(alias less = "a < b", 
+              alias pivotFunction = setPivotAt)
 {
     import mir.functional: naryFun;
 
     static if (__traits(isSame, naryFun!less, less))
     {
-        DeepElementType!(Slice!(Iterator, 1, kind))
-            partitionAt
-            (Iterator, SliceKind kind)(
-                Slice!(Iterator, 1, kind) slice, 
-                size_t k) 
+        void topN(Iterator, SliceKind kind)(
+            Slice!(Iterator, 1, kind) slice, size_t nth) 
         {
-            assert(slice.length > 0, 
-                "partitionAt: slice must have length greater than 0");
-            assert(k >= 0, 
-                "partitionAt: k must be greater than or equal to zero");
-            assert(k < slice.length, 
-                "partitionAt: k must be less than the length of the slice");
-
-            if (slice.length == 1) {
-                return slice[0];
-            }
+            assert(slice.length > 0, "topN: slice must have length greater than 0");
+            assert(nth >= 0, "topN: nth must be greater than or equal to zero");
+            assert(nth < slice.length, "topN: nth must be less than the length of the slice");
 
             import std.algorithm.sorting: pivotPartition;
+            import mir.utility: swap;
+            import mir.functional: reverseArgs;
 
-            size_t left = 0;
-            size_t right = slice.length;
-            size_t pivotIndex;
-            
-            for ( ; ; ) {
-                
-                if (right - left == 1) {
-                    return slice[left];
+            size_t pivot = void;
+            size_t n = void;
+
+            for (;;) {
+                n = slice.length;
+
+                if (n <= 1) {
+                    break;
                 }
 
-                static if (__traits(compiles, 
-                                    pivotFunction!less(slice[left..right])))
+                if (nth == 0) {
+                    pivot = 0;
+                    foreach (i; 1 .. n) {
+                        if (less(slice[i], slice[pivot])) {
+                            pivot = i;
+                        }
+                    }
+                    swap(slice[nth], slice[pivot]);
+                    break;
+                }
+
+                if (nth + 1 == n) {
+                    pivot = 0;
+                    foreach (i; 1 .. n) {
+                        if (reverseArgs!less(slice[i], slice[pivot])) {
+                            pivot = i;
+                        }
+                    }
+                    swap(slice[nth], slice[pivot]);
+                    break;
+                }
+
+                static if (__traits(compiles, pivotFunction!less(slice)))
                 {
-                    pivotIndex = pivotFunction!(less)(slice[left..right]);
-                } else static if (__traits(compiles,
-                                           pivotFunction(slice[left..right]))) {
-                    pivotIndex = pivotFunction(slice[left..right]);
+                    pivot = pivotFunction!(less)(slice);
                 } else {
-                    static assert(0, "partitionAt: pivotFunction does not compile");
+                    static if (__traits(compiles, pivotFunction(slice))) {
+                        pivot = pivotFunction(slice);
+                    } else
+                        static assert(0, "topN: pivotFunction does not compile");
                 }
 
-                assert(pivotIndex >= 0, 
-                       "partitionAt: pivotFunction must provide a value greater than zero");
-                assert(pivotIndex < (right - left), 
-                       "partitionAt: pivotFunction must provide a value less than (right - left)");
-                pivotIndex = left + pivotPartition!less(slice[left..right], pivotIndex);
+                assert(pivot >= 0, "topN: pivotFunction must provide a value greater than zero");
+                assert(pivot < n, "topN: pivotFunction must provide a value less than the length of the slice");
+                pivot = pivotPartition!less(slice, pivot);
 
-                if (k < pivotIndex) {
-                    right = pivotIndex;
-                } else if (k > pivotIndex) {
-                    left = pivotIndex + 1;
+                if (nth < pivot) {
+                    slice = slice[0 .. pivot];
+                } else if (nth > pivot) {
+                    slice = slice[(pivot + 1) .. $];
+                    nth -= pivot + 1;
                 } else {
-                    return slice[pivotIndex];
+                    break;
                 }
             }
         }
     } else {
-        alias partitionAt = .partitionAt!(naryFun!less, pivotFunction);
+        alias topN = .topN!(naryFun!less, pivotFunction);
     }
 }
 
-/// Partition 1-dimensional slice at k
+/// Partition 1-dimensional slice at nth
 version(mir_test)
 @safe pure
 unittest {
-    size_t k = 2;
+    size_t nth = 2;
     auto x = [3, 1, 5, 2, 0].sliced;
-    auto y = partitionAt(x, k);
-    assert(y == 2);
+    x.topN(nth);
+    assert(x[nth] == 2);
 }
 
 /// Can supply alternate ordering function
 version(mir_test)
 @safe pure
 unittest {
-    size_t k = 2;
+    size_t nth = 2;
     auto x = [3, 1, 5, 2, 0].sliced;
-    auto y = partitionAt!("a > b")(x, k);
-    assert(y == 2);
+    x.topN!("a > b")(nth);
+    assert(x[nth] == 2);
 }
 
 /// Provide a custom pivot function
@@ -830,14 +854,14 @@ unittest {
         return slice.length - 1;
     }
 
-    size_t k = 2;
+    size_t nth = 2;
     auto x = [3, 1, 5, 0, 2].sliced;
-    auto y = x.partitionAt!("a < b", tail)(2);
-    assert(y == 2);
+    x.topN!("a < b", tail)(nth);
+    assert(x[nth] == 2);
 }
 
 version(unittest) {
-    template checkAllPartitionAt(alias less = "a < b",
+    template checkTopNAll(alias less = "a < b",
                                  alias pivotFunction = setPivotAt)
     {
         import mir.functional: naryFun;
@@ -845,7 +869,7 @@ version(unittest) {
         static if (__traits(isSame, naryFun!less, less))
         {
             @safe pure nothrow
-            static bool checkAllPartitionAt
+            static bool checkTopNAll
                 (Iterator, SliceKind kind)(
                     Slice!(Iterator, 1, kind) x)
             {
@@ -854,20 +878,19 @@ version(unittest) {
 
                 bool result = true;
 
-                size_t k = 0;
-                while (k < x.length)
+                foreach (nth; 0 .. x.length)
                 {
                     auto x_i = x.dup;
-                    if (partitionAt!(less, pivotFunction)(x_i, k) != x_sorted[k]) {
+                    x_i.topN!(less, pivotFunction)(nth);
+                    if (x_i[nth] != x_sorted[nth]) {
                         result = false;
                         break;
                     }
-                    k++;
                 }
                 return result;
             }
         } else {
-            alias checkAllPartitionAt = .checkAllPartitionAt!(naryFun!less, pivotFunction);
+            alias checkTopNAll = .checkTopNAll!(naryFun!less, pivotFunction);
         }
     }
 }
@@ -875,13 +898,18 @@ version(unittest) {
 version(mir_test)
 @safe pure
 unittest {
-    assert(checkAllPartitionAt([3, 1, 5, 2, 0].sliced));
-    assert(checkAllPartitionAt([3, 1, 5, 0, 2].sliced));
-    assert(checkAllPartitionAt([0, 0, 4, 3, 3].sliced));
-    assert(checkAllPartitionAt([5, 1, 5, 1, 5].sliced));
-    assert(checkAllPartitionAt([2, 2, 0, 0, 0].sliced));
-    assert(checkAllPartitionAt([ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced));
-    assert(checkAllPartitionAt([ 4, 18, 16,  0, 15,  6,  2, 17, 10, 16].sliced));
-    assert(checkAllPartitionAt([ 7,  5,  9,  4,  4,  2, 12, 20, 15, 15].sliced));
-    assert(checkAllPartitionAt([17, 87, 58, 50, 34, 98, 25, 77, 88, 79].sliced));
+    assert(checkTopNAll([2, 2].sliced));
+    
+    assert(checkTopNAll([3, 1, 5, 2, 0].sliced));
+    assert(checkTopNAll([3, 1, 5, 0, 2].sliced));
+    assert(checkTopNAll([0, 0, 4, 3, 3].sliced));
+    assert(checkTopNAll([5, 1, 5, 1, 5].sliced));
+    assert(checkTopNAll([2, 2, 0, 0, 0].sliced));
+    
+    assert(checkTopNAll([ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced));
+    assert(checkTopNAll([ 4, 18, 16,  0, 15,  6,  2, 17, 10, 16].sliced));
+    assert(checkTopNAll([ 7,  5,  9,  4,  4,  2, 12, 20, 15, 15].sliced));
+
+    assert(checkTopNAll([17, 87, 58, 50, 34, 98, 25, 77, 88, 79].sliced));
+
 }
