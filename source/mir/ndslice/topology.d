@@ -3533,20 +3533,24 @@ template slide(size_t params, alias fun)
         Returns:
             1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
         +/
-        auto slide(Iterator, size_t N, SliceKind kind)
-            (Slice!(Iterator, N, kind) slice)
-            if (N == 1)
+        auto slide(Iterator, SliceKind kind)
+            (Slice!(Iterator, 1, kind) slice)
         {
-            auto s = slice.map!"a".flattened;
-            if (cast(sizediff_t)s._lengths[0] < sizediff_t(params - 1))
-                s._lengths[0] = 0;
+            import core.lifetime: move;
+            static if (kind == Universal)
+            {
+                return .slide!(params, fun)(slice.move.flattened);
+            }
             else
-                s._lengths[0] -= params - 1;
+            {
+                if (cast(sizediff_t)slice._lengths[0] < sizediff_t(params - 1))
+                    slice._lengths[0] = 0;
+                else
+                    slice._lengths[0] -= params - 1;
 
-            alias I = SlideIterator!(_IteratorOf!(typeof(s)), params, fun);
-            return Slice!(I)(
-                s._structure,
-                I(s._iterator));
+                alias I = SlideIterator!(Iterator, params, fun);
+                return Slice!I(slice._structure, I(move(slice._iterator)));
+            }
         }
 
         /// ditto
