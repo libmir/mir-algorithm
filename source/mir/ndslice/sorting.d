@@ -684,11 +684,13 @@ Params:
     slice = input 1-dimensional slice
 +/
 @trusted pure @nogc nothrow
-template setPivotAt(alias less) {
+template setPivotAt(alias less = "a < b") {
     size_t setPivotAt(Iterator, SliceKind kind)
         (Slice!(Iterator, 1, kind) slice)
     {
         size_t len = slice.length;
+        
+        assert(len > 0, "setPivotAt: slice must have a length greater than zero");
 
         auto leftI = slice._iterator;
         auto midI = leftI + len / 2;
@@ -699,6 +701,7 @@ template setPivotAt(alias less) {
     }
 }
 
+///
 version(mir_test)
 @safe pure
 unittest {
@@ -729,8 +732,10 @@ $(HTTP en.wikipedia.org/wiki/Quickselect, quickselect) algorithm. It loops
 through a slice, calling a user-provided `pivotFunction` (default
 implementation: setPivotAt) to choose a pivot point. The `pivotFunction` must
 conform to the following signatures:
+------
     size_t value = pivotFunction!less(slice);
     size_t value = pivotFunction(slice);
+------
 It then partitions `slice` using `less` at the given pivot point and loops
 through a slice of the original `slice`. It also includes specialization for
 when `nth` equals zero or the length of `slice` minus one (to partition around
@@ -746,9 +751,7 @@ See_Also:
     $(LREF pivotPartition), $(LREF setPivotAt)
 
 +/
-@safe pure @nogc nothrow
-template topN(alias less = "a < b", 
-              alias pivotFunction = setPivotAt)
+template topN(alias less = "a < b", alias pivotFunction = setPivotAt)
 {
     import mir.functional: naryFun;
 
@@ -861,8 +864,7 @@ unittest {
 }
 
 version(unittest) {
-    template checkTopNAll(alias less = "a < b",
-                                 alias pivotFunction = setPivotAt)
+    template checkTopNAll(alias less = "a < b", alias pivotFunction = setPivotAt)
     {
         import mir.functional: naryFun;
 
