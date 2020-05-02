@@ -62,8 +62,9 @@ package auto applyAssumeZeroShift(Types...)()
 
 auto MapField__map(Field, alias fun, alias fun1)(ref MapField!(Field, fun) f)
 {
+    import core.lifetime: move;
     import mir.functional: pipe;
-    return MapField!(Field, pipe!(fun, fun1))(f._field);
+    return MapField!(Field, pipe!(fun, fun1))(move(f._field));
 }
 
 
@@ -403,16 +404,17 @@ version(mir_test) unittest
 
 auto BitField__map(Field, I, alias fun)(BitField!(Field, I) field)
 {
+    import core.lifetime: move;
     import mir.functional: naryFun;
-    static if (__traits(isSame, fun, naryFun!"~a"))
+    static if (__traits(isSame, fun, naryFun!"~a") || __traits(isSame, fun, naryFun!"!a"))
     {
         import mir.ndslice.topology: bitwiseField;
-        auto f = _mapField!fun(field._field);
+        auto f = _mapField!(naryFun!"~a")(move(field._field));
         return f.bitwiseField!(typeof(f), I);
     }
     else
     {
-        return field;
+        return MapField!(BitField!(Field, I), fun)(move(field));
     }
 }
 

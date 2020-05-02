@@ -2284,6 +2284,10 @@ version(mir_test) unittest
     assert(bits[111]);
     assert(bits_normal[111 + size_t.sizeof * 2 * 8]);
     auto ubits = slice.universal.bitwise;
+    assert(bits.map!"~a" == bits.map!"!a");
+    static assert (is(typeof(bits.map!"~a") == typeof(bits.map!"!a")));
+    assert(bits.map!"~a" == bits.map!"!!!a");
+    static assert (!is(typeof(bits.map!"~a") == typeof(bits.map!"!!!a")));
     assert(bits == ubits);
 
     bits.popFront;
