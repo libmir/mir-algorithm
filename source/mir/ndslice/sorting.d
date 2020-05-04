@@ -676,3 +676,242 @@ version(mir_test)
 
     assert(arr.indexed(index).pairwise!"a < b".all);
 }
+
+/++
+Default function for topN
+
+Params:
+    slice = input 1-dimensional slice
++/
+@trusted pure @nogc nothrow
+template setPivotAt(alias less = "a < b") {
+    size_t setPivotAt(Iterator, SliceKind kind)
+        (Slice!(Iterator, 1, kind) slice)
+    {
+        size_t len = slice.length;
+        
+        assert(len > 0, "setPivotAt: slice must have a length greater than zero");
+
+        auto leftI = slice._iterator;
+        auto midI = leftI + len / 2;
+        auto rightI = leftI + len - 1;
+
+        setPivot!less(len, leftI, midI, rightI);
+        return midI - leftI;
+    }
+}
+
+///
+version(mir_test)
+@safe pure
+unittest {
+    import mir.functional: naryFun;
+    auto x = [3, 1, 5, 2, 0].sliced;
+
+    auto y = setPivotAt!(naryFun!("a < b"))(x);
+    assert(y == 2);
+    assert(x[0 + y] == 5);
+
+    auto z = setPivotAt!(naryFun!("a < b"))(x[1 .. 3]);
+    assert(z == 1);
+    assert(x[1 + z] == 5);
+}
+
+/++
+Reorders `slice` such that `slice[nth]` refers to the element that would fall
+there if the range were fully sorted. In addition, it also partitions `slice`
+such that all elements `e1` from `slice[0]` to `slice[nth]` satisfy
+`!less(slice[nth], e1)`, and all elements `e2` from `slice[nth]` to
+`slice[slice.length]` satisfy `!less(e2, slice[nth])`. Effectively, it finds
+the `nth` smallest (according to `less`) elements in `slice`. Performs an
+expected $(BIGOH slice.length) evaluations of `less` and `swap`, with a worst
+case of $(BIGOH slice.length^^2).
+
+This function implements an iterative, in-place version of the
+$(HTTP en.wikipedia.org/wiki/Quickselect, quickselect) algorithm. It loops
+through a slice, calling a user-provided `pivotFunction` (default
+implementation: setPivotAt) to choose a pivot point. The `pivotFunction` must
+conform to the following signatures:
+------
+    size_t value = pivotFunction!less(slice);
+    size_t value = pivotFunction(slice);
+------
+It then partitions `slice` using `less` at the given pivot point and loops
+through a slice of the original `slice`. It also includes specialization for
+when `nth` equals zero or the length of `slice` minus one (to partition around
+the smallest or largest element of a slice).
+
+Params:
+    less = The predicate to sort by.
+    pivotFunction = The pivot strategy to use.
+    slice = The random-access range to reorder.
+    nth = The index of the element that should be in sorted position after the
+        function is finished.
+See_Also:
+    $(LREF pivotPartition), $(LREF setPivotAt)
+
++/
+template topN(alias less = "a < b", alias pivotFunction = setPivotAt)
+{
+    import mir.functional: naryFun;
+
+    static if (__traits(isSame, naryFun!less, less))
+    {
+        void topN(Iterator, SliceKind kind)(
+            Slice!(Iterator, 1, kind) slice, size_t nth) 
+        {
+            assert(slice.length > 0, "topN: slice must have length greater than 0");
+            assert(nth >= 0, "topN: nth must be greater than or equal to zero");
+            assert(nth < slice.length, "topN: nth must be less than the length of the slice");
+
+            import std.algorithm.sorting: pivotPartition;
+            import mir.utility: swap;
+            import mir.functional: reverseArgs;
+
+            size_t pivot = void;
+            size_t n = void;
+
+            for (;;) {
+                n = slice.length;
+
+                if (n <= 1) {
+                    break;
+                }
+
+                if (nth == 0) {
+                    pivot = 0;
+                    foreach (i; 1 .. n) {
+                        if (less(slice[i], slice[pivot])) {
+                            pivot = i;
+                        }
+                    }
+                    swap(slice[nth], slice[pivot]);
+                    break;
+                }
+
+                if (nth + 1 == n) {
+                    pivot = 0;
+                    foreach (i; 1 .. n) {
+                        if (reverseArgs!less(slice[i], slice[pivot])) {
+                            pivot = i;
+                        }
+                    }
+                    swap(slice[nth], slice[pivot]);
+                    break;
+                }
+
+                static if (__traits(compiles, pivotFunction!less(slice)))
+                {
+                    pivot = pivotFunction!(less)(slice);
+                } else {
+                    static if (__traits(compiles, pivotFunction(slice))) {
+                        pivot = pivotFunction(slice);
+                    } else
+                        static assert(0, "topN: pivotFunction does not compile");
+                }
+
+                assert(pivot >= 0, "topN: pivotFunction must provide a value greater than zero");
+                assert(pivot < n, "topN: pivotFunction must provide a value less than the length of the slice");
+                pivot = pivotPartition!less(slice, pivot);
+
+                if (nth < pivot) {
+                    slice = slice[0 .. pivot];
+                } else if (nth > pivot) {
+                    slice = slice[(pivot + 1) .. $];
+                    nth -= pivot + 1;
+                } else {
+                    break;
+                }
+            }
+        }
+    } else {
+        alias topN = .topN!(naryFun!less, pivotFunction);
+    }
+}
+
+/// Partition 1-dimensional slice at nth
+version(mir_test)
+@safe pure
+unittest {
+    size_t nth = 2;
+    auto x = [3, 1, 5, 2, 0].sliced;
+    x.topN(nth);
+    assert(x[nth] == 2);
+}
+
+/// Can supply alternate ordering function
+version(mir_test)
+@safe pure
+unittest {
+    size_t nth = 2;
+    auto x = [3, 1, 5, 2, 0].sliced;
+    x.topN!("a > b")(nth);
+    assert(x[nth] == 2);
+}
+
+/// Provide a custom pivot function
+version(mir_test)
+@safe pure
+unittest {
+    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
+        return slice.length - 1;
+    }
+
+    size_t nth = 2;
+    auto x = [3, 1, 5, 0, 2].sliced;
+    x.topN!("a < b", tail)(nth);
+    assert(x[nth] == 2);
+}
+
+version(unittest) {
+    template checkTopNAll(alias less = "a < b", alias pivotFunction = setPivotAt)
+    {
+        import mir.functional: naryFun;
+
+        static if (__traits(isSame, naryFun!less, less))
+        {
+            @safe pure nothrow
+            static bool checkTopNAll
+                (Iterator, SliceKind kind)(
+                    Slice!(Iterator, 1, kind) x)
+            {
+                auto x_sorted = x.dup;
+                x_sorted.sort!less;
+
+                bool result = true;
+
+                foreach (nth; 0 .. x.length)
+                {
+                    auto x_i = x.dup;
+                    x_i.topN!(less, pivotFunction)(nth);
+                    if (x_i[nth] != x_sorted[nth]) {
+                        result = false;
+                        break;
+                    }
+                }
+                return result;
+            }
+        } else {
+            alias checkTopNAll = .checkTopNAll!(naryFun!less, pivotFunction);
+        }
+    }
+}
+
+version(mir_test)
+@safe pure
+unittest {
+    assert(checkTopNAll([2, 2].sliced));
+    
+    assert(checkTopNAll([3, 1, 5, 2, 0].sliced));
+    assert(checkTopNAll([3, 1, 5, 0, 2].sliced));
+    assert(checkTopNAll([0, 0, 4, 3, 3].sliced));
+    assert(checkTopNAll([5, 1, 5, 1, 5].sliced));
+    assert(checkTopNAll([2, 2, 0, 0, 0].sliced));
+    
+    assert(checkTopNAll([ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced));
+    assert(checkTopNAll([ 4, 18, 16,  0, 15,  6,  2, 17, 10, 16].sliced));
+    assert(checkTopNAll([ 7,  5,  9,  4,  4,  2, 12, 20, 15, 15].sliced));
+
+    assert(checkTopNAll([17, 87, 58, 50, 34, 98, 25, 77, 88, 79].sliced));
+
+}
