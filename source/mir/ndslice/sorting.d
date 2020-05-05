@@ -705,7 +705,9 @@ template setPivotAt(alias less = "a < b") {
 version(mir_test)
 @safe pure
 unittest {
+    import mir.ndslice.slice: sliced;
     import mir.functional: naryFun;
+
     auto x = [3, 1, 5, 2, 0].sliced;
 
     auto y = setPivotAt!(naryFun!("a < b"))(x);
@@ -845,6 +847,8 @@ void topNImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
 version(mir_test)
 @safe pure
 unittest {
+    import mir.ndslice.slice: sliced;
+
     size_t nth = 2;
     auto x = [3, 1, 5, 2, 0].sliced;
     x.topN(nth);
@@ -855,6 +859,8 @@ unittest {
 version(mir_test)
 @safe pure
 unittest {
+    import mir.ndslice.slice: sliced;
+
     size_t nth = 4;
     auto x = [3, 1, 5, 2, 0, 7].sliced(3, 2);
     x.topN(nth);
@@ -865,6 +871,8 @@ unittest {
 version(mir_test)
 @safe pure
 unittest {
+    import mir.ndslice.slice: sliced;
+
     size_t nth = 2;
     auto x = [3, 1, 5, 2, 0].sliced;
     x.topN!("a > b")(nth);
@@ -875,6 +883,8 @@ unittest {
 version(mir_test)
 @safe pure
 unittest {
+    import mir.ndslice.slice: sliced, Slice, SliceKind;
+    
     static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
         return slice.length - 1;
     }
@@ -889,6 +899,7 @@ version(unittest) {
     template checkTopNAll(alias less = "a < b", alias pivotFunction = setPivotAt)
     {
         import mir.functional: naryFun;
+        import mir.ndslice.slice: SliceKind, Slice;
 
         static if (__traits(isSame, naryFun!less, less))
         {
@@ -922,6 +933,8 @@ version(unittest) {
 version(mir_test)
 @safe pure
 unittest {
+    import mir.ndslice.slice: sliced;
+
     assert(checkTopNAll([2, 2].sliced));
     
     assert(checkTopNAll([3, 1, 5, 2, 0].sliced));
