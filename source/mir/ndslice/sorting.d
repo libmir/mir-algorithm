@@ -23,8 +23,10 @@ Macros:
 +/
 module mir.ndslice.sorting;
 
+// version = mir_test_topN;
+
 /// Check if ndslice is sorted, or strictly monotonic.
-@safe pure version(mir_test) unittest
+@safe pure version(mir_test_topN) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.slice: sliced;
@@ -48,7 +50,7 @@ module mir.ndslice.sorting;
 }
 
 /// Create index
-version(mir_test) unittest
+version(mir_test_topN) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
@@ -65,7 +67,7 @@ version(mir_test) unittest
 }
 
 /// Schwartzian transform
-version(mir_test) unittest
+version(mir_test_topN) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
@@ -87,7 +89,7 @@ import mir.math.common: optmath;
 
 @optmath:
 
-@safe pure version(mir_test) unittest
+@safe pure version(mir_test_topN) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
@@ -104,7 +106,7 @@ import mir.math.common: optmath;
     assert(c.pairwise!"a <= b".all);
 }
 
-@safe pure version(mir_test) unittest
+@safe pure version(mir_test_topN) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
@@ -212,7 +214,7 @@ template sort(alias less = "a < b")
 }
 
 ///
-@safe pure version(mir_test) unittest
+@safe pure version(mir_test_topN) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.slice;
@@ -227,7 +229,7 @@ template sort(alias less = "a < b")
 }
 
 /// one-dimensional series
-pure version(mir_test) unittest
+pure version(mir_test_topN) unittest
 {
     import mir.series;
 
@@ -248,7 +250,7 @@ pure version(mir_test) unittest
 }
 
 /// two-dimensional series
-pure version(mir_test) unittest
+pure version(mir_test_topN) unittest
 {
     import mir.series;
     import mir.ndslice.allocation: uninitSlice;
@@ -546,7 +548,7 @@ template assumeSortedEqualIndex(alias test = "a < b")
 }
 
 ///
-version(mir_test)
+version(mir_test_topN)
 @safe pure unittest
 {
     // sorted: a < b
@@ -611,7 +613,7 @@ template transitionIndex(alias test = "a < b")
 }
 
 ///
-version(mir_test)
+version(mir_test_topN)
 @safe pure unittest
 {
     // sorted: a < b
@@ -665,7 +667,7 @@ I[] makeIndex(I = size_t, alias less = "a < b", T)(scope T[] r)
 }
 
 ///
-version(mir_test)
+version(mir_test_topN)
 @system unittest
 {
     import mir.algorithm.iteration: all;
@@ -683,6 +685,7 @@ Default function for topN
 Params:
     slice = input 1-dimensional slice
 +/
+deprecated("This function is experimental")
 @trusted pure @nogc nothrow
 template setPivotAt(alias less = "a < b") {
     size_t setPivotAt(Iterator, SliceKind kind)
@@ -702,7 +705,7 @@ template setPivotAt(alias less = "a < b") {
 }
 
 ///
-version(mir_test)
+version(mir_test_topN)
 @safe pure
 unittest {
     import mir.functional: naryFun;
@@ -751,6 +754,7 @@ See_Also:
     $(LREF pivotPartition), $(LREF setPivotAt)
 
 +/
+deprecated("This function is experimental")
 template topN(alias less = "a < b", alias pivotFunction = setPivotAt)
 {
     import mir.functional: naryFun;
@@ -842,7 +846,7 @@ void topNImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
 }
 
 /// Partition 1-dimensional slice at nth
-version(mir_test)
+version(mir_test_topN)
 @safe pure
 unittest {
     size_t nth = 2;
@@ -852,7 +856,7 @@ unittest {
 }
 
 /// Partition 2-dimensional slice
-version(mir_test)
+version(mir_test_topN)
 @safe pure
 unittest {
     size_t nth = 4;
@@ -862,7 +866,7 @@ unittest {
 }
 
 /// Can supply alternate ordering function
-version(mir_test)
+version(mir_test_topN)
 @safe pure
 unittest {
     size_t nth = 2;
@@ -872,7 +876,7 @@ unittest {
 }
 
 /// Provide a custom pivot function
-version(mir_test)
+version(mir_test_topN)
 @safe pure
 unittest {
     static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
@@ -919,7 +923,7 @@ version(unittest) {
     }
 }
 
-version(mir_test)
+version(mir_test_topN)
 @safe pure
 unittest {
     assert(checkTopNAll([2, 2].sliced));
