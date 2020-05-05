@@ -831,6 +831,7 @@ public:
         return dict;
     }();
 
+    ///
     YearMonthDay yearMonthDay() const @safe pure nothrow @nogc @property
     {
         uint day = _julianDay;
@@ -843,6 +844,24 @@ public:
                 return _dict[index];
         }
         return yearMonthDayImpl;
+    }
+
+    ///
+    short year() const @safe pure nothrow @nogc @property
+    {
+        return yearMonthDay.year;
+    }
+
+    ///
+    Month month() const @safe pure nothrow @nogc @property
+    {
+        return yearMonthDay.month;
+    }
+
+    ///
+    ubyte day() const @safe pure nothrow @nogc @property
+    {
+        return yearMonthDay.day;
     }
 
     pragma(inline, false)
@@ -1172,34 +1191,35 @@ public:
     version (mir_test)
     @safe unittest
     {
-        assert(Date(2010, 7, 4).toISOString() == "20100704");
-        assert(Date(1998, 12, 25).toISOString() == "19981225");
-        assert(Date(0, 1, 5).toISOString() == "00000105");
-        assert(Date(-4, 1, 5).toISOString() == "-00040105", Date(-4, 1, 5).toISOString());
+        assert(Date.init.toISOString == "null");
+        assert(Date(2010, 7, 4).toISOString == "20100704");
+        assert(Date(1998, 12, 25).toISOString == "19981225");
+        assert(Date(0, 1, 5).toISOString == "00000105");
+        assert(Date(-4, 1, 5).toISOString == "-00040105", Date(-4, 1, 5).toISOString());
     }
 
     version (mir_test)
     @safe unittest
     {
         // Test A.D.
-        assert(Date(9, 12, 4).toISOString() == "00091204");
-        assert(Date(99, 12, 4).toISOString() == "00991204");
-        assert(Date(999, 12, 4).toISOString() == "09991204");
-        assert(Date(9999, 7, 4).toISOString() == "99990704");
-        assert(Date(10000, 10, 20).toISOString() == "+100001020");
+        assert(Date(9, 12, 4).toISOString == "00091204");
+        assert(Date(99, 12, 4).toISOString == "00991204");
+        assert(Date(999, 12, 4).toISOString == "09991204");
+        assert(Date(9999, 7, 4).toISOString == "99990704");
+        assert(Date(10000, 10, 20).toISOString == "+100001020");
 
         // Test B.C.
-        assert(Date(0, 12, 4).toISOString() == "00001204");
-        assert(Date(-9, 12, 4).toISOString() == "-00091204");
-        assert(Date(-99, 12, 4).toISOString() == "-00991204");
-        assert(Date(-999, 12, 4).toISOString() == "-09991204");
-        assert(Date(-9999, 7, 4).toISOString() == "-99990704");
-        assert(Date(-10000, 10, 20).toISOString() == "-100001020");
+        assert(Date(0, 12, 4).toISOString == "00001204");
+        assert(Date(-9, 12, 4).toISOString == "-00091204");
+        assert(Date(-99, 12, 4).toISOString == "-00991204");
+        assert(Date(-999, 12, 4).toISOString == "-09991204");
+        assert(Date(-9999, 7, 4).toISOString == "-99990704");
+        assert(Date(-10000, 10, 20).toISOString == "-100001020");
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        assert(cdate.toISOString() == "19990706");
-        assert(idate.toISOString() == "19990706");
+        assert(cdate.toISOString == "19990706");
+        assert(idate.toISOString == "19990706");
     }
 
     /// ditto
@@ -1207,6 +1227,11 @@ public:
         if (isOutputRange!(W, char))
     {
         import mir.format: printZeroPad;
+        if(this == Date.init)
+        {
+            w.put("null");
+            return;
+        }
         with(yearMonthDay)
         {
             if (year >= 10_000)
@@ -1249,10 +1274,11 @@ public:
     version (mir_test)
     @safe unittest
     {
-        assert(Date(2010, 7, 4).toISOExtString() == "2010-07-04");
-        assert(Date(1998, 12, 25).toISOExtString() == "1998-12-25");
-        assert(Date(0, 1, 5).toISOExtString() == "0000-01-05");
-        assert(Date(-4, 1, 5).toISOExtString() == "-0004-01-05");
+        assert(Date.init.toISOExtString == "null");
+        assert(Date(2010, 7, 4).toISOExtString == "2010-07-04");
+        assert(Date(1998, 12, 25).toISOExtString == "1998-12-25");
+        assert(Date(0, 1, 5).toISOExtString == "0000-01-05");
+        assert(Date(-4, 1, 5).toISOExtString == "-0004-01-05");
     }
 
     version (mir_test)
@@ -1272,24 +1298,24 @@ public:
     @safe unittest
     {
         // Test A.D.
-        assert(Date(9, 12, 4).toISOExtString() == "0009-12-04");
-        assert(Date(99, 12, 4).toISOExtString() == "0099-12-04");
-        assert(Date(999, 12, 4).toISOExtString() == "0999-12-04");
-        assert(Date(9999, 7, 4).toISOExtString() == "9999-07-04");
-        assert(Date(10000, 10, 20).toISOExtString() == "+10000-10-20");
+        assert(Date(9, 12, 4).toISOExtString == "0009-12-04");
+        assert(Date(99, 12, 4).toISOExtString == "0099-12-04");
+        assert(Date(999, 12, 4).toISOExtString == "0999-12-04");
+        assert(Date(9999, 7, 4).toISOExtString == "9999-07-04");
+        assert(Date(10000, 10, 20).toISOExtString == "+10000-10-20");
 
         // Test B.C.
-        assert(Date(0, 12, 4).toISOExtString() == "0000-12-04");
-        assert(Date(-9, 12, 4).toISOExtString() == "-0009-12-04");
-        assert(Date(-99, 12, 4).toISOExtString() == "-0099-12-04");
-        assert(Date(-999, 12, 4).toISOExtString() == "-0999-12-04");
-        assert(Date(-9999, 7, 4).toISOExtString() == "-9999-07-04");
-        assert(Date(-10000, 10, 20).toISOExtString() == "-10000-10-20");
+        assert(Date(0, 12, 4).toISOExtString == "0000-12-04");
+        assert(Date(-9, 12, 4).toISOExtString == "-0009-12-04");
+        assert(Date(-99, 12, 4).toISOExtString == "-0099-12-04");
+        assert(Date(-999, 12, 4).toISOExtString == "-0999-12-04");
+        assert(Date(-9999, 7, 4).toISOExtString == "-9999-07-04");
+        assert(Date(-10000, 10, 20).toISOExtString == "-10000-10-20");
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        assert(cdate.toISOExtString() == "1999-07-06");
-        assert(idate.toISOExtString() == "1999-07-06");
+        assert(cdate.toISOExtString == "1999-07-06");
+        assert(idate.toISOExtString == "1999-07-06");
     }
 
     /// ditto
@@ -1297,6 +1323,11 @@ public:
         if (isOutputRange!(W, char))
     {
         import mir.format: printZeroPad;
+        if(this == Date.init)
+        {
+            w.put("null");
+            return;
+        }
         with(yearMonthDay)
         {
             if (year >= 10_000)
@@ -1340,34 +1371,35 @@ public:
     version (mir_test)
     @safe unittest
     {
-        assert(Date(2010, 7, 4).toSimpleString() == "2010-Jul-04");
-        assert(Date(1998, 12, 25).toSimpleString() == "1998-Dec-25");
-        assert(Date(0, 1, 5).toSimpleString() == "0000-Jan-05");
-        assert(Date(-4, 1, 5).toSimpleString() == "-0004-Jan-05");
+        assert(Date.init.toSimpleString == "null");
+        assert(Date(2010, 7, 4).toSimpleString == "2010-Jul-04");
+        assert(Date(1998, 12, 25).toSimpleString == "1998-Dec-25");
+        assert(Date(0, 1, 5).toSimpleString == "0000-Jan-05");
+        assert(Date(-4, 1, 5).toSimpleString == "-0004-Jan-05");
     }
 
     version (mir_test)
     @safe unittest
     {
         // Test A.D.
-        assert(Date(9, 12, 4).toSimpleString() == "0009-Dec-04");
-        assert(Date(99, 12, 4).toSimpleString() == "0099-Dec-04");
-        assert(Date(999, 12, 4).toSimpleString() == "0999-Dec-04");
-        assert(Date(9999, 7, 4).toSimpleString() == "9999-Jul-04");
-        assert(Date(10000, 10, 20).toSimpleString() == "+10000-Oct-20");
+        assert(Date(9, 12, 4).toSimpleString == "0009-Dec-04");
+        assert(Date(99, 12, 4).toSimpleString == "0099-Dec-04");
+        assert(Date(999, 12, 4).toSimpleString == "0999-Dec-04");
+        assert(Date(9999, 7, 4).toSimpleString == "9999-Jul-04");
+        assert(Date(10000, 10, 20).toSimpleString == "+10000-Oct-20");
 
         // Test B.C.
-        assert(Date(0, 12, 4).toSimpleString() == "0000-Dec-04");
-        assert(Date(-9, 12, 4).toSimpleString() == "-0009-Dec-04");
-        assert(Date(-99, 12, 4).toSimpleString() == "-0099-Dec-04");
-        assert(Date(-999, 12, 4).toSimpleString() == "-0999-Dec-04");
-        assert(Date(-9999, 7, 4).toSimpleString() == "-9999-Jul-04");
-        assert(Date(-10000, 10, 20).toSimpleString() == "-10000-Oct-20");
+        assert(Date(0, 12, 4).toSimpleString == "0000-Dec-04");
+        assert(Date(-9, 12, 4).toSimpleString == "-0009-Dec-04");
+        assert(Date(-99, 12, 4).toSimpleString == "-0099-Dec-04");
+        assert(Date(-999, 12, 4).toSimpleString == "-0999-Dec-04");
+        assert(Date(-9999, 7, 4).toSimpleString == "-9999-Jul-04");
+        assert(Date(-10000, 10, 20).toSimpleString == "-10000-Oct-20");
 
         const cdate = Date(1999, 7, 6);
         immutable idate = Date(1999, 7, 6);
-        assert(cdate.toSimpleString() == "1999-Jul-06");
-        assert(idate.toSimpleString() == "1999-Jul-06");
+        assert(cdate.toSimpleString == "1999-Jul-06");
+        assert(idate.toSimpleString == "1999-Jul-06");
     }
 
     /// ditto
@@ -1375,6 +1407,11 @@ public:
         if (isOutputRange!(W, char))
     {
         import mir.format: printZeroPad;
+        if(this == Date.init)
+        {
+            w.put("null");
+            return;
+        }
         with(yearMonthDay)
         {
             if (year >= 10_000)
