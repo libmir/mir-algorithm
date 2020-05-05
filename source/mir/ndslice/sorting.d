@@ -130,7 +130,7 @@ template sort(alias less = "a < b")
     {
 @optmath:
         /++
-        Sort one-dimensional series.
+        Sort n-dimensional slice.
         +/
         Slice!(Iterator, N, kind) sort(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
@@ -744,7 +744,7 @@ the smallest or largest element of a slice).
 Params:
     less = The predicate to sort by.
     pivotFunction = The pivot strategy to use.
-    slice = The random-access range to reorder.
+    slice = n-dimensional slice
     nth = The index of the element that should be in sorted position after the
         function is finished.
 See_Also:
@@ -757,75 +757,87 @@ template topN(alias less = "a < b", alias pivotFunction = setPivotAt)
 
     static if (__traits(isSame, naryFun!less, less))
     {
-        void topN(Iterator, SliceKind kind)(
-            Slice!(Iterator, 1, kind) slice, size_t nth) 
+        /++
+        Sort n-dimensional slice.
+        +/
+        void topN(Iterator, size_t N, SliceKind kind)
+            (Slice!(Iterator, N, kind) slice, size_t nth)
         {
-            assert(slice.length > 0, "topN: slice must have length greater than 0");
+            assert(slice.elementCount > 0, "topN: slice must have elementCount greater than 0");
             assert(nth >= 0, "topN: nth must be greater than or equal to zero");
-            assert(nth < slice.length, "topN: nth must be less than the length of the slice");
+            assert(nth < slice.elementCount, "topN: nth must be less than the elementCount of the slice");
+        
+            import mir.ndslice.topology: flattened;
 
-            import std.algorithm.sorting: pivotPartition;
-            import mir.utility: swap;
-            import mir.functional: reverseArgs;
-
-            size_t pivot = void;
-            size_t n = void;
-
-            for (;;) {
-                n = slice.length;
-
-                if (n <= 1) {
-                    break;
-                }
-
-                if (nth == 0) {
-                    pivot = 0;
-                    foreach (i; 1 .. n) {
-                        if (less(slice[i], slice[pivot])) {
-                            pivot = i;
-                        }
-                    }
-                    swap(slice[nth], slice[pivot]);
-                    break;
-                }
-
-                if (nth + 1 == n) {
-                    pivot = 0;
-                    foreach (i; 1 .. n) {
-                        if (reverseArgs!less(slice[i], slice[pivot])) {
-                            pivot = i;
-                        }
-                    }
-                    swap(slice[nth], slice[pivot]);
-                    break;
-                }
-
-                static if (__traits(compiles, pivotFunction!less(slice)))
-                {
-                    pivot = pivotFunction!(less)(slice);
-                } else {
-                    static if (__traits(compiles, pivotFunction(slice))) {
-                        pivot = pivotFunction(slice);
-                    } else
-                        static assert(0, "topN: pivotFunction does not compile");
-                }
-
-                assert(pivot >= 0, "topN: pivotFunction must provide a value greater than zero");
-                assert(pivot < n, "topN: pivotFunction must provide a value less than the length of the slice");
-                pivot = pivotPartition!less(slice, pivot);
-
-                if (nth < pivot) {
-                    slice = slice[0 .. pivot];
-                } else if (nth > pivot) {
-                    slice = slice[(pivot + 1) .. $];
-                    nth -= pivot + 1;
-                } else {
-                    break;
-                }
-            }
+            topNImpl!(less, pivotFunction)(slice.flattened, nth);
         }
     } else {
         alias topN = .topN!(naryFun!less, pivotFunction);
+    }
+}
+
+private @trusted
+void topNImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
+        Slice!(Iterator, 1, kind) slice, size_t n) 
+{
+    import std.algorithm.sorting: pivotPartition;
+    import mir.utility: swap;
+    import mir.functional: reverseArgs;
+
+    size_t pivot = void;
+    size_t len = void;
+
+    for (;;) {
+        len = slice.length;
+
+        if (len <= 1) {
+            break;
+        }
+
+        if (n == 0) {
+            pivot = 0;
+            foreach (i; 1 .. len) {
+                if (less(slice[i], slice[pivot])) {
+                    pivot = i;
+                }
+            }
+            swap(slice[n], slice[pivot]);
+            break;
+        }
+
+        if (n + 1 == len) {
+            pivot = 0;
+            foreach (i; 1 .. len) {
+                if (reverseArgs!less(slice[i], slice[pivot])) {
+                    pivot = i;
+                }
+            }
+            swap(slice[n], slice[pivot]);
+            break;
+        }
+
+        static if (__traits(compiles, pivotFunction!less(slice)))
+        {
+            pivot = pivotFunction!(less)(slice);
+        } else {
+            static if (__traits(compiles, pivotFunction(slice))) {
+                pivot = pivotFunction(slice);
+            } else
+                static assert(0, "topNImpl: pivotFunction does not compile");
+        }
+
+        assert(pivot >= 0, "topNImpl: pivotFunction must provide a value greater than zero");
+        assert(pivot < len, "topNImpl: pivotFunction must provide a value less than the length of the slice");
+        pivot = pivotPartition!less(slice, pivot);
+
+        if (n < pivot) {
+            slice = slice[0 .. pivot];
+        } else if (n > pivot) {
+            slice = slice[(pivot + 1) .. $];
+            n -= pivot + 1;
+        } else {
+            break;
+        }
     }
 }
 
@@ -837,6 +849,16 @@ unittest {
     auto x = [3, 1, 5, 2, 0].sliced;
     x.topN(nth);
     assert(x[nth] == 2);
+}
+
+/// Partition 2-dimensional slice
+version(mir_test)
+@safe pure
+unittest {
+    size_t nth = 4;
+    auto x = [3, 1, 5, 2, 0, 7].sliced(3, 2);
+    x.topN(nth);
+    assert(x[2, 0] == 5);
 }
 
 /// Can supply alternate ordering function
