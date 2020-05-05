@@ -86,6 +86,7 @@ version(mir_test_topN) unittest
 
 import mir.ndslice.slice;
 import mir.math.common: optmath;
+import std.typecons: Flag, No, Yes;
 
 @optmath:
 
@@ -404,10 +405,22 @@ void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator 
     medianOf!less(l, e, mid, b, r);
 }
 
-void medianOf(alias less, Iterator)
+void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
+    (ref Iterator a, ref Iterator b) @trusted
+{
+   import mir.utility : swapStars;
+
+    if (less(*b, *a)) {
+        swapStars(a, b);
+    }
+    assert(!less(*b, *a));
+}
+
+void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c) @trusted
 {
-    import mir.utility : swapStars;
+   import mir.utility : swapStars;
+
    if (less(*c, *a)) // c < a
     {
         if (less(*a, *b)) // c < a < b
@@ -436,10 +449,32 @@ void medianOf(alias less, Iterator)
     assert(!less(*c, *b));
 }
 
-void medianOf(alias less, Iterator)
+void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
+    (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d) @trusted
+{
+    import mir.utility: swapStars;
+
+    static if (leanRight == No.leanRight)
+    {
+        // Eliminate the rightmost from the competition
+        if (less(*d, *c)) swapStars(c, d); // c <= d
+        if (less(*d, *b)) swapStars(b, d); // b <= d
+        medianOf!less(a, b, c);
+    }
+    else
+    {
+        // Eliminate the leftmost from the competition
+        if (less(*b, *a)) swapStars(a, b); // a <= b
+        if (less(*c, *a)) swapStars(a, c); // a <= c
+        medianOf!less(b, c, d);
+    }
+}
+
+void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d, ref Iterator e) @trusted
 {
-    import mir.utility : swapStars;   // Credit: Teppo Niinimäki
+    import mir.utility: swapStars; // Credit: Teppo Niinimäki
+
     version(unittest) scope(success)
     {
         assert(!less(*c, *a));

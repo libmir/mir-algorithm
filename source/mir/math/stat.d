@@ -19,10 +19,12 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 module mir.math.stat;
 
 import core.lifetime: move;
+import mir.ndslice.slice: Slice, SliceKind;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
 import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
+import std.typecons: Flag, No, Yes;
 
 /++
 Output range for mean.
@@ -422,6 +424,241 @@ unittest
 
     //Provide the summation type
     assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
+}
+
+/++
+Computes the median of `slice`.
+
+Can also pass a a flag `allowModify` that allows the input slice to be modified.
+By default, a copy is made. 
+
+Returns:
+    the median of the slice
+
+See_also: $(SUBREF mean)
++/
+template median(F, Flag!"allowModify" allowModify = No.allowModify)
+{
+    F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    {
+        assert(slice.elementCount > 0, "median: slice must have length greater than zero");
+
+        import mir.ndslice.topology: flattened;
+
+        static if (allowModify == No.allowModify) {
+            import mir.ndslice.allocation: rcslice;
+            
+            if (slice.elementCount > 2) {
+                auto val = slice.rcslice.flattened;
+                auto temp = val.lightScope;
+                return medianImpl!F(temp);
+            } else {
+                return medianImpl!F(slice.flattened);
+            }
+        } else {
+            return medianImpl!F(slice.flattened);
+        }
+    }
+}
+
+///
+template median(Flag!"allowModify" allowModify = No.allowModify)
+{
+    sumType!(Slice!(Iterator, N, kind))
+        median
+            (Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice) {
+        return .median!(sumType!(Slice!(Iterator, N, kind)), allowModify)(slice.move);
+    }
+}
+
+/// Median of vector
+version(mir_test_topN)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    auto x0 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10, 5].sliced;
+    assert(x0.median == 5);
+
+    auto x1 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
+    assert(x1.median == 5);
+}
+
+/// Median of matrix
+version(mir_test_topN)
+@safe pure
+unittest {
+    import mir.ndslice.fuse: fuse;
+
+    auto x0 = [
+        [9.0, 1, 0, 2,  3], 
+        [4.0, 6, 8, 7, 10]
+    ].fuse;
+
+    assert(x0.median == 5);
+}
+
+/// Row median of matrix
+version(mir_test_topN)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: alongDim, byDim, map;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25], 
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+
+    auto result = [1.75, 1.75].sliced;
+
+    // Use byDim or alongDim with map to compute median of row/column.
+    assert(x.byDim!0.map!median.all!approxEqual(result));
+    assert(x.alongDim!1.map!median.all!approxEqual(result));
+}
+
+/// Can allow original slice to be modified or set output type
+version(mir_test_topN)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    auto x0 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10, 5].sliced;
+    assert(x0.median!(Yes.allowModify) == 5);
+    
+    auto x1 = [9, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
+    assert(x1.median!(float, Yes.allowModify) == 5);
+}
+
+/++
+For integral slices, pass output type as template parameter to ensure output
+type is correct
++/
+version(mir_test_topN)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    auto x = [9, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
+    assert(x.median!float == 5);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x0 = [9.0, 1, 0, 2, 3].sliced;
+    assert(x0.median.approxEqual(2));
+
+    auto x1 = [9.0, 1, 0, 2].sliced;
+    assert(x1.median.approxEqual(1.5));
+    
+    auto x2 = [9.0, 0, 1].sliced;
+    assert(x2.median.approxEqual(1));
+    
+    auto x3 = [1.0, 0].sliced;
+    assert(x3.median.approxEqual(0.5));
+    
+    auto x4 = [1.0].sliced;
+    assert(x4.median.approxEqual(1));
+}
+
+private pure @safe nothrow @nogc
+F medianImpl(F, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
+{
+    import mir.ndslice.sorting: topN;
+
+    size_t len = slice.length;
+    if (len > 5) {
+        size_t half_n = len / 2;
+        topN(slice, half_n);
+        if (len % 2 == 1) {
+            return cast(F) slice[half_n];
+        } else {
+            //move largest value in first half of slice to half_n - 1
+            topN(slice[0 .. half_n], half_n - 1);
+            return mean!F(slice[(half_n - 1) .. (half_n + 1)]);
+        }
+    } else {
+        return smallMedianImpl!(F)(slice);
+    }
+}
+
+private pure @trusted nothrow @nogc
+F smallMedianImpl(F, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) 
+{
+    size_t n = slice.length;
+
+    assert(n > 0, "smallMedianImpl: slice must have length greater than 0");
+    assert(n <= 5, "smallMedianImpl: slice must have length of 5 or less");
+
+    import mir.ndslice.sorting: medianOf;
+    import mir.functional: naryFun;
+    import mir.utility: swapStars;
+
+    if (n > 2) {
+        auto sliceI0 = slice._iterator;
+        auto sliceI1 = sliceI0 + 1;
+        auto sliceI2 = sliceI1 + 1;
+        alias less = naryFun!("a < b");
+
+        if (n == 3) {
+            medianOf!less(sliceI0, sliceI1, sliceI2);
+            return cast(F) slice[1];
+        } else {
+            auto sliceI3 = sliceI2 + 1;
+            if (n == 4) {
+                // Put min in slice[0], lower median in slice[1]
+                medianOf!less(sliceI0, sliceI1, sliceI2, sliceI3);
+                // Ensure slice[2] < slice[3]
+                medianOf!less(sliceI2, sliceI3);
+                return mean!F(slice[1 .. 3]);
+            } else {
+                auto sliceI4 = sliceI3 + 1;
+                medianOf!less(sliceI0, sliceI1, sliceI2, sliceI3, sliceI4);
+                return cast(F) slice[2];
+            }
+        }
+    } else {
+        return mean!F(slice);
+    }
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x0 = [9.0, 1, 0, 2, 3].sliced;
+    assert(x0.smallMedianImpl!double.approxEqual(2));
+
+    auto x1 = [9.0, 1, 0, 2].sliced;
+    assert(x1.smallMedianImpl!double.approxEqual(1.5));
+    
+    auto x2 = [9.0, 0, 1].sliced;
+    assert(x2.smallMedianImpl!double.approxEqual(1));
+    
+    auto x3 = [1.0, 0].sliced;
+    assert(x3.smallMedianImpl!double.approxEqual(0.5));
+    
+    auto x4 = [1.0].sliced;
+    assert(x4.smallMedianImpl!double.approxEqual(1));
+    
+    auto x5 = [2.0, 1, 0, 9].sliced;
+    assert(x5.smallMedianImpl!double.approxEqual(1.5));
+    
+    auto x6 = [1.0, 2, 0, 9].sliced;
+    assert(x6.smallMedianImpl!double.approxEqual(1.5));
+    
+    auto x7 = [1.0, 0, 9, 2].sliced;
+    assert(x7.smallMedianImpl!double.approxEqual(1.5));
 }
 
 /++
