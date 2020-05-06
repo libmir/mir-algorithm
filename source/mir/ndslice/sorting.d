@@ -680,6 +680,214 @@ version(mir_test_topN)
 }
 
 /++
+Partitions `slice` around `pivot` using comparison function `less`, algorithm 
+akin to $(LINK2 https://en.wikipedia.org/wiki/Quicksort#Hoare_partition_scheme,
+Hoare partition). Specifically, permutes elements of `slice` and returns
+an index `k < slice.length` such that: `slice[pivot]` is swapped to `slice[k]`), 
+all elements `e` in subrange `slice[0 .. k]` satisfy `!less(slice[k], e)`
+(i.e. `slice[k]` is greater than or equal to each element to its left according 
+to predicate `less`)), and all elements `e` in subrange `slice[k .. $]` satisfy 
+`!less(e, slice[k])` (i.e. `slice[k]` is less than or equal to each element to 
+its right according to predicate `less`)))
+
+If `slice` contains equivalent elements, multiple permutations of `slice` may
+satisfy these constraints. In such cases, `pivotPartition` attempts to 
+distribute equivalent elements fairly to the left and right of `k` such that `k`
+stays close to `slice.length / 2`.
+ 
+Params:
+    less = The predicate used for comparison
+    slice = The slice being partitioned
+    pivot = The index of the pivot for partitioning, must be less than 
+    `slice.length` or `0` if `slice.length` is `0`
+Returns:
+    The new position of the pivot
+    
+See_Also:
+    $(HTTP jgrcs.info/index.php/jgrcs/article/view/142, Engineering of a Quicksort
+    Partitioning Algorithm), D. Abhyankar, Journal of Global Research in Computer
+    Science, February 2011. $(HTTPS youtube.com/watch?v=AxnotgLql0k, ACCU 2016
+    Keynote), Andrei Alexandrescu.
++/
+@trusted
+template pivotPartition(alias less = "a < b")
+{
+    import mir.functional: naryFun;
+
+    static if (__traits(isSame, naryFun!less, less))
+    {
+        auto pivotPartition(Iterator, SliceKind kind)
+                (Slice!(Iterator, 1, kind) slice, size_t pivot)
+        {
+            assert(pivot < slice.length || slice.length == 0 && pivot == 0, "pivotPartition: pivot must be less than the length of slice or slice must be empty and pivot zero");
+
+            if (slice.length <= 1) return 0;
+
+            import mir.utility: swapStars;
+
+            // Pivot at the front
+            auto frontI = slice._iterator;
+            auto pivotI = frontI + pivot;
+            swapStars(pivotI, frontI);
+
+            // Fork implementation depending on nothrow copy, assignment, and
+            // comparison. If all of these are nothrow, use the specialized
+            // implementation discussed at 
+            // https://youtube.com/watch?v=AxnotgLql0k.
+            static if (is(typeof(
+                    () nothrow { auto x = slice._iterator; x = slice._iterator; return less(*x, *x); }
+                )))
+            {
+                // Plant the pivot in the end as well as a sentinel
+                auto loI = frontI;
+                auto hiI = frontI + slice.length - 1;
+                auto save = *hiI;
+                *hiI = *frontI; // Vacancy is in r[$ - 1] now
+
+                // Start process
+                for (;;)
+                {
+                    // Loop invariant
+                    version(mir_test_topN)
+                    {
+                        // this used to import std.algorithm.all, but we want to
+                        // save imports when unittests are enabled if possible.
+                        foreach (x; 0 .. (loI - frontI))
+                            assert(!less(*frontI, *(frontI + x)), "pivotPartition: *frontI must not be less than *(frontI + x)");
+                        foreach (x; (hiI + 1 - frontI) .. slice.length)
+                            assert(!less(*(frontI + x), *frontI), "pivotPartition: *(frontI + x) must not be less than *frontI");
+                    }
+                    do ++loI; while (less(*loI, *frontI));
+                    *(hiI) = *(loI);
+                    // Vacancy is now in slice[lo]
+                    do --hiI; while (less(*frontI, *hiI));
+                    if (loI >= hiI) break;
+                    *(loI) = *(hiI);
+                    // Vacancy is not in slice[hi]
+                }
+                // Fixup
+                assert(loI - hiI <= 2, "pivotPartition: Following compare not possible");
+                assert(!less(*frontI, *hiI), "pivotPartition: *hiI must not be less than *frontI");
+                if (loI == hiI + 2)
+                {
+                    assert(!less(*(hiI + 1), *frontI), "pivotPartition: *(hiI + 1) must not be less than *frontI");
+                    *(loI) = *(hiI + 1);
+                    --loI;
+                }
+                *loI = save;
+                if (less(*frontI, save)) --loI;
+                assert(!less(*frontI, *loI), "pivotPartition: *frontI must not be less than *loI");
+            } else {
+                auto loI = frontI + 1;
+                auto hiI = frontI + slice.length - 1;
+
+                loop: for (;; loI++, hiI--)
+                {
+                    for (;; ++loI)
+                    {
+                        if (loI > hiI) break loop;
+                        if (!less(*loI, *frontI)) break;
+                    }
+                    // found the left bound:  !less(*loI, *frontI)
+                    assert(loI <= hiI, "pivotPartition: loI must be less or equal than hiI");
+                    for (;; --hiI)
+                    {
+                        if (loI >= hiI) break loop;
+                        if (!less(*frontI, *hiI)) break;
+                    }
+                    // found the right bound: !less(*frontI, *hiI), swap & make progress
+                    assert(!less(*loI, *hiI), "pivotPartition: *lowI must not be less than *hiI");
+                    swapStars(loI, hiI);
+                }
+                --loI;
+            }
+
+            swapStars(loI, frontI);
+            return loI - frontI;
+        }
+    } else {
+        alias pivotPartition = .pivotPartition!(naryFun!less);
+    }
+}
+
+///
+version(mir_test_topN)
+@safe nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+
+    auto x = [5, 3, 2, 6, 4, 1, 3, 7].sliced;
+    size_t pivot = pivotPartition(x, x.length / 2);
+
+    assert(x[0 .. pivot].all!(a => a <= x[pivot]));
+    assert(x[pivot .. $].all!(a => a >= x[pivot]));
+}
+
+version(mir_test_topN)
+@safe 
+unittest
+{
+    void test(alias less)()
+    {
+        import mir.ndslice.slice: sliced;
+        import mir.algorithm.iteration: all, equal;
+
+        Slice!(int*) x;
+        size_t pivot;
+
+        x = [-9, -4, -2, -2, 9].sliced;
+        pivot = pivotPartition!less(x, x.length / 2);
+        
+        assert(x[0 .. pivot].all!(a => a <= x[pivot]));
+        assert(x[pivot .. $].all!(a => a >= x[pivot]));
+
+        x = [9, 2, 8, -5, 5, 4, -8, -4, 9].sliced;
+        pivot = pivotPartition!less(x, x.length / 2);
+
+        assert(x[0 .. pivot].all!(a => a <= x[pivot]));
+        assert(x[pivot .. $].all!(a => a >= x[pivot]));
+
+        x = [ 42 ].sliced;
+        pivot = pivotPartition!less(x, x.length / 2);
+
+        assert(pivot == 0);
+        assert(x.equal([ 42 ]));
+
+        x = [ 43, 42 ].sliced;
+        pivot = pivotPartition!less(x, 0);
+        assert(pivot == 1);
+        assert(x.equal([ 42, 43 ]));
+
+        x = [ 43, 42 ].sliced;
+        pivot = pivotPartition!less(x, 1);
+
+        assert(pivot == 0);
+        assert(x.equal([ 42, 43 ]));
+
+        x = [ 42, 42 ].sliced;
+        pivot = pivotPartition!less(x, 0);
+
+        assert(pivot == 0 || pivot == 1);
+        assert(x.equal([ 42, 42 ]));
+
+        pivot = pivotPartition!less(x, 1);
+
+        assert(pivot == 0 || pivot == 1);
+        assert(x.equal([ 42, 42 ]));
+    }
+    test!"a < b";
+    static bool myLess(int a, int b)
+    {
+        static bool bogus;
+        if (bogus) throw new Exception(""); // just to make it no-nothrow
+        return a < b;
+    }
+    test!myLess;
+}
+
+/++
 Default function for topN
 
 Params:
@@ -786,7 +994,6 @@ private @trusted
 void topNImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
         Slice!(Iterator, 1, kind) slice, size_t n) 
 {
-    import std.algorithm.sorting: pivotPartition;
     import mir.utility: swap;
     import mir.functional: reverseArgs;
 
