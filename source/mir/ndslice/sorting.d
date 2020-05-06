@@ -753,9 +753,9 @@ template pivotPartition(alias less = "a < b")
                         // this used to import std.algorithm.all, but we want to
                         // save imports when unittests are enabled if possible.
                         foreach (x; 0 .. (loI - frontI))
-                            assert(!less(*frontI, *(frontI + x)), "pivotPartition: *frontI must not be less than *(frontI + x)");
-                        foreach (x; (hiI + 1 - frontI) .. slice.length)
-                            assert(!less(*(frontI + x), *frontI), "pivotPartition: *(frontI + x) must not be less than *frontI");
+                            assert(!less(*frontI, frontI[x]), "pivotPartition: *frontI must not be less than frontI[x]");
+                        foreach (x; (hiI - frontI + 1) .. slice.length)
+                            assert(!less(frontI[x], *frontI), "pivotPartition: frontI[x] must not be less than *frontI");
                     }
                     do ++loI; while (less(*loI, *frontI));
                     *(hiI) = *(loI);
