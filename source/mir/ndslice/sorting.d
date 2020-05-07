@@ -683,10 +683,18 @@ version(mir_test_topN)
 Partitions `slice` around `pivot` using comparison function `less`, algorithm 
 akin to $(LINK2 https://en.wikipedia.org/wiki/Quicksort#Hoare_partition_scheme,
 Hoare partition). Specifically, permutes elements of `slice` and returns
-an index `k < slice.length` such that: `slice[pivot]` is swapped to `slice[k]`), 
-all elements `e` in subrange `slice[0 .. k]` satisfy `!less(slice[k], e)`
+an index `k < slice.length` such that: 
+
+$(UL
+
+$(LI `slice[pivot]` is swapped to `slice[k]`)
+
+ 
+$(LI All elements `e` in subrange `slice[0 .. k]` satisfy `!less(slice[k], e)`
 (i.e. `slice[k]` is greater than or equal to each element to its left according 
-to predicate `less`)), and all elements `e` in subrange `slice[k .. $]` satisfy 
+to predicate `less`))
+
+$(LI All elements `e` in subrange `slice[k .. $]` satisfy 
 `!less(e, slice[k])` (i.e. `slice[k]` is less than or equal to each element to 
 its right according to predicate `less`)))
 
@@ -697,9 +705,7 @@ stays close to `slice.length / 2`.
  
 Params:
     less = The predicate used for comparison
-    slice = The slice being partitioned
-    pivot = The index of the pivot for partitioning, must be less than 
-    `slice.length` or `0` if `slice.length` is `0`
+
 Returns:
     The new position of the pivot
     
@@ -716,6 +722,12 @@ template pivotPartition(alias less = "a < b")
 
     static if (__traits(isSame, naryFun!less, less))
     {
+        /++
+        Params:
+            slice = one-dimensional slice being partitioned
+            pivot = The index of the pivot for partitioning, must be less than 
+            `slice.length` or `0` if `slice.length` is `0`
+        +/
         auto pivotPartition(Iterator, SliceKind kind)
                 (Slice!(Iterator, 1, kind) slice, size_t pivot)
         {
@@ -957,9 +969,7 @@ the smallest or largest element of a slice).
 Params:
     less = The predicate to sort by.
     pivotFunction = The pivot strategy to use.
-    slice = n-dimensional slice
-    nth = The index of the element that should be in sorted position after the
-        function is finished.
+
 See_Also:
     $(LREF pivotPartition), $(LREF setPivotAt)
 
@@ -972,7 +982,10 @@ template topN(alias less = "a < b", alias pivotFunction = setPivotAt)
     static if (__traits(isSame, naryFun!less, less))
     {
         /++
-        Sort n-dimensional slice.
+        Params:
+            slice = n-dimensional slice
+            nth = The index of the element that should be in sorted position after the
+                function is finished.
         +/
         void topN(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice, size_t nth)
