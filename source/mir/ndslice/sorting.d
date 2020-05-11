@@ -86,7 +86,6 @@ version(mir_test_topN) unittest
 
 import mir.ndslice.slice;
 import mir.math.common: optmath;
-import std.typecons: Flag, No, Yes;
 
 @optmath:
 
@@ -405,7 +404,7 @@ void setPivot(alias less, Iterator)(size_t length, ref Iterator l, ref Iterator 
     medianOf!less(l, e, mid, b, r);
 }
 
-void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
+void medianOf(alias less, bool leanRight = false, Iterator)
     (ref Iterator a, ref Iterator b) @trusted
 {
    import mir.utility : swapStars;
@@ -416,7 +415,7 @@ void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
     assert(!less(*b, *a));
 }
 
-void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
+void medianOf(alias less, bool leanRight = false, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c) @trusted
 {
    import mir.utility : swapStars;
@@ -449,12 +448,12 @@ void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
     assert(!less(*c, *b));
 }
 
-void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
+void medianOf(alias less, bool leanRight = false, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d) @trusted
 {
     import mir.utility: swapStars;
 
-    static if (leanRight == No.leanRight)
+    static if (!leanRight)
     {
         // Eliminate the rightmost from the competition
         if (less(*d, *c)) swapStars(c, d); // c <= d
@@ -470,7 +469,7 @@ void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
     }
 }
 
-void medianOf(alias less, Flag!"leanRight" leanRight = No.leanRight, Iterator)
+void medianOf(alias less, bool leanRight = false, Iterator)
     (ref Iterator a, ref Iterator b, ref Iterator c, ref Iterator d, ref Iterator e) @trusted
 {
     import mir.utility: swapStars; // Credit: Teppo Niinimäki

@@ -24,7 +24,6 @@ import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
 import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
-import std.typecons: Flag, No, Yes;
 
 /++
 Output range for mean.
@@ -437,7 +436,7 @@ Returns:
 
 See_also: $(SUBREF mean)
 +/
-template median(F, Flag!"allowModify" allowModify = No.allowModify)
+template median(F, bool allowModify = false)
 {
     F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
@@ -445,7 +444,7 @@ template median(F, Flag!"allowModify" allowModify = No.allowModify)
 
         import mir.ndslice.topology: flattened;
 
-        static if (allowModify == No.allowModify) {
+        static if (!allowModify) {
             import mir.ndslice.allocation: rcslice;
             
             if (slice.elementCount > 2) {
@@ -462,7 +461,7 @@ template median(F, Flag!"allowModify" allowModify = No.allowModify)
 }
 
 ///
-template median(Flag!"allowModify" allowModify = No.allowModify)
+template median(bool allowModify = false)
 {
     sumType!(Slice!(Iterator, N, kind))
         median
@@ -528,10 +527,10 @@ unittest {
     import mir.ndslice.slice: sliced;
 
     auto x0 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10, 5].sliced;
-    assert(x0.median!(Yes.allowModify) == 5);
+    assert(x0.median!true == 5);
     
     auto x1 = [9, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
-    assert(x1.median!(float, Yes.allowModify) == 5);
+    assert(x1.median!(float, true) == 5);
 }
 
 /++
