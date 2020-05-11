@@ -552,6 +552,51 @@ unittest {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
+    auto x = [3, 3, 2, 0, 2, 0].sliced;
+    assert(x.median!float.approxEqual(2));
+
+    x[] = [2, 2, 4, 0, 4, 3];
+    assert(x.median!float.approxEqual(2.5));
+    x[] = [1, 4, 5, 4, 4, 3];
+    assert(x.median!float.approxEqual(4));
+    x[] = [1, 5, 3, 5, 2, 2];
+    assert(x.median!float.approxEqual(2.5));
+    x[] = [4, 3, 2, 1, 4, 5];
+    assert(x.median!float.approxEqual(3.5));
+    x[] = [4, 5, 3, 5, 5, 4];
+    assert(x.median!float.approxEqual(4.5));
+    x[] = [3, 3, 3, 0, 0, 1];
+    assert(x.median!float.approxEqual(2));
+    x[] = [4, 2, 2, 1, 2, 5];
+    assert(x.median!float.approxEqual(2));
+    x[] = [2, 3, 1, 4, 5, 5];
+    assert(x.median!float.approxEqual(3.5));
+    x[] = [1, 1, 4, 5, 5, 5];
+    assert(x.median!float.approxEqual(4.5));
+    x[] = [2, 4, 0, 5, 1, 0];
+    assert(x.median!float.approxEqual(1.5));
+    x[] = [3, 5, 2, 5, 4, 2];
+    assert(x.median!float.approxEqual(3.5));
+    x[] = [3, 5, 4, 1, 4, 3];
+    assert(x.median!float.approxEqual(3.5));
+    x[] = [4, 2, 0, 3, 1, 3];
+    assert(x.median!float.approxEqual(2.5));
+    x[] = [100, 4, 5, 0, 5, 1];
+    assert(x.median!float.approxEqual(4.5));
+    x[] = [100, 5, 4, 0, 5, 1];
+    assert(x.median!float.approxEqual(4.5));
+    x[] = [100, 5, 4, 0, 1, 5];
+    assert(x.median!float.approxEqual(4.5));
+    x[] = [4, 5, 100, 1, 5, 0];
+    assert(x.median!float.approxEqual(4.5));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
     auto x0 = [9.0, 1, 0, 2, 3].sliced;
     assert(x0.median.approxEqual(2));
 
