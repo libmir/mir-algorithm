@@ -104,6 +104,8 @@ See_also: $(SUBREF sum, Summation)
 +/
 template mean(F, Summation summation = Summation.appropriate)
 {
+    import std.traits: isImplicitlyConvertible, CommonType;
+
     /++
     Params:
         r = range
@@ -115,11 +117,28 @@ template mean(F, Summation summation = Summation.appropriate)
         mean.put(r.move);
         return mean.mean;
     }
+    
+    /++
+    Params:
+        val = values
+    +/
+    @fmamath F mean(T...)(T val)
+        if (T.length > 0 && 
+            isImplicitlyConvertible!(CommonType!T, F))
+    {
+        MeanAccumulator!(F, ResolveSummationType!(summation, F[], F)) mean;
+        foreach(e; val) {
+            mean.put(e);
+        }
+        return mean.mean;
+    }
 }
 
 /// ditto
 template mean(Summation summation = Summation.appropriate)
 {
+    import std.traits: CommonType;
+
     /++
     Params:
         r = range
@@ -128,6 +147,17 @@ template mean(Summation summation = Summation.appropriate)
         if (isIterable!Range)
     {
         return .mean!(sumType!Range, summation)(r.move);
+    }
+    
+    /++
+    Params:
+        val = values
+    +/
+    @fmamath CommonType!T mean(T...)(T val)
+        if (T.length > 0 &&
+            !is(CommonType!T == void))
+    {
+        return .mean!(CommonType!T, summation)(val);
     }
 }
 
@@ -276,6 +306,14 @@ unittest
     assert(x.alongDim!(-1).map!mean == m1);
 
     assert(iota(2, 3, 4, 5).as!double.alongDim!0.map!mean == iota([3, 4, 5], 3 * 4 * 5 / 2));
+}
+
+/// Arbitrary mean
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    assert(mean(1.0, 2, 3) == 2);
+    assert(mean!float(1, 2, 3) == 2);
 }
 
 ///
@@ -627,7 +665,7 @@ F medianImpl(F, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
         } else {
             //move largest value in first half of slice to half_n - 1
             topN(slice[0 .. half_n], half_n - 1);
-            return mean!F(slice[(half_n - 1) .. (half_n + 1)]);
+            return mean!F(slice[half_n - 1], slice[half_n]);
         }
     } else {
         return smallMedianImpl!(F)(slice);
@@ -635,12 +673,12 @@ F medianImpl(F, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
 }
 
 private pure @trusted nothrow @nogc
-F smallMedianImpl(F, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) 
+F smallMedianImpl(F, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice) 
 {
-    size_t n = slice.length;
+    size_t n = slice.elementCount;
 
-    assert(n > 0, "smallMedianImpl: slice must have length greater than 0");
-    assert(n <= 5, "smallMedianImpl: slice must have length of 5 or less");
+    assert(n > 0, "smallMedianImpl: slice must have elementCount greater than 0");
+    assert(n <= 5, "smallMedianImpl: slice must have elementCount of 5 or less");
 
     import mir.ndslice.sorting: medianOf;
     import mir.functional: naryFun;
