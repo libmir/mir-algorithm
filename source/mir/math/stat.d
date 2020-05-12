@@ -124,14 +124,10 @@ template mean(F, Summation summation = Summation.appropriate)
     Params:
         val = values
     +/
-    @fmamath F mean(T...)(T val)
-        if (T.length > 0 && 
-            isImplicitlyConvertible!(CommonType!T, F))
+    @fmamath F mean(scope const F[] r...)
     {
-        MeanAccumulator!(F, ResolveSummationType!(summation, F[], F)) mean;
-        foreach(e; val) {
-            mean.put(e);
-        }
+        MeanAccumulator!(F, ResolveSummationType!(summation, const(F)[], F)) mean;
+        mean.put(r);
         return mean.mean;
     }
 }
@@ -497,10 +493,10 @@ template median(F, bool allowModify = false)
             }
         } else {
             import mir.ndslice.sorting: partitionAt;
+            
+            auto temp = slice.flattened;
 
             if (len > 5) {
-                auto temp = slice.flattened;
-
                 size_t half_n = len / 2;
                 partitionAt(temp, half_n);
                 if (len % 2 == 1) {
@@ -508,10 +504,10 @@ template median(F, bool allowModify = false)
                 } else {
                     //move largest value in first half of slice to half_n - 1
                     partitionAt(temp[0 .. half_n], half_n - 1);
-                    return mean!F(temp[half_n - 1], temp[half_n]);
+                    return (temp[half_n - 1] + temp[half_n]) / cast(F) 2;
                 }
             } else {
-                return smallMedianImpl!(F)(slice);
+                return smallMedianImpl!(F)(temp);
             }
         }
     }
@@ -675,7 +671,7 @@ unittest {
 }
 
 private pure @trusted nothrow @nogc
-F smallMedianImpl(F, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice) 
+F smallMedianImpl(F, Iterator)(Slice!Iterator slice) 
 {
     size_t n = slice.elementCount;
 
@@ -686,31 +682,41 @@ F smallMedianImpl(F, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kin
     import mir.functional: naryFun;
     import mir.utility: swapStars;
 
+    auto sliceI0 = slice._iterator;
+    
+    if (n == 1) {
+        return cast(F) *sliceI0;
+    }
+
+    auto sliceI1 = sliceI0;
+    ++sliceI1;
+
     if (n > 2) {
-        auto sliceI0 = slice._iterator;
-        auto sliceI1 = sliceI0 + 1;
-        auto sliceI2 = sliceI1 + 1;
+        auto sliceI2 = sliceI1;
+        ++sliceI2;
         alias less = naryFun!("a < b");
 
         if (n == 3) {
             medianOf!less(sliceI0, sliceI1, sliceI2);
             return cast(F) *sliceI1;
         } else {
-            auto sliceI3 = sliceI2 + 1;
+            auto sliceI3 = sliceI2;
+            ++sliceI3;
             if (n == 4) {
                 // Put min in slice[0], lower median in slice[1]
                 medianOf!less(sliceI0, sliceI1, sliceI2, sliceI3);
                 // Ensure slice[2] < slice[3]
                 medianOf!less(sliceI2, sliceI3);
-                return mean!F(*sliceI1, *sliceI2);
+                return cast(F) (*sliceI1 + *sliceI2) / cast(F) 2;
             } else {
-                auto sliceI4 = sliceI3 + 1;
+                auto sliceI4 = sliceI3;
+                ++sliceI4;
                 medianOf!less(sliceI0, sliceI1, sliceI2, sliceI3, sliceI4);
                 return cast(F) *sliceI2;
             }
         }
     } else {
-        return mean!F(slice);
+        return cast(F) (*sliceI0 + *sliceI1) / cast(F) 2;
     }
 }
 
@@ -725,22 +731,22 @@ unittest {
 
     auto x1 = [9.0, 1, 0, 2].sliced;
     assert(x1.smallMedianImpl!double.approxEqual(1.5));
-    
+
     auto x2 = [9.0, 0, 1].sliced;
     assert(x2.smallMedianImpl!double.approxEqual(1));
-    
+
     auto x3 = [1.0, 0].sliced;
     assert(x3.smallMedianImpl!double.approxEqual(0.5));
-    
+
     auto x4 = [1.0].sliced;
     assert(x4.smallMedianImpl!double.approxEqual(1));
-    
+
     auto x5 = [2.0, 1, 0, 9].sliced;
     assert(x5.smallMedianImpl!double.approxEqual(1.5));
-    
+
     auto x6 = [1.0, 2, 0, 9].sliced;
     assert(x6.smallMedianImpl!double.approxEqual(1.5));
-    
+
     auto x7 = [1.0, 0, 9, 2].sliced;
     assert(x7.smallMedianImpl!double.approxEqual(1.5));
 }
