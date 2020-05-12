@@ -782,13 +782,15 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// ditto
     auto opBinaryRight(string op : "in", Index)(auto ref scope const Index key) const
     {
-        return key in this.lightScope;
+        auto val = key in this.lightScope;
+        return val;
     }
 
     /// ditto
     auto opBinaryRight(string op : "in", Index)(auto ref scope const Index key) immutable
     {
-        return key in this.lightScope;
+        auto val = key in this.lightScope;
+        return val;
     }
 
     /++
@@ -1270,31 +1272,31 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
-    Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() @trusted scope return @property
+    Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() @trusted @property
     {
         return typeof(return)(lightScopeIndex, _data.lightScope);
     }
 
     /// ditto
-    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted scope return const @property
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted const @property
     {
         return typeof(return)(lightScopeIndex, _data.lightScope);
     }
 
     /// ditto
-    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted scope return immutable @property
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted immutable @property
     {
         return typeof(return)(lightScopeIndex, _data.lightScope);
     }
 
     ///
-    Series!(LightConstOf!IndexIterator, LightConstOf!Iterator, N, kind) lightConst()() scope return const @property @trusted
+    Series!(LightConstOf!IndexIterator, LightConstOf!Iterator, N, kind) lightConst()() const @property @trusted
     {
         return index.series(data);
     }
 
     ///
-    Series!(LightImmutableOf!IndexIterator, LightImmutableOf!Iterator, N, kind) lightImmutable()() scope return immutable @property @trusted
+    Series!(LightImmutableOf!IndexIterator, LightImmutableOf!Iterator, N, kind) lightImmutable()() immutable @property @trusted
     {
         return index.series(data);
     }
