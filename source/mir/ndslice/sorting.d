@@ -757,14 +757,12 @@ unittest {
 }
 
 /++
-Reorders `slice` such that `slice[nth]` refers to the element that would fall
-there if the range were fully sorted. In addition, it also partitions `slice`
-such that all elements `e1` from `slice[0]` to `slice[nth]` satisfy
-`!less(slice[nth], e1)`, and all elements `e2` from `slice[nth]` to
-`slice[slice.length]` satisfy `!less(e2, slice[nth])`. Effectively, it finds
-the `nth` smallest (according to `less`) elements in `slice`. Performs an
-expected $(BIGOH slice.length) evaluations of `less` and `swap`, with a worst
-case of $(BIGOH slice.length^^2).
+Partitions `slice`, such that all elements `e1` from `slice[0]` to `slice[nth]` 
+satisfy `!less(slice[nth], e1)`, and all elements `e2` from `slice[nth]` to
+`slice[slice.length]` satisfy `!less(e2, slice[nth])`. This effectively reorders 
+`slice` such that `slice[nth]` refers to the element that would fall there if 
+the range were fully sorted. Performs an expected $(BIGOH slice.length) 
+evaluations of `less` and `swap`, with a worst case of $(BIGOH slice.length^^2).
 
 This function implements an iterative, in-place version of the
 $(HTTP en.wikipedia.org/wiki/Quickselect, quickselect) algorithm. It loops
@@ -791,7 +789,7 @@ See_Also:
 
 +/
 deprecated("This function is experimental")
-template topN(alias less = "a < b", alias pivotFunction = setPivotAt)
+template partitionAt(alias less = "a < b", alias pivotFunction = setPivotAt)
 {
     import mir.functional: naryFun;
 
@@ -800,24 +798,24 @@ template topN(alias less = "a < b", alias pivotFunction = setPivotAt)
         /++
         Sort n-dimensional slice.
         +/
-        void topN(Iterator, size_t N, SliceKind kind)
+        void partitionAt(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice, size_t nth)
         {
-            assert(slice.elementCount > 0, "topN: slice must have elementCount greater than 0");
-            assert(nth >= 0, "topN: nth must be greater than or equal to zero");
-            assert(nth < slice.elementCount, "topN: nth must be less than the elementCount of the slice");
+            assert(slice.elementCount > 0, "partitionAt: slice must have elementCount greater than 0");
+            assert(nth >= 0, "partitionAt: nth must be greater than or equal to zero");
+            assert(nth < slice.elementCount, "partitionAt: nth must be less than the elementCount of the slice");
         
             import mir.ndslice.topology: flattened;
 
-            topNImpl!(less, pivotFunction)(slice.flattened, nth);
+            partitionAtImpl!(less, pivotFunction)(slice.flattened, nth);
         }
     } else {
-        alias topN = .topN!(naryFun!less, pivotFunction);
+        alias partitionAt = .partitionAt!(naryFun!less, pivotFunction);
     }
 }
 
 private @trusted
-void topNImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
+void partitionAtImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
         Slice!(Iterator, 1, kind) slice, size_t n) 
 {
     import std.algorithm.sorting: pivotPartition;
@@ -863,11 +861,11 @@ void topNImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
             static if (__traits(compiles, pivotFunction(slice))) {
                 pivot = pivotFunction(slice);
             } else
-                static assert(0, "topNImpl: pivotFunction does not compile");
+                static assert(0, "partitionAtImpl: pivotFunction does not compile");
         }
 
-        assert(pivot >= 0, "topNImpl: pivotFunction must provide a value greater than zero");
-        assert(pivot < len, "topNImpl: pivotFunction must provide a value less than the length of the slice");
+        assert(pivot >= 0, "partitionAtImpl: pivotFunction must provide a value greater than zero");
+        assert(pivot < len, "partitionAtImpl: pivotFunction must provide a value less than the length of the slice");
         pivot = pivotPartition!less(slice, pivot);
 
         if (n < pivot) {
@@ -889,7 +887,7 @@ unittest {
 
     size_t nth = 2;
     auto x = [3, 1, 5, 2, 0].sliced;
-    x.topN(nth);
+    x.partitionAt(nth);
     assert(x[nth] == 2);
 }
 
@@ -901,7 +899,7 @@ unittest {
 
     size_t nth = 4;
     auto x = [3, 1, 5, 2, 0, 7].sliced(3, 2);
-    x.topN(nth);
+    x.partitionAt(nth);
     assert(x[2, 0] == 5);
 }
 
@@ -913,7 +911,7 @@ unittest {
 
     size_t nth = 2;
     auto x = [3, 1, 5, 2, 0].sliced;
-    x.topN!("a > b")(nth);
+    x.partitionAt!("a > b")(nth);
     assert(x[nth] == 2);
 }
 
@@ -929,7 +927,7 @@ unittest {
 
     size_t nth = 2;
     auto x = [3, 1, 5, 0, 2].sliced;
-    x.topN!("a < b", tail)(nth);
+    x.partitionAt!("a < b", tail)(nth);
     assert(x[nth] == 2);
 }
 
@@ -954,7 +952,7 @@ version(unittest) {
                 foreach (nth; 0 .. x.length)
                 {
                     auto x_i = x.dup;
-                    x_i.topN!(less, pivotFunction)(nth);
+                    x_i.partitionAt!(less, pivotFunction)(nth);
                     if (x_i[nth] != x_sorted[nth]) {
                         result = false;
                         break;

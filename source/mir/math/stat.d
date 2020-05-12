@@ -25,6 +25,8 @@ import mir.math.sum;
 import mir.primitives;
 import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
 
+// version = mir_test_topN;
+
 /++
 Output range for mean.
 +/
@@ -478,22 +480,39 @@ template median(F, bool allowModify = false)
 {
     F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        assert(slice.elementCount > 0, "median: slice must have length greater than zero");
+        size_t len = slice.elementCount;
+        assert(len > 0, "median: slice must have length greater than zero");
 
         import mir.ndslice.topology: flattened;
 
         static if (!allowModify) {
             import mir.ndslice.allocation: rcslice;
             
-            if (slice.elementCount > 2) {
+            if (len > 2) {
                 auto val = slice.rcslice.flattened;
                 auto temp = val.lightScope;
-                return medianImpl!F(temp);
+                return .median!(F, true)(temp);
             } else {
-                return medianImpl!F(slice.flattened);
+                return mean!F(slice);
             }
         } else {
-            return medianImpl!F(slice.flattened);
+            import mir.ndslice.sorting: partitionAt;
+
+            if (len > 5) {
+                auto temp = slice.flattened;
+
+                size_t half_n = len / 2;
+                partitionAt(temp, half_n);
+                if (len % 2 == 1) {
+                    return cast(F) temp[half_n];
+                } else {
+                    //move largest value in first half of slice to half_n - 1
+                    partitionAt(temp[0 .. half_n], half_n - 1);
+                    return mean!F(temp[half_n - 1], temp[half_n]);
+                }
+            } else {
+                return smallMedianImpl!(F)(slice);
+            }
         }
     }
 }
@@ -627,6 +646,10 @@ unittest {
     assert(x.median!float.approxEqual(4.5));
     x[] = [4, 5, 100, 1, 5, 0];
     assert(x.median!float.approxEqual(4.5));
+    x[] = [0, 1, 2, 2, 3, 4];
+    assert(x.median!float.approxEqual(2));
+    x[] = [0, 2, 2, 3, 4, 5];
+    assert(x.median!float.approxEqual(2.5));
 }
 
 version(mir_test)
@@ -651,27 +674,6 @@ unittest {
     assert(x4.median.approxEqual(1));
 }
 
-private pure @safe nothrow @nogc
-F medianImpl(F, Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice)
-{
-    import mir.ndslice.sorting: topN;
-
-    size_t len = slice.length;
-    if (len > 5) {
-        size_t half_n = len / 2;
-        topN(slice, half_n);
-        if (len % 2 == 1) {
-            return cast(F) slice[half_n];
-        } else {
-            //move largest value in first half of slice to half_n - 1
-            topN(slice[0 .. half_n], half_n - 1);
-            return mean!F(slice[half_n - 1], slice[half_n]);
-        }
-    } else {
-        return smallMedianImpl!(F)(slice);
-    }
-}
-
 private pure @trusted nothrow @nogc
 F smallMedianImpl(F, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice) 
 {
@@ -692,7 +694,7 @@ F smallMedianImpl(F, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kin
 
         if (n == 3) {
             medianOf!less(sliceI0, sliceI1, sliceI2);
-            return cast(F) slice[1];
+            return cast(F) *sliceI1;
         } else {
             auto sliceI3 = sliceI2 + 1;
             if (n == 4) {
@@ -700,11 +702,11 @@ F smallMedianImpl(F, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kin
                 medianOf!less(sliceI0, sliceI1, sliceI2, sliceI3);
                 // Ensure slice[2] < slice[3]
                 medianOf!less(sliceI2, sliceI3);
-                return mean!F(slice[1 .. 3]);
+                return mean!F(*sliceI1, *sliceI2);
             } else {
                 auto sliceI4 = sliceI3 + 1;
                 medianOf!less(sliceI0, sliceI1, sliceI2, sliceI3, sliceI4);
-                return cast(F) slice[2];
+                return cast(F) *sliceI2;
             }
         }
     } else {
