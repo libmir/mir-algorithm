@@ -95,10 +95,10 @@ version(mir_test)
 }
 
 /++
-Computes the average of `r`, which must be a finite iterable.
+Computes the average of the input.
 
 Returns:
-    The average of all the elements in the range r.
+    The average of all the elements in the input.
 
 See_also: $(SUBREF sum, Summation)
 +/
@@ -108,7 +108,7 @@ template mean(F, Summation summation = Summation.appropriate)
 
     /++
     Params:
-        r = range
+        r = range, must be finite iterable
     +/
     @fmamath F mean(Range)(Range r)
         if (isIterable!Range)
@@ -141,7 +141,7 @@ template mean(Summation summation = Summation.appropriate)
 
     /++
     Params:
-        r = range
+        r = range, must be finite iterable
     +/
     @fmamath sumType!Range mean(Range)(Range r)
         if (isIterable!Range)
