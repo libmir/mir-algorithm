@@ -525,7 +525,7 @@ template median(bool allowModify = false)
 
 /// Median of vector
 version(mir_test_topN)
-@safe pure nothrow
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -538,7 +538,7 @@ unittest {
 
 /// Median of matrix
 version(mir_test_topN)
-@safe pure
+@safe
 unittest {
     import mir.ndslice.fuse: fuse;
 
@@ -552,7 +552,7 @@ unittest {
 
 /// Row median of matrix
 version(mir_test_topN)
-@safe pure
+@safe
 unittest
 {
     import mir.ndslice.fuse: fuse;
@@ -575,7 +575,7 @@ unittest
 
 /// Can allow original slice to be modified or set output type
 version(mir_test_topN)
-@safe pure nothrow
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -591,7 +591,7 @@ For integral slices, pass output type as template parameter to ensure output
 type is correct
 +/
 version(mir_test_topN)
-@safe pure nothrow
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -600,7 +600,7 @@ unittest {
 }
 
 version(mir_test)
-@safe pure nothrow
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
@@ -649,7 +649,7 @@ unittest {
 }
 
 version(mir_test)
-@safe pure nothrow
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;

@@ -501,6 +501,7 @@ void medianOf(alias less, bool leanRight = false, Iterator)
     }
 }
 
+
 /++
 Returns: `true` if a sorted array contains the value.
 
@@ -758,107 +759,35 @@ template pivotPartition(alias less = "a < b")
     {
         /++
         Params:
-            slice = one-dimensional slice being partitioned
-            pivot = The index of the pivot for partitioning, must be less than 
+            slice = slice being partitioned
+            pivot = The index of the pivot for partitioning, must be less than
             `slice.length` or `0` if `slice.length` is `0`
         +/
-        auto pivotPartition(Iterator, SliceKind kind)
-                (Slice!(Iterator, 1, kind) slice, size_t pivot)
+        size_t pivotPartition(Iterator, size_t N, SliceKind kind)
+                (Slice!(Iterator, N, kind) slice, 
+                size_t pivot)
         {
-            assert(pivot < slice.length || slice.length == 0 && pivot == 0, "pivotPartition: pivot must be less than the length of slice or slice must be empty and pivot zero");
+            assert(pivot < slice.elementCount || slice.elementCount == 0 && pivot == 0, "pivotPartition: pivot must be less than the elementCount of the slice or the slice must be empty and pivot zero");
 
-            if (slice.length <= 1) return 0;
+            if (slice.elementCount <= 1) return 0;
 
-            import mir.utility: swapStars;
+            import mir.ndslice.topology: flattened;
 
-            // Pivot at the front
-            auto frontI = slice._iterator;
+            auto flattenedSlice = slice.flattened;
+            auto frontI = flattenedSlice._iterator;
+            auto lastI = frontI + flattenedSlice.length - 1;
             auto pivotI = frontI + pivot;
-            swapStars(pivotI, frontI);
-
-            // Fork implementation depending on nothrow copy, assignment, and
-            // comparison. If all of these are nothrow, use the specialized
-            // implementation discussed at 
-            // https://youtube.com/watch?v=AxnotgLql0k.
-            static if (is(typeof(
-                    () nothrow { auto x = slice._iterator; x = slice._iterator; return less(*x, *x); }
-                )))
-            {
-                // Plant the pivot in the end as well as a sentinel
-                auto loI = frontI;
-                auto hiI = frontI + slice.length - 1;
-                auto save = *hiI;
-                *hiI = *frontI; // Vacancy is in r[$ - 1] now
-
-                // Start process
-                for (;;)
-                {
-                    // Loop invariant
-                    version(mir_test_topN)
-                    {
-                        // this used to import std.algorithm.all, but we want to
-                        // save imports when unittests are enabled if possible.
-                        foreach (x; 0 .. (loI - frontI))
-                            assert(!less(*frontI, frontI[x]), "pivotPartition: *frontI must not be less than frontI[x]");
-                        foreach (x; (hiI - frontI + 1) .. slice.length)
-                            assert(!less(frontI[x], *frontI), "pivotPartition: frontI[x] must not be less than *frontI");
-                    }
-                    do ++loI; while (less(*loI, *frontI));
-                    *(hiI) = *(loI);
-                    // Vacancy is now in slice[lo]
-                    do --hiI; while (less(*frontI, *hiI));
-                    if (loI >= hiI) break;
-                    *(loI) = *(hiI);
-                    // Vacancy is not in slice[hi]
-                }
-                // Fixup
-                assert(loI - hiI <= 2, "pivotPartition: Following compare not possible");
-                assert(!less(*frontI, *hiI), "pivotPartition: *hiI must not be less than *frontI");
-                if (loI == hiI + 2)
-                {
-                    assert(!less(*(hiI + 1), *frontI), "pivotPartition: *(hiI + 1) must not be less than *frontI");
-                    *(loI) = *(hiI + 1);
-                    --loI;
-                }
-                *loI = save;
-                if (less(*frontI, save)) --loI;
-                assert(!less(*frontI, *loI), "pivotPartition: *frontI must not be less than *loI");
-            } else {
-                auto loI = frontI + 1;
-                auto hiI = frontI + slice.length - 1;
-
-                loop: for (;; loI++, hiI--)
-                {
-                    for (;; ++loI)
-                    {
-                        if (loI > hiI) break loop;
-                        if (!less(*loI, *frontI)) break;
-                    }
-                    // found the left bound:  !less(*loI, *frontI)
-                    assert(loI <= hiI, "pivotPartition: loI must be less or equal than hiI");
-                    for (;; --hiI)
-                    {
-                        if (loI >= hiI) break loop;
-                        if (!less(*frontI, *hiI)) break;
-                    }
-                    // found the right bound: !less(*frontI, *hiI), swap & make progress
-                    assert(!less(*loI, *hiI), "pivotPartition: *lowI must not be less than *hiI");
-                    swapStars(loI, hiI);
-                }
-                --loI;
-            }
-
-            swapStars(loI, frontI);
-            return loI - frontI;
+            pivotPartitionImpl!less(frontI, lastI, pivotI);
+            return pivotI - frontI;
         }
     } else {
         alias pivotPartition = .pivotPartition!(naryFun!less);
     }
 }
 
-///
+/// pivotPartition with 1-dimensional Slice
 version(mir_test_topN)
-@safe nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -871,8 +800,29 @@ unittest
     assert(x[pivot .. $].all!(a => a >= x[pivot]));
 }
 
+/// pivotPartition with 2-dimensional Slice
 version(mir_test_topN)
-@safe 
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: flattened;
+    import mir.algorithm.iteration: all;
+    
+    auto x = [
+        [5, 3, 2, 6],
+        [4, 1, 3, 7]
+    ].fuse;
+    
+    size_t pivot = pivotPartition(x, x.elementCount / 2);
+
+    auto xFlattened = x.flattened;
+    assert(xFlattened[0 .. pivot].all!(a => a <= xFlattened[pivot]));
+    assert(xFlattened[pivot .. $].all!(a => a >= xFlattened[pivot]));
+}
+
+version(mir_test_topN)
+@safe
 unittest
 {
     void test(alias less)()
@@ -933,47 +883,119 @@ unittest
     test!myLess;
 }
 
-/++
-Default function for topN
-
-Params:
-    slice = input 1-dimensional slice
-+/
-deprecated("This function is experimental")
-@trusted pure @nogc nothrow
-template setPivotAt(alias less = "a < b") {
-    size_t setPivotAt(Iterator, SliceKind kind)
-        (Slice!(Iterator, 1, kind) slice)
+@trusted
+template pivotPartitionImpl(alias less)
+{
+    void pivotPartitionImpl(Iterator)
+        (ref Iterator frontI,
+         ref Iterator lastI,
+         ref Iterator pivotI)
     {
-        size_t len = slice.length;
+        assert(pivotI <= lastI && pivotI >= frontI, "pivotPartition: pivot must be less than the length of slice or slice must be empty and pivot zero");
         
-        assert(len > 0, "setPivotAt: slice must have a length greater than zero");
+        if (frontI == lastI) return;
 
-        auto leftI = slice._iterator;
-        auto midI = leftI + len / 2;
-        auto rightI = leftI + len - 1;
+        import mir.utility: swapStars;
 
-        setPivot!less(len, leftI, midI, rightI);
-        return midI - leftI;
+        // Pivot at the front
+        swapStars(pivotI, frontI);
+
+        // Fork implementation depending on nothrow copy, assignment, and
+        // comparison. If all of these are nothrow, use the specialized
+        // implementation discussed at 
+        // https://youtube.com/watch?v=AxnotgLql0k.
+        static if (is(typeof(
+                () nothrow { auto x = frontI; x = frontI; return less(*x, *x); }
+            )))
+        {
+            // Plant the pivot in the end as well as a sentinel
+            auto loI = frontI;
+            auto hiI = lastI;
+            auto save = *hiI;
+            *hiI = *frontI; // Vacancy is in r[$ - 1] now
+
+            // Start process
+            for (;;)
+            {
+                // Loop invariant
+                version(mir_test_topN)
+                {
+                    // this used to import std.algorithm.all, but we want to
+                    // save imports when unittests are enabled if possible.
+                    size_t len = lastI - frontI + 1;
+                    foreach (x; 0 .. (loI - frontI))
+                        assert(!less(*frontI, frontI[x]), "pivotPartition: *frontI must not be less than frontI[x]");
+                    foreach (x; (hiI - frontI + 1) .. len)
+                        assert(!less(frontI[x], *frontI), "pivotPartition: frontI[x] must not be less than *frontI");
+                }
+                do ++loI; while (less(*loI, *frontI));
+                *(hiI) = *(loI);
+                // Vacancy is now in slice[lo]
+                do --hiI; while (less(*frontI, *hiI));
+                if (loI >= hiI) break;
+                *(loI) = *(hiI);
+                // Vacancy is not in slice[hi]
+            }
+            // Fixup
+            assert(loI - hiI <= 2, "pivotPartition: Following compare not possible");
+            assert(!less(*frontI, *hiI), "pivotPartition: *hiI must not be less than *frontI");
+            if (loI == hiI + 2)
+            {
+                assert(!less(hiI[1], *frontI), "pivotPartition: *(hiI + 1) must not be less than *frontI");
+                *(loI) = hiI[1];
+                --loI;
+            }
+            *loI = save;
+            if (less(*frontI, save)) --loI;
+            assert(!less(*frontI, *loI), "pivotPartition: *frontI must not be less than *loI");
+        } else {
+            auto loI = frontI;
+            ++loI;
+            auto hiI = lastI;
+
+            loop: for (;; loI++, hiI--)
+            {
+                for (;; ++loI)
+                {
+                    if (loI > hiI) break loop;
+                    if (!less(*loI, *frontI)) break;
+                }
+                // found the left bound:  !less(*loI, *frontI)
+                assert(loI <= hiI, "pivotPartition: loI must be less or equal than hiI");
+                for (;; --hiI)
+                {
+                    if (loI >= hiI) break loop;
+                    if (!less(*frontI, *hiI)) break;
+                }
+                // found the right bound: !less(*frontI, *hiI), swap & make progress
+                assert(!less(*loI, *hiI), "pivotPartition: *lowI must not be less than *hiI");
+                swapStars(loI, hiI);
+            }
+            --loI;
+        }
+
+        swapStars(loI, frontI);
+        pivotI = loI;
     }
 }
 
-///
 version(mir_test_topN)
-@safe pure
-unittest {
+@trusted pure nothrow
+unittest
+{
     import mir.ndslice.slice: sliced;
-    import mir.functional: naryFun;
+    import mir.algorithm.iteration: all;
 
-    auto x = [3, 1, 5, 2, 0].sliced;
+    auto x = [5, 3, 2, 6, 4, 1, 3, 7].sliced;
+    auto frontI = x._iterator;
+    auto lastI = x._iterator + x.length - 1;
+    auto pivotI = frontI + x.length / 2;
+    alias less = (a, b) => (a < b);
+    pivotPartitionImpl!less(frontI, lastI, pivotI);
+    size_t pivot = pivotI - frontI;
 
-    auto y = setPivotAt!(naryFun!("a < b"))(x);
-    assert(y == 2);
-    assert(x[0 + y] == 5);
-
-    auto z = setPivotAt!(naryFun!("a < b"))(x[1 .. 3]);
-    assert(z == 1);
-    assert(x[1 + z] == 5);
+    assert(x[0 .. pivot].all!(a => a <= x[pivot]));
+    assert(x[pivot .. $].all!(a => a >= x[pivot]));
 }
 
 /++
@@ -984,30 +1006,20 @@ satisfy `!less(slice[nth], e1)`, and all elements `e2` from `slice[nth]` to
 the range were fully sorted. Performs an expected $(BIGOH slice.length) 
 evaluations of `less` and `swap`, with a worst case of $(BIGOH slice.length^^2).
 
-This function implements an iterative, in-place version of the
-$(HTTP en.wikipedia.org/wiki/Quickselect, quickselect) algorithm. It loops
-through a slice, calling a user-provided `pivotFunction` (default
-implementation: setPivotAt) to choose a pivot point. The `pivotFunction` must
-conform to the following signatures:
-------
-    size_t value = pivotFunction!less(slice);
-    size_t value = pivotFunction(slice);
-------
-It then partitions `slice` using `less` at the given pivot point and loops
-through a slice of the original `slice`. It also includes specialization for
-when `nth` equals zero or the length of `slice` minus one (to partition around
-the smallest or largest element of a slice).
+This function implements the [Fast, Deterministic Selection](https://erdani.com/research/sea2017.pdf)
+algorithm that is implemented in the [`topN`](https://dlang.org/library/std/algorithm/sorting/top_n.html) 
+function in D's standard library (as of version `2.092.0`).
 
 Params:
     less = The predicate to sort by.
-    pivotFunction = The pivot strategy to use.
 
 See_Also:
-    $(LREF pivotPartition), $(LREF setPivotAt)
+    $(LREF pivotPartition), https://erdani.com/research/sea2017.pdf
 
 +/
+@trusted
 deprecated("This function is experimental")
-template partitionAt(alias less = "a < b", alias pivotFunction = setPivotAt)
+template partitionAt(alias less = "a < b")
 {
     import mir.functional: naryFun;
 
@@ -1028,80 +1040,21 @@ template partitionAt(alias less = "a < b", alias pivotFunction = setPivotAt)
         
             import mir.ndslice.topology: flattened;
 
-            partitionAtImpl!(less, pivotFunction)(slice.flattened, nth);
+            bool useSampling = true;
+            auto flattenedSlice = slice.flattened;
+            auto frontI = flattenedSlice._iterator;
+            auto lastI = frontI + flattenedSlice.length - 1;
+            partitionAtImpl!(less, Iterator)(frontI, lastI, nth, useSampling);
         }
     } else {
-        alias partitionAt = .partitionAt!(naryFun!less, pivotFunction);
-    }
-}
+        alias partitionAt = .partitionAt!(naryFun!less);
 
-private @trusted
-void partitionAtImpl(alias less, alias pivotFunction, Iterator, SliceKind kind)(
-        Slice!(Iterator, 1, kind) slice, size_t n) 
-{
-    import mir.utility: swap;
-    import mir.functional: reverseArgs;
-
-    size_t pivot = void;
-    size_t len = void;
-
-    for (;;) {
-        len = slice.length;
-
-        if (len <= 1) {
-            break;
-        }
-
-        if (n == 0) {
-            pivot = 0;
-            foreach (i; 1 .. len) {
-                if (less(slice[i], slice[pivot])) {
-                    pivot = i;
-                }
-            }
-            swap(slice[n], slice[pivot]);
-            break;
-        }
-
-        if (n + 1 == len) {
-            pivot = 0;
-            foreach (i; 1 .. len) {
-                if (reverseArgs!less(slice[i], slice[pivot])) {
-                    pivot = i;
-                }
-            }
-            swap(slice[n], slice[pivot]);
-            break;
-        }
-
-        static if (__traits(compiles, pivotFunction!less(slice)))
-        {
-            pivot = pivotFunction!(less)(slice);
-        } else {
-            static if (__traits(compiles, pivotFunction(slice))) {
-                pivot = pivotFunction(slice);
-            } else
-                static assert(0, "partitionAtImpl: pivotFunction does not compile");
-        }
-
-        assert(pivot >= 0, "partitionAtImpl: pivotFunction must provide a value greater than zero");
-        assert(pivot < len, "partitionAtImpl: pivotFunction must provide a value less than the length of the slice");
-        pivot = pivotPartition!less(slice, pivot);
-
-        if (n < pivot) {
-            slice = slice[0 .. pivot];
-        } else if (n > pivot) {
-            slice = slice[(pivot + 1) .. $];
-            n -= pivot + 1;
-        } else {
-            break;
-        }
     }
 }
 
 /// Partition 1-dimensional slice at nth
 version(mir_test_topN)
-@safe pure
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1113,7 +1066,7 @@ unittest {
 
 /// Partition 2-dimensional slice
 version(mir_test_topN)
-@safe pure
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1125,7 +1078,7 @@ unittest {
 
 /// Can supply alternate ordering function
 version(mir_test_topN)
-@safe pure
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1135,31 +1088,15 @@ unittest {
     assert(x[nth] == 2);
 }
 
-/// Provide a custom pivot function
-version(mir_test_topN)
-@safe pure
-unittest {
-    import mir.ndslice.slice: sliced, Slice, SliceKind;
-    
-    static auto tail(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) slice) {
-        return slice.length - 1;
-    }
-
-    size_t nth = 2;
-    auto x = [3, 1, 5, 0, 2].sliced;
-    x.partitionAt!("a < b", tail)(nth);
-    assert(x[nth] == 2);
-}
-
 version(unittest) {
-    template checkTopNAll(alias less = "a < b", alias pivotFunction = setPivotAt)
+    template checkTopNAll(alias less = "a < b")
     {
         import mir.functional: naryFun;
         import mir.ndslice.slice: SliceKind, Slice;
 
         static if (__traits(isSame, naryFun!less, less))
         {
-            @safe pure nothrow
+            @safe
             static bool checkTopNAll
                 (Iterator, SliceKind kind)(
                     Slice!(Iterator, 1, kind) x)
@@ -1172,7 +1109,7 @@ version(unittest) {
                 foreach (nth; 0 .. x.length)
                 {
                     auto x_i = x.dup;
-                    x_i.partitionAt!(less, pivotFunction)(nth);
+                    x_i.partitionAt!less(nth);
                     if (x_i[nth] != x_sorted[nth]) {
                         result = false;
                         break;
@@ -1181,13 +1118,13 @@ version(unittest) {
                 return result;
             }
         } else {
-            alias checkTopNAll = .checkTopNAll!(naryFun!less, pivotFunction);
+            alias checkTopNAll = .checkTopNAll!(naryFun!less);
         }
     }
 }
 
 version(mir_test_topN)
-@safe pure
+@safe
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1198,11 +1135,616 @@ unittest {
     assert(checkTopNAll([0, 0, 4, 3, 3].sliced));
     assert(checkTopNAll([5, 1, 5, 1, 5].sliced));
     assert(checkTopNAll([2, 2, 0, 0, 0].sliced));
-    
+
     assert(checkTopNAll([ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced));
     assert(checkTopNAll([ 4, 18, 16,  0, 15,  6,  2, 17, 10, 16].sliced));
     assert(checkTopNAll([ 7,  5,  9,  4,  4,  2, 12, 20, 15, 15].sliced));
 
     assert(checkTopNAll([17, 87, 58, 50, 34, 98, 25, 77, 88, 79].sliced));
 
+    assert(checkTopNAll([ 6,  7, 10, 25,  5, 10,  9,  0,  2, 15,  7,  9, 11,  8, 13, 18, 17, 13, 25, 22].sliced));
+    assert(checkTopNAll([21,  3, 11, 22, 24, 12, 14, 12, 15, 15,  1,  3, 12, 15, 25, 19,  9, 16, 16, 19].sliced));
+    assert(checkTopNAll([22,  6, 18,  0,  1,  8, 13, 13, 16, 19, 23, 17,  4,  6, 12, 24, 15, 20, 11, 17].sliced));
+    assert(checkTopNAll([19, 23, 14,  5, 12,  3, 13,  7, 25, 25, 24,  9, 21, 25, 12, 22, 15, 22,  7, 11].sliced));
+    assert(checkTopNAll([ 0,  2,  7, 16,  2, 20,  1, 11, 17,  5, 22, 17, 25, 13, 14,  5, 22, 21, 24, 14].sliced));
+}
+
+private @trusted
+void partitionAtImpl(alias less, Iterator)(
+    ref const(Iterator) frontI, 
+    ref const(Iterator) lastI, 
+    size_t n, 
+    bool useSampling)
+{
+    assert(frontI <= lastI, "partitionAtImpl: frontI must be less than or equal to lastI");
+
+    import mir.utility: swapStars;
+    import mir.functional: reverseArgs;
+
+    auto loI = cast(Iterator) frontI;
+    auto hiI = cast(Iterator) lastI;
+    
+    Iterator pivotI = void;
+    size_t len = void;
+
+    for (;;) {
+        len = hiI - loI + 1;
+
+        if (len <= 1) {
+            break;
+        }
+
+        if (n == 0) {
+            pivotI = loI;
+            foreach (i; 1 .. len) {
+                if (less(loI[i], *pivotI)) {
+                    pivotI = loI + i;
+                }
+            }
+            swapStars(loI + n, pivotI);
+            break;
+        }
+
+        if (n + 1 == len) {
+            pivotI = loI;
+            foreach (i; 1 .. len) {
+                if (reverseArgs!less(loI[i], *pivotI)) {
+                    pivotI = loI + i;
+                }
+            }
+            swapStars(loI + n, pivotI);
+            break;
+        }
+        
+        if (len <= 12) {
+            pivotI = loI + len / 2;
+            pivotPartitionImpl!less(loI, hiI, pivotI);
+        } else if (n * 16 <= (len - 1) * 7) {
+            pivotI = partitionAtPartitionOffMedian!(less, false)(loI, hiI, n, useSampling);
+            // Quality check
+            if (useSampling)
+            {
+                auto pivot = pivotI - loI;
+                if (pivot < n)
+                {
+                    if (pivot * 4 < len)
+                    {
+                        useSampling = false;
+                    }
+                }
+                else if ((len - pivot) * 8 < len * 3)
+                {
+                    useSampling = false;
+                }
+            }
+        } else if (n * 16 >= (len - 1) * 9) {
+            pivotI = partitionAtPartitionOffMedian!(less, true)(loI, hiI, n, useSampling);
+            // Quality check
+            if (useSampling)
+            {
+                auto pivot = pivotI - loI;
+                if (pivot < n)
+                {
+                    if (pivot * 8 < len * 3)
+                    {
+                        useSampling = false;
+                    }
+                }
+                else if ((len - pivot) * 4 < len)
+                {
+                    useSampling = false;
+                }
+            }
+        } else {
+            pivotI = partitionAtPartition!less(loI, hiI, n, useSampling);
+            // Quality check
+            if (useSampling) {
+                auto pivot = pivotI - loI;
+                if (pivot * 9 < len * 2 || pivot * 9 > len * 7)
+                {
+                    // Failed - abort sampling going forward
+                    useSampling = false;
+                }
+            }
+        }
+
+        if (n < (pivotI - loI)) {
+            hiI = pivotI - 1;
+        } else if (n > (pivotI - loI)) {
+            n -= (pivotI - loI + 1);
+            loI = pivotI;
+            ++loI;
+        } else {
+            break;
+        }
+    }
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 2;
+    auto x = [3, 1, 5, 2, 0].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, 1, true);
+    assert(x[nth] == 2);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 4;
+    auto x = [3, 1, 5, 2, 0, 7].sliced(3, 2);
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, nth, true);
+    assert(x[2, 0] == 5);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 1;
+    auto x = [0, 0, 4, 3, 3].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, nth, true);
+    assert(x[nth] == 0);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 2;
+    auto x = [0, 0, 4, 3, 3].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, nth, true);
+    assert(x[nth] == 3);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 3;
+    auto x = [0, 0, 4, 3, 3].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, nth, true);
+    assert(x[nth] == 3);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 4;
+    auto x = [ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, nth, true);
+    assert(x[nth] == 7);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 5;
+    auto x = [ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, nth, true);
+    assert(x[nth] == 8);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    size_t nth = 6;
+    auto x = [ 2, 12, 10,  8,  1, 20, 19,  1,  2,  7].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.elementCount - 1;
+    partitionAtImpl!((a, b) => (a < b))(frontI, lastI, nth, true);
+    assert(x[nth] == 10);
+}
+
+private @trusted
+Iterator partitionAtPartition(alias less, Iterator)(
+    ref Iterator frontI, 
+    ref Iterator lastI, 
+    size_t n, 
+    bool useSampling)
+{
+    size_t len = lastI - frontI + 1;
+
+    assert(len >= 9 && n < len, "partitionAtImpl: length must be longer than 9 and n must be less than r.length");
+
+    size_t ninth = len / 9;
+    size_t pivot = ninth / 2;
+    // Position subrange r[loI .. hiI] to have length equal to ninth and its upper
+    // median r[loI .. hiI][$ / 2] in exactly the same place as the upper median
+    // of the entire range r[$ / 2]. This is to improve behavior for searching
+    // the median in already sorted ranges.
+    auto loI = frontI;
+    loI += len / 2 - pivot;
+    auto hiI = loI;
+    hiI += ninth;
+
+    // We have either one straggler on the left, one on the right, or none.
+    assert(loI - frontI <= lastI - hiI + 1 || lastI - hiI <= loI - frontI + 1, "partitionAtPartition: straggler check failed for loI, len, hiI");
+    assert(loI - frontI >= ninth * 4, "partitionAtPartition: loI - frontI >= ninth * 4");
+    assert(lastI - hiI >= ninth * 4, "partitionAtPartition: lastI - hiI >= ninth * 4");
+
+    // Partition in groups of 3, and the mid tertile again in groups of 3
+    if (!useSampling) {
+        auto loI_ = loI;
+        loI_ -= ninth;
+        auto hiI_ = hiI;
+        hiI_ += ninth;
+        p3!(less, Iterator)(frontI, lastI, loI_, hiI_);
+    }
+    p3!(less, Iterator)(frontI, lastI, loI, hiI);
+
+    // Get the median of medians of medians
+    // Map the full interval of n to the full interval of the ninth
+    pivot = (n * (ninth - 1)) / (len - 1);
+    if (hiI > loI) {
+        auto hiI_minus = hiI;
+        --hiI_minus;
+        partitionAtImpl!less(loI, hiI_minus, pivot, useSampling);
+    }
+
+    auto pivotI = loI;
+    pivotI += pivot;
+
+    return expandPartition!less(frontI, lastI, loI, pivotI, hiI);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    auto x = [ 6,  7, 10, 25,  5, 10,  9,  0,  2, 15,  7,  9, 11,  8, 13, 18, 17, 13, 25, 22].sliced;
+    auto x_sort = x.dup;
+    x_sort = x_sort.sort;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.length - 1;
+    size_t n = x.length / 2;
+    partitionAtPartition!((a, b) => (a < b))(frontI, lastI, n, true);
+    assert(x[n - 1] == x_sort[n - 1]);
+}
+
+private @trusted
+Iterator partitionAtPartitionOffMedian(alias less, bool leanRight, Iterator)(
+    ref Iterator frontI, 
+    ref Iterator lastI, 
+    size_t n, 
+    bool useSampling)
+{
+    size_t len = lastI - frontI + 1;
+
+    assert(len >= 12, "partitionAtPartitionOffMedian: len must be greater than 11");
+    assert(n < len, "partitionAtPartitionOffMedian: n must be less than len");
+    auto _4 = len / 4;
+    auto leftLimitI = frontI;
+    static if (leanRight)
+        leftLimitI += 2 * _4;
+    else
+        leftLimitI += _4;
+    // Partition in groups of 4, and the left quartile again in groups of 3
+    if (!useSampling)
+    {
+        auto leftLimit_plus_4 = leftLimitI;
+        leftLimit_plus_4 += _4;
+        p4!(less, leanRight)(frontI, lastI, leftLimitI, leftLimit_plus_4);
+    }
+    auto _12 = _4 / 3;
+    auto loI = leftLimitI;
+    loI += _12;
+    auto hiI = loI;
+    hiI += _12;
+    p3!less(frontI, lastI, loI, hiI);
+
+    // Get the median of medians of medians
+    // Map the full interval of n to the full interval of the ninth
+    auto pivot = (n * (_12 - 1)) / (len - 1);
+    if (hiI > loI) {
+        auto hiI_minus = hiI;
+        --hiI_minus;
+        partitionAtImpl!less(loI, hiI_minus, pivot, useSampling);
+    }
+    auto pivotI = loI;
+    pivotI += pivot;
+    return expandPartition!less(frontI, lastI, loI, pivotI, hiI);
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: equal;
+
+    auto x = [ 6,  7, 10, 25,  5, 10,  9,  0,  2, 15,  7,  9, 11,  8, 13, 18, 17, 13, 25, 22].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.length - 1;
+    partitionAtPartitionOffMedian!((a, b) => (a < b), false)(frontI, lastI, 5, true);
+    assert(x.equal([6, 7, 8, 9, 5, 0, 2, 7, 9, 15, 10, 25, 11, 10, 13, 18, 17, 13, 25, 22]));
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: equal;
+
+    auto x = [ 6,  7, 10, 25,  5, 10,  9,  0,  2, 15,  7,  9, 11,  8, 13, 18, 17, 13, 25, 22].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.length - 1;
+    partitionAtPartitionOffMedian!((a, b) => (a < b), true)(frontI, lastI, 15, true);
+    assert(x.equal([6, 7, 8, 7, 5, 2, 9, 0, 9, 15, 25, 10, 11, 10, 13, 18, 17, 13, 25, 22]));
+}
+
+private @trusted
+void p3(alias less, Iterator)(
+    ref const(Iterator) frontI,
+    ref const(Iterator) lastI,
+    ref const(Iterator) loI,
+    ref const(Iterator) hiI)
+{
+    assert(loI <= hiI && hiI <= lastI, "p3: loI must be less than or equal to hiI and hiI must be less than or equal to lastI");
+    immutable diffI = hiI - loI;
+    Iterator lo_loI = void;
+    Iterator hi_loI = void;
+    Iterator loI_ = cast(Iterator) loI;
+    for (; loI_ < hiI; ++loI_)
+    {
+        lo_loI = loI_;
+        lo_loI -= diffI;
+        hi_loI = loI_;
+        hi_loI += diffI;
+        assert(lo_loI >= frontI, "p3: lo_loI must be greater than or equal to frontI");
+        assert(hi_loI <= lastI, "p3: hi_loI must be less than or equal to lastI");
+        medianOf!less(lo_loI, loI_, hi_loI);
+    }
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: equal;
+
+    auto x = [3, 4, 0, 5, 2, 1].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.length - 1;
+    auto loI = frontI + 2;
+    auto hiI = frontI + 4;
+    p3!((a, b) => (a < b))(frontI, lastI, loI, hiI);
+    assert(x.equal([0, 1, 2, 4, 3, 5]));
+}
+
+private @trusted
+template p4(alias less, bool leanRight)
+{
+    void p4(Iterator)(
+        ref const(Iterator) frontI,
+        ref const(Iterator) lastI,
+        ref const(Iterator) loI, 
+        ref const(Iterator) hiI)
+    {
+        assert(loI <= hiI && hiI <= lastI, "p4: loI must be less than or equal to hiI and hiI must be less than or equal to lastI");
+
+        immutable diffI = hiI - loI; 
+        immutable diffI2 = diffI * 2;
+
+        Iterator lo_loI = void;
+        Iterator hi_loI = void;
+
+        static if (leanRight)
+            Iterator lo2_loI = void;
+        else
+            Iterator hi2_loI = void;
+
+        Iterator loI_ = cast(Iterator) loI;
+        for (; loI_ < hiI; ++loI_)
+        {
+            lo_loI = loI_ - diffI;
+            hi_loI = loI_ + diffI;
+            
+            assert(lo_loI >= frontI, "p4: lo_loI must be greater than or equal to frontI");
+            assert(hi_loI <= lastI, "p4: hi_loI must be less than or equal to lastI");
+
+            static if (leanRight) {
+                lo2_loI = loI_ - diffI2;
+                assert(lo2_loI >= frontI, "lo2_loI must be greater than or equal to frontI");
+                medianOf!(less, leanRight)(lo2_loI, lo_loI, loI_, hi_loI);
+            } else {
+                hi2_loI = loI_ + diffI2;
+                assert(hi2_loI <= lastI, "hi2_loI must be less than or equal to lastI");
+                medianOf!(less, leanRight)(lo_loI, loI_, hi_loI, hi2_loI);
+            }
+        }
+    }
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: equal;
+
+    auto x = [3, 4, 0, 7, 2, 6, 5, 1, 4].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.length - 1;
+    auto loI = frontI + 3;
+    auto hiI = frontI + 5;
+    p4!((a, b) => (a < b), false)(frontI, lastI, loI, hiI);
+    assert(x.equal([3, 1, 0, 4, 2, 6, 4, 7, 5]));
+}
+
+version(mir_test_topN)
+@trusted
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: equal;
+
+    auto x = [3, 4, 0, 8, 2, 7, 5, 1, 4, 3].sliced;
+    auto frontI = x._iterator;
+    auto lastI = frontI + x.length - 1;
+    auto loI = frontI + 4;
+    auto hiI = frontI + 6;
+    p4!((a, b) => (a < b), true)(frontI, lastI, loI, hiI);
+    assert(x.equal([0, 4, 2, 1, 3, 7, 5, 8, 4, 3]));
+}
+
+private @trusted
+template expandPartition(alias less)
+{
+    Iterator expandPartition(Iterator)(
+        ref Iterator frontI,
+        ref Iterator lastI,
+        ref Iterator loI,
+        ref Iterator pivotI,
+        ref Iterator hiI)
+    {
+        import mir.algorithm.iteration: all;
+        
+        assert(frontI <= loI, "expandPartition: frontI must be less than or equal to loI");
+        assert(loI <= pivotI, "expandPartition: loI must be less than or equal pivotI");
+        assert(pivotI < hiI, "expandPartition: pivotI must be less than hiI");
+        assert(hiI <= lastI, "expandPartition: hiI must be less than or equal to lastI");
+        
+        foreach(x; loI .. (pivotI + 1))
+            assert(!less(*pivotI, *x), "expandPartition: loI .. (pivotI + 1) failed test");
+        foreach(x; (pivotI + 1) .. hiI)
+            assert(!less(*x, *pivotI), "expandPartition: (pivotI + 1) .. hiI failed test");
+
+        import mir.utility: swapStars;
+        import mir.algorithm.iteration: all;
+        // We work with closed intervals!
+        --hiI;
+
+        auto leftI = frontI;
+        auto rightI = lastI;
+        loop: for (;; ++leftI, --rightI)
+        {
+            for (;; ++leftI)
+            {
+                if (leftI == loI) break loop;
+                if (!less(*leftI, *pivotI)) break;
+            }
+            for (;; --rightI)
+            {
+                if (rightI == hiI) break loop;
+                if (!less(*pivotI, *rightI)) break;
+            }
+            swapStars(leftI, rightI);
+        }
+
+        foreach(x; loI .. (pivotI + 1))
+            assert(!less(*pivotI, *x), "expandPartition: loI .. (pivotI + 1) failed less than test");
+        foreach(x; (pivotI + 1) .. (hiI + 1))
+            assert(!less(*x, *pivotI), "expandPartition: (pivotI + 1) .. (hiI + 1) failed less than test");
+        foreach(x; frontI .. leftI)
+            assert(!less(*pivotI, *x), "expandPartition: frontI .. leftI failed less than test");
+        foreach(x; (rightI + 1) .. (lastI + 1))
+            assert(!less(*x, *pivotI), "expandPartition: (rightI + 1) .. (lastI + 1) failed less than test"); 
+
+        auto oldPivotI = pivotI;
+
+        if (leftI < loI)
+        {
+            // First loop: spend r[loI .. pivot]
+            for (; loI < pivotI; ++leftI)
+            {
+                if (leftI == loI) goto done;
+                if (!less(*oldPivotI, *leftI)) continue;
+                --pivotI;
+                assert(!less(*oldPivotI, *pivotI), "expandPartition: less check failed");
+                swapStars(leftI, pivotI);
+            }
+            // Second loop: make leftI and pivot meet
+            for (;; ++leftI)
+            {
+                if (leftI == pivotI) goto done;
+                if (!less(*oldPivotI, *leftI)) continue;
+                for (;;)
+                {
+                    if (leftI == pivotI) goto done;
+                    --pivotI;
+                    if (less(*pivotI, *oldPivotI))
+                    {
+                        swapStars(leftI, pivotI);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // First loop: spend r[lo .. pivot]
+        for (; hiI != pivotI; --rightI)
+        {
+            if (rightI == hiI) goto done;
+            if (!less(*rightI, *oldPivotI)) continue;
+            ++pivotI;
+            assert(!less(*pivotI, *oldPivotI), "expandPartition: less check failed");
+            swapStars(rightI, pivotI);
+        }
+        // Second loop: make leftI and pivotI meet
+        for (; rightI > pivotI; --rightI)
+        {
+            if (!less(*rightI, *oldPivotI)) continue;
+            while (rightI > pivotI)
+            {
+                ++pivotI;
+                if (less(*oldPivotI, *pivotI))
+                {
+                    swapStars(rightI, pivotI);
+                    break;
+                }
+            }
+        }
+
+    done:
+        swapStars(oldPivotI, pivotI);
+        
+
+        foreach(x; frontI .. (pivotI + 1))
+            assert(!less(*pivotI, *x), "expandPartition: frontI .. (pivotI + 1) failed test");
+        foreach(x; (pivotI + 1) .. (lastI + 1))
+            assert(!less(*x, *pivotI), "expandPartition: (pivotI + 1) .. (lastI + 1) failed test");
+        return pivotI;
+    }
+}
+
+version(mir_test_topN)
+@trusted
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    auto a = [ 10, 5, 3, 4, 8,  11,  13, 3, 9, 4, 10 ].sliced;
+    auto frontI = a._iterator;
+    auto lastI = frontI + a.length - 1;
+    auto loI = frontI + 4;
+    auto pivotI = frontI + 5;
+    auto hiI = frontI + 6;
+    assert(expandPartition!((a, b) => a < b)(frontI, lastI, loI, pivotI, hiI) == (frontI + 9));
 }
