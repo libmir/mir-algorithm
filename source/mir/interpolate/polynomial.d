@@ -257,14 +257,15 @@ pragma(inline, false)
 RCArray!(immutable T) inversedBarycentricWeights(T)(Slice!(const(T)*) x)
     if (isFloatingPoint!T)
 {
+    
     const n = x.length;
-    scope prodsa = RCArray!(Prod!T)(n);
+    scope prodsa = RCArray!(ProdAccumulator!(T, ProdAlgo.separateExponentAccumulation))(n);
     scope p = prodsa[].sliced;
     foreach (triplet; n.iota.triplets) with(triplet)
     {
         foreach (l; left)
         {
-            auto e = wipProd(x[center] - x[l]);
+            auto e = prod!(T, ProdAlgo.separateExponentAccumulation)(x[center] - x[l]);
             p[l] *= -e;
             p[center] *= e;
         }
@@ -273,7 +274,7 @@ RCArray!(immutable T) inversedBarycentricWeights(T)(Slice!(const(T)*) x)
     const minExp = long.max.reduce!min(p.member!"exp");
     foreach (ref e; p)
         e = e.ldexp(1 - minExp);
-    auto ret = rcarray!(immutable T)(p.member!"value");
+    auto ret = rcarray!(immutable T)(p.member!"prod");
     return ret;
 }
 
