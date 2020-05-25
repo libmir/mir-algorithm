@@ -124,10 +124,10 @@ template mean(F, Summation summation = Summation.appropriate)
     Params:
         val = values
     +/
-    @fmamath F mean(scope const F[] r...)
+    @fmamath F mean(scope const F[] val...)
     {
         MeanAccumulator!(F, ResolveSummationType!(summation, const(F)[], F)) mean;
-        mean.put(r);
+        mean.put(val);
         return mean.mean;
     }
 }
