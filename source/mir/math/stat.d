@@ -22,6 +22,7 @@ import core.lifetime: move;
 import mir.ndslice.slice: Slice, SliceKind;
 import mir.math.common: fmamath;
 import mir.math.sum;
+import mir.math.numeric: ProdAlgo;
 import mir.primitives;
 import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
 
@@ -106,8 +107,6 @@ See_also: $(SUBREF sum, Summation)
 +/
 template mean(F, Summation summation = Summation.appropriate)
 {
-    import std.traits: isImplicitlyConvertible, CommonType;
-
     /++
     Params:
         r = range, must be finite iterable
@@ -314,23 +313,6 @@ version(mir_test)
     assert(mean!float(1, 2, 3) == 2);
 }
 
-///
-version(mir_test)
-@safe @nogc pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-    import mir.ndslice.topology: alongDim, byDim, map;
-
-    static immutable x      = [0.0, 1.00, 1.50, 2.0, 3.5, 4.250,
-                               2.0, 7.50, 5.00, 1.0, 1.5, 0.000];
-    static immutable result = [1.0, 4.25, 3.25, 1.5, 2.5, 2.125];
-
-    // Use byDim or alongDim with map to compute mean of row/column.
-    assert(x.sliced(2, 6).byDim!1.map!mean == result);
-    assert(x.sliced(2, 6).alongDim!0.map!mean == result);
-}
-
 version(mir_test)
 @safe pure nothrow unittest
 {
@@ -460,6 +442,372 @@ unittest
     //Provide the summation type
     assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
 }
+
+private
+auto pow(T, U)(in T x, in U power) {
+    static if (is(U : int)) {
+        import mir.math.common: powi;
+        return powi(x, power);
+    } else static if (isFloatingPoint!U && is(T == U)) {
+        import mir.math.common: pow;
+        return pow(x, power);
+    } else {
+        import std.math: pow;
+        return pow(x, power);
+    }
+}
+
+/++
+Output range for gmean.
++/
+struct GMeanAccumulator(T, ProdAlgo prodAlgo) 
+    if (isMutable!T)
+{
+    import mir.math.numeric: ProdAccumulator;
+
+    ///
+    size_t count;
+    ///
+    ProdAccumulator!(T, prodAlgo) prodAccumulator;
+
+    ///
+    F gmean(F = T)() @property
+    {
+        return pow(cast(F) prodAccumulator.prod, cast(F) 1 / cast(F) count);
+    }
+
+    ///
+    void put(Range)(Range r)
+        if (isIterable!Range)
+    {
+        static if (hasShape!Range)
+        {
+            count += r.elementCount;
+            prodAccumulator.put(r);
+        }
+        else
+        {
+            foreach(x; r)
+            {
+                count++;
+                prodAccumulator.put(x);
+            }
+        }
+    }
+
+    ///
+    void put()(T x)
+    {
+        count++;
+        prodAccumulator.put(x);
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    GMeanAccumulator!(double, ProdAlgo.separateExponentAccumulation) x;
+    x.put([1.0, 2, 3, 4].sliced);
+    assert(x.gmean.approxEqual(2.21336384));
+    x.put(5);
+    assert(x.gmean.approxEqual(2.60517108));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    GMeanAccumulator!(float, ProdAlgo.separateExponentAccumulation) x;
+    x.put([1, 2, 3, 4].sliced);
+    assert(x.gmean.approxEqual(2.21336384));
+    x.put(5);
+    assert(x.gmean.approxEqual(2.60517108));
+}
+
+package template gmeanType(T)
+{
+    import mir.math.common: pow;
+    import mir.math.numeric: prodType;
+
+    alias U = prodType!T;
+    static if (__traits(compiles, {
+        auto temp = U.init * U.init;
+        auto a = pow(temp, cast(U) 1 / cast(U) 2);
+        temp *= U.init;
+        a = pow(temp, cast(U) 1 / cast(U) 3);
+    }))
+        alias gmeanType = typeof((U.init * U.init) ^^ (cast(U) 1 / cast(U) 2));
+    else
+        static assert(0, "Can't gmean elements of type " ~ U.stringof);
+}
+
+/++
+Computes the geometric average of the input.
+
+Returns:
+    The geometric average of all the elements in the input.
+
+See_also: $(SUBREF prod, ProdAlgo)
++/
+template gmean(F, ProdAlgo prodAlgo = ProdAlgo.appropriate)
+{
+    import mir.math.numeric: ResolveProdAlgoType;
+
+    /++
+    Params:
+        r = range, must be finite iterable
+    +/
+    @fmamath F gmean(Range)(Range r)
+        if (isIterable!Range)
+    {
+        GMeanAccumulator!(F, ResolveProdAlgoType!(prodAlgo, F)) gmean;
+        gmean.put(r.move);
+        return gmean.gmean;
+    }
+    
+    /++
+    Params:
+        val = values
+    +/
+    @fmamath F gmean(scope const F[] val...)
+    {
+        GMeanAccumulator!(F, ResolveProdAlgoType!(prodAlgo, F)) gmean;
+        gmean.put(val);
+        return gmean.gmean;
+    }
+}
+
+/// ditto
+template gmean(ProdAlgo prodAlgo = ProdAlgo.appropriate)
+{
+    import std.traits: CommonType;
+
+    /++
+    Params:
+        r = range, must be finite iterable
+    +/
+    @fmamath gmeanType!Range gmean(Range)(Range r)
+        if (isIterable!Range)
+    {
+        alias F = typeof(return);
+        return .gmean!(F, prodAlgo)(r.move);
+    }
+    
+    /++
+    Params:
+        val = values
+    +/
+    @fmamath gmeanType!(CommonType!T) gmean(T...)(T val)
+        if (T.length > 0 &&
+            !is(CommonType!T == void))
+    {
+        alias F = typeof(return);
+        return .gmean!(F, prodAlgo)(val);
+    }
+}
+
+/// ditto
+template gmean(F, string prodAlgo)
+{
+    mixin("alias gmean = .gmean!(F, ProdAlgo." ~ prodAlgo ~ ");");
+}
+
+/// ditto
+template gmean(string prodAlgo)
+{
+    mixin("alias gmean = .gmean!(ProdAlgo." ~ prodAlgo ~ ");");
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    assert(gmean([1.0, 2, 3]).approxEqual(1.81712059));
+    
+    assert(gmean!float([1, 2, 3, 4, 5, 6].sliced(3, 2)).approxEqual(2.99379516));
+    
+    assert(is(typeof(gmean!float([1, 2, 3])) == float));
+}
+
+/// Geometric mean of vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 2.0].sliced;
+
+    assert(x.gmean.approxEqual(2.36178395));
+}
+
+/// Geometric mean of matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [3.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 2.0]
+    ].fuse;
+
+    assert(x.gmean.approxEqual(2.36178395));
+}
+
+/// Column gmean of matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.topology: alongDim, byDim, map;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [3.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 2.0]
+    ].fuse;
+    auto result = [2.44948974, 2.73861278, 2.73861278, 1.41421356, 2.29128784, 2.91547594];
+
+    // Use byDim or alongDim with map to compute mean of row/column.
+    assert(x.byDim!1.map!gmean.all!approxEqual(result));
+    assert(x.alongDim!0.map!gmean.all!approxEqual(result));
+
+    // FIXME
+    // Without using map, computes the mean of the whole slice
+    // assert(x.byDim!1.gmean.all!approxEqual(result));
+    // assert(x.alongDim!0.gmean.all!approxEqual(result));
+}
+
+/// Can also set algorithm or output type
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: repeat;
+    import mir.math.common: approxEqual;
+
+    auto x = [5120.0, 7340032, 32, 3758096384].sliced;
+
+    assert(x.gmean!"naive".approxEqual(259281.45295212));
+    assert(x.gmean!(float, "separateExponentAccumulation").approxEqual(259281.45295212));
+
+    auto y = uint.max.repeat(3);
+    assert(y.gmean!float.approxEqual(cast(float) uint.max));
+}
+
+/++
+For integral slices, pass output type as template parameter to ensure output
+type is correct
++/
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [5, 1, 1, 2, 4, 4,
+              2, 7, 5, 1, 2, 10].sliced;
+    assert(x.gmean!double.approxEqual(2.79160522));
+}
+
+/// Mean works for user-defined types, provided exponentiation works for them
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    static struct Foo {
+        float x;
+        alias x this;
+    }
+
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [Foo(1.0), Foo(2.0), Foo(3.0)].sliced;
+    assert(x.gmean.approxEqual(1.81712059));
+}
+
+/// Compute gmean tensors along specified dimention of tensors
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: alongDim, iota, map;
+    import mir.math.common: approxEqual;
+    
+    auto x = [
+        [1.0, 2, 3],
+        [4.0, 5, 6]
+    ].fuse;
+
+    assert(x.gmean.approxEqual(2.99379516));
+
+    auto result0 = [2.0, 3.16227766, 4.24264069];
+    assert(x.alongDim!0.map!gmean.all!approxEqual(result0));
+    assert(x.alongDim!(-2).map!gmean.all!approxEqual(result0));
+
+    auto result1 = [1.81712059, 4.93242414];
+    assert(x.alongDim!1.map!gmean.all!approxEqual(result1));
+    assert(x.alongDim!(-1).map!gmean.all!approxEqual(result1));
+
+    auto y = [
+        [
+            [1.0, 2, 3],
+            [4.0, 5, 6]
+        ], [
+            [7.0, 8, 9],
+            [10.0, 9, 10]
+        ]
+    ].fuse;
+    
+    auto result3 = [
+        [2.64575131, 4.0,        5.19615242],
+        [6.32455532, 6.70820393, 7.74596669]
+    ];
+    assert(y.alongDim!0.map!gmean.all!approxEqual(result3));
+}
+
+/// Arbitrary gmean
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: approxEqual;
+    assert(gmean(1.0, 2, 3).approxEqual(1.81712059));
+    assert(gmean!float(1, 2, 3).approxEqual(1.81712059));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    assert([1.0, 2, 3, 4].gmean.approxEqual(2.21336384));
+}
+
 
 /++
 Computes the median of `slice`.

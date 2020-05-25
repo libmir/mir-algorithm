@@ -41,7 +41,6 @@ enum ProdAlgo
 ///
 struct ProdAccumulator(T, ProdAlgo prodAlgo)
 {
-
     alias F = Unqual!T;
 
     static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
@@ -224,6 +223,20 @@ unittest
     assert(x.prod == 6);
     x.put(4);
     assert(x.prod == 24);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    ProdAccumulator!(double, ProdAlgo.naive) x;
+    x.put([1.0, 2, 3].sliced);
+    assert(x.prod.approxEqual(6));
+    x.put(4);
+    assert(x.prod.approxEqual(24));
 }
 
 template ResolveProdAlgoType(ProdAlgo prodAlgo, F)
