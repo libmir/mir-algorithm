@@ -83,9 +83,9 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
 
     static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
     {
-    	///
-    	this(long exp, F x)
-    	{
+        ///
+        this(long exp, F x)
+        {
             this.exp = exp;
             this.x = x;
         }
