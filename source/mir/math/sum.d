@@ -1945,7 +1945,7 @@ package template sumType(Range)
     }))
         alias sumType = typeof(T.init + T.init);
     else
-        static assert(0, "Cann't sum elements of type " ~ T.stringof);
+        static assert(0, "Can't sum elements of type " ~ T.stringof);
 }
 
 /++
