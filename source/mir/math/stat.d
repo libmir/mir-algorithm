@@ -565,8 +565,6 @@ struct GMeanAccumulator(T, ProdAlgo prodAlgo)
     ///
     F gmean(F = T)() @property
     {
-        //import mir.math.common: pow;
-        //return pow(cast(F) prodAccumulator.prod, cast(F) 1 / cast(F) count);
         return nthroot(cast(F) prodAccumulator.prod, cast(F) count);
     }
 
@@ -628,20 +626,16 @@ unittest
 
 package template gmeanType(T)
 {
-    //import mir.math.common: pow;
     import mir.math.numeric: prodType;
 
     alias U = prodType!T;
     static if (__traits(compiles, {
         auto temp = U.init * U.init;
-        //auto a = pow(temp, cast(U) 1/ cast(U) 2);
         auto a = nthroot(temp, cast(U) 2);
         temp *= U.init;
         a = nthroot(temp, cast(U) 3);
-        //a = pow(temp, cast(U) 1 / cast(U) 3);
     }))
         alias gmeanType = typeof(nthroot(U.init * U.init, cast(U) 2));
-        //alias gmeanType = typeof(pow(U.init * U.init, cast(U) 1 / cast(U) 2));
     else
         static assert(0, "Can't gmean elements of type " ~ U.stringof);
 }
