@@ -24,7 +24,7 @@ import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.math.numeric: ProdAlgo;
 import mir.primitives;
-import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
+import std.traits: isArray, isFloatingPoint, isMutable, isIterable, isIntegral;
 
 // version = mir_test_topN;
 
@@ -444,17 +444,109 @@ unittest
 }
 
 private
-auto pow(T, U)(in T x, in U power) {
-    static if (is(U : int)) {
-        import mir.math.common: powi;
-        return powi(x, power);
-    } else static if (isFloatingPoint!U && is(T == U)) {
-        import mir.math.common: pow;
-        return pow(x, power);
-    } else {
-        import std.math: pow;
-        return pow(x, power);
+I nthroot(I, J)(in I x, in J n)
+    if (isIntegral!(I) && isIntegral!J)
+{
+    import mir.math.common: powi, pow;
+    import std.traits: Largest;
+    
+    assert(x > 0 && n > 0, "nthroot: Can only take nth root of positive numbers with n > 0");
+    assert(n <= int.max, "nthroot: powi can only handle powers that fit in an int");
+
+    if (x < 2) return n;
+    
+    static if (is(J == Largest!(J, int)))
+        int n1 = cast(int) n - 1;
+    else
+        J n1 = n - 1;
+
+    I n2 = I(n);
+    I n3 = I(n - 1);
+    I c = I(1);
+    I d = (n3 + x) / n2;
+    assert(d <= pow(cast(double) I.max, cast(double) 1 / cast(double) n1), "nthroot: the value of d would result in overflow");
+    I e = (n3 * d + x / powi(d, n1)) / n2;
+    while (c != d && c != e) {
+        c = d;
+        d = e;
+        assert(e <= pow(cast(double) I.max, cast(double) 1 / cast(double) n1), "nthroot: the value of e would result in overflow");
+        e = (n3 * e + x / powi(e, n1)) / n2;
     }
+    if (d < e) return d;
+    return e;
+}
+
+version(mir_test_gmean)
+@safe @nogc pure nothrow
+unittest {
+    assert(nthroot(9, 2) == 3);
+    assert(nthroot(8, 3) == 2);
+    assert(nthroot(9, 3) == 2);
+}
+
+version(mir_test_gmean)
+@safe @nogc pure nothrow
+unittest {
+    import mir.ndslice.topology: repeat;
+
+    auto x = cast(ulong) uint.max * uint.max;
+    assert(nthroot(x, 2) == uint.max);
+}
+
+private
+F nthroot(I, F)(in I x, in F n)
+    if (isIntegral!I && isFloatingPoint!F)
+{
+    import std.traits: Unqual;
+
+    return nthroot(cast(Unqual!F) x, cast(Unqual!F) n);
+}
+
+version(mir_test_gmean)
+@safe @nogc pure nothrow
+unittest {
+    import mir.math.common: approxEqual;
+    assert(nthroot(9, 2.5).approxEqual(2.40822468));
+}
+
+private
+F nthroot(F, I)(in F x, in I n)
+    if (isFloatingPoint!F && isIntegral!I)
+{
+    import std.traits: Unqual;
+
+    return nthroot(x, cast(Unqual!F) n);
+}
+
+version(mir_test_gmean)
+@safe @nogc pure nothrow
+unittest {
+    import mir.math.common: approxEqual;
+    assert(nthroot(9.5, 2).approxEqual(3.08220700));
+}
+
+private
+F nthroot(F, G)(in F x, in G n)
+    if (isFloatingPoint!F && isFloatingPoint!G)
+{
+    import mir.math.common: sqrt;
+    import mir.math.common: pow;
+
+    assert(x > 0 && n > 0, "nthroot: Can only take nth root of positive numbers with n > 0");
+
+    if (n == 2) {
+    	return sqrt(x);    
+    } else {    
+        return pow(x, cast(G) 1 / n);
+    }
+}
+
+version(mir_test_gmean)
+@safe @nogc pure nothrow
+unittest {
+    import mir.math.common: approxEqual;
+    assert(nthroot(9.5, 2.0).approxEqual(3.08220700));
+    assert(nthroot(9.5, 2.5).approxEqual(2.46087436));
 }
 
 /++
@@ -473,7 +565,9 @@ struct GMeanAccumulator(T, ProdAlgo prodAlgo)
     ///
     F gmean(F = T)() @property
     {
-        return pow(cast(F) prodAccumulator.prod, cast(F) 1 / cast(F) count);
+        //import mir.math.common: pow;
+        //return pow(cast(F) prodAccumulator.prod, cast(F) 1 / cast(F) count);
+        return nthroot(cast(F) prodAccumulator.prod, cast(F) count);
     }
 
     ///
@@ -504,7 +598,7 @@ struct GMeanAccumulator(T, ProdAlgo prodAlgo)
 }
 
 ///
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
@@ -518,7 +612,7 @@ unittest
     assert(x.gmean.approxEqual(2.60517108));
 }
 
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
@@ -534,17 +628,20 @@ unittest
 
 package template gmeanType(T)
 {
-    import mir.math.common: pow;
+    //import mir.math.common: pow;
     import mir.math.numeric: prodType;
 
     alias U = prodType!T;
     static if (__traits(compiles, {
         auto temp = U.init * U.init;
-        auto a = pow(temp, cast(U) 1 / cast(U) 2);
+        //auto a = pow(temp, cast(U) 1/ cast(U) 2);
+        auto a = nthroot(temp, cast(U) 2);
         temp *= U.init;
-        a = pow(temp, cast(U) 1 / cast(U) 3);
+        a = nthroot(temp, cast(U) 3);
+        //a = pow(temp, cast(U) 1 / cast(U) 3);
     }))
-        alias gmeanType = typeof((U.init * U.init) ^^ (cast(U) 1 / cast(U) 2));
+        alias gmeanType = typeof(nthroot(U.init * U.init, cast(U) 2));
+        //alias gmeanType = typeof(pow(U.init * U.init, cast(U) 1 / cast(U) 2));
     else
         static assert(0, "Can't gmean elements of type " ~ U.stringof);
 }
@@ -627,7 +724,7 @@ template gmean(string prodAlgo)
 }
 
 ///
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
@@ -642,7 +739,7 @@ unittest
 }
 
 /// Geometric mean of vector
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
@@ -656,7 +753,7 @@ unittest
 }
 
 /// Geometric mean of matrix
-version(mir_test)
+version(mir_test_gmean)
 @safe pure
 unittest
 {
@@ -672,7 +769,7 @@ unittest
 }
 
 /// Column gmean of matrix
-version(mir_test)
+version(mir_test_gmean)
 @safe pure
 unittest
 {
@@ -698,7 +795,7 @@ unittest
 }
 
 /// Can also set algorithm or output type
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
@@ -711,15 +808,26 @@ unittest
     assert(x.gmean!"naive".approxEqual(259281.45295212));
     assert(x.gmean!(float, "separateExponentAccumulation").approxEqual(259281.45295212));
 
-    auto y = uint.max.repeat(3);
+    auto y = uint.max.repeat(2);
+    assert(y.gmean!ulong == uint.max);
     assert(y.gmean!float.approxEqual(cast(float) uint.max));
+}
+
+version(mir_test_gmean)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.topology: repeat;
+    
+    auto y = uint.max.repeat(3);
+    assert(y.gmean!ulong == uint.max);
 }
 
 /++
 For integral slices, pass output type as template parameter to ensure output
 type is correct
 +/
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
@@ -731,8 +839,8 @@ unittest
     assert(x.gmean!double.approxEqual(2.79160522));
 }
 
-/// Mean works for user-defined types, provided exponentiation works for them
-version(mir_test)
+/// Mean works for user-defined types, provided the nth root can be taken for them
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
@@ -749,7 +857,7 @@ unittest
 }
 
 /// Compute gmean tensors along specified dimention of tensors
-version(mir_test)
+version(mir_test_gmean)
 @safe pure
 unittest
 {
@@ -791,7 +899,7 @@ unittest
 }
 
 /// Arbitrary gmean
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow @nogc
 unittest
 {
@@ -800,7 +908,7 @@ unittest
     assert(gmean!float(1, 2, 3).approxEqual(1.81712059));
 }
 
-version(mir_test)
+version(mir_test_gmean)
 @safe pure nothrow
 unittest
 {
