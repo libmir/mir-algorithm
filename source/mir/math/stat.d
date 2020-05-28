@@ -450,8 +450,6 @@ F nthroot(F)(in F x, in size_t n)
 {
     import mir.math.common: sqrt, pow;
 
-    assert(x > 0, "nthroot: Can only take nth root of positive numbers");
-
     if (n > 2) {
         return pow(x, cast(F) 1 / cast(F) n);
     } else if (n == 2) {
