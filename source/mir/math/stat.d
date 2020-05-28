@@ -490,7 +490,9 @@ struct GMeanAccumulator(T, ProdAlgo prodAlgo)
     F gmean(F = T)() @property
         if (isFloatingPoint!F)
     {
-        return nthroot(cast(F) prodAccumulator.prod, count);
+        import mir.math.common: exp2;
+
+        return nthroot(cast(F) prodAccumulator.mantissa, count) * exp2(cast(F) prodAccumulator.exp / count);
     }
 
     ///
