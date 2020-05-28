@@ -554,19 +554,36 @@ unittest
 package template gmeanType(T)
 {
     import mir.math.numeric: prodType;
-
+    
     alias U = prodType!T;
-    static assert(isFloatingPoint!U, "gmeanType: U must be a floating point type, not " ~ U.stringof);
 
-    static if (__traits(compiles, {
-        auto temp = U.init * U.init;
-        auto a = nthroot(temp, 2);
-        temp *= U.init;
-        a = nthroot(temp, 3);
-    }))
-        alias gmeanType = typeof(nthroot(U.init * U.init, 2));
-    else
+    static if (isFloatingPoint!U) {
+        static if (__traits(compiles, {
+            auto temp = U.init * U.init;
+            auto a = nthroot(temp, 2);
+            temp *= U.init;
+            a = nthroot(temp, 3);
+        }))
+            alias gmeanType = typeof(nthroot(U.init * U.init, 2));
+        else
+            static assert(0, "gmeanType: Can't gmean elements of type " ~ U.stringof);
+    } else static if (is(U : float) || is(U : double) || is(U : real)) {
+        alias gmeanType = gmeanType!double;
+    } else {
         static assert(0, "gmeanType: Can't gmean elements of type " ~ U.stringof);
+    }
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(gmeanType!int == double));
+    static assert(is(gmeanType!double == double));
+    static assert(is(gmeanType!float == float));
+    static assert(is(gmeanType!(int[]) == double));
+    static assert(is(gmeanType!(double[]) == double));
+    static assert(is(gmeanType!(float[]) == float));    
 }
 
 /++
@@ -578,7 +595,6 @@ Returns:
 See_also: $(SUBREF prod, ProdAlgo)
 +/
 template gmean(F, ProdAlgo prodAlgo = ProdAlgo.appropriate)
-    if (isFloatingPoint!F)
 {
     import mir.math.numeric: ResolveProdAlgoType;
 
@@ -741,7 +757,8 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct
+type is correct. By default, if an input type is not floating point, then if
+it is convertible to floating point, the result will be a double.
 +/
 version(mir_test)
 @safe pure nothrow
@@ -752,7 +769,10 @@ unittest
 
     auto x = [5, 1, 1, 2, 4, 4,
               2, 7, 5, 1, 2, 10].sliced;
-    assert(x.gmean!double.approxEqual(2.79160522));
+    assert(x.gmean!float.approxEqual(2.79160522));
+    
+    auto y = x.gmean;
+    static assert(is(typeof(y) == double));
 }
 
 /// Mean works for user-defined types, provided the nth root can be taken for them
@@ -832,6 +852,14 @@ unittest
     assert([1.0, 2, 3, 4].gmean.approxEqual(2.21336384));
 }
 
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+
+    assert(gmean([1, 2, 3]).approxEqual(1.81712059));
+}
 
 /++
 Computes the median of `slice`.
