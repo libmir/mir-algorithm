@@ -1701,11 +1701,28 @@ template sum(F, Summation summation = Summation.appropriate)
             }
         }
     }
+
+    ///
+    F sum(scope const F[] r...)
+    {
+        static if (isComplex!F && summation == Summation.precise)
+        {
+            return sum(r, summationInitValue!F);
+        }
+        else
+        {
+            Summator!(F, ResolveSummationType!(summation, const(F)[], F)) sum;
+            sum.put(r);
+            return sum.sum;
+        }
+    }
 }
 
 ///ditto
 template sum(Summation summation = Summation.appropriate)
 {
+    import std.traits: CommonType;
+
     ///
     sumType!Range sum(Range)(Range r)
         if (isIterable!Range)
@@ -1721,6 +1738,15 @@ template sum(Summation summation = Summation.appropriate)
     {
         import core.lifetime: move;
         return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move, seed);
+    }
+
+    ///
+    CommonType!T sum(T...)(T r)
+        if (T.length > 0 &&
+            !is(CommonType!T == void))
+    {
+        alias U = typeof(return);
+        return .sum!(CommonType!T, ResolveSummationType!(summation, U[], U))(r);
     }
 }
 
@@ -1838,6 +1864,24 @@ unittest
         assert(r == ar.sum!kbn());
         assert(r == ar.sum!kb2());
     }
+}
+
+version(mir_test)
+unittest
+{
+    assert(sum(1) == 1);
+    assert(sum(1, 2, 3) == 6);
+    assert(sum(1.0, 2.0, 3.0) == 6);
+    assert(sum(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6 + 6i));
+}
+
+version(mir_test)
+unittest
+{
+    assert(sum!float(1) == 1f);
+    assert(sum!float(1, 2, 3) == 6f);
+    assert(sum!float(1.0, 2.0, 3.0) == 6f);
+    assert(sum!cfloat(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6f + 6i));
 }
 
 version(LDC)
