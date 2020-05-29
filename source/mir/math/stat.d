@@ -28,6 +28,152 @@ import mir.internal.utility: isFloatingPoint;
 
 // version = mir_test_topN;
 
+package template statType(T, bool checkComplex = true)
+{
+    import mir.internal.utility: isFloatingPoint, isComplex;
+
+    static if (isFloatingPoint!T || (checkComplex && isComplex!T)) {
+        alias statType = T;
+    } else static if (is(T : double)) {
+        alias statType = double;
+    } else static if (checkComplex) {
+        static if (is(T : cdouble)) {
+            alias statType = cdouble;
+        } else {
+            static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point (or complex floating point) type");
+        }
+    } else {
+        static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point type");
+    }
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(statType!int == double));
+    static assert(is(statType!uint == double));
+    static assert(is(statType!double == double));
+    static assert(is(statType!float == float));
+    static assert(is(statType!real == real));
+    static assert(is(statType!cfloat == cfloat));
+    static assert(is(statType!cdouble == cdouble));
+    static assert(is(statType!creal == creal));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        float x;
+        alias x this;
+    }
+    
+    static struct Bar {
+        cfloat x;
+        alias x this;
+    }
+
+    static assert(is(statType!Foo == double)); // note: this is not float
+    static assert(is(statType!Bar == cdouble)); // note: this is not cfloat
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        double x;
+        alias x this;
+    }
+    
+    static struct Bar {
+        cdouble x;
+        alias x this;
+    }
+
+    static assert(is(statType!Foo == double));
+    static assert(is(statType!Bar == cdouble));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        real x;
+        alias x this;
+    }
+    
+    static struct Bar {
+        creal x;
+        alias x this;
+    }
+
+    static assert(is(statType!Foo == double)); // note: this is not real
+    static assert(is(statType!Bar == cdouble)); // note: this is not creal
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        int x;
+        alias x this;
+    }
+
+    static assert(is(statType!Foo == double)); // note: this is not ints
+}
+
+package template meanType(T)
+{
+    import mir.math.sum: sumType;
+    import mir.internal.utility: isFloatingPoint, isComplex;
+    
+    alias U = sumType!T;
+
+    static if (__traits(compiles, {
+        auto temp = U.init + U.init;
+        auto a = temp / 2;
+        temp += U.init;
+    })) {
+        alias V = typeof((U.init + U.init) / 2);
+        alias meanType = statType!V;
+    } else {
+        static assert(0, "meanType: Can't calculate mean of elements of type " ~ U.stringof);
+    }
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(meanType!(int[]) == double));
+    static assert(is(meanType!(double[]) == double));
+    static assert(is(meanType!(float[]) == float));
+    static assert(is(meanType!(cfloat[]) == cfloat));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        float x;
+        alias x this;
+    }
+    
+    static struct Bar {
+        cfloat x;
+        alias x this;
+    }
+
+    static assert(is(meanType!(Foo[]) == float));
+    static assert(is(meanType!(Bar[]) == cfloat));
+}
+
 /++
 Output range for mean.
 +/
@@ -100,10 +246,10 @@ unittest
 }
 
 /++
-Computes the average of the input.
+Computes the mean of the input.
 
 Returns:
-    The average of all the elements in the input.
+    The mean of all the elements in the input, must be floating point or complex
 
 See_also: 
     $(SUBREF sum, Summation)
@@ -114,10 +260,11 @@ template mean(F, Summation summation = Summation.appropriate)
     Params:
         r = range, must be finite iterable
     +/
-    @fmamath F mean(Range)(Range r)
+    @fmamath meanType!F mean(Range)(Range r)
         if (isIterable!Range)
     {
-        MeanAccumulator!(F, ResolveSummationType!(summation, Range, F)) mean;
+        alias G = typeof(return);
+        MeanAccumulator!(G, ResolveSummationType!(summation, Range, G)) mean;
         mean.put(r.move);
         return mean.mean;
     }
@@ -126,9 +273,10 @@ template mean(F, Summation summation = Summation.appropriate)
     Params:
         val = values
     +/
-    @fmamath F mean(scope const F[] val...)
+    @fmamath meanType!F mean(scope const F[] val...)
     {
-        MeanAccumulator!(F, ResolveSummationType!(summation, const(F)[], F)) mean;
+        alias G = typeof(return);
+        MeanAccumulator!(G, ResolveSummationType!(summation, const(G)[], G)) mean;
         mean.put(val);
         return mean.mean;
     }
@@ -141,17 +289,18 @@ template mean(Summation summation = Summation.appropriate)
     Params:
         r = range, must be finite iterable
     +/
-    @fmamath sumType!Range mean(Range)(Range r)
+    @fmamath meanType!Range mean(Range)(Range r)
         if (isIterable!Range)
     {
-        return .mean!(sumType!Range, summation)(r.move);
+        alias F = typeof(return);
+        return .mean!(F, summation)(r.move);
     }
     
     /++
     Params:
         ar = values
     +/
-    @fmamath sumType!T mean(T)(scope const T[] ar...)
+    @fmamath meanType!T mean(T)(scope const T[] ar...)
     {
         alias F = typeof(return);
         return .mean!(F, summation)(ar);
@@ -187,43 +336,49 @@ unittest
 
 /// Mean of vector
 version(mir_test)
-@safe @nogc pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
 
-    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
-                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
-    assert(x.sliced.mean == 29.25 / 12);
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+    assert(x.mean == 29.25 / 12);
 }
 
 /// Mean of matrix
 version(mir_test)
-@safe @nogc pure nothrow
+@safe pure
 unittest
 {
-    import mir.ndslice.slice: sliced;
+    import mir.ndslice.fuse: fuse;
 
-    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
-                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
-    assert(x.sliced(2, 6).mean == 29.25 / 12);
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+
+    assert(x.mean == 29.25 / 12);
 }
 
 /// Column mean of matrix
 version(mir_test)
-@safe @nogc pure nothrow
+@safe pure
 unittest
 {
+    import mir.ndslice.fuse: fuse;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: alongDim, byDim, map;
 
-    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
-                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
-    static immutable result = [1, 4.25, 3.25, 1.5, 2.5, 2.125];
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+    auto result = [1, 4.25, 3.25, 1.5, 2.5, 2.125].sliced;
 
     // Use byDim or alongDim with map to compute mean of row/column.
-    assert(x.sliced(2, 6).byDim!1.map!mean == result);
-    assert(x.sliced(2, 6).alongDim!0.map!mean == result);
+    assert(x.byDim!1.map!mean == result);
+    assert(x.alongDim!0.map!mean == result);
 
     // FIXME
     // Without using map, computes the mean of the whole slice
@@ -233,7 +388,7 @@ unittest
 
 /// Can also set algorithm or output type
 version(mir_test)
-@safe @nogc pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -241,9 +396,9 @@ unittest
 
     //Set sum algorithm or output type
 
-    static immutable a = [1, 1e100, 1, -1e100];
+    auto a = [1, 1e100, 1, -1e100].sliced;
 
-    auto x = a.sliced * 10_000;
+    auto x = a * 10_000;
     assert(x.mean!"kbn" == 20_000 / 4);
     assert(x.mean!"kb2" == 20_000 / 4);
     assert(x.mean!"precise" == 20_000 / 4);
@@ -255,50 +410,59 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct
+type is correct. By default, if an input type is not floating point, then the
+result will be a dobule if it is implicitly convertible to a floating point type.
 +/
 version(mir_test)
-@safe @nogc pure nothrow
+//@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
-    static immutable x = [0, 1, 1, 2, 4, 4,
-                          2, 7, 5, 1, 2, 0];
-    assert(approxEqual(x.sliced.mean!double, 29.0 / 12, 1.0e-10));
+    auto x = [0, 1, 1, 2, 4, 4,
+              2, 7, 5, 1, 2, 0].sliced;
+
+    auto y = x.mean;
+    assert(y.approxEqual(29.0 / 12, 1.0e-10));
+    static assert(is(typeof(y) == double));
+
+    assert(x.mean!float.approxEqual(29f / 12, 1.0e-10));
 }
 
-/// Mean works for complex numbers (and other user-defined types)
+/++
+Mean works for complex numbers and other user-defined types (provided they
+can be converted to a floating point or complex type)
++/
 version(mir_test)
-@safe @nogc pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
 
-    static immutable cdouble[] x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i];
-    static immutable cdouble result = 2.5 + 3.5i;
-    assert(x.sliced.mean == result);
+    auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
+    assert(x.mean.approxEqual(2.5 + 3.5i));
 }
 
 /// Compute mean tensors along specified dimention of tensors
 version(mir_test)
-@safe @nogc pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice: alongDim, iota, as, map;
-    /*
+    /++
       [[0,1,2],
        [3,4,5]]
-     */
+     +/
     auto x = iota(2, 3).as!double;
     assert(x.mean == (5.0 / 2.0));
 
-    static immutable m0 = [(0.0+3.0)/2.0, (1.0+4.0)/2.0, (2.0+5.0)/2.0];
+    auto m0 = [(0.0+3.0)/2.0, (1.0+4.0)/2.0, (2.0+5.0)/2.0];
     assert(x.alongDim!0.map!mean == m0);
     assert(x.alongDim!(-2).map!mean == m0);
 
-    static immutable m1 = [(0.0+1.0+2.0)/3.0, (3.0+4.0+5.0)/3.0];
+    auto m1 = [(0.0+1.0+2.0)/3.0, (3.0+4.0+5.0)/3.0];
     assert(x.alongDim!1.map!mean == m1);
     assert(x.alongDim!(-1).map!mean == m1);
 
@@ -321,8 +485,70 @@ unittest
     assert([1.0, 2, 3, 4].mean == 2.5);
 }
 
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, alongDim, map;
+    import mir.math.common: approxEqual;
+    import mir.algorithm.iteration: all;
+
+    auto x = iota([2, 2], 1);
+    auto y = x.alongDim!1.map!mean;
+    assert(y.all!approxEqual([1.5, 3.5]));
+    static assert(is(meanType!(typeof(y)) == double));
+}
+
+package template hmeanType(T)
+{
+    import mir.math.sum: sumType;
+    
+    alias U = sumType!T;
+
+    static if (__traits(compiles, {
+        U t = U.init + cast(U) 1; //added for when U.init = 0
+        auto temp = cast(U) 1 / t + cast(U) 1 / t;
+    })) {
+        alias V = typeof(cast(U) 1 / ((cast(U) 1 / U.init + cast(U) 1 / U.init) / cast(U) 2));
+        alias hmeanType = statType!V;
+    } else {
+        static assert(0, "meanType: Can't calculate hmean of elements of type " ~ U.stringof);
+    }
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(hmeanType!(int[]) == double));
+    static assert(is(hmeanType!(double[]) == double));
+    static assert(is(hmeanType!(float[]) == float)); 
+    static assert(is(hmeanType!(cfloat[]) == cfloat));    
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        float x;
+        alias x this;
+    }
+    
+    static struct Bar {
+        cfloat x;
+        alias x this;
+    }
+
+    static assert(is(hmeanType!(Foo[]) == float));
+    static assert(is(hmeanType!(Bar[]) == cfloat));
+}
+
 /++
-Computes the harmonic mean of a range.
+Computes the harmonic mean of the input.
+
+Returns:
+    harmonic mean of all the elements of the input, must be floating point
 
 See_also: 
     $(SUBREF sum, Summation)
@@ -332,23 +558,25 @@ template hmean(F, Summation summation = Summation.appropriate)
     /++
     Params:
         r = range
-    Returns:
-        harmonic mean of the range
     +/
-    @fmamath F hmean(Range)(Range r)
+    @fmamath hmeanType!F hmean(Range)(Range r)
         if (isIterable!Range)
     {
         import mir.ndslice.topology: map;
-        static if (summation == Summation.fast && __traits(compiles, r.move.map!"1.0 / a"))
+
+        alias G = typeof(return);
+        auto numerator = cast(G) 1;
+
+        static if (summation == Summation.fast && __traits(compiles, r.move.map!"numerator / a"))
         {
-            return 1.0 / r.move.map!"1.0 / a".mean!(F, summation);
+            return numerator / r.move.map!"numerator / a".mean!(G, summation);
         }
         else
         {
-            MeanAccumulator!(F, ResolveSummationType!(summation, Range, F)) imean;
+            MeanAccumulator!(G, ResolveSummationType!(summation, Range, G)) imean;
             foreach (e; r)
-                imean.put(1.0 / e);
-            return 1.0 / imean.mean;
+                imean.put(numerator / e);
+            return numerator / imean.mean;
         }
     }
 }
@@ -359,13 +587,12 @@ template hmean(Summation summation = Summation.appropriate)
     /++
     Params:
         r = range
-    Returns:
-        harmonic mean of the range
     +/
-    @fmamath sumType!Range hmean(Range)(Range r)
+    @fmamath hmeanType!Range hmean(Range)(Range r)
         if (isIterable!Range)
     {
-        return .hmean!(typeof(1.0 / sumType!Range.init), summation)(r.move);
+        alias G = typeof(return);
+        return .hmean!(G, summation)(r.move);
     }
 }
 
@@ -383,12 +610,13 @@ template hmean(string summation)
 
 /// Harmonic mean of vector
 version(mir_test)
-pure @safe nothrow @nogc
+@safe pure nothrow
 unittest
 {
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
-    static immutable x = [20.0, 100.0, 2000.0, 10.0, 5.0, 2.0];
+    auto x = [20.0, 100.0, 2000.0, 10.0, 5.0, 2.0].sliced;
 
     assert(x.hmean.approxEqual(6.97269));
 }
@@ -401,7 +629,10 @@ unittest
     import mir.math.common: approxEqual;
     import mir.ndslice.fuse: fuse;
 
-    auto x = [[20.0, 100.0, 2000.0], [10.0, 5.0, 2.0]].fuse;
+    auto x = [
+        [20.0, 100.0, 2000.0], 
+        [10.0, 5.0, 2.0]
+    ].fuse;
 
     assert(x.hmean.approxEqual(6.97269));
 }
@@ -430,20 +661,58 @@ unittest
 
 /// Can also pass arguments to hmean
 version(mir_test)
-pure @safe nothrow @nogc
+pure @safe nothrow
 unittest
 {
     import mir.ndslice.topology: repeat;
+    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
     //Set sum algorithm or output type
-    static immutable x = [1, 1e-100, 1, -1e-100];
+    auto x = [1, 1e-100, 1, -1e-100].sliced;
 
     assert(x.hmean!"kb2".approxEqual(2));
     assert(x.hmean!"precise".approxEqual(2));
 
     //Provide the summation type
     assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
+}
+
+/++
+For integral slices, pass output type as template parameter to ensure output
+type is correct. By default, if an input type is not floating point, then the
+result will be a dobule if it is implicitly convertible to a floating point type.
++/
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [20, 100, 2000, 10, 5, 2].sliced;
+
+    auto y = x.hmean;
+
+    assert(y.approxEqual(6.97269));
+    static assert(is(typeof(y) == double));
+
+    assert(x.hmean!float.approxEqual(6.97269));
+}
+
+/++
+hmean works for complex numbers and other user-defined types (provided they
+can be converted to a floating point or complex type)
++/
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
+    assert(x.hmean.approxEqual(1.97110904 + 3.14849332i));
 }
 
 private
@@ -560,20 +829,15 @@ package template gmeanType(T)
     
     alias U = prodType!T;
 
-    static if (isFloatingPoint!U) {
-        static if (__traits(compiles, {
-            auto temp = U.init * U.init;
-            auto a = nthroot(temp, 2);
-            temp *= U.init;
-            a = nthroot(temp, 3);
-        }))
-            alias gmeanType = typeof(nthroot(U.init * U.init, 2));
-        else
-            static assert(0, "gmeanType: Can't gmean elements of type " ~ U.stringof);
-    } else static if (is(U : float) || is(U : double) || is(U : real)) {
-        alias gmeanType = gmeanType!double;
+    static if (__traits(compiles, {
+        auto temp = U.init * U.init;
+        auto a = nthroot(temp, 2);
+        temp *= U.init;
+    })) {
+        alias V = typeof(nthroot(U.init * U.init, 2));
+        alias gmeanType = statType!(V, false);
     } else {
-        static assert(0, "gmeanType: Can't gmean elements of type " ~ U.stringof);
+        static assert(0, "gmeanType: Can't calculate gmean of elements of type " ~ U.stringof);
     }
 }
 
@@ -595,7 +859,7 @@ Computes the geometric average of the input.
 Params:
     r = range, must be finite iterable
 Returns:
-    The geometric average of all the elements in the input.
+    The geometric average of all the elements in the input, must be floating point
 
 See_also: 
     $(SUBREF numeric, prod)
@@ -720,8 +984,8 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct. By default, if an input type is not floating point, then if
-it is convertible to floating point, the result will be a double.
+type is correct. By default, if an input type is not floating point, then the
+result will be a dobule if it is implicitly convertible to a floating point type.
 +/
 version(mir_test)
 @safe pure nothrow
@@ -732,10 +996,11 @@ unittest
 
     auto x = [5, 1, 1, 2, 4, 4,
               2, 7, 5, 1, 2, 10].sliced;
-    assert(x.gmean!float.approxEqual(2.79160522));
-    
+
     auto y = x.gmean;
     static assert(is(typeof(y) == double));
+    
+    assert(x.gmean!float.approxEqual(2.79160522));
 }
 
 /// Mean works for user-defined types, provided the nth root can be taken for them

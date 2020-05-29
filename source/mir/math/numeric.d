@@ -162,25 +162,20 @@ unittest
 
 package template prodType(T)
 {
-    import mir.ndslice.slice: isSlice, DeepElementType;
+    import mir.math.sum: elementType;
 
-    static if (isIterable!T) {    
-        static if (isSlice!T)
-            alias U = Unqual!(DeepElementType!(T.This));
-        else
-            alias U = Unqual!(ForeachType!T);
-    } else {
-        alias U = Unqual!T;
-    }
+    alias U = elementType!T;
+    
+    static if (__traits(compiles, {
+        auto temp = U.init * U.init;
+        temp *= U.init;
+    })) {
+        import mir.math.stat: statType;
 
-    static if (isFloatingPoint!U) {
-        alias prodType = U;
-    } else static if (is(U : double)) {
-        alias prodType = double;
+        alias V = typeof(U.init * U.init);
+        alias prodType = statType!(V, false);
     } else {
-        static assert(0, "prodType: U must be a floating point type or " ~ 
-                         "implicitly convertible to a floating point type, " ~ 
-                         "not a " ~ U.stringof);
+        static assert(0, "prodType: Can't prod elements of type " ~ U.stringof);
     }
 }
 
