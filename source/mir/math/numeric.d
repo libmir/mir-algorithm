@@ -14,8 +14,8 @@ module mir.math.numeric;
 import mir.math.common;
 import mir.primitives;
 import std.range.primitives: isInputRange;
-
-import std.traits;
+import std.traits: Unqual, isMutable, isIterable, isPointer, ForeachType;
+import mir.internal.utility: isFloatingPoint;
 
 /++
 Product algorithms.
@@ -41,23 +41,24 @@ enum ProdAlgo
 ///
 struct ProdAccumulator(T, ProdAlgo prodAlgo)
 {
+
     alias F = Unqual!T;
 
     static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
     {
         static assert(isFloatingPoint!F, "ProdAccumulator: ProdAlgo.separateExponentAccumulation only valid with floating point types");
         ///
-        long exp = 1L;
+        long _exp = 1L;
         ///
-        F x = cast(F) 0.5;
+        F _x = cast(F) 0.5;
         ///
-        alias mantissa = x;
+        alias _mantissa = _x;
     }
     else
     static if (prodAlgo == ProdAlgo.naive)
     {
         ///
-        F p = cast(F) 1;
+        F _p = cast(F) 1;
     }
     else
     {
@@ -68,13 +69,13 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
     this(F value)
     {
         static if (prodAlgo == ProdAlgo.naive) {
-            this.p = value;
+            this._p = value;
         } else static if (prodAlgo == ProdAlgo.separateExponentAccumulation) {
             import mir.math.ieee: frexp;
 
             int lexp;
-            this.x = frexp(value, lexp);
-            this.exp = lexp;
+            this._x = frexp(value, lexp);
+            this._exp = lexp;
         } else {
             static assert(0, "ProdAccumulator: constructor not implemented");
         }
@@ -85,8 +86,8 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
         ///
         this(long exp, F x)
         {
-            this.exp = exp;
-            this.x = x;
+            this._exp = exp;
+            this._x = x;
         }
     }
 
@@ -97,18 +98,18 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
         {
             int lexp;
             import mir.math.ieee: frexp;
-            x *= frexp(e, lexp);
-            exp += lexp;
-            if (x.fabs < 0.5f)
+            this._x *= frexp(e, lexp);
+            this._exp += lexp;
+            if (this._x.fabs < 0.5f)
             {
-                x += x;
-                exp--;
+                this._x += this._x;
+                this._exp--;
             }
         }
         else
         static if (prodAlgo == ProdAlgo.naive)
         {
-            p *= e;
+            this._p *= e;
         }
     }
 
@@ -117,18 +118,18 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
     {
         static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
         {
-            exp += value.exp;
-            x *= value.x;
+            this._exp += value._exp;
+            this._x *= value._x;
             if (x.fabs < 0.5f)
             {
-                x += x;
-                exp--;
+                this._x += this._x;
+                this._exp--;
             }
         }
         else
         static if (prodAlgo == ProdAlgo.naive)
         {
-            p *= value.p;
+            this._p *= value._p;
         }
     }
     
@@ -168,15 +169,15 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
         {
             import mir.math.ieee: ldexp;
             int e =
-                exp > int.max ? int.max :
-                exp < int.min ? int.min :
-                cast(int) exp;
-            return ldexp(mantissa, e);
+                this._exp > int.max ? int.max :
+                this._exp < int.min ? int.min :
+                cast(int) this._exp;
+            return ldexp(this._mantissa, e);
         }
         else
         static if (prodAlgo == ProdAlgo.naive)
         {
-            return p;
+            return this._p;
         }
     }
 
@@ -185,7 +186,53 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
         ///
         ProdAccumulator!(T, prodAlgo) ldexp(long exp) const
         {
-            return typeof(return)(this.exp + exp, mantissa);
+            return typeof(return)(this._exp + exp, this._mantissa);
+        }
+    }
+
+    static if (prodAlgo == ProdAlgo.separateExponentAccumulation) {
+        ///
+        long exp()
+        {
+            return this._exp;
+        }
+
+    } else static if (prodAlgo == ProdAlgo.naive && 
+                      isFloatingPoint!T) {
+        ///
+        int exp()
+        {
+            import mir.math.ieee: frexp;
+            
+            int lexp;
+            auto val = frexp(this._p, lexp);
+            return lexp;
+        }
+    }
+
+    static if (prodAlgo == ProdAlgo.separateExponentAccumulation) {
+        ///
+        F x()
+        {
+            return this._x;
+        }
+    } else static if (prodAlgo == ProdAlgo.naive && isFloatingPoint!T) {
+        ///
+        F x()
+        {
+            import mir.math.ieee: frexp;
+            
+            int lexp;
+            return frexp(this._p, lexp);
+        }
+    }
+
+    static if (prodAlgo == ProdAlgo.separateExponentAccumulation ||
+               (prodAlgo == ProdAlgo.naive && isFloatingPoint!T)) {
+        ///
+        F mantissa()
+        {
+            return x();
         }
     }
 
@@ -196,18 +243,18 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
     ProdAccumulator!(T, prodAlgo) opUnary(string op : "-")() const
     {
         static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-            return typeof(return)(exp, -mantissa);
+            return typeof(return)(this._exp, -this._mantissa);
         else static if (prodAlgo == ProdAlgo.naive)
-            return typeof(return)(-p);
+            return typeof(return)(-this._p);
     }
 
     ///
     ProdAccumulator!(T, prodAlgo) opUnary(string op : "+")() const
     {
         static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-            return typeof(return)(exp, +mantissa);
+            return typeof(return)(this._exp, +this.mantissa);
         else static if (prodAlgo == ProdAlgo.naive)
-            return typeof(return)(+p);
+            return typeof(return)(+this._p);
     }
 }
 
