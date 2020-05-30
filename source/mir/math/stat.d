@@ -22,9 +22,8 @@ import core.lifetime: move;
 import mir.ndslice.slice: Slice, SliceKind;
 import mir.math.common: fmamath;
 import mir.math.sum;
-import mir.math.numeric: ProdAlgo;
 import mir.primitives;
-import std.traits: isArray, isMutable, isIterable, isIntegral;
+import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
 import mir.internal.utility: isFloatingPoint;
 
 // version = mir_test_topN;
@@ -476,7 +475,7 @@ unittest {
 /++
 Output range for gmean.
 +/
-struct GMeanAccumulator(T, ProdAlgo prodAlgo) 
+struct GMeanAccumulator(T) 
     if (isMutable!T && isFloatingPoint!T)
 {
     import mir.math.numeric: ProdAccumulator;
@@ -484,7 +483,7 @@ struct GMeanAccumulator(T, ProdAlgo prodAlgo)
     ///
     size_t count;
     ///
-    ProdAccumulator!(T, prodAlgo) prodAccumulator;
+    ProdAccumulator!T prodAccumulator;
 
     ///
     F gmean(F = T)() @property
@@ -530,7 +529,7 @@ unittest
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
-    GMeanAccumulator!(double, ProdAlgo.separateExponentAccumulation) x;
+    GMeanAccumulator!double x;
     x.put([1.0, 2, 3, 4].sliced);
     assert(x.gmean.approxEqual(2.21336384));
     x.put(5);
@@ -544,7 +543,7 @@ unittest
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
-    GMeanAccumulator!(float, ProdAlgo.separateExponentAccumulation) x;
+    GMeanAccumulator!float x;
     x.put([1, 2, 3, 4].sliced);
     assert(x.gmean.approxEqual(2.21336384));
     x.put(5);
@@ -589,81 +588,50 @@ unittest
 /++
 Computes the geometric average of the input.
 
+Params:
+    r = range, must be finite iterable
 Returns:
     The geometric average of all the elements in the input.
 
-See_also: $(SUBREF prod, ProdAlgo)
+See_also: $(SUBREF numeric, prod)
 +/
-template gmean(F, ProdAlgo prodAlgo = ProdAlgo.appropriate)
+@fmamath gmeanType!F gmean(F, Range)(Range r)
+    if (isFloatingPoint!F && isIterable!Range)
 {
-    import mir.math.numeric: ResolveProdAlgoType;
-
-    /++
-    Params:
-        r = range, must be finite iterable
-    +/
-    @fmamath gmeanType!F gmean(Range)(Range r)
-        if (isIterable!Range)
-    {
-        alias G = typeof(return);
-        GMeanAccumulator!(G, ResolveProdAlgoType!(prodAlgo, G)) gmean;
-        gmean.put(r.move);
-        return gmean.gmean;
-    }
+    alias G = typeof(return);
+    GMeanAccumulator!G gmean;
+    gmean.put(r.move);
+    return gmean.gmean;
+}
     
-    /++
-    Params:
-        val = values
-    +/
-    @fmamath gmeanType!F gmean(scope const F[] val...)
-    {
-        alias G = typeof(return);
-        GMeanAccumulator!(G, ResolveProdAlgoType!(prodAlgo, G)) gmean;
-        gmean.put(val);
-        return gmean.gmean;
-    }
+/// ditto
+@fmamath gmeanType!Range gmean(Range)(Range r)
+    if (isIterable!Range)
+{
+    alias G = typeof(return);
+    return .gmean!(G, Range)(r.move);
 }
 
-/// ditto
-template gmean(ProdAlgo prodAlgo = ProdAlgo.appropriate)
-{
-    import std.traits: CommonType;
-
-    /++
-    Params:
-        r = range, must be finite iterable
-    +/
-    @fmamath gmeanType!Range gmean(Range)(Range r)
-        if (isIterable!Range)
-    {
-        alias G = typeof(return);
-        return .gmean!(G, prodAlgo)(r.move);
-    }
-    
-    /++
-    Params:
-        val = values
-    +/
-    @fmamath gmeanType!(CommonType!T) gmean(T...)(T val)
-        if (T.length > 0 &&
-            !is(CommonType!T == void))
-    {
-        alias G = typeof(return);
-        return .gmean!(G, prodAlgo)(val);
-    }
-}
-
-/// ditto
-template gmean(F, string prodAlgo)
+/++
+Params:
+    val = values
++/
+@fmamath gmeanType!F gmean(F)(scope const F[] val...)
     if (isFloatingPoint!F)
 {
-    mixin("alias gmean = .gmean!(F, ProdAlgo." ~ prodAlgo ~ ");");
+    alias G = typeof(return);
+    GMeanAccumulator!G gmean;
+    gmean.put(val);
+    return gmean.gmean;
 }
 
 /// ditto
-template gmean(string prodAlgo)
+@fmamath gmeanType!(CommonType!T) gmean(T...)(T val)
+    if (T.length > 0 &&
+        !is(CommonType!T == void))
 {
-    mixin("alias gmean = .gmean!(ProdAlgo." ~ prodAlgo ~ ");");
+    alias G = typeof(return);
+    return .gmean!G(val);
 }
 
 ///
@@ -737,7 +705,7 @@ unittest
     // assert(x.alongDim!0.gmean.all!approxEqual(result));
 }
 
-/// Can also set algorithm or output type
+/// Can also set output type
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -748,8 +716,7 @@ unittest
 
     auto x = [5120.0, 7340032, 32, 3758096384].sliced;
 
-    assert(x.gmean!"naive".approxEqual(259281.45295212));
-    assert(x.gmean!(float, "separateExponentAccumulation").approxEqual(259281.45295212));
+    assert(x.gmean!float.approxEqual(259281.45295212));
 
     auto y = uint.max.repeat(2);
     assert(y.gmean!float.approxEqual(cast(float) uint.max));
@@ -870,7 +837,7 @@ By default, a copy is made.
 Returns:
     the median of the slice
 
-See_also: $(SUBREF mean)
+See_also: $(SUBREF stat, mean)
 +/
 template median(F, bool allowModify = false)
 {

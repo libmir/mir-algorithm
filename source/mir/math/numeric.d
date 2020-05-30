@@ -1,12 +1,8 @@
 /++
 This module contains simple numeric algorithms.
-
 License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
-
 Authors: Ilya Yaroshenko
-
 Copyright: 2015-, Ilya Yaroshenko; 2017 Symmetry Investments Group and Kaleidic Associates Advisory Limited.
-
 Sponsors: This work has been sponsored by $(SUBREF http://symmetryinvestments.com, Symmetry Investments) and Kaleidic Associates.
 +/
 module mir.math.numeric;
@@ -14,125 +10,80 @@ module mir.math.numeric;
 import mir.math.common;
 import mir.primitives;
 import std.range.primitives: isInputRange;
-import std.traits: Unqual, isMutable, isIterable, isPointer, ForeachType;
+import std.traits: CommonType, Unqual, isIterable, ForeachType, isPointer;
 import mir.internal.utility: isFloatingPoint;
 
-/++
-Product algorithms.
-+/
-enum ProdAlgo
-{
-    /++
-    Performs `separateExponentAccumulation` product for floating point based types and `naive` product for integral-based types.
-    +/
-    appropriate,
-
-    /++
-    Separate Exponent Accumulation
-    +/
-    separateExponentAccumulation,
-
-    /++
-    Naive algorithm (one by one).
-    +/
-    naive,
-}
-
 ///
-struct ProdAccumulator(T, ProdAlgo prodAlgo)
+struct ProdAccumulator(T)
+    if (isFloatingPoint!T)
 {
-
     alias F = Unqual!T;
 
-    static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-    {
-        static assert(isFloatingPoint!F, "ProdAccumulator: ProdAlgo.separateExponentAccumulation only valid with floating point types");
-        ///
-        long _exp = 1L;
-        ///
-        F _x = cast(F) 0.5;
-        ///
-        alias _mantissa = _x;
-    }
-    else
-    static if (prodAlgo == ProdAlgo.naive)
-    {
-        ///
-        F _p = cast(F) 1;
-    }
-    else
-    {
-        static assert(0, "ProdAccumulator: ProdAlgo not implemented");
-    }
+    ///
+    long exp = 1L;
+    ///
+    F x = cast(F) 0.5;
+    ///
+    alias mantissa = x;
 
     ///
     this(F value)
     {
-        static if (prodAlgo == ProdAlgo.naive) {
-            this._p = value;
-        } else static if (prodAlgo == ProdAlgo.separateExponentAccumulation) {
-            import mir.math.ieee: frexp;
+        import mir.math.ieee: frexp;
 
-            int lexp;
-            this._x = frexp(value, lexp);
-            this._exp = lexp;
-        } else {
-            static assert(0, "ProdAccumulator: constructor not implemented");
-        }
-    }
-
-    static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-    {
-        ///
-        this(long exp, F x)
-        {
-            this._exp = exp;
-            this._x = x;
-        }
+        int lexp;
+        this.x = frexp(value, lexp);
+        this.exp = lexp;
     }
 
     ///
-    void put(T e)
+    this(long exp, F x)
     {
-        static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-        {
-            int lexp;
-            import mir.math.ieee: frexp;
-            this._x *= frexp(e, lexp);
-            this._exp += lexp;
-            if (this._x.fabs < 0.5f)
-            {
-                this._x += this._x;
-                this._exp--;
-            }
-        }
-        else
-        static if (prodAlgo == ProdAlgo.naive)
-        {
-            this._p *= e;
-        }
+        this.exp = exp;
+        this.x = x;
     }
 
     ///
-    void put(ProdAccumulator!(T, prodAlgo) value)
+    void put(U)(U e)
+        if (is(U : T))
     {
-        static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
+        static if (is(U == T))
         {
-            this._exp += value._exp;
-            this._x *= value._x;
+            int lexp;
+            import mir.math.ieee: frexp;
+            x *= frexp(e, lexp);
+            exp += lexp;
             if (x.fabs < 0.5f)
             {
-                this._x += this._x;
-                this._exp--;
+                x += x;
+                exp--;
             }
-        }
-        else
-        static if (prodAlgo == ProdAlgo.naive)
-        {
-            this._p *= value._p;
+        } else {
+            return put(cast(T) e);
         }
     }
-    
+
+    ///
+    void put(ProdAccumulator!T value)
+    {
+        exp += value.exp;
+        x *= value.x;
+        if (x.fabs < 0.5f)
+        {
+            x += x;
+            exp--;
+        }
+    }
+/*
+    ///
+    void put(U...)(U val)
+        if (is(prodType!(CommonType!U) == F))
+    {
+        foreach (ref elem; val)
+            put(elem);
+    }
+*/
+    ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
@@ -165,96 +116,33 @@ struct ProdAccumulator(T, ProdAlgo prodAlgo)
     ///
     T prod() const scope @property
     {
-        static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-        {
-            import mir.math.ieee: ldexp;
-            int e =
-                this._exp > int.max ? int.max :
-                this._exp < int.min ? int.min :
-                cast(int) this._exp;
-            return ldexp(this._mantissa, e);
-        }
-        else
-        static if (prodAlgo == ProdAlgo.naive)
-        {
-            return this._p;
-        }
+        import mir.math.ieee: ldexp;
+        int e =
+            exp > int.max ? int.max :
+            exp < int.min ? int.min :
+            cast(int) exp;
+        return ldexp(mantissa, e);
     }
 
-    static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
+    ///
+    ProdAccumulator!T ldexp(long exp) const
     {
-        ///
-        ProdAccumulator!(T, prodAlgo) ldexp(long exp) const
-        {
-            return typeof(return)(this._exp + exp, this._mantissa);
-        }
-    }
-
-    static if (prodAlgo == ProdAlgo.separateExponentAccumulation) {
-        ///
-        long exp()
-        {
-            return this._exp;
-        }
-
-    } else static if (prodAlgo == ProdAlgo.naive && 
-                      isFloatingPoint!T) {
-        ///
-        int exp()
-        {
-            import mir.math.ieee: frexp;
-            
-            int lexp;
-            auto val = frexp(this._p, lexp);
-            return lexp;
-        }
-    }
-
-    static if (prodAlgo == ProdAlgo.separateExponentAccumulation) {
-        ///
-        F x()
-        {
-            return this._x;
-        }
-    } else static if (prodAlgo == ProdAlgo.naive && isFloatingPoint!T) {
-        ///
-        F x()
-        {
-            import mir.math.ieee: frexp;
-            
-            int lexp;
-            return frexp(this._p, lexp);
-        }
-    }
-
-    static if (prodAlgo == ProdAlgo.separateExponentAccumulation ||
-               (prodAlgo == ProdAlgo.naive && isFloatingPoint!T)) {
-        ///
-        F mantissa()
-        {
-            return x();
-        }
+        return typeof(return)(this.exp + exp, mantissa);
     }
 
     // ///
     alias opOpAssign(string op : "*") = put;
 
     ///
-    ProdAccumulator!(T, prodAlgo) opUnary(string op : "-")() const
+    ProdAccumulator!T opUnary(string op : "-")() const
     {
-        static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-            return typeof(return)(this._exp, -this._mantissa);
-        else static if (prodAlgo == ProdAlgo.naive)
-            return typeof(return)(-this._p);
+        return typeof(return)(exp, -mantissa);
     }
 
     ///
-    ProdAccumulator!(T, prodAlgo) opUnary(string op : "+")() const
+    ProdAccumulator!T opUnary(string op : "+")() const
     {
-        static if (prodAlgo == ProdAlgo.separateExponentAccumulation)
-            return typeof(return)(this._exp, +this.mantissa);
-        else static if (prodAlgo == ProdAlgo.naive)
-            return typeof(return)(+this._p);
+        return typeof(return)(exp, +mantissa);
     }
 }
 
@@ -265,44 +153,18 @@ unittest
 {
     import mir.ndslice.slice: sliced;
 
-    ProdAccumulator!(int, ProdAlgo.naive) x;
+    ProdAccumulator!float x;
     x.put([1, 2, 3].sliced);
     assert(x.prod == 6);
     x.put(4);
     assert(x.prod == 24);
 }
 
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-    import mir.math.common: approxEqual;
-
-    ProdAccumulator!(double, ProdAlgo.naive) x;
-    x.put([1.0, 2, 3].sliced);
-    assert(x.prod.approxEqual(6));
-    x.put(4);
-    assert(x.prod.approxEqual(24));
-}
-
-template ResolveProdAlgoType(ProdAlgo prodAlgo, F)
-{
-    static if (prodAlgo == ProdAlgo.appropriate) {
-        static if (isFloatingPoint!F)
-            enum ResolveProdAlgoType = ProdAlgo.separateExponentAccumulation;
-        else
-            enum ResolveProdAlgoType = ProdAlgo.naive;
-    }
-    else {
-        enum ResolveProdAlgoType = prodAlgo;
-    }
-}
-
 package template prodType(T)
 {
     import mir.ndslice.slice: isSlice, DeepElementType;
-    static if (isIterable!T) {
+
+    static if (isIterable!T) {    
         static if (isSlice!T)
             alias U = Unqual!(DeepElementType!(T.This));
         else
@@ -310,221 +172,137 @@ package template prodType(T)
     } else {
         alias U = Unqual!T;
     }
-    static if (__traits(compiles, {
-        auto a = U.init * U.init;
-        a *= U.init;
-    }))
-        alias prodType = typeof(U.init * U.init);
-    else
-        static assert(0, "Can't prod elements of type " ~ U.stringof);
-}
 
+    static if (isFloatingPoint!U) {
+        alias prodType = U;
+    } else static if (is(U : double)) {
+        alias prodType = double;
+    } else {
+        static assert(0, "prodType: U must be a floating point type or " ~ 
+                         "implicitly convertible to a floating point type, " ~ 
+                         "not a " ~ U.stringof);
+    }
+}
 
 /++
 Calculates the product of the elements of the input.
 
-A `seed` may be passed to `prod`. Not only will this seed be used as an initial
-value, but its type will be used if it is not specified.
+This function uses a separate exponential accumulation algorithm to calculate the
+product. A consequence of this is that the result must be a floating point type.
+To calculate the product of a type that is not implicitly convertible to a 
+floating point type, use $(MREF mir, algorithm, iteration, reduce). 
 
+/++
+Params:
+    r = finite iterable range
+Returns:
+    The prduct of all the elements in `r`
 +/
-template prod(F, ProdAlgo prodAlgo = ProdAlgo.appropriate)
-    if (isMutable!F)
+
+TODO
+See_also: $(MREF mir, algorithm, iteration, reduce)
++/
+F prod(F, Range)(Range r)
+    if (isFloatingPoint!F && isIterable!Range)
 {
-    alias FAlgo = ResolveProdAlgoType!(prodAlgo, F);
+    import core.lifetime: move;
 
-    /++
-    Params:
-        val = values
-    Returns:
-        The prduct of all the elements in `val`
-    +/
-    F prod(scope const F[] val...)
-    {
-        ProdAccumulator!(F, FAlgo) prod;
-        prod.put(val);
-        return prod.prod;
-    }
-
-    /++
-    Params:
-        r = finite iterable range
-    Returns:
-        The prduct of all the elements in `r`
-    +/
-    F prod(Range)(Range r)
-        if (isIterable!Range)
-    {
-        import core.lifetime: move;
-
-        ProdAccumulator!(F, FAlgo) prod;
-        prod.put(r.move);
-        return prod.prod;
-    }
-
-    /++
-    Params:
-        r = finite iterable range
-        seed = initial value
-    Returns:
-        The prduct of all the elements in `r`
-    +/
-    F prod(Range)(Range r, F seed)
-         if (isIterable!Range &&
-            FAlgo != ProdAlgo.separateExponentAccumulation)
-    {
-        import core.lifetime: move;
-
-        auto prod = ProdAccumulator!(F, FAlgo)(seed);
-        prod.put(r.move);
-        return prod.prod;
-    }
-
-    /++
-    Params:
-        r = finite iterable range
-        exp = value of exponent
-    Returns:
-        The mantissa, such that the product equals the mantissa times 2^^exp
-    +/
-    template prod(Range)
-        if (isIterable!Range &&
-            FAlgo == ProdAlgo.separateExponentAccumulation)
-    {
-        import core.lifetime: move;
-
-        ///
-        F prod(Range r, ref long exp)
-        {
-            ProdAccumulator!(F, FAlgo) prod;
-            prod.put(r.move);
-            exp = prod.exp;
-            return prod.x;
-        }
-
-    /++
-    Params:
-        r = finite iterable range
-        seed = initial value
-        exp = value of exponent
-    Returns:
-        The mantissa, such that the product equals the mantissa times 2^^exp
-    +/
-        F prod(Range r, ref long exp, F seed)
-        {
-            auto prod = ProdAccumulator!(F, FAlgo)(seed);
-            prod.put(r.move);
-            exp = prod.exp;
-            return prod.x;
-        }
-    }
+    ProdAccumulator!F prod;
+    prod.put(r.move);
+    return prod.prod;
 }
 
-///ditto
-template prod(ProdAlgo prodAlgo = ProdAlgo.appropriate)
+/++
+Params:
+    r = finite iterable range
+    exp = value of exponent
+Returns:
+    The mantissa, such that the product equals the mantissa times 2^^exp
++/
+F prod(F, Range)(Range r, ref long exp)
+    if (isFloatingPoint!F && isIterable!Range)
 {
-    import std.traits: CommonType;
+    import core.lifetime: move;
 
-    /++
-    Params:
-        val = values
-    Returns:
-        The prduct of all the elements in `val`
-    +/
-    prodType!(CommonType!T) prod(T...)(T val)
-        if (T.length > 0 &&
-            !is(CommonType!T == void))
-    {
-        alias F = typeof(return);
-        return .prod!(F, prodAlgo)(val);
-    }
-
-    /++
-    Params:
-        r = finite iterable range
-    Returns:
-        The prduct of all the elements in `r`
-    +/
-    prodType!Range prod(Range)(Range r)
-        if (isIterable!Range)
-    {
-        import core.lifetime: move;
-        alias F = typeof(return);
-        return .prod!(F, prodAlgo)(r.move);
-    }
-
-    /++
-    Params:
-        r = finite iterable range
-        seed = initial value
-    Returns:
-        The prduct of all the elements in `r`
-    +/
-    F prod(Range, F)(Range r, F seed)
-        if (isIterable!Range &&
-            ResolveProdAlgoType!(prodAlgo, prodType!Range) != ProdAlgo.separateExponentAccumulation)
-    {
-        import core.lifetime: move;
-        return .prod!(F, prodAlgo)(r.move, seed);
-    }
-    
-    /++
-    Params:
-        r = finite iterable range
-        exp = value of exponent
-    Returns:
-        The mantissa, such that the product equals the mantissa times 2^^exp
-    +/
-    prodType!Range prod(Range)(Range r, ref long exp)
-        if (isIterable!Range &&
-            ResolveProdAlgoType!(prodAlgo, prodType!Range) == ProdAlgo.separateExponentAccumulation)
-    {
-        import core.lifetime: move;
-        alias F = typeof(return);
-        return .prod!(F, prodAlgo)(r.move, exp);
-    }
-
-    /++
-    Params:
-        r = finite iterable range
-        seed = initial value
-        exp = value of exponent
-    Returns:
-        The mantissa, such that the product equals the mantissa times 2^^exp
-    +/
-    F prod(Range, F)(Range r, ref long exp, F seed)
-        if (isIterable!Range &&
-            ResolveProdAlgoType!(prodAlgo, F) == ProdAlgo.separateExponentAccumulation)
-    {
-        import core.lifetime: move;
-        return .prod!(F, prodAlgo)(r.move, exp, seed);
-    }
+    ProdAccumulator!F prod;
+    prod.put(r.move);
+    exp = prod.exp;
+    return prod.x;
 }
 
-///ditto
-template prod(F, string prodAlgo)
-    if (isMutable!F)
+/++
+Params:
+    r = finite iterable range
+Returns:
+    The prduct of all the elements in `r`
++/
+prodType!Range prod(Range)(Range r)
+    if (isIterable!Range)
 {
-    mixin("alias prod = .prod!(F, ProdAlgo." ~ prodAlgo ~ ");");
+    import core.lifetime: move;
+
+    alias F = typeof(return);
+    return .prod!(F, Range)(r.move);
 }
 
-///ditto
-template prod(string prodAlgo)
+/++
+Params:
+    r = finite iterable range
+    exp = value of exponent
+Returns:
+    The mantissa, such that the product equals the mantissa times 2^^exp
++/
+prodType!Range prod(Range)(Range r, ref long exp)
+    if (isIterable!Range)
 {
-    mixin("alias prod = .prod!(ProdAlgo." ~ prodAlgo ~ ");");
+    import core.lifetime: move;
+
+    alias F = typeof(return);
+    return .prod!(F, Range)(r.move, exp);
+}
+
+/++
+Params:
+    val = values
+Returns:
+    The prduct of all the elements in `val`
++/
+F prod(F)(scope const F[] val...)
+    if (isFloatingPoint!F)
+{
+    ProdAccumulator!F prod;
+    prod.put(val);
+    return prod.prod;
+}
+
+/++
+Params:
+    val = values
+Returns:
+    The prduct of all the elements in `val`
++/
+prodType!(CommonType!T) prod(T...)(T val)
+    if (T.length > 0 &&
+        !is(CommonType!T == void))
+{
+    alias F = typeof(return);
+    return .prod!(F)(val);
 }
 
 /// Product of arbitrary inputs
 version(mir_test)
 unittest
 {
-    assert(prod(1, 3, 4) == 12);
-    assert(prod!float(1, 3, 4) == 12.0);
+    assert(prod(1.0, 3, 4) == 12.0);
+    assert(prod!float(1, 3, 4) == 12f);
 }
 
 /// Product of arrays and ranges
 version(mir_test)
 unittest
 {
+    import mir.math.common: approxEqual;
+
     enum l = 2.0 ^^ (double.max_exp - 1);
     enum s = 2.0 ^^ -(double.max_exp - 1);
     auto r = [l, l, l, s, s, s, 0.8 * 2.0 ^^ 10];
@@ -533,7 +311,7 @@ unittest
     
     // Can get the mantissa and exponent
     long e;
-    assert(r.prod(e) == 0.8);
+    assert(r.prod(e).approxEqual(0.8));
     assert(e == 10);
 }
 
@@ -543,6 +321,7 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: reduce;
+    import mir.math.common: approxEqual;
 
     enum l = 2.0 ^^ (double.max_exp - 1);
     enum s = 2.0 ^^ -(double.max_exp - 1);
@@ -553,7 +332,7 @@ unittest
     assert(r.prod == reduce!"a * b"(1.0, [u, u, u]));
 
     long e;
-    assert(r.prod(e) == reduce!"a * b"(1.0, [c, c, c]));
+    assert(r.prod(e).approxEqual(reduce!"a * b"(1.0, [c, c, c])));
     assert(e == 30);
 }
 
@@ -607,8 +386,7 @@ unittest
     // assert(x.alongDim!0.prod.all!approxEqual(result));
 }
 
-
-/// Can also set algorithm or output type
+/// Can also set output type
 version(mir_test)
 unittest
 {
@@ -616,27 +394,28 @@ unittest
     import mir.math.common: approxEqual;
     import mir.ndslice.topology: repeat;
 
-    auto x = [1.0, 2, 3].sliced;
-    assert(x.prod!"naive".approxEqual(6));
-    assert(x.prod!"separateExponentAccumulation".approxEqual(6));
-    assert(x.prod!(float, "naive") == 6);
-    
-    auto y = uint.max.repeat(3);
-    assert(y.prod!ulong == (cast(ulong) uint.max) ^^ 3);
+    auto x = [1, 2, 3].sliced;
+    assert(x.prod!float == 6f);
 }
 
-/// Also works for complex numbers (and other user-defined types)
+/// Product of variables whose underlying types are implicitly convertible to double also have type double
 version(mir_test)
-@safe @nogc pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
+    static struct Foo
+    {
+        int x;
+        alias x this;
+    }
 
-    static immutable cdouble[] x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i];
-    static immutable cdouble result = -185 - 180i;
-    assert(x.sliced.prod == result);
+    auto x = prod(1, 2, 3);
+    assert(x == 6.0);
+    static assert(is(typeof(x) == double));
+    
+    auto y = prod([Foo(1), Foo(2), Foo(3)]);
+    assert(y == 6.0);
+    static assert(is(typeof(y) == double));
 }
-
 
 /++
 Compute the sum of binary logarithms of the input range $(D r).

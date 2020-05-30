@@ -259,13 +259,13 @@ RCArray!(immutable T) inversedBarycentricWeights(T)(Slice!(const(T)*) x)
 {
     
     const n = x.length;
-    scope prodsa = RCArray!(ProdAccumulator!(T, ProdAlgo.separateExponentAccumulation))(n);
+    scope prodsa = RCArray!(ProdAccumulator!T)(n);
     scope p = prodsa[].sliced;
     foreach (triplet; n.iota.triplets) with(triplet)
     {
         foreach (l; left)
         {
-            auto e = prod!(T, ProdAlgo.separateExponentAccumulation)(x[center] - x[l]);
+            auto e = prod!T(x[center] - x[l]);
             p[l] *= -e;
             p[center] *= e;
         }
