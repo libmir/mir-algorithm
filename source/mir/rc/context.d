@@ -220,7 +220,8 @@ package mixin template CommonRCImpl()
     }
 
     ///
-    bool opCast(C : bool)() const
+    C opCast(C)() const
+        if (is(Unqual!C == bool))
     {
         return _thisPtr !is null;
     }
