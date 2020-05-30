@@ -23,7 +23,8 @@ import mir.ndslice.slice: Slice, SliceKind;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
-import std.traits: isArray, isFloatingPoint, isMutable, isIterable;
+import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
+import mir.internal.utility: isFloatingPoint;
 
 // version = mir_test_topN;
 
@@ -106,8 +107,6 @@ See_also: $(SUBREF sum, Summation)
 +/
 template mean(F, Summation summation = Summation.appropriate)
 {
-    import std.traits: isImplicitlyConvertible, CommonType;
-
     /++
     Params:
         r = range, must be finite iterable
@@ -314,23 +313,6 @@ version(mir_test)
     assert(mean!float(1, 2, 3) == 2);
 }
 
-///
-version(mir_test)
-@safe @nogc pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-    import mir.ndslice.topology: alongDim, byDim, map;
-
-    static immutable x      = [0.0, 1.00, 1.50, 2.0, 3.5, 4.250,
-                               2.0, 7.50, 5.00, 1.0, 1.5, 0.000];
-    static immutable result = [1.0, 4.25, 3.25, 1.5, 2.5, 2.125];
-
-    // Use byDim or alongDim with map to compute mean of row/column.
-    assert(x.sliced(2, 6).byDim!1.map!mean == result);
-    assert(x.sliced(2, 6).alongDim!0.map!mean == result);
-}
-
 version(mir_test)
 @safe pure nothrow unittest
 {
@@ -461,6 +443,391 @@ unittest
     assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
 }
 
+private
+F nthroot(F)(in F x, in size_t n)
+    if (isFloatingPoint!F)
+{
+    import mir.math.common: sqrt, pow;
+
+    if (n > 2) {
+        return pow(x, cast(F) 1 / cast(F) n);
+    } else if (n == 2) {
+        return sqrt(x);
+    } else if (n == 1) {
+        return x;
+    } else {
+        return cast(F) 1;
+    }
+}
+
+version(mir_test)
+@safe @nogc pure nothrow
+unittest {
+    import mir.math.common: approxEqual;
+
+    assert(nthroot(9.0, 0).approxEqual(1));
+    assert(nthroot(9.0, 1).approxEqual(9));
+    assert(nthroot(9.0, 2).approxEqual(3));
+    assert(nthroot(9.5, 2).approxEqual(3.08220700));
+    assert(nthroot(9.0, 3).approxEqual(2.08008382));
+}
+
+/++
+Output range for gmean.
++/
+struct GMeanAccumulator(T) 
+    if (isMutable!T && isFloatingPoint!T)
+{
+    import mir.math.numeric: ProdAccumulator;
+
+    ///
+    size_t count;
+    ///
+    ProdAccumulator!T prodAccumulator;
+
+    ///
+    F gmean(F = T)() @property
+        if (isFloatingPoint!F)
+    {
+        import mir.math.common: exp2;
+
+        return nthroot(cast(F) prodAccumulator.mantissa, count) * exp2(cast(F) prodAccumulator.exp / count);
+    }
+
+    ///
+    void put(Range)(Range r)
+        if (isIterable!Range)
+    {
+        static if (hasShape!Range)
+        {
+            count += r.elementCount;
+            prodAccumulator.put(r);
+        }
+        else
+        {
+            foreach(x; r)
+            {
+                count++;
+                prodAccumulator.put(x);
+            }
+        }
+    }
+
+    ///
+    void put()(T x)
+    {
+        count++;
+        prodAccumulator.put(x);
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    GMeanAccumulator!double x;
+    x.put([1.0, 2, 3, 4].sliced);
+    assert(x.gmean.approxEqual(2.21336384));
+    x.put(5);
+    assert(x.gmean.approxEqual(2.60517108));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    GMeanAccumulator!float x;
+    x.put([1, 2, 3, 4].sliced);
+    assert(x.gmean.approxEqual(2.21336384));
+    x.put(5);
+    assert(x.gmean.approxEqual(2.60517108));
+}
+
+package template gmeanType(T)
+{
+    import mir.math.numeric: prodType;
+    
+    alias U = prodType!T;
+
+    static if (isFloatingPoint!U) {
+        static if (__traits(compiles, {
+            auto temp = U.init * U.init;
+            auto a = nthroot(temp, 2);
+            temp *= U.init;
+            a = nthroot(temp, 3);
+        }))
+            alias gmeanType = typeof(nthroot(U.init * U.init, 2));
+        else
+            static assert(0, "gmeanType: Can't gmean elements of type " ~ U.stringof);
+    } else static if (is(U : float) || is(U : double) || is(U : real)) {
+        alias gmeanType = gmeanType!double;
+    } else {
+        static assert(0, "gmeanType: Can't gmean elements of type " ~ U.stringof);
+    }
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(gmeanType!int == double));
+    static assert(is(gmeanType!double == double));
+    static assert(is(gmeanType!float == float));
+    static assert(is(gmeanType!(int[]) == double));
+    static assert(is(gmeanType!(double[]) == double));
+    static assert(is(gmeanType!(float[]) == float));    
+}
+
+/++
+Computes the geometric average of the input.
+
+Params:
+    r = range, must be finite iterable
+Returns:
+    The geometric average of all the elements in the input.
+
+See_also: $(SUBREF numeric, prod)
++/
+@fmamath gmeanType!F gmean(F, Range)(Range r)
+    if (isFloatingPoint!F && isIterable!Range)
+{
+    alias G = typeof(return);
+    GMeanAccumulator!G gmean;
+    gmean.put(r.move);
+    return gmean.gmean;
+}
+    
+/// ditto
+@fmamath gmeanType!Range gmean(Range)(Range r)
+    if (isIterable!Range)
+{
+    alias G = typeof(return);
+    return .gmean!(G, Range)(r.move);
+}
+
+/++
+Params:
+    val = values
++/
+@fmamath gmeanType!F gmean(F)(scope const F[] val...)
+    if (isFloatingPoint!F)
+{
+    alias G = typeof(return);
+    GMeanAccumulator!G gmean;
+    gmean.put(val);
+    return gmean.gmean;
+}
+
+/// ditto
+@fmamath gmeanType!(CommonType!T) gmean(T...)(T val)
+    if (T.length > 0 &&
+        !is(CommonType!T == void))
+{
+    alias G = typeof(return);
+    return .gmean!G(val);
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    assert(gmean([1.0, 2, 3]).approxEqual(1.81712059));
+    
+    assert(gmean!float([1, 2, 3, 4, 5, 6].sliced(3, 2)).approxEqual(2.99379516));
+    
+    assert(is(typeof(gmean!float([1, 2, 3])) == float));
+}
+
+/// Geometric mean of vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [3.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 2.0].sliced;
+
+    assert(x.gmean.approxEqual(2.36178395));
+}
+
+/// Geometric mean of matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [3.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 2.0]
+    ].fuse;
+
+    assert(x.gmean.approxEqual(2.36178395));
+}
+
+/// Column gmean of matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.topology: alongDim, byDim, map;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [3.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 2.0]
+    ].fuse;
+    auto result = [2.44948974, 2.73861278, 2.73861278, 1.41421356, 2.29128784, 2.91547594];
+
+    // Use byDim or alongDim with map to compute mean of row/column.
+    assert(x.byDim!1.map!gmean.all!approxEqual(result));
+    assert(x.alongDim!0.map!gmean.all!approxEqual(result));
+
+    // FIXME
+    // Without using map, computes the mean of the whole slice
+    // assert(x.byDim!1.gmean.all!approxEqual(result));
+    // assert(x.alongDim!0.gmean.all!approxEqual(result));
+}
+
+/// Can also set output type
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: repeat;
+    import mir.math.common: approxEqual;
+
+    auto x = [5120.0, 7340032, 32, 3758096384].sliced;
+
+    assert(x.gmean!float.approxEqual(259281.45295212));
+
+    auto y = uint.max.repeat(2);
+    assert(y.gmean!float.approxEqual(cast(float) uint.max));
+}
+
+/++
+For integral slices, pass output type as template parameter to ensure output
+type is correct. By default, if an input type is not floating point, then if
+it is convertible to floating point, the result will be a double.
++/
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [5, 1, 1, 2, 4, 4,
+              2, 7, 5, 1, 2, 10].sliced;
+    assert(x.gmean!float.approxEqual(2.79160522));
+    
+    auto y = x.gmean;
+    static assert(is(typeof(y) == double));
+}
+
+/// Mean works for user-defined types, provided the nth root can be taken for them
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    static struct Foo {
+        float x;
+        alias x this;
+    }
+
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [Foo(1.0), Foo(2.0), Foo(3.0)].sliced;
+    assert(x.gmean.approxEqual(1.81712059));
+}
+
+/// Compute gmean tensors along specified dimention of tensors
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: alongDim, iota, map;
+    import mir.math.common: approxEqual;
+    
+    auto x = [
+        [1.0, 2, 3],
+        [4.0, 5, 6]
+    ].fuse;
+
+    assert(x.gmean.approxEqual(2.99379516));
+
+    auto result0 = [2.0, 3.16227766, 4.24264069];
+    assert(x.alongDim!0.map!gmean.all!approxEqual(result0));
+    assert(x.alongDim!(-2).map!gmean.all!approxEqual(result0));
+
+    auto result1 = [1.81712059, 4.93242414];
+    assert(x.alongDim!1.map!gmean.all!approxEqual(result1));
+    assert(x.alongDim!(-1).map!gmean.all!approxEqual(result1));
+
+    auto y = [
+        [
+            [1.0, 2, 3],
+            [4.0, 5, 6]
+        ], [
+            [7.0, 8, 9],
+            [10.0, 9, 10]
+        ]
+    ].fuse;
+    
+    auto result3 = [
+        [2.64575131, 4.0,        5.19615242],
+        [6.32455532, 6.70820393, 7.74596669]
+    ];
+    assert(y.alongDim!0.map!gmean.all!approxEqual(result3));
+}
+
+/// Arbitrary gmean
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: approxEqual;
+    assert(gmean(1.0, 2, 3).approxEqual(1.81712059));
+    assert(gmean!float(1, 2, 3).approxEqual(1.81712059));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    assert([1.0, 2, 3, 4].gmean.approxEqual(2.21336384));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+
+    assert(gmean([1, 2, 3]).approxEqual(1.81712059));
+}
+
 /++
 Computes the median of `slice`.
 
@@ -470,7 +837,7 @@ By default, a copy is made.
 Returns:
     the median of the slice
 
-See_also: $(SUBREF mean)
+See_also: $(SUBREF stat, mean)
 +/
 template median(F, bool allowModify = false)
 {
