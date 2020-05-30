@@ -18,7 +18,7 @@ version(D_Exceptions)
 struct SmallArray(T, uint maxLength)
     if (maxLength)
 {
-    import std.traits: isIterable, isImplicitlyConvertible;
+    import std.traits: Unqual, isIterable, isImplicitlyConvertible;
 
     private uint _length;
     T[maxLength] _data;
@@ -227,7 +227,8 @@ const:
     /++
     Checks if the array is empty (null).
     +/
-    bool opCast(T : bool)()
+    C opCast(C)() const
+        if (is(Unqual!C == bool))
     {
         return _length != 0;
     }

@@ -351,46 +351,79 @@ template pythonBufferFormat(T)
     static if (is(T == struct) && __traits(identifier, A) == "PyObject")
         enum pythonBufferFormat = "O";
     else
-        enum pythonBufferFormat = null;
+    static if (is(Unqual!T == short))
+        enum pythonBufferFormat = "h";
+    else
+    static if (is(Unqual!T == ushort))
+        enum pythonBufferFormat = "H";
+    else
+    static if (is(Unqual!T == int))
+        enum pythonBufferFormat = "i";
+    else
+    static if (is(Unqual!T == uint))
+        enum pythonBufferFormat = "I";
+    else
+    static if (is(Unqual!T == float))
+        enum pythonBufferFormat = "f";
+    else
+    static if (is(Unqual!T == double))
+        enum pythonBufferFormat = "d";
+    else
+    static if (is(Unqual!T == long))
+        enum pythonBufferFormat = "q";
+    else
+    static if (is(Unqual!T == ulong))
+        enum pythonBufferFormat = "Q";
+    else
+    static if (is(Unqual!T == ubyte))
+        enum pythonBufferFormat = "B";
+    else
+    static if (is(Unqual!T == byte))
+        enum pythonBufferFormat = "b";
+    else
+    static if (is(Unqual!T == char))
+        enum pythonBufferFormat = "c";
+    else
+    static if (is(Unqual!T == char*))
+        enum pythonBufferFormat = "z";
+    else
+    static if (is(Unqual!T == void*))
+        enum pythonBufferFormat = "P";
+    else
+    static if (is(Unqual!T == bool))
+        enum pythonBufferFormat = "?";
+    else
+    static if (is(Unqual!T == wchar*))
+        enum pythonBufferFormat = "Z";
+    else
+    static if (is(Unqual!T == wchar))
+        enum pythonBufferFormat = "u";
+    else
+    {
+        static if (is(cpp_long))
+        {
+            static if (is(Unqual!T == cpp_long))
+                enum pythonBufferFormat = "l";
+            else
+                enum pythonBufferFormat = null;
+        }
+        else
+        static if (is(cpp_ulong))
+        {
+            static if (is(Unqual!T == cpp_ulong))
+                enum pythonBufferFormat = "L";
+            else
+                enum pythonBufferFormat = null;
+        }
+        else
+        static if (is(c_long_double))
+        {
+            static if (is(Unqual!T == c_long_double))
+                enum pythonBufferFormat = "g";
+            else
+                enum pythonBufferFormat = null;
+        }
+        else
+            enum pythonBufferFormat = null;
+    }
 }
-/// ditto
-enum pythonBufferFormat(T : short) = "h";
-/// ditto
-enum pythonBufferFormat(T : ushort) = "H";
-/// ditto
-static if (is(cpp_long))
-enum pythonBufferFormat(T : cpp_long) = "l";
-/// ditto
-static if (is(cpp_ulong))
-enum pythonBufferFormat(T : cpp_ulong) = "L";
-/// ditto
-enum pythonBufferFormat(T : int) = "i";
-/// ditto
-enum pythonBufferFormat(T : uint) = "I";
-/// ditto
-enum pythonBufferFormat(T : float) = "f";
-/// ditto
-enum pythonBufferFormat(T : double) = "d";
-/// ditto
-static if (is(c_long_double))
-enum pythonBufferFormat(T : c_long_double) = "g";
-/// ditto
-enum pythonBufferFormat(T : long) = "q";
-/// ditto
-enum pythonBufferFormat(T : ulong) = "Q";
-/// ditto
-enum pythonBufferFormat(T : ubyte) = "B";
-/// ditto
-enum pythonBufferFormat(T : byte) = "b";
-/// ditto
-enum pythonBufferFormat(T : char) = "c";
-/// ditto
-enum pythonBufferFormat(T : char*) = "z";
-/// ditto
-enum pythonBufferFormat(T : void*) = "P";
-/// ditto
-enum pythonBufferFormat(T : bool) = "?";
-/// ditto
-enum pythonBufferFormat(T : wchar*) = "Z";
-/// ditto
-enum pythonBufferFormat(T : wchar) = "u";

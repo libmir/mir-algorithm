@@ -29,7 +29,7 @@ struct SmallString(uint maxLength)
 {
 
     import core.stdc.string: memcmp, memcpy, strlen;
-    import std.traits: isIterable;
+    import std.traits: Unqual, isIterable;
 
     // maxLength bytes
     private char[maxLength] _data = '\0';
@@ -275,9 +275,10 @@ const:
     /++
     Checks if the string is empty (null).
     +/
-    bool opCast(T : bool)()
+    C opCast(C)() const
+        if (is(Unqual!C == bool))
     {
-        return cast(bool) _data[0] != 0;
+        return _data[0] != 0;
     }
 
     /// Hash implementation
