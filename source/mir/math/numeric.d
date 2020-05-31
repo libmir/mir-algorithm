@@ -27,6 +27,7 @@ struct ProdAccumulator(T)
     alias mantissa = x;
 
     ///
+    @safe pure @nogc nothrow
     this(F value)
     {
         import mir.math.ieee: frexp;
@@ -37,6 +38,7 @@ struct ProdAccumulator(T)
     }
 
     ///
+    @safe pure @nogc nothrow
     this(long exp, F x)
     {
         this.exp = exp;
@@ -44,6 +46,7 @@ struct ProdAccumulator(T)
     }
 
     ///
+    @safe pure @nogc nothrow
     void put(U)(U e)
         if (is(U : T))
     {
@@ -64,6 +67,7 @@ struct ProdAccumulator(T)
     }
 
     ///
+    @safe pure @nogc nothrow
     void put(ProdAccumulator!T value)
     {
         exp += value.exp;
@@ -74,15 +78,7 @@ struct ProdAccumulator(T)
             exp--;
         }
     }
-/*
-    ///
-    void put(U...)(U val)
-        if (is(prodType!(CommonType!U) == F))
-    {
-        foreach (ref elem; val)
-            put(elem);
-    }
-*/
+
     ///
     void put(Range)(Range r)
         if (isIterable!Range)
@@ -114,6 +110,7 @@ struct ProdAccumulator(T)
     }
 
     ///
+    @safe pure @nogc nothrow
     T prod() const scope @property
     {
         import mir.math.ieee: ldexp;
@@ -125,6 +122,7 @@ struct ProdAccumulator(T)
     }
 
     ///
+    @safe pure @nogc nothrow
     ProdAccumulator!T ldexp(long exp) const
     {
         return typeof(return)(this.exp + exp, mantissa);
@@ -134,12 +132,14 @@ struct ProdAccumulator(T)
     alias opOpAssign(string op : "*") = put;
 
     ///
+    @safe pure @nogc nothrow
     ProdAccumulator!T opUnary(string op : "-")() const
     {
         return typeof(return)(exp, -mantissa);
     }
 
     ///
+    @safe pure @nogc nothrow
     ProdAccumulator!T opUnary(string op : "+")() const
     {
         return typeof(return)(exp, +mantissa);
@@ -292,6 +292,7 @@ prodType!(CommonType!T) prod(T...)(T val)
 
 /// Product of arbitrary inputs
 version(mir_test)
+@safe pure @nogc nothrow
 unittest
 {
     assert(prod(1.0, 3, 4) == 12.0);
@@ -300,6 +301,7 @@ unittest
 
 /// Product of arrays and ranges
 version(mir_test)
+@safe pure nothrow
 unittest
 {
     import mir.math.common: approxEqual;
@@ -318,6 +320,7 @@ unittest
 
 /// Product of vector
 version(mir_test)
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -339,6 +342,7 @@ unittest
 
 /// Product of matrix
 version(mir_test)
+@safe pure
 unittest
 {
     import mir.ndslice.fuse: fuse;
@@ -363,6 +367,7 @@ unittest
 
 /// Column prod of matrix
 version(mir_test)
+@safe pure
 unittest
 {
     import mir.ndslice.fuse: fuse;
@@ -389,6 +394,7 @@ unittest
 
 /// Can also set output type
 version(mir_test)
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -401,6 +407,7 @@ unittest
 
 /// Product of variables whose underlying types are implicitly convertible to double also have type double
 version(mir_test)
+@safe pure nothrow
 unittest
 {
     static struct Foo
@@ -432,7 +439,8 @@ Unqual!(DeepElementType!Range) sumOfLog2s(Range)(Range r)
 
 ///
 version(mir_test)
-@safe unittest
+@safe pure
+unittest
 {
     alias isNaN = x => x != x;
 
