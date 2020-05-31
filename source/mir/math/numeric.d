@@ -80,7 +80,6 @@ struct ProdAccumulator(T)
     }
 
     ///
-    @safe pure @nogc nothrow
     void put(Range)(Range r)
         if (isIterable!Range)
     {
@@ -91,7 +90,6 @@ struct ProdAccumulator(T)
     import mir.ndslice.slice;
 
     /// ditto
-    @safe pure @nogc nothrow
     void put(Range: Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind)(Range r)
     {
         static if (N > 1 && kind == Contiguous)
@@ -204,7 +202,6 @@ Returns:
 TODO
 See_also: $(MREF mir, algorithm, iteration, reduce)
 +/
-@safe pure @nogc nothrow
 F prod(F, Range)(Range r)
     if (isFloatingPoint!F && isIterable!Range)
 {
@@ -222,7 +219,6 @@ Params:
 Returns:
     The mantissa, such that the product equals the mantissa times 2^^exp
 +/
-@safe pure @nogc nothrow
 F prod(F, Range)(Range r, ref long exp)
     if (isFloatingPoint!F && isIterable!Range)
 {
@@ -240,7 +236,6 @@ Params:
 Returns:
     The prduct of all the elements in `r`
 +/
-@safe pure @nogc nothrow
 prodType!Range prod(Range)(Range r)
     if (isIterable!Range)
 {
@@ -257,7 +252,6 @@ Params:
 Returns:
     The mantissa, such that the product equals the mantissa times 2^^exp
 +/
-@safe pure @nogc nothrow
 prodType!Range prod(Range)(Range r, ref long exp)
     if (isIterable!Range)
 {
@@ -273,7 +267,6 @@ Params:
 Returns:
     The prduct of all the elements in `val`
 +/
-@safe pure @nogc nothrow
 F prod(F)(scope const F[] val...)
     if (isFloatingPoint!F)
 {
@@ -288,7 +281,6 @@ Params:
 Returns:
     The prduct of all the elements in `val`
 +/
-@safe pure @nogc nothrow
 prodType!(CommonType!T) prod(T...)(T val)
     if (T.length > 0 &&
         !is(CommonType!T == void))
