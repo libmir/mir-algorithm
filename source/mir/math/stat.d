@@ -74,7 +74,8 @@ struct MeanAccumulator(T, Summation summation)
 
 ///
 version(mir_test)
-@safe pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.slice: sliced;
 
@@ -86,7 +87,8 @@ version(mir_test)
 }
 
 version(mir_test)
-@safe pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.slice: sliced;
 
@@ -173,7 +175,8 @@ template mean(string summation)
 
 ///
 version(mir_test)
-@safe pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     import mir.ndslice.slice: sliced;
 
@@ -234,7 +237,6 @@ unittest
 /// Can also set algorithm or output type
 version(mir_test)
 @safe @nogc pure nothrow
-
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -308,14 +310,16 @@ unittest
 
 /// Arbitrary mean
 version(mir_test)
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+unittest
 {
     assert(mean(1.0, 2, 3) == 2);
     assert(mean!float(1, 2, 3) == 2);
 }
 
 version(mir_test)
-@safe pure nothrow unittest
+@safe pure nothrow
+unittest
 {
     assert([1.0, 2, 3, 4].mean == 2.5);
 }
@@ -464,7 +468,8 @@ F nthroot(F)(in F x, in size_t n)
 
 version(mir_test)
 @safe @nogc pure nothrow
-unittest {
+unittest
+{
     import mir.math.common: approxEqual;
 
     assert(nthroot(9.0, 0).approxEqual(1));
@@ -897,7 +902,8 @@ template median(bool allowModify = false)
 /// Median of vector
 version(mir_test_topN)
 @safe
-unittest {
+unittest
+{
     import mir.ndslice.slice: sliced;
 
     auto x0 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10, 5].sliced;
@@ -910,7 +916,8 @@ unittest {
 /// Median of matrix
 version(mir_test_topN)
 @safe
-unittest {
+unittest
+{
     import mir.ndslice.fuse: fuse;
 
     auto x0 = [
@@ -947,7 +954,8 @@ unittest
 /// Can allow original slice to be modified or set output type
 version(mir_test_topN)
 @safe
-unittest {
+unittest
+{
     import mir.ndslice.slice: sliced;
 
     auto x0 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10, 5].sliced;
@@ -963,7 +971,8 @@ type is correct
 +/
 version(mir_test_topN)
 @safe
-unittest {
+unittest
+{
     import mir.ndslice.slice: sliced;
 
     auto x = [9, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
@@ -972,7 +981,8 @@ unittest {
 
 version(mir_test)
 @safe
-unittest {
+unittest
+{
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
@@ -1021,7 +1031,8 @@ unittest {
 
 version(mir_test)
 @safe
-unittest {
+unittest
+{
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
@@ -1093,7 +1104,8 @@ F smallMedianImpl(F, Iterator)(Slice!Iterator slice)
 
 version(mir_test)
 @safe pure nothrow
-unittest {
+unittest
+{
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
 
@@ -1166,7 +1178,7 @@ template center(alias centralTendency = mean!(Summation.appropriate))
 
 /// Center vector
 version(mir_test)
-@safe pure nothrow
+@safe
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1178,6 +1190,8 @@ unittest
     
     // Can center using different functions
     assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
+    assert(x.center!gmean.all!approxEqual([-1.99379516, -0.99379516, 0.00620483, 1.00620483, 2.00620483, 3.00620483]));
+    assert(x.center!median.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
 }
 
 /// Center dynamic array
@@ -1351,7 +1365,8 @@ template simpleLinearRegression(string summation)
 
 ///
 version(mir_test)
-@safe pure nothrow @nogc unittest
+@safe pure nothrow @nogc
+unittest
 {
     import mir.math.common: approxEqual;
     static immutable x = [0, 1, 2, 3];
