@@ -17,7 +17,7 @@ $(T2 equal, Compares two slices for equality.)
 $(T2 filter, Filters elements in a range or an ndslice.)
 $(T2 find, Finds backward index.)
 $(T2 findIndex, Finds index.)
-$(T2 fold, Accumulates all elements.)
+$(T2 fold, Accumulates all elements (different parameter order than reduce).)
 $(T2 isSymmetric, Checks if the matrix is symmetric.)
 $(T2 maxIndex, Finds index of the maximum.)
 $(T2 maxPos, Finds backward index of the maximum.)
@@ -3900,9 +3900,7 @@ languages of functional flavor. The call `fold!(fun)(slice, seed)`
 first assigns `seed` to an internal variable `result`,
 also called the accumulator. Then, for each element `x` in $(D
 slice), `result = fun(result, x)` gets evaluated. Finally, $(D
-result) is returned. The one-argument version `fold!(fun)(slice)`
-works similarly, but it uses the first element of the slice as the
-seed (the slice must be non-empty).
+result) is returned.
 
 Params:
     fun = the predicate function to apply to the elements
@@ -3927,27 +3925,14 @@ template fold(alias fun)
         the accumulated result
     +/
     @optmath auto fold(Slice, S)(scope Slice slice, S seed)
+        if (hasLength!Slice || isInputRange!Slice)
     {
-        return reduce!fun(seed, slice);
-    }
-    
-    @optmath auto fold(Slice)(scope Slice slice)
-        if (isIterable!Slice)
-    {
-        static if (isSlice!Slice) {
-            assert(!slice.anyEmpty, "fold: slice may not be empty");
-            import mir.ndslice.topology: flattened;
-            auto temp = slice.flattened;
-            auto seed = temp.front;
-            temp.popFront;
-            return reduce!fun(seed, temp);
-        } else static if (isInputRange!Slice) {
-            auto seed = slice.front;
-            slice.popFront;
-            return reduce!fun(seed, slice);
+        static if (hasLength!Slice) {
+            assert(slice.length > 0, "fold: slice must have positive length");
         } else {
-            static assert(0, "fold: not implemented for type " ~ Slice.stringof);
+            assert(!slice.empty, "fold: slice must not be empty");
         }
+        return reduce!fun(seed, slice);
     }
 }
 
@@ -3962,16 +3947,14 @@ unittest
     auto arr = [1, 2, 3, 4, 5].sliced;
 
     // Sum all elements
-    assert(arr.fold!((a, b) => a + b) == 15);
-
-    // Sum all elements with explicit seed
+    assert(arr.fold!((a, b) => a + b)(0) == 15);
     assert(arr.fold!((a, b) => a + b)(6) == 21);
 
     // Can be used in a UFCS chain
-    assert(arr.map!(a => a + 1).fold!((a, b) => a + b) == 20);
+    assert(arr.map!(a => a + 1).fold!((a, b) => a + b)(0) == 20);
 
     // Return the last element of any range
-    assert(arr.fold!((a, b) => b) == 5);
+    assert(arr.fold!((a, b) => b)(0) == 5);
 }
 
 /// Works for matrices
@@ -3986,8 +3969,7 @@ unittest
         [4, 5, 6]
     ].fuse;
 
-    assert(arr.fold!((a, b) => a + b) == 21);
-    assert(arr.fold!((a, b) => a + b)(7) == 28);
+    assert(arr.fold!((a, b) => a + b)(0) == 21);
 }
 
 version(mir_test)
@@ -3999,16 +3981,14 @@ unittest
     int[] arr = [1, 2, 3, 4, 5];
 
     // Sum all elements
-    assert(arr.fold!((a, b) => a + b) == 15);
-
-    // Sum all elements with explicit seed
+    assert(arr.fold!((a, b) => a + b)(0) == 15);
     assert(arr.fold!((a, b) => a + b)(6) == 21);
 
     // Can be used in a UFCS chain
-    assert(arr.map!(a => a + 1).fold!((a, b) => a + b) == 20);
+    assert(arr.map!(a => a + 1).fold!((a, b) => a + b)(0) == 20);
 
     // Return the last element of any range
-    assert(arr.fold!((a, b) => b) == 5);
+    assert(arr.fold!((a, b) => b)(0) == 5);
 }
 
 version(mir_test)
@@ -4016,9 +3996,8 @@ version(mir_test)
 unittest
 {
     int[] arr = [1];
-    static assert(!is(typeof(arr.fold!())));
-    static assert(!is(typeof(arr.fold!(a => a))));
-    static assert(is(typeof(arr.fold!((a, b) => a))));
-    static assert(is(typeof(arr.fold!((a, b) => a)(1))));
+    static assert(!is(typeof(arr.fold!()(0))));
+    static assert(!is(typeof(arr.fold!(a => a)(0))));
+    static assert(is(typeof(arr.fold!((a, b) => a)(0))));
     assert(arr.length == 1);
 }
