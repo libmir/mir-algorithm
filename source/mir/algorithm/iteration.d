@@ -17,6 +17,7 @@ $(T2 equal, Compares two slices for equality.)
 $(T2 filter, Filters elements in a range or an ndslice.)
 $(T2 find, Finds backward index.)
 $(T2 findIndex, Finds index.)
+$(T2 fold, Accumulates all elements (different parameter order than reduce).)
 $(T2 isSymmetric, Checks if the matrix is symmetric.)
 $(T2 maxIndex, Finds index of the maximum.)
 $(T2 maxPos, Finds backward index of the maximum.)
@@ -3890,4 +3891,104 @@ version(mir_test)
     // filter all elements for each column
     auto rc = matrix.byDim!1.map!filterPositive;
     assert(equal!equal(rc, [ [3, 100], [], [400, 102] ]));
+}
+
+/++
+Implements the homonym function (also known as `accumulate`, $(D
+compress), `inject`, or `foldl`) present in various programming
+languages of functional flavor. The call `fold!(fun)(slice, seed)`
+first assigns `seed` to an internal variable `result`,
+also called the accumulator. Then, for each element `x` in $(D
+slice), `result = fun(result, x)` gets evaluated. Finally, $(D
+result) is returned.
+
+Params:
+    fun = the predicate function to apply to the elements
+
+See_Also:
+    $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
+    $(LREF sum) is similar to `fold!((a, b) => a + b)` that offers
+    precise summing of floating point numbers.
+    This is functionally equivalent to $(LREF reduce) with the argument order
+    reversed.
++/
+template fold(alias fun)
+{
+    /++
+    Params:
+        slice = A slice, range, and array.
+        seed = An initial accumulation value.
+    Returns:
+        the accumulated result
+    +/
+    @optmath auto fold(Slice, S)(scope Slice slice, S seed)
+    {
+        return reduce!fun(seed, slice);
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: map;
+
+    auto arr = [1, 2, 3, 4, 5].sliced;
+
+    // Sum all elements
+    assert(arr.fold!((a, b) => a + b)(0) == 15);
+    assert(arr.fold!((a, b) => a + b)(6) == 21);
+
+    // Can be used in a UFCS chain
+    assert(arr.map!(a => a + 1).fold!((a, b) => a + b)(0) == 20);
+
+    // Return the last element of any range
+    assert(arr.fold!((a, b) => b)(0) == 5);
+}
+
+/// Works for matrices
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+
+    auto arr = [
+        [1, 2, 3], 
+        [4, 5, 6]
+    ].fuse;
+
+    assert(arr.fold!((a, b) => a + b)(0) == 21);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.topology: map;
+
+    int[] arr = [1, 2, 3, 4, 5];
+
+    // Sum all elements
+    assert(arr.fold!((a, b) => a + b)(0) == 15);
+    assert(arr.fold!((a, b) => a + b)(6) == 21);
+
+    // Can be used in a UFCS chain
+    assert(arr.map!(a => a + 1).fold!((a, b) => a + b)(0) == 20);
+
+    // Return the last element of any range
+    assert(arr.fold!((a, b) => b)(0) == 5);
+}
+
+version(mir_test)
+@safe pure nothrow 
+unittest
+{
+    int[] arr = [1];
+    static assert(!is(typeof(arr.fold!()(0))));
+    static assert(!is(typeof(arr.fold!(a => a)(0))));
+    static assert(is(typeof(arr.fold!((a, b) => a)(0))));
+    assert(arr.length == 1);
 }

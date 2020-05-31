@@ -190,7 +190,7 @@ Calculates the product of the elements of the input.
 This function uses a separate exponential accumulation algorithm to calculate the
 product. A consequence of this is that the result must be a floating point type.
 To calculate the product of a type that is not implicitly convertible to a 
-floating point type, use $(MREF mir, algorithm, iteration, reduce). 
+floating point type, use $(MREF mir, algorithm, iteration, reduce) or $(MREF mir, algorithm, iteration, fold). 
 
 /++
 Params:
@@ -199,8 +199,9 @@ Returns:
     The prduct of all the elements in `r`
 +/
 
-TODO
-See_also: $(MREF mir, algorithm, iteration, reduce)
+See_also: 
+$(MREF mir, algorithm, iteration, reduce)
+$(MREF mir, algorithm, iteration, fold)
 +/
 F prod(F, Range)(Range r)
     if (isFloatingPoint!F && isIterable!Range)
