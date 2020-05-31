@@ -3907,31 +3907,22 @@ Params:
 
 See_Also:
     $(HTTP en.wikipedia.org/wiki/Fold_(higher-order_function), Fold (higher-order function))
-
     $(LREF sum) is similar to `fold!((a, b) => a + b)` that offers
     precise summing of floating point numbers.
-
     This is functionally equivalent to $(LREF reduce) with the argument order
-    reversed, and without the need to use $(REF_ALTTEXT `tuple`,tuple,std,typecons)
-    for multiple seeds.
+    reversed.
 +/
 template fold(alias fun)
 {
     /++
     Params:
         slice = A slice, range, and array.
-        seed = An initial accumulation value (optional).
+        seed = An initial accumulation value.
     Returns:
         the accumulated result
     +/
     @optmath auto fold(Slice, S)(scope Slice slice, S seed)
-        if (hasLength!Slice || isInputRange!Slice)
     {
-        static if (hasLength!Slice) {
-            assert(slice.length > 0, "fold: slice must have positive length");
-        } else {
-            assert(!slice.empty, "fold: slice must not be empty");
-        }
         return reduce!fun(seed, slice);
     }
 }

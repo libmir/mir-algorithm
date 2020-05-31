@@ -103,7 +103,8 @@ Computes the average of the input.
 Returns:
     The average of all the elements in the input.
 
-See_also: $(SUBREF sum, Summation)
+See_also: 
+    $(SUBREF sum, Summation)
 +/
 template mean(F, Summation summation = Summation.appropriate)
 {
@@ -322,7 +323,8 @@ version(mir_test)
 /++
 Computes the harmonic mean of a range.
 
-See_also: $(SUBREF sum, Summation)
+See_also: 
+    $(SUBREF sum, Summation)
 +/
 template hmean(F, Summation summation = Summation.appropriate)
 {
@@ -593,7 +595,8 @@ Params:
 Returns:
     The geometric average of all the elements in the input.
 
-See_also: $(SUBREF numeric, prod)
+See_also: 
+    $(SUBREF numeric, prod)
 +/
 @fmamath gmeanType!F gmean(F, Range)(Range r)
     if (isFloatingPoint!F && isIterable!Range)
@@ -837,7 +840,8 @@ By default, a copy is made.
 Returns:
     the median of the slice
 
-See_also: $(SUBREF stat, mean)
+See_also: 
+    $(SUBREF stat, mean)
 +/
 template median(F, bool allowModify = false)
 {

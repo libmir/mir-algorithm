@@ -201,7 +201,6 @@ Returns:
 
 See_also: 
 $(MREF mir, algorithm, iteration, reduce)
-
 $(MREF mir, algorithm, iteration, fold)
 +/
 F prod(F, Range)(Range r)
