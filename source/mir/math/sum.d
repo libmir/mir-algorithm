@@ -235,6 +235,17 @@ unittest
     assert(ma.avg == (1010 * 1009 / 2 - 10 * 9 / 2) / 1000.0);
 }
 
+/// Arbitrary sum
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    assert(sum(1, 2, 3, 4) == 10);
+    assert(sum!float(1, 2, 3, 4) == 10f);
+    assert(sum(1f, 2, 3, 4) == 10f);
+    assert(sum(1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i) == (10 + 14i));
+}
+
 version(X86)
     version = X86_Any;
 version(X86_64)
@@ -1741,12 +1752,12 @@ template sum(Summation summation = Summation.appropriate)
     }
 
     ///
-    CommonType!T sum(T...)(T r)
+    sumType!(CommonType!T) sum(T...)(T r)
         if (T.length > 0 &&
             !is(CommonType!T == void))
     {
         alias U = typeof(return);
-        return .sum!(CommonType!T, ResolveSummationType!(summation, U[], U))(r);
+        return .sum!(U, ResolveSummationType!(summation, U[], U))(r);
     }
 }
 
@@ -1979,10 +1990,15 @@ private T summationInitValue(T)()
 package template sumType(Range)
 {
     import mir.ndslice.slice: isSlice, DeepElementType;
-    static if (isSlice!Range)
-        alias T = Unqual!(DeepElementType!(Range.This));
-    else
-        alias T = Unqual!(ForeachType!Range);
+
+    static if (isIterable!Range) {
+        static if (isSlice!Range)
+            alias T = Unqual!(DeepElementType!(Range.This));
+        else
+            alias T = Unqual!(ForeachType!Range);
+    } else {
+        alias T = Unqual!Range;
+    }
     static if (__traits(compiles, {
         auto a = T.init + T.init;
         a += T.init;
