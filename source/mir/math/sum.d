@@ -1732,8 +1732,6 @@ template sum(F, Summation summation = Summation.appropriate)
 ///ditto
 template sum(Summation summation = Summation.appropriate)
 {
-    import std.traits: CommonType;
-
     ///
     sumType!Range sum(Range)(Range r)
         if (isIterable!Range)
@@ -1752,12 +1750,10 @@ template sum(Summation summation = Summation.appropriate)
     }
 
     ///
-    sumType!(CommonType!T) sum(T...)(T r)
-        if (T.length > 0 &&
-            !is(CommonType!T == void))
+    sumType!T sum(T)(scope T[] ar...)
     {
-        alias U = typeof(return);
-        return .sum!(U, ResolveSummationType!(summation, U[], U))(r);
+        alias F = typeof(return);
+        return .sum!(F, ResolveSummationType!(summation, F[], F))(ar);
     }
 }
 
