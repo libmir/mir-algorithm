@@ -619,24 +619,15 @@ See_also:
 
 /++
 Params:
-    val = values
+    ar = values
 +/
-@fmamath gmeanType!F gmean(F)(scope const F[] val...)
+@fmamath gmeanType!F gmean(F)(scope const F[] ar...)
     if (isFloatingPoint!F)
 {
     alias G = typeof(return);
     GMeanAccumulator!G gmean;
-    gmean.put(val);
+    gmean.put(ar);
     return gmean.gmean;
-}
-
-/// ditto
-@fmamath gmeanType!(CommonType!T) gmean(T...)(T val)
-    if (T.length > 0 &&
-        !is(CommonType!T == void))
-{
-    alias G = typeof(return);
-    return .gmean!G(val);
 }
 
 ///
