@@ -17,7 +17,7 @@ $(T2 equal, Compares two slices for equality.)
 $(T2 filter, Filters elements in a range or an ndslice.)
 $(T2 find, Finds backward index.)
 $(T2 findIndex, Finds index.)
-$(T2 fold, Accumulates all elements (different parameter order than reduce).)
+$(T2 fold, Accumulates all elements (different parameter order than `reduce`).)
 $(T2 isSymmetric, Checks if the matrix is symmetric.)
 $(T2 maxIndex, Finds index of the maximum.)
 $(T2 maxPos, Finds backward index of the maximum.)
@@ -3923,7 +3923,8 @@ template fold(alias fun)
     +/
     @optmath auto fold(Slice, S)(scope Slice slice, S seed)
     {
-        return reduce!fun(seed, slice);
+        import core.lifetime: move;
+        return reduce!fun(seed, slice.move);
     }
 }
 
