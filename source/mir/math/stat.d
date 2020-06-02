@@ -137,8 +137,6 @@ template mean(F, Summation summation = Summation.appropriate)
 /// ditto
 template mean(Summation summation = Summation.appropriate)
 {
-    import std.traits: CommonType;
-
     /++
     Params:
         r = range, must be finite iterable
@@ -151,13 +149,12 @@ template mean(Summation summation = Summation.appropriate)
     
     /++
     Params:
-        val = values
+        ar = values
     +/
-    @fmamath CommonType!T mean(T...)(T val)
-        if (T.length > 0 &&
-            !is(CommonType!T == void))
+    @fmamath sumType!T mean(T)(scope const T[] ar...)
     {
-        return .mean!(CommonType!T, summation)(val);
+        alias F = typeof(return);
+        return .mean!(F, summation)(ar);
     }
 }
 
