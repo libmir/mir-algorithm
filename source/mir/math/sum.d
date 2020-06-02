@@ -1750,7 +1750,7 @@ template sum(Summation summation = Summation.appropriate)
     }
 
     ///
-    sumType!T sum(T)(scope T[] ar...)
+    sumType!T sum(T)(scope const T[] ar...)
     {
         alias F = typeof(return);
         return .sum!(F, ResolveSummationType!(summation, F[], F))(ar);

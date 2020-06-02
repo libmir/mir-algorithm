@@ -241,7 +241,7 @@ prodType!Range prod(Range)(Range r)
     if (isIterable!Range)
 {
     import core.lifetime: move;
-
+    
     alias F = typeof(return);
     return .prod!(F, Range)(r.move);
 }
@@ -264,30 +264,16 @@ prodType!Range prod(Range)(Range r, ref long exp)
 
 /++
 Params:
-    val = values
+    ar = values
 Returns:
-    The prduct of all the elements in `val`
+    The prduct of all the elements in `ar`
 +/
-F prod(F)(scope const F[] val...)
-    if (isFloatingPoint!F)
-{
-    ProdAccumulator!F prod;
-    prod.put(val);
-    return prod.prod;
-}
-
-/++
-Params:
-    val = values
-Returns:
-    The prduct of all the elements in `val`
-+/
-prodType!(CommonType!T) prod(T...)(T val)
-    if (T.length > 0 &&
-        !is(CommonType!T == void))
+prodType!T prod(T)(scope const T[] ar...)
 {
     alias F = typeof(return);
-    return .prod!(F)(val);
+    ProdAccumulator!F prod;
+    prod.put(ar);
+    return prod.prod;
 }
 
 /// Product of arbitrary inputs
