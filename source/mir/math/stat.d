@@ -33,7 +33,8 @@ package template statType(T, bool checkComplex = true)
     import mir.internal.utility: isFloatingPoint, isComplex;
 
     static if (isFloatingPoint!T || (checkComplex && isComplex!T)) {
-        alias statType = T;
+        import std.traits: Unqual;
+        alias statType = Unqual!T;
     } else static if (is(T : double)) {
         alias statType = double;
     } else static if (checkComplex) {
@@ -59,6 +60,11 @@ unittest
     static assert(is(statType!cfloat == cfloat));
     static assert(is(statType!cdouble == cdouble));
     static assert(is(statType!creal == creal));
+    
+    static assert(is(statType!(const(int)) == double));
+    static assert(is(statType!(immutable(int)) == double));
+    static assert(is(statType!(const(double)) == double));
+    static assert(is(statType!(immutable(double)) == double));
 }
 
 version(mir_test)
@@ -414,7 +420,7 @@ type is correct. By default, if an input type is not floating point, then the
 result will be a dobule if it is implicitly convertible to a floating point type.
 +/
 version(mir_test)
-//@safe pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -497,6 +503,19 @@ unittest
     auto y = x.alongDim!1.map!mean;
     assert(y.all!approxEqual([1.5, 3.5]));
     static assert(is(meanType!(typeof(y)) == double));
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+
+    assert(x.sliced.mean == 29.25 / 12);
+    assert(x.sliced.mean!float == 29.25 / 12);
 }
 
 package template hmeanType(T)
@@ -750,7 +769,7 @@ unittest
 
 /// Arbitrary harmonic mean
 version(mir_test)
-@safe pure nothrow
+@safe pure @nogc nothrow
 unittest
 {
     import mir.math.common: approxEqual;
@@ -761,6 +780,19 @@ unittest
     
     auto y = hmean!float(20, 100, 2000, 10, 5, 2);
     assert(y.approxEqual(6.97269));
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    static immutable x = [20.0, 100.0, 2000.0, 10.0, 5.0, 2.0];
+
+    assert(x.sliced.hmean.approxEqual(6.97269));
+    assert(x.sliced.hmean!float.approxEqual(6.97269));
 }
 
 private
@@ -1051,7 +1083,7 @@ unittest
     assert(x.gmean!float.approxEqual(2.79160522));
 }
 
-/// Mean works for user-defined types, provided the nth root can be taken for them
+/// gean works for user-defined types, provided the nth root can be taken for them
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -1135,6 +1167,20 @@ unittest
     import mir.math.common: approxEqual;
 
     assert(gmean([1, 2, 3]).approxEqual(1.81712059));
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    static immutable x = [3.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+                          2.0, 7.5, 5.0, 1.0, 1.5, 2.0];
+
+    assert(x.sliced.gmean.approxEqual(2.36178395));
+    assert(x.sliced.gmean!float.approxEqual(2.36178395));
 }
 
 /++

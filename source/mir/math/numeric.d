@@ -155,9 +155,38 @@ unittest
 
     ProdAccumulator!float x;
     x.put([1, 2, 3].sliced);
-    assert(x.prod == 6);
+    assert(x.prod == 6f);
     x.put(4);
-    assert(x.prod == 24);
+    assert(x.prod == 24f);
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    static immutable a = [1, 2, 3];
+    ProdAccumulator!float x;
+    x.put(a);
+    assert(x.prod == 6f);
+    x.put(4);
+    assert(x.prod == 24f);
+    static assert(is(typeof(x.prod) == float));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    ProdAccumulator!double x;
+    x.put([1.0, 2.0, 3.0]);
+    assert(x.prod == 6.0);
+    x.put(4.0);
+    assert(x.prod == 24.0);
+    static assert(is(typeof(x.prod) == double));
 }
 
 package template prodType(T)
@@ -404,6 +433,48 @@ unittest
     auto y = prod([Foo(1), Foo(2), Foo(3)]);
     assert(y == 6.0);
     static assert(is(typeof(y) == double));
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: reduce;
+    import mir.math.common: approxEqual;
+
+    enum l = 2.0 ^^ (double.max_exp - 1);
+    enum s = 2.0 ^^ -(double.max_exp - 1);
+    enum c = 0.8;
+    enum u = c * 2.0 ^^ 10;
+    static immutable r = [l, l, l, s, s, s, u, u, u];
+              
+    assert(r.sliced.prod.approxEqual(reduce!"a * b"(1.0, [u, u, u])));
+
+    long e;
+    assert(r.sliced.prod(e).approxEqual(reduce!"a * b"(1.0, [c, c, c])));
+    assert(e == 30);
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: reduce;
+    import mir.math.common: approxEqual;
+
+    enum l = 2.0 ^^ (float.max_exp - 1);
+    enum s = 2.0 ^^ -(float.max_exp - 1);
+    enum c = 0.8;
+    enum u = c * 2.0 ^^ 10;
+    static immutable r = [l, l, l, s, s, s, u, u, u];
+              
+    assert(r.sliced.prod!double.approxEqual(reduce!"a * b"(1.0, [u, u, u])));
+
+    long e;
+    assert(r.sliced.prod!double(e).approxEqual(reduce!"a * b"(1.0, [c, c, c])));
+    assert(e == 30);
 }
 
 /++
