@@ -271,13 +271,13 @@ template mean(F, Summation summation = Summation.appropriate)
     
     /++
     Params:
-        val = values
+        ar = values
     +/
-    @fmamath meanType!F mean(scope const F[] val...)
+    @fmamath meanType!F mean(scope const F[] ar...)
     {
         alias G = typeof(return);
         MeanAccumulator!(G, ResolveSummationType!(summation, const(G)[], G)) mean;
-        mean.put(val);
+        mean.put(ar);
         return mean.mean;
     }
 }
@@ -579,6 +579,29 @@ template hmean(F, Summation summation = Summation.appropriate)
             return numerator / imean.mean;
         }
     }
+   
+    /++
+    Params:
+        ar = values
+    +/
+    @fmamath hmeanType!F hmean(scope const F[] ar...)
+    {
+        alias G = typeof(return);
+
+        auto numerator = cast(G) 1;
+
+        static if (summation == Summation.fast && __traits(compiles, ar.map!"numerator / a"))
+        {
+            return numerator / ar.map!"numerator / a".mean!(G, summation);
+        }
+        else
+        {
+            MeanAccumulator!(G, ResolveSummationType!(summation, const(G)[], G)) imean;
+            foreach (e; ar)
+                imean.put(numerator / e);
+            return numerator / imean.mean;
+        }
+    }
 }
 
 /// ditto
@@ -591,8 +614,18 @@ template hmean(Summation summation = Summation.appropriate)
     @fmamath hmeanType!Range hmean(Range)(Range r)
         if (isIterable!Range)
     {
-        alias G = typeof(return);
-        return .hmean!(G, summation)(r.move);
+        alias F = typeof(return);
+        return .hmean!(F, summation)(r.move);
+    }
+    
+    /++
+    Params:
+        ar = values
+    +/
+    @fmamath hmeanType!T hmean(T)(scope const T[] ar...)
+    {
+        alias F = typeof(return);
+        return .hmean!(F, summation)(ar);
     }
 }
 
@@ -713,6 +746,21 @@ unittest
 
     auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
     assert(x.hmean.approxEqual(1.97110904 + 3.14849332i));
+}
+
+/// Arbitrary harmonic mean
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = hmean(20.0, 100, 2000, 10, 5, 2);
+    assert(x.approxEqual(6.97269));
+    
+    auto y = hmean!float(20, 100, 2000, 10, 5, 2);
+    assert(y.approxEqual(6.97269));
 }
 
 private
