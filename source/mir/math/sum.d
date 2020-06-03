@@ -1983,25 +1983,32 @@ private T summationInitValue(T)()
     }
 }
 
-package template sumType(Range)
+package template elementType(T)
 {
     import mir.ndslice.slice: isSlice, DeepElementType;
+    import std.traits: Unqual, ForeachType;
 
-    static if (isIterable!Range) {
-        static if (isSlice!Range)
-            alias T = Unqual!(DeepElementType!(Range.This));
+    static if (isIterable!T) {
+        static if (isSlice!T)
+            alias elementType = Unqual!(DeepElementType!(T.This));
         else
-            alias T = Unqual!(ForeachType!Range);
+            alias elementType = Unqual!(ForeachType!T);
     } else {
-        alias T = Unqual!Range;
+        alias elementType = Unqual!T;
     }
+}
+
+package template sumType(Range)
+{
+    alias T = elementType!Range;
+
     static if (__traits(compiles, {
         auto a = T.init + T.init;
         a += T.init;
     }))
         alias sumType = typeof(T.init + T.init);
     else
-        static assert(0, "Can't sum elements of type " ~ T.stringof);
+        static assert(0, "sumType: Can't sum elements of type " ~ T.stringof);
 }
 
 /++

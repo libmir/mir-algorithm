@@ -2744,7 +2744,7 @@ pure version(mir_test) unittest
     // 1 2
     // 3 4
     auto matrix = iota([2, 2], 1);
-    assert(maxAvg(matrix) == 3);
+    assert(maxAvg(matrix) == 3.5);
 }
 
 
