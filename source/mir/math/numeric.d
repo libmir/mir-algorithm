@@ -448,11 +448,13 @@ unittest
     enum c = 0.8;
     enum u = c * 2.0 ^^ 10;
     static immutable r = [l, l, l, s, s, s, u, u, u];
+    static immutable result1 = [u, u, u];
+    static immutable result2 = [c, c, c];
               
-    assert(r.sliced.prod.approxEqual(reduce!"a * b"(1.0, [u, u, u])));
+    assert(r.sliced.prod.approxEqual(reduce!"a * b"(1.0, result1)));
 
     long e;
-    assert(r.sliced.prod(e).approxEqual(reduce!"a * b"(1.0, [c, c, c])));
+    assert(r.sliced.prod(e).approxEqual(reduce!"a * b"(1.0, result2)));
     assert(e == 30);
 }
 
@@ -469,11 +471,13 @@ unittest
     enum c = 0.8;
     enum u = c * 2.0 ^^ 10;
     static immutable r = [l, l, l, s, s, s, u, u, u];
+    static immutable result1 = [u, u, u];
+    static immutable result2 = [c, c, c];
               
-    assert(r.sliced.prod!double.approxEqual(reduce!"a * b"(1.0, [u, u, u])));
+    assert(r.sliced.prod!double.approxEqual(reduce!"a * b"(1.0, result1)));
 
     long e;
-    assert(r.sliced.prod!double(e).approxEqual(reduce!"a * b"(1.0, [c, c, c])));
+    assert(r.sliced.prod!double(e).approxEqual(reduce!"a * b"(1.0, result2)));
     assert(e == 30);
 }
 
