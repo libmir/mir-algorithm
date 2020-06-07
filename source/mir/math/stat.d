@@ -1807,19 +1807,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MapSummator!(square, T, summation) sumOfSquares;
     
     ///
-    this(Range)(Range r)
-        if (isIterable!Range)
-    {
-        this.put(r);
-    }
-    
-    ///
-    this()(T x)
-    {
-        this.put(x);
-    }
-    
-    ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
@@ -1868,48 +1855,23 @@ unittest
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
 
-    enum PopulationTrue = true;
-    enum PopulationFalse = false;
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
 
     VarianceAccumulator!(double, VarianceAlgo.naive, Summation.naive) v;
     v.put(x);
-    assert(v.variance(true).approxEqual(54.76562 / 12));
-    assert(v.variance(PopulationTrue).approxEqual(54.76562 / 12));
-    assert(v.variance(false).approxEqual(54.76562 / 11));
-    assert(v.variance(PopulationFalse).approxEqual(54.76562 / 11));
-    
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+
     v.put(4.0);
-    assert(v.variance(true).approxEqual(57.01923 / 13));
-    assert(v.variance(PopulationTrue).approxEqual(57.01923 / 13));
-    assert(v.variance(false).approxEqual(57.01923 / 12));
-    assert(v.variance(PopulationFalse).approxEqual(57.01923 / 12));
-}
-
-///
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-    import mir.math.common: approxEqual;
-
-    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
-              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
-
-    enum PopulationTrue = true;
-    enum PopulationFalse = false;
-
-    auto v = VarianceAccumulator!(double, VarianceAlgo.naive, Summation.naive)(x);
-    assert(v.variance(true).approxEqual(54.76562 / 12));
-    assert(v.variance(PopulationTrue).approxEqual(54.76562 / 12));
-    assert(v.variance(false).approxEqual(54.76562 / 11));
-    assert(v.variance(PopulationFalse).approxEqual(54.76562 / 11));
-    
-    v.put(4.0);
-    assert(v.variance(true).approxEqual(57.01923 / 13));
-    assert(v.variance(PopulationTrue).approxEqual(57.01923 / 13));
-    assert(v.variance(false).approxEqual(57.01923 / 12));
-    assert(v.variance(PopulationFalse).approxEqual(57.01923 / 12));
+    assert(v.variance(PopulationTrueRT).approxEqual(57.01923 / 13));
+    assert(v.variance(PopulationTrueCT).approxEqual(57.01923 / 13));
+    assert(v.variance(PopulationFalseRT).approxEqual(57.01923 / 12));
+    assert(v.variance(PopulationFalseCT).approxEqual(57.01923 / 12));
 }
 
 ///
@@ -1923,54 +1885,40 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MapSummator!(square, T, summation) centeredSumOfSquares;
 
     ///
-    this()(T x)
-    {
-        meanAccumulator.put(x);
-        centeredSumOfSquares.put(cast(T) 0);
-    }
-    
-    ///
-    this(Range)(Range r)
+    void put(Range)(Range r)
         if (isIterable!Range)
     {
         import mir.ndslice.topology: vmap;
         import mir.ndslice.internal: LeftOp;
 
-        meanAccumulator.put(r);
-        centeredSumOfSquares.put(r.vmap(LeftOp!("-", T)(meanAccumulator.mean)));
-    }
+        if (count == 0) {
+            meanAccumulator.put(r);
+            centeredSumOfSquares.put(r.vmap(LeftOp!("-", T)(meanAccumulator.mean)));
+        } else {
+            T oldMean = meanAccumulator.mean;
 
-    ///
-    void put(Range)(Range r)
-        if (isIterable!Range)
-    {
-        T oldMean;
-        if (count > 0)
-            oldMean = meanAccumulator.mean;
-        else
-            oldMean = cast(T) 0;
-
-        meanAccumulator.put(r);
-        static if (hasShape!Range)
-        {
-            import mir.ndslice.topology: vmap, map, zip;
-            import mir.ndslice.internal: LeftOp;
-
-            centeredSumOfSquares.
-                mapSummator.
-                put(
-                    r.vmap(LeftOp!("-", T)(meanAccumulator.mean)).
-                    zip(r.vmap(LeftOp!("-", T)(oldMean))).
-                    map!"a * b"
-                    );
-        }
-        else
-        {
-            foreach(x; r)
+            meanAccumulator.put(r);
+            static if (hasShape!Range)
             {
+                import mir.ndslice.topology: vmap, map, zip;
+                import mir.ndslice.internal: LeftOp;
+
                 centeredSumOfSquares.
                     mapSummator.
-                    put((x - meanAccumulator.mean) * (x - oldMean));
+                    put(
+                        r.vmap(LeftOp!("-", T)(meanAccumulator.mean)).
+                        zip(r.vmap(LeftOp!("-", T)(oldMean))).
+                        map!"a * b"
+                        );
+            }
+            else
+            {
+                foreach(x; r)
+                {
+                    centeredSumOfSquares.
+                        mapSummator.
+                        put((x - meanAccumulator.mean) * (x - oldMean));
+                }
             }
         }
     }
@@ -1978,16 +1926,17 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     void put()(T x)
     {
-        T oldMean;
-        if (count > 0)
-            oldMean = meanAccumulator.mean;
-        else
-            oldMean = cast(T) 0;
+        if (count == 0) {
+            meanAccumulator.put(x);
+            centeredSumOfSquares.put(cast(T) 0);
+        } else {
+            T oldMean = meanAccumulator.mean;
 
-        meanAccumulator.put(x);
-        centeredSumOfSquares.
-            mapSummator.
-            put((x - meanAccumulator.mean) * (x - oldMean));
+            meanAccumulator.put(x);
+            centeredSumOfSquares.
+                mapSummator.
+                put((x - meanAccumulator.mean) * (x - oldMean));
+        }
     }
 
     ///
@@ -2011,48 +1960,23 @@ unittest
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
 
-    enum PopulationTrue = true;
-    enum PopulationFalse = false;
-
-    auto v = VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive)(x);
-    assert(v.variance(true).approxEqual(54.76562 / 12));
-    assert(v.variance(PopulationTrue).approxEqual(54.76562 / 12));
-    assert(v.variance(false).approxEqual(54.76562 / 11));
-    assert(v.variance(PopulationFalse).approxEqual(54.76562 / 11));
-
-    v.put(4.0);
-    assert(v.variance(true).approxEqual(57.01923 / 13));
-    assert(v.variance(PopulationTrue).approxEqual(57.01923 / 13));
-    assert(v.variance(false).approxEqual(57.01923 / 12));
-    assert(v.variance(PopulationFalse).approxEqual(57.01923 / 12));
-}
-
-///
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-    import mir.math.common: approxEqual;
-
-    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
-              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
-
-    enum PopulationTrue = true;
-    enum PopulationFalse = false;
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
 
     VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) v;
     v.put(x);
-    assert(v.variance(true).approxEqual(54.76562 / 12));
-    assert(v.variance(PopulationTrue).approxEqual(54.76562 / 12));
-    assert(v.variance(false).approxEqual(54.76562 / 11));
-    assert(v.variance(PopulationFalse).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 
     v.put(4.0);
-    assert(v.variance(true).approxEqual(57.01923 / 13));
-    assert(v.variance(PopulationTrue).approxEqual(57.01923 / 13));
-    assert(v.variance(false).approxEqual(57.01923 / 12));
-    assert(v.variance(PopulationFalse).approxEqual(57.01923 / 12));
+    assert(v.variance(PopulationTrueRT).approxEqual(57.01923 / 13));
+    assert(v.variance(PopulationTrueCT).approxEqual(57.01923 / 13));
+    assert(v.variance(PopulationFalseRT).approxEqual(57.01923 / 12));
+    assert(v.variance(PopulationFalseCT).approxEqual(57.01923 / 12));
 }
 
 version(mir_test)
@@ -2096,7 +2020,8 @@ template variance(
     {
         import core.lifetime: move;
         alias G = typeof(return);
-        auto varianceAccumulator = VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, Range, G))(r.move);
+        VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, Range, G)) varianceAccumulator;
+        varianceAccumulator.put(r.move);
         return varianceAccumulator.variance(isPopulation);
     }
 
@@ -2107,7 +2032,8 @@ template variance(
     @fmamath meanType!F variance(scope const F[] ar...)
     {
         alias G = typeof(return);
-        auto varianceAccumulator = VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, const(G)[], G))(ar);
+        VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, const(G)[], G)) varianceAccumulator;
+        varianceAccumulator.put(ar);
         return varianceAccumulator.variance(false);
     }
 }
