@@ -1785,7 +1785,7 @@ unittest {
 private
 mixin template variance_ops(T, Summation summation)
 {
-
+    import core.lifetime: move;
 
     ///
     MeanAccumulator!(T, summation) meanAccumulator;
@@ -1812,8 +1812,8 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         static if (hasShape!Range)
         {
-            meanAccumulator.put(r);
-            sumOfSquares.put(r);
+            meanAccumulator.put(r.move);
+            sumOfSquares.put(r.move);
         }
         else
         {
@@ -1892,12 +1892,12 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
         import mir.ndslice.internal: LeftOp;
 
         if (count == 0) {
-            meanAccumulator.put(r);
-            centeredSumOfSquares.put(r.vmap(LeftOp!("-", T)(meanAccumulator.mean)));
+            meanAccumulator.put(r.move);
+            centeredSumOfSquares.put(r.move.vmap(LeftOp!("-", T)(meanAccumulator.mean)));
         } else {
             T oldMean = meanAccumulator.mean;
 
-            meanAccumulator.put(r);
+            meanAccumulator.put(r.move);
             static if (hasShape!Range)
             {
                 import mir.ndslice.topology: vmap, map, zip;
@@ -1906,8 +1906,8 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
                 centeredSumOfSquares.
                     mapSummator.
                     put(
-                        r.vmap(LeftOp!("-", T)(meanAccumulator.mean)).
-                        zip(r.vmap(LeftOp!("-", T)(oldMean))).
+                        r.move.vmap(LeftOp!("-", T)(meanAccumulator.mean)).
+                        zip(r.move.vmap(LeftOp!("-", T)(oldMean))).
                         map!"a * b"
                         );
             }
