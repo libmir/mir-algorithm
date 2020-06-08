@@ -2003,7 +2003,7 @@ Params:
     summation: algorithm for calculating sums (default: Summation.appropriate)
 
 Returns:
-    The elements in the slice with the average subtracted from them.
+    The variance of the input
 +/
 template variance(
     F, 
@@ -2068,27 +2068,15 @@ template variance(
 }
 
 /// ditto
-template variance(F, string varianceAlgo, string summation)
+template variance(F, string varianceAlgo, string summation = "appropriate")
 {
     mixin("alias variance = .variance!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 /// ditto
-template variance(string varianceAlgo, string summation)
+template variance(string varianceAlgo, string summation = "appropriate")
 {
     mixin("alias variance = .variance!(VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
-}
-
-/// ditto
-template variance(F, string varianceAlgo)
-{
-    mixin("alias variance = .variance!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation.appropriate);");
-}
-
-/// ditto
-template variance(string varianceAlgo)
-{
-    mixin("alias variance = .variance!(VarianceAlgo." ~ varianceAlgo ~ ", Summation.appropriate);");
 }
 
 ///
@@ -2156,14 +2144,14 @@ unittest
     ].fuse;
     auto result = [13.16667 / 2, 7.041667 / 2, 0.1666667 / 2, 30.16667 / 2];
 
-    // Use byDim or alongDim with map to compute mean of row/column.
+    // Use byDim or alongDim with map to compute variance of row/column.
     assert(x.byDim!1.map!variance.all!approxEqual(result));
     assert(x.alongDim!0.map!variance.all!approxEqual(result));
 
     // FIXME
-    // Without using map, computes the mean of the whole slice
-    // assert(x.byDim!1.mean == x.sliced.mean);
-    // assert(x.alongDim!0.mean == x.sliced.mean);
+    // Without using map, computes the variance of the whole slice
+    // assert(x.byDim!1.variance == x.sliced.variance);
+    // assert(x.alongDim!0.variance == x.sliced.variance);
 }
 
 /// Can also set algorithm type
@@ -2189,7 +2177,7 @@ unittest
 
 /// Can also set algorithm or output type
 version(mir_test)
-//@safe pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -2234,7 +2222,7 @@ type is correct. By default, if an input type is not floating point, then the
 result will be a double if it is implicitly convertible to a floating point type.
 +/
 version(mir_test)
-//@safe pure nothrow
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -2251,7 +2239,7 @@ unittest
 }
 
 /++
-Mean works for complex numbers and other user-defined types (provided they
+Variance works for complex numbers and other user-defined types (provided they
 can be converted to a floating point or complex type)
 +/
 version(mir_test)
@@ -2265,7 +2253,7 @@ unittest
     assert(x.variance.approxEqual((0.0+10.0i)/ 3));
 }
 
-/// Compute mean tensors along specified dimention of tensors
+/// Compute variance tensors along specified dimention of tensors
 version(mir_test)
 @safe pure
 unittest
