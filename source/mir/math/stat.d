@@ -1632,8 +1632,6 @@ unittest
 struct MapSummator(alias fun, T, Summation summation) 
     if(isMutable!T)
 {
-    import mir.functional: naryFun;
-
     ///
     Summator!(T, summation) mapSummator;
 
@@ -1650,13 +1648,13 @@ struct MapSummator(alias fun, T, Summation summation)
         static if (hasShape!Range)
         {
             import mir.ndslice.topology: map;
-            mapSummator.put(r.map!(a => naryFun!(fun)(a)));
+            mapSummator.put(r.map!fun);
         }
         else
         {
             foreach(x; r)
             {
-                mapSummator.put(naryFun!(fun)(x));
+                mapSummator.put(fun(x));
             }
         }
     }
@@ -1664,7 +1662,7 @@ struct MapSummator(alias fun, T, Summation summation)
     ///
     void put()(T x)
     {
-        mapSummator.put(naryFun!(fun)(x));
+        mapSummator.put(fun(x));
     }
 }
 
@@ -1690,7 +1688,8 @@ unittest
 {
     import mir.ndslice.slice: sliced;
 
-    MapSummator!("a + 1", double, Summation.pairwise) x;
+    alias f = (double x) => (x + 1);
+    MapSummator!(f, double, Summation.pairwise) x;
     x.put([0.0, 1, 2, 3, 4].sliced);
     assert(x.sum == 15.0);
     x.put(5);
@@ -1703,7 +1702,8 @@ unittest
 {
     import mir.ndslice.slice: sliced;
 
-    MapSummator!("a + 1", double, Summation.pairwise) x;
+    alias f = (double x) => (x + 1);
+    MapSummator!(f, double, Summation.pairwise) x;
     static immutable a = [0.0, 1, 2, 3, 4];
     x.put(a.sliced);
     assert(x.sum == 15.0);
@@ -1718,7 +1718,8 @@ unittest
     import mir.ndslice.slice: sliced;
     import mir.ndslice.fuse: fuse;
 
-    MapSummator!("a + 1", double, Summation.pairwise) x;
+    alias f = (double x) => (x + 1);
+    MapSummator!(f, double, Summation.pairwise) x;
     auto a = [
         [0.0, 1, 2],
         [3.0, 4, 5]
