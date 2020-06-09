@@ -222,6 +222,18 @@ struct MeanAccumulator(T, Summation summation)
         count++;
         summator.put(x);
     }
+
+    ///
+    F fastMean(F = T)(F x, F oldMean) {
+        this.put(x);
+        return oldMean + (x - oldMean) * (1 / cast(F) count);
+    }
+
+    ///
+    F fastMeanDelta(F = T)(F delta, F oldMean) {
+        this.put(delta + oldMean);
+        return oldMean + delta * (1 / cast(F) count);
+    }
 }
 
 ///
@@ -235,6 +247,32 @@ unittest
     x.put([0.0, 1, 2, 3, 4].sliced);
     assert(x.mean == 2);
     x.put(5);
+    assert(x.mean == 2.5);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    MeanAccumulator!(double, Summation.pairwise) x;
+    x.put([0.0, 1, 2, 3, 4].sliced);
+    assert(x.mean == 2);
+    assert(x.fastMean(5.0, 2.0) == 2.5);
+    assert(x.mean == 2.5);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    MeanAccumulator!(double, Summation.pairwise) x;
+    x.put([0.0, 1, 2, 3, 4].sliced);
+    assert(x.mean == 2);
+    assert(x.fastMeanDelta(3.0, 2.0) == 2.5);
     assert(x.mean == 2.5);
 }
 
@@ -1629,40 +1667,34 @@ unittest
     assert(x.center!(mean!"precise") == result);
 }
 
+/++
+Output range that applies function `fun` to each input before summing
+
++/
 struct MapSummator(alias fun, T, Summation summation) 
     if(isMutable!T)
 {
     ///
-    Summator!(T, summation) mapSummator;
+    Summator!(T, summation) summator;
 
     ///
     F sum(F = T)() @property
     {
-        return cast(F) mapSummator.sum;
+        return cast(F) summator.sum;
     }
     
     ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
-        static if (hasShape!Range)
-        {
-            import mir.ndslice.topology: map;
-            mapSummator.put(r.map!fun);
-        }
-        else
-        {
-            foreach(x; r)
-            {
-                mapSummator.put(fun(x));
-            }
-        }
+        import mir.ndslice.topology: map;
+        summator.put(r.map!fun);
     }
 
     ///
     void put()(T x)
     {
-        mapSummator.put(fun(x));
+        summator.put(fun(x));
     }
 }
 
@@ -1755,35 +1787,6 @@ enum VarianceAlgo
 }
 
 private
-@safe pure nothrow @nogc
-T square(T)(scope const T x)
-{
-    import mir.internal.utility: isFloatingPoint;
-    import mir.math.common: powi;
-
-    static if (isFloatingPoint!T) {
-        return powi(x, 2);
-    } else static if (__traits(compiles, {
-        T val = T.init * T.init;
-    })) {
-        return x * x;
-    } else {
-        static assert(0, "square: cannot square type: " ~ T.stringof);
-    }
-}
-
-@safe pure nothrow @nogc
-unittest {
-    int x = square(4);
-    assert(x == 16);
-    double y = square(5.0);
-	assert(y == 25);
-    
-    static assert(is(typeof(square(4)) == int));
-    static assert(is(typeof(square(5.0)) == double));
-}
-
-private
 mixin template variance_ops(T, Summation summation)
 {
     import core.lifetime: move;
@@ -1802,27 +1805,22 @@ mixin template variance_ops(T, Summation summation)
 struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && varianceAlgo == VarianceAlgo.naive)
 {
+    import mir.functional: naryFun;
+
     mixin variance_ops!(T, summation);
+    
+    private alias square = naryFun!"a * a";
 
     ///
-    MapSummator!(square, T, summation) sumOfSquares;
+    Summator!(T, summation) sumOfSquares;
     
     ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
-        static if (hasShape!Range)
+        foreach(x; r)
         {
-            meanAccumulator.put(r.move);
-            sumOfSquares.put(r.move);
-        }
-        else
-        {
-            foreach(x; r)
-            {
-                meanAccumulator.put(x);
-                sumOfSquares.put(x);
-            }
+            this.put(x);
         }
     }
 
@@ -1830,7 +1828,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     void put()(T x)
     {
         meanAccumulator.put(x);
-        sumOfSquares.put(x);
+        sumOfSquares.put(square(x));
     }
     
     ///
@@ -1883,61 +1881,30 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     mixin variance_ops!(T, summation);
 
     ///
-    MapSummator!(square, T, summation) centeredSumOfSquares;
+    Summator!(T, summation) centeredSumOfSquares;
+
+    ///
+    T mean = cast(T) 0;
 
     ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
-        import mir.ndslice.topology: vmap;
-        import mir.ndslice.internal: LeftOp;
-
-        if (count == 0) {
-            meanAccumulator.put(r.move);
-            centeredSumOfSquares.put(r.move.vmap(LeftOp!("-", T)(meanAccumulator.mean)));
-        } else {
-            T oldMean = meanAccumulator.mean;
-
-            meanAccumulator.put(r.move);
-            static if (hasShape!Range)
-            {
-                import mir.ndslice.topology: vmap, map, zip;
-                import mir.ndslice.internal: LeftOp;
-
-                centeredSumOfSquares.
-                    mapSummator.
-                    put(
-                        r.move.vmap(LeftOp!("-", T)(meanAccumulator.mean)).
-                        zip(r.move.vmap(LeftOp!("-", T)(oldMean))).
-                        map!"a * b"
-                        );
-            }
-            else
-            {
-                foreach(x; r)
-                {
-                    centeredSumOfSquares.
-                        mapSummator.
-                        put((x - meanAccumulator.mean) * (x - oldMean));
-                }
-            }
+        foreach(x; r)
+        {
+            this.put(x);
         }
     }
-    
+
     ///
     void put()(T x)
     {
-        if (count == 0) {
-            meanAccumulator.put(x);
-            centeredSumOfSquares.put(cast(T) 0);
-        } else {
-            T oldMean = meanAccumulator.mean;
+        T delta = x - mean;
+        mean = meanAccumulator.fastMeanDelta(delta, mean);
+        T delta2 = x - mean;
 
-            meanAccumulator.put(x);
-            centeredSumOfSquares.
-                mapSummator.
-                put((x - meanAccumulator.mean) * (x - oldMean));
-        }
+        centeredSumOfSquares.
+            put(delta * delta2);
     }
 
     ///
@@ -1978,6 +1945,36 @@ unittest
     assert(v.variance(PopulationTrueCT).approxEqual(57.01923 / 13));
     assert(v.variance(PopulationFalseRT).approxEqual(57.01923 / 12));
     assert(v.variance(PopulationFalseCT).approxEqual(57.01923 / 12));
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
+
+    VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(PopulationTrueRT).approxEqual(12.55208 / 6));
+    assert(v.variance(PopulationTrueCT).approxEqual(12.55208 / 6));
+    assert(v.variance(PopulationFalseRT).approxEqual(12.55208 / 5));
+    assert(v.variance(PopulationFalseCT).approxEqual(12.55208 / 5));
+
+    v.put(y);
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 }
 
 version(mir_test)
