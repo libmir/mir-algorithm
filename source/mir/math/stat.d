@@ -1772,10 +1772,7 @@ See Also:
 enum VarianceAlgo
 {
     /++
-    Performs Welford's online algorithm for updating variance. When
-    calculating variance initially (not an update), the two-pass algorithm is 
-    used, whereby the input is first centered and then the sum of squares is 
-    calculated from that.    
+    Performs Welford's online algorithm for updating variance.
     +/
     online,
     
@@ -1783,14 +1780,18 @@ enum VarianceAlgo
     Calculates variance using E(x^^2) - E(x)^2 (alowing for adjustments for 
     population/sample variance). This algorithm can be numerically unstable.
     +/
-    naive
+    naive,
+
+    /++
+    Calculates variance using a two-pass algorithm whereby the input is first 
+    centered and then the sum of squares is calculated from that.
+    +/
+    twoPass
 }
 
 private
-mixin template variance_ops(T, Summation summation)
+mixin template moment_ops(T, Summation summation)
 {
-    import core.lifetime: move;
-
     ///
     MeanAccumulator!(T, summation) meanAccumulator;
 
@@ -1801,15 +1802,34 @@ mixin template variance_ops(T, Summation summation)
     }
 }
 
+private
+mixin template outputRange_ops(T)
+{
+    ///
+    this(Range)(Range r)
+        if (isIterable!Range)
+    {
+        import core.lifetime: move;
+        this.put(r.move);
+    }
+
+    ///
+    this()(T x)
+    {
+        this.put(x);
+    }
+}
+
 ///
 struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && varianceAlgo == VarianceAlgo.naive)
 {
     import mir.functional: naryFun;
 
-    mixin variance_ops!(T, summation);
-    
     private alias square = naryFun!"a * a";
+
+    mixin moment_ops!(T, summation);
+    mixin outputRange_ops!T;
 
     ///
     Summator!(T, summation) sumOfSquares;
@@ -1878,7 +1898,8 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && 
         varianceAlgo == VarianceAlgo.online)
 {
-    mixin variance_ops!(T, summation);
+    mixin moment_ops!(T, summation);
+    mixin outputRange_ops!T;
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
@@ -1992,6 +2013,84 @@ unittest
     assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
 }
 
+///
+struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
+    if (isMutable!T && varianceAlgo == VarianceAlgo.twoPass)
+{
+    import mir.functional: naryFun;
+    import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
+
+    mixin moment_ops!(T, summation);
+
+    ///
+    Summator!(T, summation) centeredSumOfSquares;
+
+    ///
+    this(Iterator, size_t N, SliceKind kind)(
+         Slice!(Iterator, N, kind) slice)
+    {
+        import core.lifetime: move;
+        import mir.ndslice.topology: vmap, map;
+        import mir.ndslice.internal: LeftOp;
+
+        meanAccumulator.put(slice.lightScope);
+        centeredSumOfSquares.put(slice.move.vmap(LeftOp!("-", T)(meanAccumulator.mean)).map!(naryFun!"a * a"));
+    }
+
+    ///
+    this(U)(U[] array)
+    {
+        import mir.ndslice.slice: sliced;
+        this(array.sliced);
+    }
+
+    ///
+    this(T)(T withAsSlice)
+        if (hasAsSlice!T)
+    {
+        this(withAsSlice.asSlice);
+    }
+
+    ///
+    this()(T x)
+    {
+        meanAccumulator.put(x);
+        centeredSumOfSquares.put(cast(T) 0);
+    }
+
+    ///
+    F variance(F = T)(bool isPopulation) @property
+    {
+        if (isPopulation == false)
+            return cast(F) centeredSumOfSquares.sum / cast(F) (count - 1);
+        else
+            return cast(F) centeredSumOfSquares.sum / cast(F) count;
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
+
+    auto v = VarianceAccumulator!(double, VarianceAlgo.twoPass, Summation.naive)(x);
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+}
+
 /++
 Calculates the variance of the input
 
@@ -2018,8 +2117,7 @@ template variance(
     {
         import core.lifetime: move;
         alias G = typeof(return);
-        VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, Range, G)) varianceAccumulator;
-        varianceAccumulator.put(r.move);
+        auto varianceAccumulator = VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, Range, G))(r.move);
         return varianceAccumulator.variance(isPopulation);
     }
 
@@ -2030,8 +2128,7 @@ template variance(
     @fmamath meanType!F variance(scope const F[] ar...)
     {
         alias G = typeof(return);
-        VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, const(G)[], G)) varianceAccumulator;
-        varianceAccumulator.put(ar);
+        auto varianceAccumulator = VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, const(G)[], G))(ar);
         return varianceAccumulator.variance(false);
     }
 }
@@ -2169,8 +2266,12 @@ unittest
     assert(y.approxEqual(54.76562 / 11));
 
     // The naive algorithm is numerically unstable in this case
-    auto z = x.variance!"naive";
-    assert(!z.approxEqual(y));
+    auto z0 = x.variance!"naive";
+    assert(!z0.approxEqual(y));
+
+    // But the two-pass algorithm provides a consistent answer
+    auto z1 = x.variance!"twoPass";
+    assert(z1.approxEqual(y));
 }
 
 /// Can also set algorithm or output type
