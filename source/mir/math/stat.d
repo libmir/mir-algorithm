@@ -222,17 +222,19 @@ struct MeanAccumulator(T, Summation summation)
         count++;
         summator.put(x);
     }
-
+    
     ///
-    F fastMean(F = T)(F x, F oldMean) {
-        this.put(x);
-        return oldMean + (x - oldMean) * (1 / cast(F) count);
+    F fastMean(F = T)(T x, T oldMean)
+    {
+        this.put(cast(F) x);
+        return cast(F) oldMean + (cast(F) x - cast(F) oldMean) * (1 / cast(F) count);
     }
 
     ///
-    F fastMeanDelta(F = T)(F delta, F oldMean) {
-        this.put(delta + oldMean);
-        return oldMean + delta * (1 / cast(F) count);
+    F fastMeanDelta(F = T)(T delta, T oldMean)
+    {
+        this.put(cast(F) delta + cast(F) oldMean);
+        return cast(F) oldMean + cast(F) delta * (1 / cast(F) count);
     }
 }
 
@@ -1772,7 +1774,9 @@ See Also:
 enum VarianceAlgo
 {
     /++
-    Performs Welford's online algorithm for updating variance.
+    Performs Welford's online algorithm for updating variance. Can also `put`
+    another VarianceAccumulator of the same type, which uses the parallel
+    algorithm from Chan et al., described above.
     +/
     online,
     
@@ -1898,11 +1902,13 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && 
         varianceAlgo == VarianceAlgo.online)
 {
-    mixin moment_ops!(T, summation);
     mixin outputRange_ops!T;
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
+
+    ///
+    size_t count;
 
     ///
     T mean = cast(T) 0;
@@ -1920,12 +1926,20 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     void put()(T x)
     {
+        count += 1;
         T delta = x - mean;
-        mean = meanAccumulator.fastMeanDelta(delta, mean);
-        T delta2 = x - mean;
+        mean += delta / count;
+        centeredSumOfSquares.put(delta * (x - mean));
+    }
 
-        centeredSumOfSquares.
-            put(delta * delta2);
+    ///
+    void put()(VarianceAccumulator!(T, varianceAlgo, summation) v)
+    {
+        size_t oldCount = this.count;
+        this.count += v.count;
+        T delta = v.mean - this.mean;
+        this.mean += delta * v.count / this.count;
+        this.centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * v.count * oldCount / this.count);
     }
 
     ///
@@ -1992,6 +2006,37 @@ unittest
     assert(v.variance(PopulationFalseCT).approxEqual(12.55208 / 5));
 
     v.put(y);
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
+
+    VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(PopulationTrueRT).approxEqual(12.55208 / 6));
+    assert(v.variance(PopulationTrueCT).approxEqual(12.55208 / 6));
+    assert(v.variance(PopulationFalseRT).approxEqual(12.55208 / 5));
+    assert(v.variance(PopulationFalseCT).approxEqual(12.55208 / 5));
+
+    VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) w;
+    w.put(y);
+    v.put(w);
     assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
     assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
     assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
