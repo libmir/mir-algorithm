@@ -1854,7 +1854,13 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
         meanAccumulator.put(x);
         sumOfSquares.put(square(x));
     }
-    
+
+    ///
+    F mean(F = T)() @property
+    {
+        return cast(F) meanAccumulator.mean;
+    }
+
     ///
     F variance(F = T)(bool isPopulation) @property
     {
@@ -1911,7 +1917,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     size_t count;
 
     ///
-    T mean = cast(T) 0;
+    private T _mean = cast(T) 0;
 
     ///
     void put(Range)(Range r)
@@ -1927,9 +1933,9 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     void put()(T x)
     {
         count += 1;
-        T delta = x - mean;
-        mean += delta / count;
-        centeredSumOfSquares.put(delta * (x - mean));
+        T delta = x - _mean;
+        _mean += delta / count;
+        centeredSumOfSquares.put(delta * (x - _mean));
     }
 
     ///
@@ -1937,9 +1943,15 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         size_t oldCount = this.count;
         this.count += v.count;
-        T delta = v.mean - this.mean;
-        this.mean += delta * v.count / this.count;
+        T delta = v.mean - _mean;
+        _mean += delta * v.count / this.count;
         this.centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * v.count * oldCount / this.count);
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return _mean;
     }
 
     ///
@@ -2101,6 +2113,12 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         meanAccumulator.put(x);
         centeredSumOfSquares.put(cast(T) 0);
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return cast(F) meanAccumulator.mean;
     }
 
     ///
