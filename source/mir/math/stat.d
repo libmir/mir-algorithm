@@ -464,6 +464,10 @@ unittest
 /++
 Computes the mean of the input.
 
+Params:
+    F: controls type of output
+    meanAlgo: algorithm for calculating mean (default: MeanAlgo.precise)
+    summation: algorithm for calculating sums (default: Summation.appropriate)
 Returns:
     The mean of all the elements in the input, must be floating point or complex
 
@@ -794,6 +798,10 @@ unittest
 /++
 Computes the harmonic mean of the input.
 
+Params:
+    F: controls type of output
+    meanAlgo: algorithm for calculating mean (default: MeanAlgo.precise)
+    summation: algorithm for calculating sums (default: Summation.appropriate)
 Returns:
     harmonic mean of all the elements of the input, must be floating point
 
