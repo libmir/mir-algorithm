@@ -180,11 +180,24 @@ unittest
     static assert(is(meanType!(Bar[]) == cfloat));
 }
 
+///
+enum MeanAlgo {
+    /++
+    Computes the sum and the count. The mean is calculated by dividing the sum
+    by the count.
+    +/
+    precise,
+    /++
+    Updates the mean without computing the sum. This is numerically unstable.
+    +/
+    fast
+}
+
 /++
 Output range for mean.
 +/
-struct MeanAccumulator(T, Summation summation) 
-    if (isMutable!T)
+struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation) 
+    if (isMutable!T && meanAlgo == MeanAlgo.precise)
 {
     ///
     size_t count;
@@ -195,6 +208,12 @@ struct MeanAccumulator(T, Summation summation)
     F mean(F = T)() @property
     {
         return cast(F) summator.sum / cast(F) count;
+    }
+    
+    ///
+    F sum(F = T)() @property
+    {
+        return cast(F) summator.sum ;
     }
 
     ///
@@ -224,17 +243,19 @@ struct MeanAccumulator(T, Summation summation)
     }
     
     ///
-    F fastMean(F = T)(T x, T oldMean)
+    void put(F, MeanAlgo algo, Summation sumalgo)(MeanAccumulator!(F, algo, sumalgo) m)
+        if (algo == MeanAlgo.precise)
     {
-        this.put(cast(F) x);
-        return cast(F) oldMean + (cast(F) x - cast(F) oldMean) * (1 / cast(F) count);
+        count += m.count;
+        summator.put(cast(T) m.summator.sum);
     }
 
     ///
-    F fastMeanDelta(F = T)(T delta, T oldMean)
+    void put(F, MeanAlgo algo, Summation sumalgo)(MeanAccumulator!(F, algo, sumalgo) m)
+        if (algo == MeanAlgo.fast)
     {
-        this.put(cast(F) delta + cast(F) oldMean);
-        return cast(F) oldMean + cast(F) delta * (1 / cast(F) count);
+        count += m.count;
+        summator.put(cast(T) m.sum);
     }
 }
 
@@ -245,7 +266,7 @@ unittest
 {
     import mir.ndslice.slice: sliced;
 
-    MeanAccumulator!(double, Summation.pairwise) x;
+    MeanAccumulator!(double, MeanAlgo.precise, Summation.pairwise) x;
     x.put([0.0, 1, 2, 3, 4].sliced);
     assert(x.mean == 2);
     x.put(5);
@@ -258,37 +279,186 @@ unittest
 {
     import mir.ndslice.slice: sliced;
 
-    MeanAccumulator!(double, Summation.pairwise) x;
-    x.put([0.0, 1, 2, 3, 4].sliced);
-    assert(x.mean == 2);
-    assert(x.fastMean(5.0, 2.0) == 2.5);
-    assert(x.mean == 2.5);
-}
-
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-
-    MeanAccumulator!(double, Summation.pairwise) x;
-    x.put([0.0, 1, 2, 3, 4].sliced);
-    assert(x.mean == 2);
-    assert(x.fastMeanDelta(3.0, 2.0) == 2.5);
-    assert(x.mean == 2.5);
-}
-
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-
-    MeanAccumulator!(float, Summation.pairwise) x;
+    MeanAccumulator!(float, MeanAlgo.precise, Summation.pairwise) x;
     x.put([0, 1, 2, 3, 4].sliced);
     assert(x.mean == 2);
+    assert(x.sum == 10);
     x.put(5);
     assert(x.mean == 2.5);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    double[] x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    double[] y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    
+    MeanAccumulator!(float, MeanAlgo.precise, Summation.pairwise) m0;
+    m0.put(x);
+    MeanAccumulator!(float, MeanAlgo.precise, Summation.pairwise) m1;
+    m1.put(y);
+    m0.put(m1);
+    assert(m0.mean == 29.25 / 12);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    double[] x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    double[] y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    
+    MeanAccumulator!(float, MeanAlgo.precise, Summation.pairwise) m0;
+    m0.put(x);
+    MeanAccumulator!(float, MeanAlgo.fast, Summation.pairwise) m1;
+    m1.put(y);
+    m0.put(m1);
+    assert(m0.mean == 29.25 / 12);
+}
+
+/// ditto
+struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation) 
+    if (isMutable!T && meanAlgo == MeanAlgo.fast)
+{
+    ///
+    size_t count;
+    ///
+    private T _mean = cast(T) 0;
+
+    ///
+    F mean(F = T)() @property
+    {
+        return cast(F) _mean;
+    }
+    
+    ///
+    F sum(F = T)() @property
+    {
+        return cast(F) _mean * cast(F) count;
+    }
+
+    ///
+    void put(Range)(Range r)
+        if (isIterable!Range)
+    {
+        foreach(x; r)
+        {
+            this.put(x);
+        }
+    }
+
+    ///
+    void put()(T x)
+    {
+        count++;
+        _mean += (x - _mean) / count;
+    }
+    
+    ///
+    void putDelta()(T delta)
+    {
+        count++;
+        _mean += delta / count;
+    }
+
+    ///
+    void put(F, MeanAlgo algo, Summation sumAlgo)(MeanAccumulator!(F, algo, sumAlgo) m)
+        if (algo == MeanAlgo.fast)
+    {
+        count += m.count;
+        _mean += (cast(T) m.mean - _mean) * m.count / count;
+    }
+
+    ///
+    void put(F, MeanAlgo algo, Summation sumAlgo)(MeanAccumulator!(F, algo, sumAlgo) m)
+        if (algo == MeanAlgo.precise)
+    {
+        size_t oldCount = count;
+        count += m.count;
+        _mean = (cast(T) m.summator.sum + _mean * oldCount) / count;
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    MeanAccumulator!(double, MeanAlgo.fast, Summation.pairwise) x;
+    x.put([0.0, 1, 2, 3, 4].sliced);
+    assert(x.mean == 2);
+    x.put(5);
+    assert(x.mean == 2.5);
+}
+
+///
+version(mir_test_val)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+    
+    auto a = [1, 1e100, 1, -1e100].sliced;
+
+    auto x = a * 10_000;
+
+    MeanAccumulator!(double, MeanAlgo.precise, Summation.kbn) m0;
+    m0.put(x);
+    assert(m0.mean == 20_000 / 4);
+
+    MeanAccumulator!(double, MeanAlgo.fast, Summation.kbn) m1;
+    m1.put(x);
+    // The "fast" algorithm is numerically unstable, even with more accurate 
+    // summation algorithms.
+    assert(!approxEqual(m0.mean, m1.mean));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    MeanAccumulator!(float, MeanAlgo.fast, Summation.pairwise) x;
+    x.put([0, 1, 2, 3, 4].sliced);
+    assert(x.mean == 2);
+    assert(x.sum == 10);
+    x.put(5);
+    assert(x.mean == 2.5);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    double[] x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    double[] y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    
+    MeanAccumulator!(float, MeanAlgo.fast, Summation.pairwise) m0;
+    m0.put(x);
+    MeanAccumulator!(float, MeanAlgo.fast, Summation.pairwise) m1;
+    m1.put(y);
+    m0.put(m1);
+    assert(m0.mean == 29.25 / 12);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    double[] x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    double[] y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    
+    MeanAccumulator!(float, MeanAlgo.fast, Summation.pairwise) m0;
+    m0.put(x);
+    MeanAccumulator!(float, MeanAlgo.precise, Summation.pairwise) m1;
+    m1.put(y);
+    m0.put(m1);
+    assert(m0.mean == 29.25 / 12);
 }
 
 /++
@@ -300,7 +470,9 @@ Returns:
 See_also: 
     $(SUBREF sum, Summation)
 +/
-template mean(F, Summation summation = Summation.appropriate)
+template mean(F,
+              MeanAlgo meanAlgo = MeanAlgo.precise,
+              Summation summation = Summation.appropriate)
 {
     /++
     Params:
@@ -310,7 +482,7 @@ template mean(F, Summation summation = Summation.appropriate)
         if (isIterable!Range)
     {
         alias G = typeof(return);
-        MeanAccumulator!(G, ResolveSummationType!(summation, Range, G)) mean;
+        MeanAccumulator!(G, meanAlgo, ResolveSummationType!(summation, Range, G)) mean;
         mean.put(r.move);
         return mean.mean;
     }
@@ -322,14 +494,15 @@ template mean(F, Summation summation = Summation.appropriate)
     @fmamath meanType!F mean(scope const F[] ar...)
     {
         alias G = typeof(return);
-        MeanAccumulator!(G, ResolveSummationType!(summation, const(G)[], G)) mean;
+        MeanAccumulator!(G, meanAlgo, ResolveSummationType!(summation, const(G)[], G)) mean;
         mean.put(ar);
         return mean.mean;
     }
 }
 
 /// ditto
-template mean(Summation summation = Summation.appropriate)
+template mean(MeanAlgo meanAlgo = MeanAlgo.precise,
+              Summation summation = Summation.appropriate)
 {
     /++
     Params:
@@ -339,7 +512,7 @@ template mean(Summation summation = Summation.appropriate)
         if (isIterable!Range)
     {
         alias F = typeof(return);
-        return .mean!(F, summation)(r.move);
+        return .mean!(F, meanAlgo, summation)(r.move);
     }
     
     /++
@@ -349,20 +522,20 @@ template mean(Summation summation = Summation.appropriate)
     @fmamath meanType!T mean(T)(scope const T[] ar...)
     {
         alias F = typeof(return);
-        return .mean!(F, summation)(ar);
+        return .mean!(F, meanAlgo, summation)(ar);
     }
 }
 
 /// ditto
-template mean(F, string summation)
+template mean(F, string meanAlgo, string summation = "appropriate")
 {
-    mixin("alias mean = .mean!(F, Summation." ~ summation ~ ");");
+    mixin("alias mean = .mean!(F, MeanAlgo." ~ meanAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 /// ditto
-template mean(string summation)
+template mean(string meanAlgo, string summation = "appropriate")
 {
-    mixin("alias mean = .mean!(Summation." ~ summation ~ ");");
+    mixin("alias mean = .mean!(MeanAlgo." ~ meanAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 ///
@@ -390,6 +563,19 @@ unittest
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
     assert(x.mean == 29.25 / 12);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    assert(x.mean!"precise" == 29.25 / 12);
+    assert(x.mean!"fast" == 29.25 / 12);
 }
 
 /// Mean of matrix
@@ -446,10 +632,11 @@ unittest
     auto a = [1, 1e100, 1, -1e100].sliced;
 
     auto x = a * 10_000;
-    assert(x.mean!"kbn" == 20_000 / 4);
-    assert(x.mean!"kb2" == 20_000 / 4);
-    assert(x.mean!"precise" == 20_000 / 4);
-    assert(x.mean!(double, "precise") == 20_000.0 / 4);
+
+    assert(x.mean!("precise", "kbn") == 20_000 / 4);
+    assert(x.mean!("precise", "kb2") == 20_000 / 4);
+    assert(x.mean!("precise", "precise") == 20_000 / 4);
+    assert(x.mean!(double, "precise", "precise") == 20_000.0 / 4);
 
     auto y = uint.max.repeat(3);
     assert(y.mean!ulong == 12884901885 / 3);
@@ -613,7 +800,9 @@ Returns:
 See_also: 
     $(SUBREF sum, Summation)
 +/
-template hmean(F, Summation summation = Summation.appropriate)
+template hmean(F,
+               MeanAlgo meanAlgo = MeanAlgo.precise,
+               Summation summation = Summation.appropriate)
 {
     /++
     Params:
@@ -629,11 +818,11 @@ template hmean(F, Summation summation = Summation.appropriate)
 
         static if (summation == Summation.fast && __traits(compiles, r.move.map!"numerator / a"))
         {
-            return numerator / r.move.map!"numerator / a".mean!(G, summation);
+            return numerator / r.move.map!"numerator / a".mean!(G, meanAlgo, summation);
         }
         else
         {
-            MeanAccumulator!(G, ResolveSummationType!(summation, Range, G)) imean;
+            MeanAccumulator!(G, meanAlgo, ResolveSummationType!(summation, Range, G)) imean;
             foreach (e; r)
                 imean.put(numerator / e);
             return numerator / imean.mean;
@@ -652,11 +841,11 @@ template hmean(F, Summation summation = Summation.appropriate)
 
         static if (summation == Summation.fast && __traits(compiles, ar.map!"numerator / a"))
         {
-            return numerator / ar.map!"numerator / a".mean!(G, summation);
+            return numerator / ar.map!"numerator / a".mean!(G, meanAlgo, summation);
         }
         else
         {
-            MeanAccumulator!(G, ResolveSummationType!(summation, const(G)[], G)) imean;
+            MeanAccumulator!(G, meanAlgo, ResolveSummationType!(summation, const(G)[], G)) imean;
             foreach (e; ar)
                 imean.put(numerator / e);
             return numerator / imean.mean;
@@ -665,7 +854,8 @@ template hmean(F, Summation summation = Summation.appropriate)
 }
 
 /// ditto
-template hmean(Summation summation = Summation.appropriate)
+template hmean(MeanAlgo meanAlgo = MeanAlgo.precise,
+               Summation summation = Summation.appropriate)
 {
     /++
     Params:
@@ -675,7 +865,7 @@ template hmean(Summation summation = Summation.appropriate)
         if (isIterable!Range)
     {
         alias F = typeof(return);
-        return .hmean!(F, summation)(r.move);
+        return .hmean!(F, meanAlgo, summation)(r.move);
     }
     
     /++
@@ -685,20 +875,20 @@ template hmean(Summation summation = Summation.appropriate)
     @fmamath hmeanType!T hmean(T)(scope const T[] ar...)
     {
         alias F = typeof(return);
-        return .hmean!(F, summation)(ar);
+        return .hmean!(F, meanAlgo, summation)(ar);
     }
 }
 
 /// ditto
-template hmean(F, string summation)
+template hmean(F, string meanAlgo, string summation = "appropriate")
 {
-    mixin("alias hmean = .hmean!(F, Summation." ~ summation ~ ");");
+    mixin("alias hmean = .hmean!(F, MeanAlgo." ~ meanAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 /// ditto
-template hmean(string summation)
+template hmean(string meanAlgo, string summation = "appropriate")
 {
-    mixin("alias hmean = .hmean!(Summation." ~ summation ~ ");");
+    mixin("alias hmean = .hmean!(MeanAlgo." ~ meanAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 /// Harmonic mean of vector
@@ -712,6 +902,19 @@ unittest
     auto x = [20.0, 100.0, 2000.0, 10.0, 5.0, 2.0].sliced;
 
     assert(x.hmean.approxEqual(6.97269));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [20.0, 100.0, 2000.0, 10.0, 5.0, 2.0].sliced;
+
+    assert(x.hmean!"precise".approxEqual(6.97269));
+    assert(x.hmean!"fast".approxEqual(6.97269));
 }
 
 /// Harmonic mean of matrix
@@ -764,11 +967,11 @@ unittest
     //Set sum algorithm or output type
     auto x = [1, 1e-100, 1, -1e-100].sliced;
 
-    assert(x.hmean!"kb2".approxEqual(2));
-    assert(x.hmean!"precise".approxEqual(2));
+    assert(x.hmean!("precise", "kb2").approxEqual(2));
+    assert(x.hmean!("precise", "precise").approxEqual(2));
 
     //Provide the summation type
-    assert(float.max.repeat(3).hmean!(double, "fast").approxEqual(float.max));
+    assert(float.max.repeat(3).hmean!(double, "precise", "fast").approxEqual(float.max));
 }
 
 /++
@@ -1531,7 +1734,7 @@ using `centralTendency`.
 Returns:
     The elements in the slice with the average subtracted from them.
 +/
-template center(alias centralTendency = mean!(Summation.appropriate))
+template center(alias centralTendency = mean!(MeanAlgo.precise, Summation.appropriate))
 {
     import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
     /++
@@ -1580,6 +1783,20 @@ unittest
     assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
     assert(x.center!gmean.all!approxEqual([-1.99379516, -0.99379516, 0.00620483, 1.00620483, 2.00620483, 3.00620483]));
     assert(x.center!median.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+}
+
+version(mir_test)
+@safe
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+
+    assert(x.center!(mean!"precise").all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.center!(mean!"fast").all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
 }
 
 /// Center dynamic array
@@ -1652,9 +1869,6 @@ pure @safe nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
-    import mir.algorithm.iteration: all;
-    import mir.ndslice.topology: repeat;
-    import mir.math.common: approxEqual;
 
     //Set sum algorithm or output type
     auto a = [1, 1e100, 1, -1e100];
@@ -1794,15 +2008,23 @@ enum VarianceAlgo
 }
 
 private
-mixin template moment_ops(T, Summation summation)
+mixin template moment_ops(T, 
+                          MeanAlgo meanAlgo, 
+                          Summation summation)
 {
     ///
-    MeanAccumulator!(T, summation) meanAccumulator;
+    MeanAccumulator!(T, meanAlgo, summation) meanAccumulator;
 
     ///
     size_t count() @property
     {
         return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return meanAccumulator._mean;
     }
 }
 
@@ -1832,7 +2054,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
 
     private alias square = naryFun!"a * a";
 
-    mixin moment_ops!(T, summation);
+    mixin moment_ops!(T, MeanAlgo.precise, summation);
     mixin outputRange_ops!T;
 
     ///
@@ -1853,12 +2075,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         meanAccumulator.put(x);
         sumOfSquares.put(square(x));
-    }
-
-    ///
-    F mean(F = T)() @property
-    {
-        return cast(F) meanAccumulator.mean;
     }
 
     ///
@@ -1909,15 +2125,10 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
         varianceAlgo == VarianceAlgo.online)
 {
     mixin outputRange_ops!T;
+    mixin moment_ops!(T, MeanAlgo.fast, summation);
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
-
-    ///
-    size_t count;
-
-    ///
-    private T _mean = cast(T) 0;
 
     ///
     void put(Range)(Range r)
@@ -1932,26 +2143,18 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     void put()(T x)
     {
-        count += 1;
-        T delta = x - _mean;
-        _mean += delta / count;
-        centeredSumOfSquares.put(delta * (x - _mean));
+        T delta = x - meanAccumulator.mean;
+        meanAccumulator.putDelta(delta);
+        centeredSumOfSquares.put(delta * (x - meanAccumulator.mean));
     }
 
     ///
     void put()(VarianceAccumulator!(T, varianceAlgo, summation) v)
     {
-        size_t oldCount = this.count;
-        this.count += v.count;
-        T delta = v.mean - _mean;
-        _mean += delta * v.count / this.count;
-        this.centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * v.count * oldCount / this.count);
-    }
-
-    ///
-    F mean(F = T)() @property
-    {
-        return _mean;
+        size_t oldCount = count;
+        T delta = v.mean - meanAccumulator.mean;
+        meanAccumulator.put(v.meanAccumulator);
+        centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * v.count * oldCount / count);
     }
 
     ///
@@ -2077,7 +2280,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     import mir.functional: naryFun;
     import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 
-    mixin moment_ops!(T, summation);
+    mixin moment_ops!(T, MeanAlgo.precise, summation);
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
@@ -2113,12 +2316,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         meanAccumulator.put(x);
         centeredSumOfSquares.put(cast(T) 0);
-    }
-
-    ///
-    F mean(F = T)() @property
-    {
-        return cast(F) meanAccumulator.mean;
     }
 
     ///
