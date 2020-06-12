@@ -348,13 +348,23 @@ struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation)
         }
     }
 
-    ///
-    void put()(T x)
+    /++
+    Proivdes a template parameter `algo` that optionally allows for updating the
+    mean with the `MeanAlgo.precise` argument. This is more numerically stable.
+    +/
+    void put(MeanAlgo algo = MeanAlgo.fast)(T x)
+        if (algo == MeanAlgo.fast || algo == MeanAlgo.precise)
     {
-        count++;
-        _mean += (x - _mean) / count;
+        static if (algo == MeanAlgo.fast) {
+             count++;
+            _mean += (x - _mean) / count;
+        } else static if (algo == MeanAlgo.precise) {
+            size_t oldCont = count;
+            count++;
+            _mean = (oldCont * _mean + x) / count;
+        }
     }
-    
+
     ///
     void putDelta()(T delta)
     {
@@ -362,17 +372,25 @@ struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation)
         _mean += delta / count;
     }
 
-    ///
-    void put(F, MeanAlgo algo, Summation sumAlgo)(MeanAccumulator!(F, algo, sumAlgo) m)
-        if (algo == MeanAlgo.fast)
+    /++
+    Proivdes a template parameter `algo` that optionally allows for updating the
+    mean with the `MeanAlgo.precise` argument. This is more numerically stable.
+    +/
+    void put(F, Summation sumAlgo, MeanAlgo algo = MeanAlgo.fast)(MeanAccumulator!(F, MeanAlgo.fast, sumAlgo) m)
+        if (algo == MeanAlgo.fast || algo == MeanAlgo.precise)
     {
-        count += m.count;
-        _mean += (cast(T) m.mean - _mean) * m.count / count;
+        static if (algo == MeanAlgo.fast) {
+            count += m.count;
+            _mean += (cast(T) m.mean - _mean) * m.count / count;
+        } else static if (algo == MeanAlgo.precise) {
+            size_t oldCount = count;
+            count += m.count;
+            _mean = (oldCount * _mean + m.count * m.mean) / count;
+        }
     }
 
     ///
-    void put(F, MeanAlgo algo, Summation sumAlgo)(MeanAccumulator!(F, algo, sumAlgo) m)
-        if (algo == MeanAlgo.precise)
+    void put(F, Summation sumAlgo)(MeanAccumulator!(F, MeanAlgo.precise, sumAlgo) m)
     {
         size_t oldCount = count;
         count += m.count;
@@ -412,9 +430,14 @@ unittest
 
     MeanAccumulator!(double, MeanAlgo.fast, Summation.kbn) m1;
     m1.put(x);
-    // The "fast" algorithm is numerically unstable, even with more accurate 
-    // summation algorithms.
+    // The "fast" algorithm is numerically unstable by default, even with more
+    // accurate summation algorithms.
     assert(!approxEqual(m0.mean, m1.mean));
+
+    //However, can use a precise put
+    MeanAccumulator!(double, MeanAlgo.fast, Summation.kbn) m2;
+    m2.put!(MeanAlgo.precise)(x);
+    assert(approxEqual(m0.mean, m1.mean));
 }
 
 version(mir_test)
@@ -459,6 +482,34 @@ unittest
     m1.put(y);
     m0.put(m1);
     assert(m0.mean == 29.25 / 12);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    double[] x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25];
+    double[] y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+    
+    MeanAccumulator!(double, MeanAlgo.fast, Summation.pairwise) m0;
+    m0.put(x);
+    MeanAccumulator!(double, MeanAlgo.fast, Summation.pairwise) m1;
+    m1.put(y);
+    m0.put!(double, Summation.pairwise, MeanAlgo.precise)(m1);
+    assert(m0.mean == 29.25 / 12);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    MeanAccumulator!(double, MeanAlgo.fast, Summation.pairwise) x;
+    x.put([0.0, 1, 2, 3, 4].sliced);
+    assert(x.mean == 2);
+    x.put!(MeanAlgo.precise)(5);
+    assert(x.mean == 2.5);
 }
 
 /++
@@ -2148,20 +2199,38 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
         }
     }
 
-    ///
-    void put()(T x)
+    /++
+    Proivdes a template parameter `meanAlgo` that optionally allows for updating
+    the mean with the `MeanAlgo.precise` argument. This is more numerically
+    stable.
+    +/
+    void put(MeanAlgo meanAlgo = MeanAlgo.fast)(T x)
+        if (meanAlgo == MeanAlgo.fast || meanAlgo == MeanAlgo.precise)
     {
         T delta = x - meanAccumulator.mean;
-        meanAccumulator.putDelta(delta);
+        static if (meanAlgo == MeanAlgo.fast) {
+            meanAccumulator.putDelta(delta);
+        } else static if (meanAlgo == MeanAlgo.precise) {
+            meanAccumulator.put!meanAlgo(x);
+        }
         centeredSumOfSquares.put(delta * (x - meanAccumulator.mean));
     }
 
-    ///
-    void put()(VarianceAccumulator!(T, varianceAlgo, summation) v)
+    /++
+    Proivdes a template parameter `meanAlgo` that optionally allows for updating
+    the mean with the `MeanAlgo.precise` argument. This is more numerically
+    stable.
+    +/
+    void put(MeanAlgo meanAlgo = MeanAlgo.fast)(VarianceAccumulator!(T, varianceAlgo, summation) v)
+        if (meanAlgo == MeanAlgo.fast || meanAlgo == MeanAlgo.precise)
     {
         size_t oldCount = count;
         T delta = v.mean - meanAccumulator.mean;
-        meanAccumulator.put(v.meanAccumulator);
+        static if (meanAlgo == MeanAlgo.fast) {
+            meanAccumulator.put(v.meanAccumulator);
+        } else static if (meanAlgo == MeanAlgo.precise) {
+            meanAccumulator.put!(T, summation, meanAlgo)(v.meanAccumulator);
+        }
         centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * v.count * oldCount / count);
     }
 
@@ -2279,6 +2348,44 @@ unittest
     v.put(x);
     assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
     assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+
+    v.put!(MeanAlgo.precise)(4.0);
+    assert(v.variance(false).approxEqual(57.01923 / 12));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(false).approxEqual(12.55208 / 5));
+
+    VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) w;
+    w.put(y);
+    v.put!(MeanAlgo.precise)(w);
+    assert(v.variance(false).approxEqual(54.76562 / 11));
 }
 
 ///
