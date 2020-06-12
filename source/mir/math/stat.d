@@ -1933,13 +1933,14 @@ unittest
     auto a = [1, 1e100, 1, -1e100];
 
     auto x = a.sliced * 10_000;
+
     //Due to Floating Point precision, subtracting the mean from the second
     //and fourth numbers in `x` does not change the value of the result
     auto result = [5000, 1e104, 5000, -1e104].sliced;
 
-    assert(x.center!(mean!"kbn") == result);
-    assert(x.center!(mean!"kb2") == result);
-    assert(x.center!(mean!"precise") == result);
+    assert(x.center!(mean!("precise", "kbn")) == result);
+    assert(x.center!(mean!("precise", "kb2")) == result);
+    assert(x.center!(mean!("precise", "precise")) == result);
 }
 
 /++
