@@ -243,19 +243,17 @@ struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation)
     }
     
     ///
-    void put(F, MeanAlgo algo, Summation sumalgo)(MeanAccumulator!(F, algo, sumalgo) m)
-        if (algo == MeanAlgo.precise)
+    void put(F, MeanAlgo algo)(MeanAccumulator!(F, algo, summation) m)
+        if (algo == MeanAlgo.precise || algo == MeanAlgo.fast)
     {
         count += m.count;
-        summator.put(cast(T) m.summator.sum);
+        summator.put(cast(T) m.summator);
     }
 
     ///
-    void put(F, MeanAlgo algo, Summation sumalgo)(MeanAccumulator!(F, algo, sumalgo) m)
-        if (algo == MeanAlgo.fast)
+    void put(MeanAlgo algo)(MeanAccumulator!(T, algo, summation) m)
     {
-        count += m.count;
-        summator.put(cast(T) m.sum);
+        put!(T, algo)(m);
     }
 }
 
@@ -348,6 +346,12 @@ struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation)
         }
     }
 
+    private void putDelta()(T delta)
+    {
+        count++;
+        _mean += delta / count;
+    }
+
     /++
     Proivdes a template parameter `algo` that optionally allows for updating the
     mean with the `MeanAlgo.precise` argument. This is more numerically stable.
@@ -365,18 +369,8 @@ struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation)
         }
     }
 
-    ///
-    void putDelta()(T delta)
-    {
-        count++;
-        _mean += delta / count;
-    }
-
-    /++
-    Proivdes a template parameter `algo` that optionally allows for updating the
-    mean with the `MeanAlgo.precise` argument. This is more numerically stable.
-    +/
-    void put(F, Summation sumAlgo, MeanAlgo algo = MeanAlgo.fast)(MeanAccumulator!(F, MeanAlgo.fast, sumAlgo) m)
+    /// ditto
+    void put(F, MeanAlgo algo = MeanAlgo.fast)(MeanAccumulator!(F, MeanAlgo.fast, summation) m)
         if (algo == MeanAlgo.fast || algo == MeanAlgo.precise)
     {
         static if (algo == MeanAlgo.fast) {
@@ -389,12 +383,25 @@ struct MeanAccumulator(T, MeanAlgo meanAlgo, Summation summation)
         }
     }
 
+    /// ditto
+    void put(MeanAlgo algo = MeanAlgo.fast)(MeanAccumulator!(T, MeanAlgo.fast, summation) m)
+        if (algo == MeanAlgo.fast || algo == MeanAlgo.precise)
+    {
+        put!(T, algo)(m);
+    }
+
     ///
-    void put(F, Summation sumAlgo)(MeanAccumulator!(F, MeanAlgo.precise, sumAlgo) m)
+    void put(F = T)(MeanAccumulator!(F, MeanAlgo.precise, summation) m)
     {
         size_t oldCount = count;
         count += m.count;
         _mean = (cast(T) m.summator.sum + _mean * oldCount) / count;
+    }
+
+    ///
+    Summator!(F, summation) summator(F = T)()
+    {
+        return Summator!(F, summation)(this.sum!F);
     }
 }
 
@@ -495,7 +502,7 @@ unittest
     m0.put(x);
     MeanAccumulator!(double, MeanAlgo.fast, Summation.pairwise) m1;
     m1.put(y);
-    m0.put!(double, Summation.pairwise, MeanAlgo.precise)(m1);
+    m0.put!(MeanAlgo.precise)(m1);
     assert(m0.mean == 29.25 / 12);
 }
 
@@ -2119,7 +2126,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
 
     ///
     Summator!(T, summation) sumOfSquares;
-    
+
     ///
     void put(Range)(Range r)
         if (isIterable!Range)
@@ -2184,8 +2191,8 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && 
         varianceAlgo == VarianceAlgo.online)
 {
-    mixin outputRange_ops!T;
     mixin moment_ops!(T, MeanAlgo.fast, summation);
+    mixin outputRange_ops!T;
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
@@ -2217,11 +2224,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
         centeredSumOfSquares.put(delta * (x - meanAccumulator.mean));
     }
 
-    /++
-    Proivdes a template parameter `meanAlgo` that optionally allows for updating
-    the mean with the `MeanAlgo.precise` argument. This is more numerically
-    stable.
-    +/
+    /// ditto
     void put(MeanAlgo meanAlgo = MeanAlgo.fast)(VarianceAccumulator!(T, varianceAlgo, summation) v)
         if (meanAlgo == MeanAlgo.fast || meanAlgo == MeanAlgo.precise)
     {
@@ -2230,7 +2233,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
         static if (meanAlgo == MeanAlgo.fast) {
             meanAccumulator.put(v.meanAccumulator);
         } else static if (meanAlgo == MeanAlgo.precise) {
-            meanAccumulator.put!(T, summation, meanAlgo)(v.meanAccumulator);
+            meanAccumulator.put!(T, meanAlgo)(v.meanAccumulator);
         }
         centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * v.count * oldCount / count);
     }
