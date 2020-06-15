@@ -2544,6 +2544,51 @@ public:
         assert(imm == x);
         assert(mut == x);
     }
+    
+    size_t[N] numIndex(size_t n) @safe scope const
+    {
+        assert(n < elementCount, "numIndex: n must be less than elementCount");
+
+        size_t[N] output;
+        static if (N == 1) {
+            output[N - 1] = n;
+        } else {
+            output[0 .. (N - 1)] = _lengths[1 .. N];
+            static if (N > 2) {
+                foreach_reverse (i; Iota!(N - 2)) {
+                    output[i] *= output[i + 1];
+                }
+            }
+            size_t mul;
+            foreach (i; Iota!(N - 1)) {
+                mul = n / output[i];
+                n -= mul * output[i];
+                output[i] = mul;
+            }
+            output[N - 1] = n;
+        }
+        
+        return output;
+    }
+
+    size_t valStride(size_t n) @safe scope const
+    {
+        assert(n < elementCount, "valStride: n must be less than elementCount");
+
+        static if (kind == Contiguous || (kind == Canonical && N == 1)) {
+            return n;
+        } else static if (kind == Universal && N == 1) {
+            return n * _strides[0];
+        } else {
+            return indexStride(numIndex(n));
+        }
+    }
+
+    ///
+    auto ref at(size_t n) scope return @trusted
+    {
+        return _iterator[valStride(n)];
+    }
 
     static if (isMutable!DeepElement)
     {
@@ -3839,4 +3884,177 @@ version(mir_test) @safe unittest
     a[1, 2] = 3;
     b[] = a;
     assert(a == b);
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(6);
+    auto mFlat = m.flattened;
+
+    size_t num;
+    for (size_t i = 0; i < m.length!0; i++) {
+        assert([i] == m.numIndex(i));
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(2, 3);
+    auto mFlat = m.flattened;
+
+    size_t num;
+    for (size_t i = 0; i < m.length!0; i++) {
+        for (size_t j = 0; j < m.length!1; j++) {
+                num = j + i * (m.length!1);
+                assert([i, j] == m.numIndex(num));
+        }
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(2, 3, 4);
+    auto mFlat = m.flattened;
+
+    size_t num;
+    for (size_t i = 0; i < m.length!0; i++) {
+        for (size_t j = 0; j < m.length!1; j++) {
+            for (size_t k = 0; k < m.length!2; k++) {
+                num = k + j * (m.length!2) + i * (m.length!1) * (m.length!2);
+                assert([i, j, k] == m.numIndex(num));
+            }
+        }
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(2, 3, 4); // Contiguous Matrix
+    auto mFlat = m.flattened;
+
+    for (size_t i = 0; i < m.elementCount; i++) {
+        assert(m.at(i) == mFlat[i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.front; // Contiguous Vector
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.at(i) == m[0, i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m[0 .. $, 0 .. $ - 1]; // Canonical Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.at(i) == xFlat[i]);
+    }
+}
+
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(2, 3, 4); // Contiguous Matrix
+    auto x = m[0 .. $, 0 .. $, 0 .. $ - 1]; // Canonical Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.at(i) == xFlat[i]);
+    }
+}
+
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+    import mir.ndslice.dynamic: transposed;
+
+    auto m = iota(2, 3, 4); // Contiguous Matrix
+    auto x = m.transposed!(2, 1, 0); // Universal Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.at(i) == xFlat[i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+    import mir.ndslice.dynamic: transposed;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.transposed; // Universal Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.at(i) == xFlat[i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened, diagonal;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.diagonal; // Universal Vector
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.at(i) == m[i, i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.front!1; // Universal Vector
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.at(i) == m[i, 0]);
+    }
 }
