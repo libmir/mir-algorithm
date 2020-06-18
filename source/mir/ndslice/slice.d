@@ -2544,7 +2544,7 @@ public:
         assert(imm == x);
         assert(mut == x);
     }
-    
+
     size_t[N] numIndex(size_t n) @safe scope const
     {
         assert(n < elementCount, "numIndex: n must be less than elementCount");
@@ -2571,16 +2571,29 @@ public:
         return output;
     }
 
-    size_t valStride(size_t n) @safe scope const
+    ptrdiff_t valStride(ptrdiff_t n) @safe scope const
     {
         assert(n < elementCount, "valStride: n must be less than elementCount");
+        assert(n >= 0, "valStride: n must be greater than or equal to zero");
 
         static if (kind == Contiguous || (kind == Canonical && N == 1)) {
             return n;
         } else static if (kind == Universal && N == 1) {
             return n * _strides[0];
         } else {
-            return indexStride(numIndex(n));
+            ptrdiff_t _shift;
+            foreach_reverse (i; Iota!(1, N))
+            {
+                immutable v = n / ptrdiff_t(_lengths[i]);
+                n %= ptrdiff_t(_lengths[i]);
+                static if (i == S)
+                    _shift += n;
+                else
+                    _shift += n * _strides[i];
+                n = v;
+            }
+            _shift += n * _strides[0];
+            return _shift;
         }
     }
 
