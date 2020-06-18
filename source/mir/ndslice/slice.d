@@ -2576,10 +2576,8 @@ public:
         assert(n < elementCount, "valStride: n must be less than elementCount");
         assert(n >= 0, "valStride: n must be greater than or equal to zero");
 
-        static if (kind == Contiguous || (kind == Canonical && N == 1)) {
+        static if (kind == Contiguous) {
             return n;
-        } else static if (kind == Universal && N == 1) {
-            return n * _strides[0];
         } else {
             ptrdiff_t _shift;
             foreach_reverse (i; Iota!(1, N))
