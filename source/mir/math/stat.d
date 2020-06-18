@@ -2195,7 +2195,7 @@ template variance(
     /++
     Params:
         r = range, must be finite iterable
-        isPopulation: true if population variace, false if sample variance (default)
+        isPopulation = true if population variace, false if sample variance (default)
     +/
     @fmamath meanType!F variance(Range)(Range r, bool isPopulation = false)
         if (isIterable!Range)
@@ -2226,7 +2226,7 @@ template variance(
     /++
     Params:
         r = range, must be finite iterable
-        isPopulation: true if population variace, false if sample variance (default)
+        isPopulation = true if population variace, false if sample variance (default)
     +/
     @fmamath meanType!Range variance(Range)(Range r, bool isPopulation = false)
         if(isIterable!Range)
