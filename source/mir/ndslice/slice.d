@@ -2544,7 +2544,21 @@ public:
         assert(imm == x);
         assert(mut == x);
     }
+    
+    /++
+    Provides the index location of a slice, taking into account
+    `Slice._strides`. Similar to `Slice.indexStride`, except the slice is
+    indexed by a value. Called by `Slice.accessFlat`. 
 
+    Params:
+        n = location in slice
+    Returns:
+        location in slice, adjusted for `Slice._strides`
+    See_also:
+        $(SUBREF topology, flattened),
+        $(LREF Slice.indexStride),
+        $(LREF Slice.accessFlat)
+    +/
     private
     ptrdiff_t indexStrideValue(ptrdiff_t n) @safe scope const
     {
@@ -2574,7 +2588,7 @@ public:
     Provides access to a slice as if it were `flattened`. 
 
     Params:
-        index = location in slice to provide access
+        index = location in slice
     Returns:
         value of flattened slice at `index`
     See_also: $(SUBREF topology, flattened)
