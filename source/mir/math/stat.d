@@ -2510,7 +2510,6 @@ unittest
     assert(x.sliced.variance!float.approxEqual(54.76562 / 11));
 }
 
-private
 @safe pure nothrow @nogc
 T square(T)(scope const T x)
 {
