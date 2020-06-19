@@ -2513,12 +2513,9 @@ unittest
 @safe pure nothrow @nogc
 T square(T)(scope const T x)
 {
-    import mir.internal.utility: isFloatingPoint;
     import mir.math.common: powi;
 
-    static if (isFloatingPoint!T) {
-        return powi(x, 2);
-    } else static if (__traits(compiles, {
+    static if (__traits(compiles, {
         T val = T.init * T.init;
     })) {
         return x * x;
