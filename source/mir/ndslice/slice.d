@@ -2544,6 +2544,70 @@ public:
         assert(imm == x);
         assert(mut == x);
     }
+    
+    /++
+    Provides the index location of a slice, taking into account
+    `Slice._strides`. Similar to `Slice.indexStride`, except the slice is
+    indexed by a value. Called by `Slice.accessFlat`. 
+
+    Params:
+        n = location in slice
+    Returns:
+        location in slice, adjusted for `Slice._strides`
+    See_also:
+        $(SUBREF topology, flattened),
+        $(LREF Slice.indexStride),
+        $(LREF Slice.accessFlat)
+    +/
+    private
+    ptrdiff_t indexStrideValue(ptrdiff_t n) @safe scope const
+    {
+        assert(n < elementCount, "indexStrideValue: n must be less than elementCount");
+        assert(n >= 0, "indexStrideValue: n must be greater than or equal to zero");
+
+        static if (kind == Contiguous) {
+            return n;
+        } else {
+            ptrdiff_t _shift;
+            foreach_reverse (i; Iota!(1, N))
+            {
+                immutable v = n / ptrdiff_t(_lengths[i]);
+                n %= ptrdiff_t(_lengths[i]);
+                static if (i == S)
+                    _shift += n;
+                else
+                    _shift += n * _strides[i];
+                n = v;
+            }
+            _shift += n * _strides[0];
+            return _shift;
+        }
+    }
+
+    /++
+    Provides access to a slice as if it were `flattened`. 
+
+    Params:
+        index = location in slice
+    Returns:
+        value of flattened slice at `index`
+    See_also: $(SUBREF topology, flattened)
+    +/
+    auto ref accessFlat(size_t index) scope return @trusted
+    {
+        return _iterator[indexStrideValue(index)];
+    }
+
+    ///
+    version(mir_test)
+    @safe pure @nogc nothrow
+    unittest
+    {
+        import mir.ndslice.topology: iota, flattened;
+
+        auto x = iota(2, 3, 4);
+        assert(x.accessFlat(9) == x.flattened[9]);
+    }
 
     static if (isMutable!DeepElement)
     {
@@ -3839,4 +3903,124 @@ version(mir_test) @safe unittest
     a[1, 2] = 3;
     b[] = a;
     assert(a == b);
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(2, 3, 4); // Contiguous Matrix
+    auto mFlat = m.flattened;
+
+    for (size_t i = 0; i < m.elementCount; i++) {
+        assert(m.accessFlat(i) == mFlat[i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.front; // Contiguous Vector
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.accessFlat(i) == m[0, i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m[0 .. $, 0 .. $ - 1]; // Canonical Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.accessFlat(i) == xFlat[i]);
+    }
+}
+
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(2, 3, 4); // Contiguous Matrix
+    auto x = m[0 .. $, 0 .. $, 0 .. $ - 1]; // Canonical Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.accessFlat(i) == xFlat[i]);
+    }
+}
+
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+    import mir.ndslice.dynamic: transposed;
+
+    auto m = iota(2, 3, 4); // Contiguous Matrix
+    auto x = m.transposed!(2, 1, 0); // Universal Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.accessFlat(i) == xFlat[i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+    import mir.ndslice.dynamic: transposed;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.transposed; // Universal Matrix
+    auto xFlat = x.flattened;
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.accessFlat(i) == xFlat[i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened, diagonal;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.diagonal; // Universal Vector
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.accessFlat(i) == m[i, i]);
+    }
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, flattened;
+
+    auto m = iota(3, 4); // Contiguous Matrix
+    auto x = m.front!1; // Universal Vector
+
+    for (size_t i = 0; i < x.elementCount; i++) {
+        assert(x.accessFlat(i) == m[i, 0]);
+    }
 }
