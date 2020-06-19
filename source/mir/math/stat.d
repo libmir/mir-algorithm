@@ -23,6 +23,7 @@ import mir.ndslice.slice: Slice, SliceKind;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
+import mir.functional: naryFun;
 import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
 import mir.internal.utility: isFloatingPoint;
 
@@ -2510,31 +2511,6 @@ unittest
     assert(x.sliced.variance!float.approxEqual(54.76562 / 11));
 }
 
-@safe pure nothrow @nogc
-T square(T)(scope const T x)
-{
-    import mir.math.common: powi;
-
-    static if (__traits(compiles, {
-        T val = T.init * T.init;
-    })) {
-        return x * x;
-    } else {
-        static assert(0, "square: cannot square type: " ~ T.stringof);
-    }
-}
-
-@safe pure nothrow @nogc
-unittest {
-    int x = square(4);
-    assert(x == 16);
-    double y = square(5.0);
-	assert(y == 25);
-    
-    static assert(is(typeof(square(4)) == int));
-    static assert(is(typeof(square(5.0)) == double));
-}
-
 /++
 Calculates the dispersion of the input.
 
@@ -2545,13 +2521,13 @@ the `summarize` funcion.
 
 The default functions provided are equivalent to calculating the population
 variance. The `centralTendency` default is the `mean` function, which results
-in the input being centered about the mean. The default `transform` function is 
-`square`, which will square the centered values. The default `summarize` function
-is `mean`, which will return the mean of the squared centered values.
+in the input being centered about the mean. The default `transform` function
+will square the centered values. The default `summarize` function is `mean`,
+which will return the mean of the squared centered values.
 
 Params:
     centralTendency: function that will produce the value that the input is centered about, default is `mean`
-    transform: function to transform centered values, default is `square`
+    transform: function to transform centered values, default squares the centered values
     summarize: function to summarize the transformed centered values, default is `mean`
 
 Returns:
@@ -2559,7 +2535,7 @@ Returns:
 +/
 template dispersion(
     alias centralTendency = mean,
-    alias transform = square,
+    alias transform = naryFun!"a * a",
     alias summarize = mean)
 {
     import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
@@ -2598,11 +2574,14 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.functional: naryFun;
 
     assert(dispersion([1.0, 2, 3]).approxEqual(2.0 / 3));
 
     assert(dispersion([1.0 + 3i, 2, 3]).approxEqual((-4.0 - 6i) / 3));
-    
+
+    alias square = naryFun!"a * a";
+
     assert(dispersion!(mean!float, square, mean!float)([0, 1, 2, 3, 4, 5].sliced(3, 2)).approxEqual(17.5 / 6));
     
     static assert(is(typeof(dispersion!(mean!float, square, mean!float)([1, 2, 3])) == float));
@@ -2667,14 +2646,17 @@ unittest
 
 /// Can also set functions to change type of dispersion that is used
 version(mir_test)
-//@safe pure nothrow
+@safe
 unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, fabs, sqrt;
+    import mir.functional: naryFun;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+              
+    alias square = naryFun!"a * a";
 
     // Other population variance examples
     assert(x.dispersion.approxEqual(54.76562 / 12));
@@ -2705,9 +2687,12 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.functional: naryFun;
 
     auto x = [0, 1, 1, 2, 4, 4,
               2, 7, 5, 1, 2, 0].sliced;
+
+    alias square = naryFun!"a * a";
 
     auto y = x.dispersion;
     assert(y.approxEqual(50.91667 / 12));
@@ -2766,6 +2751,9 @@ version(mir_test)
 unittest
 {
     import mir.math.common: approxEqual;
+    import mir.functional: naryFun;
+
+    alias square = naryFun!"a * a";
 
     assert(dispersion(1.0, 2, 3).approxEqual(2.0 / 3));
     assert(dispersion!(mean!float, square, mean!float)(1, 2, 3).approxEqual(2f / 3));
