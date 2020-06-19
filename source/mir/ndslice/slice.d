@@ -2545,36 +2545,11 @@ public:
         assert(mut == x);
     }
 
-    size_t[N] numIndex(size_t n) @safe scope const
+    private
+    ptrdiff_t indexStrideValue(ptrdiff_t n) @safe scope const
     {
-        assert(n < elementCount, "numIndex: n must be less than elementCount");
-
-        size_t[N] output;
-        static if (N == 1) {
-            output[N - 1] = n;
-        } else {
-            output[0 .. (N - 1)] = _lengths[1 .. N];
-            static if (N > 2) {
-                foreach_reverse (i; Iota!(N - 2)) {
-                    output[i] *= output[i + 1];
-                }
-            }
-            size_t mul;
-            foreach (i; Iota!(N - 1)) {
-                mul = n / output[i];
-                n -= mul * output[i];
-                output[i] = mul;
-            }
-            output[N - 1] = n;
-        }
-        
-        return output;
-    }
-
-    ptrdiff_t valStride(ptrdiff_t n) @safe scope const
-    {
-        assert(n < elementCount, "valStride: n must be less than elementCount");
-        assert(n >= 0, "valStride: n must be greater than or equal to zero");
+        assert(n < elementCount, "indexStrideValue: n must be less than elementCount");
+        assert(n >= 0, "indexStrideValue: n must be greater than or equal to zero");
 
         static if (kind == Contiguous) {
             return n;
@@ -2595,10 +2570,29 @@ public:
         }
     }
 
-    ///
-    auto ref at(size_t n) scope return @trusted
+    /++
+    Provides access to a slice as if it were `flattened`. 
+
+    Params:
+        index = location in slice to provide access
+    Returns:
+        value of flattened slice at `index`
+    See_also: $(SUBREF topology, flattened)
+    +/
+    auto ref accessFlat(size_t index) scope return @trusted
     {
-        return _iterator[valStride(n)];
+        return _iterator[indexStrideValue(index)];
+    }
+
+    ///
+    version(mir_test)
+    @safe pure @nogc nothrow
+    unittest
+    {
+        import mir.ndslice.topology: iota, flattened;
+
+        auto x = iota(2, 3, 4);
+        assert(x.accessFlat(9) == x.flattened[9]);
     }
 
     static if (isMutable!DeepElement)
@@ -3903,64 +3897,11 @@ unittest
 {
     import mir.ndslice.topology: iota, flattened;
 
-    auto m = iota(6);
-    auto mFlat = m.flattened;
-
-    size_t num;
-    for (size_t i = 0; i < m.length!0; i++) {
-        assert([i] == m.numIndex(i));
-    }
-}
-
-version(mir_test)
-@safe pure @nogc nothrow
-unittest
-{
-    import mir.ndslice.topology: iota, flattened;
-
-    auto m = iota(2, 3);
-    auto mFlat = m.flattened;
-
-    size_t num;
-    for (size_t i = 0; i < m.length!0; i++) {
-        for (size_t j = 0; j < m.length!1; j++) {
-                num = j + i * (m.length!1);
-                assert([i, j] == m.numIndex(num));
-        }
-    }
-}
-
-version(mir_test)
-@safe pure @nogc nothrow
-unittest
-{
-    import mir.ndslice.topology: iota, flattened;
-
-    auto m = iota(2, 3, 4);
-    auto mFlat = m.flattened;
-
-    size_t num;
-    for (size_t i = 0; i < m.length!0; i++) {
-        for (size_t j = 0; j < m.length!1; j++) {
-            for (size_t k = 0; k < m.length!2; k++) {
-                num = k + j * (m.length!2) + i * (m.length!1) * (m.length!2);
-                assert([i, j, k] == m.numIndex(num));
-            }
-        }
-    }
-}
-
-version(mir_test)
-@safe pure @nogc nothrow
-unittest
-{
-    import mir.ndslice.topology: iota, flattened;
-
     auto m = iota(2, 3, 4); // Contiguous Matrix
     auto mFlat = m.flattened;
 
     for (size_t i = 0; i < m.elementCount; i++) {
-        assert(m.at(i) == mFlat[i]);
+        assert(m.accessFlat(i) == mFlat[i]);
     }
 }
 
@@ -3974,7 +3915,7 @@ unittest
     auto x = m.front; // Contiguous Vector
 
     for (size_t i = 0; i < x.elementCount; i++) {
-        assert(x.at(i) == m[0, i]);
+        assert(x.accessFlat(i) == m[0, i]);
     }
 }
 
@@ -3989,7 +3930,7 @@ unittest
     auto xFlat = x.flattened;
 
     for (size_t i = 0; i < x.elementCount; i++) {
-        assert(x.at(i) == xFlat[i]);
+        assert(x.accessFlat(i) == xFlat[i]);
     }
 }
 
@@ -4005,7 +3946,7 @@ unittest
     auto xFlat = x.flattened;
 
     for (size_t i = 0; i < x.elementCount; i++) {
-        assert(x.at(i) == xFlat[i]);
+        assert(x.accessFlat(i) == xFlat[i]);
     }
 }
 
@@ -4022,7 +3963,7 @@ unittest
     auto xFlat = x.flattened;
 
     for (size_t i = 0; i < x.elementCount; i++) {
-        assert(x.at(i) == xFlat[i]);
+        assert(x.accessFlat(i) == xFlat[i]);
     }
 }
 
@@ -4038,7 +3979,7 @@ unittest
     auto xFlat = x.flattened;
 
     for (size_t i = 0; i < x.elementCount; i++) {
-        assert(x.at(i) == xFlat[i]);
+        assert(x.accessFlat(i) == xFlat[i]);
     }
 }
 
@@ -4052,7 +3993,7 @@ unittest
     auto x = m.diagonal; // Universal Vector
 
     for (size_t i = 0; i < x.elementCount; i++) {
-        assert(x.at(i) == m[i, i]);
+        assert(x.accessFlat(i) == m[i, i]);
     }
 }
 
@@ -4066,6 +4007,6 @@ unittest
     auto x = m.front!1; // Universal Vector
 
     for (size_t i = 0; i < x.elementCount; i++) {
-        assert(x.at(i) == m[i, 0]);
+        assert(x.accessFlat(i) == m[i, 0]);
     }
 }
