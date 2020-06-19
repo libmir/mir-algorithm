@@ -1233,6 +1233,7 @@ Returns:
 See_also: 
     $(SUBREF stat, mean)
 +/
+@safe pure @nogc
 template median(F, bool allowModify = false)
 {
     F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
@@ -1259,6 +1260,7 @@ template median(F, bool allowModify = false)
 
             if (len > 5) {
                 size_t half_n = len / 2;
+
                 partitionAt(temp, half_n);
                 if (len % 2 == 1) {
                     return cast(F) temp[half_n];
@@ -1275,6 +1277,7 @@ template median(F, bool allowModify = false)
 }
 
 ///
+@safe pure @nogc
 template median(bool allowModify = false)
 {
     sumType!(Slice!(Iterator, N, kind))
@@ -1286,7 +1289,7 @@ template median(bool allowModify = false)
 
 /// Median of vector
 version(mir_test_topN)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1300,7 +1303,7 @@ unittest
 
 /// Median of matrix
 version(mir_test_topN)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.fuse: fuse;
@@ -1315,7 +1318,7 @@ unittest
 
 /// Row median of matrix
 version(mir_test_topN)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.fuse: fuse;
@@ -1338,7 +1341,7 @@ unittest
 
 /// Can allow original slice to be modified or set output type
 version(mir_test_topN)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1355,7 +1358,7 @@ For integral slices, pass output type as template parameter to ensure output
 type is correct
 +/
 version(mir_test_topN)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1365,7 +1368,7 @@ unittest
 }
 
 version(mir_test)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1415,7 +1418,7 @@ unittest
 }
 
 version(mir_test)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1563,7 +1566,7 @@ template center(alias centralTendency = mean!(Summation.appropriate))
 
 /// Center vector
 version(mir_test)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -2646,7 +2649,7 @@ unittest
 
 /// Can also set functions to change type of dispersion that is used
 version(mir_test)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;

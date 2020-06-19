@@ -86,6 +86,7 @@ version(mir_test_topN) unittest
 
 import mir.ndslice.slice;
 import mir.math.common: optmath;
+import mir.functional: naryFun;
 
 @optmath:
 
@@ -1017,7 +1018,7 @@ See_Also:
     $(LREF pivotPartition), https://erdani.com/research/sea2017.pdf
 
 +/
-@trusted
+@trusted pure @nogc
 deprecated("This function is experimental")
 template partitionAt(alias less = "a < b")
 {
@@ -1054,7 +1055,7 @@ template partitionAt(alias less = "a < b")
 
 /// Partition 1-dimensional slice at nth
 version(mir_test_topN)
-@safe
+@safe pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1066,7 +1067,7 @@ unittest {
 
 /// Partition 2-dimensional slice
 version(mir_test_topN)
-@safe
+@safe pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1078,7 +1079,7 @@ unittest {
 
 /// Can supply alternate ordering function
 version(mir_test_topN)
-@safe
+@safe pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1089,6 +1090,7 @@ unittest {
 }
 
 version(unittest) {
+    @safe pure
     template checkTopNAll(alias less = "a < b")
     {
         import mir.functional: naryFun;
@@ -1096,7 +1098,6 @@ version(unittest) {
 
         static if (__traits(isSame, naryFun!less, less))
         {
-            @safe
             static bool checkTopNAll
                 (Iterator, SliceKind kind)(
                     Slice!(Iterator, 1, kind) x)
@@ -1124,7 +1125,7 @@ version(unittest) {
 }
 
 version(mir_test_topN)
-@safe
+@safe pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1149,7 +1150,7 @@ unittest {
     assert(checkTopNAll([ 0,  2,  7, 16,  2, 20,  1, 11, 17,  5, 22, 17, 25, 13, 14,  5, 22, 21, 24, 14].sliced));
 }
 
-private @trusted
+private @trusted pure @nogc
 void partitionAtImpl(alias less, Iterator)(
     ref const(Iterator) frontI, 
     ref const(Iterator) lastI, 
@@ -1261,7 +1262,7 @@ void partitionAtImpl(alias less, Iterator)(
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1274,7 +1275,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1287,7 +1288,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1300,7 +1301,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1313,7 +1314,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1326,7 +1327,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1339,7 +1340,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1352,7 +1353,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1364,7 +1365,7 @@ unittest {
     assert(x[nth] == 10);
 }
 
-private @trusted
+private @trusted pure @nogc
 Iterator partitionAtPartition(alias less, Iterator)(
     ref Iterator frontI, 
     ref Iterator lastI, 
@@ -1417,7 +1418,7 @@ Iterator partitionAtPartition(alias less, Iterator)(
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1431,7 +1432,7 @@ unittest {
     assert(x[n - 1] == x_sort[n - 1]);
 }
 
-private @trusted
+private @trusted pure @nogc
 Iterator partitionAtPartitionOffMedian(alias less, bool leanRight, Iterator)(
     ref Iterator frontI, 
     ref Iterator lastI, 
@@ -1476,7 +1477,7 @@ Iterator partitionAtPartitionOffMedian(alias less, bool leanRight, Iterator)(
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1489,7 +1490,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1501,7 +1502,7 @@ unittest {
     assert(x.equal([6, 7, 8, 7, 5, 2, 9, 0, 9, 15, 25, 10, 11, 10, 13, 18, 17, 13, 25, 22]));
 }
 
-private @trusted
+private @trusted pure @nogc
 void p3(alias less, Iterator)(
     ref const(Iterator) frontI,
     ref const(Iterator) lastI,
@@ -1526,7 +1527,7 @@ void p3(alias less, Iterator)(
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1540,7 +1541,7 @@ unittest {
     assert(x.equal([0, 1, 2, 4, 3, 5]));
 }
 
-private @trusted
+private @trusted pure @nogc
 template p4(alias less, bool leanRight)
 {
     void p4(Iterator)(
@@ -1585,7 +1586,7 @@ template p4(alias less, bool leanRight)
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1600,7 +1601,7 @@ unittest {
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1614,7 +1615,7 @@ unittest {
     assert(x.equal([0, 4, 2, 1, 3, 7, 5, 8, 4, 3]));
 }
 
-private @trusted
+private @trusted pure @nogc
 template expandPartition(alias less)
 {
     Iterator expandPartition(Iterator)(
@@ -1735,7 +1736,7 @@ template expandPartition(alias less)
 }
 
 version(mir_test_topN)
-@trusted
+@trusted pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
