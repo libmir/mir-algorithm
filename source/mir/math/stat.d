@@ -2193,7 +2193,7 @@ template variance(
     /++
     Params:
         r = range, must be finite iterable
-        isPopulation = true if population variace, false if sample variance (default)
+        isPopulation = true if population variance, false if sample variance (default)
     +/
     @fmamath meanType!F variance(Range)(Range r, bool isPopulation = false)
         if (isIterable!Range)
@@ -2224,7 +2224,7 @@ template variance(
     /++
     Params:
         r = range, must be finite iterable
-        isPopulation = true if population variace, false if sample variance (default)
+        isPopulation = true if population variance, false if sample variance (default)
     +/
     @fmamath meanType!Range variance(Range)(Range r, bool isPopulation = false)
         if(isIterable!Range)
@@ -2506,6 +2506,377 @@ unittest
 
     assert(x.sliced.variance.approxEqual(54.76562 / 11));
     assert(x.sliced.variance!float.approxEqual(54.76562 / 11));
+}
+
+package template stdevType(T)
+{
+    import mir.internal.utility: isFloatingPoint;
+    
+    alias U = meanType!T;
+
+    static if (isFloatingPoint!U) {
+        alias stdevType = U;
+    } else {
+        static assert(0, "stdevType: Can't calculate standard deviation of elements of type " ~ U.stringof);
+    }
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(stdevType!(int[]) == double));
+    static assert(is(stdevType!(double[]) == double));
+    static assert(is(stdevType!(float[]) == float));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        float x;
+        alias x this;
+    }
+
+    static assert(is(stdevType!(Foo[]) == float));
+}
+
+/++
+Calculates the standard deviation of the input
+
+Params:
+    F: controls type of output
+    varianceAlgo: algorithm for calculating variance (default: VarianceAlgo.online)
+    summation: algorithm for calculating sums (default: Summation.appropriate)
+
+Returns:
+    The standard deviation of the input
++/
+template standardDeviation(
+    F, 
+    VarianceAlgo varianceAlgo = VarianceAlgo.online, 
+    Summation summation = Summation.appropriate)
+{
+    import mir.math.common: sqrt;
+
+    /++
+    Params:
+        r = range, must be finite iterable
+        isPopulation = true if population standard deviation, false if sample standard deviation (default)
+    +/
+    @fmamath stdevType!F standardDeviation(Range)(Range r, bool isPopulation = false)
+        if (isIterable!Range)
+    {
+        import core.lifetime: move;
+        alias G = typeof(return);
+        return r.move.variance!(G, varianceAlgo, ResolveSummationType!(summation, Range, G))(isPopulation).sqrt;
+    }
+
+    /++
+    Params:
+        ar = values
+    +/
+    @fmamath stdevType!F standardDeviation(scope const F[] ar...)
+    {
+        alias G = typeof(return);
+        return ar.variance!(G, varianceAlgo, ResolveSummationType!(summation, const(G)[], G)).sqrt;
+    }
+}
+
+/// ditto
+template standardDeviation(
+    VarianceAlgo varianceAlgo = VarianceAlgo.online, 
+    Summation summation = Summation.appropriate)
+{
+    /++
+    Params:
+        r = range, must be finite iterable
+        isPopulation = true if population standard deviation, false if sample standard deviation (default)
+    +/
+    @fmamath stdevType!Range standardDeviation(Range)(Range r, bool isPopulation = false)
+        if(isIterable!Range)
+    {
+        import core.lifetime: move;
+        alias F = typeof(return);
+        return .standardDeviation!(F, varianceAlgo, summation)(r.move, isPopulation);
+    }
+
+    /++
+    Params:
+        ar = values
+    +/
+    @fmamath stdevType!T standardDeviation(T)(scope const T[] ar...)
+    {
+        alias F = typeof(return);
+        return .standardDeviation!(F, varianceAlgo, summation)(ar);
+    }
+}
+
+/// ditto
+template standardDeviation(F, string varianceAlgo, string summation = "appropriate")
+{
+    mixin("alias standardDeviation = .standardDeviation!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
+}
+
+/// ditto
+template standardDeviation(string varianceAlgo, string summation = "appropriate")
+{
+    mixin("alias standardDeviation = .standardDeviation!(VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual, sqrt;
+
+    assert(standardDeviation([1.0, 2, 3]).approxEqual(sqrt(2.0 / 2)));
+    assert(standardDeviation([1.0, 2, 3], true).approxEqual(sqrt(2.0 / 3)));
+    
+    assert(standardDeviation!float([0, 1, 2, 3, 4, 5].sliced(3, 2)).approxEqual(sqrt(17.5 / 5)));
+    
+    static assert(is(typeof(standardDeviation!float([1, 2, 3])) == float));
+}
+
+/// Standard deviation of vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual, sqrt;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    assert(x.standardDeviation.approxEqual(sqrt(54.76562 / 11)));
+}
+
+/// Standard deviation of matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.math.common: approxEqual, sqrt;
+
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+
+    assert(x.standardDeviation.approxEqual(sqrt(54.76562 / 11)));
+}
+
+/// Column standard deviation of matrix
+version(mir_test_variance)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+    import mir.math.common: approxEqual, sqrt;
+    import mir.algorithm.iteration: all;
+
+    auto x = [
+        [0.0,  1.0, 1.5, 2.0], 
+        [3.5, 4.25, 2.0, 7.5],
+        [5.0,  1.0, 1.5, 0.0]
+    ].fuse;
+    auto result = [13.16667 / 2, 7.041667 / 2, 0.1666667 / 2, 30.16667 / 2].map!sqrt;
+
+    // Use byDim or alongDim with map to compute standardDeviation of row/column.
+    assert(x.byDim!1.map!standardDeviation.all!approxEqual(result));
+    assert(x.alongDim!0.map!standardDeviation.all!approxEqual(result));
+
+    // FIXME
+    // Without using map, computes the standardDeviation of the whole slice
+    // assert(x.byDim!1.standardDeviation == x.sliced.standardDeviation);
+    // assert(x.alongDim!0.standardDeviation == x.sliced.standardDeviation);
+}
+
+/// Can also set algorithm type
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual, sqrt;
+
+    auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    auto x = a + 1_000_000_000;
+
+    auto y = x.standardDeviation;
+    assert(y.approxEqual(sqrt(54.76562 / 11)));
+
+    // The naive algorithm is numerically unstable in this case
+    auto z0 = x.standardDeviation!"naive";
+    assert(!z0.approxEqual(y));
+
+    // But the two-pass algorithm provides a consistent answer
+    auto z1 = x.standardDeviation!"twoPass";
+    assert(z1.approxEqual(y));
+}
+
+/// Can also set algorithm or output type
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: repeat;
+    import mir.math.common: approxEqual, sqrt;
+
+    //Set population standard deviation, standardDeviation algorithm, sum algorithm or output type
+
+    auto a = [1.0, 1e100, 1, -1e100].sliced;
+    auto x = a * 10_000;
+
+    bool populationTrueRT = true;
+    bool populationFalseRT = false;
+    enum PopulationTrueCT = true;
+
+    /++
+    Due to Floating Point precision, when centering `x`, subtracting the mean 
+    from the second and fourth numbers has no effect. Further, after centering 
+    and squaring `x`, the first and third numbers in the slice have precision 
+    too low to be included in the centered sum of squares. 
+    +/
+    assert(x.standardDeviation(populationFalseRT).approxEqual(sqrt(2.0e208 / 3)));
+    assert(x.standardDeviation(populationTrueRT).approxEqual(sqrt(2.0e208 / 4)));
+    assert(x.standardDeviation(PopulationTrueCT).approxEqual(sqrt(2.0e208 / 4)));
+
+    assert(x.standardDeviation!("online").approxEqual(sqrt(2.0e208 / 3)));
+    assert(x.standardDeviation!("online", "kbn").approxEqual(sqrt(2.0e208 / 3)));
+    assert(x.standardDeviation!("online", "kb2").approxEqual(sqrt(2.0e208 / 3)));
+    assert(x.standardDeviation!("online", "precise").approxEqual(sqrt(2.0e208 / 3)));
+    assert(x.standardDeviation!(double, "online", "precise").approxEqual(sqrt(2.0e208 / 3)));
+    assert(x.standardDeviation!(double, "online", "precise")(populationTrueRT).approxEqual(sqrt(2.0e208 / 4)));
+
+    auto y = uint.max.repeat(3);
+    auto z = y.standardDeviation!ulong;
+    assert(z == 0.0);
+    static assert(is(typeof(z) == double));
+}
+
+/++
+For integral slices, pass output type as template parameter to ensure output
+type is correct. By default, if an input type is not floating point, then the
+result will be a double if it is implicitly convertible to a floating point type.
++/
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual, sqrt;
+
+    auto x = [0, 1, 1, 2, 4, 4,
+              2, 7, 5, 1, 2, 0].sliced;
+
+    auto y = x.standardDeviation;
+    assert(y.approxEqual(sqrt(50.91667 / 11)));
+    static assert(is(typeof(y) == double));
+
+    assert(x.standardDeviation!float.approxEqual(sqrt(50.91667 / 11)));
+}
+
+/++
+Variance works for other user-defined types (provided they
+can be converted to a floating point)
++/
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    
+    static struct Foo {
+        float x;
+        alias x this;
+    }
+    
+    Foo[] foo = [Foo(1f), Foo(2f), Foo(3f)];
+    assert(foo.standardDeviation == 1f);
+}
+
+/// Compute standard deviation along specified dimention of tensors
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.topology: as, iota, alongDim, map, repeat;
+
+    auto x = [
+        [0.0, 1, 2],
+        [3.0, 4, 5]
+    ].fuse;
+
+    assert(x.standardDeviation.approxEqual(sqrt(17.5 / 5)));
+
+    auto m0 = repeat(sqrt(4.5), 3);
+    assert(x.alongDim!0.map!standardDeviation.all!approxEqual(m0));
+    assert(x.alongDim!(-2).map!standardDeviation.all!approxEqual(m0));
+
+    auto m1 = [1.0, 1.0];
+    assert(x.alongDim!1.map!standardDeviation.all!approxEqual(m1));
+    assert(x.alongDim!(-1).map!standardDeviation.all!approxEqual(m1));
+
+    assert(iota(2, 3, 4, 5).as!double.alongDim!0.map!standardDeviation.all!approxEqual(repeat(sqrt(3600.0 / 2), 3, 4, 5)));
+}
+
+/// Arbitrary standard deviation
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: sqrt;
+    assert(standardDeviation(1.0, 2, 3) == 1.0);
+    assert(standardDeviation!float(1, 2, 3) == 1f);
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual, sqrt;
+    assert([1.0, 2, 3, 4].standardDeviation.approxEqual(sqrt(5.0 / 3)));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.topology: iota, alongDim, map;
+    import mir.math.common: approxEqual, sqrt;
+    import mir.algorithm.iteration: all;
+
+    auto x = iota([2, 2], 1);
+    auto y = x.alongDim!1.map!standardDeviation;
+    assert(y.all!approxEqual([sqrt(0.5), sqrt(0.5)]));
+    static assert(is(meanType!(typeof(y)) == double));
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual, sqrt;
+
+    static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+
+    assert(x.sliced.standardDeviation.approxEqual(sqrt(54.76562 / 11)));
+    assert(x.sliced.standardDeviation!float.approxEqual(sqrt(54.76562 / 11)));
 }
 
 /++
