@@ -1605,7 +1605,7 @@ public:
     }
 
     ///ditto
-    void popFront(size_t dimension = 0)() @trusted scope
+    void popFront(size_t dimension = 0)() @trusted
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");

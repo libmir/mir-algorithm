@@ -114,7 +114,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Retrurns: signed integer view using the same data payload
     +/
-    BigIntView!(W, endian) signed() @safe pure nothrow @nogc @property
+    BigIntView!(W, endian) signed()() @safe pure nothrow @nogc @property
     {
         return typeof(return)(this);
     }
@@ -327,7 +327,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    BigUIntView!(const W, endian) lightConst()
+    BigUIntView!(const W, endian) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(coefficients);
@@ -877,7 +877,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    BigIntView!(W, endian) withSign(bool sign)
+    BigIntView!(W, endian) withSign()(bool sign)
     {
         return typeof(return)(this, sign);
     }
@@ -1122,7 +1122,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    BigIntView!(const W, endian) lightConst()
+    BigIntView!(const W, endian) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(unsigned.lightConst, sign);
