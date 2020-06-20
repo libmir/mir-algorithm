@@ -1154,7 +1154,7 @@ void partitionAtImpl(alias less, Iterator)(
     ref const(Iterator) frontI, 
     ref const(Iterator) lastI, 
     size_t n, 
-    bool useSampling)
+    bool useSampling) pure
 {
     assert(frontI <= lastI, "partitionAtImpl: frontI must be less than or equal to lastI");
 

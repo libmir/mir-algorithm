@@ -23,7 +23,6 @@ import mir.ndslice.slice: Slice, SliceKind;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
-import mir.functional: naryFun;
 import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
 import mir.internal.utility: isFloatingPoint;
 
@@ -192,15 +191,15 @@ struct MeanAccumulator(T, Summation summation)
     Summator!(T, summation) summator;
 
     ///
-    F mean(F = T)() @property
+    F mean(F = T)() const @safe @property pure nothrow @nogc
     {
         return cast(F) summator.sum / cast(F) count;
     }
     
     ///
-    F sum(F = T)() @property
+    F sum(F = T)() const @safe @property pure nothrow @nogc
     {
-        return cast(F) summator.sum ;
+        return cast(F) summator.sum;
     }
 
     ///
@@ -1415,7 +1414,7 @@ unittest
 }
 
 version(mir_test)
-@safe
+@safe pure
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1832,8 +1831,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
 {
     import mir.functional: naryFun;
 
-    private alias square = naryFun!"a * a";
-
     mixin moment_ops!(T, summation);
     mixin outputRange_ops!T;
 
@@ -1854,7 +1851,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     void put()(T x)
     {
         meanAccumulator.put(x);
-        sumOfSquares.put(square(x));
+        sumOfSquares.put(x * x);
     }
 
     ///
@@ -1862,10 +1859,10 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         if (isPopulation == false)
             return cast(F) sumOfSquares.sum / cast(F) (count - 1) - 
-                square(cast(F) meanAccumulator.mean) * (cast(F) count / cast(F) (count - 1));
+                (cast(F) meanAccumulator.mean) ^^ 2 * (cast(F) count / cast(F) (count - 1));
         else
             return cast(F) sumOfSquares.sum / cast(F) count - 
-                square(cast(F) meanAccumulator.mean);
+                (cast(F) meanAccumulator.mean) ^^ 2;
     }
 }
 
@@ -2535,36 +2532,42 @@ Returns:
 +/
 template dispersion(
     alias centralTendency = mean,
-    alias transform = naryFun!"a * a",
+    alias transform = "a * a",
     alias summarize = mean)
 {
+    import mir.functional: naryFun;
     import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
 
-    /++
-    Params:
-        slice
-    +/
-    @fmamath auto dispersion(Iterator, size_t N, SliceKind kind)(
-        Slice!(Iterator, N, kind) slice)
+    static if (__traits(isSame, naryFun!transform, transform))
     {
-        import core.lifetime: move;
-        import mir.ndslice.topology: map;
+        /++
+        Params:
+            slice
+        +/
+        @fmamath auto dispersion(Iterator, size_t N, SliceKind kind)(
+            Slice!(Iterator, N, kind) slice)
+        {
+            import core.lifetime: move;
+            import mir.ndslice.topology: map;
 
-        return summarize(slice.move.center!centralTendency.map!transform);
-    }
-    
-    /// ditto
-    @fmamath auto dispersion(T)(scope const T[] ar...)
-    {
-        return dispersion(ar.sliced);
-    }
+            return summarize(slice.move.center!centralTendency.map!transform);
+        }
+        
+        /// ditto
+        @fmamath auto dispersion(T)(scope const T[] ar...)
+        {
+            return dispersion(ar.sliced);
+        }
 
-    /// ditto
-    @fmamath auto dispersion(T)(T withAsSlice)
-        if (hasAsSlice!T)
-    {
-        return dispersion(withAsSlice.asSlice);
+        /// ditto
+        @fmamath auto dispersion(T)(T withAsSlice)
+            if (hasAsSlice!T)
+        {
+            return dispersion(withAsSlice.asSlice);
+        }
     }
+    else
+        alias dispersion = .dispersion!(centralTendency, naryFun!transform, summarize);
 }
 
 ///
@@ -2580,11 +2583,9 @@ unittest
 
     assert(dispersion([1.0 + 3i, 2, 3]).approxEqual((-4.0 - 6i) / 3));
 
-    alias square = naryFun!"a * a";
-
-    assert(dispersion!(mean!float, square, mean!float)([0, 1, 2, 3, 4, 5].sliced(3, 2)).approxEqual(17.5 / 6));
+    assert(dispersion!(mean!float, "a * a", mean!float)([0, 1, 2, 3, 4, 5].sliced(3, 2)).approxEqual(17.5 / 6));
     
-    static assert(is(typeof(dispersion!(mean!float, square, mean!float)([1, 2, 3])) == float));
+    static assert(is(typeof(dispersion!(mean!float, "a ^^ 2", mean!float)([1, 2, 3])) == float));
 }
 
 /// Dispersion of vector
