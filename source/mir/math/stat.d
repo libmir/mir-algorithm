@@ -282,11 +282,15 @@ unittest
 /++
 Computes the mean of the input.
 
+By default, if `F` is not floating point type or complex type, then the result
+will have a `double` type if `F` is implicitly convertible to a floating point 
+type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+
 Params:
     F: controls type of output
     summation: algorithm for calculating sums (default: Summation.appropriate)
 Returns:
-    The mean of all the elements in the input, must be floating point or complex
+    The mean of all the elements in the input, must be floating point or complex type
 
 See_also: 
     $(SUBREF sum, Summation)
@@ -449,8 +453,7 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct. By default, if an input type is not floating point, then the
-result will be a double if it is implicitly convertible to a floating point type.
+type is correct.
 +/
 version(mir_test)
 @safe pure nothrow
@@ -599,11 +602,15 @@ unittest
 /++
 Computes the harmonic mean of the input.
 
+By default, if `F` is not floating point type or complex type, then the result
+will have a `double` type if `F` is implicitly convertible to a floating point 
+type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+
 Params:
     F: controls type of output
     summation: algorithm for calculating sums (default: Summation.appropriate)
 Returns:
-    harmonic mean of all the elements of the input, must be floating point
+    harmonic mean of all the elements of the input, must be floating point or complex type
 
 See_also: 
     $(SUBREF sum, Summation)
@@ -769,8 +776,7 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct. By default, if an input type is not floating point, then the
-result will be a double if it is implicitly convertible to a floating point type.
+type is correct. 
 +/
 version(mir_test)
 @safe pure nothrow
@@ -973,10 +979,13 @@ unittest
 /++
 Computes the geometric average of the input.
 
+By default, if `F` is not floating point type, then the result will have a 
+`double` type if `F` is implicitly convertible to a floating point type.
+
 Params:
     r = range, must be finite iterable
 Returns:
-    The geometric average of all the elements in the input, must be floating point
+    The geometric average of all the elements in the input, must be floating point type
 
 See_also: 
     $(SUBREF numeric, prod)
@@ -1101,8 +1110,7 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct. By default, if an input type is not floating point, then the
-result will be a double if it is implicitly convertible to a floating point type.
+type is correct.
 +/
 version(mir_test)
 @safe pure nothrow
@@ -1223,8 +1231,8 @@ unittest
 /++
 Computes the median of `slice`.
 
-Can also pass a a flag `allowModify` that allows the input slice to be modified.
-By default, a copy is made. 
+Can also pass a boolean variable, `allowModify`, that allows the input slice to
+be modified. By default, a reference-counted copy is made. 
 
 Returns:
     the median of the slice
@@ -1521,8 +1529,8 @@ unittest
 /++
 Centers `slice`, which must be a finite iterable.
 
-By default, `slice` is centered by the mean. A custom function may also be provided
-using `centralTendency`.
+By default, `slice` is centered by the mean. A custom function may also be
+provided using `centralTendency`.
 
 Returns:
     The elements in the slice with the average subtracted from them.
@@ -2177,13 +2185,17 @@ unittest
 /++
 Calculates the variance of the input
 
+By default, if `F` is not floating point type or complex type, then the result
+will have a `double` type if `F` is implicitly convertible to a floating point 
+type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+
 Params:
     F: controls type of output
     varianceAlgo: algorithm for calculating variance (default: VarianceAlgo.online)
     summation: algorithm for calculating sums (default: Summation.appropriate)
 
 Returns:
-    The variance of the input
+    The variance of the input, must be floating point or complex type
 +/
 template variance(
     F, 
@@ -2400,8 +2412,7 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct. By default, if an input type is not floating point, then the
-result will be a double if it is implicitly convertible to a floating point type.
+type is correct.
 +/
 version(mir_test)
 @safe pure nothrow
@@ -2435,7 +2446,7 @@ unittest
     assert(x.variance.approxEqual((0.0+10.0i)/ 3));
 }
 
-/// Compute variance tensors along specified dimention of tensors
+/// Compute variance along specified dimention of tensors
 version(mir_test)
 @safe pure
 unittest
@@ -2545,13 +2556,16 @@ unittest
 /++
 Calculates the standard deviation of the input
 
+By default, if `F` is not floating point type, then the result will have a
+`double` type if `F` is implicitly convertible to a floating point type.
+
 Params:
     F: controls type of output
     varianceAlgo: algorithm for calculating variance (default: VarianceAlgo.online)
     summation: algorithm for calculating sums (default: Summation.appropriate)
 
 Returns:
-    The standard deviation of the input
+    The standard deviation of the input, must be floating point type type
 +/
 template standardDeviation(
     F, 
@@ -2766,8 +2780,7 @@ unittest
 
 /++
 For integral slices, pass output type as template parameter to ensure output
-type is correct. By default, if an input type is not floating point, then the
-result will be a double if it is implicitly convertible to a floating point type.
+type is correct.
 +/
 version(mir_test)
 @safe pure nothrow
