@@ -10,14 +10,17 @@ dependency "mir-core" version=">=0.3.5 <1.2.0"
 buildType "unittest" {
 	buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_test" "mir_bignum_test"
+    dflags "-lowmem"
 }
 buildType "unittest-cov" {
 	buildOptions "unittests" "coverage" "debugMode" "debugInfo"
 	versions "mir_test"  "mir_bignum_test"
+    dflags "-lowmem"
 }
 buildType "unittest-release" {
 	buildOptions "unittests" "releaseMode" "optimize" "inline" "noBoundsCheck"
 	versions "mir_test"  "mir_bignum_test"
+    dflags "-lowmem"
 }
 
 configuration "default" {
