@@ -90,7 +90,7 @@ struct Fp(size_t coefficientSize)
 
     static if (coefficientSize == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -154,7 +154,7 @@ struct Fp(size_t coefficientSize)
 
     static if (coefficientSize == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -177,7 +177,8 @@ struct Fp(size_t coefficientSize)
     T opCast(T, bool noHalf = false)() nothrow const
         if (isFloatingPoint!T)
     {
-        import mir.math.ieee: ldexp;
+        // import mir.math.ieee: ldexp;
+        import std.math: ldexp;
         auto exp = cast()exponent;
         static if (coefficientSize == 32)
         {
@@ -228,7 +229,7 @@ struct Fp(size_t coefficientSize)
 
     static if (coefficientSize == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -238,7 +239,7 @@ struct Fp(size_t coefficientSize)
 
     static if (coefficientSize == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -249,17 +250,29 @@ struct Fp(size_t coefficientSize)
 
     static if (coefficientSize == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
         auto fp = Fp!64(1, 100, UInt!64(0xe3251bacb112cb8b));
-        assert(cast(double)fp == -0xE3251BACB112C8p+108);
+        version (DigitalMars)
+        {
+            // https://issues.dlang.org/show_bug.cgi?id=20963
+            assert(cast(double)fp == -0xE3251BACB112C8p+108
+                || cast(double)fp == -0xE3251BACB112D0p+108);
+        }
+        else
+        {
+            assert(cast(double)fp == -0xE3251BACB112C8p+108);
+        }
     }
-
+// -0x1.c64a375962259p+163 = 
+// -0xe.3251bacb112cb8bp+160 = 
+// -0x1.c64a37596225ap+163 = 
+// -0xe.3251bacb112cb8bp+160 = 
     static if (coefficientSize == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -279,7 +292,7 @@ struct Fp(size_t coefficientSize)
 
     static if (coefficientSize == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {

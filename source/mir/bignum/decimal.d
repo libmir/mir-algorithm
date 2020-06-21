@@ -178,7 +178,7 @@ enum DecimalExponentKey
 }
 
 ///
-version(mir_test) 
+version(mir_bignum_test) 
 @safe pure nothrow @nogc
 unittest
 {

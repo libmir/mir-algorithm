@@ -202,11 +202,10 @@ struct BigInt(size_t maxSize64)
     }
 
     /++
-    Performs `size_t overflow = (big += overflow) *= fixed` operatrion.
+    Performs `size_t overflow = big *= fixed` operatrion.
     Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
-        overflow = initial overflow value
     Returns:
         overflow
     +/
@@ -420,7 +419,7 @@ struct BigInt(size_t maxSize64)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 unittest
 {
     import mir.bignum.fixed;

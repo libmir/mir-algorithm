@@ -133,7 +133,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     unittest
     {
         auto a = cast(double) BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
@@ -153,7 +153,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         else
         static if (W.sizeof > size_t.sizeof)
         {
-            integer.opCast!(BigUIntView!size_t).opCast!(internalRoundLastBits, false, nonZero);
+            lightConst.opCast!(BigUIntView!size_t).opCast!(internalRoundLastBits, false, nonZero);
         }
         else
         {
@@ -274,7 +274,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -431,7 +431,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -460,7 +460,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -958,7 +958,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 @safe pure nothrow
 unittest
 {
@@ -1081,7 +1081,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     unittest
     {
         auto a = cast(double) -BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
@@ -1100,7 +1100,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1329,7 +1329,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 @safe pure nothrow
 unittest
 {
@@ -1550,7 +1550,7 @@ struct BigUIntAccumulator(W, WordEndian endian = TargetEndian)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 @safe pure
 unittest
 {
@@ -1583,7 +1583,7 @@ unittest
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 unittest
 {
     import mir.bignum.fixed: UInt;
@@ -1597,7 +1597,7 @@ unittest
 }
 
 /// Computes `13 * 10^^60`
-version(mir_test)
+version(mir_bignum_test)
 @safe pure
 unittest
 {
@@ -1886,7 +1886,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 unittest
 {
     alias AliasSeq(T...) = T;

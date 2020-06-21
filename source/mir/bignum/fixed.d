@@ -128,7 +128,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -208,7 +208,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -279,7 +279,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -319,7 +319,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -416,7 +416,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -441,7 +441,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -463,7 +463,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     @safe pure @nogc
     unittest
     {
@@ -496,7 +496,7 @@ struct UInt(size_t size)
     }
 
     ///
-    version(mir_test)
+    version(mir_bignum_test)
     unittest
     {
         auto a = UInt!128.fromHexString("dfbbfae3cd0aff2714a1de7022b0029d");
@@ -544,12 +544,19 @@ UInt!(size + size_t.sizeof * 8)
 /// ditto
 UInt!128 extendedMul()(ulong a, ulong b)
 {
-    import mir.utility: extMul;
-    auto e = extMul(a, b);
-    version(LittleEndian)
-        return typeof(return)([e.low, e.high]);
+    static if (size_t.sizeof == ulong.sizeof)
+    {
+        import mir.utility: extMul;
+        auto e = extMul(a, b);
+        version(LittleEndian)
+            return typeof(return)([e.low, e.high]);
+        else
+            return typeof(return)([e.high, e.low]);
+    }
     else
-        return typeof(return)([e.high, e.low]);
+    {
+        return extendedMul(UInt!64(a), UInt!64(b));
+    }
 }
 
 /// ditto
@@ -571,8 +578,8 @@ UInt!64 extendedMul()(uint a, uint b)
 }
 
 ///
-version(mir_test)
-version(mir_test)
+version(mir_bignum_test)
+version(mir_bignum_test)
 @safe pure @nogc
 unittest
 {
@@ -597,7 +604,7 @@ unittest
 }
 
 /// ulong
-version(mir_test)
+version(mir_bignum_test)
 @safe pure @nogc
 unittest
 {
@@ -609,7 +616,7 @@ unittest
 }
 
 /// uint
-version(mir_test)
+version(mir_bignum_test)
 @safe pure @nogc
 unittest
 {
