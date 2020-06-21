@@ -1,34 +1,65 @@
 /++
-$(H1 @nogc Parsing Utilities)
+$(H1 @nogc and nothrow Parsing Utilities)
 
 License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors:   Ilya Yaroshenko
+Copyright: Symmetry Investments and Kaleidic Associates
 +/
 module mir.parse;
 
 import mir.primitives;
 import std.range.primitives: isInputRange;
+import std.traits: isMutable, isFloatingPoint, isSomeChar;
 
 /++
-Throws: nogc Exception in case of parse error or non-empty remaining input.
-+/
-T fromString(T, Range)(scope auto ref Range r)
+Performs `nothorw` and `@nogc` string to native type conversion.
+
+Returns:
+    parsed value
+Throws:
+    `nogc` Exception in case of parse error or non-empty remaining input.
+
+Floating_point:
+    Mir parsing supports up-to quadruple precision.
+The conversion error is 0 ULP for normal numbers. 
+    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.+/
+T fromString(T, C)(scope const(C)[] str)
+    if (isMutable!T)
 {
-    static immutable excne = new Exception("fromString: remaining input is not empty after parsing " ~ T.stringof);
+    import mir.utility: _expect;
     static immutable excfp = new Exception("fromString failed to parse " ~ T.stringof);
 
-    T value;
-    if (parse!T(r, value))
+    static if (isFloatingPoint!T)
     {
-        if (r.empty)
-        {
+        T value;
+        if (_expect(fromString(str, value), true))
             return value;
-        }
-        throw excne;
+        version (D_Exceptions)
+            throw excfp;
+        else
+            assert(0);
     }
     else
     {
-        throw excfp;
+        static immutable excne = new Exception("fromString: remaining input is not empty after parsing " ~ T.stringof);
+
+        T value;
+        if (_expect(parse!T(str, value), true))
+        {
+            if (_expect(str.empty, true))
+                return value;
+            version (D_Exceptions)
+                throw excne;
+            else
+                assert(0);
+        }
+        else
+        {
+            version (D_Exceptions)
+                throw excfp;
+            else
+                assert(0);
+        }
     }
 }
 
@@ -37,20 +68,59 @@ version(mir_test)
 @safe pure @nogc unittest
 {
     assert("123".fromString!int == 123);
+    static assert("-123".fromString!int == -123);
 
-    auto s = "123";
-    assert(s.fromString!int == 123);
-    assert(s == "");
+    assert("12.3".fromString!double == 12.3);
+    assert("12.3".fromString!float == 12.3f);
+    assert("12.3".fromString!real == 12.3L);
+    assert("-12.3e-30".fromString!double == -12.3e-30);
 
-    s = "123";
-    assert(s[].fromString!int == 123);
-    assert(s == "123");
+    /// Test CTFE support  
+    static assert("-12.3e-30".fromString!double == -0x1.f2f280b2414d5p-97);
+    static assert("+12.3e+30".fromString!double == 0x1.367ee3119d2bap+103);
+
+    static assert("1.448997445238699".fromString!double == 0x1.72f17f1f49aadp0);
+    static if (real.mant_dig >= 64)
+        static assert("1.448997445238699".fromString!real == 1.448997445238699L);
+
+    static assert("3.518437208883201171875".fromString!float == 0x1.c25c26p+1);
+    static assert("3.518437208883201171875".fromString!double == 0x1.c25c268497684p+1);
+    static if (real.mant_dig >= 64)
+        static assert("3.518437208883201171875".fromString!real == 3.518437208883201171875L);
+
+//  Related DMD Issues:
+// https://issues.dlang.org/show_bug.cgi?id=20951
+// https://issues.dlang.org/show_bug.cgi?id=20952
+// https://issues.dlang.org/show_bug.cgi?id=20953
+// https://issues.dlang.org/show_bug.cgi?id=20957
+// https://issues.dlang.org/show_bug.cgi?id=20963
+// https://issues.dlang.org/show_bug.cgi?id=20967
 }
 
-///
-bool fromString(T, Range)(scope auto ref Range r, ref T value)
+/++
+Performs `nothorw` and `@nogc` string to native type conversion.
+
+Returns: true if success and false otherwise.
++/
+bool fromString(T, C)(scope const(C)[] str, ref T value)
+    if (isSomeChar!C)
 {
-    return parse!T(r, value) && r.empty;
+    static if (isFloatingPoint!T)
+    {
+        import mir.bignum.decimal: Decimal, DecimalExponentKey, parseDecimal;
+        import mir.utility: _expect;
+
+        Decimal!256 decimal;
+        DecimalExponentKey key;
+        auto ret = parseDecimal(str, decimal, key);
+        if (_expect(ret, true))
+            value =  cast(T) decimal;
+        return ret;
+    }
+    else
+    {
+        return parse!T(str, value) && str.empty;
+    }
 }
 
 ///
@@ -62,6 +132,9 @@ version(mir_test)
 }
 
 /++
+Integer parsing utilities.
+
+Returns: true if success and false otherwise.
 +/
 bool parse(T : byte, Range)(scope ref Range r, scope ref T value)
     if (isInputRange!Range && !__traits(isUnsigned, T))

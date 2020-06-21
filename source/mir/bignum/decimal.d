@@ -1,4 +1,6 @@
 /++
+Stack-allocated decimal type.
+
 Note:
     The module doesn't provide full arithmetic API for now.
 +/
@@ -7,7 +9,7 @@ module mir.bignum.decimal;
 import std.traits: isSomeChar;
 
 /++
-Stack-allocated decimal.
+Stack-allocated decimal type.
 Params:
     maxSize64 = count of 64bit words in coefficient
 +/
@@ -16,6 +18,7 @@ struct Decimal(size_t maxSize64)
 {
     import mir.bignum.integer;
     import mir.bignum.low_level_view;
+    import std.traits: isMutable, isFloatingPoint;
 
     ///
     int exponent;
@@ -26,6 +29,22 @@ struct Decimal(size_t maxSize64)
     DecimalView!size_t view()
     {
         return typeof(return)(coefficient.sign, exponent, coefficient.view.unsigned);
+    }
+
+    /// ditto
+    DecimalView!(const size_t) view() const
+    {
+        return typeof(return)(coefficient.sign, exponent, coefficient.view.unsigned);
+    }
+
+    /++
+    Mir parsing supports up-to quadruple precision.
+The conversion error is 0 ULP for normal numbers. 
+    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
+    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
+        if (isFloatingPoint!T && isMutable!T)
+    {
+        return view.opCast!(T, wordNormalized, nonZero);
     }
 }
 
@@ -183,9 +202,7 @@ version(mir_bignum_test)
 unittest
 {
     Decimal!3 decimal;
-    int exponent;
     DecimalExponentKey key;
-    import std.conv;
 
     assert("1.334".parseDecimal(decimal, key));
     assert(cast(double) decimal.view == 1.334);

@@ -1618,52 +1618,6 @@ unittest
     assert(accumulator.view == BigUIntView!uint.fromHexString("81704fcef32d3bd8117effd5c4389285b05d000000000000000"));
 }
 
-// /++
-// +/
-// BigUIntView!(W, endian) multiplyAddImpl(W, WordEndian endian)(
-//     BigUIntView!(W, endian) result,
-//     BigUIntView!(const W, endian) a,
-//     BigUIntView!(const W, endian) b, out bool overflow)
-// @safe pure nothrow @nogc
-// {
-//     import mir.utility: swap;
-//     assert(a.length);
-//     assert(b.length);
-//     assert(result.length);
-//     if (a.length > b.length)
-//         swap(a, b);
-//             assert(coefficients.length);
-//     assert(b.length <= result.length);
-
-//     auto rs = a.leastSignificantFirst;
-//     do
-//     {
-//         auto ns = b.leastSignificantFirst;
-//         do
-//         {
-//             import mir.utility: extMul;
-//             bool overflowM;
-//             bool overflowN;
-//             auto ext = ns.front.extMul(rhs);
-//             ns.front = ext.low.cop!"+"(overflow, overflowM)
-//                 .cop!"+"(overflow, overflowN);
-//             overflow = ext.high + overflowM;
-//             ns.popFront;
-//         }
-//         while (ns.length);
-//     }
-//     while (rs.length);
-//     return overflow;
-// }
-
-alias d1 = DecimalView!(uint, WordEndian.little, );
-alias d2 = DecimalView!(uint, WordEndian.big);
-alias d3 = DecimalView!(ulong, WordEndian.little, );
-alias d4 = DecimalView!(ulong, WordEndian.big);
-alias d5 = DecimalView!(uint, WordEndian.little, long);
-alias d6 = DecimalView!(uint, WordEndian.big, long);
-alias d7 = DecimalView!(ulong, WordEndian.little, long);
-alias d8 = DecimalView!(ulong, WordEndian.big, long);
 
 /++
 +/
@@ -1676,7 +1630,10 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
     ///
     BigUIntView!(W, endian) coefficient;
 
-    ///
+    /++
+    Mir parsing supports up-to quadruple precision.
+The conversion error is 0 ULP for normal numbers. 
+    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
@@ -1746,9 +1703,9 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
                 if (l >= cast(ulong)long.min)
                     h--;
                 version(BigEndian)
-                    auto p10coeff = UInt!128(cast(size_t[ulong.sizeof / size_t.sizeof * 2])cast(ulong[2])[h, l]);
+                    auto p10coeff = UInt!128(cast(ulong[2])[h, l]);
                 else
-                    auto p10coeff = UInt!128(cast(size_t[ulong.sizeof / size_t.sizeof * 2])cast(ulong[2])[l, h]);
+                    auto p10coeff = UInt!128(cast(ulong[2])[l, h]);
                 auto p10exp = p10_exponents[idx] - 64;
                 return Fp!128(false, p10exp, p10coeff);
             }
