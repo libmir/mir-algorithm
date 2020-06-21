@@ -637,10 +637,11 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (isMutable!W && W.sizeof >= 4)
     /++
-    Performs `W overflow = big *= scalar` operatrion.
+    Performs `W overflow = (big += overflow) *= scalar` operatrion.
     Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
+        overflow = initial overflow
     Returns:
         unsigned overflow value
     +/
@@ -1271,10 +1272,11 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     static if (isMutable!W && W.sizeof >= 4)
     /++
-    Performs `W overflow = big *= scalar` operatrion.
+    Performs `W overflow = (big += overflow) *= scalar` operatrion.
     Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
+        overflow = initial overflow
     Returns:
         unsigned overflow value
     +/
