@@ -81,11 +81,13 @@ version(mir_test)
     static assert("+12.3e+30".fromString!double == 0x1.367ee3119d2bap+103);
 
     static assert("1.448997445238699".fromString!double == 0x1.72f17f1f49aadp0);
-    static assert("1.448997445238699".fromString!real == 1.448997445238699L);
+    static if (real.mant_dig >= 64);
+        static assert("1.448997445238699".fromString!real == 1.448997445238699L);
 
     static assert("3.518437208883201171875".fromString!float == 0x1.c25c26p+1);
     static assert("3.518437208883201171875".fromString!double == 0x1.c25c268497684p+1);
-    static assert("3.518437208883201171875".fromString!real == 3.518437208883201171875L);
+    static if (real.mant_dig >= 64);
+        static assert("3.518437208883201171875".fromString!real == 3.518437208883201171875L);
 
 //  Related DMD Issues:
 // https://issues.dlang.org/show_bug.cgi?id=20951
