@@ -128,7 +128,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         enum b = size_t.sizeof * 8;
         enum n = md / b + (md % b != 0);
         enum s = n * b;
-        return opCast!(Fp!s, s - md, wordNormalized, nonZero).opCast!(T, true);
+        return this.opCast!(Fp!s, s - md, wordNormalized, nonZero).opCast!(T, true);
     }
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
@@ -143,6 +143,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
+    @safe
     T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() const
         if (internalRoundLastBits < size_t.sizeof * 8 && (size_t.sizeof >= W.sizeof || endian == TargetEndian))
     {
@@ -153,7 +154,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         else
         static if (W.sizeof > size_t.sizeof)
         {
-            lightConst.opCast!(BigUIntView!size_t).opCast!(internalRoundLastBits, false, nonZero);
+            return lightConst.opCast!(BigUIntView!size_t).opCast!(T, internalRoundLastBits, false, nonZero);
         }
         else
         {
@@ -320,6 +321,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (endian == TargetEndian)
     ///
+    @trusted pure nothrow @nogc
     BigUIntView!V opCast(T : BigUIntView!V, V)()
         if (V.sizeof <= W.sizeof)
     {
@@ -1668,10 +1670,6 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
     Exp exponent;
     ///
     BigUIntView!(W, endian) coefficient;
-
-    alias toSingle = opCast!float;
-    alias toDouble = opCast!double;
-    alias toReal = opCast!real;
 
     ///
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const

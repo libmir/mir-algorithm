@@ -19,7 +19,7 @@ Params:
     coefficientSize = coefficient size in bits
 +/
 struct Fp(size_t coefficientSize)
-    if (coefficientSize % 64 == 0 && coefficientSize >= 64)
+    if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
 {
     import mir.bignum.fixed: UInt;
 
