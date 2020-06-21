@@ -88,7 +88,8 @@ struct UInt(size_t size)
     +/
     auto opCmp(UInt!size rhs)
     {
-        return view.opCmp(rhs.view);
+        import mir.algorithm.iteration: cmp;
+        return cmp(this.view.mostSignificantFirst, rhs.view.mostSignificantFirst);
     }
 
     /++

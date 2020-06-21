@@ -40,7 +40,7 @@ struct Fp(size_t coefficientSize)
     /++
     +/
     this(size_t size)(UInt!size integer, bool normalizedInteger = false)
-        // nothrow
+        nothrow
     {
         import mir.bignum.fixed: UInt;
         static if (size < coefficientSize)

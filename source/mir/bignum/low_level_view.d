@@ -343,9 +343,11 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         const @safe pure nothrow @nogc
     {
         import mir.algorithm.iteration: cmp;
-        if (auto d = this.coefficients.length - rhs.coefficients.length)
+        auto l = this.lightConst.normalized;
+        auto r = rhs.lightConst.normalized;
+        if (auto d = l.coefficients.length - r.coefficients.length)
             return d;
-        return cmp(this.lightConst.normalized.mostSignificantFirst, rhs.lightConst.normalized.mostSignificantFirst);
+        return cmp(l.mostSignificantFirst, r.mostSignificantFirst);
     }
 
     ///
@@ -1905,7 +1907,7 @@ unittest
         alias Args = AliasSeq!(W, E);
 
         auto view = DecimalView!Args(false, -8, BigUIntView!Args.fromHexString("BEBC2000000011E1A3"));
-    
+
         assert (cast(float)view == 3.518437208883201171875E+013f);
         assert (cast(double)view == 3.518437208883201171875E+013);
         static if (real.mant_dig >= 64)
