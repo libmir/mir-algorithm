@@ -1631,10 +1631,9 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
     BigUIntView!(W, endian) coefficient;
 
     /++
-    Supports up-to quadruple precision.
-    Conversion error is 0 ULP for normal numbers.
-    Subnormal numbers with exponent greater then or equal to -512 has upper error bound equal to 1 ULP.
-    +/
+    Mir parsing supports up-to quadruple precision.
+The conversion error is 0 ULP for normal numbers. 
+    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
