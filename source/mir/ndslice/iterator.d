@@ -115,17 +115,19 @@ struct IotaIterator(I)
             return IotaIterator!(LightImmutableOf!I)(_index);
     }
 
+pure:
+
     I opUnary(string op : "*")()
     { return _index; }
 
-    void opUnary(string op)() scope
+    void opUnary(string op)()
         if (op == "--" || op == "++")
     { mixin(op ~ `_index;`); }
 
-    I opIndex()(ptrdiff_t index) scope const
+    I opIndex()(ptrdiff_t index) const
     { return cast(I)(_index + index); }
 
-    void opOpAssign(string op)(ptrdiff_t index) scope
+    void opOpAssign(string op)(ptrdiff_t index)
         if (op == `+` || op == `-`)
     { mixin(`_index ` ~ op ~ `= index;`); }
 
@@ -137,13 +139,13 @@ struct IotaIterator(I)
         return ret;
     }
 
-    ptrdiff_t opBinary(string op : "-")(const typeof(this) right) scope const
+    ptrdiff_t opBinary(string op : "-")(const typeof(this) right) const
     { return cast(ptrdiff_t)(this._index - right._index); }
 
-    bool opEquals()(const typeof(this) right) scope const
+    bool opEquals()(const typeof(this) right) const
     { return this._index == right._index; }
 
-    auto opCmp()(const typeof(this) right) scope const
+    auto opCmp()(const typeof(this) right) const
     { return this._index - right._index; }
 }
 
@@ -247,7 +249,7 @@ struct RetroIterator(Iterator)
     void opUnary(string op : "--")()
     { ++_iterator; }
 
-    void opUnary(string op : "++")()
+    void opUnary(string op : "++")() pure
     { --_iterator; }
 
     auto ref opIndex()(ptrdiff_t index)

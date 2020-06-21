@@ -1018,7 +1018,6 @@ See_Also:
 
 +/
 @trusted
-deprecated("This function is experimental")
 template partitionAt(alias less = "a < b")
 {
     import mir.functional: naryFun;
