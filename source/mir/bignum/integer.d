@@ -127,10 +127,11 @@ struct BigInt(size_t maxSize64)
     }
 
     /++
-    Performs `size_t overflow = big *= scalar` operatrion.
+    Performs `size_t overflow = (big += overflow) *= scalar` operatrion.
     Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
+        overflow = initial overflow value
     Returns:
         unsigned overflow value
     +/
@@ -150,10 +151,11 @@ struct BigInt(size_t maxSize64)
     }
 
     /++
-    Performs `size_t overflow = big *= fixed` operatrion.
+    Performs `size_t overflow = (big += overflow) *= fixed` operatrion.
     Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
+        overflow = initial overflow value
     Returns:
         unsigned overflow value
     +/
@@ -200,10 +202,11 @@ struct BigInt(size_t maxSize64)
     }
 
     /++
-    Performs `size_t overflow = big *= fixed` operatrion.
+    Performs `size_t overflow = (big += overflow) *= fixed` operatrion.
     Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
+        overflow = initial overflow value
     Returns:
         overflow
     +/
