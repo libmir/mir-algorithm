@@ -33,6 +33,34 @@ struct UInt(size_t size)
             this.data[$ - N .. $] = data;
     }
 
+    static if (size_t.sizeof == uint.sizeof && data.length % 2 == 0)
+    this()(auto ref ulong[data.length / 2] data)
+    {
+        if (!__ctfe)
+        {
+            this.data =  cast(typeof(this.data)) data;
+        }
+        else
+        {
+            version(LittleEndian)
+            {
+                static foreach (i; 0 .. data.length)
+                {
+                    this.data[i * 2 + 0] = cast(uint) data[i];
+                    this.data[i * 2 + 1] = cast(uint) (data[i] >> 32);
+                }
+            }
+            else
+            {
+                static foreach (i; 0 .. data.length)
+                {
+                    this.data[i * 2 + 1] = cast(uint) data[i];
+                    this.data[i * 2 + 0] = cast(uint) (data[i] >> 32);
+                }
+            }
+        }
+    }
+
     static if (size >= 64)
     ///
     this(ulong data)

@@ -1704,9 +1704,9 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
                 if (l >= cast(ulong)long.min)
                     h--;
                 version(BigEndian)
-                    auto p10coeff = UInt!128(cast(size_t[ulong.sizeof / size_t.sizeof * 2])cast(ulong[2])[h, l]);
+                    auto p10coeff = UInt!128(cast(ulong[2])[h, l]);
                 else
-                    auto p10coeff = UInt!128(cast(size_t[ulong.sizeof / size_t.sizeof * 2])cast(ulong[2])[l, h]);
+                    auto p10coeff = UInt!128(cast(ulong[2])[l, h]);
                 auto p10exp = p10_exponents[idx] - 64;
                 return Fp!128(false, p10exp, p10coeff);
             }
