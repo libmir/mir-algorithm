@@ -665,10 +665,11 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (isMutable!W && W.sizeof == size_t.sizeof)
     /++
-    Performs `W overflow = big *= fixed` operatrion.
+    Performs `W overflow = (big += overflow) *= scalar` operatrion.
     Precondition: non-empty coefficients
     Params:
         rhs = unsigned fixed-length integer to multiply by
+        overflow = initial overflow
     Returns:
         unsigned fixed-length integer overflow value
     +/
@@ -1904,7 +1905,7 @@ unittest
         alias Args = AliasSeq!(W, E);
 
         auto view = DecimalView!Args(false, -8, BigUIntView!Args.fromHexString("BEBC2000000011E1A3"));
-
+    
         assert (cast(float)view == 3.518437208883201171875E+013f);
         assert (cast(double)view == 3.518437208883201171875E+013);
         static if (real.mant_dig >= 64)
