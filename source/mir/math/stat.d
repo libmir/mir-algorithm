@@ -26,8 +26,6 @@ import mir.primitives;
 import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
 import mir.internal.utility: isFloatingPoint;
 
-// version = mir_test_topN;
-
 package template statType(T, bool checkComplex = true)
 {
     import mir.internal.utility: isFloatingPoint, isComplex;
@@ -1292,8 +1290,8 @@ template median(bool allowModify = false)
 }
 
 /// Median of vector
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1306,8 +1304,8 @@ unittest
 }
 
 /// Median of matrix
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure
 unittest
 {
     import mir.ndslice.fuse: fuse;
@@ -1321,8 +1319,8 @@ unittest
 }
 
 /// Row median of matrix
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure
 unittest
 {
     import mir.ndslice.fuse: fuse;
@@ -1344,8 +1342,8 @@ unittest
 }
 
 /// Can allow original slice to be modified or set output type
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1361,8 +1359,8 @@ unittest
 For integral slices, pass output type as template parameter to ensure output
 type is correct
 +/
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1372,7 +1370,7 @@ unittest
 }
 
 version(mir_test)
-@safe
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1422,7 +1420,7 @@ unittest
 }
 
 version(mir_test)
-@safe pure
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1570,7 +1568,7 @@ template center(alias centralTendency = mean!(Summation.appropriate))
 
 /// Center vector
 version(mir_test)
-@safe
+@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1622,7 +1620,7 @@ unittest
 
 /// Column center matrix
 version(mir_test)
-pure @safe
+@safe pure
 unittest
 {
     import mir.algorithm.iteration: all, equal;
@@ -2686,7 +2684,7 @@ unittest
 }
 
 /// Column standard deviation of matrix
-version(mir_test_variance)
+version(mir_test)
 @safe pure
 unittest
 {
