@@ -939,7 +939,7 @@ template pivotPartitionImpl(alias less)
             // Fixup
             assert(loI - hiI <= 2, "pivotPartition: Following compare not possible");
             assert(!less(*frontI, *hiI), "pivotPartition: *hiI must not be less than *frontI");
-            if (loI == hiI + 2)
+            if (loI - hiI == 2)
             {
                 assert(!less(hiI[1], *frontI), "pivotPartition: *(hiI + 1) must not be less than *frontI");
                 *(loI) = hiI[1];
@@ -979,6 +979,20 @@ template pivotPartitionImpl(alias less)
     }
 }
 
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.sorting: partitionAt;
+    import mir.ndslice.allocation: rcslice;
+    auto x = rcslice!double(4);
+    x[0] = 3;
+    x[1] = 2;
+    x[2] = 1;
+    x[3] = 0;
+    partitionAt!("a > b")(x, 2);
+}
+
+
 version(mir_test_topN)
 @trusted pure nothrow
 unittest
@@ -1017,7 +1031,6 @@ See_Also:
     $(LREF pivotPartition), https://erdani.com/research/sea2017.pdf
 
 +/
-@trusted
 template partitionAt(alias less = "a < b")
 {
     import mir.functional: naryFun;
@@ -1031,24 +1044,25 @@ template partitionAt(alias less = "a < b")
                 function is finished.
         +/
         void partitionAt(Iterator, size_t N, SliceKind kind)
-            (Slice!(Iterator, N, kind) slice, size_t nth)
+            (Slice!(Iterator, N, kind) slice, size_t nth) @trusted nothrow
         {
+            import mir.qualifier: lightScope;
+            import core.lifetime: move;
+            import mir.ndslice.topology: flattened;
+
             assert(slice.elementCount > 0, "partitionAt: slice must have elementCount greater than 0");
             assert(nth >= 0, "partitionAt: nth must be greater than or equal to zero");
             assert(nth < slice.elementCount, "partitionAt: nth must be less than the elementCount of the slice");
         
-            import mir.ndslice.topology: flattened;
-
             bool useSampling = true;
-            auto flattenedSlice = slice.flattened;
-            auto frontI = flattenedSlice._iterator;
-            auto lastI = frontI + flattenedSlice.length - 1;
-            partitionAtImpl!(less, Iterator)(frontI, lastI, nth, useSampling);
+            auto flattenedSlice = slice.move.flattened;
+            auto frontI = flattenedSlice._iterator.lightScope;
+            auto lastI = frontI + (flattenedSlice.length - 1);
+            partitionAtImpl!less(frontI, lastI, nth, useSampling);
         }
-    } else {
-        alias partitionAt = .partitionAt!(naryFun!less);
-
     }
+    else
+        alias partitionAt = .partitionAt!(naryFun!less);
 }
 
 /// Partition 1-dimensional slice at nth
@@ -1150,21 +1164,18 @@ unittest {
 
 private @trusted
 void partitionAtImpl(alias less, Iterator)(
-    ref const(Iterator) frontI, 
-    ref const(Iterator) lastI, 
+    Iterator loI, 
+    Iterator hiI, 
     size_t n, 
-    bool useSampling) pure
+    bool useSampling) pure nothrow
 {
-    assert(frontI <= lastI, "partitionAtImpl: frontI must be less than or equal to lastI");
+    assert(loI <= hiI, "partitionAtImpl: frontI must be less than or equal to lastI");
 
     import mir.utility: swapStars;
     import mir.functional: reverseArgs;
 
-    auto loI = cast(Iterator) frontI;
-    auto hiI = cast(Iterator) lastI;
-    
-    Iterator pivotI = void;
-    size_t len = void;
+    Iterator pivotI;
+    size_t len;
 
     for (;;) {
         len = hiI - loI + 1;
@@ -1502,25 +1513,24 @@ unittest {
 
 private @trusted
 void p3(alias less, Iterator)(
-    ref const(Iterator) frontI,
-    ref const(Iterator) lastI,
-    ref const(Iterator) loI,
-    ref const(Iterator) hiI)
+    Iterator frontI,
+    Iterator lastI,
+    Iterator loI,
+    Iterator hiI)
 {
     assert(loI <= hiI && hiI <= lastI, "p3: loI must be less than or equal to hiI and hiI must be less than or equal to lastI");
     immutable diffI = hiI - loI;
-    Iterator lo_loI = void;
-    Iterator hi_loI = void;
-    Iterator loI_ = cast(Iterator) loI;
-    for (; loI_ < hiI; ++loI_)
+    Iterator lo_loI;
+    Iterator hi_loI;
+    for (; loI < hiI; ++loI)
     {
-        lo_loI = loI_;
+        lo_loI = loI;
         lo_loI -= diffI;
-        hi_loI = loI_;
+        hi_loI = loI;
         hi_loI += diffI;
         assert(lo_loI >= frontI, "p3: lo_loI must be greater than or equal to frontI");
         assert(hi_loI <= lastI, "p3: hi_loI must be less than or equal to lastI");
-        medianOf!less(lo_loI, loI_, hi_loI);
+        medianOf!less(lo_loI, loI, hi_loI);
     }
 }
 
@@ -1543,41 +1553,40 @@ private @trusted
 template p4(alias less, bool leanRight)
 {
     void p4(Iterator)(
-        ref const(Iterator) frontI,
-        ref const(Iterator) lastI,
-        ref const(Iterator) loI, 
-        ref const(Iterator) hiI)
+        Iterator frontI,
+        Iterator lastI,
+        Iterator loI, 
+        Iterator hiI)
     {
         assert(loI <= hiI && hiI <= lastI, "p4: loI must be less than or equal to hiI and hiI must be less than or equal to lastI");
 
         immutable diffI = hiI - loI; 
         immutable diffI2 = diffI * 2;
 
-        Iterator lo_loI = void;
-        Iterator hi_loI = void;
+        Iterator lo_loI;
+        Iterator hi_loI;
 
         static if (leanRight)
-            Iterator lo2_loI = void;
+            Iterator lo2_loI;
         else
-            Iterator hi2_loI = void;
+            Iterator hi2_loI;
 
-        Iterator loI_ = cast(Iterator) loI;
-        for (; loI_ < hiI; ++loI_)
+        for (; loI < hiI; ++loI)
         {
-            lo_loI = loI_ - diffI;
-            hi_loI = loI_ + diffI;
+            lo_loI = loI - diffI;
+            hi_loI = loI + diffI;
             
             assert(lo_loI >= frontI, "p4: lo_loI must be greater than or equal to frontI");
             assert(hi_loI <= lastI, "p4: hi_loI must be less than or equal to lastI");
 
             static if (leanRight) {
-                lo2_loI = loI_ - diffI2;
+                lo2_loI = loI - diffI2;
                 assert(lo2_loI >= frontI, "lo2_loI must be greater than or equal to frontI");
-                medianOf!(less, leanRight)(lo2_loI, lo_loI, loI_, hi_loI);
+                medianOf!(less, leanRight)(lo2_loI, lo_loI, loI, hi_loI);
             } else {
-                hi2_loI = loI_ + diffI2;
+                hi2_loI = loI + diffI2;
                 assert(hi2_loI <= lastI, "hi2_loI must be less than or equal to lastI");
-                medianOf!(less, leanRight)(lo_loI, loI_, hi_loI, hi2_loI);
+                medianOf!(less, leanRight)(lo_loI, loI, hi_loI, hi2_loI);
             }
         }
     }
