@@ -12,7 +12,7 @@ import std.range.primitives: isInputRange;
 import std.traits: isMutable, isFloatingPoint, isSomeChar;
 
 /++
-Performs `nothorw` and `@nogc` string to native type conversion.
+Performs `nothrow` and `@nogc` string to native type conversion.
 
 Returns:
     parsed value
@@ -97,7 +97,7 @@ version(mir_test)
 }
 
 /++
-Performs `nothorw` and `@nogc` string to native type conversion.
+Performs `nothrow` and `@nogc` string to native type conversion.
 
 Returns: true if success and false otherwise.
 +/
