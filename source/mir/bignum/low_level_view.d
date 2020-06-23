@@ -1872,9 +1872,9 @@ unittest
 
         view = DecimalView!Args(true, -169, BigUIntView!Args.fromHexString("5A174AEDA65CC"));
         assert (cast(float)view == -0);
-        assert (cast(double)view == -1.584897405380044e-154);
+        assert (cast(double)view == -0x1.1p-511);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == -1.584897405380044e-154L);
+            assert (cast(real)view == -0x8.80000000000019fp-514);
 
         view = DecimalView!Args(true, 293, BigUIntView!Args.fromHexString("36496F6C4ED38"));
         assert (cast(float)view == -float.infinity);

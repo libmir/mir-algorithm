@@ -86,7 +86,7 @@ version(mir_test)
     static assert("3.518437208883201171875".fromString!float == 0x1.c25c26p+1);
     static assert("3.518437208883201171875".fromString!double == 0x1.c25c268497684p+1);
     static if (real.mant_dig >= 64)
-        static assert("3.518437208883201171875".fromString!real == 3.518437208883201171875L);
+        static assert("3.518437208883201171875".fromString!real == 0xe.12e13424bb4232fp-2L);
 
 //  Related DMD Issues:
 // https://issues.dlang.org/show_bug.cgi?id=20951
