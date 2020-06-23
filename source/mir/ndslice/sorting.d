@@ -23,10 +23,8 @@ Macros:
 +/
 module mir.ndslice.sorting;
 
-// version = mir_test_topN;
-
 /// Check if ndslice is sorted, or strictly monotonic.
-@safe pure version(mir_test_topN) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.slice: sliced;
@@ -50,7 +48,7 @@ module mir.ndslice.sorting;
 }
 
 /// Create index
-version(mir_test_topN) unittest
+version(mir_test) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
@@ -67,7 +65,7 @@ version(mir_test_topN) unittest
 }
 
 /// Schwartzian transform
-version(mir_test_topN) unittest
+version(mir_test) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: slice;
@@ -89,7 +87,7 @@ import mir.math.common: optmath;
 
 @optmath:
 
-@safe pure version(mir_test_topN) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
@@ -106,7 +104,7 @@ import mir.math.common: optmath;
     assert(c.pairwise!"a <= b".all);
 }
 
-@safe pure version(mir_test_topN) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.topology: pairwise;
@@ -214,7 +212,7 @@ template sort(alias less = "a < b")
 }
 
 ///
-@safe pure version(mir_test_topN) unittest
+@safe pure version(mir_test) unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.slice;
@@ -229,7 +227,7 @@ template sort(alias less = "a < b")
 }
 
 /// one-dimensional series
-pure version(mir_test_topN) unittest
+pure version(mir_test) unittest
 {
     import mir.series;
 
@@ -250,7 +248,7 @@ pure version(mir_test_topN) unittest
 }
 
 /// two-dimensional series
-pure version(mir_test_topN) unittest
+pure version(mir_test) unittest
 {
     import mir.series;
     import mir.ndslice.allocation: uninitSlice;
@@ -583,7 +581,7 @@ template assumeSortedEqualIndex(alias test = "a < b")
 }
 
 ///
-version(mir_test_topN)
+version(mir_test)
 @safe pure unittest
 {
     // sorted: a < b
@@ -648,7 +646,7 @@ template transitionIndex(alias test = "a < b")
 }
 
 ///
-version(mir_test_topN)
+version(mir_test)
 @safe pure unittest
 {
     // sorted: a < b
@@ -702,7 +700,7 @@ I[] makeIndex(I = size_t, alias less = "a < b", T)(scope T[] r)
 }
 
 ///
-version(mir_test_topN)
+version(mir_test)
 @system unittest
 {
     import mir.algorithm.iteration: all;
@@ -786,7 +784,7 @@ template pivotPartition(alias less = "a < b")
 }
 
 /// pivotPartition with 1-dimensional Slice
-version(mir_test_topN)
+version(mir_test)
 @safe pure nothrow
 unittest
 {
@@ -801,7 +799,7 @@ unittest
 }
 
 /// pivotPartition with 2-dimensional Slice
-version(mir_test_topN)
+version(mir_test)
 @safe pure
 unittest
 {
@@ -821,7 +819,7 @@ unittest
     assert(xFlattened[pivot .. $].all!(a => a >= xFlattened[pivot]));
 }
 
-version(mir_test_topN)
+version(mir_test)
 @safe
 unittest
 {
@@ -918,7 +916,7 @@ template pivotPartitionImpl(alias less)
             for (;;)
             {
                 // Loop invariant
-                version(mir_test_topN)
+                version(mir_test)
                 {
                     // this used to import std.algorithm.all, but we want to
                     // save imports when unittests are enabled if possible.
@@ -1066,8 +1064,8 @@ template partitionAt(alias less = "a < b")
 }
 
 /// Partition 1-dimensional slice at nth
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1078,8 +1076,8 @@ unittest {
 }
 
 /// Partition 2-dimensional slice
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1090,8 +1088,8 @@ unittest {
 }
 
 /// Can supply alternate ordering function
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1109,7 +1107,7 @@ version(unittest) {
 
         static if (__traits(isSame, naryFun!less, less))
         {
-            @safe
+            @safe pure nothrow
             static bool checkTopNAll
                 (Iterator, SliceKind kind)(
                     Slice!(Iterator, 1, kind) x)
@@ -1136,8 +1134,8 @@ version(unittest) {
     }
 }
 
-version(mir_test_topN)
-@safe
+version(mir_test)
+@safe pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1162,12 +1160,12 @@ unittest {
     assert(checkTopNAll([ 0,  2,  7, 16,  2, 20,  1, 11, 17,  5, 22, 17, 25, 13, 14,  5, 22, 21, 24, 14].sliced));
 }
 
-private @trusted
+private @trusted pure nothrow
 void partitionAtImpl(alias less, Iterator)(
     Iterator loI, 
     Iterator hiI, 
     size_t n, 
-    bool useSampling) pure nothrow
+    bool useSampling)
 {
     assert(loI <= hiI, "partitionAtImpl: frontI must be less than or equal to lastI");
 
@@ -1270,8 +1268,8 @@ void partitionAtImpl(alias less, Iterator)(
     }
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1283,8 +1281,8 @@ unittest {
     assert(x[nth] == 2);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1296,8 +1294,8 @@ unittest {
     assert(x[2, 0] == 5);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1309,8 +1307,8 @@ unittest {
     assert(x[nth] == 0);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1322,8 +1320,8 @@ unittest {
     assert(x[nth] == 3);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1335,8 +1333,8 @@ unittest {
     assert(x[nth] == 3);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1348,8 +1346,8 @@ unittest {
     assert(x[nth] == 7);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1361,8 +1359,8 @@ unittest {
     assert(x[nth] == 8);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1374,7 +1372,7 @@ unittest {
     assert(x[nth] == 10);
 }
 
-private @trusted
+private @trusted pure nothrow
 Iterator partitionAtPartition(alias less, Iterator)(
     ref Iterator frontI, 
     ref Iterator lastI, 
@@ -1426,8 +1424,8 @@ Iterator partitionAtPartition(alias less, Iterator)(
     return expandPartition!less(frontI, lastI, loI, pivotI, hiI);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
 
@@ -1441,7 +1439,7 @@ unittest {
     assert(x[n - 1] == x_sort[n - 1]);
 }
 
-private @trusted
+private @trusted pure nothrow
 Iterator partitionAtPartitionOffMedian(alias less, bool leanRight, Iterator)(
     ref Iterator frontI, 
     ref Iterator lastI, 
@@ -1485,8 +1483,8 @@ Iterator partitionAtPartitionOffMedian(alias less, bool leanRight, Iterator)(
     return expandPartition!less(frontI, lastI, loI, pivotI, hiI);
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1498,8 +1496,8 @@ unittest {
     assert(x.equal([6, 7, 8, 9, 5, 0, 2, 7, 9, 15, 10, 25, 11, 10, 13, 18, 17, 13, 25, 22]));
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1534,8 +1532,8 @@ void p3(alias less, Iterator)(
     }
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1592,8 +1590,8 @@ template p4(alias less, bool leanRight)
     }
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1607,8 +1605,8 @@ unittest {
     assert(x.equal([3, 1, 0, 4, 2, 6, 4, 7, 5]));
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: equal;
@@ -1742,8 +1740,8 @@ template expandPartition(alias less)
     }
 }
 
-version(mir_test_topN)
-@trusted
+version(mir_test)
+@trusted pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
