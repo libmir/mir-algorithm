@@ -1670,8 +1670,25 @@ unittest
 }
 
 /++
-Output range that applies function `fun` to each input before summing
+Passing a centered input to `variance` or `standardDeviation` with the
+`assumeZeroMean` algorithm is equivalent to calculating `variance` or
+`standardDeviation` on the original input.
++/
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
 
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+    assert(x.center.variance!"assumeZeroMean".approxEqual(x.variance));
+    assert(x.center.standardDeviation!"assumeZeroMean".approxEqual(x.standardDeviation));
+}
+
+/++
+Output range that applies function `fun` to each input before summing
 +/
 struct MapSummator(alias fun, T, Summation summation) 
     if(isMutable!T)
@@ -1790,7 +1807,12 @@ enum VarianceAlgo
     Calculates variance using a two-pass algorithm whereby the input is first 
     centered and then the sum of squares is calculated from that.
     +/
-    twoPass
+    twoPass,
+
+    /++
+    Calculates variance assuming the mean of the dataseries is zero. 
+    +/
+    assumeZeroMean
 }
 
 private
@@ -2180,6 +2202,233 @@ unittest
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 }
 
+///
+struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
+    if (isMutable!T && varianceAlgo == VarianceAlgo.assumeZeroMean)
+{
+    import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
+
+    private size_t _count;
+    
+    ///
+    size_t count() @property
+    {
+        return _count;
+    }
+    
+    ///
+    F mean(F = T)() @property
+    {
+        return cast(F) 0;
+    }
+
+    ///
+    Summator!(T, summation) centeredSumOfSquares;
+
+    ///
+    this(Range)(Range r)
+        if (isIterable!Range)
+    {
+        this.put(r);
+    }
+
+    ///
+    this()(T x)
+    {
+        this.put(x);
+    }
+
+    ///
+    void put(Range)(Range r)
+        if (isIterable!Range)
+    {
+        foreach(x; r)
+        {
+            this.put(x);
+        }
+    }
+
+    ///
+    void put()(T x)
+    {
+        _count++;
+        centeredSumOfSquares.put(x * x);
+    }
+
+    ///
+    void put()(VarianceAccumulator!(T, varianceAlgo, summation) v)
+    {
+        _count += v.count;
+        centeredSumOfSquares.put(v.centeredSumOfSquares.sum);
+    }
+
+    ///
+    F variance(F = T)(bool isPopulation) @property
+    {
+        if (isPopulation == false)
+            return cast(F) centeredSumOfSquares.sum / cast(F) (count - 1);
+        else
+            return cast(F) centeredSumOfSquares.sum / cast(F) count;
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+    auto x = a.center;
+
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
+
+    VarianceAccumulator!(double, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+
+    v.put(4.0);
+    assert(v.variance(PopulationTrueRT).approxEqual(70.76562 / 13));
+    assert(v.variance(PopulationTrueCT).approxEqual(70.76562 / 13));
+    assert(v.variance(PopulationFalseRT).approxEqual(70.76562 / 12));
+    assert(v.variance(PopulationFalseCT).approxEqual(70.76562 / 12));
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+    auto b = a.center;
+    auto x = b[0 .. 6];
+    auto y = b[6 .. $];
+
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
+
+    VarianceAccumulator!(double, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(PopulationTrueRT).approxEqual(13.492188 / 6));
+    assert(v.variance(PopulationTrueCT).approxEqual(13.492188 / 6));
+    assert(v.variance(PopulationFalseRT).approxEqual(13.492188 / 5));
+    assert(v.variance(PopulationFalseCT).approxEqual(13.492188 / 5));
+
+    v.put(y);
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+    auto b = a.center;
+    auto x = b[0 .. 6];
+    auto y = b[6 .. $];
+
+    enum PopulationTrueCT = true;
+    enum PopulationFalseCT = false;
+    bool PopulationTrueRT = true;
+    bool PopulationFalseRT = false;
+
+    VarianceAccumulator!(double, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(PopulationTrueRT).approxEqual(13.492188 / 6));
+    assert(v.variance(PopulationTrueCT).approxEqual(13.492188 / 6));
+    assert(v.variance(PopulationFalseRT).approxEqual(13.492188 / 5));
+    assert(v.variance(PopulationFalseCT).approxEqual(13.492188 / 5));
+
+    VarianceAccumulator!(double, VarianceAlgo.assumeZeroMean, Summation.naive) w;
+    w.put(y);
+    v.put(w);
+    assert(v.variance(PopulationTrueRT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
+    assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
+    assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto a = [1.0 + 3i, 2, 3].sliced;
+    auto x = a.center;
+
+    VarianceAccumulator!(cdouble, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
+    assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+    auto x = a.center;
+
+    VarianceAccumulator!(double, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+
+    v.put(4.0);
+    assert(v.variance(false).approxEqual(70.76562 / 12));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+
+    auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+    auto b = a.center;
+    auto x = b[0 .. 6];
+    auto y = b[6 .. $];
+
+    VarianceAccumulator!(double, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(false).approxEqual(13.492188 / 5));
+
+    VarianceAccumulator!(double, VarianceAlgo.assumeZeroMean, Summation.naive) w;
+    w.put(y);
+    v.put(w);
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+}
+
 /++
 Calculates the variance of the input
 
@@ -2344,7 +2593,7 @@ unittest
 
 /// Can also set algorithm type
 version(mir_test)
-@safe pure nothrow
+//@safe pure nothrow
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -2365,6 +2614,10 @@ unittest
     // But the two-pass algorithm provides a consistent answer
     auto z1 = x.variance!"twoPass";
     assert(z1.approxEqual(y));
+
+    // And the assumeZeroMean algorithm is way off
+    auto z2 = x.variance!"assumeZeroMean";
+    assert(z2.approxEqual(1.2e19 / 11));
 }
 
 /// Can also set algorithm or output type
