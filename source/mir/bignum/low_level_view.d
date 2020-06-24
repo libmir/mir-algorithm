@@ -1622,6 +1622,7 @@ unittest
 /++
 +/
 struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
+    if (isUnsigned!W)
 {
     ///
     bool sign;
@@ -1629,6 +1630,22 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
     Exp exponent;
     ///
     BigUIntView!(W, endian) coefficient;
+
+    ///
+    DecimalView!(const W, endian, Exp) lightConst()()
+        const @safe pure nothrow @nogc @property
+    {
+        return typeof(return)(sign, exponent, coefficient.lightConst);
+    }
+    ///ditto
+    alias lightConst this;
+
+    /++
+    +/
+    BigIntView!(W, endian) signedCoefficient()
+    {
+        return typeof(return)(coefficient, sign);
+    }
 
     /++
     Mir parsing supports up-to quadruple precision.
@@ -2152,4 +2169,20 @@ struct BinaryView(W, WordEndian endian = TargetEndian, Exp = int)
     Exp exponent;
     ///
     BigUIntView!(W, endian) coefficient;
+
+    ///
+    DecimalView!(const W, endian, Exp) lightConst()()
+        const @safe pure nothrow @nogc @property
+    {
+        return typeof(return)(sign, exponent, coefficient.lightConst);
+    }
+    ///ditto
+    alias lightConst this;
+
+    /++
+    +/
+    BigIntView!(W, endian) signedCoefficient()
+    {
+        return typeof(return)(sign, coefficients);
+    }
 }
