@@ -1939,7 +1939,7 @@ unittest
         assert (cast(float)view == 36893488147419103229f);
         assert (cast(double)view == 36893488147419103229.0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 36893488147419103229.0L);
+            assert (cast(real)view == 0x1FFFFFFFFFFFFFFFDp0L);
 
         view = DecimalView!Args(false, -33, BigUIntView!Args.fromHexString("65"));
         assert (cast(float)view == 101e-33f);
