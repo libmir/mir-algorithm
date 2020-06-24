@@ -19,7 +19,7 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 module mir.math.stat;
 
 import core.lifetime: move;
-import mir.ndslice.slice: Slice, SliceKind;
+import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.primitives;
@@ -1235,8 +1235,8 @@ be modified. By default, a reference-counted copy is made.
 Returns:
     the median of the slice
 
-See_also: 
-    $(SUBREF stat, mean)
+See_also:
+    $(LREF, mean)
 +/
 template median(F, bool allowModify = false)
 {
@@ -1525,169 +1525,6 @@ unittest
 }
 
 /++
-Centers `slice`, which must be a finite iterable.
-
-By default, `slice` is centered by the mean. A custom function may also be
-provided using `centralTendency`.
-
-Returns:
-    The elements in the slice with the average subtracted from them.
-+/
-template center(alias centralTendency = mean!(Summation.appropriate))
-{
-    import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
-    /++
-    Params:
-        slice = slice
-    +/
-    auto center(Iterator, size_t N, SliceKind kind)(
-        Slice!(Iterator, N, kind) slice)
-    {
-        import core.lifetime: move;
-        import mir.ndslice.topology: vmap;
-        import mir.ndslice.internal: LeftOp, ImplicitlyUnqual;
-
-        auto m = centralTendency(slice.lightScope);
-        alias T = typeof(m);
-        return slice.move.vmap(LeftOp!("-", ImplicitlyUnqual!T)(m));
-    }
-    
-    /// ditto
-    auto center(T)(T[] array)
-    {
-        return center(array.sliced);
-    }
-
-    /// ditto
-    auto center(T)(T withAsSlice)
-        if (hasAsSlice!T)
-    {
-        return center(withAsSlice.asSlice);
-    }
-}
-
-/// Center vector
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-
-    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
-    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
-    
-    // Can center using different functions
-    assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
-    assert(x.center!gmean.all!approxEqual([-1.99379516, -0.99379516, 0.00620483, 1.00620483, 2.00620483, 3.00620483]));
-    assert(x.center!median.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
-}
-
-/// Center dynamic array
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-
-    auto x = [1.0, 2, 3, 4, 5, 6];
-    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
-}
-
-/// Center matrix
-version(mir_test)
-@safe pure
-unittest
-{
-    import mir.ndslice: fuse;
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-    
-    auto x = [
-        [0.0, 1, 2], 
-        [3.0, 4, 5]
-    ].fuse;
-    
-    auto y = [
-        [-2.5, -1.5, -0.5], 
-        [ 0.5,  1.5,  2.5]
-    ].fuse;
-    
-    assert(x.center.all!approxEqual(y));
-}
-
-/// Column center matrix
-version(mir_test)
-@safe pure
-unittest
-{
-    import mir.algorithm.iteration: all, equal;
-    import mir.math.common: approxEqual;
-    import mir.ndslice: fuse;
-    import mir.ndslice.topology: alongDim, byDim, map;
-
-    auto x = [
-        [20.0, 100.0, 2000.0],
-        [10.0,   5.0,    2.0]
-    ].fuse;
-
-    auto result = [
-        [ 5.0,  47.5,  999],
-        [-5.0, -47.5, -999]
-    ].fuse;
-
-    // Use byDim with map to compute average of row/column.
-    auto xCenterByDim = x.byDim!1.map!center;
-    auto resultByDim = result.byDim!1;
-    assert(xCenterByDim.equal!(equal!approxEqual)(resultByDim));
-
-    auto xCenterAlongDim = x.alongDim!0.map!center;
-    auto resultAlongDim = result.alongDim!0;
-    assert(xCenterByDim.equal!(equal!approxEqual)(resultAlongDim));
-}
-
-/// Can also pass arguments to average function used by center
-version(mir_test)
-pure @safe nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-
-    //Set sum algorithm or output type
-    auto a = [1, 1e100, 1, -1e100];
-
-    auto x = a.sliced * 10_000;
-
-    //Due to Floating Point precision, subtracting the mean from the second
-    //and fourth numbers in `x` does not change the value of the result
-    auto result = [5000, 1e104, 5000, -1e104].sliced;
-
-    assert(x.center!(mean!"kbn") == result);
-    assert(x.center!(mean!"kb2") == result);
-    assert(x.center!(mean!"precise") == result);
-}
-
-/++
-Passing a centered input to `variance` or `standardDeviation` with the
-`assumeZeroMean` algorithm is equivalent to calculating `variance` or
-`standardDeviation` on the original input.
-+/
-version(mir_test)
-@safe pure nothrow
-unittest
-{
-    import mir.ndslice.slice: sliced;
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
-
-    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
-    assert(x.center.variance!"assumeZeroMean".approxEqual(x.variance));
-    assert(x.center.standardDeviation!"assumeZeroMean".approxEqual(x.standardDeviation));
-}
-
-/++
 Output range that applies function `fun` to each input before summing
 +/
 struct MapSummator(alias fun, T, Summation summation) 
@@ -1785,7 +1622,7 @@ unittest
 /++
 Variance algorithms.
 
-See Also:
+See_also:
     $(WEB en.wikipedia.org/wiki/Algorithms_for_calculating_variance, Algorithms for calculating variance).
 +/
 enum VarianceAlgo
@@ -2443,6 +2280,11 @@ Params:
 
 Returns:
     The variance of the input, must be floating point or complex type
+
+See_also:
+    $(LREF, VarianceAccumulator),
+    $(LREF, VarianceAlgo),
+    $(SUBREF sum, Summation)
 +/
 template variance(
     F, 
@@ -2817,6 +2659,11 @@ Params:
 
 Returns:
     The standard deviation of the input, must be floating point type type
+
+See_also:
+    $(LREF, variance),
+    $(LREF, VarianceAlgo),
+    $(SUBREF sum, Summation)
 +/
 template standardDeviation(
     F, 
@@ -3158,12 +3005,20 @@ will square the centered values. The default `summarize` function is `mean`,
 which will return the mean of the squared centered values.
 
 Params:
-    centralTendency = function that will produce the value that the input is centered about, default is `mean`
-    transform = function to transform centered values, default squares the centered values
-    summarize = function to summarize the transformed centered values, default is `mean`
+    centralTendency: function that will produce the value that the input is centered about, default is `mean`
+    transform: function to transform centered values, default squares the centered values
+    summarize: function to summarize the transformed centered values, default is `mean`
 
 Returns:
     The dispersion of the input
+
+See_also:
+    $(LREF, variance),
+    $(LREF, standardDeviation),
+    $(LREF, mean),
+    $(LREF, median),
+    $(LREF, hmean),
+    $(LREF, gmean)
 +/
 template dispersion(
     alias centralTendency = mean,
@@ -3177,7 +3032,7 @@ template dispersion(
     {
         /++
         Params:
-            slice = slice
+            slice
         +/
         @fmamath auto dispersion(Iterator, size_t N, SliceKind kind)(
             Slice!(Iterator, N, kind) slice)
@@ -3428,6 +3283,778 @@ unittest
                           2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
 
     assert(x.sliced.dispersion.approxEqual(54.76562 / 12));
+}
+
+/++
+For each `e` of the input, applies `e op m` where `op` by default is "-"
+(meaning `e - m`) and `m` is the result of applying `fun` to the input.
+
+This function is equivalent to `center` when passing
+`fun = mean!(Summation.appropriate)`.
+
+Params:
+    fun = function used to sweep
+    op = operation, default is "-"
+
+Returns:
+    The input 
+
+See_also:
+    $(LREF, center),
+    $(LREF, scale)
++/
+template sweep(alias fun, string op = "-")
+{
+    import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
+    import mir.ndslice.topology: vmap;
+    import mir.ndslice.internal: LeftOp, ImplicitlyUnqual;
+    /++
+    Params:
+        slice = slice
+    +/
+    @fmamath auto sweep(Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice)
+    {
+        import core.lifetime: move;
+
+        auto m = fun(slice.lightScope);
+        return .sweep!op(slice.move, m);
+    }
+    
+    /// ditto
+    @fmamath auto sweep(T)(T[] array)
+    {
+        return sweep(array.sliced);
+    }
+
+    /// ditto
+    @fmamath auto sweep(T)(T withAsSlice)
+        if (hasAsSlice!T)
+    {
+        return sweep(withAsSlice.asSlice);
+    }
+}
+
+/++
+Params:
+    op = operation, default is "-"
++/
+template sweep(string op = "-")
+{
+    /++
+    Params:
+        slice = slice
+        m = value to pass to vmap
+    +/
+    @fmamath auto sweep(Iterator, size_t N, SliceKind kind, T)(
+               Slice!(Iterator, N, kind) slice, T m)
+    {
+        import core.lifetime: move;
+        import mir.ndslice.topology: vmap;
+        import mir.ndslice.internal: LeftOp, ImplicitlyUnqual;
+
+        return slice.move.vmap(LeftOp!(op, ImplicitlyUnqual!T)(m));
+    }
+        
+    /// ditto
+    @fmamath auto sweep(T)(T[] array, T m)
+    {
+        import mir.ndslice.slice: sliced;
+
+        return sweep(array.sliced, m);
+    }
+
+    /// ditto
+    @fmamath auto sweep(T, U)(T withAsSlice, U m)
+        if (hasAsSlice!T)
+    {
+        return sweep(withAsSlice.asSlice, m);
+    }
+}
+
+/// Sweep vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    static double f(T)(T x) {
+        return 3.5;
+    }
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+    assert(x.sweep!f.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(f, "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
+}
+
+/// Sweep dynamic array
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    static double f(T)(T x) {
+        return 3.5;
+    }
+
+    auto x = [1.0, 2, 3, 4, 5, 6];
+    assert(x.sweep!f.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(f, "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
+}
+
+/// Sweep matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    static double f(T)(T x) {
+        return 3.5;
+    }
+
+    auto x = [
+        [1.0, 2, 3],
+        [4.0, 5, 6]
+    ].fuse;
+
+    auto y0 = [
+        [-2.5, -1.5, -0.5],
+        [ 0.5,  1.5,  2.5]
+    ];
+
+    auto y1 = [
+        [4.5, 5.5, 6.5],
+        [7.5, 8.5, 9.5]
+    ];
+
+    assert(x.sweep!f.all!approxEqual(y0));
+    assert(x.sweep(3.5).all!approxEqual(y0));
+    assert(x.sweep!(f, "+").all!approxEqual(y1));
+}
+
+/// Column sweep matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.algorithm.iteration: all, equal;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    static double f(T)(T x) {
+        return 0.5 * (x[0] +x[1]);
+    }
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    auto result = [
+        [ 5.0,  47.5,  999],
+        [-5.0, -47.5, -999]
+    ].fuse;
+
+    // Use byDim with map to sweep mean of row/column.
+    auto xSweepByDim = x.byDim!1.map!(sweep!f);
+    auto resultByDim = result.byDim!1;
+    assert(xSweepByDim.equal!(equal!approxEqual)(resultByDim));
+
+    auto xSweepAlongDim = x.alongDim!0.map!(sweep!f);
+    auto resultAlongDim = result.alongDim!0;
+    assert(xSweepAlongDim.equal!(equal!approxEqual)(resultAlongDim));
+}
+
+/// Can also pass arguments to sweep function
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    static double f(T)(T x, double a) {
+        return a;
+    }
+
+    static double g(double a, T)(T x) {
+        return a;
+    }
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+    assert(x.sweep!(a => f(a, 3.5)).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(a => f(a, 3.5), "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
+    assert(x.sweep!(a => g!3.5(a)).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(a => g!3.5(a), "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
+}
+
+/++
+Centers the input.
+
+By default, the input is centered by the mean. A custom function may also be
+provided using `centralTendency`.
+
+In addition, overloads are provided to center with variables `m`, which
+corresponds to the result of `centralTendency`.
+
+Params:
+    centralTendency = function used to center input
+
+Returns:
+    The centered result
+
+See_also:
+    $(LREF, mean)
+    $(LREF, median)
+    $(LREF, gmean)
+    $(LREF, hmean)
++/
+template center(alias centralTendency = mean!(Summation.appropriate))
+{
+    alias center = sweep!(centralTendency, "-");
+}
+
+/++
+Params:
+    slice = slice
+    m = value to subtract from slice
++/
+auto center(Iterator, size_t N, SliceKind kind, T)(
+    Slice!(Iterator, N, kind) slice, T m)
+{
+    import core.lifetime: move;
+
+    return slice.move.sweep!("-")(m);
+}
+    
+/// ditto
+auto center(T)(T[] array, T m)
+{
+    import mir.ndslice.slice: sliced;
+    return center(array.sliced, m);
+}
+
+/// ditto
+auto center(T, U)(T withAsSlice, U m)
+    if (hasAsSlice!T)
+{
+    return center(withAsSlice.asSlice, m);
+}
+
+/// Center vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.center(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    
+    // Can center using different functions
+    assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
+    assert(x.center!gmean.all!approxEqual([-1.99379516, -0.99379516, 0.00620483, 1.00620483, 2.00620483, 3.00620483]));
+    assert(x.center!median.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+}
+
+/// Center dynamic array
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6];
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.center(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+}
+
+/// Center matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    
+    auto x = [
+        [0.0, 1, 2], 
+        [3.0, 4, 5]
+    ].fuse;
+    
+    assert(x.center.all!approxEqual([[-2.5, -1.5, -0.5], [ 0.5,  1.5,  2.5]]));
+}
+
+/// Column center matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.algorithm.iteration: all, equal;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    auto result = [
+        [ 5.0,  47.5,  999],
+        [-5.0, -47.5, -999]
+    ].fuse;
+
+    // Use byDim with map to compute average of row/column.
+    auto xCenterByDim = x.byDim!1.map!center;
+    auto resultByDim = result.byDim!1;
+    assert(xCenterByDim.equal!(equal!approxEqual)(resultByDim));
+
+    auto xCenterAlongDim = x.alongDim!0.map!center;
+    auto resultAlongDim = result.alongDim!0;
+    assert(xCenterAlongDim.equal!(equal!approxEqual)(resultAlongDim));
+}
+
+/// Can also pass arguments to average function used by center
+version(mir_test)
+pure @safe nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    //Set sum algorithm
+    auto a = [1, 1e100, 1, -1e100];
+
+    auto x = a.sliced * 10_000;
+
+    //Due to Floating Point precision, subtracting the mean from the second
+    //and fourth numbers in `x` does not change the value of the result
+    auto result = [5000, 1e104, 5000, -1e104].sliced;
+
+    assert(x.center!(mean!"kbn") == result);
+    assert(x.center!(mean!"kb2") == result);
+    assert(x.center!(mean!"precise") == result);
+}
+
+/++
+Scales the input.
+
+By default, the input is first centered using the mean of the input. A custom
+function may also be provided using `centralTendency`. The centered input is
+then divided by the sample standard deviation of the input. A custom function
+may also be provided using `dispersion`.
+
+Overloads are also provided to scale with variables `m` and `d`, which
+correspond to the results of `centralTendency` and `dispersion`. This function
+is equivalent to `center` when passing `d = 1`.
+
+Params:
+    centralTendency = function used to center input, default is `mean`
+    dispersion = function used to , default is `dispersion`
+    centerFirst = centers the input first, before calling `dispersion`, default is false
+
+Returns:
+    The scaled result
+
+See_also:
+    $(LREF, center),
+    $(LREF, VarianceAlgo)
+    $(SUBREF sum, Summation)
+    $(LREF, mean),
+    $(LREF, standardDeviation),
+    $(LREF, median),
+    $(LREF, gmean),
+    $(LREF, hmean),
+    $(LREF, variance),
+    $(LREF, dispersion)
++/
+template scale(alias centralTendency = mean!(Summation.appropriate),
+               alias dispersion = standardDeviation!(VarianceAlgo.online, Summation.appropriate))
+{
+    import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
+    /++
+    Params:
+        slice = slice
+    +/
+    @fmamath auto scale(Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice)
+    {
+        import core.lifetime: move;
+
+        auto m = centralTendency(slice.lightScope);
+        auto d = dispersion(slice.lightScope);
+        return .scale!(Iterator, N, kind, typeof(m))(slice.move, m, d);
+    }
+    
+    /// ditto
+    @fmamath auto scale(T)(T[] array)
+    {
+        return scale(array.sliced);
+    }
+
+    /// ditto
+    @fmamath auto scale(T)(T withAsSlice)
+        if (hasAsSlice!T)
+    {
+        return scale(withAsSlice.asSlice);
+    }
+}
+
+/++
+Params:
+    slice = slice
+    m = value to subtract from slice
+    d = value to divide slice by
++/
+@fmamath auto scale(Iterator, size_t N, SliceKind kind, T, U)(
+           Slice!(Iterator, N, kind) slice, T m, U d)
+{
+    import core.lifetime: move;
+    import mir.ndslice.topology: vmap;
+    import mir.ndslice.internal: LeftOp, ImplicitlyUnqual;
+
+    return slice.move.sweep!"-"(m).sweep!"/"(d);
+}
+    
+/// ditto
+@fmamath auto scale(T, U)(T[] array, T m, U d)
+{
+    import mir.ndslice.slice: sliced;
+
+    return scale(array.sliced, m, d);
+}
+
+/// ditto
+@fmamath auto scale(T, U, V)(T withAsSlice, U m, V d)
+    if (hasAsSlice!T)
+{
+    return scale(withAsSlice.asSlice, m, d);
+}
+
+/// Scale vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+
+    assert(x.scale.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    assert(x.scale(3.5, 1.87083).all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    
+    // Can scale using different `centralTendency` functions
+    assert(x.scale!hmean.all!approxEqual([-0.774512, -0.23999, 0.294533, 0.829055, 1.363578, 1.898100]));
+    assert(x.scale!gmean.all!approxEqual([-1.065728, -0.531206, 0.003317, 0.537839, 1.072362, 1.606884]));
+    assert(x.scale!median.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    
+    // Can scale using different `centralTendency` and `dispersion` functions
+    assert(x.scale!(mean, a => a.standardDeviation(true)).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
+    assert(x.scale!(hmean, a => a.standardDeviation(true)).all!approxEqual([-0.848436, -0.262896, 0.322645, 0.908185, 1.493725, 2.079265]));
+    assert(x.scale!(gmean, a => a.standardDeviation(true)).all!approxEqual([-1.167447, -0.581907, 0.003633, 0.589173, 1.174713, 1.760253]));
+    assert(x.scale!(median, a => a.standardDeviation(true)).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
+}
+
+/// Scale dynamic array
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6];
+    assert(x.scale.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    assert(x.scale(3.5, 1.87083).all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+}
+
+/// Scale matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    
+    auto x = [
+        [1.0, 2, 3], 
+        [4.0, 5, 6]
+    ].fuse;
+    
+    assert(x.scale.all!approxEqual([[-1.336306, -0.801784, -0.267261], [0.267261, 0.801784, 1.336306]]));
+    assert(x.scale(3.5, 1.87083).all!approxEqual([[-1.336306, -0.801784, -0.267261], [0.267261, 0.801784, 1.336306]]));
+}
+
+/// Column scale matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.algorithm.iteration: all, equal;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    auto result = [
+        [ 0.707107,  0.707107,  0.707107],
+        [-0.707107, -0.707107, -0.707107]
+    ].fuse;
+
+    // Use byDim with map to scale by row/column.
+    auto xScaleByDim = x.byDim!1.map!scale;
+    auto resultByDim = result.byDim!1;
+    assert(xScaleByDim.equal!(equal!approxEqual)(resultByDim));
+
+    auto xCenterAlongDim = x.alongDim!0.map!scale;
+    auto resultAlongDim = result.alongDim!0;
+    assert(xScaleByDim.equal!(equal!approxEqual)(resultAlongDim));
+}
+
+/// Can also pass arguments to `mean` and `standardDeviation` functions used by scale
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+    import mir.algorithm.iteration: all;
+
+    //Set sum algorithm
+    auto a = [1, 1e100, 1, -1e100];
+
+    auto x = a.sliced * 10_000;
+
+    auto result = [6.123724e-101, 1.224745, 6.123724e-101, -1.224745].sliced;
+
+    assert(x.scale!(mean!"kbn", standardDeviation!("online", "kbn")).all!approxEqual(result));
+    assert(x.scale!(mean!"kb2", standardDeviation!("online", "kb2")).all!approxEqual(result));
+    assert(x.scale!(mean!"precise", standardDeviation!("online", "precise")).all!approxEqual(result));
+}
+
+/++
+Computes the Z-score of the input.
+
+The Z-score is computed by first calculating the mean and standard deviation of
+the input, by default in one pass, and then scaling the input using those values.
+
+Returns:
+    The z-score of the input
+
+See_also:
+    $(LREF scale),
+    $(LREF mean),
+    $(LREF standardDeviation),
+    $(LREF variance)
++/
+template zScore(F, 
+                VarianceAlgo varianceAlgo = VarianceAlgo.online,
+                Summation summation = Summation.appropriate)
+{
+    /++
+    Params:
+        slice = slice
+        isPopulation = true if population standard deviation, false is sample (default)
+    +/
+    @fmamath auto zScore(Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice, 
+        bool isPopulation = false)
+    {
+        import core.lifetime: move;
+        import mir.math.common: sqrt;
+
+        alias G = meanType!F;
+        alias T = typeof(slice);
+        auto varianceAccumulator = VarianceAccumulator!(
+            G, varianceAlgo, ResolveSummationType!(summation, T, G))(
+            slice.lightScope);
+        return scale(slice,
+                     varianceAccumulator.mean,
+                     varianceAccumulator.variance(isPopulation).sqrt);
+    }
+    
+    /// ditto
+    @fmamath auto zScore(T)(T[] array, bool isPopulation = false)
+    {
+        import mir.ndslice.slice: sliced;
+
+        return zScore(array.sliced, isPopulation);
+    }
+
+    /// ditto
+    @fmamath auto zScore(T)(T withAsSlice, bool isPopulation = false)
+        if (hasAsSlice!T)
+    {
+        return zScore(withAsSlice.asSlice, isPopulation);
+    }
+}
+
+///
+template zScore(VarianceAlgo varianceAlgo = VarianceAlgo.online,
+                Summation summation = Summation.appropriate)
+{
+    /// ditto
+    @fmamath auto zScore(Iterator, size_t N, SliceKind kind)(
+        Slice!(Iterator, N, kind) slice, 
+        bool isPopulation = false)
+    {
+        import core.lifetime: move;
+        alias F = meanType!(Slice!(Iterator, N, kind));
+        return .zScore!(F, varianceAlgo, summation)(slice.move, isPopulation);
+    }
+
+    /// ditto
+    @fmamath auto zScore(T)(T[] array, bool isPopulation = false)
+    {
+        alias F = meanType!(T[]);
+        return .zScore!(F, varianceAlgo, summation)(array, isPopulation);
+    }
+
+    /// ditto
+    @fmamath auto zScore(T)(T withAsSlice, bool isPopulation = false)
+        if (hasAsSlice!T)
+    {
+        alias F = meanType!(T);
+        return .zScore!(F, varianceAlgo, summation)(withAsSlice, isPopulation);
+    }
+}
+
+/// ditto
+template zScore(F, string varianceAlgo, string summation = "appropriate")
+{
+    mixin("alias zScore = .zScore!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
+}
+
+/// ditto
+template zScore(string varianceAlgo, string summation = "appropriate")
+{
+    mixin("alias zScore = .zScore!(VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
+}
+
+/// zScore vector
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+
+    assert(x.zScore.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    assert(x.zScore(true).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
+}
+
+/// zScore dynamic array
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [1.0, 2, 3, 4, 5, 6];
+    assert(x.zScore.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    assert(x.zScore(true).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
+}
+
+/// zScore matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice: fuse;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    
+    auto x = [
+        [1.0, 2, 3], 
+        [4.0, 5, 6]
+    ].fuse;
+    
+    assert(x.zScore.all!approxEqual([[-1.336306, -0.801784, -0.267261], [0.267261, 0.801784, 1.336306]]));
+    assert(x.zScore(true).all!approxEqual([[-1.46385, -0.87831, -0.29277], [0.29277, 0.87831, 1.46385]]));
+}
+
+/// Column zScore matrix
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.algorithm.iteration: all, equal;
+    import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
+
+    auto x = [
+        [20.0, 100.0, 2000.0],
+        [10.0,   5.0,    2.0]
+    ].fuse;
+
+    auto result = [
+        [ 0.707107,  0.707107,  0.707107],
+        [-0.707107, -0.707107, -0.707107]
+    ].fuse;
+
+    // Use byDim with map to scale by row/column.
+    auto xScaleByDim = x.byDim!1.map!zScore;
+    auto resultByDim = result.byDim!1;
+    assert(xScaleByDim.equal!(equal!approxEqual)(resultByDim));
+
+    auto xCenterAlongDim = x.alongDim!0.map!zScore;
+    auto resultAlongDim = result.alongDim!0;
+    assert(xScaleByDim.equal!(equal!approxEqual)(resultAlongDim));
+}
+
+/// Can control how `mean` and `standardDeviation` are calculated and output type
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual;
+    import mir.algorithm.iteration: all;
+    import mir.ndslice.topology: repeat;
+
+    //Set sum algorithm or output type
+    auto a = [1, 1e100, 1, -1e100];
+
+    auto x = a.sliced * 10_000;
+
+    auto result = [6.123724e-101, 1.224745, 6.123724e-101, -1.224745].sliced;
+
+    assert(x.zScore!("online", "kbn").all!approxEqual(result));
+    assert(x.zScore!("online", "kb2").all!approxEqual(result));
+    assert(x.zScore!("online", "precise").all!approxEqual(result));
+    assert(x.zScore!(double, "online", "precise").all!approxEqual(result));
+
+    auto y = [uint.max, uint.max / 2, uint.max / 3].sliced;
+    assert(y.zScore!ulong.all!approxEqual([1.120897, -0.320256, -0.800641]));
 }
 
 /++
