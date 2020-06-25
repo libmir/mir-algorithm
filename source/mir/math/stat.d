@@ -285,8 +285,8 @@ will have a `double` type if `F` is implicitly convertible to a floating point
 type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
 
 Params:
-    F: controls type of output
-    summation: algorithm for calculating sums (default: Summation.appropriate)
+    F = controls type of output
+    summation = algorithm for calculating sums (default: Summation.appropriate)
 Returns:
     The mean of all the elements in the input, must be floating point or complex type
 
@@ -605,8 +605,8 @@ will have a `double` type if `F` is implicitly convertible to a floating point
 type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
 
 Params:
-    F: controls type of output
-    summation: algorithm for calculating sums (default: Summation.appropriate)
+    F = controls type of output
+    summation = algorithm for calculating sums (default: Summation.appropriate)
 Returns:
     harmonic mean of all the elements of the input, must be floating point or complex type
 
@@ -2188,8 +2188,8 @@ will have a `double` type if `F` is implicitly convertible to a floating point
 type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
 
 Params:
-    F: controls type of output
-    varianceAlgo: algorithm for calculating variance (default: VarianceAlgo.online)
+    F = controls type of output
+    varianceAlgo = algorithm for calculating variance (default: VarianceAlgo.online)
     summation: algorithm for calculating sums (default: Summation.appropriate)
 
 Returns:
@@ -2558,9 +2558,9 @@ By default, if `F` is not floating point type, then the result will have a
 `double` type if `F` is implicitly convertible to a floating point type.
 
 Params:
-    F: controls type of output
-    varianceAlgo: algorithm for calculating variance (default: VarianceAlgo.online)
-    summation: algorithm for calculating sums (default: Summation.appropriate)
+    F = controls type of output
+    varianceAlgo = algorithm for calculating variance (default: VarianceAlgo.online)
+    summation = algorithm for calculating sums (default: Summation.appropriate)
 
 Returns:
     The standard deviation of the input, must be floating point type type
@@ -2905,9 +2905,9 @@ will square the centered values. The default `summarize` function is `mean`,
 which will return the mean of the squared centered values.
 
 Params:
-    centralTendency: function that will produce the value that the input is centered about, default is `mean`
-    transform: function to transform centered values, default squares the centered values
-    summarize: function to summarize the transformed centered values, default is `mean`
+    centralTendency = function that will produce the value that the input is centered about, default is `mean`
+    transform = function to transform centered values, default squares the centered values
+    summarize = function to summarize the transformed centered values, default is `mean`
 
 Returns:
     The dispersion of the input
@@ -2924,7 +2924,7 @@ template dispersion(
     {
         /++
         Params:
-            slice
+            slice = slice
         +/
         @fmamath auto dispersion(Iterator, size_t N, SliceKind kind)(
             Slice!(Iterator, N, kind) slice)
