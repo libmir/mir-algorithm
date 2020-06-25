@@ -1963,97 +1963,97 @@ unittest
         assert (cast(float)view == 8713e-23f);
         assert (cast(double)view == 8713e-23);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 8713e-23L);
+            assert (cast(real)view == 0xc.dbada73ef15c401p-67);
 
         view = DecimalView!Args(false, 300, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == 1e300);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e300L);
+            assert (cast(real)view == 0xb.f21e44003acdd2dp+993);
 
         view = DecimalView!Args(false, 245, BigUIntView!Args.fromHexString("B3A73CEB227"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == 123456789.34567e250);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 123456789.34567e250L);
+            assert (cast(real)view == 0xa.471b9a999e5b01ep+854);
 
         view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("88BF4748507FB9900ADB624CCFF8D78897DC900FB0460327D4D86D327219"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == 943794359898089732078308743689303290943794359843568973207830874368930329.0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 943794359898089732078308743689303290943794359843568973207830874368930329.0L);
+            assert (cast(real)view == 0x8.8bf4748507fb99p+236L);
 
         view = DecimalView!Args(false, -324, BigUIntView!Args.fromHexString("5"));
         assert (cast(float)view == 0);
         assert (cast(double)view == double.min_normal * double.epsilon);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 5e-324L);
+            assert (cast(real)view == 0x8.18995ce7aa0e1b2p-1077L);
 
         view = DecimalView!Args(false, -324, BigUIntView!Args.fromHexString("5B"));
         assert (cast(float)view == 0);
         assert (cast(double)view == double.min_normal * double.epsilon * 18);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 91e-324L);
+            assert (cast(real)view == 0x9.3594d9adeb09a55p-1073L);
 
         view = DecimalView!Args(false, -322, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == double.min_normal * double.epsilon * 20);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e-322L);
+            assert (cast(real)view == 0xa.1ebfb4219491a1fp-1073L);
 
         view = DecimalView!Args(false, -320, BigUIntView!Args.fromHexString("CA1CCB"));
         assert (cast(float)view == 0);
         assert (cast(double)view == double.min_normal * double.epsilon * 26809479897);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 13245643e-320L);
+            assert (cast(real)view == 0xc.7bf065b215888c7p-1043L);
 
         view = DecimalView!Args(false, -319, BigUIntView!Args.fromHexString("33CE7943FB"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 2.22507385851e-308);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 2.22507385851e-308L);
+            assert (cast(real)view == 0x8.000000000b103b6p-1025L);
 
         view = DecimalView!Args(false, -309, BigUIntView!Args.fromHexString("15"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x0.f19c2629ccf53p-1022);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 2.1e-308L);
+            assert (cast(real)view == 0xf.19c2629ccf52fc4p-1026L);
 
         view = DecimalView!Args(false, -340, BigUIntView!Args.fromHexString("AF87023B9BF0EE"));
         assert (cast(float)view == 0);
         assert (cast(double)view == double.min_normal * double.epsilon);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 4.9406564584124654e-324L);
+            assert (cast(real)view == 0xf.fffffffffffff64p-1078L);
 
         view = DecimalView!Args(false, 400, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e400L);
+            assert (cast(real)view == 0xd.a763fc8cb9ff9e6p+1325L);
 
         view = DecimalView!Args(false, 309, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e309L);
+            assert (cast(real)view == 0xb.201833b35d63f73p+1023L);
 
         view = DecimalView!Args(false, 308, BigUIntView!Args.fromHexString("2"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 2e308L);
+            assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
 
         view = DecimalView!Args(false, 308, BigUIntView!Args.fromHexString("2"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 2e308L);
+            assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
 
         view = DecimalView!Args(false, 295, BigUIntView!Args.fromHexString("1059949B7090"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1.7976931348624e308L);
+            assert (cast(real)view == 0x8.00000000006955ap+1021L);
 
         view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("0"));
         assert (cast(float)view == 0);
@@ -2071,25 +2071,25 @@ unittest
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e-325L);
+            assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
 
         view = DecimalView!Args(false, -326, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e-326L);
+            assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
 
         view = DecimalView!Args(false, -500, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e-500L);
+            assert (cast(real)view == 0x8.33ada2003db9a8p-1664L);
 
         view = DecimalView!Args(false, -1000, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e-1000L);
+            assert (cast(real)view == 0x8.68a9188a89e1467p-3325L);
 
         view = DecimalView!Args(false, -4999, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0);
@@ -2113,49 +2113,49 @@ unittest
         assert (cast(float)view == 1.448997445238699f);
         assert (cast(double)view == 0x1.72f17f1f49aadp0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1.448997445238699L);
+            assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
 
         view = DecimalView!Args(false, -15, BigUIntView!Args.fromHexString("525DB0200FFAB"));
         assert (cast(float)view == 1.448997445238699f);
         assert (cast(double)view == 0x1.72f17f1f49aadp0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1.448997445238699L);
+            assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
 
         view = DecimalView!Args(false, -325, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e-325L);
+            assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
 
         view = DecimalView!Args(false, -326, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e-326L);
+            assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
 
         view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 1);
         assert (cast(double)view == 1);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1);
+            assert (cast(real)view == 0x8p-3L);
 
         view = DecimalView!Args(false, -5, BigUIntView!Args.fromHexString("3"));
         assert (cast(float)view == 3e-5f);
         assert (cast(double)view == 3e-5);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 3e-5L);
+            assert (cast(real)view == 0xf.ba8826aa8eb4635p-19L);
 
         view = DecimalView!Args(false, -1, BigUIntView!Args.fromHexString("1"));
         assert (cast(float)view == 0.1f);
         assert (cast(double)view == 0.1);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0.1L);
+            assert (cast(real)view == 0xc.ccccccccccccccdp-7L);
 
         view = DecimalView!Args(false, -7, BigUIntView!Args.fromHexString("98967F"));
         assert (cast(float)view == 0.9999999f);
         assert (cast(double)view == 0.9999999);
         static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0.9999999L);
+            assert (cast(real)view == 0xf.ffffe5280d65435p-4L);
     }}
 }
 
