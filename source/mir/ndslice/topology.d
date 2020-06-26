@@ -2730,6 +2730,57 @@ version(mir_test) unittest
     static assert(is(typeof(a) == typeof(b)));
 }
 
+/// Use map with byDim/alongDim to apply functions to each dimension
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.topology: byDim, alongDim;
+    import mir.ndslice.fuse: fuse;
+    import mir.math.stat: mean;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+
+    // Use byDim/alongDim with map to compute mean of row/column.
+    assert(x.byDim!0.map!mean.all!approxEqual([12.25 / 6, 17.0 / 6]));
+    assert(x.byDim!1.map!mean.all!approxEqual([1, 4.25, 3.25, 1.5, 2.5, 2.125]));
+    assert(x.alongDim!1.map!mean.all!approxEqual([12.25 / 6, 17.0 / 6]));
+    assert(x.alongDim!0.map!mean.all!approxEqual([1, 4.25, 3.25, 1.5, 2.5, 2.125]));
+}
+
+/++
+Use map with a lambda and with byDim/alongDim, but may need to allocate result. 
+This example uses fuse, which allocates. Note: fuse!1 will transpose the result. 
++/
+version(mir_test)
+@safe pure
+unittest {
+    import mir.ndslice.topology: iota, byDim, alongDim, map;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.slice: sliced;
+    
+    auto x = [1, 2, 3].sliced;
+    auto y = [1, 2].sliced;
+
+    auto s1 = iota(2, 3).byDim!0.map!(a => a * x).fuse;
+    assert(s1 == [[ 0, 2,  6],
+                  [ 3, 8, 15]]);
+    auto s2 = iota(2, 3).byDim!1.map!(a => a * y).fuse!1;
+    assert(s2 == [[ 0, 1,  2],
+                  [ 6, 8, 10]]);
+    auto s3 = iota(2, 3).alongDim!1.map!(a => a * x).fuse;
+    assert(s1 == [[ 0, 2,  6],
+                  [ 3, 8, 15]]);
+    auto s4 = iota(2, 3).alongDim!0.map!(a => a * y).fuse!1;
+    assert(s2 == [[ 0, 1,  2],
+                  [ 6, 8, 10]]);
+}
+
 ///
 pure version(mir_test) unittest
 {
@@ -2746,7 +2797,6 @@ pure version(mir_test) unittest
     auto matrix = iota([2, 2], 1);
     assert(maxAvg(matrix) == 3.5);
 }
-
 
 /++
 Implements the homonym function (also known as `transform`) present
@@ -2900,6 +2950,38 @@ version(none) version(mir_test) unittest
         assert(values.a == sums[i][j]);
         assert(values.b == products[i][j]);
     }
+}
+
+/// Use map with byDim/alongDim to apply functions to each dimension
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.math.stat: mean;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+
+    static struct Callable
+    {
+        double factor;
+        this(double f) {factor = f;}
+        auto opCall(U)(U x) const {return x.mean + factor; }
+        auto lightConst()() const @property { return Mul(factor); }
+    }
+
+    auto callable = Callable(0.0);
+
+    // Use byDim/alongDim with map to compute callable of row/column.
+    assert(x.byDim!0.vmap(callable).all!approxEqual([12.25 / 6, 17.0 / 6]));
+    assert(x.byDim!1.vmap(callable).all!approxEqual([1, 4.25, 3.25, 1.5, 2.5, 2.125]));
+    assert(x.alongDim!1.vmap(callable).all!approxEqual([12.25 / 6, 17.0 / 6]));
+    assert(x.alongDim!0.vmap(callable).all!approxEqual([1, 4.25, 3.25, 1.5, 2.5, 2.125]));
 }
 
 private auto hideStride
@@ -4267,6 +4349,54 @@ version(mir_test) unittest
     assert(z.front.front == iota([4], 1, 5));
 }
 
+/// Use alongDim to calculate column mean/row mean of 2-dimensional slice
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.topology: alongDim;
+    import mir.ndslice.fuse: fuse;
+    import mir.math.stat: mean;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+
+    // Use alongDim with map to compute mean of row/column.
+    assert(x.alongDim!1.map!mean.all!approxEqual([12.25 / 6, 17.0 / 6]));
+    assert(x.alongDim!0.map!mean.all!approxEqual([1, 4.25, 3.25, 1.5, 2.5, 2.125]));
+
+    // FIXME
+    // Without using map, computes the mean of the whole slice
+    // assert(x.alongDim!1.mean == x.sliced.mean);
+    // assert(x.alongDim!0.mean == x.sliced.mean);
+}
+
+/++
+Use alongDim and map with a lambda, but may need to allocate result. This example
+uses fuse, which allocates. Note: fuse!1 will transpose the result. 
++/
+version(mir_test)
+@safe pure
+unittest {
+    import mir.ndslice.topology: iota, alongDim, map;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.slice: sliced;
+    
+    auto x = [1, 2, 3].sliced;
+    auto y = [1, 2].sliced;
+
+    auto s1 = iota(2, 3).alongDim!1.map!(a => a * x).fuse;
+    assert(s1 == [[ 0, 2,  6],
+                  [ 3, 8, 15]]);
+    auto s2 = iota(2, 3).alongDim!0.map!(a => a * y).fuse!1;
+    assert(s2 == [[ 0, 1,  2],
+                  [ 6, 8, 10]]);
+}
+
 /++
 Returns a slice that can be iterated by dimension. Transposes dimensions on top and then packs them.
 
@@ -4560,6 +4690,54 @@ version(mir_test) unittest
     assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed);
     a.popFront;
     assert(a.front.front == iota([3], 1, 20));
+}
+
+/// Use byDim to calculate column mean/row mean of 2-dimensional slice
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.topology: byDim;
+    import mir.ndslice.fuse: fuse;
+    import mir.math.stat: mean;
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    auto x = [
+        [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
+        [2.0, 7.5, 5.0, 1.0, 1.5, 0.0]
+    ].fuse;
+
+    // Use byDim with map to compute mean of row/column.
+    assert(x.byDim!0.map!mean.all!approxEqual([12.25 / 6, 17.0 / 6]));
+    assert(x.byDim!1.map!mean.all!approxEqual([1, 4.25, 3.25, 1.5, 2.5, 2.125]));
+
+    // FIXME
+    // Without using map, computes the mean of the whole slice
+    // assert(x.byDim!0.mean == x.sliced.mean);
+    // assert(x.byDim!1.mean == x.sliced.mean);
+}
+
+/++
+Use byDim and map with a lambda, but may need to allocate result. This example
+uses fuse, which allocates. Note: fuse!1 will transpose the result. 
++/
+version(mir_test)
+@safe pure
+unittest {
+    import mir.ndslice.topology: iota, byDim, map;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.slice: sliced;
+    
+    auto x = [1, 2, 3].sliced;
+    auto y = [1, 2].sliced;
+
+    auto s1 = iota(2, 3).byDim!0.map!(a => a * x).fuse;
+    assert(s1 == [[ 0, 2,  6],
+                  [ 3, 8, 15]]);
+    auto s2 = iota(2, 3).byDim!1.map!(a => a * y).fuse!1;
+    assert(s2 == [[ 0, 1,  2],
+                  [ 6, 8, 10]]);
 }
 
 // Ensure works on canonical
