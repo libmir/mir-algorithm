@@ -3668,7 +3668,6 @@ is equivalent to `center` when passing `d = 1`.
 Params:
     centralTendency = function used to center input, default is `mean`
     dispersion = function used to , default is `dispersion`
-    centerFirst = centers the input first, before calling `dispersion`, default is false
 
 Returns:
     The scaled result
