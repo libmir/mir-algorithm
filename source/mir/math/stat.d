@@ -3870,7 +3870,7 @@ See_also:
     $(LREF standardDeviation),
     $(LREF variance)
 +/
-template zScore(F, 
+template zscore(F, 
                 VarianceAlgo varianceAlgo = VarianceAlgo.online,
                 Summation summation = Summation.appropriate)
 {
@@ -3879,7 +3879,7 @@ template zScore(F,
         slice = slice
         isPopulation = true if population standard deviation, false is sample (default)
     +/
-    @fmamath auto zScore(Iterator, size_t N, SliceKind kind)(
+    @fmamath auto zscore(Iterator, size_t N, SliceKind kind)(
         Slice!(Iterator, N, kind) slice, 
         bool isPopulation = false)
     {
@@ -3897,64 +3897,64 @@ template zScore(F,
     }
     
     /// ditto
-    @fmamath auto zScore(T)(T[] array, bool isPopulation = false)
+    @fmamath auto zscore(T)(T[] array, bool isPopulation = false)
     {
         import mir.ndslice.slice: sliced;
 
-        return zScore(array.sliced, isPopulation);
+        return zscore(array.sliced, isPopulation);
     }
 
     /// ditto
-    @fmamath auto zScore(T)(T withAsSlice, bool isPopulation = false)
+    @fmamath auto zscore(T)(T withAsSlice, bool isPopulation = false)
         if (hasAsSlice!T)
     {
-        return zScore(withAsSlice.asSlice, isPopulation);
+        return zscore(withAsSlice.asSlice, isPopulation);
     }
 }
 
 ///
-template zScore(VarianceAlgo varianceAlgo = VarianceAlgo.online,
+template zscore(VarianceAlgo varianceAlgo = VarianceAlgo.online,
                 Summation summation = Summation.appropriate)
 {
     /// ditto
-    @fmamath auto zScore(Iterator, size_t N, SliceKind kind)(
+    @fmamath auto zscore(Iterator, size_t N, SliceKind kind)(
         Slice!(Iterator, N, kind) slice, 
         bool isPopulation = false)
     {
         import core.lifetime: move;
         alias F = meanType!(Slice!(Iterator, N, kind));
-        return .zScore!(F, varianceAlgo, summation)(slice.move, isPopulation);
+        return .zscore!(F, varianceAlgo, summation)(slice.move, isPopulation);
     }
 
     /// ditto
-    @fmamath auto zScore(T)(T[] array, bool isPopulation = false)
+    @fmamath auto zscore(T)(T[] array, bool isPopulation = false)
     {
         alias F = meanType!(T[]);
-        return .zScore!(F, varianceAlgo, summation)(array, isPopulation);
+        return .zscore!(F, varianceAlgo, summation)(array, isPopulation);
     }
 
     /// ditto
-    @fmamath auto zScore(T)(T withAsSlice, bool isPopulation = false)
+    @fmamath auto zscore(T)(T withAsSlice, bool isPopulation = false)
         if (hasAsSlice!T)
     {
         alias F = meanType!(T);
-        return .zScore!(F, varianceAlgo, summation)(withAsSlice, isPopulation);
+        return .zscore!(F, varianceAlgo, summation)(withAsSlice, isPopulation);
     }
 }
 
 /// ditto
-template zScore(F, string varianceAlgo, string summation = "appropriate")
+template zscore(F, string varianceAlgo, string summation = "appropriate")
 {
-    mixin("alias zScore = .zScore!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
+    mixin("alias zscore = .zscore!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 /// ditto
-template zScore(string varianceAlgo, string summation = "appropriate")
+template zscore(string varianceAlgo, string summation = "appropriate")
 {
-    mixin("alias zScore = .zScore!(VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
+    mixin("alias zscore = .zscore!(VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
-/// zScore vector
+/// zscore vector
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3965,11 +3965,11 @@ unittest
 
     auto x = [1.0, 2, 3, 4, 5, 6].sliced;
 
-    assert(x.zScore.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
-    assert(x.zScore(true).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
+    assert(x.zscore.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    assert(x.zscore(true).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
 }
 
-/// zScore dynamic array
+/// zscore dynamic array
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3978,11 +3978,11 @@ unittest
     import mir.math.common: approxEqual;
 
     auto x = [1.0, 2, 3, 4, 5, 6];
-    assert(x.zScore.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
-    assert(x.zScore(true).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
+    assert(x.zscore.all!approxEqual([-1.336306, -0.801784, -0.267261, 0.267261, 0.801784, 1.336306]));
+    assert(x.zscore(true).all!approxEqual([-1.46385, -0.87831, -0.29277, 0.29277, 0.87831, 1.46385]));
 }
 
-/// zScore matrix
+/// zscore matrix
 version(mir_test)
 @safe pure
 unittest
@@ -3996,11 +3996,11 @@ unittest
         [4.0, 5, 6]
     ].fuse;
     
-    assert(x.zScore.all!approxEqual([[-1.336306, -0.801784, -0.267261], [0.267261, 0.801784, 1.336306]]));
-    assert(x.zScore(true).all!approxEqual([[-1.46385, -0.87831, -0.29277], [0.29277, 0.87831, 1.46385]]));
+    assert(x.zscore.all!approxEqual([[-1.336306, -0.801784, -0.267261], [0.267261, 0.801784, 1.336306]]));
+    assert(x.zscore(true).all!approxEqual([[-1.46385, -0.87831, -0.29277], [0.29277, 0.87831, 1.46385]]));
 }
 
-/// Column zScore matrix
+/// Column zscore matrix
 version(mir_test)
 @safe pure
 unittest
@@ -4021,11 +4021,11 @@ unittest
     ].fuse;
 
     // Use byDim with map to scale by row/column.
-    auto xScaleByDim = x.byDim!1.map!zScore;
+    auto xScaleByDim = x.byDim!1.map!zscore;
     auto resultByDim = result.byDim!1;
     assert(xScaleByDim.equal!(equal!approxEqual)(resultByDim));
 
-    auto xCenterAlongDim = x.alongDim!0.map!zScore;
+    auto xCenterAlongDim = x.alongDim!0.map!zscore;
     auto resultAlongDim = result.alongDim!0;
     assert(xScaleByDim.equal!(equal!approxEqual)(resultAlongDim));
 }
@@ -4047,13 +4047,13 @@ unittest
 
     auto result = [6.123724e-101, 1.224745, 6.123724e-101, -1.224745].sliced;
 
-    assert(x.zScore!("online", "kbn").all!approxEqual(result));
-    assert(x.zScore!("online", "kb2").all!approxEqual(result));
-    assert(x.zScore!("online", "precise").all!approxEqual(result));
-    assert(x.zScore!(double, "online", "precise").all!approxEqual(result));
+    assert(x.zscore!("online", "kbn").all!approxEqual(result));
+    assert(x.zscore!("online", "kb2").all!approxEqual(result));
+    assert(x.zscore!("online", "precise").all!approxEqual(result));
+    assert(x.zscore!(double, "online", "precise").all!approxEqual(result));
 
     auto y = [uint.max, uint.max / 2, uint.max / 3].sliced;
-    assert(y.zScore!ulong.all!approxEqual([1.120897, -0.320256, -0.800641]));
+    assert(y.zscore!ulong.all!approxEqual([1.120897, -0.320256, -0.800641]));
 }
 
 /++
