@@ -2984,6 +2984,49 @@ unittest
     assert(x.alongDim!0.vmap(callable).all!approxEqual([1, 4.25, 3.25, 1.5, 2.5, 2.125]));
 }
 
+/++
+Use map with a lambda and with byDim/alongDim, but may need to allocate result. 
+This example uses fuse, which allocates. Note: fuse!1 will transpose the result. 
++/
+version(mir_test)
+@safe pure
+unittest {
+    import mir.ndslice.topology: iota, alongDim, map;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.slice: sliced;
+
+    static struct Mul(T)
+    {
+        T factor;
+        this(T f) { factor = f; }
+        auto opCall(U)(U x) {return x * factor; }
+        auto lightConst()() const @property { return Mul!(typeof(factor.lightConst))(factor.lightConst); }
+    }
+
+    auto a = [1, 2, 3].sliced;
+    auto b = [1, 2].sliced;
+    auto A = Mul!(typeof(a))(a);
+    auto B = Mul!(typeof(b))(b);
+
+    auto x = [
+        [0, 1, 2],
+        [3, 4, 5]
+    ].fuse;
+
+    auto s1 = x.byDim!0.vmap(A).fuse;
+    assert(s1 == [[ 0, 2,  6],
+                  [ 3, 8, 15]]);
+    auto s2 = x.byDim!1.vmap(B).fuse!1;
+    assert(s2 == [[ 0, 1,  2],
+                  [ 6, 8, 10]]);
+    auto s3 = x.alongDim!1.vmap(A).fuse;
+    assert(s1 == [[ 0, 2,  6],
+                  [ 3, 8, 15]]);
+    auto s4 = x.alongDim!0.vmap(B).fuse!1;
+    assert(s2 == [[ 0, 1,  2],
+                  [ 6, 8, 10]]);
+}
+
 private auto hideStride
     (Iterator, SliceKind kind)
     (Slice!(Iterator, 1, kind) slice)
