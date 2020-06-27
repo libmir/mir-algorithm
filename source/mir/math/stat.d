@@ -3286,15 +3286,17 @@ unittest
 }
 
 /++
-For each `e` of the input, applies `e op m` where `op` by default is "-"
-(meaning `e - m`) and `m` is the result of applying `fun` to the input.
+For each `e` of the input, applies `e op m` where `m` is the result of `fun` and
+`op` is an operation, such as `"+"`, `"-"`, `"*"`, or `"/"`. For instance, if
+`op = "-"`, then this function computes `e - m` for each `e` of the input and
+where `m` is the result of applying `fun` to the input.
 
-This function is equivalent to `center` when passing
-`fun = mean!(Summation.appropriate)`.
+Overloads are provided to directly provide `m` to the function, rather than
+calculate it using `fun`.
 
 Params:
     fun = function used to sweep
-    op = operation, default is "-"
+    op = operation
 
 Returns:
     The input 
@@ -3303,7 +3305,7 @@ See_also:
     $(LREF, center),
     $(LREF, scale)
 +/
-template sweep(alias fun, string op = "-")
+template sweep(alias fun, string op)
 {
     import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
     import mir.ndslice.topology: vmap;
@@ -3337,9 +3339,9 @@ template sweep(alias fun, string op = "-")
 
 /++
 Params:
-    op = operation, default is "-"
+    op = operation
 +/
-template sweep(string op = "-")
+template sweep(string op)
 {
     /++
     Params:
@@ -3386,8 +3388,8 @@ unittest
     }
 
     auto x = [1.0, 2, 3, 4, 5, 6].sliced;
-    assert(x.sweep!f.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
-    assert(x.sweep(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(f, "-").all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!"-"(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
     assert(x.sweep!(f, "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
 }
 
@@ -3404,8 +3406,8 @@ unittest
     }
 
     auto x = [1.0, 2, 3, 4, 5, 6];
-    assert(x.sweep!f.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
-    assert(x.sweep(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(f, "-").all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!"-"(3.5).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
     assert(x.sweep!(f, "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
 }
 
@@ -3437,8 +3439,8 @@ unittest
         [7.5, 8.5, 9.5]
     ];
 
-    assert(x.sweep!f.all!approxEqual(y0));
-    assert(x.sweep(3.5).all!approxEqual(y0));
+    assert(x.sweep!(f, "-").all!approxEqual(y0));
+    assert(x.sweep!"-"(3.5).all!approxEqual(y0));
     assert(x.sweep!(f, "+").all!approxEqual(y1));
 }
 
@@ -3467,11 +3469,11 @@ unittest
     ].fuse;
 
     // Use byDim with map to sweep mean of row/column.
-    auto xSweepByDim = x.byDim!1.map!(sweep!f);
+    auto xSweepByDim = x.byDim!1.map!(sweep!(f, "-"));
     auto resultByDim = result.byDim!1;
     assert(xSweepByDim.equal!(equal!approxEqual)(resultByDim));
 
-    auto xSweepAlongDim = x.alongDim!0.map!(sweep!f);
+    auto xSweepAlongDim = x.alongDim!0.map!(sweep!(f, "-"));
     auto resultAlongDim = result.alongDim!0;
     assert(xSweepAlongDim.equal!(equal!approxEqual)(resultAlongDim));
 }
@@ -3494,9 +3496,9 @@ unittest
     }
 
     auto x = [1.0, 2, 3, 4, 5, 6].sliced;
-    assert(x.sweep!(a => f(a, 3.5)).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(a => f(a, 3.5), "-").all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
     assert(x.sweep!(a => f(a, 3.5), "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
-    assert(x.sweep!(a => g!3.5(a)).all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.sweep!(a => g!3.5(a), "-").all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
     assert(x.sweep!(a => g!3.5(a), "+").all!approxEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5]));
 }
 
