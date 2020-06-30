@@ -1229,9 +1229,16 @@ unittest
 /++
 Computes the median of `slice`.
 
+By default, if `F` is not floating point type or complex type, then the result
+will have a `double` type if `F` is implicitly convertible to a floating point 
+type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+
 Can also pass a boolean variable, `allowModify`, that allows the input slice to
 be modified. By default, a reference-counted copy is made. 
 
+Params:
+    F = output type
+    allowModify = Allows the input slice to be modified, default is false
 Returns:
     the median of the slice
 
@@ -1240,8 +1247,16 @@ See_also:
 +/
 template median(F, bool allowModify = false)
 {
-    F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    /++
+    Params:
+        slice = slice
+    +/
+    meanType!F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
+        static assert (!allowModify ||
+                       isMutable!(DeepElementType!(Slice!(Iterator, N, kind))),
+                           "allowModify must be false or the input must be mutable");
+        alias G = typeof(return);
         size_t len = slice.elementCount;
         assert(len > 0, "median: slice must have length greater than zero");
 
@@ -1253,9 +1268,9 @@ template median(F, bool allowModify = false)
             if (len > 2) {
                 auto val = slice.rcslice.flattened;
                 auto temp = val.lightScope;
-                return .median!(F, true)(temp);
+                return .median!(G, true)(temp);
             } else {
-                return mean!F(slice);
+                return mean!G(slice);
             }
         } else {
             import mir.ndslice.sorting: partitionAt;
@@ -1266,26 +1281,31 @@ template median(F, bool allowModify = false)
                 size_t half_n = len / 2;
                 partitionAt(temp, half_n);
                 if (len % 2 == 1) {
-                    return cast(F) temp[half_n];
+                    return cast(G) temp[half_n];
                 } else {
                     //move largest value in first half of slice to half_n - 1
                     partitionAt(temp[0 .. half_n], half_n - 1);
-                    return (temp[half_n - 1] + temp[half_n]) / cast(F) 2;
+                    return (temp[half_n - 1] + temp[half_n]) / cast(G) 2;
                 }
             } else {
-                return smallMedianImpl!(F)(temp);
+                return smallMedianImpl!(G)(temp);
             }
         }
     }
 }
 
-///
+/// ditto
 template median(bool allowModify = false)
 {
-    sumType!(Slice!(Iterator, N, kind))
-        median
-            (Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice) {
-        return .median!(sumType!(Slice!(Iterator, N, kind)), allowModify)(slice.move);
+    /// ditto
+    meanType!(Slice!(Iterator, N, kind))
+        median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    {
+        static assert (!allowModify ||
+                       isMutable!(DeepElementType!(Slice!(Iterator, N, kind))),
+                           "allowModify must be false or the input must be mutable");
+        alias F = typeof(return);
+        return .median!(F, allowModify)(slice.move);
     }
 }
 
@@ -1356,7 +1376,7 @@ unittest
 }
 
 /++
-For integral slices, pass output type as template parameter to ensure output
+For integral slices, can pass output type as template parameter to ensure output
 type is correct
 +/
 version(mir_test)
@@ -1366,7 +1386,11 @@ unittest
     import mir.ndslice.slice: sliced;
 
     auto x = [9, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
-    assert(x.median!float == 5);
+    assert(x.median!float == 5f);
+
+    auto y = x.median;
+    assert(y == 5.0);
+    static assert(is(typeof(y) == double));
 }
 
 version(mir_test)
