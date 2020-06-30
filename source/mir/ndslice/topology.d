@@ -2684,6 +2684,7 @@ version(mir_test) unittest
     auto z = zip(sl1, sl2);
 
     assert(zip(sl1, sl2).map!"a + b" == sl1 + sl2);
+    assert(zip(sl1, sl2).map!((a, b) => a + b) == sl1 + sl2);
 }
 
 /++
