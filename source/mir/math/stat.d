@@ -3278,7 +3278,7 @@ struct SkewnessAccumulator(T, SkewnessAlgo skewnessAlgo, Summation summation)
     }
 }
 
-///
+/// naive
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3386,7 +3386,7 @@ struct SkewnessAccumulator(T, SkewnessAlgo skewnessAlgo, Summation summation)
     }
 }
 
-///
+/// online
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3416,7 +3416,7 @@ unittest
     assert(v.skewness(PopulationFalseCT).approxEqual((100.238166 / 13) / pow(57.019231 / 12, 1.5) * (13.0 ^^ 2) / (12.0 * 11.0)));
 }
 
-///
+/// Can put slice
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3446,6 +3446,7 @@ unittest
     assert(v.skewness(PopulationFalseCT).approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * (12.0 ^^ 2) / (11.0 * 10.0)));
 }
 
+// Can put SkewnessAccumulator
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3477,6 +3478,7 @@ unittest
     assert(v.skewness(PopulationFalseCT).approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * (12.0 ^^ 2) / (11.0 * 10.0)));
 }
 
+// Simpler online test
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3495,6 +3497,7 @@ unittest
     assert(v.skewness(false).approxEqual((100.238166 / 13) / pow(57.019231 / 12, 1.5) * (13.0 ^^ 2) / (12.0 * 11.0)));
 }
 
+// Simpler SkewnessAccumulator put test
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3515,6 +3518,7 @@ unittest
     assert(v.skewness(false).approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * (12.0 ^^ 2) / (11.0 * 10.0)));
 }
 
+// Confirm large values produce correct answer
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3605,7 +3609,7 @@ struct SkewnessAccumulator(T, SkewnessAlgo skewnessAlgo, Summation summation)
     }
 }
 
-///
+/// twoPass & threePass
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3634,6 +3638,7 @@ unittest
     assert(w.skewness(PopulationFalseCT).approxEqual(12.000999 / 12 * sqrt(12.0 * 11.0) / 10.0));
 }
 
+// Double-check large values produce correct answer
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3740,7 +3745,7 @@ struct SkewnessAccumulator(T, SkewnessAlgo skewnessAlgo, Summation summation)
     }
 }
 
-///
+/// assumeZeroMean
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3771,7 +3776,7 @@ unittest
     assert(v.skewness(PopulationFalseCT).approxEqual((181.005859 / 13) / pow(70.765625 / 12, 1.5) * 13.0 ^^ 2 / (12.0 * 11.0)));
 }
 
-///
+/// Can put slices
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3804,6 +3809,7 @@ unittest
     assert(v.skewness(PopulationFalseCT).approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * 12.0 ^^ 2 / (11.0 * 10.0)));
 }
 
+// Can put SkewnessAccumulator
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3838,6 +3844,7 @@ unittest
     assert(v.skewness(PopulationFalseCT).approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * 12.0 ^^ 2 / (11.0 * 10.0)));
 }
 
+// Simpler assumeZeroMean
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -3857,6 +3864,7 @@ unittest
     assert(v.skewness(false).approxEqual((181.005859 / 13) / pow(70.765625 / 12, 1.5) * 13.0 ^^ 2 / (12.0 * 11.0)));
 }
 
+// Can put SkewnessAccumulator
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -4078,6 +4086,7 @@ unittest
     assert(!z3.approxEqual(y));
 }
 
+// Alt version with x a tenth of above's value
 version(mir_test)
 @safe pure
 unittest
@@ -4232,6 +4241,7 @@ unittest
     assert(skewness!float(1, 2, 3) == 0f);
 }
 
+// Check skewness vector UFCS
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -4240,6 +4250,7 @@ unittest
     assert([1.0, 2, 3, 4].skewness.approxEqual(0.0));
 }
 
+// Double-check correct output types
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -4254,6 +4265,7 @@ unittest
     static assert(is(meanType!(typeof(y)) == double));
 }
 
+// @nogc skewness test
 version(mir_test)
 @safe pure @nogc nothrow
 unittest
@@ -4268,6 +4280,7 @@ unittest
     assert(x.sliced.skewness!float.approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * (12.0 ^^ 2) / (11.0 * 10.0)));
 }
 
+// Test skewness with values
 version(mir_test)
 @safe pure nothrow
 unittest
