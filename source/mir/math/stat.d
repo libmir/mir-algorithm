@@ -3197,20 +3197,20 @@ enum SkewnessAlgo
     /++
     Calculates skewness using
     (E(x^^3) - 3 * mu * sigma ^^ 2 + mu^3) / (sigma ^^ 3) (alowing for
-    adjustments for population/sample variance). This algorithm can be
+    adjustments for population/sample skewness). This algorithm can be
     numerically unstable.
     +/
     naive,
 
     /++
-    Calculates variance using a two-pass algorithm whereby the input is first
+    Calculates skewness using a two-pass algorithm whereby the input is first
     scaled by the mean and variance (using $(LREF VarianceAccumulator.online))
     and then the sum of cubes is calculated from that. 
     +/
     twoPass,
 
     /++
-    Calculates variance using a three-pass algorithm whereby the input is first
+    Calculates skewness using a three-pass algorithm whereby the input is first
     scaled by the mean and variance (using $(LREF VarianceAccumulator.twoPass))
     and then the sum of cubes is calculated from that. 
     +/
