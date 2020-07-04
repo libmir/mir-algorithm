@@ -3196,7 +3196,7 @@ enum SkewnessAlgo
     
     /++
     Calculates skewness using
-    (E(x^^3) - 3 * mu * sigma ^^ 2 + mu^3) / (sigma ^^ 3) (alowing for
+    (E(x^^3) - 3 * mu * sigma ^^ 2 + mu ^^ 3) / (sigma ^^ 3) (alowing for
     adjustments for population/sample skewness). This algorithm can be
     numerically unstable.
     +/
@@ -4266,6 +4266,30 @@ unittest
 
     assert(x.sliced.skewness.approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * (12.0 ^^ 2) / (11.0 * 10.0)));
     assert(x.sliced.skewness!float.approxEqual((117.005859 / 12) / pow(54.765625 / 11, 1.5) * (12.0 ^^ 2) / (11.0 * 10.0)));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.math.common: approxEqual, pow;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    assert(x.skewness.approxEqual(1.149008));
+    assert(x.skewness(true).approxEqual(1.000083));
+    assert(x.skewness!"naive".approxEqual(1.149008));
+    assert(x.skewness!"naive"(true).approxEqual(1.000083));
+    assert(x.skewness!"twoPass".approxEqual(1.149008));
+    assert(x.skewness!"twoPass"(true).approxEqual(1.000083));
+    assert(x.skewness!"threePass".approxEqual(1.149008));
+    assert(x.skewness!"threePass"(true).approxEqual(1.000083));
+
+    auto y = x.center;
+    assert(y.skewness!"assumeZeroMean".approxEqual(1.149008));
+    assert(y.skewness!"assumeZeroMean"(true).approxEqual(1.000083));
 }
 
 /++
