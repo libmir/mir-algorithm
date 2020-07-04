@@ -3341,8 +3341,8 @@ struct SkewnessAccumulator(T, SkewnessAlgo skewnessAlgo, Summation summation)
         }
         accumulator.put(x);
         T deltaNew = x - accumulator.mean;
-        centeredSumOfCubes.put((deltaOld ^^ 3) * (count - 1) * (count - 2) / (count * count) -
-                               3 * deltaOld * centeredSumOfSquares.sum / count);
+        centeredSumOfCubes.put((deltaOld ^^ 3) * (cast(T) (count - 1) * (count - 2)) / (cast(T) (count * count)) -
+                               3 * deltaOld * centeredSumOfSquares.sum / (cast(T) count));
         centeredSumOfSquares.put(deltaOld * deltaNew);
     }
 
@@ -3356,9 +3356,9 @@ struct SkewnessAccumulator(T, SkewnessAlgo skewnessAlgo, Summation summation)
         }
         accumulator.put!T(v.accumulator);
         centeredSumOfCubes.put(v.centeredSumOfCubes.sum + 
-                               delta * delta * delta * v.count * oldCount * (oldCount - v.count) / (count * count) +
-                               3 * delta * (oldCount * v.centeredSumOfSquares.sum - v.count * centeredSumOfSquares.sum) / count);
-        centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * v.count * oldCount / count);
+                               delta * delta * delta * (cast(T) v.count * oldCount * (oldCount - v.count)) / (cast(T) (count * count)) +
+                               3 * delta * ((cast(T) oldCount) * v.centeredSumOfSquares.sum - (cast(T) v.count) * centeredSumOfSquares.sum) / (cast(T) count));
+        centeredSumOfSquares.put(v.centeredSumOfSquares.sum + delta * delta * (cast(T) v.count * oldCount) / (cast(T) count));
     }
 
     ///
@@ -3371,14 +3371,14 @@ struct SkewnessAccumulator(T, SkewnessAlgo skewnessAlgo, Summation summation)
         if (isPopulation == false) {
             assert(count > 2, "SkewnessAccumulator.skewness: count must be larger than two");
 
-            F varS = centeredSumOfSquares.sum / (count - 1);
+            F varS = centeredSumOfSquares.sum / (cast(F) (count - 1));
             assert(varS > 0, "SkewnessAccumulator.skewness: variance must be larger than zero");
 
             F mult = (cast(F) (count * count)) / (cast(F) (count - 1) * (count - 2));
 
             return (centeredSumOfCubes.sum / cast(F) count) / (varS * varS.sqrt) * mult;
         } else {
-            F varP = centeredSumOfSquares.sum / (count);
+            F varP = centeredSumOfSquares.sum / (cast(F) count);
             assert(varP > 0, "SkewnessAccumulator.skewness: variance must be larger than zero");
 
             return (centeredSumOfCubes.sum / cast(F) count) / (varP * varP.sqrt);
