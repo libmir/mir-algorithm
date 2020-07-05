@@ -3285,6 +3285,7 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, pow;
+    import mir.math.sum: Summation;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3393,6 +3394,7 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, pow;
+    import mir.math.sum: Summation;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3423,6 +3425,7 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, pow;
+    import mir.math.sum: Summation;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
     auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3615,7 +3618,8 @@ version(mir_test)
 unittest
 {
     import mir.ndslice.slice: sliced;
-    import mir.math.common: approxEqual, pow, sqrt;
+    import mir.math.common: approxEqual, sqrt;
+    import mir.math.sum: Summation;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3644,7 +3648,7 @@ version(mir_test)
 unittest
 {
     import mir.ndslice.slice: sliced;
-    import mir.math.common: approxEqual, pow, sqrt;
+    import mir.math.common: approxEqual, sqrt;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3752,6 +3756,7 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, pow;
+    import mir.math.sum: Summation;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3783,6 +3788,7 @@ unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, pow;
+    import mir.math.sum: Summation;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
