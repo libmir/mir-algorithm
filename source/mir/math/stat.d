@@ -1843,7 +1843,6 @@ enum VarianceAlgo
     assumeZeroMean
 }
 
-private
 mixin template moment_ops(T,
                           Summation summation)
 {
@@ -1863,7 +1862,6 @@ mixin template moment_ops(T,
     }
 }
 
-private
 mixin template outputRange_ops(T)
 {
     ///
