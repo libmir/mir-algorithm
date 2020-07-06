@@ -8,18 +8,18 @@ license "BSL-1.0"
 dependency "mir-core" version=">=1.1.7"
 
 buildType "unittest" {
-	buildOptions "unittests" "debugMode" "debugInfo"
+    buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_test"  "mir_bignum_test"
     dflags "-lowmem"
 }
 buildType "unittest-cov" {
-	buildOptions "unittests" "coverage" "debugMode" "debugInfo"
-	versions "mir_test"  "mir_bignum_test"
+    buildOptions "unittests" "coverage" "debugMode" "debugInfo"
+    versions "mir_test"  "mir_bignum_test"
     dflags "-lowmem"
 }
 buildType "unittest-release" {
-	buildOptions "unittests" "releaseMode" "optimize" "inline" "noBoundsCheck"
-	versions "mir_test"  "mir_bignum_test"
+    buildOptions "unittests" "releaseMode" "optimize" "inline" "noBoundsCheck"
+    versions "mir_test"  "mir_bignum_test"
     dflags "-lowmem"
 }
 
