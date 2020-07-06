@@ -19,12 +19,12 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 module mir.math.stat;
 
 import core.lifetime: move;
-import mir.ndslice.slice: Slice, SliceKind;
+import mir.internal.utility: isFloatingPoint;
 import mir.math.common: fmamath;
 import mir.math.sum;
+import mir.ndslice.slice: Slice, SliceKind;
 import mir.primitives;
-import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
-import mir.internal.utility: isFloatingPoint;
+import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonType;
 
 ///
 package(mir)
@@ -1259,23 +1259,24 @@ template median(F, bool allowModify = false)
     Params:
         slice = slice
     +/
-    meanType!F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    meanType!F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice) @nogc
     {
         static assert (!allowModify ||
-                       isMutable!(DeepElementType!(Slice!(Iterator, N, kind))),
+                       isMutable!(slice.DeepElement),
                            "allowModify must be false or the input must be mutable");
         alias G = typeof(return);
         size_t len = slice.elementCount;
         assert(len > 0, "median: slice must have length greater than zero");
 
-        import mir.ndslice.topology: flattened;
+        import mir.ndslice.topology: as, flattened;
 
         static if (!allowModify) {
             import mir.ndslice.allocation: rcslice;
             
             if (len > 2) {
-                auto val = slice.rcslice.flattened;
-                auto temp = val.lightScope;
+                auto view = slice.lightScope;
+                auto val = view.as!(Unqual!(slice.DeepElement)).rcslice;
+                auto temp = val.lightScope.flattened;
                 return .median!(G, true)(temp);
             } else {
                 return mean!G(slice);
@@ -1381,6 +1382,15 @@ unittest
     
     auto x1 = [9, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
     assert(x1.median!(float, true) == 5);
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    static immutable x = [9.0, 1, 0, 2, 3];
+    assert(x.sliced.median == 2);
 }
 
 /++

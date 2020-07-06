@@ -1042,7 +1042,7 @@ template partitionAt(alias less = "a < b")
                 function is finished.
         +/
         void partitionAt(Iterator, size_t N, SliceKind kind)
-            (Slice!(Iterator, N, kind) slice, size_t nth) @trusted nothrow
+            (Slice!(Iterator, N, kind) slice, size_t nth) @trusted nothrow @nogc
         {
             import mir.qualifier: lightScope;
             import core.lifetime: move;
@@ -1160,7 +1160,7 @@ unittest {
     assert(checkTopNAll([ 0,  2,  7, 16,  2, 20,  1, 11, 17,  5, 22, 17, 25, 13, 14,  5, 22, 21, 24, 14].sliced));
 }
 
-private @trusted pure nothrow
+private @trusted pure nothrow @nogc
 void partitionAtImpl(alias less, Iterator)(
     Iterator loI, 
     Iterator hiI, 
@@ -1372,7 +1372,7 @@ unittest {
     assert(x[nth] == 10);
 }
 
-private @trusted pure nothrow
+private @trusted pure nothrow @nogc
 Iterator partitionAtPartition(alias less, Iterator)(
     ref Iterator frontI, 
     ref Iterator lastI, 
@@ -1439,7 +1439,7 @@ unittest {
     assert(x[n - 1] == x_sort[n - 1]);
 }
 
-private @trusted pure nothrow
+private @trusted pure nothrow @nogc
 Iterator partitionAtPartitionOffMedian(alias less, bool leanRight, Iterator)(
     ref Iterator frontI, 
     ref Iterator lastI, 
