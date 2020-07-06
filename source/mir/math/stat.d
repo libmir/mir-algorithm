@@ -571,7 +571,7 @@ template hmeanType(T)
         alias V = typeof(cast(U) 1 / ((cast(U) 1 / U.init + cast(U) 1 / U.init) / cast(U) 2));
         alias hmeanType = statType!V;
     } else {
-        static assert(0, "meanType: Can't calculate hmean of elements of type " ~ U.stringof);
+        static assert(0, "hmeanType: Can't calculate hmean of elements of type " ~ U.stringof);
     }
 }
 
