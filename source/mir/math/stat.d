@@ -26,7 +26,9 @@ import mir.primitives;
 import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
 import mir.internal.utility: isFloatingPoint;
 
-package template statType(T, bool checkComplex = true)
+///
+package(mir)
+template statType(T, bool checkComplex = true)
 {
     import mir.internal.utility: isFloatingPoint, isComplex;
 
@@ -131,7 +133,9 @@ unittest
     static assert(is(statType!Foo == double)); // note: this is not ints
 }
 
-package template meanType(T)
+///
+package(mir)
+template meanType(T)
 {
     import mir.math.sum: sumType;
     import mir.internal.utility: isFloatingPoint, isComplex;
@@ -552,7 +556,9 @@ unittest
     assert(x.sliced.mean!float == 29.25 / 12);
 }
 
-package template hmeanType(T)
+///
+package(mir)
+template hmeanType(T)
 {
     import mir.math.sum: sumType;
     
@@ -944,7 +950,9 @@ unittest
     assert(x.gmean.approxEqual(2.60517108));
 }
 
-package template gmeanType(T)
+///
+package(mir)
+template gmeanType(T)
 {
     import mir.math.numeric: prodType;
     
@@ -1839,7 +1847,7 @@ enum VarianceAlgo
     assumeZeroMean
 }
 
-private
+package(mir)
 mixin template moment_ops(T,
                           Summation summation)
 {
@@ -1859,7 +1867,7 @@ mixin template moment_ops(T,
     }
 }
 
-private
+package(mir)
 mixin template outputRange_ops(T)
 {
     ///
@@ -2794,7 +2802,9 @@ unittest
     assert(x.sliced.variance!float.approxEqual(54.76562 / 11));
 }
 
-package template stdevType(T)
+///
+package(mir)
+template stdevType(T)
 {
     import mir.internal.utility: isFloatingPoint;
     
