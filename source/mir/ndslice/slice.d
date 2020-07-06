@@ -552,6 +552,24 @@ package move or copy data. The operations are only carried out on lengths, strid
 and pointers. If a slice is defined over a range, only the shift of the initial element
 changes instead of the range.
 
+Mir n-dimensional Slices can be one of the three kinds.
+
+$(H4 Contiguous slice)
+
+Contiguous in memory (or in a user-defined iterator's field) row-major tensor that doesn't store strides because they can be computed on the fly using lengths.
+The row stride is always equaled 1.
+
+$(H4 Canonical slice)
+
+Canonical slice as contiguous in memory (or in a user-defined iterator's field) rows of a row-major tensor, it doesn't store the stride for row dimension because it is always equaled 1.
+BLAS/LAPACK matrices are Canonical but originally have column-major order.
+In the same time you can use 2D Canonical Slices with LAPACK assuming that rows are columns and columns are rows.
+
+$(H4 Universal slice)
+
+A row-major tensor that stores the strides for all dimensions.
+NumPy strides are Universal.
+
 $(H4 Internal Representation for Universal Slices)
 
 Type definition
