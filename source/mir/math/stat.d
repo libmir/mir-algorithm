@@ -27,6 +27,7 @@ import std.traits: isArray, isMutable, isIterable, isIntegral, CommonType;
 import mir.internal.utility: isFloatingPoint;
 
 ///
+package(mir)
 template statType(T, bool checkComplex = true)
 {
     import mir.internal.utility: isFloatingPoint, isComplex;
@@ -133,6 +134,7 @@ unittest
 }
 
 ///
+package(mir)
 template meanType(T)
 {
     import mir.math.sum: sumType;
@@ -555,6 +557,7 @@ unittest
 }
 
 ///
+package(mir)
 template hmeanType(T)
 {
     import mir.math.sum: sumType;
@@ -948,6 +951,7 @@ unittest
 }
 
 ///
+package(mir)
 template gmeanType(T)
 {
     import mir.math.numeric: prodType;
@@ -1843,6 +1847,7 @@ enum VarianceAlgo
     assumeZeroMean
 }
 
+package(mir)
 mixin template moment_ops(T,
                           Summation summation)
 {
@@ -1862,6 +1867,7 @@ mixin template moment_ops(T,
     }
 }
 
+package(mir)
 mixin template outputRange_ops(T)
 {
     ///
@@ -2797,6 +2803,7 @@ unittest
 }
 
 ///
+package(mir)
 template stdevType(T)
 {
     import mir.internal.utility: isFloatingPoint;
