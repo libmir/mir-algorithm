@@ -1857,10 +1857,26 @@ enum VarianceAlgo
     assumeZeroMean
 }
 
-package(mir)
-mixin template moment_ops(T,
-                          Summation summation)
+///
+struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
+    if (isMutable!T && varianceAlgo == VarianceAlgo.naive)
 {
+    import mir.functional: naryFun;
+
+    ///
+    this(Range)(Range r)
+        if (isIterable!Range)
+    {
+        import core.lifetime: move;
+        this.put(r.move);
+    }
+
+    ///
+    this()(T x)
+    {
+        this.put(x);
+    }
+
     ///
     MeanAccumulator!(T, summation) meanAccumulator;
 
@@ -1875,34 +1891,6 @@ mixin template moment_ops(T,
     {
         return meanAccumulator.mean;
     }
-}
-
-package(mir)
-mixin template outputRange_ops(T)
-{
-    ///
-    this(Range)(Range r)
-        if (isIterable!Range)
-    {
-        import core.lifetime: move;
-        this.put(r.move);
-    }
-
-    ///
-    this()(T x)
-    {
-        this.put(x);
-    }
-}
-
-///
-struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
-    if (isMutable!T && varianceAlgo == VarianceAlgo.naive)
-{
-    import mir.functional: naryFun;
-
-    mixin moment_ops!(T, summation);
-    mixin outputRange_ops!T;
 
     ///
     Summator!(T, summation) sumOfSquares;
@@ -1971,8 +1959,34 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && 
         varianceAlgo == VarianceAlgo.online)
 {
-    mixin moment_ops!(T, summation);
-    mixin outputRange_ops!T;
+    ///
+    this(Range)(Range r)
+        if (isIterable!Range)
+    {
+        import core.lifetime: move;
+        this.put(r.move);
+    }
+
+    ///
+    this()(T x)
+    {
+        this.put(x);
+    }
+
+    ///
+    MeanAccumulator!(T, summation) meanAccumulator;
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return meanAccumulator.mean;
+    }
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
@@ -2173,7 +2187,20 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     import mir.functional: naryFun;
     import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 
-    mixin moment_ops!(T, summation);
+    ///
+    MeanAccumulator!(T, summation) meanAccumulator;
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return meanAccumulator.mean;
+    }
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
