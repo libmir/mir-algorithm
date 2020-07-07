@@ -1940,7 +1940,8 @@ unittest
     }
 }
 
-package template ResolveSummationType(Summation summation, Range, F)
+package(mir)
+template ResolveSummationType(Summation summation, Range, F)
 {
     static if (summation == Summation.appropriate)
     {
@@ -1983,7 +1984,8 @@ private T summationInitValue(T)()
     }
 }
 
-package template elementType(T)
+package(mir)
+template elementType(T)
 {
     import mir.ndslice.slice: isSlice, DeepElementType;
     import std.traits: Unqual, ForeachType;
@@ -1998,7 +2000,8 @@ package template elementType(T)
     }
 }
 
-package template sumType(Range)
+package(mir)
+template sumType(Range)
 {
     alias T = elementType!Range;
 
