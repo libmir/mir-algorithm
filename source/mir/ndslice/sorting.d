@@ -991,7 +991,7 @@ unittest {
 }
 
 
-version(mir_test_topN)
+version(mir_test)
 @trusted pure nothrow
 unittest
 {
