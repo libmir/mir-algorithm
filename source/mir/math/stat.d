@@ -1858,26 +1858,6 @@ enum VarianceAlgo
 }
 
 package(mir)
-mixin template moment_ops(T,
-                          Summation summation)
-{
-    ///
-    MeanAccumulator!(T, summation) meanAccumulator;
-
-    ///
-    size_t count() @property
-    {
-        return meanAccumulator.count;
-    }
-
-    ///
-    F mean(F = T)() @property
-    {
-        return meanAccumulator.mean;
-    }
-}
-
-package(mir)
 mixin template outputRange_ops(T)
 {
     ///
@@ -1901,8 +1881,22 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
 {
     import mir.functional: naryFun;
 
-    mixin moment_ops!(T, summation);
     mixin outputRange_ops!T;
+
+    ///
+    MeanAccumulator!(T, summation) meanAccumulator;
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return meanAccumulator.mean;
+    }
 
     ///
     Summator!(T, summation) sumOfSquares;
@@ -1971,8 +1965,22 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && 
         varianceAlgo == VarianceAlgo.online)
 {
-    mixin moment_ops!(T, summation);
     mixin outputRange_ops!T;
+
+    ///
+    MeanAccumulator!(T, summation) meanAccumulator;
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return meanAccumulator.mean;
+    }
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
@@ -2173,7 +2181,20 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     import mir.functional: naryFun;
     import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 
-    mixin moment_ops!(T, summation);
+    ///
+    MeanAccumulator!(T, summation) meanAccumulator;
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() @property
+    {
+        return meanAccumulator.mean;
+    }
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
