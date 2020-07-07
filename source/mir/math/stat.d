@@ -1857,9 +1857,12 @@ enum VarianceAlgo
     assumeZeroMean
 }
 
-package(mir)
-mixin template outputRange_ops(T)
+///
+struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
+    if (isMutable!T && varianceAlgo == VarianceAlgo.naive)
 {
+    import mir.functional: naryFun;
+
     ///
     this(Range)(Range r)
         if (isIterable!Range)
@@ -1873,15 +1876,6 @@ mixin template outputRange_ops(T)
     {
         this.put(x);
     }
-}
-
-///
-struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
-    if (isMutable!T && varianceAlgo == VarianceAlgo.naive)
-{
-    import mir.functional: naryFun;
-
-    mixin outputRange_ops!T;
 
     ///
     MeanAccumulator!(T, summation) meanAccumulator;
@@ -1965,7 +1959,19 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && 
         varianceAlgo == VarianceAlgo.online)
 {
-    mixin outputRange_ops!T;
+    ///
+    this(Range)(Range r)
+        if (isIterable!Range)
+    {
+        import core.lifetime: move;
+        this.put(r.move);
+    }
+
+    ///
+    this()(T x)
+    {
+        this.put(x);
+    }
 
     ///
     MeanAccumulator!(T, summation) meanAccumulator;
