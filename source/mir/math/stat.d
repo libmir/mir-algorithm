@@ -22,7 +22,7 @@ import core.lifetime: move;
 import mir.internal.utility: isFloatingPoint;
 import mir.math.common: fmamath;
 import mir.math.sum;
-import mir.ndslice.slice: Slice, SliceKind;
+import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 import mir.primitives;
 import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonType;
 
@@ -1318,6 +1318,28 @@ template median(bool allowModify = false)
     }
 }
 
+/++
+Params:
+    ar = array
++/
+meanType!(T[]) median(T)(scope const T[] ar...)
+{
+    import mir.ndslice.slice: sliced;
+
+    alias F = typeof(return);
+    return median!(F, false)(ar.sliced);
+}
+
+/++
+Params:
+    withAsSlice = input that satisfies hasAsSlice
++/
+auto median(T)(T withAsSlice)
+    if (hasAsSlice!T)
+{
+    return median(withAsSlice.asSlice);
+}
+
 /// Median of vector
 version(mir_test)
 @safe pure nothrow
@@ -1329,6 +1351,18 @@ unittest
     assert(x0.median == 5);
 
     auto x1 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10].sliced;
+    assert(x1.median == 5);
+}
+
+/// Median of dynamic array
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    auto x0 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10, 5];
+    assert(x0.median == 5);
+
+    auto x1 = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10];
     assert(x1.median == 5);
 }
 
@@ -1384,6 +1418,15 @@ unittest
     assert(x1.median!(float, true) == 5);
 }
 
+/// Arbitrary median
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    assert(median(0, 1, 2, 3, 4) == 2);
+}
+
+// @nogc test
 version(mir_test)
 @safe pure nothrow @nogc
 unittest
@@ -1411,6 +1454,7 @@ unittest
     static assert(is(typeof(y) == double));
 }
 
+// additional logic tests
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -1461,6 +1505,7 @@ unittest
     assert(x.median!float.approxEqual(2.5));
 }
 
+// smallMedianImpl tests
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -1534,6 +1579,7 @@ F smallMedianImpl(F, Iterator)(Slice!Iterator slice)
     }
 }
 
+// smallMedianImpl tests
 version(mir_test)
 @safe pure nothrow
 unittest
