@@ -544,7 +544,7 @@ unittest
 }
 
 version(mir_test)
-@safe pure @nogc nothrow
+@safe pure nothrow @nogc
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -816,7 +816,7 @@ unittest
 
 /// Arbitrary harmonic mean
 version(mir_test)
-@safe pure @nogc nothrow
+@safe pure nothrow @nogc
 unittest
 {
     import mir.math.common: approxEqual;
@@ -830,7 +830,7 @@ unittest
 }
 
 version(mir_test)
-@safe pure @nogc nothrow
+@safe pure nothrow @nogc
 unittest
 {
     import mir.math.common: approxEqual;
@@ -860,7 +860,7 @@ F nthroot(F)(in F x, in size_t n)
 }
 
 version(mir_test)
-@safe @nogc pure nothrow
+@safe pure nothrow @nogc
 unittest
 {
     import mir.math.common: approxEqual;
@@ -1221,7 +1221,7 @@ unittest
 }
 
 version(mir_test)
-@safe pure @nogc nothrow
+@safe pure nothrow @nogc
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -1259,7 +1259,8 @@ template median(F, bool allowModify = false)
     Params:
         slice = slice
     +/
-    meanType!F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice) @nogc
+    @nogc
+    meanType!F median(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         static assert (!allowModify ||
                        isMutable!(slice.DeepElement),
@@ -1434,6 +1435,23 @@ unittest
     import mir.ndslice.slice: sliced;
     static immutable x = [9.0, 1, 0, 2, 3];
     assert(x.sliced.median == 2);
+}
+
+// withAsSlice test
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.rc.array: RCArray;
+
+    static immutable a = [9.0, 1, 0, 2, 3, 4, 6, 8, 7, 10, 5];
+
+    auto x = RCArray!double(11);
+    foreach(i, ref e; x)
+        e = a[i];
+
+    assert(x.median.approxEqual(5));
 }
 
 /++
@@ -1798,12 +1816,13 @@ unittest
     import mir.rc.array: RCArray;
 
     static immutable a = [1.0, 2, 3, 4, 5, 6];
+    static immutable result = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5];
 
     auto x = RCArray!double(6);
     foreach(i, ref e; x)
         e = a[i];
 
-    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(x.center.all!approxEqual(result));
 }
 
 /++
@@ -1867,7 +1886,7 @@ unittest
 }
 
 version(mir_test)
-@safe pure @nogc nothrow
+@safe pure nothrow @nogc
 unittest
 {
     import mir.ndslice.slice: sliced;
@@ -2937,7 +2956,7 @@ unittest
 }
 
 version(mir_test)
-@safe pure @nogc nothrow
+@safe pure nothrow @nogc
 unittest
 {
     import mir.ndslice.slice: sliced;
