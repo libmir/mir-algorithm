@@ -1775,6 +1775,37 @@ unittest
     assert(x.center.standardDeviation!"assumeZeroMean".approxEqual(x.standardDeviation));
 }
 
+// dynamic array test
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+
+    double[] x = [1.0, 2, 3, 4, 5, 6];
+
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+}
+
+// withAsSlice test
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    import mir.rc.array: RCArray;
+
+    static immutable a = [1.0, 2, 3, 4, 5, 6];
+
+    auto x = RCArray!double(6);
+    foreach(i, ref e; x)
+        e = a[i];
+
+    assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+}
+
 /++
 Output range that applies function `fun` to each input before summing
 +/
@@ -2315,6 +2346,40 @@ unittest
     assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
     assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+}
+
+// dynamic array test
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.rc.array: RCArray;
+
+    double[] x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+                  2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+
+    auto v = VarianceAccumulator!(double, VarianceAlgo.twoPass, Summation.naive)(x);
+    assert(v.centeredSumOfSquares.sum.approxEqual(54.76562));
+}
+
+// withAsSlice test
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.rc.array: RCArray;
+
+    static immutable a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+                          2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
+
+    auto x = RCArray!double(12);
+    foreach(i, ref e; x)
+        e = a[i];
+
+    auto v = VarianceAccumulator!(double, VarianceAlgo.twoPass, Summation.naive)(x);
+    assert(v.centeredSumOfSquares.sum.approxEqual(54.76562));
 }
 
 ///
