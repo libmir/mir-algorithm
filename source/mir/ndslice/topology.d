@@ -3308,6 +3308,20 @@ template as(T)
     {
         return as(withAsSlice.asSlice);
     }
+
+    /// ditto
+    auto as(Range)(Range r)
+        if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
+    {
+        static if (is(ForeachType!Range == T))
+            return r;
+        else
+        {
+            import core.lifetime: move;
+            import mir.conv: to;
+            return map!(to!T)(r.move);
+        }
+    }
 }
 
 ///
@@ -3339,6 +3353,13 @@ template as(T)
 
     Slice!(double*, 2)              matrix = slice!double([2, 2], 0);
     Slice!(const(double)*, 2) const_matrix = matrix.as!(const double);
+}
+
+/// Ranges
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.algorithm.iteration: filter, equal;
+    assert(5.iota.filter!"a % 2".as!double.map!"a / 2".equal([0.5, 1.5]));
 }
 
 /++
