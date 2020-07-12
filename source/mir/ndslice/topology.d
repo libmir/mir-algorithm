@@ -2124,9 +2124,9 @@ auto stride(T)(T withAsSlice, ptrdiff_t factor)
 /++
 Reverses order of iteration for all dimensions.
 Params:
-    slice = Unpacked slice.
+    slice = slice, range, or array.
 Returns:
-    Slice with reversed order of iteration for all dimensions.
+    Slice/range with reversed order of iteration for all dimensions.
 See_also: $(SUBREF dynamic, reversed), $(SUBREF dynamic, allReversed).
 +/
 auto retro
@@ -2184,6 +2184,80 @@ auto retro(T)(T withAsSlice)
     return retro(withAsSlice.asSlice);
 }
 
+
+/// ditto
+auto retro(Range)(Range r)
+    if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
+{
+    import std.traits: Unqual;
+
+    static if (is(Unqual!Range == Range))
+    {
+        import core.lifetime: move;
+        static if (is(Range : RetroRange!R, R))
+        {
+            return move(r._source);
+        }
+        else
+        {
+            return RetroRange!Range(move(r));
+        }
+    }
+    else
+    {
+        return .retro!(Unqual!Range)(r);
+    }
+}
+
+/// ditto
+struct RetroRange(Range)
+{
+    import mir.primitives: hasLength;
+
+    ///
+    Range _source;
+
+    private enum hasAccessByRef = __traits(compiles, &_source.front);
+
+    @property 
+    {
+        bool empty()() const { return _source.empty; }
+        static if (hasLength!Range)
+            auto length()() const { return _source.length; }
+        auto ref front()() { return _source.back; }
+        auto ref back()() { return _source.front; }
+        static if (__traits(hasMember, Range, "save"))
+            auto save()() { return RetroRange(_source.save); }
+        alias opDollar = length;
+
+        static if (!hasAccessByRef)
+        {
+            import std.traits: ForeachType;
+
+            void front()(ForeachType!R val)
+            {
+                import mir.functional: forward;
+                _source.back = forward!val;
+            }
+
+            void back()(ForeachType!R val)
+            {
+                import mir.functional: forward;
+                _source.front = forward!val;
+            }
+        }
+    }
+
+    void popFront()() { _source.popBack(); }
+    void popBack()() { _source.popFront(); }
+
+    static if (is(typeof(_source.moveBack())))
+    auto moveFront()() { return _source.moveBack(); }
+
+    static if (is(typeof(_source.moveFront())))
+    auto moveBack()() { return _source.moveFront(); }
+}
+
 ///
 @safe pure nothrow @nogc version(mir_test) unittest
 {
@@ -2196,6 +2270,16 @@ auto retro(T)(T withAsSlice)
     static assert(is(typeof(slice.retro.retro) == typeof(slice)));
     static assert(is(typeof(slice.canonical.retro.retro) == typeof(slice.canonical)));
     static assert(is(typeof(slice.universal.retro) == typeof(slice.universal)));
+}
+
+/// Ranges
+@safe pure nothrow @nogc version(mir_test) unittest
+{
+    import mir.algorithm.iteration: equal;
+    import std.range: std_iota = iota;
+
+    assert(std_iota(4).retro.equal(iota(4).retro));
+    static assert(is(typeof(std_iota(4).retro.retro) == typeof(std_iota(4))));
 }
 
 /++
