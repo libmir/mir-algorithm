@@ -190,44 +190,48 @@ nothrow @nogc unittest
 
 /// Moving mean
 version(mir_test)
+@safe pure nothrow @nogc
 unittest
 {
-    import mir.ndslice.topology: linspace;
     import mir.math.sum;
-    import mir.array.allocation: array;
+    import mir.ndslice.allocation: rcslice;
+    import mir.ndslice.topology: linspace;
 
-    class MovingAverage
+    struct MovingAverage(T, Summation summation)
     {
-        Summator!(double, Summation.precise) summator;
-        double[] circularBuffer;
+        import mir.math.stat: MeanAccumulator;
+        import mir.ndslice.slice: Slice;
+        import mir.rc.array: RCI;
+
+        MeanAccumulator!(T, summation) meanAccumulator;
+        Slice!(RCI!T) circularBuffer;
         size_t frontIndex;
 
-        double avg() @property const
+        auto avg() @property const
         {
-            return summator.sum / circularBuffer.length;
+            return meanAccumulator.mean;
         }
 
-        this(double[] buffer)
+        this(Slice!(RCI!T) buffer)
         {
             assert(buffer.length);
             circularBuffer = buffer;
-            summator = 0;
-            summator.put(buffer);
+            meanAccumulator.put(buffer);
         }
 
         ///operation without rounding
-        void put(double x)
+        void put(T x)
         {
             import mir.utility: swap;
-            summator += x;
+            meanAccumulator.summator += x;
             swap(circularBuffer[frontIndex++], x);
-            summator -= x;
+            meanAccumulator.summator -= x;
             frontIndex %= circularBuffer.length;
         }
     }
 
     /// ma always keeps precise average of last 1000 elements
-    auto ma = new MovingAverage(linspace!double([1000], [0.0, 999]).array);
+    auto ma = MovingAverage!(double, Summation.precise)(linspace!double([1000], [0.0, 999]).rcslice);
     assert(ma.avg == (1000 * 999 / 2) / 1000.0);
     /// move by 10 elements
     foreach(x; linspace!double([10], [1000.0, 1009.0]))
