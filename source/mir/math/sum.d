@@ -193,26 +193,30 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.internal.utility: isFloatingPoint;
     import mir.math.sum;
-    import mir.ndslice.allocation: rcslice;
     import mir.ndslice.topology: linspace;
+    import mir.rc.array: rcarray;
 
-    struct MovingAverage(T, Summation summation)
+    struct MovingAverage(T)
+        if (isFloatingPoint!T)
     {
         import mir.math.stat: MeanAccumulator;
         import mir.ndslice.slice: Slice;
         import mir.rc.array: RCI;
 
-        MeanAccumulator!(T, summation) meanAccumulator;
-        Slice!(RCI!T) circularBuffer;
+        MeanAccumulator!(T, Summation.precise) meanAccumulator;
+        double[] circularBuffer;
         size_t frontIndex;
+
+        @disable this(this);
 
         auto avg() @property const
         {
             return meanAccumulator.mean;
         }
 
-        this(Slice!(RCI!T) buffer)
+        this(double[] buffer)
         {
             assert(buffer.length);
             circularBuffer = buffer;
@@ -231,11 +235,12 @@ unittest
     }
 
     /// ma always keeps precise average of last 1000 elements
-    auto ma = MovingAverage!(double, Summation.precise)(linspace!double([1000], [0.0, 999]).rcslice);
+    auto x = linspace!double([1000], [0.0, 999]).rcarray;
+    auto ma = MovingAverage!double(x[]);
     assert(ma.avg == (1000 * 999 / 2) / 1000.0);
     /// move by 10 elements
-    foreach(x; linspace!double([10], [1000.0, 1009.0]))
-        ma.put(x);
+    foreach(e; linspace!double([10], [1000.0, 1009.0]))
+        ma.put(e);
     assert(ma.avg == (1010 * 1009 / 2 - 10 * 9 / 2) / 1000.0);
 }
 
