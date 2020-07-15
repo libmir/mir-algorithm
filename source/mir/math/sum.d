@@ -190,48 +190,55 @@ nothrow @nogc unittest
 
 /// Moving mean
 version(mir_test)
+@safe pure nothrow @nogc
 unittest
 {
-    import mir.ndslice.topology: linspace;
+    import mir.internal.utility: isFloatingPoint;
     import mir.math.sum;
-    import mir.array.allocation: array;
+    import mir.ndslice.topology: linspace;
+    import mir.rc.array: rcarray;
 
-    class MovingAverage
+    struct MovingAverage(T)
+        if (isFloatingPoint!T)
     {
-        Summator!(double, Summation.precise) summator;
+        import mir.math.stat: MeanAccumulator;
+
+        MeanAccumulator!(T, Summation.precise) meanAccumulator;
         double[] circularBuffer;
         size_t frontIndex;
 
-        double avg() @property const
+        @disable this(this);
+
+        auto avg() @property const
         {
-            return summator.sum / circularBuffer.length;
+            return meanAccumulator.mean;
         }
 
         this(double[] buffer)
         {
             assert(buffer.length);
             circularBuffer = buffer;
-            summator = 0;
-            summator.put(buffer);
+            meanAccumulator.put(buffer);
         }
 
         ///operation without rounding
-        void put(double x)
+        void put(T x)
         {
             import mir.utility: swap;
-            summator += x;
+            meanAccumulator.summator += x;
             swap(circularBuffer[frontIndex++], x);
-            summator -= x;
-            frontIndex %= circularBuffer.length;
+            frontIndex = frontIndex == circularBuffer.length ? 0 : frontIndex;
+            meanAccumulator.summator -= x;
         }
     }
 
     /// ma always keeps precise average of last 1000 elements
-    auto ma = new MovingAverage(linspace!double([1000], [0.0, 999]).array);
+    auto x = linspace!double([1000], [0.0, 999]).rcarray;
+    auto ma = MovingAverage!double(x[]);
     assert(ma.avg == (1000 * 999 / 2) / 1000.0);
     /// move by 10 elements
-    foreach(x; linspace!double([10], [1000.0, 1009.0]))
-        ma.put(x);
+    foreach(e; linspace!double([10], [1000.0, 1009.0]))
+        ma.put(e);
     assert(ma.avg == (1010 * 1009 / 2 - 10 * 9 / 2) / 1000.0);
 }
 
