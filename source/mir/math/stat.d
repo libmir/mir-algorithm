@@ -138,8 +138,7 @@ package(mir)
 template meanType(T)
 {
     import mir.math.sum: sumType;
-    import mir.internal.utility: isFloatingPoint, isComplex;
-    
+
     alias U = sumType!T;
 
     static if (__traits(compiles, {
@@ -461,8 +460,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0, 1, 1, 2, 4, 4,
               2, 7, 5, 1, 2, 0].sliced;
@@ -482,8 +481,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
     assert(x.mean.approxEqual(2.5 + 3.5i));
@@ -533,9 +532,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.topology: iota, alongDim, map;
-    import mir.math.common: approxEqual;
     import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    import mir.ndslice.topology: iota, alongDim, map;
 
     auto x = iota([2, 2], 1);
     auto y = x.alongDim!1.map!mean;
@@ -763,9 +762,9 @@ version(mir_test)
 pure @safe nothrow
 unittest
 {
+    import mir.math.common: approxEqual;
     import mir.ndslice.topology: repeat;
     import mir.ndslice.slice: sliced;
-    import mir.math.common: approxEqual;
 
     //Set sum algorithm or output type
     auto x = [1, 1e-100, 1, -1e-100].sliced;
@@ -786,8 +785,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [20, 100, 2000, 10, 5, 2].sliced;
 
@@ -807,8 +806,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
     assert(x.hmean.approxEqual(1.97110904 + 3.14849332i));
@@ -926,8 +925,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     GMeanAccumulator!double x;
     x.put([1.0, 2, 3, 4].sliced);
@@ -940,8 +939,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     GMeanAccumulator!float x;
     x.put([1, 2, 3, 4].sliced);
@@ -1031,8 +1030,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     assert(gmean([1.0, 2, 3]).approxEqual(1.81712059));
     
@@ -1046,8 +1045,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [3.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 2.0].sliced;
@@ -1060,8 +1059,8 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice.fuse: fuse;
     import mir.math.common: approxEqual;
+    import mir.ndslice.fuse: fuse;
 
     auto x = [
         [3.0, 1.0, 1.5, 2.0, 3.5, 4.25],
@@ -1076,10 +1075,10 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice.fuse: fuse;
     import mir.algorithm.iteration: all;
-    import mir.ndslice.topology: alongDim, byDim, map;
     import mir.math.common: approxEqual;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: alongDim, byDim, map;
 
     auto x = [
         [3.0, 1.0, 1.5, 2.0, 3.5, 4.25],
@@ -1102,9 +1101,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
+    import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: repeat;
-    import mir.math.common: approxEqual;
 
     auto x = [5120.0, 7340032, 32, 3758096384].sliced;
 
@@ -1122,8 +1121,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [5, 1, 1, 2, 4, 4,
               2, 7, 5, 1, 2, 10].sliced;
@@ -1157,9 +1156,9 @@ version(mir_test)
 unittest
 {
     import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
     import mir.ndslice.fuse: fuse;
     import mir.ndslice.topology: alongDim, iota, map;
-    import mir.math.common: approxEqual;
     
     auto x = [
         [1.0, 2, 3],
@@ -1199,6 +1198,7 @@ version(mir_test)
 unittest
 {
     import mir.math.common: approxEqual;
+
     assert(gmean(1.0, 2, 3).approxEqual(1.81712059));
     assert(gmean!float(1, 2, 3).approxEqual(1.81712059));
 }
@@ -1208,6 +1208,7 @@ version(mir_test)
 unittest
 {
     import mir.math.common: approxEqual;
+
     assert([1.0, 2, 3, 4].gmean.approxEqual(2.21336384));
 }
 
@@ -1224,8 +1225,8 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     static immutable x = [3.0, 1.0, 1.5, 2.0, 3.5, 4.25,
                           2.0, 7.5, 5.0, 1.0, 1.5, 2.0];
@@ -1387,11 +1388,11 @@ version(mir_test)
 @safe pure
 unittest
 {
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
     import mir.ndslice.fuse: fuse;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: alongDim, byDim, map;
-    import mir.algorithm.iteration: all;
-    import mir.math.common: approxEqual;
 
     auto x = [
         [0.0, 1.0, 1.5, 2.0, 3.5, 4.25], 
@@ -1433,6 +1434,7 @@ version(mir_test)
 unittest
 {
     import mir.ndslice.slice: sliced;
+
     static immutable x = [9.0, 1, 0, 2, 3];
     assert(x.sliced.median == 2);
 }
@@ -1477,8 +1479,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [3, 3, 2, 0, 2, 0].sliced;
     assert(x.median!float.approxEqual(2));
@@ -1528,8 +1530,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x0 = [9.0, 1, 0, 2, 3].sliced;
     assert(x0.median.approxEqual(2));
@@ -1555,8 +1557,8 @@ F smallMedianImpl(F, Iterator)(Slice!Iterator slice)
     assert(n > 0, "smallMedianImpl: slice must have elementCount greater than 0");
     assert(n <= 5, "smallMedianImpl: slice must have elementCount of 5 or less");
 
-    import mir.ndslice.sorting: medianOf;
     import mir.functional: naryFun;
+    import mir.ndslice.sorting: medianOf;
     import mir.utility: swapStars;
 
     auto sliceI0 = slice._iterator;
@@ -1602,8 +1604,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x0 = [9.0, 1, 0, 2, 3].sliced;
     assert(x0.smallMedianImpl!double.approxEqual(2));
@@ -1650,8 +1652,8 @@ template center(alias centralTendency = mean!(Summation.appropriate))
         Slice!(Iterator, N, kind) slice)
     {
         import core.lifetime: move;
-        import mir.ndslice.topology: vmap;
         import mir.ndslice.internal: LeftOp, ImplicitlyUnqual;
+        import mir.ndslice.topology: vmap;
 
         auto m = centralTendency(slice.lightScope);
         alias T = typeof(m);
@@ -1677,9 +1679,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [1.0, 2, 3, 4, 5, 6].sliced;
     assert(x.center.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
@@ -1707,9 +1709,9 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice: fuse;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
+    import mir.ndslice: fuse;
     
     auto x = [
         [0.0, 1, 2], 
@@ -1784,9 +1786,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [1.0, 2, 3, 4, 5, 6].sliced;
     assert(x.center.variance!"assumeZeroMean".approxEqual(x.variance));
@@ -1860,8 +1862,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: powi;
+    import mir.ndslice.slice: sliced;
 
     alias f = (double x) => (powi(x, 2));
     MapSummator!(f, double, Summation.pairwise) x;
@@ -1904,8 +1906,8 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.ndslice.fuse: fuse;
+    import mir.ndslice.slice: sliced;
 
     alias f = (double x) => (x + 1);
     MapSummator!(f, double, Summation.pairwise) x;
@@ -2025,8 +2027,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2100,7 +2102,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     void put()(T x)
     {
-        size_t oldCount = count;
         T delta = x;
         if (count > 0) {
             delta -= meanAccumulator.mean;
@@ -2136,8 +2137,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2167,8 +2168,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
     auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2196,8 +2197,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
     auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2227,8 +2228,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [1.0 + 3i, 2, 3].sliced;
 
@@ -2242,8 +2243,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2260,8 +2261,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
     auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2306,8 +2307,8 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
          Slice!(Iterator, N, kind) slice)
     {
         import core.lifetime: move;
-        import mir.ndslice.topology: vmap, map;
         import mir.ndslice.internal: LeftOp;
+        import mir.ndslice.topology: vmap, map;
 
         meanAccumulator.put(slice.lightScope);
         centeredSumOfSquares.put(slice.move.vmap(LeftOp!("-", T)(meanAccumulator.mean)).map!(naryFun!"a * a"));
@@ -2349,8 +2350,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2476,8 +2477,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2508,8 +2509,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2540,8 +2541,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2574,8 +2575,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto a = [1.0 + 3i, 2, 3].sliced;
     auto x = a.center;
@@ -2590,8 +2591,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2609,8 +2610,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2657,6 +2658,7 @@ template variance(
         if (isIterable!Range)
     {
         import core.lifetime: move;
+
         alias G = typeof(return);
         auto varianceAccumulator = VarianceAccumulator!(G, varianceAlgo, ResolveSummationType!(summation, Range, G))(r.move);
         return varianceAccumulator.variance(isPopulation);
@@ -2688,6 +2690,7 @@ template variance(
         if(isIterable!Range)
     {
         import core.lifetime: move;
+
         alias F = typeof(return);
         return .variance!(F, varianceAlgo, summation)(r.move, isPopulation);
     }
@@ -2720,8 +2723,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     assert(variance([1.0, 2, 3]).approxEqual(2.0 / 2));
     assert(variance([1.0, 2, 3], true).approxEqual(2.0 / 3));
@@ -2738,8 +2741,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2752,8 +2755,8 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice.fuse: fuse;
     import mir.math.common: approxEqual;
+    import mir.ndslice.fuse: fuse;
 
     auto x = [
         [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
@@ -2768,10 +2771,10 @@ version(mir_test)
 @safe pure
 unittest
 {
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
     import mir.ndslice.fuse: fuse;
     import mir.ndslice.topology: alongDim, byDim, map;
-    import mir.math.common: approxEqual;
-    import mir.algorithm.iteration: all;
 
     auto x = [
         [0.0,  1.0, 1.5, 2.0], 
@@ -2792,11 +2795,11 @@ unittest
 
 /// Can also set algorithm type
 version(mir_test)
-//@safe pure nothrow
+@safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -2824,9 +2827,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
+    import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: repeat;
-    import mir.math.common: approxEqual;
 
     //Set population variance, variance algorithm, sum algorithm or output type
 
@@ -2868,8 +2871,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0, 1, 1, 2, 4, 4,
               2, 7, 5, 1, 2, 0].sliced;
@@ -2889,8 +2892,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
     assert(x.variance.approxEqual((0.0+10.0i)/ 3));
@@ -2901,9 +2904,9 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice.fuse: fuse;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
+    import mir.ndslice.fuse: fuse;
     import mir.ndslice.topology: as, iota, alongDim, map, repeat;
 
     auto x = [
@@ -2938,6 +2941,7 @@ version(mir_test)
 unittest
 {
     import mir.math.common: approxEqual;
+
     assert([1.0, 2, 3, 4].variance.approxEqual(5.0 / 3));
 }
 
@@ -2945,9 +2949,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.topology: iota, alongDim, map;
-    import mir.math.common: approxEqual;
     import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    import mir.ndslice.topology: iota, alongDim, map;
 
     auto x = iota([2, 2], 1);
     auto y = x.alongDim!1.map!variance;
@@ -2959,8 +2963,8 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
 
     static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
                           2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
@@ -3064,6 +3068,7 @@ template standardDeviation(
         if(isIterable!Range)
     {
         import core.lifetime: move;
+
         alias F = typeof(return);
         return .standardDeviation!(F, varianceAlgo, summation)(r.move, isPopulation);
     }
@@ -3096,8 +3101,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.slice: sliced;
 
     assert(standardDeviation([1.0, 2, 3]).approxEqual(sqrt(2.0 / 2)));
     assert(standardDeviation([1.0, 2, 3], true).approxEqual(sqrt(2.0 / 3)));
@@ -3112,8 +3117,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3126,8 +3131,8 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice.fuse: fuse;
     import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.fuse: fuse;
 
     auto x = [
         [0.0, 1.0, 1.5, 2.0, 3.5, 4.25],
@@ -3142,10 +3147,10 @@ version(mir_test)
 @safe pure
 unittest
 {
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual, sqrt;
     import mir.ndslice.fuse: fuse;
     import mir.ndslice.topology: alongDim, byDim, map;
-    import mir.math.common: approxEqual, sqrt;
-    import mir.algorithm.iteration: all;
 
     auto x = [
         [0.0,  1.0, 1.5, 2.0], 
@@ -3169,8 +3174,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.slice: sliced;
 
     auto a = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
               2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
@@ -3194,9 +3199,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
+    import mir.math.common: approxEqual, sqrt;
     import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: repeat;
-    import mir.math.common: approxEqual, sqrt;
 
     //Set population standard deviation, standardDeviation algorithm, sum algorithm or output type
 
@@ -3238,8 +3243,8 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.slice: sliced;
 
     auto x = [0, 1, 1, 2, 4, 4,
               2, 7, 5, 1, 2, 0].sliced;
@@ -3275,9 +3280,9 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.ndslice.fuse: fuse;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.fuse: fuse;
     import mir.ndslice.topology: as, iota, alongDim, map, repeat;
 
     auto x = [
@@ -3304,6 +3309,7 @@ version(mir_test)
 unittest
 {
     import mir.math.common: sqrt;
+
     assert(standardDeviation(1.0, 2, 3) == 1.0);
     assert(standardDeviation!float(1, 2, 3) == 1f);
 }
@@ -3320,9 +3326,9 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.ndslice.topology: iota, alongDim, map;
-    import mir.math.common: approxEqual, sqrt;
     import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.topology: iota, alongDim, map;
 
     auto x = iota([2, 2], 1);
     auto y = x.alongDim!1.map!standardDeviation;
@@ -3334,8 +3340,8 @@ version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
-    import mir.ndslice.slice: sliced;
     import mir.math.common: approxEqual, sqrt;
+    import mir.ndslice.slice: sliced;
 
     static immutable x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
                           2.0, 7.5, 5.0, 1.0, 1.5, 0.0];
