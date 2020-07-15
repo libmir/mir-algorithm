@@ -202,8 +202,6 @@ unittest
         if (isFloatingPoint!T)
     {
         import mir.math.stat: MeanAccumulator;
-        import mir.ndslice.slice: Slice;
-        import mir.rc.array: RCI;
 
         MeanAccumulator!(T, Summation.precise) meanAccumulator;
         double[] circularBuffer;
@@ -229,8 +227,8 @@ unittest
             import mir.utility: swap;
             meanAccumulator.summator += x;
             swap(circularBuffer[frontIndex++], x);
+            frontIndex = frontIndex == circularBuffer.length ? 0 : frontIndex;
             meanAccumulator.summator -= x;
-            frontIndex %= circularBuffer.length;
         }
     }
 
