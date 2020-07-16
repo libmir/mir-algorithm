@@ -3801,7 +3801,7 @@ struct Filter(alias pred, Range)
     void popFront() scope
     {
         assert(!_input.empty, "Attempting to popFront an empty Filter.");
-        assert(_freshEmpty, "Attempting to pop the front of a Filter without calling '.empty' method ahead.");
+        version(assert) assert(_freshEmpty, "Attempting to pop the front of a Filter without calling '.empty' method ahead.");
         version(assert) _freshEmpty = false;
         _input.popFront;
     }
@@ -3809,7 +3809,7 @@ struct Filter(alias pred, Range)
     auto ref front() @property
     {
         assert(!_input.empty, "Attempting to fetch the front of an empty Filter.");
-        assert(_freshEmpty, "Attempting to fetch the front of a Filter without calling '.empty' method ahead.");
+        version(assert) assert(_freshEmpty, "Attempting to fetch the front of a Filter without calling '.empty' method ahead.");
         return _input.front;
     }
 
