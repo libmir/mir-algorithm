@@ -110,6 +110,19 @@ bool parseDecimal(size_t maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize
     }
     else
     {
+        if (str.length == 2)
+        {
+            if ((d == 'i' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"nf"))
+            {
+                key = DecimalExponentKey.infinity;
+                return true;
+            }
+            if ((d == 'n' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"an"))
+            {
+                key = DecimalExponentKey.nan;
+                return true;
+            }
+        }
         return false;
     }
 
@@ -194,6 +207,10 @@ enum DecimalExponentKey
     D = 'D' - '0',
     ///
     E = 'E' - '0',
+    ///
+    infinity,
+    ///
+    nan,
 }
 
 ///
@@ -227,6 +244,15 @@ unittest
     assert("0E100".parseDecimal(decimal, key));
     assert(cast(double) decimal.view == 0);
     assert(key == DecimalExponentKey.E);
+
+    assert("-nan".parseDecimal(decimal, key));
+    assert(cast(double) decimal.view == 0);
+    assert(decimal.coefficient.sign);
+    assert(key == DecimalExponentKey.nan);
+
+    assert("inf".parseDecimal(decimal, key));
+    assert(cast(double) decimal.view == 0);
+    assert(key == DecimalExponentKey.infinity);
 
     assert(!"3.3.4".parseDecimal(decimal, key));
     assert(!"3.4.".parseDecimal(decimal, key));
