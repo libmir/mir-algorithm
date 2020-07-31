@@ -382,6 +382,7 @@ struct BigInt(size_t maxSize64)
     }
 
     /++
+    Returns: overflow flag
     +/
     bool copyFrom(W, WordEndian endian)(BigIntView!(const W, endian) view)
     {
