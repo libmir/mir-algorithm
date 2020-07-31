@@ -109,8 +109,9 @@ extern(D):
             version(D_Exceptions) throw exception;
             else assert(0, errorMsg);
         }
+        _data = '\0';
         if (__ctfe)
-            (cast(ubyte[])_data)[0 .. str.length] = cast(ubyte[]) str;
+            (cast(char[])_data)[0 .. str.length] = cast(char[]) str;
         else
             memcpy(_data.ptr, str.ptr, str.length);
         return this;
