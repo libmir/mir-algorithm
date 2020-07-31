@@ -179,6 +179,16 @@ extern(D):
         return this;
     }
 
+    /// ditto
+    void trustedAssign(scope const(char)[] str) return @trusted nothrow
+    {
+        _data = '\0';
+        if (__ctfe)
+            (cast(char[])_data)[0 .. str.length] = cast(char[]) str;
+        else
+            memcpy(_data.ptr, str.ptr, str.length);
+    }
+
     ///
     ref typeof(this) append(char c) @trusted
     {

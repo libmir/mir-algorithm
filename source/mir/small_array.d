@@ -170,6 +170,14 @@ struct SmallArray(T, uint maxLength)
     }
 
     ///
+    void trustedAssign(V[] array) @trusted
+    {
+        _data[0 .. _length] = T.init;
+        _length = cast(uint) array.length;
+        _data[0 .. _length] = array;
+    }
+
+    ///
     ref typeof(this) append(T elem)
     {
         if (_length == maxLength)
