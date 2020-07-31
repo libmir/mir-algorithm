@@ -102,10 +102,10 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticAr
         else
         {
             auto it = result;
-            foreach(f; r)
+            foreach (f; r)
             {
                 import mir.functional: forward;
-                emplaceRef!E(it[0], forward(f));
+                emplaceRef!E(it[0], forward!f);
                 it = it[1 .. $];
             }
         }
@@ -122,13 +122,11 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticAr
         else
         static if (isPointer!Range)
         {
-            import mir.functional: forward;
             foreach (e; *r)
                 a.put(forward!e);
         }
         else
         {
-            import mir.functional: forward;
             foreach (e; r)
                 a.put(forward!e);
         }
