@@ -109,11 +109,11 @@ extern(D):
             version(D_Exceptions) throw exception;
             else assert(0, errorMsg);
         }
-        _data = '\0';
         if (__ctfe)
-            (cast(char[])_data)[0 .. str.length] = cast(char[]) str;
+            _data[0 .. str.length] =  str;
         else
             memcpy(_data.ptr, str.ptr, str.length);
+        _data[str.length .. $] = '\0';
         return this;
     }
 
@@ -184,7 +184,7 @@ extern(D):
     {
         _data = '\0';
         if (__ctfe)
-            (cast(char[])_data)[0 .. str.length] = cast(char[]) str;
+            _data[0 .. str.length] =  str;
         else
             memcpy(_data.ptr, str.ptr, str.length);
     }
