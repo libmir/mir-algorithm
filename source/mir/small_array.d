@@ -20,7 +20,7 @@ struct SmallArray(T, uint maxLength)
 {
     import std.traits: Unqual, isIterable, isImplicitlyConvertible;
 
-    private uint _length;
+    uint _length;
     T[maxLength] _data;
 
 	static SmallArray deserialize(S)(S data)

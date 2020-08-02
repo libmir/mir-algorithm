@@ -32,7 +32,7 @@ struct SmallString(uint maxLength)
     import std.traits: Unqual, isIterable;
 
     // maxLength bytes
-    private char[maxLength] _data = '\0';
+    char[maxLength] _data = '\0';
 
 extern(D):
 
