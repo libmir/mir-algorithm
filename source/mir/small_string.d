@@ -194,7 +194,10 @@ extern(D):
     {
         auto length = asArray.length;
         if (length == maxLength)
-            throw exception;
+        {
+            version(D_Exceptions) throw exception;
+            else assert(0, errorMsg);
+        }
         _data[length] = c;
         return this;
     }
@@ -204,7 +207,10 @@ extern(D):
     {
         auto length = asArray.length;
         if (length + str.length > maxLength)
-            throw exception;
+        {
+            version(D_Exceptions) throw exception;
+            else assert(0, errorMsg);
+        }
         if (__ctfe)
             _data[length .. str.length + length] = str;
         else

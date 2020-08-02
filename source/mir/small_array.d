@@ -181,7 +181,10 @@ struct SmallArray(T, uint maxLength)
     ref typeof(this) append(T elem)
     {
         if (_length == maxLength)
-            throw exception;
+        {
+            version(D_Exceptions) throw exception;
+            else assert(0, errorMsg);
+        }
         _data[_length++] = elem;
         return this;
     }
@@ -190,7 +193,10 @@ struct SmallArray(T, uint maxLength)
     ref typeof(this) append(V[] array)
     {
         if (_length + array.length > maxLength)
-            throw exception;
+        {
+            version(D_Exceptions) throw exception;
+            else assert(0, errorMsg);
+        }
         _data[_length .. _length + array.length] = array;
         _length += array.length;
         return this;
