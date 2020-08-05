@@ -1369,16 +1369,17 @@ template minmaxPos(alias pred = "a < b")
         if (!slice.anyEmpty)
         {
             size_t[2][N] ret;
-            auto it = slice._iterator;
-            Iterator[2] iterator = [it, it];
-            minmaxPosImpl!(pred, Iterator, N, kind)(ret, iterator, lightScope(slice));
+            auto scopeSlice = lightScope(slice);
+            auto it = scopeSlice._iterator;
+            LightScopeOf!Iterator[2] iterator = [it, it];
+            minmaxPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret, iterator, scopeSlice);
             foreach (i; Iota!N)
             {
                 pret[0]._lengths[i] = ret[i][0];
                 pret[1]._lengths[i] = ret[i][1];
             }
-            pret[0]._iterator = iterator[0];
-            pret[1]._iterator = iterator[1];
+            pret[0]._iterator = slice._iterator + (iterator[0] - scopeSlice._iterator);
+            pret[1]._iterator = slice._iterator + (iterator[1] - scopeSlice._iterator);
         }
         auto strides = slice.strides;
         foreach(i; Iota!(0, pret[0].S))
@@ -1447,9 +1448,10 @@ template minmaxIndex(alias pred = "a < b")
             {
                 ret[i][1] = ret[i][0] = shape[i];
             }
-            auto it = slice._iterator;
-            Iterator[2] iterator = [it, it];
-            minmaxPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret, iterator, lightScope(slice));
+            auto scopeSlice = lightScope(slice);
+            auto it = scopeSlice._iterator;
+            LightScopeOf!Iterator[2] iterator = [it, it];
+            minmaxPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret, iterator, scopeSlice);
             foreach (i; Iota!N)
             {
                 pret[0][i] = slice._lengths[i] - ret[i][0];
@@ -1506,10 +1508,12 @@ template minPos(alias pred = "a < b")
     @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)
         minPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
-        typeof(return) ret = { _iterator : slice._iterator };
+        typeof(return) ret;
+        auto iterator = slice.lightScope._iterator;
         if (!slice.anyEmpty)
         {
-            minPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret._lengths, ret._iterator, lightScope(slice));
+            minPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret._lengths, iterator, lightScope(slice));
+            ret._iterator = slice._iterator + (iterator - slice.lightScope._iterator);
         }
         auto strides = slice.strides;
         foreach(i; Iota!(0, ret.S))
@@ -1581,7 +1585,9 @@ template minIndex(alias pred = "a < b")
         if (!slice.anyEmpty)
         {
             ret = slice.shape;
-            minPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret, slice._iterator, lightScope(slice));
+            auto scopeSlice = lightScope(slice);
+            auto iterator = scopeSlice._iterator;
+            minPosImpl!(pred, LightScopeOf!Iterator, N, kind)(ret, iterator, scopeSlice);
             foreach (i; Iota!N)
                 ret[i] = slice._lengths[i] - ret[i];
         }
@@ -3992,4 +3998,23 @@ unittest
     static assert(!is(typeof(arr.fold!(a => a)(0))));
     static assert(is(typeof(arr.fold!((a, b) => a)(0))));
     assert(arr.length == 1);
+}
+
+unittest
+{
+    import mir.rc.array: RCArray;
+    import mir.algorithm.iteration: minmaxPos, minPos, maxPos, minmaxIndex, minIndex, maxIndex;
+
+    static immutable a = [0.0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+    auto x = RCArray!double(12);
+    foreach(i, ref e; x)
+        e = a[i];
+    auto y = x.asSlice;
+    auto z0 = y.minmaxPos;
+    auto z1 = y.minPos;
+    auto z2 = y.maxPos;
+    auto z3 = y.minmaxIndex;
+    auto z4 = y.minIndex;
+    auto z5 = y.maxIndex;
 }
