@@ -47,6 +47,11 @@ struct mir_rcarray(T)
     }
 
     ///
+    this(typeof(null))
+    {
+    }
+
+    ///
     mixin CommonRCImpl;
 
     ///
@@ -786,4 +791,8 @@ unittest
     auto ars = [S("123"), S("422")];
     alias R = mir_rcarray!S;
     auto rc = ars.rcarray!S;
+
+    RCArray!int value = null;
+    value = null;
 }
+

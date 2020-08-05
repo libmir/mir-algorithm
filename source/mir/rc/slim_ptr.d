@@ -87,6 +87,11 @@ struct mir_slim_rcptr(T)
     }
 
     ///
+    this(typeof(null))
+    {
+    }
+
+    ///
     mixin CommonRCImpl;
 
     ///

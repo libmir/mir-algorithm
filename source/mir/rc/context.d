@@ -172,11 +172,6 @@ mir_rc_context* mir_rc_create(
 package mixin template CommonRCImpl()
 {
     ///
-    this(typeof(null))
-    {
-    }
-
-    ///
     ref opAssign(typeof(null)) scope return
     {
         this = typeof(this).init;
