@@ -40,15 +40,29 @@ struct serdeKeyOut
 
 /++
 +/
-template getSerdeKeysIn(alias symbol)
+template serdeGetKeysIn(alias symbol)
 {
     static if (hasUDA!(symbol, serdeIgnore) || hasUDA!(symbol, serdeIgnoreIn))
-        enum immutable(char[])[] getSerdeKeysIn = null;
+        enum immutable(char[])[] serdeGetKeysIn = null;
     else
     static if (hasUDA!(symbol, serdeKeys))
-        enum immutable(char[])[] getSerdeKeysIn = getUDA!(symbol, serdeKeys).keys;
+        enum immutable(char[])[] serdeGetKeysIn = getUDA!(symbol, serdeKeys).keys;
     else
-        enum immutable(char[])[] getSerdeKeysIn = [__traits(identifier, symbol)];
+        enum immutable(char[])[] serdeGetKeysIn = [__traits(identifier, symbol)];
+}
+
+///
+immutable(char[])[] serdeGetKeysIn(T)(T value)
+    if (is(T == enum))
+{
+    import std.traits: EnumMembers;
+    foreach (i, member; EnumMembers!T)
+    {
+        alias all = __traits(getAttributes, EnumMembers!T[i]);
+        if (value == member)
+            return .serdeGetKeysIn!(EnumMembers!T[i]);
+    }
+    assert(0);
 }
 
 ///
@@ -74,12 +88,28 @@ unittest
         void p(int) @property {}
     }
 
-    static assert(getSerdeKeysIn!(S.f) == ["f"]);
-    static assert(getSerdeKeysIn!(S.d) == ["D", "t"]);
-    static assert(getSerdeKeysIn!(S.i) == null);
-    static assert(getSerdeKeysIn!(S.ii) == null);
-    static assert(getSerdeKeysIn!(S.io) == ["io"]);
-    static assert(getSerdeKeysIn!(S.p) == ["p"]);
+    static assert(serdeGetKeysIn!(S.f) == ["f"]);
+    static assert(serdeGetKeysIn!(S.d) == ["D", "t"]);
+    static assert(serdeGetKeysIn!(S.i) == null);
+    static assert(serdeGetKeysIn!(S.ii) == null);
+    static assert(serdeGetKeysIn!(S.io) == ["io"]);
+    static assert(serdeGetKeysIn!(S.p) == ["p"]);
+}
+
+///
+unittest
+{
+    enum E
+    {
+        @serdeKeys("A", "alpha")
+        a,
+        @serdeKeys("B", "beta")
+        b,
+        c,
+    }
+
+    static assert (serdeGetKeysIn(E.a) == ["A", "alpha"]);
+    static assert (serdeGetKeysIn(E.c) == ["c"]);
 }
 
 /++
@@ -96,6 +126,20 @@ template serdeGetKeyOut(alias symbol)
         enum string serdeGetKeyOut = getUDA!(symbol, serdeKeys).keys[0];
     else
         enum string serdeGetKeyOut = __traits(identifier, symbol);
+}
+
+///ditto
+immutable(char)[] serdeGetKeyOut(T)(T value)
+    if (is(T == enum))
+{
+    import std.traits: EnumMembers;
+    foreach (i, member; EnumMembers!T)
+    {
+        alias all = __traits(getAttributes, EnumMembers!T[i]);
+        if (value == member)
+            return .serdeGetKeyOut!(EnumMembers!T[i]);
+    }
+    assert(0);
 }
 
 ///
@@ -130,6 +174,24 @@ unittest
     static assert(serdeGetKeyOut!(S.io) is null);
     static assert(serdeGetKeyOut!(S.p) !is null);
     static assert(serdeGetKeyOut!(S.p) == "");
+}
+
+///
+unittest
+{
+    enum E
+    {
+        @serdeKeys("A", "alpha")
+        a,
+        @serdeKeys("B", "beta")
+        @serdeKeyOut("o")
+        b,
+        c,
+    }
+
+    static assert (serdeGetKeyOut(E.a) == "A");
+    static assert (serdeGetKeyOut(E.b) == "o");
+    static assert (serdeGetKeyOut(E.c) == "c");
 }
 
 /++
@@ -254,3 +316,67 @@ Multiple value types is supported for deserialization.
 See_also: $(MREF serdeIgnoreOut), $(MREF serdeIgnoreIn)
 +/
 enum serdeLikeStruct;
+
+/++
+Ignore keys for object and enum members.
+Should be applied to members or enum type itself.
++/
+enum serdeIgnoreCase;
+
+///
+bool hasSerdeIgnoreCase(T)(T value)
+    if (is(T == enum))
+{
+    static if (hasUDA!(T, serdeIgnoreCase))
+    {
+        return true;
+    }
+    else
+    {
+        import std.traits: EnumMembers;
+        foreach (i, member; EnumMembers!T)
+        {
+            alias all = __traits(getAttributes, EnumMembers!T[i]);
+            if (value == member)
+                return hasUDA!(EnumMembers!T[i], serdeIgnoreCase);
+        }
+        assert(0);
+    }
+}
+
+///
+unittest
+{
+    enum E
+    {
+        @serdeIgnoreCase
+        a,
+        b,
+        @serdeIgnoreCase
+        c,
+        d,
+    }
+
+    static assert(hasSerdeIgnoreCase(E.a));
+    static assert(!hasSerdeIgnoreCase(E.b));
+    static assert(hasSerdeIgnoreCase(E.c));
+    static assert(!hasSerdeIgnoreCase(E.d));
+}
+
+///
+unittest
+{
+    @serdeIgnoreCase
+    enum E
+    {
+        a,
+        b,
+        c,
+        d,
+    }
+
+    static assert(hasSerdeIgnoreCase(E.a));
+    static assert(hasSerdeIgnoreCase(E.b));
+    static assert(hasSerdeIgnoreCase(E.c));
+    static assert(hasSerdeIgnoreCase(E.d));
+}
