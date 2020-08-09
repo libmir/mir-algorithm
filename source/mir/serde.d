@@ -1,8 +1,77 @@
 module mir.serde;
 
 import mir.functional: naryFun;
-import mir.reflection: getUDA;
-import std.traits: hasUDA, TemplateArgsOf;
+import mir.reflection;
+import std.traits: TemplateArgsOf, EnumMembers, hasUDA;
+import std.meta: Filter, anySatisfy;
+
+/++
+Attribute for documentation.
++/
+struct serdeDoc
+{
+    ///
+    string text;
+    ///
+    this()(string text) { this.text = text; }
+    ///
+    @disable this();
+}
+
+/++
++/
+template serdeGetDoc(alias symbol)
+{
+    static if (hasUDA!(symbol, serdeDoc))
+        enum string serdeGetDoc = getUDA!(symbol, serdeDoc).text;
+    else
+        enum string serdeGetDoc = null;
+}
+
+/// ditto
+string serdeGetDoc(T)(T value)
+    if (is(T == enum))
+{
+    import std.traits: EnumMembers;
+    final switch (value)
+    {
+        foreach (i, member; EnumMembers!T)
+        {
+            case member:
+            alias all = __traits(getAttributes, EnumMembers!T[i]);
+            static if (hasUDA!(EnumMembers!T[i], serdeDoc))
+                return getUDA!(EnumMembers!T[i], serdeDoc).text;
+            else
+                return null;
+        }
+    }
+}
+
+///
+version(mir_test)
+unittest
+{
+    enum E
+    {
+        @serdeDoc("alpha")
+        a,
+        @serdeDoc("beta")
+        b,
+        c,
+    }
+
+    static assert(serdeGetDoc(E.a) == "alpha");
+    static assert(serdeGetDoc(E.b) == "beta");
+    static assert(serdeGetDoc(E.c) is null);
+
+    struct S
+    {
+        @serdeDoc("alpha")
+        int a;
+    }
+
+    static assert(serdeGetDoc!(S.a) == "alpha");
+}
 
 /++
 Attribute for key overloading during Serialization and Deserialization.
@@ -46,18 +115,26 @@ template serdeGetKeysIn(alias symbol)
         enum immutable(char[])[] serdeGetKeysIn = [__traits(identifier, symbol)];
 }
 
-///
+/// ditto
 immutable(char[])[] serdeGetKeysIn(T)(T value)
     if (is(T == enum))
 {
     import std.traits: EnumMembers;
-    foreach (i, member; EnumMembers!T)
+    final switch (value)
     {
-        alias all = __traits(getAttributes, EnumMembers!T[i]);
-        if (value == member)
-            return .serdeGetKeysIn!(EnumMembers!T[i]);
+        foreach (i, member; EnumMembers!T)
+        {
+            case member:
+            alias all = __traits(getAttributes, EnumMembers!T[i]);
+            static if (hasUDA!(EnumMembers!T[i], serdeIgnore) || hasUDA!(EnumMembers!T[i], serdeIgnoreIn))
+                return null;
+            else
+            static if (hasUDA!(EnumMembers!T[i], serdeKeys))
+                return getUDA!(EnumMembers!T[i], serdeKeys).keys;
+            else
+                return [__traits(identifier, EnumMembers!T[i])];
+        }
     }
-    assert(0);
 }
 
 ///
@@ -92,6 +169,7 @@ unittest
 }
 
 ///
+version(mir_test)
 unittest
 {
     enum E
@@ -172,6 +250,7 @@ unittest
 }
 
 ///
+version(mir_test)
 unittest
 {
     enum E
@@ -348,6 +427,7 @@ bool hasSerdeIgnoreCase(T)(T value)
 }
 
 ///
+version(mir_test)
 unittest
 {
     enum E
@@ -367,6 +447,7 @@ unittest
 }
 
 ///
+version(mir_test)
 unittest
 {
     @serdeIgnoreCase
@@ -421,3 +502,94 @@ struct serdeTransformOut(alias fun) {}
 Returns: unary function of underlaying alias of $(LREF serdeTransformOut)
 +/
 alias serdeGetTransformOut(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformOut))[0]);
+
+/++
++/
+bool serdeParseEnum(E)(const char[] str, out E res)
+{
+    static if (hasUDA!(E, serdeIgnoreCase))
+    {
+        import mir.format: stringBuf;
+        stringBuf buf;
+        buf << str;
+        auto ustr = buf.data.fastToUpperInPlace;
+    }
+    else
+    {
+        alias ustr = str;
+    }
+    switch(ustr)
+    {
+        foreach(i, member; EnumMembers!E)
+        {{
+            enum initKeys = serdeGetKeysIn(EnumMembers!E[i]);
+            static if (hasUDA!(E, serdeIgnoreCase))
+            {
+                import mir.ndslice.topology: map;
+                import mir.array.allocation: array;
+                enum keys = initKeys.map!fastLazyToUpper.map!array.array;
+            }
+            else
+            {
+                enum keys = initKeys;
+            }
+            static assert (keys.length, "At least one input enum key is required");
+            static foreach (key; keys)
+            {
+                case key:
+            }
+            res = member;
+            return true;
+        }}
+        default:
+            return false;
+    }
+}
+
+///
+version(mir_test)
+unittest
+{
+    @serdeIgnoreCase // supported for the whole type
+    enum E
+    {
+        @serdeKeys("A", "alpha")
+        a,
+        @serdeKeys("B", "beta")
+        b,
+        c,
+    }
+
+    auto e = E.c;
+    assert(serdeParseEnum("a", e));
+    assert(e == E.a);
+    assert(serdeParseEnum("alpha", e));
+    assert(e == E.a);
+    assert(serdeParseEnum("BETA", e));
+    assert(e == E.b);
+    assert(serdeParseEnum("b", e));
+    assert(e == E.b);
+    assert(serdeParseEnum("C", e));
+    assert(e == E.c);
+}
+
+private:
+
+auto fastLazyToUpper()(const(char)[] name)
+{
+    import mir.ndslice.topology: map;
+    return name.map!fastToUpper;
+}
+
+auto fastToUpper()(char a)
+{   // std.ascii may not be inlined
+    return 'a' <= a && a <= 'z' ? cast(char)(a ^ 0x20) : a;
+}
+
+@safe pure nothrow @nogc
+char[] fastToUpperInPlace()(scope return char[] a)
+{
+    foreach(ref char e; a)
+        e = e.fastToUpper;
+    return a;
+}
