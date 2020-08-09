@@ -1,5 +1,6 @@
 module mir.serde;
 
+import mir.functional: naryFun;
 import mir.reflection: getUDA;
 import std.traits: hasUDA, TemplateArgsOf;
 
@@ -403,7 +404,7 @@ struct serdeTransformIn(alias fun) {}
 /++
 Returns: unary function of underlaying alias of $(LREF serdeTransformIn)
 +/
-alias serdeGetTransformIn(alias value) = unaryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformIn))[0]);
+alias serdeGetTransformIn(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformIn))[0]);
 
 /++
 Attributes for out transformation.
@@ -415,4 +416,4 @@ struct serdeTransformOut(alias fun) {}
 /++
 Returns: unary function of underlaying alias of $(LREF serdeTransformOut)
 +/
-alias serdeGetTransformOut(alias value) = unaryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformOut))[0]);
+alias serdeGetTransformOut(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformOut))[0]);
