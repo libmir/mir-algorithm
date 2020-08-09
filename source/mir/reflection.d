@@ -3,16 +3,30 @@
 module mir.reflection;
 
 import std.meta;
-import std.traits: Parameters, isSomeFunction, FunctionAttribute, functionAttributes;
+import std.traits: getUDAs, Parameters, isSomeFunction, FunctionAttribute, functionAttributes;
+
+/++
+Returns: single UDA.
++/
+template getUDA(alias symbol, alias attribute)
+{
+    private alias all = getUDAs!(symbol, attribute);
+    static if (all.length != 1)
+        static assert(0, "Exactly one " ~ attribute.stringof ~ " attribute is required");
+    else
+    {
+        static if (is(typeof(all[0])))
+            enum getUDA = all[0];
+        else
+            alias getUDA = all[0];
+    }
+}
 
 /++
 Checks if member is field.
 +/
-template isField(T, string member)
-{
-    T aggregate;
-    enum bool isField = __traits(compiles, __traits(getMember, aggregate, member).offsetof);
-}
+enum bool isField(T, string member) = __traits(compiles, (ref T aggregate) { return __traits(getMember, aggregate, member).offsetof; });
+
 
 ///
 version(mir_test)
