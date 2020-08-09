@@ -27,7 +27,6 @@ Checks if member is field.
 +/
 enum bool isField(T, string member) = __traits(compiles, (ref T aggregate) { return __traits(getMember, aggregate, member).offsetof; });
 
-
 ///
 version(mir_test)
 unittest
@@ -108,13 +107,13 @@ Checks if member is property.
 +/
 template isProperty(T, string member)
 {
-    T aggregate;
+    T* aggregate;
 
-    static if (__traits(compiles, isSomeFunction!(__traits(getMember, aggregate, member))))
+    static if (__traits(compiles, isSomeFunction!(__traits(getMember, *aggregate, member))))
     {
-        static if (isSomeFunction!(__traits(getMember, aggregate, member)))
+        static if (isSomeFunction!(__traits(getMember, *aggregate, member)))
         {
-            enum bool isProperty = isPropertyImpl!(__traits(getMember, aggregate, member));
+            enum bool isProperty = isPropertyImpl!(__traits(getMember, *aggregate, member));
         }
         else
         {
@@ -336,7 +335,7 @@ private template FieldsAndPropertiesImpl(T)
     alias isField = ApplyLeft!(.isField, T);
     static if (__traits(getAliasThis, T).length)
     {
-        T aggregate;
+        T* aggregate;
         alias baseMembers = FieldsAndPropertiesImpl!(typeof(__traits(getMember, aggregate, __traits(getAliasThis, T))));
         alias members = Erase!(__traits(getAliasThis, T)[0], __traits(allMembers, T));
         alias FieldsAndPropertiesImpl = AliasSeq!(baseMembers, Filter!(isField, members), Filter!(isProperty, members));
@@ -352,30 +351,30 @@ private template FieldsAndPropertiesImpl(T)
 // check if the member is readable
 private template isReadable(T, string member)
 {
-    T aggregate;
-    enum bool isReadable = __traits(compiles, { static fun(T)(auto ref T t) {} fun(__traits(getMember, aggregate, member)); });
+    T* aggregate;
+    enum bool isReadable = __traits(compiles, { static fun(T)(auto ref T t) {} fun(__traits(getMember, *aggregate, member)); });
 }
 
 // check if the member is readable/writeble?
 private template isReadableAndWritable(T, string member)
 {
-    T aggregate;
-    enum bool isReadableAndWritable = __traits(compiles, __traits(getMember, aggregate, member) = __traits(getMember, aggregate, member));
+    T* aggregate;
+    enum bool isReadableAndWritable = __traits(compiles, __traits(getMember, *aggregate, member) = __traits(getMember, *aggregate, member));
 }
 
 private template isPublic(T, string member)
 {
-    T aggregate;
-    enum bool isPublic = !__traits(getProtection, __traits(getMember, aggregate, member)).privateOrPackage;
+    T* aggregate;
+    enum bool isPublic = !__traits(getProtection, __traits(getMember, *aggregate, member)).privateOrPackage;
 }
 
 // check if the member is property
 private template isSetter(T, string member)
 {
-    T aggregate;
-    static if (__traits(compiles, isSomeFunction!(__traits(getMember, aggregate, member))))
+    T* aggregate;
+    static if (__traits(compiles, isSomeFunction!(__traits(getMember, *aggregate, member))))
     {
-        static if (isSomeFunction!(__traits(getMember, aggregate, member)))
+        static if (isSomeFunction!(__traits(getMember, *aggregate, member)))
         {
             enum bool isSetter = getSetters!(T, member).length > 0;;
         }
@@ -390,10 +389,10 @@ private template isSetter(T, string member)
 
 private template isGetter(T, string member)
 {
-    T aggregate;
-    static if (__traits(compiles, isSomeFunction!(__traits(getMember, aggregate, member))))
+    T* aggregate;
+    static if (__traits(compiles, isSomeFunction!(__traits(getMember, *aggregate, member))))
     {
-        static if (isSomeFunction!(__traits(getMember, aggregate, member)))
+        static if (isSomeFunction!(__traits(getMember, *aggregate, member)))
         {
             enum bool isGetter = Filter!(hasZeroArguments, Filter!(isPropertyImpl, __traits(getOverloads, T, member))).length == 1;
         }
