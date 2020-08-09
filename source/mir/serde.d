@@ -1,13 +1,7 @@
 module mir.serde;
 
-import std.traits: getUDAs, hasUDA;
-
-private template getUDA(alias symbol, alias attribute)
-{
-    private alias all = getUDAs!(symbol, attribute);
-    static assert(all.length == 1, "Exactly one " ~ attribute.stringof ~ " attribute is allowed");
-    enum getUDA = all[0];
-}
+import mir.reflection: getUDA;
+import std.traits: hasUDA, TemplateArgsOf;
 
 /++
 Attribute for key overloading during Serialization and Deserialization.
@@ -250,12 +244,16 @@ unittest
         double d;
     }
 
-    import std.traits: hasUDA, getUDAs;
+    import std.traits: hasUDA;
 
     static assert(hasUDA!(S.d, serdeProxy));
     static assert(hasUDA!(S.d, serdeProxy!(SmallString!32)));
-    static assert(getUDAs!(S.d, serdeProxy).length == 1);
+    static assert(is(serdeGetProxy!(S.d) == SmallString!32));
 }
+
+/++
++/
+alias serdeGetProxy(alias symbol) = TemplateArgsOf!(getUDA!(symbol, serdeProxy))[0];
 
 /++
 Can be applied only to fields that can be constructed from strings.
@@ -380,3 +378,41 @@ unittest
     static assert(hasSerdeIgnoreCase(E.c));
     static assert(hasSerdeIgnoreCase(E.d));
 }
+
+/++
+Can be applied only to strings fields.
+Does not allocate new data when deserializeing. Raw ASDF data is used for strings instead of new memory allocation.
+Use this attributes only for strings that would not be used after ASDF deallocation.
++/
+enum serdeScoped;
+
+/++
+Attribute that force deserializer to throw an exception that the field was not found in the input.
++/
+enum serdeRequired;
+
+
+/++
+Attributes for in transformation.
+Return type of in transformation must be implicitly convertable to the type of the field.
+In transformation would be applied after serialization proxy if any.
+
++/
+struct serdeTransformIn(alias fun) {}
+
+/++
+Returns: unary function of underlaying alias of $(LREF serdeTransformIn)
++/
+alias serdeGetTransformIn(alias value) = unaryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformIn))[0]);
+
+/++
+Attributes for out transformation.
+Return type of out transformation may be differ from the type of the field.
+Out transformation would be applied before serialization proxy if any.
++/
+struct serdeTransformOut(alias fun) {}
+
+/++
+Returns: unary function of underlaying alias of $(LREF serdeTransformOut)
++/
+alias serdeGetTransformOut(alias value) = unaryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformOut))[0]);
