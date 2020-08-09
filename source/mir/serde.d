@@ -271,6 +271,10 @@ The predicate should be aplied to the aggregate type itself, not to the member.
 struct serdeIgnoreOutIf(alias pred);
 
 /++
++/
+alias serdeGetIgnoreOutIf(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreOutIf))[0]);
+
+/++
 Allows to use flexible deserialization rules such as conversion from input string to numeric types.
 +/
 enum serdeFlexible;
