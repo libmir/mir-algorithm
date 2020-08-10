@@ -3,7 +3,6 @@ module mir.serde;
 import mir.functional: naryFun;
 import mir.reflection;
 import std.traits: TemplateArgsOf, EnumMembers, hasUDA;
-import std.meta: Filter, anySatisfy;
 
 /++
 Attribute for key overloading during Serialization and Deserialization.
@@ -12,13 +11,11 @@ The first argument overloads the key value during serialization unless `serdeKey
 struct serdeKeys
 {
     ///
-    immutable(char[])[] keys;
+    immutable(string)[] keys;
 
-@safe pure nothrow:
+@system pure nothrow @nogc:
     ///
-    this(string[] keys...) { this.keys = keys.idup; }
-    ///
-    @disable this();
+    this(immutable(string)[] keys...) { this.keys = keys; }
 }
 
 /++
@@ -39,32 +36,31 @@ struct serdeKeyOut
 template serdeGetKeysIn(alias symbol)
 {
     static if (hasUDA!(symbol, serdeIgnore) || hasUDA!(symbol, serdeIgnoreIn))
-        enum immutable(char[])[] serdeGetKeysIn = null;
+        enum immutable(string)[] serdeGetKeysIn = null;
     else
     static if (hasUDA!(symbol, serdeKeys))
-        enum immutable(char[])[] serdeGetKeysIn = getUDA!(symbol, serdeKeys).keys;
+        enum immutable(string)[] serdeGetKeysIn = getUDA!(symbol, serdeKeys).keys;
     else
-        enum immutable(char[])[] serdeGetKeysIn = [__traits(identifier, symbol)];
+        enum immutable(string)[] serdeGetKeysIn = [__traits(identifier, symbol)];
 }
 
 /// ditto
-immutable(char[])[] serdeGetKeysIn(T)(T value)
+immutable(string)[] serdeGetKeysIn(T)(const T value) @trusted pure nothrow @nogc
     if (is(T == enum))
 {
-    import std.traits: EnumMembers;
+    foreach (i, member; EnumMembers!T)
+    {{
+        alias all = __traits(getAttributes, EnumMembers!T[i]);
+    }}
+
+    import std.meta: staticMap;
+    static immutable ret = [staticMap!(.serdeGetKeysIn, EnumMembers!T)];
     final switch (value)
     {
         foreach (i, member; EnumMembers!T)
         {
             case member:
-            alias all = __traits(getAttributes, EnumMembers!T[i]);
-            static if (hasUDA!(EnumMembers!T[i], serdeIgnore) || hasUDA!(EnumMembers!T[i], serdeIgnoreIn))
-                return null;
-            else
-            static if (hasUDA!(EnumMembers!T[i], serdeKeys))
-                return getUDA!(EnumMembers!T[i], serdeKeys).keys;
-            else
-                return [__traits(identifier, EnumMembers!T[i])];
+                return ret[i];
         }
     }
 }
@@ -117,6 +113,28 @@ unittest
     static assert (serdeGetKeysIn(E.c) == ["c"]);
 }
 
+///ditto
+@trusted pure nothrow @nogc
+string serdeGetKeyOut(T)(const T value)
+    if (is(T == enum))
+{
+    foreach (i, member; EnumMembers!T)
+    {{
+        alias all = __traits(getAttributes, EnumMembers!T[i]);
+    }}
+
+    import std.meta: staticMap;
+    static immutable ret = [staticMap!(.serdeGetKeyOut, EnumMembers!T)];
+    final switch (value)
+    {
+        foreach (i, member; EnumMembers!T)
+        {
+            case member:
+                return ret[i];
+        }
+    }
+}
+
 /++
 +/
 template serdeGetKeyOut(alias symbol)
@@ -131,22 +149,6 @@ template serdeGetKeyOut(alias symbol)
         enum string serdeGetKeyOut = getUDA!(symbol, serdeKeys).keys[0];
     else
         enum string serdeGetKeyOut = __traits(identifier, symbol);
-}
-
-///ditto
-string serdeGetKeyOut(T)(T value)
-    if (is(T == enum))
-{
-    import std.traits: EnumMembers;
-    final switch (value)
-    {
-        foreach (i, member; EnumMembers!T)
-        {
-            case member:
-                {alias all = __traits(getAttributes, EnumMembers!T[i]);}
-                return .serdeGetKeyOut!(EnumMembers!T[i]);
-        }
-    }
 }
 
 ///
@@ -349,7 +351,6 @@ bool hasSerdeIgnoreCase(T)(T value)
     }
     else
     {
-        import std.traits: EnumMembers;
         foreach (i, member; EnumMembers!T)
         {
             alias all = __traits(getAttributes, EnumMembers!T[i]);
