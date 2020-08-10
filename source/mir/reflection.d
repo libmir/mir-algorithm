@@ -3,7 +3,7 @@
 module mir.reflection;
 
 import std.meta;
-import std.traits: hasUDA, getUDAs, Parameters, isSomeFunction, FunctionAttribute, functionAttributes;
+import std.traits: hasUDA, getUDAs, Parameters, isSomeFunction, FunctionAttribute, functionAttributes, EnumMembers;
 
 /++
 Match types like `std.typeconst: Nullable`.
@@ -171,16 +171,6 @@ struct reflectDoc
 {
     ///
     string text;
-    ///
-    reflectTestDoc test;
-}
-
-/++
-Unittest documentation (line)
-+/
-struct reflectTestDoc
-{
-    string text;
 }
 
 /++
@@ -188,26 +178,25 @@ struct reflectTestDoc
 template serdeGetDoc(alias symbol)
 {
     static if (hasUDA!(symbol, reflectDoc))
-        enum reflectDoc serdeGetDoc = getUDA!(symbol, reflectDoc);
+        enum string serdeGetDoc = getUDA!(symbol, reflectDoc).text;
     else
-        enum reflectDoc serdeGetDoc = reflectDoc.init;
+        enum string serdeGetDoc = null;
 }
 
 /// ditto
-reflectDoc serdeGetDoc(T)(T value)
+string serdeGetDoc(T)(T value)
     if (is(T == enum))
 {
-    import std.traits: EnumMembers;
+    foreach (i, member; EnumMembers!T)
+    {{
+        alias all = __traits(getAttributes, EnumMembers!T[i]);
+    }}
     final switch (value)
     {
         foreach (i, member; EnumMembers!T)
         {
             case member:
-            alias all = __traits(getAttributes, EnumMembers!T[i]);
-            static if (hasUDA!(EnumMembers!T[i], reflectDoc))
-                return getUDA!(EnumMembers!T[i], reflectDoc);
-            else
-                return reflectDoc.init;
+                return serdeGetDoc!(EnumMembers!T[i]);
         }
     }
 }
@@ -220,14 +209,14 @@ unittest
     {
         @reflectDoc("alpha")
         a,
-        @reflectDoc("beta", reflectTestDoc("test line"))
+        @reflectDoc("beta")
         b,
         c,
     }
 
-    static assert(serdeGetDoc(E.a) == reflectDoc("alpha"));
-    static assert(serdeGetDoc(E.b) == reflectDoc("beta", reflectTestDoc("test line")));
-    static assert(serdeGetDoc(E.c).text is null);
+    static assert(serdeGetDoc(E.a) == "alpha");
+    static assert(serdeGetDoc(E.b) == "beta");
+    static assert(serdeGetDoc(E.c) is null);
 
     struct S
     {
@@ -235,7 +224,73 @@ unittest
         int a;
     }
 
-    static assert(serdeGetDoc!(S.a) == reflectDoc("alpha"));
+    static assert(serdeGetDoc!(S.a) == "alpha");
+}
+
+/++
+Attribute for extern unit-test.
++/
+struct reflectUnittest(string target)
+{
+    ///
+    string text;
+}
+
+/++
++/
+template serdeGetUnittest(string target, alias symbol)
+{
+    static if (hasUDA!(symbol, reflectUnittest!target))
+        enum string serdeGetUnittest = getUDA!(symbol, reflectUnittest).text;
+    else
+        enum string serdeGetUnittest = null;
+}
+
+/// ditto
+template serdeGetUnittest(string target)
+{
+    string serdeGetUnittest(T)(T value)
+        if (is(T == enum))
+    {
+        foreach (i, member; EnumMembers!T)
+        {{
+            alias all = __traits(getAttributes, EnumMembers!T[i]);
+        }}
+        final switch (value)
+        {
+            foreach (i, member; EnumMembers!T)
+            {
+                case member:
+                    return .serdeGetUnittest!(target, EnumMembers!T[i]);
+            }
+        }
+    }
+}
+
+///
+version(mir_test)
+unittest
+{
+    enum E
+    {
+        @reflectUnittest!"c++"("assert(E::a == 0);")
+        a,
+        @reflectUnittest!"c++"("assert(E::b == 1);")
+        b,
+        c,
+    }
+
+    static assert(serdeGetUnittest!"c++"(E.a) == "assert(E::a == 0);");
+    static assert(serdeGetUnittest!"c++"(E.b) == "assert(E::b == 1);");
+    static assert(serdeGetUnittest!"c++"(E.c) is null);
+
+    struct S
+    {
+        @reflectUnittest!"c++"("alpha")
+        int a;
+    }
+
+    static assert(serdeGetUnittest!("c++", S.a) == "alpha");
 }
 
 /++
