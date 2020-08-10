@@ -3,7 +3,240 @@
 module mir.reflection;
 
 import std.meta;
-import std.traits: getUDAs, Parameters, isSomeFunction, FunctionAttribute, functionAttributes;
+import std.traits: hasUDA, getUDAs, Parameters, isSomeFunction, FunctionAttribute, functionAttributes;
+
+/++
+Match types like `std.typeconst: Nullable`.
++/
+template isStdNullable(T)
+{
+    import std.traits : hasMember;
+
+    enum bool isStdNullable =
+        hasMember!(T, "isNull") &&
+        hasMember!(T, "get") &&
+        hasMember!(T, "nullify") &&
+        is(typeof(__traits(getMember, T, "isNull")) == bool) &&
+        !is(typeof(__traits(getMember, T, "get")) == void) &&
+        is(typeof(__traits(getMember, T, "nullify")) == void);
+}
+
+///
+unittest
+{
+    import std.typecons;
+    assert(isStdNullable!(Nullable!double));
+}
+
+///  Attribute for deprecated API
+struct reflectDeprecated(string target)
+{
+    string info;
+}
+
+/// Attribute to rename methods, types and functions
+template ReflectName(string target)
+{
+    ///
+    struct ReflectName(Args...)
+    {
+        ///
+        string name;
+    }
+}
+
+/// ditto
+template reflectName(string target = null, Args...)
+{
+    ///
+    alias TargetName = ReflectName!target;
+    ///
+    auto reflectName(string name)
+    {
+        return TargetName!Args(name);
+    }
+}
+
+///
+version(mir_test)
+unittest
+{
+    enum E { A, B, C }
+
+    struct S
+    {
+        @reflectName("A")
+        int a;
+
+        @reflectName!"c++"("B")
+        int b;
+
+        @reflectName!("C",  double)("cd")
+        @reflectName!("C",  float)("cf")
+        F c(F)()
+        {
+            return b;
+        }
+    }
+
+    import std.traits: hasUDA;
+
+    alias UniName = ReflectName!null;
+    alias CppName = ReflectName!"c++";
+    alias CName = ReflectName!"C";
+
+    static assert(hasUDA!(S.a, UniName!()("A")));
+    static assert(hasUDA!(S.b, CppName!()("B")));
+
+    // static assert(hasUDA!(S.c, ReflectName)); // doesn't work for now
+    static assert(hasUDA!(S.c, CName));
+    static assert(hasUDA!(S.c, CName!double));
+    static assert(hasUDA!(S.c, CName!float));
+    static assert(hasUDA!(S.c, CName!double("cd")));
+    static assert(hasUDA!(S.c, CName!float("cf")));
+}
+
+/// Attribute to rename methods, types and functions
+template ReflectMeta(string target)
+{
+    ///
+    struct ReflectMeta(Args...)
+    {
+        ///
+        Args args;
+    }
+}
+
+/// ditto
+template reflectMeta(string target = null)
+{
+    ///
+    alias TargetMeta = ReflectMeta!target;
+    ///
+    auto reflectMeta(Args...)(Args args)
+    {
+        return TargetMeta!Args(args);
+    }
+}
+
+///
+version(mir_test)
+unittest
+{
+    enum E { A, B, C }
+
+    struct S
+    {
+        @reflectMeta(E.A)
+        int a;
+        @reflectMeta!"c++"(E.C)
+        int b;
+    }
+
+    import std.traits: hasUDA;
+
+    alias UniMeta = ReflectMeta!null;
+    alias CppMeta = ReflectMeta!"c++";
+
+    static assert(hasUDA!(S.a, UniMeta!E(E.A)));
+    static assert(hasUDA!(S.b, CppMeta!E(E.C)));
+}
+
+/++
+Attribute to ignore a reflection target
++/
+template reflectIgnore(string target)
+{
+    enum reflectIgnore;
+}
+
+///
+version(mir_test)
+unittest
+{
+    struct S
+    {
+        @reflectIgnore!"c++"
+        int a;
+    }
+
+    import std.traits: hasUDA;
+    static assert(hasUDA!(S.a, reflectIgnore!"c++"));
+}
+
+/++
+Attribute for documentation.
++/
+struct reflectDoc
+{
+    ///
+    string text;
+    ///
+    reflectTestDoc test;
+}
+
+/++
+Unittest documentation (line)
++/
+struct reflectTestDoc
+{
+    string text;
+}
+
+/++
++/
+template serdeGetDoc(alias symbol)
+{
+    static if (hasUDA!(symbol, reflectDoc))
+        enum reflectDoc serdeGetDoc = getUDA!(symbol, reflectDoc);
+    else
+        enum reflectDoc serdeGetDoc = reflectDoc.init;
+}
+
+/// ditto
+reflectDoc serdeGetDoc(T)(T value)
+    if (is(T == enum))
+{
+    import std.traits: EnumMembers;
+    final switch (value)
+    {
+        foreach (i, member; EnumMembers!T)
+        {
+            case member:
+            alias all = __traits(getAttributes, EnumMembers!T[i]);
+            static if (hasUDA!(EnumMembers!T[i], reflectDoc))
+                return getUDA!(EnumMembers!T[i], reflectDoc);
+            else
+                return reflectDoc.init;
+        }
+    }
+}
+
+///
+version(mir_test)
+unittest
+{
+    enum E
+    {
+        @reflectDoc("alpha")
+        a,
+        @reflectDoc("beta", reflectTestDoc("test line"))
+        b,
+        c,
+    }
+
+    static assert(serdeGetDoc(E.a) == reflectDoc("alpha"));
+    static assert(serdeGetDoc(E.b) == reflectDoc("beta", reflectTestDoc("test line")));
+    static assert(serdeGetDoc(E.c).text is null);
+
+    struct S
+    {
+        @reflectDoc("alpha")
+        int a;
+    }
+
+    static assert(serdeGetDoc!(S.a) == reflectDoc("alpha"));
+}
 
 /++
 Returns: single UDA.
