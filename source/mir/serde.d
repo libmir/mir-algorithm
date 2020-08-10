@@ -134,17 +134,19 @@ template serdeGetKeyOut(alias symbol)
 }
 
 ///ditto
-immutable(char)[] serdeGetKeyOut(T)(T value)
+string serdeGetKeyOut(T)(T value)
     if (is(T == enum))
 {
     import std.traits: EnumMembers;
-    foreach (i, member; EnumMembers!T)
+    final switch (value)
     {
-        alias all = __traits(getAttributes, EnumMembers!T[i]);
-        if (value == member)
-            return .serdeGetKeyOut!(EnumMembers!T[i]);
+        foreach (i, member; EnumMembers!T)
+        {
+            case member:
+                {alias all = __traits(getAttributes, EnumMembers!T[i]);}
+                return .serdeGetKeyOut!(EnumMembers!T[i]);
+        }
     }
-    assert(0);
 }
 
 ///
