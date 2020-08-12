@@ -28,6 +28,7 @@ sources_list = [
     'mir/graph/package',
     'mir/graph/tarjan',
     'mir/interpolate/constant',
+    'mir/interpolate/generic',
     'mir/interpolate/linear',
     'mir/interpolate/package',
     'mir/interpolate/polynomial',
