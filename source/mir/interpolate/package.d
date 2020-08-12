@@ -4,6 +4,7 @@ $(H1 Interpolation Algorithms)
 $(BOOKTABLE $(H2 Interpolation modules),
 $(TR $(TH Module) $(TH Interpolation kind))
 $(T2M constant, Constant Interpolant)
+$(T2M generic, Generic Piecewise Interpolant)
 $(T2M linear, Linear Interpolant)
 $(T2M polynomial, Lagrange Barycentric Interpolant)
 $(T2M spline, Piecewise Cubic Hermite Interpolant Spline: C2 (with contiguous second derivative), cardinal, monotone (aka PCHIP), double-quadratic, Akima)
