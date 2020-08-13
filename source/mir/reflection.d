@@ -49,10 +49,9 @@ template ReflectName(string target)
 template reflectName(string target = null, Args...)
 {
     ///
-    alias TargetName = ReflectName!target;
-    ///
     auto reflectName(string name)
     {
+        alias TargetName = ReflectName!target;
         return TargetName!Args(name);
     }
 }
@@ -111,10 +110,9 @@ template ReflectMeta(string target)
 template reflectMeta(string target = null)
 {
     ///
-    alias TargetMeta = ReflectMeta!target;
-    ///
     auto reflectMeta(Args...)(Args args)
     {
+        alias TargetMeta = ReflectMeta!target;
         return TargetMeta!Args(args);
     }
 }
@@ -164,39 +162,79 @@ unittest
     static assert(hasUDA!(S.a, reflectIgnore!"c++"));
 }
 
-/++
-Attribute for documentation.
-+/
-struct reflectDoc
+/// Attribute to rename methods, types and functions
+struct ReflectDoc(string target)
 {
     ///
     string text;
+    ///
+    reflectUnittest!target test;
 
-@safe pure nothrow @nogc:
-
-    this(string text)
+    ///
+    @safe pure nothrow @nogc
+    this(string docstr)
     {
         this.text = text;
     }
 
-    this(const typeof(this) other)
+    ///
+    @safe pure nothrow @nogc
+    this(string text, reflectUnittest!target test)
     {
-        this.text = other.text;
+        this.text = text;
+        this.test = test;
+    }
+
+    ///
+    void toString(W)(scope ref W w) scope const
+    {
+        w.put(cast()this.text);
+
+        if (this.test.text.length)
+        {
+            w.put("\nExample usage:\n");
+            w.put(cast()this.test.text);
+        }
+    }
+
+    ///
+    @safe pure nothrow
+    string toString()() scope const
+    {
+        return this.text ~ "\nExample usage:\n" ~ this.test.text;
+    }
+}
+
+/++
+Attribute for documentation.
++/
+template reflectDoc(string target = null)
+{
+    ///
+    ReflectDoc!target reflectDoc(string text)
+    {
+        return ReflectDoc!target(text);
+    }
+
+    ///
+    ReflectDoc!target reflectDoc(string text, reflectUnittest!target test)
+    {
+        return ReflectDoc!target(text, test);
     }
 }
 
 /++
 +/
-template serdeGetDoc(alias symbol)
+template reflectGetDocs(string target, alias symbol)
 {
-    static if (hasUDA!(symbol, reflectDoc))
-        enum string serdeGetDoc = getUDA!(symbol, reflectDoc).text;
+    static if (hasUDA!(symbol, ReflectDoc!target))
+        static immutable(ReflectDoc!target[]) reflectGetDocs = [getUDAs!(symbol, ReflectDoc!target)];
     else
-        enum string serdeGetDoc = null;
+        static immutable(ReflectDoc!target[]) reflectGetDocs = null;
 }
 
 /// ditto
-string serdeGetDoc(T)(T value)
+immutable(ReflectDoc!target)[] reflectGetDocs(string target, T)(T value)
     if (is(T == enum))
 {
     foreach (i, member; EnumMembers!T)
@@ -206,10 +244,10 @@ string serdeGetDoc(T)(T value)
     final switch (value)
     {
         foreach (i, member; EnumMembers!T)
-        {
+        {{
             case member:
-                return serdeGetDoc!(EnumMembers!T[i]);
-        }
+                return .reflectGetDocs!(target, EnumMembers!T[i]);
+        }}
     }
 }
 
@@ -221,22 +259,32 @@ unittest
     {
         @reflectDoc("alpha")
         a,
+        @reflectDoc!"C#"("Beta", reflectUnittest!"C#"("some c# code"))
         @reflectDoc("beta")
         b,
         c,
     }
 
-    static assert(serdeGetDoc(E.a) == "alpha");
-    static assert(serdeGetDoc(E.b) == "beta");
-    static assert(serdeGetDoc(E.c) is null);
+    alias Doc = ReflectDoc!null;
+    alias CSDoc = ReflectDoc!"C#";
+
+    static assert(reflectGetDocs!null(E.a) == [Doc("alpha")]);
+    static assert(reflectGetDocs!"C#"(E.b) == [CSDoc("Beta", reflectUnittest!"C#"("some c# code"))]);
+    static assert(reflectGetDocs!null(E.b) == [Doc("beta")]);
+    static assert(reflectGetDocs!null(E.c) is null);
 
     struct S
     {
         @reflectDoc("alpha")
+        @reflectDoc!"C#"("Alpha")
         int a;
     }
 
-    static assert(serdeGetDoc!(S.a) == "alpha");
+    static assert(reflectGetDocs!(null, S.a) == [Doc("alpha")]);
+    static assert(reflectGetDocs!("C#", S.a) == [CSDoc("Alpha")]);
+
+    import std.conv: to;
+    static assert(CSDoc("Beta", reflectUnittest!"C#"("some c# code")).to!string == "Beta\nExample usage:\nsome c# code");
 }
 
 /++
@@ -262,18 +310,18 @@ struct reflectUnittest(string target)
 
 /++
 +/
-template serdeGetUnittest(string target, alias symbol)
+template reflectGetUnittest(string target, alias symbol)
 {
     static if (hasUDA!(symbol, reflectUnittest!target))
-        enum string serdeGetUnittest = getUDA!(symbol, reflectUnittest).text;
+        enum string reflectGetUnittest = getUDA!(symbol, reflectUnittest).text;
     else
-        enum string serdeGetUnittest = null;
+        enum string reflectGetUnittest = null;
 }
 
 /// ditto
-template serdeGetUnittest(string target)
+template reflectGetUnittest(string target)
 {
-    string serdeGetUnittest(T)(T value)
+    string reflectGetUnittest(T)(T value)
         if (is(T == enum))
     {
         foreach (i, member; EnumMembers!T)
@@ -285,7 +333,7 @@ template serdeGetUnittest(string target)
             foreach (i, member; EnumMembers!T)
             {
                 case member:
-                    return .serdeGetUnittest!(target, EnumMembers!T[i]);
+                    return .reflectGetUnittest!(target, EnumMembers!T[i]);
             }
         }
     }
@@ -304,9 +352,9 @@ unittest
         c,
     }
 
-    static assert(serdeGetUnittest!"c++"(E.a) == "assert(E::a == 0);");
-    static assert(serdeGetUnittest!"c++"(E.b) == "assert(E::b == 1);");
-    static assert(serdeGetUnittest!"c++"(E.c) is null);
+    static assert(reflectGetUnittest!"c++"(E.a) == "assert(E::a == 0);");
+    static assert(reflectGetUnittest!"c++"(E.b) == "assert(E::b == 1);");
+    static assert(reflectGetUnittest!"c++"(E.c) is null);
 
     struct S
     {
@@ -314,7 +362,7 @@ unittest
         int a;
     }
 
-    static assert(serdeGetUnittest!("c++", S.a) == "alpha");
+    static assert(reflectGetUnittest!("c++", S.a) == "alpha");
 }
 
 /++
