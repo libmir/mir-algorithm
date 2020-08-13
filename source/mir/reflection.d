@@ -171,6 +171,18 @@ struct reflectDoc
 {
     ///
     string text;
+
+@safe pure nothrow @nogc:
+
+    this(string text)
+    {
+        this.text = text;
+    }
+
+    this(const typeof(this) other)
+    {
+        this.text = other.text;
+    }
 }
 
 /++
@@ -234,6 +246,18 @@ struct reflectUnittest(string target)
 {
     ///
     string text;
+
+@safe pure nothrow @nogc:
+
+    this(string text)
+    {
+        this.text = text;
+    }
+
+    this(const typeof(this) other)
+    {
+        this.text = other.text;
+    }
 }
 
 /++

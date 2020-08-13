@@ -22,7 +22,7 @@ version(mir_test)
     import mir.ndslice;
     import mir.math.common: approxEqual;
 
-    struct S
+    struct PieceInterpolant
     {
         int value;
 
@@ -39,7 +39,8 @@ version(mir_test)
         enum uint derivativeOrder = 0;
     }
 
-    static immutable x = [0, 1, 2, 3];
+    alias S = PieceInterpolant;
+    static immutable x = [0, 1, 2, 3]; // can be also an array of floating point numbers
     static immutable y = [S(10), S(20), S(30)];
 
     auto interpolant = generic(x.rcslice, y.rcslice!(const S));
