@@ -64,7 +64,6 @@ sources_list = [
     'mir/rc/package',
     'mir/rc/ptr',
     'mir/rc/slim_ptr',
-    'mir/reflection',
     'mir/serde',
     'mir/series',
     'mir/small_array',

@@ -20,7 +20,6 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,array,allocation)) $(TD `std.array` reworked for Mir))
     $(TR $(TDNW $(MREF mir,range)) $(TD Ranges))
     $(TR $(TDNW $(MREF mir,serde)) $(TD Utilities for serialization libraries ))
-    $(TR $(TDNW $(MREF mir,reflection)) $(TD Compile time reflection utilities ))
     $(LEADINGROW Date and time)
     $(TR $(TDNW $(MREF mir,date)) $(TD Fast BetterC Date type with Boost ABI and mangling compatability))
     $(LEADINGROW NDarrays and Algorithms)
