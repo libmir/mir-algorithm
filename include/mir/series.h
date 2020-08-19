@@ -2,6 +2,7 @@
 
 #define MIR_SERIES
 
+#include <iterator>
 #include <map>
 #include <stdexcept>
 #include "mir/ndslice.h"
@@ -261,6 +262,12 @@ struct mir_series
 
     struct ThisIterator
     {
+        using value_type = Data;
+        using difference_type = mir_ptrdiff_t;
+        using reference = Observation;
+        using pointer = void;
+        using iterator_category = std::input_iterator_tag;
+
         mir_size_t _index = 0;
         mir_series _series;
         ThisIterator& operator++() noexcept { ++_index; return *this;}
@@ -272,7 +279,7 @@ struct mir_series
         bool operator>=(const ThisIterator& rhs) const noexcept { return _index >= rhs._index; }
         bool operator<=(const ThisIterator& rhs) const noexcept { return _index <= rhs._index; }
 
-        Observation operator*() noexcept
+        reference operator*() noexcept
         {
             static_assert(kind == mir_slice_kind::contiguous && N == 1, "The method is defined only for 1-dimensional slice.");
             return _series[_index];
