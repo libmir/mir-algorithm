@@ -523,13 +523,13 @@ $(TR $(TD An $(B interval) is a part of a sequence of type `i .. j`.)
 $(TR $(TD An $(B index) is a part of a sequence of type `i`.)
     $(STD `3`, `$-1`))
 $(TR $(TD A $(B partially defined slice) is a sequence composed of
-    $(B intervals) and $(B indexes) with an overall length strictly less than `N`.)
+    $(B intervals) and $(B indices) with an overall length strictly less than `N`.)
     $(STD `[3]`, `[0..$]`, `[3, 3]`, `[0..$,0..3]`, `[0..$,2]`))
 $(TR $(TD A $(B fully defined index) is a sequence
-    composed only of $(B indexes) with an overall length equal to `N`.)
+    composed only of $(B indices) with an overall length equal to `N`.)
     $(STD `[2,3,1]`))
 $(TR $(TD A $(B fully defined slice) is an empty sequence
-    or a sequence composed of $(B indexes) and at least one
+    or a sequence composed of $(B indices) and at least one
     $(B interval) with an overall length equal to `N`.)
     $(STD `[]`, `[3..$,0..3,0..$-1]`, `[2,0..$,1]`))
 $(TR $(TD An $(B indexed slice) is syntax sugar for $(SUBREF topology, indexed) and $(SUBREF topology, cartesian).)
@@ -779,47 +779,47 @@ package(mir):
         return _stride!dimension * (_lengths[dimension] - 1);
     }
 
-    size_t indexStride(size_t I)(size_t[I] _indexes) @safe scope const
+    size_t indexStride(size_t I)(size_t[I] _indices) @safe scope const
     {
-        static if (_indexes.length)
+        static if (_indices.length)
         {
             static if (kind == Contiguous)
             {
                 enum E = I - 1;
-                assert(_indexes[E] < _lengths[E], indexError!(E, N));
+                assert(_indices[E] < _lengths[E], indexError!(E, N));
                 ptrdiff_t ball = this._stride!E;
-                ptrdiff_t stride = _indexes[E] * ball;
+                ptrdiff_t stride = _indices[E] * ball;
                 foreach_reverse (i; Iota!E) //static
                 {
                     ball *= _lengths[i + 1];
-                    assert(_indexes[i] < _lengths[i], indexError!(i, N));
-                    stride += ball * _indexes[i];
+                    assert(_indices[i] < _lengths[i], indexError!(i, N));
+                    stride += ball * _indices[i];
                 }
             }
             else
             static if (kind == Canonical)
             {
                 enum E = I - 1;
-                assert(_indexes[E] < _lengths[E], indexError!(E, N));
+                assert(_indices[E] < _lengths[E], indexError!(E, N));
                 static if (I == N)
-                    size_t stride = _indexes[E];
+                    size_t stride = _indices[E];
                 else
-                    size_t stride = _strides[E] * _indexes[E];
+                    size_t stride = _strides[E] * _indices[E];
                 foreach_reverse (i; Iota!E) //static
                 {
-                    assert(_indexes[i] < _lengths[i], indexError!(i, N));
-                    stride += _strides[i] * _indexes[i];
+                    assert(_indices[i] < _lengths[i], indexError!(i, N));
+                    stride += _strides[i] * _indices[i];
                 }
             }
             else
             {
                 enum E = I - 1;
-                assert(_indexes[E] < _lengths[E], indexError!(E, N));
-                size_t stride = _strides[E] * _indexes[E];
+                assert(_indices[E] < _lengths[E], indexError!(E, N));
+                size_t stride = _strides[E] * _indices[E];
                 foreach_reverse (i; Iota!E) //static
                 {
-                    assert(_indexes[i] < _lengths[i], indexError!(i, N));
-                    stride += _strides[i] * _indexes[i];
+                    assert(_indices[i] < _lengths[i], indexError!(i, N));
+                    stride += _strides[i] * _indices[i];
                 }
             }
             return stride;
@@ -1050,16 +1050,16 @@ public:
     }
 
     /// `opIndex` overload for const slice
-    auto ref opIndex(Indexes...)(Indexes indexes) const @trusted
+    auto ref opIndex(Indexes...)(Indexes indices) const @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes)
     {
-        return lightConst.opIndex(indexes);
+        return lightConst.opIndex(indices);
     }
     /// `opIndex` overload for immutable slice
-    auto ref opIndex(Indexes...)(Indexes indexes) immutable @trusted
+    auto ref opIndex(Indexes...)(Indexes indices) immutable @trusted
             if (isPureSlice!Indexes || isIndexedSlice!Indexes)
     {
-        return lightImmutable.opIndex(indexes);
+        return lightImmutable.opIndex(indices);
     }
 
     static if (allSatisfy!(isPointer, Iterator, Labels))
@@ -2099,55 +2099,55 @@ public:
     /++
     $(BOLD Fully defined index)
     +/
-    auto ref opIndex()(size_t[N] _indexes...) scope return @trusted
+    auto ref opIndex()(size_t[N] _indices...) scope return @trusted
     {
-        return _iterator[indexStride(_indexes)];
+        return _iterator[indexStride(_indices)];
     }
 
     /// ditto
-    auto ref opIndex()(size_t[N] _indexes...) scope return const @trusted
+    auto ref opIndex()(size_t[N] _indices...) scope return const @trusted
     {
-        static if (is(typeof(_iterator[indexStride(_indexes)])))
-            return _iterator[indexStride(_indexes)];
+        static if (is(typeof(_iterator[indexStride(_indices)])))
+            return _iterator[indexStride(_indices)];
         else
-            return .lightConst(.lightScope(_iterator))[indexStride(_indexes)];
+            return .lightConst(.lightScope(_iterator))[indexStride(_indices)];
     }
 
     /// ditto
-    auto ref opIndex()(size_t[N] _indexes...) scope return immutable @trusted
+    auto ref opIndex()(size_t[N] _indices...) scope return immutable @trusted
     {
-        static if (is(typeof(_iterator[indexStride(_indexes)])))
-            return _iterator[indexStride(_indexes)];
+        static if (is(typeof(_iterator[indexStride(_indices)])))
+            return _iterator[indexStride(_indices)];
         else
-            return .lightImmutable(.lightScope(_iterator))[indexStride(_indexes)];
+            return .lightImmutable(.lightScope(_iterator))[indexStride(_indices)];
     }
 
     /++
     $(BOLD Partially defined index)
     +/
-    auto opIndex(size_t I)(size_t[I] _indexes...) scope return @trusted
+    auto opIndex(size_t I)(size_t[I] _indices...) scope return @trusted
         if (I && I < N)
     {
         enum size_t diff = N - I;
         alias Ret = Slice!(Iterator, diff, diff == 1 && kind == Canonical ? Contiguous : kind);
         static if (I < S)
-            return Ret(_lengths[I .. N], _strides[I .. S], _iterator + indexStride(_indexes));
+            return Ret(_lengths[I .. N], _strides[I .. S], _iterator + indexStride(_indices));
         else
-            return Ret(_lengths[I .. N], _iterator + indexStride(_indexes));
+            return Ret(_lengths[I .. N], _iterator + indexStride(_indices));
     }
 
     /// ditto
-    auto opIndex(size_t I)(size_t[I] _indexes...) scope return const
+    auto opIndex(size_t I)(size_t[I] _indices...) scope return const
         if (I && I < N)
     {
-        return this.lightConst.opIndex(_indexes);
+        return this.lightConst.opIndex(_indices);
     }
 
     /// ditto
-    auto opIndex(size_t I)(size_t[I] _indexes...) scope return immutable
+    auto opIndex(size_t I)(size_t[I] _indices...) scope return immutable
         if (I && I < N)
     {
-        return this.lightImmutable.opIndex(_indexes);
+        return this.lightImmutable.opIndex(_indices);
     }
 
     /++
@@ -2958,14 +2958,14 @@ public:
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexAssign(T)(T value, size_t[N] _indexes...) scope return @trusted
+        auto ref opIndexAssign(T)(T value, size_t[N] _indices...) scope return @trusted
         {
             // check assign safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
             {
                 return t = v;
             }
-            return _iterator[indexStride(_indexes)] = value;
+            return _iterator[indexStride(_indices)] = value;
         }
 
         static if (doUnittest)
@@ -2991,14 +2991,14 @@ public:
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexOpAssign(string op, T)(T value, size_t[N] _indexes...) scope return @trusted
+        auto ref opIndexOpAssign(string op, T)(T value, size_t[N] _indices...) scope return @trusted
         {
             // check op safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
             {
                 return mixin(`t` ~ op ~ `= v`);
             }
-            auto str = indexStride(_indexes);
+            auto str = indexStride(_indices);
             static if (op == "^^" && isFloatingPoint!DeepElement && isFloatingPoint!(typeof(value)))
             {
                 import mir.math.common: pow;
@@ -3227,7 +3227,7 @@ public:
         /++
         Increment `++` and Decrement `--` operators for a $(B fully defined index).
         +/
-        auto ref opIndexUnary(string op)(size_t[N] _indexes...) scope return
+        auto ref opIndexUnary(string op)(size_t[N] _indices...) scope return
             @trusted
             // @@@workaround@@@ for Issue 16473
             //if (op == `++` || op == `--`)
@@ -3237,7 +3237,7 @@ public:
             {
                 return mixin(op ~ `t`);
             }
-            return mixin (op ~ `_iterator[indexStride(_indexes)]`);
+            return mixin (op ~ `_iterator[indexStride(_indices)]`);
         }
 
         static if (doUnittest)
@@ -3342,7 +3342,7 @@ pure nothrow version(mir_test) unittest
     ++tensor[];
     tensor[] -= 1;
 
-    // `opIndexAssing` accepts only fully defined indexes and slices.
+    // `opIndexAssing` accepts only fully defined indices and slices.
     // Use an additional empty slice `[]`.
     static assert(!__traits(compiles, tensor[0 .. 2] *= 2));
 

@@ -161,15 +161,15 @@ extern(D):
         auto opCall(X...)(in X xs) scope const @trusted
             if (X.length == N)
         {
-            size_t[N] indexes;
+            size_t[N] indices;
             foreach(i; Iota!N)
             {
                 static if (isInterval!(typeof(xs[i])))
-                    indexes[i] = xs[i][1];
+                    indices[i] = xs[i][1];
                 else
-                    indexes[i] = _data._lengths[i] > 1 ? this.findInterval!i(xs[i]) : 0;
+                    indices[i] = _data._lengths[i] > 1 ? this.findInterval!i(xs[i]) : 0;
             }
-            return _data[indexes];
+            return _data[indices];
         }
     }
 }

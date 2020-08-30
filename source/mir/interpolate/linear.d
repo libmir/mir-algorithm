@@ -265,7 +265,7 @@ struct Linear(F, size_t N = 1, X = F)
             import mir.ndslice.topology: iota;
             alias Kernel = AliasCall!(LinearKernel!F, "opCall", derivative);
 
-            size_t[N] indexes;
+            size_t[N] indices;
             Kernel[N] kernels;
 
             enum rp2d = derivative;
@@ -274,15 +274,15 @@ struct Linear(F, size_t N = 1, X = F)
             {
                 static if (isInterval!(typeof(xs[i])))
                 {
-                    indexes[i] = xs[i][1];
+                    indices[i] = xs[i][1];
                     auto x = xs[i][0];
                 }
                 else
                 { 
                     alias x = xs[i];
-                    indexes[i] = this.findInterval!i(x);
+                    indices[i] = this.findInterval!i(x);
                 }
-                kernels[i] = LinearKernel!F(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
+                kernels[i] = LinearKernel!F(_grid[i][indices[i]], _grid[i][indices[i] + 1], x);
             }
 
             align(64) F[2 ^^ N][derivative + 1] local;
@@ -297,7 +297,7 @@ struct Linear(F, size_t N = 1, X = F)
                 }
                 else
                 {
-                    from += strides[i] * indexes[i];
+                    from += strides[i] * indices[i];
                     load!(i - 1)(from, to);
                     from += strides[i];
                     enum s = 2 ^^ (N - 1 - i);

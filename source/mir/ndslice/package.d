@@ -19,7 +19,7 @@
 
 3. `mixin template`s may be used for pretty error message formatting.
 
-4. `Exception`s/`enforce`s should no be used to check indexes and lengths.
+4. `Exception`s/`enforce`s should no be used to check indices and lengths.
     Exceptions are only allowed for algorithms where validation of input data is
     too complicated for the user. `reshape` function is a good example of a case
     where Exceptions are required.

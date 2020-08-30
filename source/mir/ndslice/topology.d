@@ -72,12 +72,12 @@ $(T2 map, Multidimensional functional map.)
 $(T2 member, Field (element's member) projection.)
 $(T2 orthogonalReduceField, Functional deep-element wise reduce of a slice composed of fields or iterators.)
 $(T2 pairwise, Pairwise map for vectors.)
-$(T2 pairwiseMapSubSlices, Maps pairwise indexes pairs to subslices.)
+$(T2 pairwiseMapSubSlices, Maps pairwise index pairs to subslices.)
 $(T2 retro, Reverses order of iteration for all dimensions.)
 $(T2 slide, Sliding map for vectors.)
 $(T2 stairs, Two functions to pack, unpack, and iterate triangular and symmetric matrix storage.)
 $(T2 stride, Strides 1-dimensional slice.)
-$(T2 subSlices, Maps indexes pairs to subslices.)
+$(T2 subSlices, Maps index pairs to subslices.)
 $(T2 triplets, Constructs a lazy view of triplets with `left`, `center`, and `right` members. The topology is usefull for Math and Physics.)
 $(T2 unzip, Selects a slice from a zipped slice.)
 $(T2 zip, Zips slices into a slice of refTuples.)
@@ -623,7 +623,7 @@ Params:
     start = value of the first element in a slice (optional for integer `I`)
     stride = value of the stride between elements (optional)
 Returns:
-    n-dimensional slice composed of indexes
+    n-dimensional slice composed of indices
 See_also: $(LREF ndiota)
 +/
 Slice!(IotaIterator!I, N)
@@ -1515,9 +1515,9 @@ Slice!(FlattenedIterator!(Iterator, N, kind))
 {
     import core.lifetime: move;
     size_t[typeof(return).N] lengths;
-    sizediff_t[typeof(return)._iterator._indexes.length] indexes;
+    sizediff_t[typeof(return)._iterator._indices.length] indices;
     lengths[0] = slice.elementCount;
-    return typeof(return)(lengths, FlattenedIterator!(Iterator, N, kind)(indexes, slice.move));
+    return typeof(return)(lengths, FlattenedIterator!(Iterator, N, kind)(indices, slice.move));
 }
 
 /// ditto
@@ -1588,7 +1588,7 @@ version(mir_test) unittest
     elems.popFrontExactly(2);
     assert(elems.front == 2);
     /// `_index` is available only for canonical and universal ndslices.
-    assert(elems._iterator._indexes == [0, 2]);
+    assert(elems._iterator._indices == [0, 2]);
 
     elems.popBackExactly(2);
     assert(elems.back == 9);
@@ -1603,7 +1603,7 @@ version(mir_test) unittest
 
     for (auto elems = slice.universal.flattened; !elems.empty; elems.popFront)
     {
-        ptrdiff_t[2] index = elems._iterator._indexes;
+        ptrdiff_t[2] index = elems._iterator._indices;
         elems.front = index[0] * 10 + index[1] * 3;
     }
     assert(slice ==
@@ -1774,7 +1774,7 @@ Params:
     N = dimension count
     lengths = list of dimension lengths
 Returns:
-    `N`-dimensional slice composed of indexes
+    `N`-dimensional slice composed of indices
 See_also: $(LREF iota)
 +/
 Slice!(FieldIterator!(ndIotaField!N), N)
@@ -3447,12 +3447,12 @@ template as(T)
 }
 
 /++
-Takes a field `source` and a slice `indexes`, and creates a view of source as if its elements were reordered according to indexes.
-`indexes` may include only a subset of the elements of `source` and may also repeat elements.
+Takes a field `source` and a slice `indices`, and creates a view of source as if its elements were reordered according to indices.
+`indices` may include only a subset of the elements of `source` and may also repeat elements.
 
 Params:
     source = a filed, source of data. `source` must be an array or a pointer, or have `opIndex` primitive. Full random access range API is not required.
-    indexes = a slice, source of indexes.
+    indices = a slice, source of indices.
 Returns:
     n-dimensional slice with the same kind, shape and strides.
 
@@ -3460,38 +3460,38 @@ See_also: `indexed` is similar to $(LREF vmap), but a field (`[]`) is used inste
 +/
 Slice!(IndexIterator!(Iterator, Field), N, kind)
     indexed(Field, Iterator, size_t N, SliceKind kind)
-    (Field source, Slice!(Iterator, N, kind) indexes)
+    (Field source, Slice!(Iterator, N, kind) indices)
 {
     import core.lifetime: move;
     return typeof(return)(
-            indexes._structure,
+            indices._structure,
             IndexIterator!(Iterator, Field)(
-                indexes._iterator.move,
+                indices._iterator.move,
                 source));
 }
 
 /// ditto
-auto indexed(Field, S)(Field source, S[] indexes)
+auto indexed(Field, S)(Field source, S[] indices)
 {
-    return indexed(source, indexes.sliced);
+    return indexed(source, indices.sliced);
 }
 
 /// ditto
-auto indexed(Field, S)(Field source, S indexes)
+auto indexed(Field, S)(Field source, S indices)
     if (hasAsSlice!S)
 {
-    return indexed(source, indexes.asSlice);
+    return indexed(source, indices.asSlice);
 }
 
 ///
 @safe pure nothrow version(mir_test) unittest
 {
     auto source = [1, 2, 3, 4, 5];
-    auto indexes = [4, 3, 1, 2, 0, 4];
-    auto ind = source.indexed(indexes);
+    auto indices = [4, 3, 1, 2, 0, 4];
+    auto ind = source.indexed(indices);
     assert(ind == [5, 4, 2, 3, 1, 5]);
 
-    assert(ind.retro == source.indexed(indexes.retro));
+    assert(ind.retro == source.indexed(indices.retro));
 
     ind[3] += 10; // for index 2
     //                0  1   2  3  4
@@ -3499,10 +3499,10 @@ auto indexed(Field, S)(Field source, S indexes)
 }
 
 /++
-Maps indexes pairs to subslices.
+Maps index pairs to subslices.
 Params:
     sliceable = pointer, array, ndslice, series, or something sliceable with `[a .. b]`.
-    slices = ndslice composed of indexes pairs.
+    slices = ndslice composed of index pairs.
 Returns:
     ndslice composed of subslices.
 See_also: $(LREF chopped), $(LREF pairwise).
@@ -3551,7 +3551,7 @@ auto subSlices(S, Sliceable)(Sliceable sliceable, S slices)
 }
 
 /++
-Maps indexes pairs to subslices.
+Maps index pairs to subslices.
 Params:
     bounds = ndslice composed of consequent (`a_i <= a_(i+1)`) pairwise index bounds.
     sliceable = pointer, array, ndslice, series, or something sliceable with `[a_i .. a_(i+1)]`.

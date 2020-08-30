@@ -22,8 +22,8 @@ $(T2 isSymmetric, Checks if the matrix is symmetric.)
 $(T2 maxIndex, Finds index of the maximum.)
 $(T2 maxPos, Finds backward index of the maximum.)
 $(T2 minIndex, Finds index of the minimum.)
-$(T2 minmaxIndex, Finds indexes of the minimum and the maximum.)
-$(T2 minmaxPos, Finds backward indexes of the minimum and the maximum.)
+$(T2 minmaxIndex, Finds indices of the minimum and the maximum.)
+$(T2 minmaxPos, Finds backward indices of the minimum and the maximum.)
 $(T2 minPos, Finds backward index of the minimum.)
 $(T2 nBitsToCount, Сount bits until set bit count is reached.)
 $(T2 reduce, Accumulates all elements.)
@@ -1415,8 +1415,8 @@ unittest
 }
 
 /++
-Finds a backward indexes such that
-`slice[indexes[0]]` is minimal and `slice[indexes[1]]` is maximal elements in the slice.
+Finds a backward indices such that
+`slice[indices[0]]` is minimal and `slice[indices[1]]` is maximal elements in the slice.
 
 Params:
     pred = A predicate.
@@ -1474,11 +1474,11 @@ unittest
         -3, -2, 7, 8,
         ].sliced(3, 4);
 
-    auto indexes = s.minmaxIndex;
+    auto indices = s.minmaxIndex;
 
-    assert(indexes == [[1, 1], [2, 3]]);
-    assert(s[indexes[0]] == -4);
-    assert(s[indexes[1]] ==  8);
+    assert(indices == [[1, 1], [2, 3]]);
+    assert(s[indices[0]] == -4);
+    assert(s[indices[1]] ==  8);
 }
 
 /++
@@ -1728,7 +1728,7 @@ template findIndex(alias pred)
         slices = One or more slices.
     Returns:
         Multidimensional index such that the predicate is true.
-        Index equals `size_t.max`, if the predicate evaluates `false` for all indexes.
+        Index equals `size_t.max`, if the predicate evaluates `false` for all indices.
     Constraints:
         All slices must have the same shape.
     +/
@@ -1824,7 +1824,7 @@ template find(alias pred)
         slices = One or more slices.
     Returns:
         Multidimensional backward index such that the predicate is true.
-        Backward index equals zeros, if the predicate evaluates `false` for all indexes.
+        Backward index equals zeros, if the predicate evaluates `false` for all indices.
     Constraints:
         All slices must have the same shape.
     +/

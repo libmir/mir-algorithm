@@ -480,8 +480,8 @@ N-dimensional transpose operator.
 Brings selected dimensions to the first position.
 Params:
     slice = input slice
-    Dimensions = indexes of dimensions to be brought to the first position
-    dimensions = indexes of dimensions to be brought to the first position
+    Dimensions = indices of dimensions to be brought to the first position
+    dimensions = indices of dimensions to be brought to the first position
 Returns:
     n-dimensional slice
 See_also: $(LREF swapped), $(LREF everted)
@@ -654,8 +654,8 @@ Reverses the direction of iteration for selected dimensions.
 
 Params:
     _slice = input slice
-    Dimensions = indexes of dimensions to reverse order of iteration
-    dimensions = indexes of dimensions to reverse order of iteration
+    Dimensions = indices of dimensions to reverse order of iteration
+    dimensions = indices of dimensions to reverse order of iteration
 Returns:
     n-dimensional slice
 +/
@@ -804,7 +804,7 @@ private enum _stridedCode = q{
 Multiplies the stride of the selected dimension by a factor.
 
 Params:
-    Dimensions = indexes of dimensions to be strided
+    Dimensions = indices of dimensions to be strided
     dimension = indexe of a dimension to be strided
     factor = step extension factors
 Returns:

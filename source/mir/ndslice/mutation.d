@@ -25,20 +25,20 @@ Copies n-dimensional minor.
 void copyMinor(size_t N, IteratorFrom, SliceKind KindFrom, IteratorTo, SliceKind KindTo, IndexIterator)(
     Slice!(IteratorFrom, N, KindFrom) from,
     Slice!(IteratorTo, N, KindTo) to,
-    Slice!IndexIterator[N] indexes...
+    Slice!IndexIterator[N] indices...
 )
 in {
     import mir.internal.utility: Iota;
     static foreach (i; Iota!N)
-        assert(indexes[i].length == to.length!i);
+        assert(indices[i].length == to.length!i);
 }
 do {
     static if (N == 1)
-        to[] = from[indexes[0]];
+        to[] = from[indices[0]];
     else
-    foreach (i; 0 .. indexes[0].length)
+    foreach (i; 0 .. indices[0].length)
     {
-        copyMinor!(N - 1)(from[indexes[0][i]], to[i], indexes[1 .. N]);
+        copyMinor!(N - 1)(from[indices[0][i]], to[i], indices[1 .. N]);
     }
 }
 

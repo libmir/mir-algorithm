@@ -1266,7 +1266,7 @@ struct IndexIterator(Iterator, Field)
 }
 
 /++
-Iterates chunks in a sliceable using an iterator composed of indexes.
+Iterates chunks in a sliceable using an iterator composed of indices.
 
 Definition:
 ----
@@ -1310,7 +1310,7 @@ struct SubSliceIterator(Iterator, Sliceable)
 }
 
 /++
-Iterates chunks in a sliceable using an iterator composed of indexes stored consequently.
+Iterates chunks in a sliceable using an iterator composed of indices stored consequently.
 
 Definition:
 ----
@@ -1516,7 +1516,7 @@ auto FlattenedIterator__map(Iterator, size_t N, SliceKind kind, alias fun)(Flatt
 {
     import mir.ndslice.topology: map;
     auto slice = it._slice.map!fun;
-    return FlattenedIterator!(TemplateArgsOf!(typeof(slice)))(it._indexes, slice);
+    return FlattenedIterator!(TemplateArgsOf!(typeof(slice)))(it._indices, slice);
 }
 
 version(mir_test) unittest
@@ -1538,20 +1538,20 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
 {
 @optmath:
     ///
-    ptrdiff_t[N] _indexes;
+    ptrdiff_t[N] _indices;
     ///
     Slice!(Iterator, N, kind) _slice;
 
     ///
     auto lightConst()() const @property
     {
-        return FlattenedIterator!(LightConstOf!Iterator, N, kind)(_indexes, _slice.lightConst);
+        return FlattenedIterator!(LightConstOf!Iterator, N, kind)(_indices, _slice.lightConst);
     }
 
     ///
     auto lightImmutable()() immutable @property
     {
-        return FlattenedIterator!(LightImmutableOf!Iterator, N, kind)(_indexes, _slice.lightImmutable);
+        return FlattenedIterator!(LightImmutableOf!Iterator, N, kind)(_indices, _slice.lightImmutable);
     }
 
     ///
@@ -1560,18 +1560,18 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
     private ptrdiff_t getShift()(ptrdiff_t n)
     {
         ptrdiff_t _shift;
-        n += _indexes[$ - 1];
+        n += _indices[$ - 1];
         foreach_reverse (i; Iota!(1, N))
         {
             immutable v = n / ptrdiff_t(_slice._lengths[i]);
             n %= ptrdiff_t(_slice._lengths[i]);
             static if (i == _slice.S)
-                _shift += (n - _indexes[i]);
+                _shift += (n - _indices[i]);
             else
-                _shift += (n - _indexes[i]) * _slice._strides[i];
-            n = _indexes[i - 1] + v;
+                _shift += (n - _indices[i]) * _slice._strides[i];
+            n = _indices[i - 1] + v;
         }
-        _shift += (n - _indexes[0]) * _slice._strides[0];
+        _shift += (n - _indices[0]) * _slice._strides[0];
         return _shift;
     }
 
@@ -1589,28 +1589,28 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
                 mixin(op ~ `_slice._iterator;`);
             else
                 mixin(`_slice._iterator ` ~ op[0] ~ `= _slice._strides[i];`);
-            mixin (op ~ `_indexes[i];`);
+            mixin (op ~ `_indices[i];`);
             static if (i)
             {
                 static if (op == "++")
                 {
-                    if (_indexes[i] < _slice._lengths[i])
+                    if (_indices[i] < _slice._lengths[i])
                         return;
                     static if (i == _slice.S)
                         _slice._iterator -= _slice._lengths[i];
                     else
                         _slice._iterator -= _slice._lengths[i] * _slice._strides[i];
-                    _indexes[i] = 0;
+                    _indices[i] = 0;
                 }
                 else
                 {
-                    if (_indexes[i] >= 0)
+                    if (_indices[i] >= 0)
                         return;
                     static if (i == _slice.S)
                         _slice._iterator += _slice._lengths[i];
                     else
                         _slice._iterator += _slice._lengths[i] * _slice._strides[i];
-                    _indexes[i] = _slice._lengths[i] - 1;
+                    _indices[i] = _slice._lengths[i] - 1;
                 }
             }
         }
@@ -1631,26 +1631,26 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
     void opOpAssign(string op : "+")(ptrdiff_t n) scope
     {
         ptrdiff_t _shift;
-        n += _indexes[$ - 1];
+        n += _indices[$ - 1];
         foreach_reverse (i; Iota!(1, N))
         {
             immutable v = n / ptrdiff_t(_slice._lengths[i]);
             n %= ptrdiff_t(_slice._lengths[i]);
             static if (i == _slice.S)
-                _shift += (n - _indexes[i]);
+                _shift += (n - _indices[i]);
             else
-                _shift += (n - _indexes[i]) * _slice._strides[i];
-            _indexes[i] = n;
-            n = _indexes[i - 1] + v;
+                _shift += (n - _indices[i]) * _slice._strides[i];
+            _indices[i] = n;
+            n = _indices[i - 1] + v;
         }
-        _shift += (n - _indexes[0]) * _slice._strides[0];
-        _indexes[0] = n;
+        _shift += (n - _indices[0]) * _slice._strides[0];
+        _indices[0] = n;
         foreach_reverse (i; Iota!(1, N))
         {
-            if (_indexes[i] >= 0)
+            if (_indices[i] >= 0)
                 break;
-            _indexes[i] += _slice._lengths[i];
-            _indexes[i - 1]--;
+            _indices[i] += _slice._lengths[i];
+            _indices[i - 1]--;
         }
         _slice._iterator += _shift;
     }
@@ -1668,11 +1668,11 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
 
     ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
     {
-        ptrdiff_t ret = this._indexes[0] - right._indexes[0];
+        ptrdiff_t ret = this._indices[0] - right._indices[0];
         foreach (i; Iota!(1, N))
         {
             ret *= _slice._lengths[i];
-            ret += this._indexes[i] - right._indexes[i];
+            ret += this._indices[i] - right._indices[i];
         }
         return ret;
     }
@@ -1680,7 +1680,7 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
     bool opEquals()(scope ref const typeof(this) right) scope const
     {
         foreach_reverse (i; Iota!N)
-            if (this._indexes[i] != right._indexes[i])
+            if (this._indices[i] != right._indices[i])
                 return false;
         return true;
     }
@@ -1688,9 +1688,9 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
     ptrdiff_t opCmp()(scope ref const typeof(this) right) scope const
     {
         foreach (i; Iota!(N - 1))
-            if (auto ret = this._indexes[i] - right._indexes[i])
+            if (auto ret = this._indices[i] - right._indices[i])
                 return ret;
-        return this._indexes[$ - 1] - right._indexes[$ - 1];
+        return this._indices[$ - 1] - right._indices[$ - 1];
     }
 }
 

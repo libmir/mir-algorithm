@@ -35,7 +35,7 @@ Params:
     RC = nogc mode, refcounted output
     graph = components (ndslice) sorted in the direction of traversal of the graph. Each component is an array of indeces.
 Returns:
-    components (ndslice of arrays of indexes)
+    components (ndslice of arrays of indices)
 
 Note:
     The implementation returns components sorted in the direction of traversal of the graph.

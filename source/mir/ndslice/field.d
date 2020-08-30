@@ -696,14 +696,14 @@ struct ndIotaField(size_t N)
     ///
     size_t[N] opIndex()(size_t index) const
     {
-        size_t[N] indexes;
+        size_t[N] indices;
         foreach_reverse (i; Iota!(N - 1))
         {
-            indexes[i + 1] = index % _lengths[i];
+            indices[i + 1] = index % _lengths[i];
             index /= _lengths[i];
         }
-        indexes[0] = index;
-        return indexes;
+        indices[0] = index;
+        return indices;
     }
 }
 

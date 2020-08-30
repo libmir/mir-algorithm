@@ -805,22 +805,22 @@ struct Spline(F, size_t N = 1, X = F)
             alias Kernel = AliasCall!(SplineKernel!F, "opCall", derivative);
             enum rp2d = derivative == 3 ? 2 : derivative;
 
-            size_t[N] indexes;
+            size_t[N] indices;
             Kernel[N] kernels;
 
             foreach(i; Iota!N)
             {
                 static if (isInterval!(typeof(xs[i])))
                 {
-                    indexes[i] = xs[i][1];
+                    indices[i] = xs[i][1];
                     auto x = xs[i][0];
                 }
                 else
                 {
                     alias x = xs[i];
-                    indexes[i] = this.findInterval!i(x);
+                    indices[i] = this.findInterval!i(x);
                 }
-                kernels[i] = SplineKernel!F(_grid[i][indexes[i]], _grid[i][indexes[i] + 1], x);
+                kernels[i] = SplineKernel!F(_grid[i][indices[i]], _grid[i][indices[i] + 1], x);
             }
 
             align(64) F[2 ^^ N * 2 ^^ N][2] local;
@@ -836,7 +836,7 @@ struct Spline(F, size_t N = 1, X = F)
                 }
                 else
                 {
-                    from += strides[i] * indexes[i];
+                    from += strides[i] * indices[i];
                     load!(i - 1)(from, to);
                     from += strides[i];
                     enum s = 2 ^^ (N - 1 - i);

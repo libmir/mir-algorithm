@@ -29,28 +29,28 @@ import mir.ndslice.slice;
 import mir.primitives;
 import std.meta;
 
-private template _indexes(NdFields...)
+private template _indices(NdFields...)
 {
     static if (NdFields.length == 0)
-        enum _indexes = "";
+        enum _indices = "";
     else
     {
         alias Next = NdFields[0 .. $ - 1];
         enum i = Next.length;
-        enum _indexes = ._indexes!Next ~
-    "_fields[" ~ i.stringof ~ "][" ~ _indexes_range!([staticMap!(DimensionCount, Next)].sum, DimensionCount!(NdFields[$ - 1])) ~ "], ";
+        enum _indices = ._indices!Next ~
+    "_fields[" ~ i.stringof ~ "][" ~ _indices_range!([staticMap!(DimensionCount, Next)].sum, DimensionCount!(NdFields[$ - 1])) ~ "], ";
     }
 }
 
-private template _indexes_range(size_t begin, size_t count)
+private template _indices_range(size_t begin, size_t count)
 {
     static if (count == 0)
-        enum _indexes_range = "";
+        enum _indices_range = "";
     else
     {
         enum next = count - 1;
         enum elem = begin + next;
-        enum _indexes_range = ._indexes_range!(begin, next) ~ "indexes[" ~ elem.stringof ~ "], ";
+        enum _indices_range = ._indices_range!(begin, next) ~ "indices[" ~ elem.stringof ~ "], ";
     }
 }
 
@@ -124,21 +124,21 @@ struct Cartesian(NdFields...)
     }
 
     ///
-    auto opIndex(size_t[N] indexes...)
+    auto opIndex(size_t[N] indices...)
     {
         import mir.functional : refTuple;
-        return mixin("refTuple(" ~ _indexes!(NdFields) ~ ")");
+        return mixin("refTuple(" ~ _indices!(NdFields) ~ ")");
     }
 }
 
-private template _kr_indexes(size_t n)
+private template _kr_indices(size_t n)
 {
     static if (n == 0)
-        enum _kr_indexes = "";
+        enum _kr_indices = "";
     else
     {
         enum i = n - 1;
-        enum _kr_indexes = ._kr_indexes!i ~ "_fields[" ~ i.stringof ~ "][ind[" ~ i.stringof ~ "]], ";
+        enum _kr_indices = ._kr_indices!i ~ "_fields[" ~ i.stringof ~ "][ind[" ~ i.stringof ~ "]], ";
     }
 }
 
@@ -219,7 +219,7 @@ struct Kronecker(alias fun, NdFields...)
     }
 
     ///
-    auto ref opIndex()(size_t[N] indexes...)
+    auto ref opIndex()(size_t[N] indices...)
     {   
         static if (N > 1)
             size_t[N][NdFields.length] ind;
@@ -242,14 +242,14 @@ struct Kronecker(alias fun, NdFields...)
                 {
                     foreach(i; Iota!N)
                     {
-                        ind[f][i] = indexes[i] % s[i];
-                        indexes[i] /= s[i];
+                        ind[f][i] = indices[i] % s[i];
+                        indices[i] /= s[i];
                     }
                 }
                 else
                 {
-                    ind[f] = indexes[0] % s[0];
-                    indexes[0] /= s[0];
+                    ind[f] = indices[0] % s[0];
+                    indices[0] /= s[0];
                 }
             }
             else
@@ -257,14 +257,14 @@ struct Kronecker(alias fun, NdFields...)
                 static if (N > 1)
                 {
                     foreach(i; Iota!N)
-                        ind[f][i] = indexes[i];
+                        ind[f][i] = indices[i];
                 }
                 else
                 {
-                    ind[f] = indexes[0];
+                    ind[f] = indices[0];
                 }
             }
         }
-        return mixin("fun(" ~ _kr_indexes!(ind.length) ~ ")");
+        return mixin("fun(" ~ _kr_indices!(ind.length) ~ ")");
     }
 }

@@ -355,17 +355,17 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// Simplest multidimensional random access primitive
-    auto opIndex()(size_t[N] indexes...)
+    auto opIndex()(size_t[N] indices...)
     {
         foreach(i, ref slice; _slices[0 .. $-1])
         {
-            ptrdiff_t diff = indexes[dim] - slice.length!dim;
+            ptrdiff_t diff = indices[dim] - slice.length!dim;
             if (diff < 0)
-                return slice[indexes];
-            indexes[dim] = diff;
+                return slice[indices];
+            indices[dim] = diff;
         }
-        assert(indexes[dim] < _slices[$-1].length!dim);
-        return _slices[$-1][indexes];
+        assert(indices[dim] < _slices[$-1].length!dim);
+        return _slices[$-1][indices];
     }
 }
 

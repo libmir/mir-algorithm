@@ -82,7 +82,7 @@ Chunks!([0], Iterator, N, kind) chunks(Iterator, size_t N, SliceKind kind)(Slice
     // 0 1 2 | 3 4 5 | 6 7 8 | 9 10
     auto ch = sl.chunks(3);
 
-    static assert(isChunks!(typeof(ch)) == [0]); // isChunks returns dimension indexes
+    static assert(isChunks!(typeof(ch)) == [0]); // isChunks returns dimension indices
 
     assert(ch.length == 4);
     assert(ch.shape == cast(size_t[1])[4]);
@@ -160,7 +160,7 @@ version(mir_test) unittest
 
     assert (ch[$ - 1, $ - 1] == [[98, 99], [108, 109]]);
 
-    static assert(isChunks!(typeof(ch)) == [1, 0]); // isChunks returns dimension indexes
+    static assert(isChunks!(typeof(ch)) == [1, 0]); // isChunks returns dimension indices
 
     assert(ch.length == 3);
     assert(ch.length!1 == 4);
@@ -554,7 +554,7 @@ struct ChunksDollar()
 /++
 Checks if T is $(LREF Chunks) type.
 Returns:
-    array of dimension indexes.
+    array of dimension indices.
 +/
 template isChunks(T)
 {

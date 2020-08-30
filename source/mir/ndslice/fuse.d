@@ -28,7 +28,7 @@ Fuses ndrange `r` into GC-allocated ($(LREF fuse)) or RC-allocated ($(LREF rcfus
 Can be used to join rows or columns into a matrix.
 
 Params:
-    Dimensions = (optional) indexes of dimensions to be brought to the first position
+    Dimensions = (optional) indices of dimensions to be brought to the first position
 Returns:
     ndslice
 +/
@@ -134,7 +134,7 @@ Can be used to join rows or columns into a matrix.
 
 Params:
     T = output type of ndslice elements
-    Dimensions = (optional) indexes of dimensions to be brought to the first position
+    Dimensions = (optional) indices of dimensions to be brought to the first position
 Returns:
     ndslice
 +/
