@@ -259,7 +259,7 @@ template DynamicArrayDimensionsCount(T)
         enum size_t DynamicArrayDimensionsCount = 0;
 }
 
-bool isPermutation(size_t N)(auto ref in size_t[N] perm)
+bool isPermutation(size_t N)(auto ref const scope size_t[N] perm)
 {
     int[N] mask;
     return isValidPartialPermutationImpl(perm, mask);
@@ -328,7 +328,7 @@ private enum isReference(P) =
 alias ImplicitlyUnqual(T) = Select!(isImplicitlyConvertible!(T, Unqual!T), Unqual!T, T);
 alias ImplicitlyUnqual(T : T*) = T*;
 
-size_t lengthsProduct(size_t N)(auto ref in size_t[N] lengths)
+size_t lengthsProduct(size_t N)(auto ref const scope size_t[N] lengths)
 {
     size_t length = lengths[0];
     foreach (i; Iota!(1, N))
