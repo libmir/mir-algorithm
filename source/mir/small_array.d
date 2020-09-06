@@ -10,254 +10,261 @@ Authors:   Ilya Yaroshenko
 +/
 module mir.small_array;
 
+import mir.serde: serdeProxy;
+
 private static immutable errorMsg = "Cannot create SmallArray: input range exceeds maximum allowed length.";
 version(D_Exceptions)
     private static immutable exception = new Exception(errorMsg);
 
 ///
-struct SmallArray(T, uint maxLength)
+template SmallArray(T, uint maxLength)
     if (maxLength)
 {
-    import std.traits: Unqual, isIterable, isImplicitlyConvertible;
-
-    uint _length;
-    T[maxLength] _data;
-
-	static SmallArray deserialize(S)(S data)
-	{
-        import asdf.serialization: deserialize;
-        return SmallArray(data.deserialize!(T[]));
-	}
-
-	void serialize(S)(ref S serializer)
-	{
-		serializer.putValue(asArray);
-	}
-
-    static if (isImplicitlyConvertible!(const T, T))
-        alias V = const T;
-    else
-        alias V = T;
-
-@safe pure @nogc:
-
-    /// Constructor
-    this(typeof(null))
+    ///
+    @serdeProxy!(T[])
+    struct SmallArray
     {
-    }
+        import std.traits: Unqual, isIterable, isImplicitlyConvertible;
 
-    /// ditto
-    this(V[] array)
-    {
-        this.opAssign(array);
-    }
+        uint _length;
+        T[maxLength] _data;
 
-    /// ditto
-    this(const SmallArray array) nothrow
-    {
-        this.opAssign(array);
-    }
-
-    /// ditto
-    this(uint n)(const SmallArray!(T, n) array)
-    {
-        this.opAssign(array);
-    }
-
-    /// ditto
-    this(uint n)(ref const SmallArray!(T, n) array)
-    {
-        this.opAssign(array);
-    }
-
-    /// ditto
-    this(Range)(auto ref Range array)
-        if (isIterable!Range)
-    {
-        foreach(ref c; array)
+        static SmallArray deserialize(S)(S data)
         {
-            if (_length > _data.length)
-            {
-                version(D_Exceptions) throw exception;
-                else assert(0, errorMsg);
-            }
-            _data[_length++] = c;
+            import asdf.serialization: deserialize;
+            return SmallArray(data.deserialize!(T[]));
         }
-    }
 
-    /// `=` operator
-    ref typeof(this) opAssign(typeof(null)) return
-    {
-        _length = 0;
-        _data = T.init;
-        return this;
-    }
-
-    /// ditto
-    ref typeof(this) opAssign(V[] array) return @trusted
-    {
-        if (array.length > maxLength)
+        void serialize(S)(ref S serializer)
         {
-            version(D_Exceptions) throw exception;
-            else assert(0, errorMsg);
+            serializer.putValue(asArray);
         }
-        _data[0 .. _length] = T.init;
-        _length = cast(uint) array.length;
-        _data[0 .. _length] = array;
-        return this;
-    }
 
-    /// ditto
-    ref typeof(this) opAssign(ref const SmallArray rhs) return nothrow
-    {
-        _length = rhs._length;
-        _data = rhs._data;
-        return this;
-    }
-    
-    /// ditto
-    ref typeof(this) opAssign(const SmallArray rhs) return nothrow
-    {
-        _length = rhs._length;
-        _data = rhs._data;
-        return this;
-    }
-
-    /// ditto
-    ref typeof(this) opAssign(uint n)(ref const SmallArray!(T, n) rhs) return
-        if (n != maxLength)
-    {
-        static if (n < maxLength)
-        {
-            _data[0 .. n] = rhs._data;
-            if (_length > n)
-                _data[n .. _length] = T.init;
-        }
+        static if (isImplicitlyConvertible!(const T, T))
+            alias V = const T;
         else
+            alias V = T;
+
+    @safe pure @nogc:
+
+        /// Constructor
+        this(typeof(null))
         {
-            if (rhs._length > maxLength)
+        }
+
+        /// ditto
+        this(V[] array)
+        {
+            this.opAssign(array);
+        }
+
+        /// ditto
+        this(const SmallArray array) nothrow
+        {
+            this.opAssign(array);
+        }
+
+        /// ditto
+        this(uint n)(const SmallArray!(T, n) array)
+        {
+            this.opAssign(array);
+        }
+
+        /// ditto
+        this(uint n)(ref const SmallArray!(T, n) array)
+        {
+            this.opAssign(array);
+        }
+
+        /// ditto
+        this(Range)(auto ref Range array)
+            if (isIterable!Range)
+        {
+            foreach(ref c; array)
+            {
+                if (_length > _data.length)
+                {
+                    version(D_Exceptions) throw exception;
+                    else assert(0, errorMsg);
+                }
+                _data[_length++] = c;
+            }
+        }
+
+        /// `=` operator
+        ref typeof(this) opAssign(typeof(null)) return
+        {
+            _length = 0;
+            _data = T.init;
+            return this;
+        }
+
+        /// ditto
+        ref typeof(this) opAssign(V[] array) return @trusted
+        {
+            if (array.length > maxLength)
             {
                 version(D_Exceptions) throw exception;
                 else assert(0, errorMsg);
             }
-            _data = rhs._data[0 .. maxLength];
+            _data[0 .. _length] = T.init;
+            _length = cast(uint) array.length;
+            _data[0 .. _length] = array;
+            return this;
         }
-        _length = rhs._length;
-        return this;
-    }
 
-    /// ditto
-    ref typeof(this) opAssign(uint n)(const SmallArray!(T, n) rhs) return
-        if (n != maxLength)
-    {
-        static if (n < maxLength)
+        /// ditto
+        ref typeof(this) opAssign(ref const SmallArray rhs) return nothrow
         {
-            _data[0 .. n] = rhs._data;
-            if (_length > n)
-                _data[n .. _length] = T.init;
+            _length = rhs._length;
+            _data = rhs._data;
+            return this;
         }
-        else
+        
+        /// ditto
+        ref typeof(this) opAssign(const SmallArray rhs) return nothrow
         {
-            if (rhs._length > maxLength)
+            _length = rhs._length;
+            _data = rhs._data;
+            return this;
+        }
+
+        /// ditto
+        ref typeof(this) opAssign(uint n)(ref const SmallArray!(T, n) rhs) return
+            if (n != maxLength)
+        {
+            static if (n < maxLength)
+            {
+                _data[0 .. n] = rhs._data;
+                if (_length > n)
+                    _data[n .. _length] = T.init;
+            }
+            else
+            {
+                if (rhs._length > maxLength)
+                {
+                    version(D_Exceptions) throw exception;
+                    else assert(0, errorMsg);
+                }
+                _data = rhs._data[0 .. maxLength];
+            }
+            _length = rhs._length;
+            return this;
+        }
+
+        /// ditto
+        ref typeof(this) opAssign(uint n)(const SmallArray!(T, n) rhs) return
+            if (n != maxLength)
+        {
+            static if (n < maxLength)
+            {
+                _data[0 .. n] = rhs._data;
+                if (_length > n)
+                    _data[n .. _length] = T.init;
+            }
+            else
+            {
+                if (rhs._length > maxLength)
+                {
+                    version(D_Exceptions) throw exception;
+                    else assert(0, errorMsg);
+                }
+                _data = rhs._data[0 .. maxLength];
+            }
+            _length = rhs._length;
+            return this;
+        }
+
+        ///
+        void trustedAssign(V[] array) @trusted
+        {
+            _data[0 .. _length] = T.init;
+            _length = cast(uint) array.length;
+            _data[0 .. _length] = array;
+        }
+
+        ///
+        ref typeof(this) append(T elem)
+        {
+            if (_length == maxLength)
             {
                 version(D_Exceptions) throw exception;
                 else assert(0, errorMsg);
             }
-            _data = rhs._data[0 .. maxLength];
+            _data[_length++] = elem;
+            return this;
         }
-        _length = rhs._length;
-        return this;
-    }
 
-    ///
-    void trustedAssign(V[] array) @trusted
-    {
-        _data[0 .. _length] = T.init;
-        _length = cast(uint) array.length;
-        _data[0 .. _length] = array;
-    }
-
-    ///
-    ref typeof(this) append(T elem)
-    {
-        if (_length == maxLength)
+        ///
+        ref typeof(this) append(V[] array)
         {
-            version(D_Exceptions) throw exception;
-            else assert(0, errorMsg);
+            if (_length + array.length > maxLength)
+            {
+                version(D_Exceptions) throw exception;
+                else assert(0, errorMsg);
+            }
+            _data[_length .. _length + array.length] = array;
+            _length += array.length;
+            return this;
         }
-        _data[_length++] = elem;
-        return this;
-    }
 
-    ///
-    ref typeof(this) append(V[] array)
-    {
-        if (_length + array.length > maxLength)
+        /// ditto
+        alias put = append;
+
+        /// ditto
+        alias opOpAssign(string op : "~") = append;
+
+        ///
+        SmallArray concat(V[] array) scope const
         {
-            version(D_Exceptions) throw exception;
-            else assert(0, errorMsg);
+            SmallArray c = this;
+            c.append(array);
+            return c; 
         }
-        _data[_length .. _length + array.length] = array;
-        _length += array.length;
-        return this;
-    }
 
-    /// ditto
-    alias put = append;
-
-    /// ditto
-    alias opOpAssign(string op : "~") = append;
-
-    ///
-    SmallArray concat(V[] array) scope const
-    {
-        SmallArray c = this;
-        c.append(array);
-        return c; 
-    }
-
-    /// ditto
-    alias opBinary(string op : "~") = concat;
+        /// ditto
+        alias opBinary(string op : "~") = concat;
 
 
-scope nothrow:
+    scope nothrow:
 
-    /++
-    Returns an scope common array.
+        /++
+        Returns an scope common array.
 
-    The property is used as common array representation self alias.
+        The property is used as common array representation self alias.
 
-    The alias helps with `[]`, `[i]`, `[i .. j]`, `==`, and `!=` operations and implicit conversion to strings.
-    +/
-    inout(T)[] asArray() inout @trusted return @property
-    {
-        return _data[0 .. _length];
-    }
+        The alias helps with `[]`, `[i]`, `[i .. j]`, `==`, and `!=` operations and implicit conversion to strings.
+        +/
+        inout(T)[] asArray() inout @trusted return @property
+        {
+            return _data[0 .. _length];
+        }
 
-    alias asArray this;
+        alias asArray this;
 
-const:
+    const:
 
-    /++
-    Checks if the array is empty (null).
-    +/
-    C opCast(C)() const
-        if (is(Unqual!C == bool))
-    {
-        return _length != 0;
-    }
+        /++
+        Checks if the array is empty (null).
+        +/
+        C opCast(C)() const
+            if (is(Unqual!C == bool))
+        {
+            return _length != 0;
+        }
 
-    /// Hash implementation
-    size_t toHash()
-    {
-        return hashOf(asArray);
-    }
+        /// Hash implementation
+        size_t toHash()
+        {
+            return hashOf(asArray);
+        }
 
-    /// ditto
-    auto opCmp()(V[] array)
-    {
-        import mir.algorithm.iteration: cmp;
-        return cmp(asArray, array);
+        /// ditto
+        auto opCmp()(V[] array)
+        {
+            import mir.algorithm.iteration: cmp;
+            return cmp(asArray, array);
+        }
     }
 }
 

@@ -13,6 +13,8 @@ Authors:   Ilya Yaroshenko
 +/
 module mir.small_string;
 
+import mir.serde: serdeScopeStringProxy;
+
 private extern (C) @system nothrow @nogc pure size_t strnlen_s(scope const char* s, size_t n);
 
 private static immutable errorMsg = "Cannot create SmallString: input string exceeds maximum allowed length.";
@@ -24,6 +26,7 @@ extern(C++, "mir"):
 /++
 Self-contained generic Small String implementaton.
 +/
+@serdeScopeStringProxy
 struct SmallString(uint maxLength)
     if (maxLength)
 {
