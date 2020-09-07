@@ -522,7 +522,6 @@ Deserialization member type
 +/
 template serdeDeserializationMemberType(T, string member)
 {
-    import mir.reflection: isField;
     import std.traits: Unqual, Parameters;
     T* aggregate;
     static if (isField!(T, member))
@@ -553,7 +552,6 @@ Is deserializable member
 +/
 template serdeIsDeserializable(T)
 {
-    import mir.serde: serdeGetKeysIn;
     ///
     enum bool serdeIsDeserializable(string member) = serdeGetKeysIn!(__traits(getMember, T, member)).length > 0;
 }
@@ -561,7 +559,6 @@ template serdeIsDeserializable(T)
 ///
 unittest
 {
-    import mir.serde;
 
     static struct S
     {
@@ -582,7 +579,6 @@ Final proxy type
 +/
 template serdeGetFinalProxy(T)
 {
-    import mir.serde: serdeProxy, serdeGetProxy;
     import std.traits: hasUDA;
     static if (is(T == class) || is(T == struct) || is(T == union) || is(T == interface))
     {
@@ -604,7 +600,6 @@ template serdeGetFinalProxy(T)
 ///
 unittest
 {
-    import mir.serde;
 
     @serdeProxy!string
     static struct A {}
@@ -625,7 +620,6 @@ Final proxy type deserializable members
 template serdeFinalProxyDeserializableMembers(T)
 {
     import std.meta: Filter, aliasSeqOf;
-    import mir.reflection: DeserializableMembers;
     alias P = serdeGetFinalProxy!T;
     static if (is(P == struct) || is(P == class) || is(P == interface) || is(P == union))
         enum string[] serdeFinalProxyDeserializableMembers = [Filter!(serdeIsDeserializable!P, aliasSeqOf!(DeserializableMembers!P))];
@@ -636,7 +630,6 @@ template serdeFinalProxyDeserializableMembers(T)
 ///
 unittest
 {
-    import mir.serde;
 
     static struct A
     {
@@ -662,7 +655,6 @@ Deserialization member final proxy type
 template serdeFinalDeserializationMemberType(T, string member)
 {
     import std.traits: hasUDA;
-    import mir.serde: serdeProxy, serdeGetProxy;
     static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
     {
         alias serdeFinalDeserializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(__traits(getMember, T, member)));
@@ -683,7 +675,6 @@ template serdeFinalDeserializationMemberType(T)
 ///
 unittest
 {
-    import mir.serde;
 
     static struct A
     {
@@ -724,7 +715,6 @@ template serdeDeserializationFinalProxyMemberTypes(T)
 ///
 unittest
 {
-    import mir.serde;
 
     static struct A {}
 
@@ -767,7 +757,6 @@ alias serdeDeserializationFinalProxyMemberTypesRecurse(T) = serdeDeserialization
 ///
 unittest
 {
-    import mir.serde;
 
     static struct A { double g; }
 
@@ -803,7 +792,6 @@ template serdeGetDeserializatinKeysRecurse(T)
     import mir.algorithm.iteration: uniq, equal;
     import mir.array.allocation: array;
     import mir.ndslice.sorting: sort;
-    import mir.reflection: DeserializableMembers;
     import std.meta: staticMap, aliasSeqOf;
     enum string[] serdeGetDeserializatinKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalProxyDeserializableMembers, serdeDeserializationFinalProxyMemberTypesRecurse!T))].sort.uniq!equal.array;
 }
@@ -811,7 +799,6 @@ template serdeGetDeserializatinKeysRecurse(T)
 ///
 unittest
 {
-    import mir.serde;
 
     static struct A { double g; float d; }
 
@@ -850,43 +837,107 @@ UDA used to force serializer to output members in the alphabetical order of thei
 +/
 enum serdeAlphabetOut;
 
+private enum isCompositeType(T) = is(T == class) || is(T == struct) || is(T == union) || is(T == interface);
+
 /++
 A dummy structure usefull %(LREF serdeOrderedIn) support.
 +/
 struct SerdeOrderedDummy(T)
     if (is(serdeGetFinalProxy!T == T) && (is(T == class) || is(T == struct) || is(T == union) || is(T == interface)))
 {
-    import mir.serde: serdeRequired;
     import std.traits: hasUDA;
-    import mir.reflection: isField;
 
-    private T* __SerdeOrderedDummyTarget;
+    private SerdeFlags!(typeof(this)) _flags;
 
-    ///
-    this(T* target)
+    this(T value)
     {
-        __SerdeOrderedDummyTarget = target;
+        static foreach (member; serdeFinalProxyDeserializableMembers!T)
+        {
+            static if (isField!(T, member))
+            {
+                __traits(getMember, this, member) = __traits(getMember, value, member);
+            }
+        }
     }
 
+public:
+
     static foreach (i, member; serdeFinalProxyDeserializableMembers!T)
+    {
         static if (isField!(T, member))
-            mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ " = T.init." ~ member ~ ";");
+        {
+            static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
+            {
+                mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ ";");
+            }
+            else
+            static if (isCompositeType!(typeof(__traits(getMember, T, member))))
+            {
+                static if (hasUDA!(typeof(__traits(getMember, T, member)), serdeProxy))
+                {
+                    mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ " = T.init." ~ member ~ ";");
+                }
+                else
+                static if (__traits(compiles, {
+                    mixin("enum SerdeOrderedDummy!(serdeDeserializationMemberType!(T, `" ~ member ~ "`)) " ~ member ~ " = SerdeOrderedDummy!(serdeDeserializationMemberType!(T, `" ~ member ~ "`))(T.init." ~ member ~ ");");
+                }))
+                {
+                    mixin("@(__traits(getAttributes, T." ~ member ~ ")) SerdeOrderedDummy!(serdeDeserializationMemberType!(T, `" ~ member ~ "`)) " ~ member ~ " = SerdeOrderedDummy!(serdeDeserializationMemberType!(T, `" ~ member ~ "`))(T.init." ~ member ~ ");");
+                }
+            }
+            else
+            {
+                mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ " = T.init." ~ member ~ ";");
+            }
+        }
         else
+        {
             mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ ";");
+        }
+    }
 
     /// Initialize target members
     void serdeFinalizeWithFlags(ref scope const SerdeFlags!(typeof(this)) flags)
     {
-        static foreach (i, member; serdeFinalProxyDeserializableMembers!T)
-            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, flags, member))
-                __traits(getMember, *__SerdeOrderedDummyTarget, member) = __traits(getMember, this, member);
+        _flags = flags;
+    }
+
+    /// Initialize target members
+    void serdeFinalizeTarget(ref T value, ref scope SerdeFlags!T flags)
+    {
+        import core.lifetime: move;
+        static foreach (member; serdeFinalProxyDeserializableMembers!T)
+            __traits(getMember, flags, member) = __traits(getMember, _flags, member);
+        static foreach (member; serdeFinalProxyDeserializableMembers!T)
+        {{
+            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, _flags, member))
+            {
+                static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
+                {
+                    alias M = typeof(__traits(getMember, value, member));
+                    SerdeFlags!M memberFlags;
+                    __traits(getMember, this, member).serdeFinalizeTarget(__traits(getMember, value, member), memberFlags);
+                    static if(__traits(hasMember, M, "serdeFinalizeWithFlags"))
+                    {
+                        __traits(getMember, value, member).serdeFinalizeWithFlags(memberFlags);
+                    }
+                    static if(__traits(hasMember, M, "serdeFinalize"))
+                    {
+                        __traits(getMember, value, member).serdeFinalize();
+                    }
+                }
+                else
+                {
+                    __traits(getMember, value, member) = move(__traits(getMember, this, member));
+                }
+            }
+        }}
     }
 }
 
 ///
 unittest
 {
-    import mir.serde;
     import std.traits;
 
     static struct S
@@ -910,8 +961,12 @@ A dummy structure passed to `.serdeFinalizeWithFlags` finalizer method.
 +/
 struct SerdeFlags(T)
 {
-    static foreach(member; serdeFinalProxyDeserializableMembers!T)
-        mixin("bool " ~ member ~ ";");
+    static if (is(T : SerdeOrderedDummy!I, I))
+        static foreach(member; serdeFinalProxyDeserializableMembers!I)
+            mixin("bool " ~ member ~ ";");
+    else
+        static foreach(member; serdeFinalProxyDeserializableMembers!T)
+            mixin("bool " ~ member ~ ";");
 }
 
 private:
