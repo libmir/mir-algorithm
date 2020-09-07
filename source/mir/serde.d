@@ -873,7 +873,9 @@ public:
             else
             static if (isCompositeType!(typeof(__traits(getMember, T, member))))
             {
-                static if (hasUDA!(typeof(__traits(getMember, T, member)), serdeProxy))
+                static if (
+                    hasUDA!(typeof(__traits(getMember, T, member)), serdeProxy) ||
+                    hasUDA!(typeof(__traits(getMember, T, member)), serdeScopeStringProxy))
                 {
                     mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ " = T.init." ~ member ~ ";");
                 }
@@ -883,6 +885,10 @@ public:
                 }))
                 {
                     mixin("@(__traits(getAttributes, T." ~ member ~ ")) SerdeOrderedDummy!(serdeDeserializationMemberType!(T, `" ~ member ~ "`)) " ~ member ~ " = SerdeOrderedDummy!(serdeDeserializationMemberType!(T, `" ~ member ~ "`))(T.init." ~ member ~ ");");
+                }
+                else
+                {
+                    mixin("@(__traits(getAttributes, T." ~ member ~ ")) SerdeOrderedDummy!(serdeDeserializationMemberType!(T, `" ~ member ~ "`)) " ~ member ~ ";");
                 }
             }
             else
