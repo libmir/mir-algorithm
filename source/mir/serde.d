@@ -833,6 +833,13 @@ See_also: %(LREF SerdeOrderedDummy)
 enum serdeOrderedIn;
 
 /++
+UDA used to force deserializer to skip the member final deserialization.
+A user should finalize the member deserialize using the dummy object provided in `serdeFinalizeWithDummy(ref SerdeOrderedDummy!(typeof(this)) dummy)` struct method
+and dummy method `serdeFinalizeTargetMember`.
++/
+enum serdeFromDummyByUser;
+
+/++
 UDA used to force serializer to output members in the alphabetical order of their output keys.
 +/
 enum serdeAlphabetOut;
@@ -913,10 +920,10 @@ public:
     void serdeFinalizeTarget(ref T value, ref scope SerdeFlags!T flags)
     {
         import std.traits: hasElaborateAssign;
-        import core.lifetime: move;
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
             __traits(getMember, flags, member) = __traits(getMember, __serdeFlags, member);
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
+            static if (!hasUDA!(__traits(getMember, T, member), serdeFromDummyByUser))
         {{
             if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, __serdeFlags, member))
             {
@@ -937,7 +944,10 @@ public:
                 else
                 {
                     static if (hasElaborateAssign!(typeof(__traits(getMember, this, member))))
+                    {
+                        import core.lifetime: move;
                         __traits(getMember, value, member) = move(__traits(getMember, this, member));
+                    }
                     else
                         __traits(getMember, value, member) = __traits(getMember, this, member);
                 }
@@ -947,6 +957,38 @@ public:
         {
             value.serdeFinalizeWithDummy(this);
         }
+    }
+
+    /// Initialize target member
+    void serdeFinalizeTargetMember(string member)(ref T value)
+    {
+            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, __serdeFlags, member))
+            {
+                static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
+                {
+                    alias M = typeof(__traits(getMember, value, member));
+                    SerdeFlags!M memberFlags;
+                    __traits(getMember, this, member).serdeFinalizeTarget(__traits(getMember, value, member), memberFlags);
+                    static if(__traits(hasMember, M, "serdeFinalizeWithFlags"))
+                    {
+                        __traits(getMember, value, member).serdeFinalizeWithFlags(memberFlags);
+                    }
+                    static if(__traits(hasMember, M, "serdeFinalize"))
+                    {
+                        __traits(getMember, value, member).serdeFinalize();
+                    }
+                }
+                else
+                {
+                    static if (hasElaborateAssign!(typeof(__traits(getMember, this, member))))
+                    {
+                        import core.lifetime: move;
+                        __traits(getMember, value, member) = move(__traits(getMember, this, member));
+                    }
+                    else
+                        __traits(getMember, value, member) = __traits(getMember, this, member);
+                }
+            }
     }
 }
 
