@@ -847,7 +847,8 @@ struct SerdeOrderedDummy(T)
 {
     import std.traits: hasUDA;
 
-    private SerdeFlags!(typeof(this)) _flags;
+    @serdeIgnore
+    SerdeFlags!(typeof(this)) __serdeFlags;
 
     this(T value)
     {
@@ -905,18 +906,19 @@ public:
     /// Initialize target members
     void serdeFinalizeWithFlags(ref scope const SerdeFlags!(typeof(this)) flags)
     {
-        _flags = flags;
+        __serdeFlags = flags;
     }
 
     /// Initialize target members
     void serdeFinalizeTarget(ref T value, ref scope SerdeFlags!T flags)
     {
+        import std.traits: hasElaborateAssign;
         import core.lifetime: move;
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
-            __traits(getMember, flags, member) = __traits(getMember, _flags, member);
+            __traits(getMember, flags, member) = __traits(getMember, __serdeFlags, member);
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
         {{
-            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, _flags, member))
+            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, __serdeFlags, member))
             {
                 static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
                 {
@@ -934,10 +936,17 @@ public:
                 }
                 else
                 {
-                    __traits(getMember, value, member) = move(__traits(getMember, this, member));
+                    static if (hasElaborateAssign!(typeof(__traits(getMember, this, member))))
+                        __traits(getMember, value, member) = move(__traits(getMember, this, member));
+                    else
+                        __traits(getMember, value, member) = __traits(getMember, this, member);
                 }
             }
         }}
+        static if(__traits(hasMember, T, "serdeFinalizeWithDummy"))
+        {
+            value.serdeFinalizeWithDummy(this);
+        }
     }
 }
 
