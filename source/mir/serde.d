@@ -923,7 +923,7 @@ public:
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
             static if (!hasUDA!(__traits(getMember, T, member), serdeFromDummyByUser))
         {{
-            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, __serdeFlags, member))
+            if (!hasUDA!(__traits(getMember, T, member), serdeOptional) || __traits(getMember, __serdeFlags, member))
             {
                 static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
                 {
@@ -960,7 +960,7 @@ public:
     /// Initialize target member
     void serdeFinalizeTargetMember(string member)(ref T value)
     {
-            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, __serdeFlags, member))
+            if (!hasUDA!(__traits(getMember, T, member), serdeOptional) || __traits(getMember, __serdeFlags, member))
             {
                 static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
                 {
