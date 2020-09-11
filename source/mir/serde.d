@@ -276,7 +276,7 @@ Can be applied only to fields that can be constructed from strings.
 Does not allocate new data when deserializeing. Raw data is used for strings instead of new memory allocation.
 Use this attributes only for strings that would not be used after the input data deallocation.
 +/
-enum serdeScopeStringProxy;
+deprecated("use @serdeScoped @serdeProxy!(const(char)[]) instead") enum serdeScopeStringProxy;
 
 /++
 Attributes to out conditional ignore field during serialization.
@@ -881,9 +881,7 @@ public:
             else
             static if (isCompositeType!(typeof(__traits(getMember, T, member))))
             {
-                static if (
-                    hasUDA!(typeof(__traits(getMember, T, member)), serdeProxy) ||
-                    hasUDA!(typeof(__traits(getMember, T, member)), serdeScopeStringProxy))
+                static if (hasUDA!(typeof(__traits(getMember, T, member)), serdeProxy))
                 {
                     mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ " = T.init." ~ member ~ ";");
                 }

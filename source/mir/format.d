@@ -6,7 +6,73 @@ Authors:   Ilya Yaroshenko
 +/
 module mir.format;
 
+/// `mir.conv: to` extension.
+version(mir_test)
+@safe pure @nogc
+unittest
+{
+    import mir.conv: to;
+    import mir.small_string;
+    alias S = SmallString!32;
+
+    assert(123.0.to!S == "123");
+    assert(123.to!(immutable S) == "123");
+    assert(true.to!S == "true");
+    assert(true.to!string == "true");
+
+    assert((cast(S)"str")[] == "str");
+
+    assert(S("str").to!(const(char)[]) == "str"); // scope result
+    assert(S("str").to!(char[]) == "str"); // scope result
+}
+
+/// ditto
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.conv: to;
+    import mir.small_string;
+    alias S = SmallString!32;
+
+    assert(123.0.to!string == "123");
+    assert(123.to!(char[]) == "123");
+
+    assert(S("str").to!string == "str"); // GC allocated result
+}
+
 import std.traits;
+
+/// Concatenated string results
+string text(string separator = "", A...)(auto ref A args)
+        if (A.length > 0)
+{
+    static if (A.length == 1)
+    {
+        import mir.functional: forward;
+        import mir.conv: to;
+        return to!string(forward!args);
+    }
+    else
+    {
+        import mir.appender: ScopedBuffer;
+        ScopedBuffer!char buffer;
+        foreach (i, ref arg; args)
+        {
+            buffer.print(arg);
+            static if (separator.length && i + 1 < args.length)
+                buffer.printStaticStringInternal!(char, separator);
+        }
+        return buffer.data.idup;
+    }
+}
+
+///
+@safe pure nothrow unittest
+{
+    assert(text("str ", true, " ", 100, " ", 124.1) == "str true 100 124.1");
+    assert(text!" "("str", true, 100, 124.1) == "str true 100 124.1");
+}
 
 import mir.format_impl;
 
@@ -44,7 +110,7 @@ alias dstringBuf = _stringBuf!dchar;
 mixin template StreamFormatOp(C)
 {
     ///
-    ref typeof(this) opBinary(string op : "<<", T)(scope ref const T c) scope
+    ref typeof(this) opBinary(string op : "<<", T)(ref const T c) scope
     {
         return print!C(this, c);
     }
@@ -497,7 +563,7 @@ ref W print(C = char, W, T)(scope return ref W w, const T c)
 
 /// ditto
 pragma(inline, false)
-ref W print(C = char, W, T)(scope return ref W w, scope ref const T c)
+ref W print(C = char, W, T)(scope return ref W w, ref const T c)
     if (is(T == struct) || is(T == union))
 {
     static if (__traits(hasMember, T, "toString"))
@@ -513,7 +579,7 @@ ref W print(C = char, W, T)(scope return ref W w, scope ref const T c)
         else
         static if (is(typeof(w.put(c.toString))))
             w.put(c.toString);
-        else static assert(0, T.stringof ~ ".toString definition is wrong: 'const scope' qualifier may be missing.");
+        else static assert(0, T.stringof ~ ".toString definition is wrong: 'const' qualifier may be missing.");
         return w;
     }
     else
@@ -638,10 +704,10 @@ ref W print(C = char, W, T)(scope return ref W w, scope const T c)
 @safe pure nothrow
 version (mir_test) unittest
 {
-    static class A { scope void toString(C, W)(scope ref W w) const { w.put(C('a')); } }
-    static class S { scope void toString(W)(scope ref W w) const { w.put("s"); } }
-    static class D { scope void toString(Dg)(scope Dg sink) const { sink("d"); } }
-    static class F { scope const(char)[] toString()() const return { return "f"; } }
+    static class A { void toString(C, W)(scope ref W w) const { w.put(C('a')); } }
+    static class S { void toString(W)(scope ref W w) const { w.put("s"); } }
+    static class D { void toString(Dg)(scope Dg sink) const { sink("d"); } }
+    static class F { const(char)[] toString()() const return { return "f"; } }
     static class G { const(char)[] s = "g"; alias s this; }
 
     import mir.appender: ScopedBuffer;

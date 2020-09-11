@@ -13,7 +13,7 @@ Authors:   Ilya Yaroshenko
 +/
 module mir.small_string;
 
-import mir.serde: serdeScopeStringProxy;
+import mir.serde: serdeScoped, serdeProxy;
 
 private extern (C) @system nothrow @nogc pure size_t strnlen_s(scope const char* s, size_t n);
 
@@ -26,7 +26,7 @@ extern(C++, "mir"):
 /++
 Self-contained generic Small String implementaton.
 +/
-@serdeScopeStringProxy
+@serdeScoped @serdeProxy!(const(char)[])
 struct SmallString(uint maxLength)
     if (maxLength)
 {
@@ -37,20 +37,7 @@ struct SmallString(uint maxLength)
     // maxLength bytes
     char[maxLength] _data = '\0';
 
-extern(D):
-
-	static SmallString deserialize(S)(S data)
-	{
-        import asdf.serialization: deserialize;
-        return SmallString(data.deserialize!(const(char)[]));
-	}
-
-	void serialize(S)(ref S serializer)
-	{
-		serializer.putValue(asArray);
-	}
-
-@safe pure @nogc:
+extern(D) @safe pure @nogc:
 
     /// Constructor
     this(typeof(null))

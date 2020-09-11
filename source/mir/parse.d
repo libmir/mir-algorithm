@@ -7,6 +7,22 @@ Copyright: Symmetry Investments and Kaleidic Associates
 +/
 module mir.parse;
 
+/// `mir.conv: to` extension.
+version(mir_test)
+@safe pure @nogc
+unittest
+{
+    import mir.conv: to;
+
+    assert("123.0".to!double == 123);
+    assert("123".to!int == 123);
+
+    import mir.small_string;
+    alias S = SmallString!32;
+    assert(S("123.0").to!double == 123);
+    assert(S("123").to!(immutable int) == 123);
+}
+
 import mir.primitives;
 import std.range.primitives: isInputRange;
 import std.traits: isMutable, isFloatingPoint, isSomeChar;
@@ -131,76 +147,83 @@ version(mir_test)
 }
 
 /++
+Single character parsing utilities.
+
+Returns: true if success and false otherwise.
++/
+bool parse(T, Range)(scope ref Range r, scope ref T value)
+    if (isInputRange!Range && isSomeChar!T)
+{
+    if (r.empty)
+        return false;
+    value = r.front;
+    r.popFront;
+    return true;
+}
+
+///
+version(mir_test) @safe pure nothrow @nogc
+unittest
+{
+    auto s = "str";
+    char c;
+    assert(parse(s, c));
+    assert(c == 's');
+    assert(s == "tr");
+}
+
+/++
 Integer parsing utilities.
 
 Returns: true if success and false otherwise.
 +/
-bool parse(T : byte, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && !__traits(isUnsigned, T))
+bool parse(T, Range)(scope ref Range r, scope ref T value)
+    if ((is(T == byte) || is(T == short)) && isInputRange!Range && !__traits(isUnsigned, T))
 {
     int lvalue;
     auto ret = parse!(int, Range)(r, lvalue);
-    value = cast(byte) lvalue;
-    return ret && value == lvalue;
-}
-/// ditto
-bool parse(T : short, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && !__traits(isUnsigned, T))
-{
-    int lvalue;
-    auto ret = parse!(int, Range)(r, lvalue);
-    value = cast(short) lvalue;
+    value = cast(T) lvalue;
     return ret && value == lvalue;
 }
 
 /// ditto
 pragma(inline, false)
-bool parse(T : int, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && !__traits(isUnsigned, T))
+bool parse(T, Range)(scope ref Range r, scope ref T value)
+    if (is(T == int) && isInputRange!Range && !__traits(isUnsigned, T))
 {
     return parseSignedImpl!(int, Range)(r, value);
 }
 
 /// ditto
 pragma(inline, false)
-bool parse(T : long, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && !__traits(isUnsigned, T))
+bool parse(T, Range)(scope ref Range r, scope ref T value)
+    if (is(T == long) && isInputRange!Range && !__traits(isUnsigned, T))
 {
     return parseSignedImpl!(long, Range)(r, value);
 }
 
 /// ditto
-bool parse(T : ubyte, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && __traits(isUnsigned, T))
+bool parse(T, Range)(scope ref Range r, scope ref T value)
+    if ((is(T == ubyte) || is(T == ushort)) && isInputRange!Range && __traits(isUnsigned, T))
 {
     uint lvalue;
     auto ret = parse!(uint, Range)(r, lvalue);
-    value = cast(ubyte) lvalue;
-    return ret && value == lvalue;
-}
-
-/// ditto
-bool parse(T : ushort, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && __traits(isUnsigned, T))
-{
-    uint lvalue;
-    auto ret = parse!(uint, Range)(r, lvalue);
-    value = cast(ushort) lvalue;
+    value = cast(T) lvalue;
     return ret && value == lvalue;
 }
 
 /// ditto
 pragma(inline, false)
-bool parse(T : uint, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && __traits(isUnsigned, T))
+bool parse(T, Range)(scope ref Range r, scope ref T value)
+    if (is(T == uint) && isInputRange!Range && __traits(isUnsigned, T))
 {
     return parseUnsignedImpl!(uint, Range)(r, value);
 }
 
 /// ditto
 pragma(inline, false)
-bool parse(T : ulong, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && __traits(isUnsigned, T))
+bool parse(T, Range)(scope ref Range r, scope ref T value)
+    if (is(T == ulong) && isInputRange!Range && __traits(isUnsigned, T))
 {
     return parseUnsignedImpl!(ulong, Range)(r, value);
 }

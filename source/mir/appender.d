@@ -267,3 +267,66 @@ version (mir_test) unittest
     buf.popBackN(2);
     assert(buf.data == "cs");
 }
+
+///
+struct UnsafeArrayBuffer(T)
+{
+    import std.traits: isImplicitlyConvertible;
+
+    ///
+    T[] buffer;
+    ///
+    size_t length;
+
+    ///
+    void put(T a)
+    {
+        import core.lifetime: move;
+        assert(length < buffer.length);
+        buffer[length++] = move(a);
+    }
+
+    static if (isImplicitlyConvertible!(const T, T))
+        private alias E = const T;
+    else
+        private alias E = T;
+
+    ///
+    void put(E[] a)
+    {
+        import core.lifetime: move;
+        assert(buffer.length >= a.length + length);
+        buffer[length .. length + a.length] = a;
+        length += a.length;
+    }
+
+    ///
+    inout(T)[] data() inout @property @safe scope
+    {
+        return buffer[0 .. length];
+    }
+
+    ///
+    void popBackN(size_t n)
+    {
+        sizediff_t t = length - n;
+        if (t < 0)
+            assert(0, "UnsafeBuffer.popBackN: n is too large.");
+        buffer[t .. length]._mir_destroy;
+        length = t;
+    }
+}
+
+///
+@safe pure nothrow @nogc
+version (mir_test) unittest
+{
+    char[4] array;
+    auto buf = UnsafeArrayBuffer!char(array);
+    buf.put('c');
+    buf.put("str");
+    assert(buf.data == "cstr");
+
+    buf.popBackN(2);
+    assert(buf.data == "cs");
+}
