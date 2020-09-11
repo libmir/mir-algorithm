@@ -22,8 +22,9 @@ unittest
 
     assert((cast(S)"str")[] == "str");
 
-    assert(S("str").to!(const(char)[]) == "str"); // scope result
-    assert(S("str").to!(char[]) == "str"); // scope result
+    auto str = S("str");
+    assert(str.to!(const(char)[]) == "str"); // scope result
+    assert(str.to!(char[]) == "str"); // scope result
 }
 
 /// ditto

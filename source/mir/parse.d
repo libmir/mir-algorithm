@@ -16,6 +16,7 @@ unittest
 
     assert("123.0".to!double == 123);
     assert("123".to!int == 123);
+    assert("123".to!byte == 123);
 
     import mir.small_string;
     alias S = SmallString!32;
