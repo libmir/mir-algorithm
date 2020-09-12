@@ -863,7 +863,8 @@ struct SerdeOrderedDummy(T)
         {
             static if (isField!(T, member))
             {
-                __traits(getMember, this, member) = __traits(getMember, value, member);
+                static if (__traits(compiles, {__traits(getMember, this, member) = __traits(getMember, value, member);}))
+                    __traits(getMember, this, member) = __traits(getMember, value, member);
             }
         }
     }
