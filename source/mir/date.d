@@ -32,6 +32,7 @@ module mir.date;
 import std.range.primitives : isOutputRange;
 import std.traits : isSomeChar, Unqual;
 
+version(mir_test)
 version(D_Exceptions)
 version(unittest) import std.exception : assertThrown;
 
@@ -2152,6 +2153,7 @@ version (mir_test)
     assert(daysToDayOfWeek(DayOfWeek.mon, DayOfWeek.wed) == 2);
 }
 
+version (mir_test)
 @safe unittest
 {
     assert(daysToDayOfWeek(DayOfWeek.sun, DayOfWeek.sun) == 0);
@@ -2257,6 +2259,7 @@ do
     }
 }
 
+version (mir_test)
 @safe unittest
 {
     // Test A.D.
@@ -2365,6 +2368,7 @@ string monthToString(Month month) @safe pure @nogc nothrow
     return _monthNames[month - Month.jan];
 }
 
+version (mir_test)
 @safe unittest
 {
     assert(monthToString(Month.jan) == "Jan");
@@ -2381,6 +2385,7 @@ string monthToString(Month month) @safe pure @nogc nothrow
     assert(monthToString(Month.dec) == "Dec");
 }
 
+version (mir_test)
 version(unittest)
 {
     // All of these helper arrays are sorted in ascending order.
