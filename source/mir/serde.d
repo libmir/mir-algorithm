@@ -828,9 +828,22 @@ unittest
 /++
 UDA used to force deserializer to initilize members in the order of their definition in the target object/structure.
 
-See_also: %(LREF SerdeOrderedDummy)
+The attribute force deserializer to create a dummy type (recursively), initializer its fields and then assign them to
+to the object members (fields and setters) in the order of their definition.
+
+See_also: $(LREF SerdeOrderedDummy), $(LREF serdeRealOrderedIn).
 +/
 enum serdeOrderedIn;
+
+/++
+UDA used to force deserializer to initilize members in the order of their definition in the target object/structure.
+
+Unlike $(LREF serdeOrderedIn) `serdeRealOrderedDummy` force deserialzier to iterate all DOM keys for each object deserialization member.
+It is slower but more universal approach.
+
+See_also: $(LREF serdeOrderedIn).
++/
+enum serdeRealOrderedDummy;
 
 /++
 UDA used to force deserializer to skip the member final deserialization.
@@ -847,9 +860,9 @@ enum serdeAlphabetOut;
 private enum isCompositeType(T) = is(T == class) || is(T == struct) || is(T == union) || is(T == interface);
 
 /++
-A dummy structure usefull %(LREF serdeOrderedIn) support.
+A dummy structure usefull $(LREF serdeOrderedIn) support.
 +/
-struct SerdeOrderedDummy(T)
+struct SerdeOrderedDummy(T, bool __optionalByDefault = false)
     if (is(serdeGetFinalProxy!T == T) && (is(T == class) || is(T == struct) || is(T == union) || is(T == interface)))
 {
     import std.traits: hasUDA;
@@ -857,7 +870,12 @@ struct SerdeOrderedDummy(T)
     @serdeIgnore
     SerdeFlags!(typeof(this)) __serdeFlags;
 
-    this(T value)
+    static if (__optionalByDefault)
+        alias __serdeOptionalRequired = serdeRequired;
+    else
+        alias __serdeOptionalRequired = serdeOptional;
+
+    this()(T value)
     {
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
         {
@@ -924,7 +942,7 @@ public:
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
             static if (!hasUDA!(__traits(getMember, T, member), serdeFromDummyByUser))
         {{
-            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, __serdeFlags, member))
+            if (hasUDA!(__traits(getMember, T, member), __serdeOptionalRequired) == __optionalByDefault || __traits(getMember, __serdeFlags, member))
             {
                 static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
                 {
@@ -961,7 +979,7 @@ public:
     /// Initialize target member
     void serdeFinalizeTargetMember(string member)(ref T value)
     {
-            if (hasUDA!(__traits(getMember, T, member), serdeRequired) || __traits(getMember, __serdeFlags, member))
+            if (hasUDA!(__traits(getMember, T, member), __serdeOptionalRequired) == __optionalByDefault || __traits(getMember, __serdeFlags, member))
             {
                 static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
                 {
