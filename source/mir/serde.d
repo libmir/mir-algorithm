@@ -566,7 +566,7 @@ template serdeDeserializationMemberType(T, string member)
         alias serdeDeserializationMemberType = typeof(__traits(getMember, *aggregate, member));
     }
     else
-    static if (__traits(compiles, &__traits(getMember, *aggregate, member)()))
+    static if (__traits(compiles, &__traits(getMember, *aggregate, member)()) || __traits(getOverloads, *aggregate, member).length > 1)
     {
         alias serdeDeserializationMemberType = typeof(__traits(getMember, *aggregate, member)());
     }
@@ -986,11 +986,11 @@ public:
                     alias M = typeof(__traits(getMember, value, member));
                     SerdeFlags!M memberFlags;
                     __traits(getMember, this, member).serdeFinalizeTarget(__traits(getMember, value, member), memberFlags);
-                    static if(__traits(hasMember, M, "serdeFinalizeWithFlags"))
+                    static if (__traits(hasMember, M, "serdeFinalizeWithFlags"))
                     {
                         __traits(getMember, value, member).serdeFinalizeWithFlags(memberFlags);
                     }
-                    static if(__traits(hasMember, M, "serdeFinalize"))
+                    static if (__traits(hasMember, M, "serdeFinalize"))
                     {
                         __traits(getMember, value, member).serdeFinalize();
                     }
@@ -1007,7 +1007,7 @@ public:
                 }
             }
         }}
-        static if(__traits(hasMember, T, "serdeFinalizeWithDummy"))
+        static if (__traits(hasMember, T, "serdeFinalizeWithDummy"))
         {
             value.serdeFinalizeWithDummy(this);
         }
@@ -1023,11 +1023,11 @@ public:
                     alias M = typeof(__traits(getMember, value, member));
                     SerdeFlags!M memberFlags;
                     __traits(getMember, this, member).serdeFinalizeTarget(__traits(getMember, value, member), memberFlags);
-                    static if(__traits(hasMember, M, "serdeFinalizeWithFlags"))
+                    static if (__traits(hasMember, M, "serdeFinalizeWithFlags"))
                     {
                         __traits(getMember, value, member).serdeFinalizeWithFlags(memberFlags);
                     }
-                    static if(__traits(hasMember, M, "serdeFinalize"))
+                    static if (__traits(hasMember, M, "serdeFinalize"))
                     {
                         __traits(getMember, value, member).serdeFinalize();
                     }
@@ -1079,16 +1079,40 @@ struct SerdeFlags(T)
         static foreach(member; serdeFinalProxyDeserializableMembers!T)
             mixin("bool " ~ member ~ ";");
 }
-
+        
 /++
 +/
 template deserializeValueMemberImpl(alias deserializeValue, alias deserializeScoped)
 {
     ///
-    SerdeException deserializeValueMemberImpl(string member, Data, T, Context...)(Data data, ref T value, ref SerdeFlags!T requiredFlags, ref Context args)
+    SerdeException deserializeValueMemberImpl(string member, Data, T, Context...)(Data data, ref T value, ref SerdeFlags!T requiredFlags, ref Context context)
     {
+        import core.lifetime: move;
         import mir.conv: to;
-        import std.traits: Select, Unqual, Parameters;
+
+        enum likeList = hasUDA!(__traits(getMember, value, member), serdeLikeList);
+        enum likeStruct  = hasUDA!(__traits(getMember, value, member), serdeLikeStruct);
+        enum hasProxy = hasUDA!(__traits(getMember, value, member), serdeProxy);
+        enum hasScoped = hasUDA!(__traits(getMember, value, member), serdeScoped);
+
+        static assert (likeList + likeStruct <= 1, T.stringof ~ "." ~ member ~ " can't have both @serdeLikeStruct and @serdeLikeList attributes");
+        static assert (hasProxy >= likeStruct, T.stringof ~ "." ~ member ~ " should have a Proxy type for deserialization");
+        static assert (hasProxy >= likeList, T.stringof ~ "." ~ member ~ " should have a Proxy type for deserialization");
+
+        alias Member = serdeDeserializationMemberType!(T, member);
+
+        static if (hasProxy)
+            alias Temporal = serdeGetProxy!(__traits(getMember, value, member));
+        else
+            alias Temporal = Member;
+
+        static if (hasScoped)
+            static if (__traits(compiles, { Temporal temporal; deserializeScoped(data, temporal); }))
+                alias impl = deserializeScoped;
+            else
+                alias impl = deserializeValue;
+        else
+            alias impl = deserializeValue;
 
         static immutable excm(string member) = new SerdeException("ASDF deserialisation: multiple keys for member '" ~ member ~ "' in " ~ T.stringof ~ " are not allowed.");
 
@@ -1098,80 +1122,62 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
 
         __traits(getMember, requiredFlags, member) = true;
 
-        static if(!__traits(compiles, {__traits(getMember, value, member) = __traits(getMember, value, member);}))
+        static if (likeList)
         {
-            alias Type = Unqual!(Parameters!(__traits(getMember, value, member)));
-        }
-        else
-        {
-            alias Type = typeof(__traits(getMember, value, member));
-        }
-
-        static if(hasUDA!(__traits(getMember, value, member), serdeLikeList))
-        {
-            static assert(hasUDA!(__traits(getMember, value, member), serdeProxy), V.stringof ~ "." ~ member ~ " should have a Proxy type for deserialization");
-            serdeGetProxy!(__traits(getMember, value, member)) proxy;
-            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, proxy));
-            alias Fun = Select!(S, deserializeScoped, deserializeValue);
-            foreach(v; data.byElement)
+            foreach(elem; data.byElement)
             {
-                proxy = proxy.init;
-                if (auto exc = Fun(v, proxy, args))
+                Temporal temporal;
+                if (auto exc = impl(elem, temporal, context))
                     return exc;
-                __traits(getMember, value, member).put(proxy);
+                __traits(getMember, value, member).put(move(temporal));
             }
         }
         else
-        static if(hasUDA!(__traits(getMember, value, member), serdeLikeStruct))
+        static if (likeStruct)
         {
-            static assert(hasUDA!(__traits(getMember, value, member), serdeProxy), V.stringof ~ "." ~ member ~ " should have a Proxy type for deserialization");
-            serdeGetProxy!(__traits(getMember, value, member)) proxy;
-            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, proxy));
-            alias Fun = Select!(S, deserializeScoped, deserializeValue);
-            foreach(v; data.byKeyValue)
+            foreach(v; data.byKeyValue(context))
             {
-                proxy = proxy.init;
-                if (auto exc = Fun(v.value, proxy, args))
+                Temporal temporal;
+                if (auto exc = impl(v.value, temporal, context))
                     return exc;
-                __traits(getMember, value, member)[v.key.idup] = proxy;
+                __traits(getMember, value, member)[v.key.idup] = move(temporal);
             }
         }
         else
-        static if(hasUDA!(__traits(getMember, value, member), serdeProxy))
+        static if (hasProxy)
         {
-            serdeGetProxy!(__traits(getMember, value, member)) proxy;
-            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, proxy));
-            alias Fun = Select!(S, deserializeScoped, deserializeValue);
-
-            if (auto exc = Fun(data, proxy))
+            Temporal temporal;
+            if (auto exc = impl(data, temporal, context))
                 return exc;
-            __traits(getMember, value, member) = proxy.to!Type;
+            __traits(getMember, value, member) = to!(serdeDeserializationMemberType!(T, member))(move(temporal));
         }
         else
-        static if(__traits(compiles, {__traits(getMember, value, member) = __traits(getMember, value, member);}) && __traits(compiles, {auto ptr = &__traits(getMember, value, member); }))
+        static if (isField!(T, member))
         {
-            enum S = hasUDA!(__traits(getMember, value, member), serdeLikeStruct) && __traits(compiles, deserializeScoped(data, __traits(getMember, value, member)));
-            alias Fun = Select!(S, deserializeScoped, deserializeValue);
-
-            if (auto exc = Fun(data, __traits(getMember, value, member)))
+            if (auto exc = impl(data, __traits(getMember, value, member), context))
                 return exc;
         }
         else
         {
-            Type val;
-
-            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, val));
-            alias Fun = Select!(S, deserializeScoped, deserializeValue);
-
-            if (auto exc = Fun(data, val))
+            Member temporal;
+            if (auto exc = impl(data, temporal, context))
                 return exc;
-            __traits(getMember, value, member) = val;
+            __traits(getMember, value, member) = move(temporal);
         }
 
-        static if(hasUDA!(__traits(getMember, value, member), serdeTransformIn))
+        static if (hasUDA!(__traits(getMember, value, member), serdeTransformIn))
         {
-            alias f = serdeGetTransformIn!(__traits(getMember, value, member));
-            f(__traits(getMember, value, member));
+            alias transform = serdeGetTransformIn!(__traits(getMember, value, member));
+            static if (isField!(T, member))
+            {
+                transform(__traits(getMember, value, member));
+            }
+            else
+            {
+                auto temporal = __traits(getMember, value, member);
+                transform(temporal);
+                __traits(getMember, value, member) = move(temporal);
+            }
         }
 
         return null;
