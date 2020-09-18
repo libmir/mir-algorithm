@@ -4,6 +4,43 @@ import mir.functional: naryFun;
 import mir.reflection;
 import std.traits: TemplateArgsOf, EnumMembers, hasUDA;
 
+version (D_Exceptions)
+{
+    /++
+    Serde Exception
+    +/
+    class SerdeException : Exception
+    {
+        ///
+        this(
+            string msg,
+            string file = __FILE__,
+            size_t line = __LINE__,
+            Throwable next = null) pure nothrow @nogc @safe 
+        {
+            super(msg, file, line, next);
+        }
+
+        ///
+        this(
+            string msg,
+            Throwable next,
+            string file = __FILE__,
+            size_t line = __LINE__,
+            ) pure nothrow @nogc @safe 
+        {
+            this(msg, file, line, next);
+        }
+
+        SerdeException toMutable() @trusted pure nothrow @nogc const
+        {
+            return cast() this;
+        }
+
+        alias toMutable this;
+    }
+}
+
 /++
 Attribute for key overloading during Serialization and Deserialization.
 The first argument overloads the key value during serialization unless `serdeKeyOut` is given.
@@ -843,7 +880,7 @@ It is slower but more universal approach.
 
 See_also: $(LREF serdeOrderedIn).
 +/
-enum serdeRealOrderedDummy;
+enum serdeRealOrderedIn;
 
 /++
 UDA used to force deserializer to skip the member final deserialization.
@@ -1041,6 +1078,104 @@ struct SerdeFlags(T)
     else
         static foreach(member; serdeFinalProxyDeserializableMembers!T)
             mixin("bool " ~ member ~ ";");
+}
+
+/++
++/
+template deserializeValueMemberImpl(alias deserializeValue, alias deserializeScoped)
+{
+    ///
+    SerdeException deserializeValueMemberImpl(string member, Data, T, Context...)(Data data, ref T value, ref SerdeFlags!T requiredFlags, ref Context args)
+    {
+        import mir.conv: to;
+        import std.traits: Select, Unqual, Parameters;
+
+        static immutable excm(string member) = new SerdeException("ASDF deserialisation: multiple keys for member '" ~ member ~ "' in " ~ T.stringof ~ " are not allowed.");
+
+        static if (!hasUDA!(__traits(getMember, value, member), serdeAllowMultiple))
+            if (__traits(getMember, requiredFlags, member))
+                return excm!member;
+
+        __traits(getMember, requiredFlags, member) = true;
+
+        static if(!__traits(compiles, {__traits(getMember, value, member) = __traits(getMember, value, member);}))
+        {
+            alias Type = Unqual!(Parameters!(__traits(getMember, value, member)));
+        }
+        else
+        {
+            alias Type = typeof(__traits(getMember, value, member));
+        }
+
+        static if(hasUDA!(__traits(getMember, value, member), serdeLikeList))
+        {
+            static assert(hasUDA!(__traits(getMember, value, member), serdeProxy), V.stringof ~ "." ~ member ~ " should have a Proxy type for deserialization");
+            serdeGetProxy!(__traits(getMember, value, member)) proxy;
+            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, proxy));
+            alias Fun = Select!(S, deserializeScoped, deserializeValue);
+            foreach(v; data.byElement)
+            {
+                proxy = proxy.init;
+                if (auto exc = Fun(v, proxy, args))
+                    return exc;
+                __traits(getMember, value, member).put(proxy);
+            }
+        }
+        else
+        static if(hasUDA!(__traits(getMember, value, member), serdeLikeStruct))
+        {
+            static assert(hasUDA!(__traits(getMember, value, member), serdeProxy), V.stringof ~ "." ~ member ~ " should have a Proxy type for deserialization");
+            serdeGetProxy!(__traits(getMember, value, member)) proxy;
+            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, proxy));
+            alias Fun = Select!(S, deserializeScoped, deserializeValue);
+            foreach(v; data.byKeyValue)
+            {
+                proxy = proxy.init;
+                if (auto exc = Fun(v.value, proxy, args))
+                    return exc;
+                __traits(getMember, value, member)[v.key.idup] = proxy;
+            }
+        }
+        else
+        static if(hasUDA!(__traits(getMember, value, member), serdeProxy))
+        {
+            serdeGetProxy!(__traits(getMember, value, member)) proxy;
+            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, proxy));
+            alias Fun = Select!(S, deserializeScoped, deserializeValue);
+
+            if (auto exc = Fun(data, proxy))
+                return exc;
+            __traits(getMember, value, member) = proxy.to!Type;
+        }
+        else
+        static if(__traits(compiles, {__traits(getMember, value, member) = __traits(getMember, value, member);}) && __traits(compiles, {auto ptr = &__traits(getMember, value, member); }))
+        {
+            enum S = hasUDA!(__traits(getMember, value, member), serdeLikeStruct) && __traits(compiles, deserializeScoped(data, __traits(getMember, value, member)));
+            alias Fun = Select!(S, deserializeScoped, deserializeValue);
+
+            if (auto exc = Fun(data, __traits(getMember, value, member)))
+                return exc;
+        }
+        else
+        {
+            Type val;
+
+            enum S = hasUDA!(__traits(getMember, value, member), serdeScoped) && __traits(compiles, deserializeScoped(data, val));
+            alias Fun = Select!(S, deserializeScoped, deserializeValue);
+
+            if (auto exc = Fun(data, val))
+                return exc;
+            __traits(getMember, value, member) = val;
+        }
+
+        static if(hasUDA!(__traits(getMember, value, member), serdeTransformIn))
+        {
+            alias f = serdeGetTransformIn!(__traits(getMember, value, member));
+            f(__traits(getMember, value, member));
+        }
+
+        return null;
+    }
 }
 
 private:
