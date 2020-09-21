@@ -17,21 +17,8 @@ version (D_Exceptions)
 private enum int alignOf(T) = T.alignof;
 
 private enum hasToHash(T) = __traits(hasMember, T, "toHash");
-private enum hasToHash(T) = __traits(hasMember, T, "opCmp");
-private enum hasToHash(T) = __traits(hasMember, T, "opEquals");
+private enum hasOpEquals(T) = __traits(hasMember, T, "opEquals");
 private enum isPOD(T) = __traits(isPOD, T);
-
-private template LargestAlignOf(T...)
-{
-    static if (T.length == 0)
-        enum size_t LargestAlignOf = 0;
-    else
-    {
-        enum tail = LargestAlignOf!(T[1 .. $]);
-        enum size_t LargestAlignOf = T[0].alignof > tail ? T[0].alignof : tail;
-    }
-}
-
 private enum Sizeof(T) = T.sizeof;
 
 /++
@@ -49,9 +36,8 @@ struct Variant(Types...)
 
     private alias _Types = Types;
 
-    align(max(4, staticMap!(alignOf, Types)))
     private uint type; // 0 for unininit value, index = type - 1
-    private align(LargestAlignOf!Types) ubyte[Largest!Types.sizeof] payload;
+    private align(max(staticMap!(alignOf, Types))) ubyte[Largest!Types.sizeof] payload;
     private enum hasDestructor = anySatisfy!(hasElaborateDestructor, Types);
 
     static if (hasDestructor)
@@ -188,7 +174,15 @@ struct Variant(Types...)
         else
         static if (allSatisfy!(isPOD, Types))
         {
-            static immutable sizes = [size_t(0), staticMap!(Sizeof, Types)];
+            static if (payload.length <= ubyte.max)
+                alias UInt = ubyte;
+            else
+            static if (payload.length <= ushort.max)
+                alias UInt = ushort;
+            else
+                alias UInt = uint;
+
+            static immutable UInt[Types.length + 1] sizes = [0, staticMap!(Sizeof, Types)];
             return hashOf(payload[0 .. sizes[type]], type);
         }
         else
@@ -204,7 +198,7 @@ struct Variant(Types...)
         }
     }
 
-    static if (allSatisfy!(isEqualityComparable, Types))
+    static if (allSatisfy!(templateOr!(isPOD, hasOpEquals), Types))
     /++
     +/
     auto opEquals(ref const typeof(this) rhs) const
@@ -247,6 +241,53 @@ struct Variant(Types...)
     }
 }
 
+/// Test for opCmp, opEqual, toHash
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import core.stdc.string: memcmp;
+
+    static struct C(ubyte payloadSize, bool isPOD, bool hasToHash = true, bool hasOpEquals = true)
+    {
+        ubyte[payloadSize] payload;
+
+    const:
+
+        static if (!isPOD)
+        {
+            this(this) {}
+            ~this() {}
+        }
+
+    @safe pure nothrow @nogc:
+
+
+    static if (hasToHash)
+        size_t toHash() { return hashOf(payload); }
+
+    static if (hasOpEquals)
+        auto opEquals(ref const typeof(this) rhs) @trusted { return memcmp(payload.ptr, rhs.payload.ptr, payload.length); }
+        auto opCmp(ref const typeof(this) rhs) { return payload == rhs.payload; }
+    }
+
+    static foreach (size1; [1, 2, 4, 8, 10, 16, 20])
+    static foreach (size2; [1, 2, 4, 8, 10, 16, 20])
+    static if (size1 != size2)
+    static foreach (isPOD; [true, false])
+    static foreach (hasToHash; [true, false])
+    static foreach (hasOpEquals; [true, false])
+    {{
+        alias T = Variant!(
+                double,
+                C!(size1, isPOD, hasToHash, hasOpEquals),
+                C!(size2, isPOD, hasToHash, hasOpEquals));
+        static assert (__traits(hasMember, T, "toHash") == isPOD || hasToHash);
+        static assert (__traits(hasMember, T, "opEquals") == isPOD || hasOpEquals);
+        static assert (__traits(hasMember, T, "opCmp"));
+    }}
+}
+
 /++
 Params:
     visitor = a function name alias
@@ -287,6 +328,7 @@ template visit(alias visitor, bool forceAllTypes = true)
 
 ///
 version(mir_test)
+@safe pure @nogc
 unittest
 {
     static struct S { int a; }
@@ -340,6 +382,7 @@ template optionalVisit(alias visitor)
 
 ///
 version(mir_test)
+@safe pure @nogc nothrow
 unittest
 {
     static struct S { int a; }
