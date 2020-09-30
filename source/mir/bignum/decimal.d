@@ -6,6 +6,7 @@ Note:
 +/
 module mir.bignum.decimal;
 
+import mir.serde: serdeProxy, serdeScoped;
 import std.traits: isSomeChar;
 
 /++
@@ -13,6 +14,7 @@ Stack-allocated decimal type.
 Params:
     maxSize64 = count of 64bit words in coefficient
 +/
+@serdeScoped @serdeProxy!(const(char)[])
 struct Decimal(size_t maxSize64)
     if (maxSize64 && maxSize64 <= ushort.max)
 {

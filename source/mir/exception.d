@@ -214,7 +214,7 @@ mixin template MirThrowableImpl()
     +/
     @nogc @safe pure nothrow this(scope const(char)[] msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
     {
-        super((() @trusted => cast(immutable) initilizePayload(_payload, msg))(), file, line, nextInChain);
+        super((() @trusted => cast(immutable) mirExceptionInitilizePayloadImpl(_payload, msg))(), file, line, nextInChain);
     }
 
     /// ditto
@@ -262,7 +262,7 @@ private enum maxMsgLen = 447;
 
 pragma(inline, false)
 pure nothrow @nogc @safe
-private const(char)[] initilizePayload(ref return char[maxMsgLen] payload, scope const(char)[] msg)
+const(char)[] mirExceptionInitilizePayloadImpl(ref return char[maxMsgLen] payload, scope const(char)[] msg)
 {
     import mir.internal.memory: malloc;
     import core.stdc.string: memcpy;

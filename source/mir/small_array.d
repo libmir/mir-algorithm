@@ -186,13 +186,21 @@ template SmallArray(T, uint maxLength)
         ///
         ref typeof(this) append(T elem)
         {
+            import core.lifetime: move;
             if (_length == maxLength)
             {
                 version(D_Exceptions) throw exception;
                 else assert(0, errorMsg);
             }
-            _data[_length++] = elem;
+            _data[_length++] = move(elem);
             return this;
+        }
+
+        ///
+        void trustedAppend(T elem)
+        {
+            import core.lifetime: move;
+            _data[_length++] = move(elem);
         }
 
         ///

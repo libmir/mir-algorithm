@@ -4,15 +4,17 @@ Note:
 +/
 module mir.bignum.integer;
 
-import std.traits;
 import mir.bitop;
+import mir.serde: serdeProxy, serdeScoped;
 import mir.utility;
+import std.traits;
 
 /++
 Stack-allocated big signed integer.
 Params:
     maxSize64 = count of 64bit words in coefficient
 +/
+@serdeScoped @serdeProxy!(const(char)[])
 struct BigInt(size_t maxSize64)
     if (maxSize64 && maxSize64 <= ushort.max)
 {

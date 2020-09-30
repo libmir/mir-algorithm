@@ -39,6 +39,19 @@ version (D_Exceptions)
 
         alias toMutable this;
     }
+
+    /++
+    Serde Exception with formatting support
+    +/
+    class SerdeMirException : SerdeException
+    {
+        import mir.exception: MirThrowableImpl, mirExceptionInitilizePayloadImpl;
+
+        enum maxMsgLen = 447;
+
+        ///
+        mixin MirThrowableImpl;
+    }
 }
 
 /++

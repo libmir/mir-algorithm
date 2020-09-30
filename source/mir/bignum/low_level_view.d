@@ -891,7 +891,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Params:
         value = (out) unsigned integer
-    Returns: $(SUBREF exception, IonErrorCode)
+    Returns: true on success
     +/
     bool get(U)(scope out U value)
         @safe pure nothrow @nogc const
