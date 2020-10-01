@@ -834,16 +834,30 @@ unittest
     static assert (is(serdeDeserializationFinalProxyMemberTypesRecurse!F == AliasSeq!(D, A, double)));
 }
 
+package string[] sortUniqKeys()(string[] keys)
+    @safe pure nothrow
+{
+    import mir.algorithm.iteration: uniq;
+    import mir.array.allocation: array;
+    import mir.ndslice.sorting: sort;
+
+    return keys
+        .sort!((a, b) {
+            if (sizediff_t d = a.length - b.length)
+                return d < 0;
+            return a < b;
+        })
+        .uniq
+        .array;
+}
+
 /++
 Deserialization members final proxy keys (recursive)
 +/
 template serdeGetDeserializatinKeysRecurse(T)
 {
-    import mir.algorithm.iteration: uniq, equal;
-    import mir.array.allocation: array;
-    import mir.ndslice.sorting: sort;
     import std.meta: staticMap, aliasSeqOf;
-    enum string[] serdeGetDeserializatinKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalProxyDeserializableMembers, serdeDeserializationFinalProxyMemberTypesRecurse!T))].sort.uniq!equal.array;
+    enum string[] serdeGetDeserializatinKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalProxyDeserializableMembers, serdeDeserializationFinalProxyMemberTypesRecurse!T))].sortUniqKeys;
 }
 
 ///
