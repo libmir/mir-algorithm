@@ -295,7 +295,7 @@ void quickSortImpl(alias less, Iterator)(Slice!Iterator slice) @trusted
 
         static if (naive > 1)
         {
-            if (slice.length <= naive)
+            if (slice.length <= naive || __ctfe)
             {
                 auto p = r;
                 --p;
