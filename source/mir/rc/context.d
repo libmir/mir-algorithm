@@ -242,6 +242,13 @@ package mixin template CommonRCImpl()
         return *cast(typeof(return)*)&this;
     }
 
+    /// ditto
+    C opCast(C : ThisTemplate!Q, Q)() pure nothrow @nogc const @system
+        if (isImplicitlyConvertible!(immutable(T)*, Q*))
+    {
+        return *cast(typeof(return)*)&this;
+    }
+
     ///
     pragma(inline, true)
     bool opEquals(typeof(null)) @safe scope const pure nothrow @nogc @property

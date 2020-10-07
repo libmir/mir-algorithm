@@ -63,7 +63,7 @@ struct serdeKeys
     ///
     immutable(string)[] keys;
 
-@system pure nothrow @nogc:
+@trusted pure nothrow @nogc:
     ///
     this(immutable(string)[] keys...) { this.keys = keys; }
 }
@@ -452,8 +452,8 @@ unittest
 
 /++
 Can be applied only to strings fields.
-Does not allocate new data when deserializeing. Raw ASDF data is used for strings instead of new memory allocation.
-Use this attributes only for strings that would not be used after ASDF deallocation.
+Does not allocate new data when deserializeing. Raw data is used for strings instead of new memory allocation.
+Use this attributes only for strings or arrays that would not be used after deallocation.
 +/
 enum serdeScoped;
 
@@ -675,6 +675,11 @@ template serdeGetFinalDeepProxy(T)
         static if (hasUDA!(T, serdeProxy))
         {
             alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!(serdeGetProxy!T);
+        }
+        else
+        static if (__traits(hasMember, T, "serdeKeysProxy"))
+        {
+            alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!(T.serdeKeysProxy);
         }
         else
         {

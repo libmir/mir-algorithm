@@ -35,3 +35,4 @@ test.d
 docgen
 _build_dir_
 .VSCodeCounter
+builddir/

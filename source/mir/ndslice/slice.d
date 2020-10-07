@@ -696,6 +696,9 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
     /// Data element type
     alias DeepElement = typeof(Iterator.init[size_t.init]);
 
+    ///
+    alias serdeKeysProxy = DeepElementType;
+
     /// Label Iterators types
     alias Labels = Labels_;
 

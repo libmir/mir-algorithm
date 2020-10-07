@@ -29,6 +29,9 @@ template SmallArray(T, uint maxLength)
         uint _length;
         T[maxLength] _data;
 
+        ///
+        alias serdeKeysProxy = T;
+
         static SmallArray deserialize(S)(S data)
         {
             import asdf.serialization: deserialize;

@@ -39,6 +39,9 @@ struct mir_rcarray(T)
     package alias _thisPtr = _payload;
 
     ///
+    alias serdeKeysProxy = T;
+
+    ///
     void proxySwap(ref typeof(this) rhs) pure nothrow @nogc @safe
     {
         auto t = this._payload;
