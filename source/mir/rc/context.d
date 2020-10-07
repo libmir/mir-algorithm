@@ -244,7 +244,7 @@ package mixin template CommonRCImpl()
 
     /// ditto
     C opCast(C : ThisTemplate!Q, Q)() pure nothrow @nogc const @system
-        if (isImplicitlyConvertible!(immutable(T)*, Q*))
+        if (isImplicitlyConvertible!(immutable(T)*, Q*) && !isImplicitlyConvertible!(const(T)*, Q*))
     {
         return *cast(typeof(return)*)&this;
     }
