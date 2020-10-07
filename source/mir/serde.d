@@ -1310,8 +1310,6 @@ struct SerdeFlags(T)
             mixin("bool " ~ member ~ ";");
 }
         
-/++
-+/
 template deserializeValueMemberImpl(alias deserializeValue, alias deserializeScoped)
 {
     ///
