@@ -340,25 +340,20 @@ ref W print(C = char, W, Args...)(scope return ref W w, scope auto ref const Arg
 ref W print(C = char, W, T)(scope return ref W w, const T c)
     if (is(T == enum))
 {
+    import mir.enums: getEnumIndex, enumStrings;
+    import mir.utility: _expect;
+
     static assert(!is(OriginalType!T == enum));
-    string s;
-    S: switch (c)
+    uint index = void;
+    if (getEnumIndex(c, index)._expect(true))
     {
-        static foreach(member; __traits(allMembers, T))
-        {
-            case __traits(getMember, T, member):
-            s = member;
-            break S;
-        }
-        default:
-            static immutable C[] str = T.stringof;
-            w.put(str[]);
-            w.put('(');
-            print(w, cast(OriginalType!T) c);
-            w.put(')');
-            return w;
+        w.put(enumStrings!T[index]);
+        return w;
     }
-    w.put(s);
+    static immutable C[] str = T.stringof ~ "(";
+    w.put(str[]);
+    print(w, cast(OriginalType!T) c);
+    w.put(')');
     return w;
 }
 

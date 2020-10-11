@@ -82,6 +82,8 @@ struct serdeKeyOut
 }
 
 /++
+Returns:
+    immutable array of the input keys for the symbol or enum value
 +/
 template serdeGetKeysIn(alias symbol)
 {
@@ -105,14 +107,11 @@ immutable(string)[] serdeGetKeysIn(T)(const T value) @trusted pure nothrow @nogc
 
     import std.meta: staticMap;
     static immutable ret = [staticMap!(.serdeGetKeysIn, EnumMembers!T)];
-    final switch (value)
-    {
-        foreach (i, member; EnumMembers!T)
-        {
-            case member:
-                return ret[i];
-        }
-    }
+    import mir.enums: getEnumIndex;
+    uint index = void;
+    if (getEnumIndex(value, index))
+        return ret[index];
+    assert(0);
 }
 
 ///
@@ -163,29 +162,9 @@ unittest
     static assert (serdeGetKeysIn(E.c) == ["c"]);
 }
 
-///ditto
-@trusted pure nothrow @nogc
-string serdeGetKeyOut(T)(const T value)
-    if (is(T == enum))
-{
-    foreach (i, member; EnumMembers!T)
-    {{
-        alias all = __traits(getAttributes, EnumMembers!T[i]);
-    }}
-
-    import std.meta: staticMap;
-    static immutable ret = [staticMap!(.serdeGetKeyOut, EnumMembers!T)];
-    final switch (value)
-    {
-        foreach (i, member; EnumMembers!T)
-        {
-            case member:
-                return ret[i];
-        }
-    }
-}
-
 /++
+Returns:
+    output key for the symbol or enum value
 +/
 template serdeGetKeyOut(alias symbol)
 {
@@ -199,6 +178,25 @@ template serdeGetKeyOut(alias symbol)
         enum string serdeGetKeyOut = getUDA!(symbol, serdeKeys).keys[0];
     else
         enum string serdeGetKeyOut = __traits(identifier, symbol);
+}
+
+///ditto
+@safe pure nothrow @nogc
+string serdeGetKeyOut(T)(const T value)
+    if (is(T == enum))
+{
+    foreach (i, member; EnumMembers!T)
+    {{
+        alias all = __traits(getAttributes, EnumMembers!T[i]);
+    }}
+
+    import std.meta: staticMap;
+    import mir.enums: getEnumIndex;
+    static immutable ret = [staticMap!(.serdeGetKeyOut, EnumMembers!T)];
+    uint index = void;
+    if (getEnumIndex(value, index))
+        return ret[index];
+    assert(0);
 }
 
 ///
@@ -499,45 +497,19 @@ alias serdeGetTransformOut(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value
 
 /++
 +/
-bool serdeParseEnum(E)(const char[] str, out E res)
+bool serdeParseEnum(E)(const char[] str, ref E res)
+    @safe pure nothrow @nogc
 {
-    static if (hasUDA!(E, serdeIgnoreCase))
+    import mir.enums: getEnumIndexFromKey, unsafeEnumFromIndex;
+    import mir.utility: _expect;
+
+    uint index = void;
+    if (getEnumIndexFromKey!(E, hasUDA!(E, serdeIgnoreCase), serdeGetKeysIn)(str, index)._expect(true))
     {
-        import mir.format: stringBuf;
-        stringBuf buf;
-        buf << str;
-        auto ustr = buf.data.fastToUpperInPlace;
+        res = unsafeEnumFromIndex!E(index);
+        return true;
     }
-    else
-    {
-        alias ustr = str;
-    }
-    switch(ustr)
-    {
-        foreach(i, member; EnumMembers!E)
-        {{
-            enum initKeys = serdeGetKeysIn(EnumMembers!E[i]);
-            static if (hasUDA!(E, serdeIgnoreCase))
-            {
-                import mir.ndslice.topology: map;
-                import mir.array.allocation: array;
-                enum keys = initKeys.map!fastLazyToUpper.map!array.array;
-            }
-            else
-            {
-                enum keys = initKeys;
-            }
-            static assert (keys.length, "At least one input enum key is required");
-            static foreach (key; keys)
-            {
-                case key:
-            }
-            res = member;
-            return true;
-        }}
-        default:
-            return false;
-    }
+    return false;
 }
 
 ///

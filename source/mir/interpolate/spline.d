@@ -956,7 +956,6 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     auto n = points.length;
 
-
     typeof(slopes[0]) first, last;
 
     auto xd = points.diff;
