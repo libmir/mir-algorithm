@@ -29,6 +29,7 @@ $(TR $(TD Other) $(TD
 +/
 module mir.date;
 
+import mir.serde: serdeProxy, serdeScoped;
 import std.range.primitives : isOutputRange;
 import std.traits : isSomeChar, Unqual;
 
@@ -409,6 +410,8 @@ struct YearMonthDay
  +/
 extern(C++, "boost", "gregorian")
 extern(C++, class)
+@serdeScoped
+@serdeProxy!(const(char)[])
 struct date
 {
 extern(D):
