@@ -62,7 +62,9 @@ string text(string separator = "", A...)(auto ref A args)
         {
             buffer.print(arg);
             static if (separator.length && i + 1 < args.length)
-                buffer.printStaticStringInternal!(char, separator);
+            {
+                buffer.printStaticString!char(separator);
+            }
         }
         return buffer.data.idup;
     }
@@ -240,7 +242,7 @@ struct HexAddress(T)
         enum N = T.sizeof * 2;
         static if(isFastBuffer!W)
         {
-            w.advance(printHexAddress(value, w.getBuffer(N).getStaticBuf!N, cast(bool) switchLU));
+            w.advance(printHexAddress(value, w.getStaticBuf!N, cast(bool) switchLU));
         }
         else
         {
@@ -252,50 +254,56 @@ struct HexAddress(T)
 }
 
 /++
-Note: Non-ASCII Unicode characters are encoded as sequence of \xXX bytes. This may be fixed in the future.
 +/
-pragma(inline, false)
-ref W printEscaped(C = char, W)(scope return ref W w, scope const(char)[] str)
+enum EscapeFormat
 {
-    // TODO: replace with Mir implementation.
-    w.put('\"');
-    foreach (char c; str[])
+    json,
+    ionSymbol,
+    ion,
+}
+
+enum escapeFormatQuote(EscapeFormat escapeFormat) = escapeFormat == EscapeFormat.ionSymbol ? '\'' : '\"';
+
+/++
++/
+ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope return ref W w, scope const(C)[] str)
+{
+    import mir.utility: _expect;
+    foreach (C c; str)
     {
-        if (c >= 0x20)
+        if (_expect(c == escapeFormatQuote!escapeFormat || c == '\\', false))
+            goto E;
+        if (_expect(c < ' ', false))
+            goto C;
+    P:
+        w.put(c);
+        continue;
+    E:
         {
-            if (c < 0x7F)
-            {
-                if (c == '\"' || c == '\\')
-                {
-                L:
-                    w.put('\\');
-                }
-                w.put(c);
-            }
-            else
-            {
-            M:
-                printStaticStringInternal!(C, "\\x")(w);
-                print!C(w, HexAddress!ubyte(cast(ubyte)c));
-            }
+            C[2] pair;
+            pair[0] = '\\';
+            pair[1] = c;
+            w.printStaticString!C(pair);
+            continue;
         }
+    C:
+        if (c == '\t' || c == '\f' || c == '\b')
+            goto P;
+        if (c == '\n')
+        {
+            c = 'n';
+            goto E;
+        }
+        if (c == '\r')
+        {
+            c = 'r';
+            goto E;
+        }
+        static if (escapeFormat == EscapeFormat.json)
+            put_uXXXX!C(w, cast(char)c);
         else
-        {
-            switch(c)
-            {
-                case '\n': c = 'n'; goto L;
-                case '\r': c = 'r'; goto L;
-                case '\t': c = 't'; goto L;
-                case '\a': c = 'a'; goto L;
-                case '\b': c = 'b'; goto L;
-                case '\f': c = 'f'; goto L;
-                case '\v': c = 'v'; goto L;
-                case '\0': c = '0'; goto L;
-                default: goto M;
-            }
-        }
+            put_xXX!C(w, cast(char)c);
     }
-    w.put('\"');
     return w;
 }
 
@@ -303,24 +311,84 @@ ref W printEscaped(C = char, W)(scope return ref W w, scope const(char)[] str)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
+ 
     import mir.appender: ScopedBuffer;
     ScopedBuffer!char w;
-    assert(w.printEscaped("Hi\t" ~ `"@nogc"`).data == `"Hi\t\"@nogc\""`, w.data);
+    assert(w.printEscaped("Hi \f\t\b \\\r\n" ~ `"@nogc"`).data == "Hi \f\t\b \\\\\\r\\n\\\"@nogc\\\"", w.data);
     w.reset;
-    assert(w.printEscaped("\xF3").data == `"\xF3"`, w.data);
+    assert(w.printEscaped("\x03").data == `\x03`, w.data);
+}
+
+/++
+Decodes `char` `c` to the form `u00XX`, where `XX` is 2 hexadecimal characters.
++/
+ref W put_xXX(C = char, W)(scope return ref W w, char c)
+{
+    ubyte[2] spl;
+    spl[0] = c >> 4;
+    spl[1] = c & 0xF;
+    C[4] buffer;
+    buffer[0] = '\\';
+    buffer[1] = 'x';
+    buffer[2] = cast(ubyte)(spl[0] < 10 ? spl[0] + '0' : spl[0] - 10 + 'A');
+    buffer[3] = cast(ubyte)(spl[1] < 10 ? spl[1] + '0' : spl[1] - 10 + 'A');
+    return w.printStaticString(buffer);
+}
+
+/++
+Decodes `char` `c` to the form `u00XX`, where `XX` is 2 hexadecimal characters.
++/
+ref W put_uXXXX(C = char, W)(scope return ref W w, char c)
+{
+    ubyte[2] spl;
+    spl[0] = c >> 4;
+    spl[1] = c & 0xF;
+    C[6] buffer;
+    buffer[0] = '\\';
+    buffer[1] = 'u';
+    buffer[2] = '0';
+    buffer[3] = '0';
+    buffer[4] = cast(ubyte)(spl[0] < 10 ? spl[0] + '0' : spl[0] - 10 + 'A');
+    buffer[5] = cast(ubyte)(spl[1] < 10 ? spl[1] + '0' : spl[1] - 10 + 'A');
+    return w.printStaticString(buffer);
+}
+
+/++
+Decodes ushort `c` to the form `uXXXX`, where `XXXX` is 2 hexadecimal characters.
++/
+ref W put_uXXXX(C = char, W)(scope return ref W w, ushort c)
+{
+    ubyte[4] spl;
+    spl[0] = (c >> 12) & 0xF;
+    spl[1] = (c >> 8) & 0xF;
+    spl[2] = (c >> 4) & 0xF;
+    spl[3] = c & 0xF;
+    C[6] buffer;
+    buffer[0] = '\\';
+    buffer[1] = 'u';
+    buffer[2] = cast(ubyte)(spl[0] < 10 ? spl[0] + '0' : spl[0] - 10 + 'A');
+    buffer[3] = cast(ubyte)(spl[1] < 10 ? spl[1] + '0' : spl[1] - 10 + 'A');
+    buffer[4] = cast(ubyte)(spl[2] < 10 ? spl[2] + '0' : spl[2] - 10 + 'A');
+    buffer[5] = cast(ubyte)(spl[3] < 10 ? spl[3] + '0' : spl[3] - 10 + 'A');
+    return w.printStaticString(buffer);
 }
 
 ///
-ref W printElement(C = char, W, T)(scope return ref W w, scope auto ref const T c)
+ref W printElement(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope return ref W w, scope const(C)[] c)
+    if (isSomeChar!C)
 {
-    static if (isSomeString!T)
-    {
-        return printEscaped!C(w, c);
-    }
-    else
-    {
-        return print!C(w, c);
-    }
+    static immutable C[1] quote = '\"';
+    return w
+        .printStaticString!C(quote)
+        .printEscaped!C(c)
+        .printStaticString!C(quote);
+}
+
+///
+ref W printElement(C = char, EscapeFormat escapeFormat = EscapeFormat.ion, W, T)(scope return ref W w, scope auto ref const T c)
+    if (!isSomeString!T)
+{
+    return w.print!C(c);
 }
 
 /++
@@ -331,9 +399,9 @@ ref W print(C = char, W, Args...)(scope return ref W w, scope auto ref const Arg
 {
     foreach(i, ref c; args)
         static if (i < Args.length - 1)
-            print!C(w, c);
+            w.print!C(c);
         else
-            return print!C(w, c);
+            return w.print!C(c);
 }
 
 ///
@@ -352,7 +420,7 @@ ref W print(C = char, W, T)(scope return ref W w, const T c)
     }
     static immutable C[] str = T.stringof ~ "(";
     w.put(str[]);
-    print(w, cast(OriginalType!T) c);
+    print!C(w, cast(OriginalType!T) c);
     w.put(')');
     return w;
 }
@@ -379,7 +447,7 @@ ref W print(C = char, W)(scope return ref W w, bool c)
     enum N = 5;
     static if(isFastBuffer!W)
     {
-        w.advance(printBoolean(c, w.getBuffer(N).getStaticBuf!N));
+        w.advance(printBoolean(c, w.getStaticBuf!N));
     }
     else
     {
@@ -414,11 +482,12 @@ ref W print(C = char, W, V, K)(scope return ref W w, scope const V[K] c)
     foreach (ref key, ref value; c)
     {
         if (!first)
-            printStaticStringInternal!(C, sep)(w);
+            w.printStaticString!C(sep);
         first = false;
-        printElement!C(w, key);
-        printStaticStringInternal!(C, mid)(w);
-        printElement!C(w, value);
+        w
+            .printElement!C(key)
+            .printStaticString!C(mid)
+            .printElement!C(value);
     }
     w.put(right);
     return w;
@@ -447,7 +516,7 @@ ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
     foreach (ref e; c)
     {
         if (!first)
-            printStaticStringInternal!(C, sep)(w);
+            w.printStaticString!C(sep);
         first = false;
         printElement!C(w, e);
     }
@@ -461,8 +530,8 @@ version (mir_test) unittest
 {
     import mir.appender: ScopedBuffer;
     ScopedBuffer!char w;
-    string[2] array = ["a\ta", "b"];
-    assert(w.print(array[]).data == `["a\ta", "b"]`, w.data);
+    string[2] array = ["a\na", "b"];
+    assert(w.print(array[]).data == `["a\na", "b"]`, w.data);
 }
 
 /// ditto
@@ -484,8 +553,8 @@ ref W print(C = char, W)(scope return ref W w, char c)
         else
         {
         M:
-            printStaticStringInternal!(C, "\\x")(w);
-            print!C(w, HexAddress!ubyte(cast(ubyte)c));
+            w.printStaticString!C(`\x`);
+            w.print!C(HexAddress!ubyte(cast(ubyte)c));
         }
     }
     else
@@ -554,7 +623,7 @@ ref W print(C = char, W, T)(scope return ref W w, const T c)
     if(is(T == float) || is(T == double) || is(T == real))
 {
     auto ff = FormattedFloating!T(c);
-    return print!C(w, ff);
+    return w.print!C(ff);
 }
 
 /// ditto
@@ -582,7 +651,7 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
     static if (__traits(compiles, { scope const(C)[] string_of_c = c; }))
     {
         scope const(C)[] string_of_c = c;
-        return print(w, string_of_c);
+        return w.print!C(string_of_c);
     }
     else
     static if (hasIterableLightConst!T)
@@ -595,9 +664,9 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
         foreach (ref e; c.lightConst)
         {
             if (!first)
-                printStaticStringInternal!(C, sep)(w);
+                w.printStaticString!C(sep);
             first = false;
-            print!C(w, e);
+            w.printStaticString!C(e);
         }
         w.put(right);
         return w;
@@ -611,7 +680,7 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
         foreach (i, ref e; c.tupleof)
         {
             static if (i)
-                printStaticStringInternal!(C, sep)(w);
+                w.printStaticString!C(sep);
             print!C(w, e);
         }
         w.put(right);
@@ -648,10 +717,11 @@ pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
     if (is(T == class) || is(T == interface))
 {
+    static immutable C[4] Null = "null";
     static if (__traits(hasMember, T, "toString") || __traits(compiles, { scope const(C)[] string_of_c = c; }))
     {
         if (c is null)
-            printStaticStringInternal!(C, "null")(w);
+            w.printStaticString!C(Null);
         else
         static if (is(typeof(c.toString!C(w))))
             c.toString!C(w);
@@ -668,7 +738,7 @@ ref W print(C = char, W, T)(scope return ref W w, scope const T c)
         static if (__traits(compiles, { scope const(C)[] string_of_c = c; }))
         {
             scope const(C)[] string_of_c = c;
-            return print(w, string_of_c);
+            return w.print!C(string_of_c);
         }
         else static assert(0, T.stringof ~ ".toString definition is wrong: 'const scope' qualifier may be missing.");
     }
@@ -683,7 +753,7 @@ ref W print(C = char, W, T)(scope return ref W w, scope const T c)
         foreach (ref e; c.lightConst)
         {
             if (!first)
-                printStaticStringInternal!(C, sep)(w);
+                w.printStaticString!C(sep);
             first = false;
             print!C(w, e);
         }
@@ -711,6 +781,23 @@ version (mir_test) unittest
     assert(stringBuf() << new A() << new S() << new D() << new F() << new G() << getData == "asdfg");
 }
 
+///
+ref W printStaticString(C, size_t N, W)(scope return ref W w, ref scope const C[N] c)
+    if (is(C == char) || is(C == wchar) || is(C == dchar))
+{
+    static if (isFastBuffer!W)
+    {
+        enum immutable(ForeachType!(typeof(w.getBuffer(size_t.init))))[] value = c;
+        w.getStaticBuf!(value.length) = value;
+        w.advance(c.length);
+    }
+    else
+    {
+        w.put(c[]);
+    }
+    return w;
+}
+
 private template hasIterableLightConst(T)
 {
     static if (__traits(hasMember, T, "lightConst"))
@@ -723,25 +810,12 @@ private template hasIterableLightConst(T)
     }
 }
 
-private ref W printStaticStringInternal(C, immutable(C)[] c, W)(scope return ref W w)
-    if (C.sizeof * c.length <= 512)
+private ref C[N] getStaticBuf(size_t N, C, W)(scope return ref W w)
+    if (isFastBuffer!W)
 {
-    static if (isFastBuffer!W)
-    {
-        printStaticString!c(w.getBuffer(c.length).getStaticBuf!(c.length));
-        w.advance(c.length);
-    }
-    else
-    static if (c.length <= 4)
-    {
-        static foreach(i; 0 .. c.length)
-            w.put(c[i]);
-    }
-    else
-    {
-        w.put(c[]);
-    }
-    return w;
+    auto buf = w.getBuffer(N);
+    assert(buf.length >= N);
+    return buf.ptr[0 .. N];
 }
 
 private @trusted ref C[N] getStaticBuf(size_t N, C)(scope return ref C[] buf)
@@ -825,31 +899,4 @@ size_t printBoolean(C)(bool c, ref C[5] buf)
         buf[4] = 'e';
         return 5;
     }
-}
-
-///
-size_t printStaticString(string str, C)(scope ref C[str.length] buf)
-    if((is(C == char) || is(C == wchar) || is(C == dchar)) && (C[str.length]).sizeof <= 512)
-{
-    version(LDC) pragma(inline, true);
-    static foreach (i, e; str) buf[i] = e;
-    return buf.length;
-}
-
-/// ditto
-size_t printStaticString(wstring str, C)(scope ref C[str.length] buf)
-    if((is(C == wchar) || is(C == dchar)) && (C[str.length]).sizeof <= 512)
-{
-    version(LDC) pragma(inline, true);
-    static foreach (i, e; str) buf[i] = e;
-    return buf.length;
-}
-
-/// ditto
-size_t printStaticString(dstring str)(scope ref dchar[str.length] buf)
-    if((dchar[str.length]).sizeof <= 512)
-{
-    version(LDC) pragma(inline, true);
-    static foreach (i, e; str) buf[i] = e;
-    return buf.length;
 }

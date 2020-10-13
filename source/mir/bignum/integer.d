@@ -51,17 +51,17 @@ struct BigInt(size_t maxSize64)
     ///
     this(ulong data)
     {
-        auto d = view.leastSignificantFirst;
         static if (size_t.sizeof == ulong.sizeof)
         {
-            d.front = data;
             length = 1;
+            view.leastSignificantFirst[0] = data;
         }
         else
         {
-            d.front = cast(uint) data;
-            d[1] = cast(uint) (data >> 32);
             length = 2;
+            auto d = view.leastSignificantFirst;
+            d[0] = cast(uint) data;
+            d[1] = cast(uint) (data >> 32);
         }
         normalize;
     }
