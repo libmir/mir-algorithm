@@ -6,8 +6,8 @@ It is aimed to construct index or time-series using Mir and Phobos algorithms.
 
 Public_imports: $(MREF mir,ndslice,slice).
 
-Copyright: Copyright © 2017, Kaleidic Associates Advisory Limited
-Authors:   Ilya Yaroshenko
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
 
 Macros:
 NDSLICE = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)

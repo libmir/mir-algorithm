@@ -3,8 +3,8 @@ Base numeric algorithms.
 
 Reworked part of `std.numeric`.
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Authors:   Ilya Yaroshenko (API, findLocalMin, findRoot extension), Don Clugston (findRoot)
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Authors: Ilya Yaroshenko (API, findLocalMin, findRoot extension), Don Clugston (findRoot)
 +/
 module mir.numeric;
 

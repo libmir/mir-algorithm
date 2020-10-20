@@ -3,9 +3,9 @@ Ranges.
 
 See_also: $(MREF mir,_primitives).
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2017-, Ilya Yaroshenko
-Authors:   Ilya Yaroshenko, Phobos Authors
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko, Phobos Authors
 +/
 module mir.range;
 

@@ -58,7 +58,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,ndslice,connect,cpython)) $(TD Utilities for $(HTTPS docs.python.org/3/c-api/buffer.html, Python Buffer Protocol)))
 )
 
-Copyright: Copyright © 2016-, Ilya Yaroshenko.
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
 
 Macros:
         TITLE=Mir Algorithm

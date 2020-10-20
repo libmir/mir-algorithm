@@ -35,12 +35,13 @@ Transform function is represented by $(NDSLICEREF topology, map).
 All operators are suitable to change slices using `ref` argument qualification in a function declaration.
 Note, that string lambdas in Mir are `auto ref` functions.
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2016-2018, Ilya Yaroshenko, 2018-, Mir community
-Authors:   Ilya Yaroshenko, John Michael Hall, Andrei Alexandrescu (original Phobos code)
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko, John Michael Hall, Andrei Alexandrescu (original Phobos code)
 
-Copyright: Andrei Alexandrescu 2008-. Ilya Yaroshenko 2017-
-License: $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+
 Authors: , Ilya Yaroshenko (Mir & BetterC rework).
 Source: $(PHOBOSSRC std/algorithm/_iteration.d)
 Macros:

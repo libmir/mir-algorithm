@@ -19,9 +19,9 @@ $(T2 isUniversalMatrix, Test if type is a universal two-dimensional slice.)
 $(T2 isIterator, Test if type is a random access iterator.)
 )
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright $(COPYRIGHT) 2016-, Ilya Yaroshenko, John Hall
-Authors:   John Hall
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: John Hall
 
 
 Macros:

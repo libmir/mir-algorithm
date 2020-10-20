@@ -1,8 +1,8 @@
 /++
 This module contains simple numeric algorithms.
-License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 Authors: Ilya Yaroshenko
-Copyright: 2015-, Ilya Yaroshenko; 2017 Symmetry Investments Group and Kaleidic Associates Advisory Limited.
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
 Sponsors: This work has been sponsored by $(SUBREF http://symmetryinvestments.com, Symmetry Investments) and Kaleidic Associates.
 +/
 module mir.math.numeric;

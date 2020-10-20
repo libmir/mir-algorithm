@@ -5,9 +5,9 @@ Safety_note:
     User-defined iterators should care about their safety except bounds checks.
     Bounds are checked in ndslice code.
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2016-, Ilya Yaroshenko
-Authors:   Ilya Yaroshenko
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
 
 $(BOOKTABLE $(H2 Definitions),
 $(TR $(TH Name) $(TH Description))

@@ -12,9 +12,9 @@ $(T2 Kronecker, $(SUBREF topology, kronecker))
 
 See_also: $(SUBREF concatenation, concatenation).
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2016-, Ilya Yaroshenko
-Authors:   Ilya Yaroshenko
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)

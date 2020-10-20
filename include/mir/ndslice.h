@@ -4,9 +4,9 @@
 The module provides wrappers for $(SUBREF slice, Slice) that
 can be used as arguments for C++ functions.
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2017-, Ilya Yaroshenko
-Authors:   Ilya Yaroshenko
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
 */
 
 #ifndef MIR_NDSLICE

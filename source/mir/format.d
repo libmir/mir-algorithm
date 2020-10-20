@@ -1,8 +1,8 @@
 /++
 $(H1 @nogc Formatting Utilities)
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Authors:   Ilya Yaroshenko
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Authors: Ilya Yaroshenko
 +/
 module mir.format;
 
@@ -41,8 +41,6 @@ unittest
 
     assert(S("str").to!string == "str"); // GC allocated result
 }
-
-import std.traits;
 
 /// Concatenated string results
 string text(string separator = "", A...)(auto ref A args)

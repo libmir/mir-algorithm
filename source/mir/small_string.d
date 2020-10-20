@@ -8,8 +8,8 @@ $(LREF SmallString) supports ASDF - Json Serialisation Library.
 See also `include/mir/small_series.h` for a C++ version of this type.
 Both C++ and D implementations have the same ABI and name mangling.
 
-Copyright: Copyright © 2019, Symmetry Investments, Kaleidic Associates Advisory Limited
-Authors:   Ilya Yaroshenko
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
 +/
 module mir.small_string;
 

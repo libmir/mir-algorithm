@@ -12,11 +12,11 @@ $(TR $(TH Function Name) $(TH Description)
     ))
 )
 
-Copyright: Copyright Andrei Alexandrescu 2008-, Jonathan M Davis 2011-, and Ilya Yaroshenko (Mir rework)  2018-
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 
-Authors:   $(HTTP erdani.org, Andrei Alexandrescu) and Jonathan M Davis
+Authors: $(HTTP erdani.org, Andrei Alexandrescu) and Jonathan M Davis
 
 Source: $(PHOBOSSRC std/_array.d)
 */

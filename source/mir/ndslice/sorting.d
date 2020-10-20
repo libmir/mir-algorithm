@@ -14,9 +14,9 @@ See_also: $(SUBREF topology, flattened)
 
 `isSorted` and `isStrictlyMonotonic`
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Andrei Alexandrescu 2008-2016, Ilya Yaroshenko 2016-, 
-Authors:   Andrei Alexandrescu (Phobos), Ilya Yaroshenko (API, rework, Mir adoptation)
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Andrei Alexandrescu (Phobos), Ilya Yaroshenko (API, rework, Mir adoptation)
 
 Macros:
     SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)

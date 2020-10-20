@@ -5,11 +5,11 @@ Note that used specialized summing algorithms execute more primitive operations
 than vanilla summation. Therefore, if in certain cases maximum speed is required
 at expense of precision, one can use $(REF_ALTTEXT $(TT Summation.fast), Summation.fast, mir, math, sum)$(NBSP).
 
-License: $(LINK2 http://boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 
 Authors: Shigeki Karita (original numir code), Ilya Yaroshenko, John Michael Hall
 
-Copyright: 2019 Symmetry Investments Group and Kaleidic Associates Advisory Limited.
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, math, $1)$(NBSP)

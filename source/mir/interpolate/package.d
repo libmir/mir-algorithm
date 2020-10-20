@@ -10,8 +10,8 @@ $(T2M polynomial, Lagrange Barycentric Interpolant)
 $(T2M spline, Piecewise Cubic Hermite Interpolant Spline: C2 (with contiguous second derivative), cardinal, monotone (aka PCHIP), double-quadratic, Akima)
 )
 ]
-Copyright: Copyright © 2019, Symmetry Investments & Kaleidic Associates Advisory Limited
-Authors:   Ilya Yaroshenko
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir,interpolate, $1)$(NBSP)

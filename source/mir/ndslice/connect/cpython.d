@@ -1,9 +1,9 @@
 /++
 Utilities for $(LINK2 https://docs.python.org/3/c-api/buffer.html, Python Buffer Protocol).
 
-License:   $(HTTP boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Copyright: Copyright © 2017-, Kaleidic Associates Advisory Limited
-Authors:   Ilya Yaroshenko
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)

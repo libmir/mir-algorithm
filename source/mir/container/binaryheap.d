@@ -6,9 +6,9 @@ Current implementation is suitable for Mir/BetterC concepts.
 
 This module is a submodule of $(MREF mir, container).
 
-Copyright: 2010- Andrei Alexandrescu. All rights reserved by the respective holders.
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
 
-License: Distributed under the Boost Software License, Version 1.0.
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 
 Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Yaroshenko (Mir & BetterC rework).
 */
