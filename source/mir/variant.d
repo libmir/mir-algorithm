@@ -14,8 +14,6 @@ version (D_Exceptions)
     private static immutable variantMemberException = new Exception(variantMemberExceptionMsg);
 }
 
-private enum int alignOf(T) = T.alignof;
-
 private enum hasToHash(T) = __traits(hasMember, T, "toHash");
 private enum hasOpEquals(T) = __traits(hasMember, T, "opEquals");
 private enum isPOD(T) = __traits(isPOD, T);
@@ -36,8 +34,14 @@ struct Variant(Types...)
 
     private alias _Types = Types;
 
+    union
+    {
+        private Types payload;
+        private ubyte[Largest!Types.sizeof] bytes;
+    }
+
     private uint type; // 0 for unininit value, index = type - 1
-    private align(max(staticMap!(alignOf, Types))) ubyte[Largest!Types.sizeof] payload;
+
     private enum hasDestructor = anySatisfy!(hasElaborateDestructor, Types);
 
     static if (hasDestructor)
@@ -80,7 +84,7 @@ struct Variant(Types...)
     {
         static if (hasDestructor)
             __dtor;
-        payload[] = 0;
+        bytes[] = 0;
         type = 0;
     }
 
@@ -93,12 +97,12 @@ struct Variant(Types...)
         type = i + 1;
         static if (__traits(isZeroInit, T))
         {
-            payload[] = 0;
+            bytes[] = 0;
         }
         else
         {
             emplaceRef(trustedGet!T);
-            payload[T.sizeof .. $] = 0;
+            bytes[T.sizeof .. $] = 0;
         }
         swap(trustedGet!T, value);
     }
@@ -115,7 +119,8 @@ struct Variant(Types...)
 
     static foreach (i, T; Types)
     ///
-    ref inout(T) get(E : T)() @property return inout
+    ref inout(T) get(E)() @property return inout
+        if (is(E == T))
     {
         import mir.utility: _expect;
         if (_expect(i + 1 != type, false))
@@ -140,10 +145,11 @@ struct Variant(Types...)
 
     static foreach (i, T; Types)
     /// Zero cost always nothrow `get` alternative
-    ref inout(T) trustedGet(E : T)() @trusted @property return inout nothrow
+    ref inout(T) trustedGet(E)() @trusted @property return inout nothrow
+        if (is(E == T))
     {
         assert (i + 1 == type);
-        return *cast(inout(T)*)payload.ptr;
+        return payload[i];
     }
 
     /++
@@ -167,23 +173,25 @@ struct Variant(Types...)
     +/
     size_t toHash()
     {
-        static if (this.sizeof <= 16)
-        {
-            return hashOf(payload, type);
-        }
-        else
         static if (allSatisfy!(isPOD, Types))
         {
-            static if (payload.length <= ubyte.max)
-                alias UInt = ubyte;
+            static if (this.sizeof <= 16)
+            {
+                return hashOf(bytes, type);
+            }
             else
-            static if (payload.length <= ushort.max)
-                alias UInt = ushort;
-            else
-                alias UInt = uint;
+            {
+                static if (this.sizeof <= ubyte.max)
+                    alias UInt = ubyte;
+                else
+                static if (this.sizeof <= ushort.max)
+                    alias UInt = ushort;
+                else
+                    alias UInt = uint;
 
-            static immutable UInt[Types.length + 1] sizes = [0, staticMap!(Sizeof, Types)];
-            return hashOf(payload[0 .. sizes[type]], type);
+                static immutable UInt[Types.length + 1] sizes = [0, staticMap!(Sizeof, Types)];
+                return hashOf(bytes[0 .. sizes[type]], type);
+            }
         }
         else
         switch (type)
