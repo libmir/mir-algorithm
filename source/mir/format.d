@@ -6,6 +6,8 @@ Authors: Ilya Yaroshenko
 +/
 module mir.format;
 
+import std.traits;
+
 /// `mir.conv: to` extension.
 version(mir_test)
 @safe pure @nogc
