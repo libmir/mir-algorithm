@@ -36,8 +36,8 @@ struct Variant(Types...)
 
     union
     {
-        private Types payload;
         private ubyte[Largest!Types.sizeof] bytes;
+        private Types payload;
     }
 
     private uint type; // 0 for unininit value, index = type - 1

@@ -380,7 +380,7 @@ ref W printElement(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
     static immutable C[1] quote = '\"';
     return w
         .printStaticString!C(quote)
-        .printEscaped!C(c)
+        .printEscaped!(C, escapeFormat)(c)
         .printStaticString!C(quote);
 }
 
@@ -717,7 +717,7 @@ pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
     if (is(T == class) || is(T == interface))
 {
-    static immutable C[4] Null = "null";
+    enum C[4] Null = "null";
     static if (__traits(hasMember, T, "toString") || __traits(compiles, { scope const(C)[] string_of_c = c; }))
     {
         if (c is null)
