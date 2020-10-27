@@ -1,4 +1,4 @@
-project('mir-algorithm', 'cpp', 'd', version : '3.7.0', license: 'Apache-2.0')
+project('mir-algorithm', 'cpp', 'd', version : '3.7.0', license: 'Apache-2.0',
         default_options : ['cpp_std=c++1z'])
 
 description = 'Mir Algorithm - Dlang Core Library'
