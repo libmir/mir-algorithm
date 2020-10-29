@@ -3,14 +3,16 @@ This module implements a generic variant type.
 +/
 module mir.variant;
 
+import mir.functional: naryFun;
+
 private static immutable variantExceptionMsg = "mir.variant: the variant stores other type then requested.";
-private static immutable variantNulllExceptionMsg = "mir.variant: the variant is empty and doesn't store any value.";
+private static immutable variantNullExceptionMsg = "mir.variant: the variant is empty and doesn't store any value.";
 private static immutable variantMemberExceptionMsg = "mir.variant: the variant is stores the type that isn't compatible with the user provided visitor and arguments.";
 
 version (D_Exceptions)
 {
     private static immutable variantException = new Exception(variantExceptionMsg);
-    private static immutable variantNulllException = new Exception(variantNulllExceptionMsg);
+    private static immutable variantNullException = new Exception(variantNullExceptionMsg);
     private static immutable variantMemberException = new Exception(variantMemberExceptionMsg);
 }
 
@@ -128,9 +130,9 @@ struct Variant(Types...)
             if (i == 0)
             {
                 version(D_Exceptions)
-                    throw variantNulllException;
+                    throw variantNullException;
                 else
-                    assert(0, variantNulllExceptionMsg);
+                    assert(0, variantNullExceptionMsg);
             }
             else
             {
@@ -297,11 +299,122 @@ unittest
 }
 
 /++
+Applies a delegate or function to the given Variant depending on the held type,
+ensuring that all types are handled by the visiting functions.
++/
+alias match(visitors...) = visit!(naryFun!visitors, true);
+
+///
+@safe pure @nogc
+unittest
+{
+    alias Number = Variant!(int, double);
+
+    Number x = 23;
+    Number y = 1.0;
+
+    assert(x.match!((int v) => true, (float v) => false));
+    assert(y.match!((int v) => false, (float v) => true));
+}
+
+/++
+Behaves as $(LREF match) but doesn't enforce at compile time that all types can be handled by the visiting functions.
++/
+alias tryMatch(visitors...) = visit!(naryFun!visitors, false);
+
+///
+@safe pure @nogc
+unittest
+{
+    alias Number = Variant!(int, double);
+
+    Number x = 23;
+
+    assert(x.tryMatch!((int v) => true));
+}
+
+/++
+Applies a member handler to the given Variant depending on the held type,
+ensuring that all types are handled by the visiting handler.
++/
+alias getMember(string member) = visit!(getMemberHandler!member, true);
+
+///
+@safe pure @nogc
+unittest
+{
+    static struct S { int bar(int a) { return a; }}
+    static struct C { alias bar = (double a) => a * 2; }
+
+    alias V = Variant!(S, C);
+
+    V x = S();
+    V y = C();
+
+    assert(x.getMember!"bar"(2) == 2);
+    assert(y.getMember!"bar"(2) == 4);
+}
+
+/++
+Behaves as $(LREF match) but doesn't enforce at compile time that all types can be handled by the member visitor.
+Throws: Exception
++/
+alias tryGetMember(string member) = visit!(getMemberHandler!member, false);
+
+///
+version(mir_test)
+@safe pure @nogc
+unittest
+{
+    static struct S { int bar(int a) { return a; }}
+    static struct C { alias Bar = (double a) => a * 2; }
+
+    alias V = Variant!(S, C);
+
+    V x = S();
+    V y = C();
+
+    assert(x.tryGetMember!"bar"(2) == 2);
+    assert(y.tryGetMember!"Bar"(2) == 4);
+}
+
+///
+version(mir_test)
+@safe pure @nogc
+unittest
+{
+    alias Number = Variant!(int, double);
+
+    Number x = Number(23);
+    Number y = Number(1.0);
+
+    assert(x.match!((int v) => true, (float v) => false));
+    assert(y.match!((int v) => false, (float v) => true));
+}
+
+private template getMemberHandler(string member)
+{
+    ///
+    auto ref getMemberHandler(V, Args...)(ref V value, auto ref Args args)
+    {
+        static if (Args.length == 0)
+        {
+            return __traits(getMember, value, member);
+        }
+        else
+        {
+            import core.lifetime: forward;
+            return __traits(getMember, value, member)(forward!args);
+        }
+    }
+}
+
+/++
 Params:
     visitor = a function name alias
-    forceAllTypes = if `true` checks at compile time, that the visitor can be called for all types.
+    exhaustive = if `true` checks at compile time, that the visitor can be called for all types.
 +/
-template visit(alias visitor, bool forceAllTypes = true)
+template visit(alias visitor, bool exhaustive = true)
 {
     import std.traits: Unqual;
     ///
@@ -313,17 +426,17 @@ template visit(alias visitor, bool forceAllTypes = true)
         {
             case 0:
                 version(D_Exceptions)
-                    throw variantNulllException;
+                    throw variantNullException;
                 else
-                    assert(0, variantNulllExceptionMsg);
+                    assert(0, variantNullExceptionMsg);
             static foreach (i, T; V._Types)
-            static if (forceAllTypes || __traits(compiles, visitor(variant.trustedGet!T, forward!args)))
+            static if (exhaustive || __traits(compiles, visitor(variant.trustedGet!T, forward!args)))
             {
                 case i + 1:
                     return visitor(variant.trustedGet!T, forward!args);
             }
             else
-            static if (forceAllTypes)
+            static if (exhaustive)
                 static assert(0, V.stringof ~ ": the visitor cann't be caled with type (first argument) " ~ T.stringof ~ " and additional arguments " ~ Args.stringof);
             default:
                 version(D_Exceptions)
