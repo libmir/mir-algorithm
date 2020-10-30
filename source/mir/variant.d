@@ -32,14 +32,14 @@ struct Variant(Types...)
     import mir.conv: emplaceRef;
     import mir.utility: max, swap;
     import std.meta: anySatisfy, allSatisfy, templateOr, staticMap;
-    import std.traits: Largest, hasElaborateDestructor, hasElaborateAssign, hasElaborateCopyConstructor, isEqualityComparable, isOrderingComparable;
+    import std.traits: Largest, isCopyable, hasElaborateDestructor, hasElaborateAssign, hasElaborateCopyConstructor, isEqualityComparable, isOrderingComparable;
 
     private alias _Types = Types;
 
     union
     {
-        private ubyte[Largest!Types.sizeof] bytes;
         private Types payload;
+        private ubyte[Largest!Types.sizeof] bytes;
     }
 
     private uint type; // 0 for unininit value, index = type - 1
@@ -51,43 +51,126 @@ struct Variant(Types...)
     {
         S: switch (type)
         {
-            static foreach (i, T; Types) static if (hasElaborateDestructor!T)
+            static foreach (i, T; Types)
+            static if (hasElaborateDestructor!T)
             {
-                case i + 1:
+                case i:
                     .destroy!false(trustedGet!T);
                     break S;
             }
-            default: break;
+            default: return;
         }
     }
 
+    static if (!__traits(compiles, (){ Types[0] arg; }))
+        @disable this();
+
+    static if (!allSatisfy!(isCopyable, Types))
+        @disable this(this);
+    else
     static if (anySatisfy!(hasElaborateCopyConstructor, Types))
-    this(this)
     {
-        S: switch (type)
+        ///
+        this(ref return scope typeof(this) rhs)
         {
-            static foreach (i, T; Types) static if (hasElaborateCopyConstructor!T)
+            this.bytes = rhs.bytes;
+            this.type = rhs.type;
+            S: switch (type)
             {
-                case i + 1:
-                    trustedGet!T.__xpostblit();
-                    break S;
+                static foreach (i, T; Types)
+                static if (hasElaborateCopyConstructor!T)
+                {
+                    case i:
+                        this.trustedGet!T.emplaceRef(rhs.trustedGet!T);
+                        return;
+                }
+                default: return;
             }
-            default: break;
+        }
+
+        /// ditto
+        this(ref return scope const typeof(this) rhs) const
+        {
+            this.bytes = rhs.bytes;
+            this.type = rhs.type;
+            S: switch (type)
+            {
+                static foreach (i, T; Types)
+                static if (hasElaborateCopyConstructor!T)
+                {
+                    case i:
+                        this.mutableTrustedGet!T.emplaceRef!(const T)(rhs.trustedGet!T);
+                        return;
+                }
+                default: return;
+            }
+        }
+
+        /// ditto
+        this(ref return scope immutable typeof(this) rhs) immutable
+        {
+            this.bytes = rhs.bytes;
+            this.type = rhs.type;
+            S: switch (type)
+            {
+                static foreach (i, T; Types)
+                static if (hasElaborateCopyConstructor!T)
+                {
+                    case i:
+                        this.mutableTrustedGet!T.emplaceRef!(immutable T)(rhs.trustedGet!T);
+                        return;
+                }
+                default: return;
+            }
         }
     }
 
-    ///
-    this(typeof(null))
+    static if (is(Types[0] == typeof(null)))
     {
-    }
+        /// Defined if the first type is `typeof(null)`
+        bool isNull() const { return type == 0; }
+        /// ditto
+        void nullify() { this = null; }
+        /// ditto
+        static if (allSatisfy!(isCopyable, Types[1 .. $]))
+        auto get()
+        {
+            if (!type)
+            {
+                version(D_Exceptions)
+                    throw variantNullException;
+                else
+                    assert(0, variantNullExceptionMsg);
+            }
 
-    ///
-    void opAssign(typeof(null))
-    {
-        static if (hasDestructor)
-            __dtor;
-        bytes[] = 0;
-        type = 0;
+            Variant!(Types[1 .. $]) ret;
+            ret.type = this.type - 1;
+
+            static if (anySatisfy!(hasElaborateCopyConstructor, Types))
+            {
+                ret.bytes = 0;
+                S: switch (type)
+                {
+                    static foreach (i, T; Types)
+                    {
+                        static if (hasElaborateCopyConstructor!T)
+                        {
+                            case i:
+                                ret.trustedGet!T.emplaceRef(this.trustedGet!T);
+                                break S;
+                        }
+                    }
+                    default:
+                        ret.bytes = this.bytes[0 .. ret.bytes.length];
+                }
+            }
+            else
+            {
+                ret.bytes = this.bytes[0 .. ret.bytes.length];
+            }
+
+            return ret;
+        }
     }
 
     static foreach (i, T; Types)
@@ -96,7 +179,7 @@ struct Variant(Types...)
     {
         static if (hasDestructor)
             __dtor;
-        type = i + 1;
+        type = i;
         static if (__traits(isZeroInit, T))
         {
             bytes[] = 0;
@@ -113,7 +196,7 @@ struct Variant(Types...)
     ///
     this(T value)
     {
-        type = i + 1;
+        type = i;
         static if (!__traits(isZeroInit, T))
             emplaceRef(trustedGet!T);
         swap(trustedGet!T, value);
@@ -125,22 +208,12 @@ struct Variant(Types...)
         if (is(E == T))
     {
         import mir.utility: _expect;
-        if (_expect(i + 1 != type, false))
+        if (_expect(i != type, false))
         {
-            if (i == 0)
-            {
-                version(D_Exceptions)
-                    throw variantNullException;
-                else
-                    assert(0, variantNullExceptionMsg);
-            }
+            version(D_Exceptions)
+                throw variantException;
             else
-            {
-                version(D_Exceptions)
-                    throw variantException;
-                else
-                    assert(0, variantExceptionMsg);
-            }
+                assert(0, variantExceptionMsg);
         }
         return trustedGet!T;
     }
@@ -150,22 +223,22 @@ struct Variant(Types...)
     ref inout(T) trustedGet(E)() @trusted @property return inout nothrow
         if (is(E == T))
     {
-        assert (i + 1 == type);
+        assert (i == type);
         return payload[i];
     }
 
-    /++
-    Returns: true for the unassigned instance.
-    +/
-    bool empty() nothrow const @property
+    static foreach (i, T; Types)
+    private ref T mutableTrustedGet(E)() @trusted @property return const nothrow
+        if (is(E == T))
     {
-        return type == 0;
+        assert (i == type);
+        return *cast(Types[i]*)&payload[i];
     }
 
     /++
-    Returns: zero if the instance is unassigned and type index starting with 1 otherwise.
+    Returns: zero based type index.
     +/
-    uint typeId() nothrow const @property
+    uint typeId() @nogc nothrow const @property
     {
         return type;
     }
@@ -200,11 +273,10 @@ struct Variant(Types...)
         {
             static foreach (i, T; Types)
             {
-                case i + 1:
+                case i:
                     return hashOf(trustedGet!T, type);
             }
-            default:
-                return 0;
+            default: assert(0);
         }
     }
 
@@ -219,11 +291,10 @@ struct Variant(Types...)
         {
             static foreach (i, T; Types)
             {
-                case i + 1:
+                case i:
                     return this.trustedGet!T == rhs.trustedGet!T;
             }
-            default:
-                return true;
+            default: assert(0);
         }
     } 
 
@@ -232,21 +303,20 @@ struct Variant(Types...)
     +/
     auto opCmp(ref const typeof(this) rhs) const
     {
-        if (int d = this.type - rhs.type)
+        if (auto d = int(this.type) - int(rhs.type))
             return d;
         switch (type)
         {
             static foreach (i, T; Types)
             {
-                case i + 1:
+                case i:
                     static if (__traits(hasMember, T, "opCmp"))
                         return this.trustedGet!T.opCmp(rhs.trustedGet!T);
                     else
                         return this.trustedGet!T < rhs.trustedGet!T ? -1 :
                                this.trustedGet!T > rhs.trustedGet!T ? +1 : 0;
             }
-            default:
-                return 0;
+            default: assert(0);
         }
     }
 }
@@ -305,7 +375,7 @@ ensuring that all types are handled by the visiting functions.
 alias match(visitors...) = visit!(naryFun!visitors, true);
 
 ///
-@safe pure @nogc
+@safe pure @nogc nothrow
 unittest
 {
     alias Number = Variant!(int, double);
@@ -315,6 +385,36 @@ unittest
 
     assert(x.match!((int v) => true, (float v) => false));
     assert(y.match!((int v) => false, (float v) => true));
+}
+
+
+/// Special `typeof(null)` support for the first argument.
+@safe pure @nogc
+unittest
+{
+    alias Number = Variant!(typeof(null), int, double);
+
+    Number z = null; // default
+    Number x = 23;
+    Number y = 1.0;
+
+    () nothrow {
+        assert(x.match!((int v) => true, (float v) => false));
+        assert(y.match!((int v) => false, (float v) => true));
+        assert(z.match!((typeof(null) v) => true, (v) => false));
+    } ();
+
+    auto xx = x.get;
+    static assert (is(typeof(xx) == Variant!(int, double)));
+    assert(xx.match!((int v) => v, (float v) => 0) == 23);
+
+    x = null;
+    y.nullify;
+
+    assert(x.isNull);
+    assert(y.isNull);
+    assert(z.isNull);
+    assert(z == y);
 }
 
 /++
@@ -340,10 +440,10 @@ ensuring that all types are handled by the visiting handler.
 alias getMember(string member) = visit!(getMemberHandler!member, true);
 
 ///
-@safe pure @nogc
+@safe pure @nogc nothrow
 unittest
 {
-    static struct S { int bar(int a) { return a; }}
+    static struct S { auto bar(int a) { return a; }}
     static struct C { alias bar = (double a) => a * 2; }
 
     alias V = Variant!(S, C);
@@ -380,7 +480,7 @@ unittest
 
 ///
 version(mir_test)
-@safe pure @nogc
+@safe pure @nogc nothrow
 unittest
 {
     alias Number = Variant!(int, double);
@@ -424,25 +524,24 @@ template visit(alias visitor, bool exhaustive = true)
         import core.lifetime: forward;
         switch (variant.type)
         {
-            case 0:
-                version(D_Exceptions)
-                    throw variantNullException;
-                else
-                    assert(0, variantNullExceptionMsg);
             static foreach (i, T; V._Types)
-            static if (exhaustive || __traits(compiles, visitor(variant.trustedGet!T, forward!args)))
             {
-                case i + 1:
-                    return visitor(variant.trustedGet!T, forward!args);
+                case i:
+                    static if (__traits(compiles, visitor(variant.trustedGet!T, forward!args)))
+                        return visitor(variant.trustedGet!T, forward!args);
+                    else
+                    static if (exhaustive && !is(T == typeof(null)))
+                        static assert(0, V.stringof ~ ": the visitor cann't be caled with type (first argument) " ~ T.stringof ~ " and additional arguments " ~ Args.stringof);
+                    else
+                    static if (is(T == typeof(null)) && i == 0)
+                        assert(0, "Null " ~ V.stringof);
+                    else
+                    version(D_Exceptions)
+                        throw variantMemberException;
+                    else
+                        assert(0, variantMemberExceptionMsg);
             }
-            else
-            static if (exhaustive)
-                static assert(0, V.stringof ~ ": the visitor cann't be caled with type (first argument) " ~ T.stringof ~ " and additional arguments " ~ Args.stringof);
-            default:
-                version(D_Exceptions)
-                    throw variantMemberException;
-                else
-                    assert(0, variantMemberExceptionMsg);
+            default: assert(0);
         }
     }
 }
@@ -491,7 +590,7 @@ template optionalVisit(alias visitor)
             static foreach (i, T; V._Types)
             static if (__traits(compiles, result = visitor(variant.trustedGet!T, forward!args)))
             {
-                case i + 1:
+                case i:
                     result = visitor(variant.trustedGet!T, forward!args);
                     return true;
             }
