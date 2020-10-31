@@ -16,10 +16,19 @@ version (D_Exceptions)
     private static immutable variantMemberException = new Exception(variantMemberExceptionMsg);
 }
 
-private enum hasToHash(T) = __traits(hasMember, T, "toHash");
+private alias ConstOf(T) = const T;
+private enum canConstructWith(From, To) = __traits(compiles, (From a) { To b = a; } );
+private enum canRemoveConst(T) = canConstructWith!(const T, T);
+private enum canRemoveImmutable(T) = canConstructWith!(immutable T, T);
 private enum hasOpEquals(T) = __traits(hasMember, T, "opEquals");
+private enum hasToHash(T) = __traits(hasMember, T, "toHash");
+private enum isCopyable(S) = __traits(isCopyable, S); 
 private enum isPOD(T) = __traits(isPOD, T);
 private enum Sizeof(T) = T.sizeof;
+private enum hasMutableConstruction(T) = __traits(compiles, (T a) { auto b = a; } );
+private enum hasConstConstruction(T) = __traits(compiles, (const T a) { auto b = a; } );
+private enum hasImmutableConstruction(T) = __traits(compiles, (immutable T a) { auto b = a; } );
+private enum hasSemiImmutableConstruction(T) = __traits(compiles, (const T a) { immutable b = a; } );
 
 /++
 Variant Type (aka Algebraic Type) with clever member access.
@@ -32,7 +41,7 @@ struct Variant(Types...)
     import mir.conv: emplaceRef;
     import mir.utility: max, swap;
     import std.meta: anySatisfy, allSatisfy, templateOr, staticMap;
-    import std.traits: Largest, isCopyable, hasElaborateDestructor, hasElaborateAssign, hasElaborateCopyConstructor, isEqualityComparable, isOrderingComparable;
+    import std.traits: Select, isAssignable, CopyTypeQualifiers, Largest, hasElaborateDestructor, hasElaborateAssign, hasElaborateCopyConstructor, isEqualityComparable, isOrderingComparable;
 
     private alias _Types = Types;
 
@@ -45,6 +54,96 @@ struct Variant(Types...)
     private uint type; // 0 for unininit value, index = type - 1
 
     private enum hasDestructor = anySatisfy!(hasElaborateDestructor, Types);
+
+    static foreach (i, T; Types)
+    {
+        /// Zero cost always nothrow `get` alternative
+        ref inout(T) trustedGet(E)() @trusted @property return inout nothrow
+            if (is(E == T))
+        {
+            assert (i == type);
+            return payload[i];
+        }
+
+        private ref T mutableTrustedGet(E)() @trusted @property return const nothrow
+            if (is(E == T))
+        {
+            assert (i == type);
+            return *cast(Types[i]*)&payload[i];
+        }
+
+        ///
+        ref inout(T) get(E)() @property return inout
+            if (is(E == T))
+        {
+            import mir.utility: _expect;
+            if (_expect(i != type, false))
+            {
+                version(D_Exceptions)
+                    throw variantException;
+                else
+                    assert(0, variantExceptionMsg);
+            }
+            return trustedGet!T;
+        }
+        
+        static if (hasMutableConstruction!T)
+        ///
+        this(T value)
+        {
+            import core.lifetime: move;
+            type = i;
+            emplaceRef(payload[i], move(value));
+        }
+
+        static if (!hasSemiImmutableConstruction!T)
+        {
+            static if (hasConstConstruction!T)
+            ///
+            this(const T value) const
+            {
+                type = i;
+                emplaceRef!(const T)(mutableTrustedGet!T, value);
+            }
+
+            static if (hasImmutableConstruction!T)
+            ///
+            this(immutable T value) immutable
+            {
+                type = i;
+                emplaceRef!(immutable T)(mutableTrustedGet!T, value);
+            }
+        }
+        else
+        {
+            ///
+            this(const T value) immutable
+            {
+                type = i;
+                emplaceRef!(immutable T)(mutableTrustedGet!T, value);
+            }
+        }
+
+        static if (__traits(compiles, (ref T a, ref T b) { swap(a, b); }))
+        ///
+        ref opAssign(T value) return
+        {
+            static if (__traits(hasMember, this, "__dtor"))
+                __dtor;
+            type = i;
+            static if (__traits(isZeroInit, T))
+            {
+                bytes[] = 0;
+            }
+            else
+            {
+                emplaceRef(payload[i]);
+                bytes[T.sizeof .. $] = 0;
+            }
+            swap(payload[i], value);
+            return this;
+        }
+    }
 
     static if (hasDestructor)
     ~this() @safe
@@ -62,16 +161,96 @@ struct Variant(Types...)
         }
     }
 
+    private enum allCopyable = allSatisfy!(isCopyable, Types);
+
     static if (!__traits(compiles, (){ Types[0] arg; }))
         @disable this();
 
-    static if (!allSatisfy!(isCopyable, Types))
+    static if (!allCopyable)
         @disable this(this);
     else
     static if (anySatisfy!(hasElaborateCopyConstructor, Types))
     {
-        ///
-        this(ref return scope typeof(this) rhs)
+        private enum allCanRemoveConst = allSatisfy!(canRemoveConst, Types);
+        private enum allHaveConstConstruction = allSatisfy!(hasConstConstruction, Types);
+        private enum allHaveImmutableConstruction = allSatisfy!(hasImmutableConstruction, Types);
+        private enum allHaveMutableConstruction = allSatisfy!(hasMutableConstruction, Types);
+        private enum allHaveSemiImmutableConstruction = allSatisfy!(hasSemiImmutableConstruction, Types);
+
+        static if (allHaveMutableConstruction)
+        this(return ref scope typeof(this) rhs)
+        {
+            this.bytes = rhs.bytes;
+            this.type = rhs.type;
+            S: switch (type)
+            {
+                static foreach (i, T; Types)
+                static if (hasElaborateCopyConstructor!T)
+                {
+                    case i:
+                        this.payload[i].emplaceRef(rhs.payload[i]);
+                        return;
+                }
+                default: return;
+            }
+        }
+
+        static if (allHaveConstConstruction)
+        this(return ref scope const typeof(this) rhs) const
+        {
+            this.bytes = rhs.bytes;
+            this.type = rhs.type;
+            S: switch (type)
+            {
+                static foreach (i, T; Types)
+                static if (hasElaborateCopyConstructor!T)
+                {
+                    case i:
+                        this.mutableTrustedGet!T.emplaceRef!(const T)(rhs.payload[i]);
+                        return;
+                }
+                default: return;
+            }
+        }
+
+        static if (allHaveImmutableConstruction)
+        this(return ref scope immutable typeof(this) rhs) immutable
+        {
+            this.bytes = rhs.bytes;
+            this.type = rhs.type;
+            S: switch (type)
+            {
+                static foreach (i, T; Types)
+                static if (hasElaborateCopyConstructor!T)
+                {
+                    case i:
+                        this.mutableTrustedGet!T.emplaceRef!(immutable T)(rhs.payload[i]);
+                        return;
+                }
+                default: return;
+            }
+        }
+
+        static if (allHaveSemiImmutableConstruction)
+        this(return ref scope const typeof(this) rhs) immutable
+        {
+            this.bytes = rhs.bytes;
+            this.type = rhs.type;
+            S: switch (type)
+            {
+                static foreach (i, T; Types)
+                static if (hasElaborateCopyConstructor!T)
+                {
+                    case i:
+                        emplaceRef!(immutable T)(this.mutableTrustedGet!T, rhs.trustedGet!T);
+                        return;
+                }
+                default: return;
+            }
+        }
+
+        static if (allCanRemoveConst && allHaveMutableConstruction)
+        this(return ref scope const typeof(this) rhs)
         {
             this.bytes = rhs.bytes;
             this.type = rhs.type;
@@ -88,40 +267,21 @@ struct Variant(Types...)
             }
         }
 
-        /// ditto
-        this(ref return scope const typeof(this) rhs) const
+        static if (allCanRemoveConst && allHaveMutableConstruction)
+        ref opAssign(return ref scope const typeof(this) rhs) return
         {
-            this.bytes = rhs.bytes;
-            this.type = rhs.type;
-            S: switch (type)
-            {
-                static foreach (i, T; Types)
-                static if (hasElaborateCopyConstructor!T)
-                {
-                    case i:
-                        this.mutableTrustedGet!T.emplaceRef!(const T)(rhs.trustedGet!T);
-                        return;
-                }
-                default: return;
-            }
+            static if (__traits(hasMember, this, "__dtor"))
+                __dtor;
+            // don't need emplace here
+            __ctor(rhs);
+            return this;
         }
 
-        /// ditto
-        this(ref return scope immutable typeof(this) rhs) immutable
+        static if (allCanRemoveConst && allHaveMutableConstruction)
+        ref opAssign(typeof(this) rhs) return
         {
-            this.bytes = rhs.bytes;
-            this.type = rhs.type;
-            S: switch (type)
-            {
-                static foreach (i, T; Types)
-                static if (hasElaborateCopyConstructor!T)
-                {
-                    case i:
-                        this.mutableTrustedGet!T.emplaceRef!(immutable T)(rhs.trustedGet!T);
-                        return;
-                }
-                default: return;
-            }
+            swap(this, rhs);
+            return this;
         }
     }
 
@@ -173,68 +333,6 @@ struct Variant(Types...)
         }
     }
 
-    static foreach (i, T; Types)
-    ///
-    void opAssign(T value)
-    {
-        static if (hasDestructor)
-            __dtor;
-        type = i;
-        static if (__traits(isZeroInit, T))
-        {
-            bytes[] = 0;
-        }
-        else
-        {
-            emplaceRef(trustedGet!T);
-            bytes[T.sizeof .. $] = 0;
-        }
-        swap(trustedGet!T, value);
-    }
-
-    static foreach (i, T; Types)
-    ///
-    this(T value)
-    {
-        type = i;
-        static if (!__traits(isZeroInit, T))
-            emplaceRef(trustedGet!T);
-        swap(trustedGet!T, value);
-    }
-
-    static foreach (i, T; Types)
-    ///
-    ref inout(T) get(E)() @property return inout
-        if (is(E == T))
-    {
-        import mir.utility: _expect;
-        if (_expect(i != type, false))
-        {
-            version(D_Exceptions)
-                throw variantException;
-            else
-                assert(0, variantExceptionMsg);
-        }
-        return trustedGet!T;
-    }
-
-    static foreach (i, T; Types)
-    /// Zero cost always nothrow `get` alternative
-    ref inout(T) trustedGet(E)() @trusted @property return inout nothrow
-        if (is(E == T))
-    {
-        assert (i == type);
-        return payload[i];
-    }
-
-    static foreach (i, T; Types)
-    private ref T mutableTrustedGet(E)() @trusted @property return const nothrow
-        if (is(E == T))
-    {
-        assert (i == type);
-        return *cast(Types[i]*)&payload[i];
-    }
-
     /++
     Returns: zero based type index.
     +/
@@ -246,7 +344,7 @@ struct Variant(Types...)
     static if (allSatisfy!(templateOr!(isPOD, hasToHash), Types))
     /++
     +/
-    size_t toHash()
+    size_t toHash() const
     {
         static if (allSatisfy!(isPOD, Types))
         {
@@ -366,6 +464,179 @@ unittest
         static assert (__traits(hasMember, T, "opEquals") == isPOD || hasOpEquals);
         static assert (__traits(hasMember, T, "opCmp"));
     }}
+}
+
+/// const propogation
+@safe pure nothrow @nogc
+unittest
+{
+    static struct S { immutable(ubyte)* value; }
+    static struct C { immutable(uint)* value; }
+
+    alias V = Variant!(S, C);
+    const V v = S();
+    V w = v;
+    w = v;
+
+    immutable f = V(S());
+    auto t = immutable V(S());
+    // auto j = immutable V(t);
+    // auto i = const V(t);
+}
+
+/// ditto
+@safe pure nothrow @nogc
+unittest
+{
+    static struct S {
+        uint* value;
+        this(return ref scope const typeof(this) rhs) {}
+    }
+    static struct C { const(uint)* value; }
+
+    alias V = Variant!(S, C);
+    const V v = S();
+    V w = v;
+    w = S();
+    w = cast(const) V.init;
+    w = v;
+
+    const f = V(S());
+    auto t = const V(f);
+}
+
+
+@safe pure nothrow @nogc
+unittest
+{
+    static struct S {
+        uint* value;
+        this(return ref scope typeof(this) rhs) {}
+        this(return ref scope const typeof(this) rhs) const {}
+        this(return ref scope immutable typeof(this) rhs) immutable {}
+    }
+    static struct C { immutable(uint)* value; }
+
+    S s;
+    S r = s;
+    r = s;
+    r = S.init;
+
+    alias V = Variant!(S, C);
+    V v = S();
+    V w = v;
+    w = S();
+    w = V.init;
+    w = v;
+
+    immutable V e = S();
+    auto t = immutable V(S());
+    auto j = const V(t);
+    auto h = t;
+
+    immutable V l = C();
+    auto g = immutable V(C());
+}
+
+@safe pure nothrow @nogc
+unittest
+{
+    static struct S {
+        uint* value;
+        this(return ref scope typeof(this) rhs) {}
+        this(return ref scope const typeof(this) rhs) const {}
+        this(return ref scope const typeof(this) rhs) immutable {}
+    }
+    static struct C { immutable(uint)* value; }
+
+    S s;
+    S r = s;
+    r = s;
+    r = S.init;
+
+    alias V = Variant!(S, C);
+    V v = S();
+    V w = v;
+    w = S();
+    w = V.init;
+    w = v;
+
+    {
+        const V e = S();
+        const k = w;
+        auto t = const V(k);
+        auto j = immutable V(k);
+    }
+
+    immutable V e = S();
+    immutable k = w;
+    auto t = immutable V(S());
+    auto j = const V(t);
+    auto h = t;
+
+    immutable V l = C();
+    import core.lifetime;
+    auto g = immutable V(C());
+    immutable b = immutable V(s);
+}
+
+@safe pure nothrow @nogc
+unittest
+{
+    static struct S {
+        immutable(uint)* value;
+        this(return ref scope typeof(this) rhs) {}
+        this(return ref scope const typeof(this) rhs) immutable {}
+    }
+    static struct C { immutable(uint)* value; }
+
+    S s;
+    S r = s;
+    r = s;
+    r = S.init;
+
+    alias V = Variant!(S, C);
+    V v = S();
+    V w = v;
+    w = S();
+    w = V.init;
+    w = v;
+
+    immutable V e = S();
+    immutable f = V(S());
+    immutable k = w;
+    auto t = immutable V(S());
+    auto j = const V(t);
+    auto h = t;
+
+    immutable V l = C();
+    import core.lifetime;
+    immutable n = w.move;
+    auto g = immutable V(C());
+    immutable b = immutable V(s);
+}
+
+@safe pure nothrow @nogc
+unittest
+{
+    static struct S {
+        uint* value;
+        this(this) @safe pure nothrow @nogc {}
+        // void opAssign(typeof(this) rhs) {}
+    }
+    static struct C { const(uint)* value; }
+
+    S s;
+    S r = s;
+    r = s;
+    r = S.init;
+
+    alias V = Variant!(S, C);
+    V v = S();
+    V w = v;
+    w = S();
+    w = V.init;
+    w = v;
 }
 
 /++
