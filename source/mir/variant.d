@@ -42,11 +42,11 @@ Variant Type (aka Algebraic Type) with clever member access.
 Compatible with BetterC mode.
 +/
 struct Variant(_Types...)
-    if (_Types.length)
+	if (_Types.length)
 {
     import mir.conv: emplaceRef;
     import mir.utility: max, swap;
-    import std.meta: AliasSeq, anySatisfy, allSatisfy, templateOr, staticMap;
+    import std.meta: AliasSeq, anySatisfy, allSatisfy, NoDuplicates, templateOr, staticMap;
     import std.typecons: ReplaceTypeUnless;
     import std.traits:
         Select,
@@ -59,6 +59,8 @@ struct Variant(_Types...)
         isOrderingComparable,
         Largest
         ;
+
+    static assert(is(NoDuplicates!_Types == _Types), "Varaint of " ~ _Types.stringof ~ " constains type duplicates");
 
     ///
     alias Types = AliasSeq!(ReplaceTypeUnless!(isVariant, This, typeof(this), _Types));
