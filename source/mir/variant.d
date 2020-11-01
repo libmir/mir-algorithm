@@ -20,30 +20,48 @@ private alias ConstOf(T) = const T;
 private enum canConstructWith(From, To) = __traits(compiles, (From a) { To b = a; } );
 private enum canRemoveConst(T) = canConstructWith!(const T, T);
 private enum canRemoveImmutable(T) = canConstructWith!(immutable T, T);
+private enum hasConstConstruction(T) = __traits(compiles, (const T a) { auto b = a; } );
+private enum hasImmutableConstruction(T) = __traits(compiles, (immutable T a) { auto b = a; } );
+private enum hasMutableConstruction(T) = __traits(compiles, (T a) { auto b = a; } );
 private enum hasOpEquals(T) = __traits(hasMember, T, "opEquals");
+private enum hasSemiImmutableConstruction(T) = __traits(compiles, (const T a) { immutable b = a; } );
 private enum hasToHash(T) = __traits(hasMember, T, "toHash");
 private enum isCopyable(S) = __traits(isCopyable, S); 
 private enum isPOD(T) = __traits(isPOD, T);
+private enum isVariant(T) = is(T == Variant!Args, Args...);
 private enum Sizeof(T) = T.sizeof;
-private enum hasMutableConstruction(T) = __traits(compiles, (T a) { auto b = a; } );
-private enum hasConstConstruction(T) = __traits(compiles, (const T a) { auto b = a; } );
-private enum hasImmutableConstruction(T) = __traits(compiles, (immutable T a) { auto b = a; } );
-private enum hasSemiImmutableConstruction(T) = __traits(compiles, (const T a) { immutable b = a; } );
+
+/++
+Dummy type for $(LREF Variant) self-referencing.
++/
+struct This;
 
 /++
 Variant Type (aka Algebraic Type) with clever member access.
 
 Compatible with BetterC mode.
 +/
-struct Variant(Types...)
-    if (Types.length)
+struct Variant(_Types...)
+    if (_Types.length)
 {
     import mir.conv: emplaceRef;
     import mir.utility: max, swap;
-    import std.meta: anySatisfy, allSatisfy, templateOr, staticMap;
-    import std.traits: Select, isAssignable, CopyTypeQualifiers, Largest, hasElaborateDestructor, hasElaborateAssign, hasElaborateCopyConstructor, isEqualityComparable, isOrderingComparable;
+    import std.meta: AliasSeq, anySatisfy, allSatisfy, templateOr, staticMap;
+    import std.typecons: ReplaceTypeUnless;
+    import std.traits:
+        Select,
+        CopyTypeQualifiers,
+        hasElaborateAssign,
+        hasElaborateCopyConstructor,
+        hasElaborateDestructor,
+        isAssignable,
+        isEqualityComparable,
+        isOrderingComparable,
+        Largest
+        ;
 
-    private alias _Types = Types;
+    ///
+    alias Types = AliasSeq!(ReplaceTypeUnless!(isVariant, This, typeof(this), _Types));
 
     union
     {
@@ -142,6 +160,30 @@ struct Variant(Types...)
             }
             swap(payload[i], value);
             return this;
+        }
+
+        static if (isPOD!T || hasOpEquals!T)
+        /++
+        +/
+        auto opEquals()(auto ref const T rhs) const
+        {
+            if (type != i)
+                return false;
+            return trustedGet!T == rhs;
+        } 
+
+        static if (isOrderingComparable!T)
+        /++
+        +/
+        auto opCmp()(auto ref const T rhs) const
+        {
+            if (auto d = int(type) - int(rhs.type))
+                return d;
+            static if (__traits(hasMember, T, "opCmp"))
+                return trustedGet!T.opCmp(rhs);
+            else
+                return trustedGet!T < rhs ? -1 :
+                    trustedGet!T > rhs ? +1 : 0;
         }
     }
 
@@ -291,8 +333,9 @@ struct Variant(Types...)
         bool isNull() const { return type == 0; }
         /// ditto
         void nullify() { this = null; }
+
+        static if (allSatisfy!(isCopyable, Types[1 .. $]) && Types.length != 2)
         /// ditto
-        static if (allSatisfy!(isCopyable, Types[1 .. $]))
         auto get()
         {
             if (!type)
@@ -331,6 +374,10 @@ struct Variant(Types...)
 
             return ret;
         }
+
+        static if (Types.length == 2)
+        /// ditto
+        alias get = get!(Types[1]);
     }
 
     /++
@@ -381,7 +428,7 @@ struct Variant(Types...)
     static if (allSatisfy!(templateOr!(isPOD, hasOpEquals), Types))
     /++
     +/
-    auto opEquals(ref const typeof(this) rhs) const
+    auto opEquals()(auto ref const typeof(this) rhs) const
     {
         if (this.type != rhs.type)
             return false;
@@ -399,7 +446,7 @@ struct Variant(Types...)
     static if (allSatisfy!(isOrderingComparable, Types))
     /++
     +/
-    auto opCmp(ref const typeof(this) rhs) const
+    auto opCmp()(auto ref const typeof(this) rhs) const
     {
         if (auto d = int(this.type) - int(rhs.type))
             return d;
@@ -417,6 +464,47 @@ struct Variant(Types...)
             default: assert(0);
         }
     }
+}
+
+// example from std.variant
+/**
+$(H4 Self-Referential Types)
+A useful and popular use of algebraic data structures is for defining
+$(LUCKY self-referential data structures), i.e. structures that embed references to
+values of their own type within.
+This is achieved with $(LREF Variant) by using $(LREF This) as a placeholder whenever a
+reference to the type being defined is needed. The $(LREF Variant) instantiation
+will perform $(LINK2 https://en.wikipedia.org/wiki/Name_resolution_(programming_languages)#Alpha_renaming_to_make_name_resolution_trivial,
+alpha renaming) on its constituent types, replacing $(LREF This)
+with the self-referenced type. The structure of the type involving $(LREF This) may
+be arbitrarily complex.
+*/
+@safe pure unittest
+{
+    import std.typecons : Tuple, tuple;
+
+    // A tree is either a leaf or a branch of two other trees
+    alias Tree(Leaf) = Variant!(Leaf, Tuple!(This*, This*));
+    alias Leafs = Tree!int.Types[1];
+
+    Tree!int tree = tuple(new Tree!int(42), new Tree!int(43));
+    Tree!int* right = tree.get!Leafs[1];
+    assert(*right == 43);
+}
+
+///ditto
+@safe pure unittest
+{
+    // An object is a double, a string, or a hash of objects
+    alias Obj = Variant!(double, string, This[string]);
+    alias Map = Obj.Types[2];
+
+    Obj obj = "hello";
+    assert(obj.get!string == "hello");
+    obj = 42.0;
+    assert(obj.get!double == 42);
+    obj = ["customer": Obj("John"), "paid": Obj(23.95)];
+    assert(obj.get!Map["customer"] == "John");
 }
 
 /// Test for opCmp, opEqual, toHash
@@ -461,8 +549,8 @@ unittest
                 C!(size1, isPOD, hasToHash, hasOpEquals),
                 C!(size2, isPOD, hasToHash, hasOpEquals));
         static assert (__traits(hasMember, T, "toHash") == isPOD || hasToHash);
-        static assert (__traits(hasMember, T, "opEquals") == isPOD || hasOpEquals);
-        static assert (__traits(hasMember, T, "opCmp"));
+        static assert (__traits(compiles, T.init == T.init) == isPOD || hasOpEquals);
+        static assert (__traits(compiles, T.init <= T.init));
     }}
 }
 
@@ -491,6 +579,7 @@ unittest
     static struct S {
         uint* value;
         this(return ref scope const typeof(this) rhs) {}
+        void opAssign(return ref scope const typeof(this) rhs) {}
     }
     static struct C { const(uint)* value; }
 
@@ -795,7 +884,7 @@ template visit(alias visitor, bool exhaustive = true)
         import core.lifetime: forward;
         switch (variant.type)
         {
-            static foreach (i, T; V._Types)
+            static foreach (i, T; V.Types)
             {
                 case i:
                     static if (__traits(compiles, visitor(variant.trustedGet!T, forward!args)))
@@ -858,7 +947,7 @@ template optionalVisit(alias visitor)
         import core.lifetime: forward;
         switch (variant.type)
         {
-            static foreach (i, T; V._Types)
+            static foreach (i, T; V.Types)
             static if (__traits(compiles, result = visitor(variant.trustedGet!T, forward!args)))
             {
                 case i:
