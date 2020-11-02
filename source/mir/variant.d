@@ -4,6 +4,7 @@ This module implements a generic variant type.
 module mir.variant;
 
 import mir.functional: naryFun;
+import std.meta: allSatisfy;
 
 private static immutable variantExceptionMsg = "mir.variant: the variant stores other type then requested.";
 private static immutable variantNullExceptionMsg = "mir.variant: the variant is empty and doesn't store any value.";
@@ -18,6 +19,7 @@ version (D_Exceptions)
 
 private alias ConstOf(T) = const T;
 private enum canConstructWith(From, To) = __traits(compiles, (From a) { To b = a; } );
+private enum canImplicitlyRemoveConst(T) = __traits(compiles, {static T _function_(ref const T a) { return a; }} );
 private enum canRemoveConst(T) = canConstructWith!(const T, T);
 private enum canRemoveImmutable(T) = canConstructWith!(immutable T, T);
 private enum hasConstConstruction(T) = __traits(compiles, (const T a) { auto b = a; } );
@@ -28,28 +30,160 @@ private enum hasSemiImmutableConstruction(T) = __traits(compiles, (const T a) { 
 private enum hasToHash(T) = __traits(hasMember, T, "toHash");
 private enum isCopyable(S) = __traits(isCopyable, S); 
 private enum isPOD(T) = __traits(isPOD, T);
-private enum isVariant(T) = is(T == Variant!Args, Args...);
+private enum isVariant(T) = __traits(hasMember, T, "__isVariant");
 private enum Sizeof(T) = T.sizeof;
+
+private template staticIsSorted(alias cmp, Seq...)
+{
+    static if (Seq.length <= 1)
+        enum staticIsSorted = true;
+    else static if (Seq.length == 2)
+        enum staticIsSorted = cmp!(Seq[0], Seq[1]);
+    else
+    {
+        enum staticIsSorted =
+            cmp!(Seq[($ / 2) - 1], Seq[$ / 2]) &&
+            staticIsSorted!(cmp, Seq[0 .. $ / 2]) &&
+            staticIsSorted!(cmp, Seq[$ / 2 .. $]);
+    }
+}
+
+private template TryRemoveConst(T)
+{
+    import std.traits: Unqual;
+    alias U = Unqual!T;
+    static if (canImplicitlyRemoveConst!U)
+    {
+        alias TryRemoveConst = U;
+    }
+    else
+    {
+        alias TryRemoveConst = T;
+    }
+}
+
+unittest
+{
+    static assert(is(TryRemoveConst!(const int) == int));
+}
+
+private enum bool TypeCmp(A, B) =
+    is(A == B) ? false:
+    is(A == typeof(null)) ? true:
+    A.sizeof < B.sizeof ? true:
+    A.sizeof > B.sizeof ? false:
+    A.mangleof < B.mangleof;
+
+
+private template staticMerge(alias cmp, int half, Seq...)
+{
+    static if (half == 0 || half == Seq.length)
+    {
+        alias staticMerge = Seq;
+    }
+    else
+    {
+        import std.meta: AliasSeq;
+        static if (cmp!(Seq[0], Seq[half]))
+        {
+            alias staticMerge = AliasSeq!(Seq[0],
+                staticMerge!(cmp, half - 1, Seq[1 .. $]));
+        }
+        else
+        {
+            alias staticMerge = AliasSeq!(Seq[half],
+                staticMerge!(cmp, half, Seq[0 .. half], Seq[half + 1 .. $]));
+        }
+    }
+}
+
+private template staticSort(alias cmp, Seq...)
+{
+    static if (Seq.length < 2)
+    {
+        alias staticSort = Seq;
+    }
+    else
+    {
+        import std.meta: AliasSeq;
+        private alias btm = staticSort!(cmp, Seq[0 .. $ / 2]);
+        private alias top = staticSort!(cmp, Seq[$ / 2 .. $]);
+
+        static if (cmp!(btm[$ - 1], top[0]))
+            alias staticSort = AliasSeq!(btm, top); // already ascending
+        else static if (cmp!(top[$ - 1], btm[0]))
+            alias staticSort = AliasSeq!(top, btm); // already descending
+        else
+            alias staticSort = staticMerge!(cmp, Seq.length / 2, btm, top);
+    }
+}
+
+private template isInstanceOf(alias S)
+{
+    enum isInstanceOf(T) = is(T == S!Args, Args...);
+}
+
+private struct VariantSet(Sets...);
 
 /++
 Dummy type for $(LREF Variant) self-referencing.
 +/
-struct This;
+struct SetAlias(uint id);
+///ditto
+alias This = SetAlias!0;
+
+
 
 /++
-Variant Type (aka Algebraic Type) with clever member access.
-
-Compatible with BetterC mode.
 +/
-struct Variant(_Types...)
-	if (_Types.length)
+template TypeSet(T...)
+{
+    import std.meta: NoDuplicates;
+    // sort types by siezeof and them mangleof
+    static if (is(NoDuplicates!T == T))
+        static if (staticIsSorted!(TypeCmp, T))
+            struct TypeSet;
+        else
+            alias TypeSet = .TypeSet!(staticSort!(TypeCmp, T));
+    else
+        alias TypeSet = TypeSet!(NoDuplicates!T);
+}
+
+
+unittest
+{
+    struct S {}
+    alias C = S;
+    alias Int = int;
+    static assert(__traits(isSame, TypeSet!(S, int), TypeSet!(Int, C)));
+    static assert(__traits(isSame, TypeSet!(S, int, int), TypeSet!(Int, C)));
+    static assert(!__traits(isSame, TypeSet!(uint, S), TypeSet!(int, S)));
+}
+
+
+/++
++/
+template Variants(Sets...)
+    if (allSatisfy!(isInstanceOf!TypeSet, Sets))
+{
+    import std.meta: staticMap;
+    import mir.internal.utility: Iota;
+
+    private alias TypeSetsInst(uint id) = TypeSets!(id, Sets);
+    ///
+    alias Variants = staticMap!(TypeSetsInst, Iota!(Sets.length));
+}
+
+///
+struct TypeSets(uint id, Sets...)
+    if (allSatisfy!(isInstanceOf!TypeSet, Sets))
 {
     import mir.conv: emplaceRef;
     import mir.utility: max, swap;
-    import std.meta: AliasSeq, anySatisfy, allSatisfy, NoDuplicates, templateOr, staticMap;
+    import std.meta: AliasSeq, anySatisfy, allSatisfy, staticMap, templateOr;
+    import std.traits: TemplateArgsOf;
     import std.typecons: ReplaceTypeUnless;
     import std.traits:
-        Select,
         CopyTypeQualifiers,
         hasElaborateAssign,
         hasElaborateCopyConstructor,
@@ -57,13 +191,27 @@ struct Variant(_Types...)
         isAssignable,
         isEqualityComparable,
         isOrderingComparable,
-        Largest
+        Largest,
+        Select,
+        TemplateArgsOf
         ;
 
-    static assert(is(NoDuplicates!_Types == _Types), "Varaint of " ~ _Types.stringof ~ " constains type duplicates");
+    private template ApplyAliasesImpl(uint length, Types...)
+    {
+        static if (length == 0)
+            alias ApplyAliasesImpl = Types;
+        else
+        {
+            enum next  = length - 1;
+            import std.typecons: ReplaceTypeUnless;
+            alias ApplyAliasesImpl = ApplyAliasesImpl!(next,
+                ReplaceTypeUnless!(isVariant, SetAlias!next, TypeSets!(next, Sets), Types));
+        }
+    }
 
-    ///
-    alias Types = AliasSeq!(ReplaceTypeUnless!(isVariant, This, typeof(this), _Types));
+    private enum __isVariant;
+
+    alias Types = ApplyAliasesImpl!(Sets.length, TemplateArgsOf!(Sets[id]));
 
     union
     {
@@ -461,12 +609,20 @@ struct Variant(_Types...)
                         return this.trustedGet!T.opCmp(rhs.trustedGet!T);
                     else
                         return this.trustedGet!T < rhs.trustedGet!T ? -1 :
-                               this.trustedGet!T > rhs.trustedGet!T ? +1 : 0;
+                            this.trustedGet!T > rhs.trustedGet!T ? +1 : 0;
             }
             default: assert(0);
         }
     }
 }
+
+/++
+Variant Type (aka TypeSets Type) with clever member access.
+
+Compatible with BetterC mode.
++/
+
+alias Variant(T...) = TypeSets!(0, TypeSet!T);
 
 // example from std.variant
 /**
@@ -487,7 +643,7 @@ be arbitrarily complex.
 
     // A tree is either a leaf or a branch of two other trees
     alias Tree(Leaf) = Variant!(Leaf, Tuple!(This*, This*));
-    alias Leafs = Tree!int.Types[1];
+    alias Leafs = Tuple!(Tree!int*, Tree!int*);
 
     Tree!int tree = tuple(new Tree!int(42), new Tree!int(43));
     Tree!int* right = tree.get!Leafs[1];
@@ -499,7 +655,9 @@ be arbitrarily complex.
 {
     // An object is a double, a string, or a hash of objects
     alias Obj = Variant!(double, string, This[string]);
-    alias Map = Obj.Types[2];
+    alias Map = Obj[string];
+
+    pragma(msg, Obj);
 
     Obj obj = "hello";
     assert(obj.get!string == "hello");
@@ -510,7 +668,8 @@ be arbitrarily complex.
 }
 
 /// Test for opCmp, opEqual, toHash
-version(mir_test)
+// version(mir_test)
+version(none)
 @safe pure @nogc nothrow
 unittest
 {
@@ -871,6 +1030,15 @@ private template getMemberHandler(string member)
     }
 }
 
+// AliasSeq!(ReplaceTypeUnless!(isVariant, This, typeof(this), _Types))
+
+private template VariantReturnTypes(T...)
+{
+    import std.meta: NoDuplicates, staticMap;
+
+    alias VariantReturnTypes = NoDuplicates!(staticMap!(TryRemoveConst, T));
+}
+
 /++
 Params:
     visitor = a function name alias
@@ -881,9 +1049,67 @@ template visit(alias visitor, bool exhaustive = true)
     import std.traits: Unqual;
     ///
     auto ref visit(V, Args...)(auto ref V variant, auto ref Args args)
-        if (is(Unqual!V : Variant!Types, Types))
+        if (isVariant!V)
     {
         import core.lifetime: forward;
+
+        // template VariantReturnTypesImpl(T)
+        // {
+        //     static if (__traits(compiles, visitor(variant.trustedGet!T, forward!args)))
+        //     {
+        //         alias Ret = typeof(visitor(variant.trustedGet!T, forward!args));
+        //         static if (is(Ret == void))
+        //             alias VariantReturnTypesImpl = AliasSeq!(typeof(null));
+        //         else
+        //             alias VariantReturnTypesImpl = AliasSeq!(TryRemoveConst!Ret);
+        //     }
+        //     else
+        //     {
+        //         alias VariantReturnTypesImpl = AliasSeq!();
+        //     }
+        // }
+
+        // alias AllReturnTypes = NoDuplicates!(staticMap!(VariantReturnTypesImpl, V.Types));
+
+        // static if (AllReturnTypes.length == 0 || is(AllReturnTypes == AliasSeq!(typeof(null))))
+        // {
+        //     alias ThisReturnType = void;
+        // }
+        // else
+        // static if (AllReturnTypes.length == 2 && (is(AllReturnTypes[0] == typeof(null)) || is(AllReturnTypes[1] == typeof(null))))
+        // {
+        //     alias ThisReturnType = Variant!(typeof(null), OtherType);
+        // }
+
+        // template VariantReturnTypesImpl(T)
+        // {
+        //     import std.traits: Unqual, CopyTypeQualifiers;
+        //     import std.meta: AliasSeq;
+
+        //     static if (__traits(compiles, visitor(variant.trustedGet!T, forward!args)))
+        //     {
+        //         alias Ret = typeof(visitor(variant.trustedGet!T, forward!args));
+        //         static if (is(Ret == void))
+        //             alias VariantReturnTypesImpl = AliasSeq!(typeof(null));
+        //         else
+        //         static if (is(Unqual!Ret == Variant!InnerTypes, InnerTypes))
+        //         {
+        //             alias CopyTypeQualifiers1(Y) = CopyTypeQualifiers(Ret, Y);
+        //             alias VariantReturnTypesImpl = staticMap!(CopyTypeQualifiers1, Ret.Types);
+        //         }
+        //         else
+        //             alias VariantReturnTypesImpl = AliasSeq!Ret;
+        //     }
+        //     else
+        //     {
+        //         alias VariantReturnTypesImpl = AliasSeq!();
+        //     }
+        // }
+
+        // import std.meta: staticMap;
+        // alias Types = VariantReturnTypes!(staticMap!(VariantReturnTypesImpl, V.Types));
+
+        // V.Types;
         switch (variant.type)
         {
             static foreach (i, T; V.Types)
@@ -944,7 +1170,7 @@ template optionalVisit(alias visitor)
     import std.traits: Unqual;
     ///
     bool optionalVisit(Result, V, Args...)(ref Result result, auto ref V variant, auto ref Args args) @property
-        if (is(Unqual!V : Variant!Types, Types))
+        if (isVariant!V)
     {
         import core.lifetime: forward;
         switch (variant.type)
