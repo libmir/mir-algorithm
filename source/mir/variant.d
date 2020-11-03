@@ -18,6 +18,7 @@ version (D_Exceptions)
 }
 
 private alias ConstOf(T) = const T;
+private enum Alignof(T) = T.alignof;
 private enum canConstructWith(From, To) = __traits(compiles, (From a) { To b = a; } );
 private enum canImplicitlyRemoveConst(T) = __traits(compiles, {static T _function_(ref const T a) { return a; }} );
 private enum canRemoveConst(T) = canConstructWith!(const T, T);
@@ -25,7 +26,7 @@ private enum canRemoveImmutable(T) = canConstructWith!(immutable T, T);
 private enum hasConstConstruction(T) = __traits(compiles, (const T a) { auto b = a; } );
 private enum hasImmutableConstruction(T) = __traits(compiles, (immutable T a) { auto b = a; } );
 private enum hasMutableConstruction(T) = __traits(compiles, (T a) { auto b = a; } );
-private enum hasOpEquals(T) = __traits(hasMember, T, "opEquals");
+private enum hasOpPostMove(T) = __traits(hasMember, T, "opPostMove");
 private enum hasSemiImmutableConstruction(T) = __traits(compiles, (const T a) { immutable b = a; } );
 private enum hasToHash(T) = __traits(hasMember, T, "toHash");
 private enum isCopyable(S) = __traits(isCopyable, S); 
@@ -67,55 +68,14 @@ unittest
     static assert(is(TryRemoveConst!(const int) == int));
 }
 
-private enum bool TypeCmp(A, B) =
-    is(A == B) ? false:
+private template TypeCmp(A, B)
+{
+    enum bool TypeCmp = is(A == B) ? false:
     is(A == typeof(null)) ? true:
+    is(B == typeof(null)) ? false:
     A.sizeof < B.sizeof ? true:
     A.sizeof > B.sizeof ? false:
     A.mangleof < B.mangleof;
-
-
-private template staticMerge(alias cmp, int half, Seq...)
-{
-    static if (half == 0 || half == Seq.length)
-    {
-        alias staticMerge = Seq;
-    }
-    else
-    {
-        import std.meta: AliasSeq;
-        static if (cmp!(Seq[0], Seq[half]))
-        {
-            alias staticMerge = AliasSeq!(Seq[0],
-                staticMerge!(cmp, half - 1, Seq[1 .. $]));
-        }
-        else
-        {
-            alias staticMerge = AliasSeq!(Seq[half],
-                staticMerge!(cmp, half, Seq[0 .. half], Seq[half + 1 .. $]));
-        }
-    }
-}
-
-private template staticSort(alias cmp, Seq...)
-{
-    static if (Seq.length < 2)
-    {
-        alias staticSort = Seq;
-    }
-    else
-    {
-        import std.meta: AliasSeq;
-        private alias btm = staticSort!(cmp, Seq[0 .. $ / 2]);
-        private alias top = staticSort!(cmp, Seq[$ / 2 .. $]);
-
-        static if (cmp!(btm[$ - 1], top[0]))
-            alias staticSort = AliasSeq!(btm, top); // already ascending
-        else static if (cmp!(top[$ - 1], btm[0]))
-            alias staticSort = AliasSeq!(top, btm); // already descending
-        else
-            alias staticSort = staticMerge!(cmp, Seq.length / 2, btm, top);
-    }
 }
 
 private template isInstanceOf(alias S)
@@ -132,21 +92,22 @@ struct SetAlias(uint id);
 ///ditto
 alias This = SetAlias!0;
 
-
-
 /++
 +/
 template TypeSet(T...)
 {
-    import std.meta: NoDuplicates;
+    import std.meta: NoDuplicates, staticSort, staticMap;
     // sort types by siezeof and them mangleof
-    static if (is(NoDuplicates!T == T))
-        static if (staticIsSorted!(TypeCmp, T))
-            struct TypeSet;
+    static if (is(staticMap!(TryRemoveConst, T) == T))
+        static if (is(NoDuplicates!T == T))
+            static if (staticIsSorted!(TypeCmp, T))
+                struct TypeSet;
+            else
+                alias TypeSet = .TypeSet!(staticSort!(TypeCmp, T));
         else
-            alias TypeSet = .TypeSet!(staticSort!(TypeCmp, T));
+            alias TypeSet = TypeSet!(NoDuplicates!T);
     else
-        alias TypeSet = TypeSet!(NoDuplicates!T);
+        alias TypeSet = staticMap!(TryRemoveConst, T);
 }
 
 
@@ -191,21 +152,16 @@ private static struct __Null()
 struct Algebraic(uint _setId, _TypeSets...)
     if (allSatisfy!(isInstanceOf!TypeSet, _TypeSets))
 {
+    import core.lifetime: moveEmplace;
     import mir.conv: emplaceRef;
-    import mir.utility: max, swap;
     import std.meta: AliasSeq, anySatisfy, allSatisfy, staticMap, templateOr;
-    import std.traits: TemplateArgsOf;
     import std.typecons: ReplaceTypeUnless;
     import std.traits:
-        CopyTypeQualifiers,
-        hasElaborateAssign,
         hasElaborateCopyConstructor,
         hasElaborateDestructor,
-        isAssignable,
         isEqualityComparable,
         isOrderingComparable,
         Largest,
-        Select,
         TemplateArgsOf
         ;
 
@@ -229,34 +185,29 @@ struct Algebraic(uint _setId, _TypeSets...)
 
     union
     {
-        static if (__Types.length)
-        {
-            static if (is(__Types[0] == typeof(null)))
-            {
-                private alias __Payload =  AliasSeq!(__Null!(), __Types[1 .. $]);
-            }
-            else
-                alias __Payload = __Types;
-            private __Payload __payload;
-            private ubyte[Largest!__Payload.sizeof] __bytes;
-        }
+        static if (is(__Types[0] == typeof(null)))
+            private alias __Payload =  AliasSeq!(__Null!(), __Types[1 .. $]);
         else
-        {
-            alias __Payload = __Types;
-            private __Payload __payload;
+            private alias __Payload = __Types;
+
+        private __Payload __payload;
+
+        static if (__Types.length == 0 || is(__Types == AliasSeq!(typeof(null))))
             private ubyte[0] __bytes;
-        }
+        else
+            private ubyte[Largest!__Payload.sizeof] __bytes;
     }
 
     static if (__Types.length)
     {
         static if (__Types.length > 1)
         {
-            // 0 for unininit value, index = type - 1
-            static if (__bytes.length == 1)
+            import mir.utility: max;
+            private enum __alignof = max(staticMap!(Alignof, __Payload));
+            static if ((__bytes.length | __alignof) & 1)
                 private ubyte __type; 
             else
-            static if (__bytes.length == 2)
+            static if ((__bytes.length | __alignof) & 2)
                 private ushort __type;
             else
                 private uint __type;
@@ -266,8 +217,6 @@ struct Algebraic(uint _setId, _TypeSets...)
             private enum uint __type = 0;
         }
     }
-
-    private enum __hasDestructor = anySatisfy!(hasElaborateDestructor, __Types);
 
     static foreach (i, T; __Types)
     {
@@ -304,20 +253,17 @@ struct Algebraic(uint _setId, _TypeSets...)
                         assert(0, variantExceptionMsg);
                 }
             }
-            static if (is(T == typeof(null)))
-                return null;
-            else
-                return __trustedGet!T;
+            return __trustedGet!T;
         }
         
         static if (hasMutableConstruction!T)
         ///
-        this(T value)
+        this(T value) @trusted
         {
-            import core.lifetime: move;
             static if (__Types.length > 1)
                 __type = i;
-            emplaceRef(__payload[i], move(value));
+            static if (!is(T == typeof(null)))
+                moveEmplace(value, __payload[i]);
         }
 
         static if (!hasSemiImmutableConstruction!T)
@@ -351,29 +297,28 @@ struct Algebraic(uint _setId, _TypeSets...)
             }
         }
 
-        static if (__traits(compiles, (ref T a, ref T b) { swap(a, b); }))
+        static if (__traits(compiles, (ref T a, ref T b) { moveEmplace(a, b); }))
         ///
-        ref opAssign(T value) return
+        ref opAssign(T value) return @trusted
         {
             static if (__traits(hasMember, this, "__dtor"))
                 __dtor;
             static if (__Types.length > 1)
                 __type = i;
-            static if (__traits(isZeroInit, T))
+            static if (__traits(isZeroInit, T) || is(T == typeof(null)))
             {
                 __bytes[] = 0;
             }
             else
             {
-                emplaceRef(__payload[i]);
-                __bytes[T.sizeof .. $] = 0;
+                __bytes[__Payload[i].sizeof .. $] = 0;
             }
             static if (!is(T == typeof(null)))
-                swap(__payload[i], value);
+                moveEmplace(value, __payload[i]);
             return this;
         }
 
-        static if (isPOD!T || hasOpEquals!T)
+        static if (isEqualityComparable!T)
         /++
         +/
         auto opEquals()(auto ref const T rhs) const
@@ -400,7 +345,7 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (__hasDestructor)
+    static if (anySatisfy!(hasElaborateDestructor, __Types))
     ~this() @safe
     {
         S: switch (__type)
@@ -411,6 +356,23 @@ struct Algebraic(uint _setId, _TypeSets...)
                 case i:
                     .destroy!false(__trustedGet!T);
                     break S;
+            }
+            default: return;
+        }
+    }
+
+
+    static if (anySatisfy!(hasOpPostMove, __Types))
+    void opPostMove(const ref typeof(this) old)
+    {
+        S: switch (__type)
+        {
+            static foreach (i, T; __Types)
+            static if (hasOpPostMove!T)
+            {
+                case i:
+                    this.__payload[i].opPostMove(old.__payload[i]);
+                    return;
             }
             default: return;
         }
@@ -539,10 +501,9 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
 
         static if (__allCanRemoveConst && __allHaveMutableConstruction)
-        ref opAssign(typeof(this) rhs) return
+        ref opAssign(typeof(this) rhs) return @trusted
         {
-            swap(this, rhs);
-            return this;
+            moveEmplace(rhs, this);
         }
     }
 
@@ -568,7 +529,7 @@ struct Algebraic(uint _setId, _TypeSets...)
             {
                 Variant!(__Types[1 .. $]) ret;
                 static if (ret.__Types.length > 1)
-                    ret.__type = this.__type - 1;
+                    ret.__type = cast(typeof(ret.__type))(this.__type - 1);
 
                 static if (anySatisfy!(hasElaborateCopyConstructor, __Types))
                 {
@@ -599,7 +560,10 @@ struct Algebraic(uint _setId, _TypeSets...)
 
         static if (__Types.length == 2)
         /// ditto
-        alias get = get!(__Types[1]);
+        ref inout(__Types[1]) get() inout
+        {
+            return get!(__Types[1]);
+        }
     }
 
     static if (__Types.length)
@@ -653,7 +617,7 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (allSatisfy!(templateOr!(isPOD, hasOpEquals), __Types))
+    static if (allSatisfy!(isEqualityComparable, __Types))
     /++
     +/
     auto opEquals()(auto ref const typeof(this) rhs) const
@@ -735,7 +699,6 @@ Variant Type (aka Algebraic Type) with clever member access.
 
 Compatible with BetterC mode.
 +/
-
 alias Variant(T...) = Algebraic!(0, TypeSet!T);
 
 /++
@@ -777,8 +740,6 @@ be arbitrarily complex.
     // An object is a double, a string, or a hash of objects
     alias Obj = Variant!(double, string, This[string]);
     alias Map = Obj[string];
-
-    pragma(msg, Obj);
 
     Obj obj = "hello";
     assert(obj.get!string == "hello");
@@ -954,6 +915,8 @@ unittest
 @safe pure nothrow @nogc
 unittest
 {
+    import core.lifetime: move;
+
     static struct S {
         immutable(uint)* value;
         this(return ref scope typeof(this) rhs) {}
@@ -1029,12 +992,28 @@ unittest
     assert(y.match!((int v) => false, (float v) => true));
 }
 
-
 /// Special `typeof(null)` support for the first argument.
 @safe pure @nogc
 unittest
 {
-    alias Number = Variant!(typeof(null), int, double);
+    Nullable!int a = 5;
+    assert(a.get!int == 5);
+    a.nullify;
+    assert(a.isNull);
+    a = 4;
+    assert(!a.isNull);
+    assert(a.get == 4);
+    assert(a == 4);
+    a = 4;
+    a = null;
+    assert(a == null);
+}
+
+/// ditto
+@safe pure @nogc
+unittest
+{
+    alias Number = Nullable!(int, double);
 
     Number z = null; // default
     Number x = 23;
@@ -1049,6 +1028,7 @@ unittest
     auto xx = x.get;
     static assert (is(typeof(xx) == Variant!(int, double)));
     assert(xx.match!((int v) => v, (float v) => 0) == 23);
+    assert(xx.match!((ref v) => v) == 23);
 
     x = null;
     y.nullify;
@@ -1089,15 +1069,52 @@ unittest
     static assert(typeof(a).sizeof == 1);
 }
 
-// Nullable only type set
+// Empty nullable type set
 @safe pure nothrow @nogc unittest 
 {
-    Variant!(typeof(null)) a;
+    Nullable!() a;
     auto b = a;
     assert(a.toHash == 0);
     assert(a == b);
     assert(a <= b && b >= a);
     static assert(typeof(a).sizeof == 1);
+}
+
+// Small types
+@safe pure nothrow @nogc unittest 
+{
+    struct S { ubyte d; }
+    static assert(Nullable!(byte, char, S).sizeof == 2);
+}
+
+// Alignment
+@safe pure nothrow @nogc unittest 
+{
+    struct S { ubyte[3] d; }
+    static assert(Nullable!(ushort, wchar, S).sizeof == 4);
+}
+
+// opPostMove support
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import std.algorithm.mutation: move;
+
+    static struct S
+    {
+        uint s;
+
+        void opPostMove(const ref S old) nothrow
+        {
+            this.s = old.s + 1;
+        }
+    }
+
+    Variant!S a;
+
+    auto b = a.move;
+    assert(b.get!S.s == 1);
 }
 
 /++
