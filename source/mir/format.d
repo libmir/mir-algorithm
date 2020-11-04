@@ -664,9 +664,9 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
         foreach (ref e; c.lightConst)
         {
             if (!first)
-                w.printStaticString!C(sep);
+                printStaticString!C(w, sep);
             first = false;
-            w.printStaticString!C(e);
+            print!C(w, e);
         }
         w.put(right);
         return w;
