@@ -614,7 +614,7 @@ struct Spline(F, size_t N = 1, X = F)
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(RCI!(F[2 ^^ N]), N) _data;
     /// Grid iterators. $(RED For internal use.)
-    RCI!(immutable X)[N] _grid;
+    Repeat!(N, RCI!(immutable X)) _grid;
 
 @fmamath extern(D):
 

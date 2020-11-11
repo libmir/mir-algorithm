@@ -180,7 +180,7 @@ struct Linear(F, size_t N = 1, X = F)
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(RCI!(const F), N) _data;
     /// Grid iterators. $(RED For internal use.)
-    RCI!(immutable X)[N] _grid;
+    Repeat!(N, RCI!(immutable X)) _grid;
 
 @optmath extern(D):
 
