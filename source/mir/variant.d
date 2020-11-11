@@ -87,6 +87,8 @@ private template TypeCmp(A, B)
     enum bool TypeCmp = is(A == B) ? false:
     is(A == typeof(null)) ? true:
     is(B == typeof(null)) ? false:
+    is(A == void) ? true:
+    is(B == void) ? false:
     A.sizeof < B.sizeof ? true:
     A.sizeof > B.sizeof ? false:
     A.mangleof < B.mangleof;
@@ -152,15 +154,24 @@ template Variants(Sets...)
 
 private static struct _Null()
 {
-    @safe pure nothrow @nogc const:
-        size_t toHash() {return 0;}
-        bool opEquals(_Null) { return true; }
-        int opCmp(_Null) { return 0; }
-
+@safe pure nothrow @nogc const:
+    size_t toHash() {return 0;}
+    bool opEquals(_Null) { return true; }
+    int opCmp(_Null) { return 0; }
     typeof(null) __self() @property { return null; }
     typeof(null) __self(typeof(null)) @property { return null; }
     this(typeof(null)) inout {}
     string toString() { return "null"; }
+}
+
+private static struct _Void()
+{
+ @safe pure nothrow @nogc const:
+    size_t toHash() {return 0;}
+    bool opEquals(_Void) { return true; }
+    int opCmp(_Void) { return 0; }
+    void __self() @property { return; }
+    string toString() { return "void"; }
 }
 
 ///
@@ -169,7 +180,7 @@ struct Algebraic(uint _setId, _TypeSets...)
 {
     import core.lifetime: moveEmplace;
     import mir.conv: emplaceRef;
-    import std.meta: AliasSeq, anySatisfy, allSatisfy, staticMap, templateOr;
+    import std.meta: AliasSeq, anySatisfy, allSatisfy, staticMap, templateOr, Replace;
     import std.typecons: ReplaceTypeUnless;
     import std.traits:
         hasElaborateAssign,
@@ -198,60 +209,57 @@ struct Algebraic(uint _setId, _TypeSets...)
     private enum _isVariant;
 
     ///
-    alias _Types = _ApplyAliasesImpl!(_TypeSets.length, TemplateArgsOf!(_TypeSets[_setId]));
+    alias AllowedTypes = _ApplyAliasesImpl!(_TypeSets.length, TemplateArgsOf!(_TypeSets[_setId]));
 
-    static if (is(_Types[0] == typeof(null)))
-        private alias _Payload =  AliasSeq!(_Null!(), _Types[1 .. $]);
-    else
-        private alias _Payload = _Types;
+    private alias _Payload = Replace!(void, _Void!(), Replace!(typeof(null), _Null!(), AllowedTypes));
 
     private static union _Storage
     {
         _Payload payload;
 
-        static if (_Types.length == 0 || is(_Types == AliasSeq!(typeof(null))))
+        static if (AllowedTypes.length == 0 || is(AllowedTypes == AliasSeq!(typeof(null))))
         {
             ubyte[0] bytes;
-            static if (_Types.length)
-                enum uint _type = 0;
+            static if (AllowedTypes.length)
+                enum uint id = 0;
         }
         else
         struct
         {
             ubyte[Largest!_Payload.sizeof] bytes;
 
-            static if (_Types.length > 1)
+            static if (AllowedTypes.length > 1)
             {
                 import mir.utility: max;
                 enum _alignof = max(staticMap!(Alignof, _Payload));
                 static if ((bytes.length | _alignof) & 1)
-                    ubyte _type;
+                    ubyte id;
                 else
                 static if ((bytes.length | _alignof) & 2)
-                    ushort _type;
+                    ushort id;
                 else
-                    uint _type;
+                    uint id;
             }
             else
             {
-                enum uint _type = 0;
+                enum uint id = 0;
             }
         }
     
-        static if (bytes.length && _Types.length)
-            ubyte[bytes.length + _type.sizeof] allBytes;
+        static if (bytes.length && AllowedTypes.length)
+            ubyte[bytes.length + id.sizeof] allBytes;
         else
             alias allBytes = bytes;
     }
 
     private _Storage _storage;
 
-    static if (anySatisfy!(hasElaborateDestructor, _Types))
+    static if (anySatisfy!(hasElaborateDestructor, AllowedTypes))
     ~this() @safe
     {
-        S: switch (_storage._type)
+        S: switch (_storage.id)
         {
-            static foreach (i, T; _Types)
+            static foreach (i, T; AllowedTypes)
             static if (hasElaborateDestructor!T)
             {
                 case i:
@@ -264,12 +272,12 @@ struct Algebraic(uint _setId, _TypeSets...)
             _storage.allBytes = 0xCC;
     }
 
-    static if (anySatisfy!(hasOpPostMove, _Types))
+    static if (anySatisfy!(hasOpPostMove, AllowedTypes))
     void opPostMove(const ref typeof(this) old)
     {
-        S: switch (_storage._type)
+        S: switch (_storage.id)
         {
-            static foreach (i, T; _Types)
+            static foreach (i, T; AllowedTypes)
             static if (hasOpPostMove!T)
             {
                 case i:
@@ -280,9 +288,9 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (_Types.length)
+    static if (AllowedTypes.length)
     {
-        static if (!__traits(compiles, (){ _Types[0] arg; }))
+        static if (!__traits(compiles, (){ AllowedTypes[0] arg; }))
         {
             @disable this();
         }
@@ -293,13 +301,13 @@ struct Algebraic(uint _setId, _TypeSets...)
         return *cast(ubyte[_storage.bytes.length]*)&this._storage.bytes;
     }
 
-    static if (!allSatisfy!(isCopyable, _Types))
+    static if (!allSatisfy!(isCopyable, AllowedTypes))
         @disable this(this);
     else
-    static if (anySatisfy!(hasElaborateCopyConstructor, _Types))
+    static if (anySatisfy!(hasElaborateCopyConstructor, AllowedTypes))
     {
-        // private enum _allCanImplicitlyRemoveConst = allSatisfy!(canImplicitlyRemoveConst, _Types);
-        // private enum _allCanRemoveConst = allSatisfy!(canRemoveConst, _Types);
+        // private enum _allCanImplicitlyRemoveConst = allSatisfy!(canImplicitlyRemoveConst, AllowedTypes);
+        // private enum _allCanRemoveConst = allSatisfy!(canRemoveConst, AllowedTypes);
         // private enum _allHaveImplicitSemiMutableConstruction = _allCanImplicitlyRemoveConst && _allHaveMutableConstruction;
 
         private static union _StorageI(uint i)
@@ -310,10 +318,10 @@ struct Algebraic(uint _setId, _TypeSets...)
 
         private void _copyCtorSwitch(this This, RhsAlgebraic)(return ref scope RhsAlgebraic rhs)
         {
-            switch (_storage._type)
+            switch (_storage.id)
             {
-                static foreach (i, T; _Types)
-                static if (!is(T == typeof(null)) && hasElaborateCopyConstructor!T)
+                static foreach (i, T; AllowedTypes)
+                static if (!is(T == typeof(null)) && !is(T == void) && hasElaborateCopyConstructor!T)
                 {
                     case i: {
                         import std.traits: CopyTypeQualifiers;
@@ -326,7 +334,7 @@ struct Algebraic(uint _setId, _TypeSets...)
             }
         }
 
-        static if (allSatisfy!(hasInoutConstruction, _Types))
+        static if (allSatisfy!(hasInoutConstruction, AllowedTypes))
         this(return ref scope inout Algebraic rhs) inout
         {
             this._storage.allBytes = rhs._storage.allBytes;
@@ -334,35 +342,35 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
         else
         {
-            static if (allSatisfy!(hasMutableConstruction, _Types))
+            static if (allSatisfy!(hasMutableConstruction, AllowedTypes))
             this(return ref scope Algebraic rhs)
             {
                 this._storage.allBytes = rhs._storage.allBytes;
                 _copyCtorSwitch(rhs);
             }
 
-            static if (allSatisfy!(hasConstConstruction, _Types))
+            static if (allSatisfy!(hasConstConstruction, AllowedTypes))
             this(return ref scope const Algebraic rhs) const
             {
                 this._storage.allBytes = rhs._storage.allBytes;
                 _copyCtorSwitch(rhs);
             }
 
-            static if (allSatisfy!(hasImmutableConstruction, _Types))
+            static if (allSatisfy!(hasImmutableConstruction, AllowedTypes))
             this(return ref scope immutable Algebraic rhs) immutable
             {
                 this._storage.allBytes = rhs._storage.allBytes;
                 _copyCtorSwitch(rhs);
             }
 
-            static if (allSatisfy!(hasSemiImmutableConstruction, _Types))
+            static if (allSatisfy!(hasSemiImmutableConstruction, AllowedTypes))
             this(return ref scope const Algebraic rhs) immutable
             {
                 this._storage.allBytes = rhs._storage.allBytes;
                 _copyCtorSwitch(rhs);
             }
 
-            static if (allSatisfy!(hasSemiMutableConstruction, _Types))
+            static if (allSatisfy!(hasSemiMutableConstruction, AllowedTypes))
             this(return ref scope const Algebraic rhs)
             {
                 this._storage.allBytes = rhs._storage.allBytes;
@@ -371,30 +379,30 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (_Types.length)
+    static if (AllowedTypes.length)
     /++
     Returns: zero based type index.
     +/
-    uint _typeId() @nogc nothrow const @property
+    uint id() @nogc nothrow const @property
     {
-        return _storage._type;
+        return _storage.id;
     }
 
-    static if (allSatisfy!(templateOr!(isPOD, hasToHash), _Types))
+    static if (allSatisfy!(templateOr!(isPOD, hasToHash), AllowedTypes))
     /++
     +/
     size_t toHash() const
     {
-        static if (allSatisfy!(isPOD, _Types))
+        static if (allSatisfy!(isPOD, AllowedTypes))
         {
-            static if (_Types.length == 0 || is(_Types == AliasSeq!(typeof(null))))
+            static if (AllowedTypes.length == 0 || is(AllowedTypes == AliasSeq!(typeof(null))))
             {
                 return 0;
             }
             else
             static if (this.sizeof <= 16)
             {
-                return hashOf(_storage.bytes, _storage._type);
+                return hashOf(_storage.bytes, _storage.id);
             }
             else
             {
@@ -406,38 +414,38 @@ struct Algebraic(uint _setId, _TypeSets...)
                 else
                     alias UInt = uint;
 
-                static immutable UInt[_Types.length + 1] sizes = [0, staticMap!(Sizeof, _Types)];
-                return hashOf(_storage.bytes[0 .. sizes[_storage._type]], _storage._type);
+                static immutable UInt[_Payload.length + 1] sizes = [0, staticMap!(Sizeof, _Payload)];
+                return hashOf(_storage.bytes[0 .. sizes[_storage.id]], _storage.id);
             }
         }
         else
-        switch (_storage._type)
+        switch (_storage.id)
         {
-            static foreach (i, T; _Types)
+            static foreach (i, T; AllowedTypes)
             {
                 case i:
-                    return hashOf(_trustedGet!T, i);
+                    return hashOf(_storage.payload[i], i);
             }
             default: assert(0);
         }
     }
 
-    static if (allSatisfy!(isEqualityComparable, _Types))
+    static if (allSatisfy!(isEqualityComparable, AllowedTypes))
     /++
     +/
     auto opEquals(const typeof(this) rhs) const
     {
-        static if (_Types.length == 0)
+        static if (AllowedTypes.length == 0)
         {
             return true;
         }
         else
         {
-            if (this._storage._type != rhs._storage._type)
+            if (this._storage.id != rhs._storage.id)
                 return false;
-            switch (_storage._type)
+            switch (_storage.id)
             {
-                static foreach (i, T; _Types)
+                static foreach (i, T; AllowedTypes)
                 {
                     case i:
                         return this._trustedGet!T == rhs._trustedGet!T;
@@ -447,21 +455,21 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (allSatisfy!(isEqualityComparable, _Types))
+    static if (allSatisfy!(isEqualityComparable, AllowedTypes))
     ///ditto
     auto opEquals(ref const typeof(this) rhs) const
     {
-        static if (_Types.length == 0)
+        static if (AllowedTypes.length == 0)
         {
             return true;
         }
         else
         {
-            if (this._storage._type != rhs._storage._type)
+            if (this._storage.id != rhs._storage.id)
                 return false;
-            switch (_storage._type)
+            switch (_storage.id)
             {
-                static foreach (i, T; _Types)
+                static foreach (i, T; AllowedTypes)
                 {
                     case i:
                         return this._trustedGet!T == rhs._trustedGet!T;
@@ -471,23 +479,23 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (allSatisfy!(isOrderingComparable, _Types))
+    static if (allSatisfy!(isOrderingComparable, AllowedTypes))
     /++
     +/
     auto opCmp()(auto ref const typeof(this) rhs) const
     {
-        static if (_Types.length == 0)
+        static if (AllowedTypes.length == 0)
         {
             return 0;
         }
         else
         {
             import mir.internal.utility: isFloatingPoint;
-            if (auto d = int(this._storage._type) - int(rhs._storage._type))
+            if (auto d = int(this._storage.id) - int(rhs._storage.id))
                 return d;
-            switch (_storage._type)
+            switch (_storage.id)
             {
-                static foreach (i, T; _Types)
+                static foreach (i, T; AllowedTypes)
                 {
                     case i:
                         static if (__traits(compiles, __cmp(_trustedGet!T, rhs._trustedGet!T)))
@@ -509,16 +517,16 @@ struct Algebraic(uint _setId, _TypeSets...)
     ///
     void toString(C, W)(scope ref W w)
     {
-        static if (_Types.length == 0)
+        static if (AllowedTypes.length == 0)
         {
             return w.put(cast(immutable C[])"Algebraic");
         }
         else
         {
             import mir.format: print;
-            switch (_storage._type)
+            switch (_storage.id)
             {
-                static foreach (i, T; _Types)
+                static foreach (i, T; AllowedTypes)
                 {
                     case i:
                         print(w, _trustedGet!T);
@@ -528,31 +536,31 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (is(_Types[0] == typeof(null)))
+    static if (is(AllowedTypes[0] == typeof(null)))
     {
         ///
         bool opCast(C)() const
             if (is(C == bool))
         {
-            return _storage._type != 0;
+            return _storage.id != 0;
         }
         /// Defined if the first type is `typeof(null)`
-        bool isNull() const { return _storage._type == 0; }
+        bool isNull() const { return _storage.id == 0; }
         /// ditto
         void nullify() { this = null; }
 
-        static if (allSatisfy!(isCopyable, _Types[1 .. $]) && _Types.length != 2)
+        static if (allSatisfy!(isCopyable, AllowedTypes[1 .. $]) && AllowedTypes.length != 2)
         /// ditto
         auto get()()
         {
-            if (!_storage._type)
+            if (!_storage.id)
             {
                 version(D_Exceptions)
                     throw variantNullException;
                 else
                     assert(0, variantNullExceptionMsg);
             }
-            static if (_Types.length > 1)
+            static if (AllowedTypes.length > 1)
             {
                 Algebraic!(
                     _setId,
@@ -560,15 +568,15 @@ struct Algebraic(uint _setId, _TypeSets...)
                     TypeSet!(TemplateArgsOf!(_TypeSets[_setId])[1 .. $]),
                     _TypeSets[_setId + 1 .. $]
                 ) ret;
-                static if (ret._Types.length > 1)
-                    ret._storage._type = cast(typeof(ret._storage._type))(this._storage._type - 1);
+                static if (ret.AllowedTypes.length > 1)
+                    ret._storage.id = cast(typeof(ret._storage.id))(this._storage.id - 1);
 
-                static if (anySatisfy!(hasElaborateCopyConstructor, _Types))
+                static if (anySatisfy!(hasElaborateCopyConstructor, AllowedTypes))
                 {
                     ret._storage.bytes = 0;
-                    S: switch (_storage._type)
+                    S: switch (_storage.id)
                     {
-                        static foreach (i, T; _Types)
+                        static foreach (i, T; AllowedTypes)
                         {
                             static if (hasElaborateCopyConstructor!T)
                             {
@@ -590,7 +598,7 @@ struct Algebraic(uint _setId, _TypeSets...)
             }
         }
 
-        static if (_Types.length == 2)
+        static if (AllowedTypes.length == 2)
         {
             /++
             Gets the value if not null. If `this` is in the null state, and the optional
@@ -606,14 +614,14 @@ struct Algebraic(uint _setId, _TypeSets...)
             Returns:
                 The value held internally by this `Nullable`.
             +/
-            ref inout(_Types[1]) get() inout
+            ref inout(AllowedTypes[1]) get() inout
             {
-                assert(_storage._type, "Called `get' on null Nullable!(" ~ _Types[1].stringof ~ ").");
-                return _trustedGet!(_Types[1]);
+                assert(_storage.id, "Called `get' on null Nullable!(" ~ AllowedTypes[1].stringof ~ ").");
+                return _trustedGet!(AllowedTypes[1]);
             }
 
             /// ditto
-            @property inout(_Types[1]) get()(inout(_Types[1]) fallback) inout @safe pure nothrow
+            @property inout(AllowedTypes[1]) get()(inout(AllowedTypes[1]) fallback) inout @safe pure nothrow
             {
                 return isNull ? fallback : get();
             }
@@ -626,24 +634,33 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static foreach (i, T; _Types)
+    static foreach (i, T; AllowedTypes)
     {
         /// Zero cost always nothrow `get` alternative
         auto ref _trustedGet(E)() @trusted @property return inout nothrow
             if (is(E == T))
         {
-            assert (i == _storage._type);
+            assert (i == _storage.id);
             static if (is(T == typeof(null)))
                 return null;
+            else
+            static if (is(T == void))
+                return;
             else
                 return _storage.payload[i];
         }
 
-        private ref T _mutableTrustedGet(E)() @trusted @property return const nothrow
+        private auto ref T _mutableTrustedGet(E)() @trusted @property return const nothrow
             if (is(E == T))
         {
-            assert (i == _storage._type, T.stringof);
-            return *cast(Unqual!(_Types[i])*)&_storage.payload[i];
+            assert (i == _storage.id, T.stringof);
+            static if (is(T == typeof(null)))
+                return null;
+            else
+            static if (is(T == void))
+                return;
+            else
+                return *cast(Unqual!(AllowedTypes[i])*)&_storage.payload[i];
         }
 
         ///
@@ -651,9 +668,9 @@ struct Algebraic(uint _setId, _TypeSets...)
             if (is(E == T))
         {
             import mir.utility: _expect;
-            static if (_Types.length > 1)
+            static if (AllowedTypes.length > 1)
             {
-                if (_expect(i != _storage._type, false))
+                if (_expect(i != _storage.id, false))
                 {
                     version(D_Exceptions)
                         throw variantException;
@@ -664,12 +681,15 @@ struct Algebraic(uint _setId, _TypeSets...)
             return _trustedGet!T;
         }
 
+        static if (!is(T == void))
+        {
+
         private void inoutTrustedCtor(ref scope inout T rhs) inout @trusted
         {
             trustedBytes[0 .. _Payload[i].sizeof] = *cast(ubyte[_Payload[i].sizeof]*)&rhs;
             trustedBytes[_Payload[i].sizeof .. $] = 0;
-            static if (_Types.length > 1)
-                *cast(typeof(_Storage._type)*)&_storage._type = i;
+            static if (AllowedTypes.length > 1)
+                *cast(typeof(_Storage.id)*)&_storage.id = i;
             static if (hasOpPostMove!T)
                 (*cast(Unqual!T*)&(_trustedGet!T())).opPostMove(rhs);
             static if (hasElaborateDestructor!T)
@@ -698,7 +718,7 @@ struct Algebraic(uint _setId, _TypeSets...)
         ///
         ref opAssign(T rhs) return @trusted
         {
-            static if (anySatisfy!(hasElaborateDestructor, _Types))
+            static if (anySatisfy!(hasElaborateDestructor, AllowedTypes))
                 this.__dtor();
             inoutTrustedCtor(rhs);
             return this;
@@ -709,8 +729,8 @@ struct Algebraic(uint _setId, _TypeSets...)
         +/
         auto opEquals( const T rhs) const
         {
-            static if (_Types.length > 1)
-                if (_storage._type != i)
+            static if (AllowedTypes.length > 1)
+                if (_storage.id != i)
                     return false;
             return _trustedGet!T == rhs;
         } 
@@ -721,8 +741,8 @@ struct Algebraic(uint _setId, _TypeSets...)
         auto opCmp( const T rhs) const
         {
             import mir.internal.utility: isFloatingPoint;
-            static if (_Types.length > 1)
-                if (auto d = int(_storage._type) - int(i))
+            static if (AllowedTypes.length > 1)
+                if (auto d = int(_storage.id) - int(i))
                     return d;
             static if (__traits(compiles, __cmp(_trustedGet!T, rhs)))
                 return __cmp(_trustedGet!T, rhs);
@@ -735,6 +755,7 @@ struct Algebraic(uint _setId, _TypeSets...)
             else
                 return _trustedGet!T < rhs ? -1 :
                     _trustedGet!T > rhs ? +1 : 0;
+        }
         }
     }
 }
@@ -1038,7 +1059,7 @@ unittest
 Applies a delegate or function to the given Variant depending on the held type,
 ensuring that all types are handled by the visiting functions.
 +/
-alias match(visitors...) = visit!(naryFun!visitors, true);
+alias match(visitors...) = visit!(naryFun!visitors, Exhaustive.compileTime);
 
 ///
 @safe pure @nogc nothrow
@@ -1182,8 +1203,9 @@ unittest
 
 /++
 Behaves as $(LREF match) but doesn't enforce at compile time that all types can be handled by the visiting functions.
+Throws: Exception if `naryFun!visitors` can't be called with provided arguments
 +/
-alias tryMatch(visitors...) = visit!(naryFun!visitors, false);
+alias tryMatch(visitors...) = visit!(naryFun!visitors, Exhaustive.exception);
 
 ///
 @safe pure @nogc
@@ -1197,10 +1219,41 @@ unittest
 }
 
 /++
+Behaves as $(LREF match) but doesn't enforce at compile time that all types can be handled by the visiting functions.
+Returns: nullable variant, null value is used if `naryFun!visitors` can't be called with provided arguments 
++/
+alias optionalMatch(visitors...) = visit!(naryFun!visitors, Exhaustive.nullable);
+
+///
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    static struct S { int a; }
+
+    Variant!(S, double) variant;
+
+    alias optionalMatchInst = optionalMatch!((ref value) => value + 0);
+
+    // do nothing because of variant isn't initialized
+    Nullable!double result = optionalMatchInst(variant);
+    assert(result.isNull);
+
+    variant = S(2);
+    // do nothing because of lambda can't compile
+    result = optionalMatchInst(variant);
+    assert(result == null);
+
+    variant = 3.0;
+    result = optionalMatchInst(variant);
+    assert (result == 3.0);
+}
+
+/++
 Applies a member handler to the given Variant depending on the held type,
 ensuring that all types are handled by the visiting handler.
 +/
-alias getMember(string member) = visit!(getMemberHandler!member, true);
+alias getMember(string member) = visit!(getMemberHandler!member, Exhaustive.compileTime);
 
 ///
 @safe pure @nogc nothrow
@@ -1214,15 +1267,17 @@ unittest
     V x = S();
     V y = C();
 
+    static assert(is(typeof(x.getMember!"bar"(2)) == Variant!(int, double)));
     assert(x.getMember!"bar"(2) == 2);
-    assert(y.getMember!"bar"(2) == 4);
+    assert(y.getMember!"bar"(2) != 4);
+    assert(y.getMember!"bar"(2) == 4.0);
 }
 
 /++
 Behaves as $(LREF match) but doesn't enforce at compile time that all types can be handled by the member visitor.
-Throws: Exception
+Throws: Exception if member can't be accessed with provided arguments
 +/
-alias tryGetMember(string member) = visit!(getMemberHandler!member, false);
+alias tryGetMember(string member) = visit!(getMemberHandler!member, Exhaustive.exception);
 
 ///
 version(mir_test)
@@ -1237,8 +1292,10 @@ unittest
     V x = S();
     V y = C();
 
+    static assert(is(typeof(x.tryGetMember!"bar"(2)) == int));
+    static assert(is(typeof(y.tryGetMember!"Bar"(2)) == double));
     assert(x.tryGetMember!"bar"(2) == 2);
-    assert(y.tryGetMember!"Bar"(2) == 4);
+    assert(y.tryGetMember!"Bar"(2) == 4.0);
 }
 
 ///
@@ -1254,6 +1311,13 @@ unittest
     assert(x.match!((int v) => true, (float v) => false));
     assert(y.match!((int v) => false, (float v) => true));
 }
+
+/++
+Behaves as $(LREF match) but doesn't enforce at compile time that all types can be handled by the member visitor.
+Returns: nullable variant, null value is used if member can't be called with provided arguments 
++/
+alias optionalGetMember(string member) = visit!(getMemberHandler!member, Exhaustive.nullable);
+
 
 private template getMemberHandler(string member)
 {
@@ -1279,12 +1343,14 @@ private template VariantReturnTypes(T...)
     alias VariantReturnTypes = NoDuplicates!(staticMap!(TryRemoveConst, T));
 }
 
-/++
-Params:
-    visitor = a function name alias
-    exhaustive = if `true` checks at compile time, that the visitor can be called for all types.
-+/
-template visit(alias visitor, bool exhaustive = true)
+enum Exhaustive
+{
+    compileTime,
+    exception,
+    nullable,
+}
+
+private template visit(alias visitor, Exhaustive exhaustive)
 {
     import std.traits: Unqual;
     ///
@@ -1292,89 +1358,88 @@ template visit(alias visitor, bool exhaustive = true)
         if (isVariant!V)
     {
         import core.lifetime: forward;
+        import std.meta: NoDuplicates, staticMap, AliasSeq;
 
-        // template VariantReturnTypesImpl(T)
-        // {
-        //     static if (__traits(compiles, visitor(variant._trustedGet!T, forward!args)))
-        //     {
-        //         alias Ret = typeof(visitor(variant._trustedGet!T, forward!args));
-        //         static if (is(Ret == void))
-        //             alias VariantReturnTypesImpl = AliasSeq!(typeof(null));
-        //         else
-        //             alias VariantReturnTypesImpl = AliasSeq!(TryRemoveConst!Ret);
-        //     }
-        //     else
-        //     {
-        //         alias VariantReturnTypesImpl = AliasSeq!();
-        //     }
-        // }
-
-        // alias AllReturnTypes = NoDuplicates!(staticMap!(VariantReturnTypesImpl, V._Types));
-
-        // static if (AllReturnTypes.length == 0 || is(AllReturnTypes == AliasSeq!(typeof(null))))
-        // {
-        //     alias ThisReturnType = void;
-        // }
-        // else
-        // static if (AllReturnTypes.length == 2 && (is(AllReturnTypes[0] == typeof(null)) || is(AllReturnTypes[1] == typeof(null))))
-        // {
-        //     alias ThisReturnType = Variant!(typeof(null), OtherType);
-        // }
-
-        // template VariantReturnTypesImpl(T)
-        // {
-        //     import std.traits: Unqual, CopyTypeQualifiers;
-        //     import std.meta: AliasSeq;
-
-        //     static if (__traits(compiles, visitor(variant._trustedGet!T, forward!args)))
-        //     {
-        //         alias Ret = typeof(visitor(variant._trustedGet!T, forward!args));
-        //         static if (is(Ret == void))
-        //             alias VariantReturnTypesImpl = AliasSeq!(typeof(null));
-        //         else
-        //         static if (is(Unqual!Ret == Variant!InnerTypes, InnerTypes))
-        //         {
-        //             alias CopyTypeQualifiers1(Y) = CopyTypeQualifiers(Ret, Y);
-        //             alias VariantReturnTypesImpl = staticMap!(CopyTypeQualifiers1, Ret.Types);
-        //         }
-        //         else
-        //             alias VariantReturnTypesImpl = AliasSeq!Ret;
-        //     }
-        //     else
-        //     {
-        //         alias VariantReturnTypesImpl = AliasSeq!();
-        //     }
-        // }
-
-        // import std.meta: staticMap;
-        // alias Types = VariantReturnTypes!(staticMap!(VariantReturnTypesImpl, V._Types));
-
-        // V._Types;
-        switch (variant._storage._type)
+        template allArgs(T)
         {
-            static foreach (i, T; V._Types)
+            static if (is(T == void))
+                alias allArgs = forward!args;
+            else
+            static if (is(T == typeof(null)))
+                alias allArgs = AliasSeq!(null, forward!args);
+            else
+            {
+                ref fun() @property @trusted
+                {
+                    return variant._trustedGet!T;
+                }
+                alias allArgs = AliasSeq!(fun, forward!args);
+            }
+        }
+
+        template VariantReturnTypesImpl(T)
+        {
+            static if (__traits(compiles, visitor(allArgs!T)))
+                alias VariantReturnTypesImpl = TryRemoveConst!(typeof(visitor(allArgs!T)));
+            else
+                alias VariantReturnTypesImpl = AliasSeq!();
+        }
+
+        static if (exhaustive == Exhaustive.nullable)
+            alias AllReturnTypes = NoDuplicates!(typeof(null), staticMap!(VariantReturnTypesImpl, V.AllowedTypes));
+        else
+            alias AllReturnTypes = NoDuplicates!(staticMap!(VariantReturnTypesImpl, V.AllowedTypes));
+
+        switch (variant._storage.id)
+        {
+            static foreach (i, T; V.AllowedTypes)
             {
                 case i:
-                    static if (exhaustive && !is(T == typeof(null)) || __traits(compiles, visitor(variant._trustedGet!T, forward!args)))
-                        return visitor(variant._trustedGet!T, forward!args);
+                    static if (__traits(compiles, visitor(allArgs!T)))
+                    {
+                        static if (AllReturnTypes.length == 1)
+                        {
+                            return visitor(allArgs!T);
+                        }
+                        else
+                        {
+                            static if (is(VariantReturnTypesImpl!T == void))
+                            {
+                                visitor(allArgs!T);
+                                return Variant!AllReturnTypes.init;
+                            }
+                            else
+                            {
+                                return Variant!AllReturnTypes(visitor(allArgs!T));
+                            }
+                        }
+                    }
                     else
-                    static if (exhaustive && !is(T == typeof(null)))
-                        static assert(0, V.stringof ~ ": the visitor cann't be caled with type (first argument) " ~ typeof(variant._trustedGet!T()).stringof ~ (Args.length ? (" and additional arguments " ~ Args.stringof) : ""));
+                    static if (exhaustive == Exhaustive.compileTime)
+                    {
+                        static if (is(T == typeof(null)))
+                            assert(0, "Null " ~ V.stringof);
+                        else
+                            static assert(0, V.stringof ~ ": the visitor cann't be caled with type (first argument) " ~ typeof(variant._trustedGet!T()).stringof ~ (Args.length ? (" and additional arguments " ~ Args.stringof) : ""));
+                    }
                     else
-                    static if (is(T == typeof(null)) && i == 0)
-                        assert(0, "Null " ~ V.stringof);
+                    static if (exhaustive == Exhaustive.nullable)
+                    {
+                        return Variant!AllReturnTypes(null);
+                    }
                     else
-                    version(D_Exceptions)
-                        throw variantMemberException;
-                    else
-                        assert(0, variantMemberExceptionMsg);
+                    {
+                        version(D_Exceptions)
+                            throw variantMemberException;
+                        else
+                            assert(0, variantMemberExceptionMsg);
+                    }
             }
             default: assert(0);
         }
     }
 }
 
-///
 version(mir_test)
 @safe pure @nogc
 unittest
@@ -1383,7 +1448,7 @@ unittest
 
     Variant!(S, double) variant;
     variant = 1.0;
-    variant.visit!((ref value, b) => value += b, false)(2);
+    variant.tryMatch!((ref value, b) => value += b)(2);
     assert (variant.get!double == 3);
 
     alias fun = (ref value) {
@@ -1393,62 +1458,10 @@ unittest
            value += 2;
     };
 
-    variant.visit!fun;
+    variant.tryMatch!fun;
     assert (variant.get!double == 5);
 
     variant = S(4);
-    variant.visit!fun;
+    variant.tryMatch!fun;
     assert (variant.get!S.a == 6);
-}
-
-/++
-Params:
-    visitor = a function name alias
-+/
-template optionalVisit(alias visitor)
-{
-    import std.traits: Unqual;
-    ///
-    bool optionalVisit(Result, V, Args...)(ref Result result, auto ref V variant, auto ref Args args) @property
-        if (isVariant!V)
-    {
-        import core.lifetime: forward;
-        switch (variant._storage._type)
-        {
-            static foreach (i, T; V._Types)
-            static if (__traits(compiles, result = visitor(variant._trustedGet!T, forward!args)))
-            {
-                case i:
-                    result = visitor(variant._trustedGet!T, forward!args);
-                    return true;
-            }
-            default:
-                return false;
-        }
-    }
-}
-
-///
-version(mir_test)
-@safe pure @nogc nothrow
-unittest
-{
-    static struct S { int a; }
-
-    Variant!(S, double) variant;
-
-    double result = 100;
-
-    // do nothing because of variant isn't initialized
-    optionalVisit!((ref value) => value)(result, variant);
-    assert(result == 100);
-
-    variant = S(2);
-    // do nothing because of lambda can't compile
-    optionalVisit!((ref value) => value)(result, variant);
-    assert(result == 100);
-
-    variant = 3.0;
-    optionalVisit!((ref value) => value)(result, variant);
-    assert (result == 3);
 }
