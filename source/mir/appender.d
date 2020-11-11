@@ -7,17 +7,7 @@ Authors: Ilya Yaroshenko
 module mir.appender;
 
 // import std.traits: isAssignable, hasElaborateDestructorhasElaborateCopyConstructor, hasElaborateAssign;
-
-package void _mir_destroy(T)(T[] ar)
-{
-    static if (__traits(hasMember, T, "__xdtor"))
-        foreach (ref e; ar)
-            static if (__traits(isSame, T, __traits(parent, e.__xdtor)))
-            {
-                pragma(inline, false)
-                e.__xdtor();
-            }
-}
+import mir.conv: _mir_destroy = xdestroy;
 
 private extern(C) @system nothrow @nogc pure void* memcpy(scope void* s1, scope const void* s2, size_t n);
 
@@ -116,6 +106,8 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     {
         import mir.internal.memory: free;
         data._mir_destroy;
+        version(mir_secure_memory)
+            _currentLength = 0;
         (() @trusted { if (_buffer.ptr) free(cast(void*)_buffer.ptr); })();
     }
 
@@ -150,8 +142,8 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         auto d = prepare(1);
         static if (isMutable!T)
         {
-            import core.lifetime: move;
-            emplaceRef!(Unqual!T)(d[cl], e.move);
+            import core.lifetime: moveEmplace;
+            ()@trusted{moveEmplace(e, d[cl]);}();
         }
         else
         {

@@ -45,7 +45,7 @@ unittest
 version(mir_test)
 unittest
 {
-    import std.traits : isFloatingPoint;
+    import mir.internal.utility: isFloatingPoint;
     static struct Quaternion(F)
         if (isFloatingPoint!F)
     {

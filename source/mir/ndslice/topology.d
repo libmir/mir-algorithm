@@ -3057,7 +3057,7 @@ unittest
         double factor;
         this(double f) {factor = f;}
         auto opCall(U)(U x) const {return x.mean + factor; }
-        auto lightConst()() const @property { return Mul(factor); }
+        auto lightConst()() const @property { return Callable(factor); }
     }
 
     auto callable = Callable(0.0);
