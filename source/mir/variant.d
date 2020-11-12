@@ -1,5 +1,5 @@
 /++
-This module implements a generic variant type.
+This module implements a generic variant and nullable types.
 +/
 module mir.variant;
 
@@ -104,9 +104,9 @@ private struct VariantSet(Sets...);
 /++
 Dummy type for $(LREF Variant) self-referencing.
 +/
-struct SetAlias(uint id);
+struct SetAlias(uint id) {}
 ///ditto
-alias This = SetAlias!0;
+struct This {}
 
 /++
 +/
@@ -140,6 +140,7 @@ unittest
 
 
 /++
+Cyclic referencing
 +/
 template Variants(Sets...)
     if (allSatisfy!(isInstanceOf!TypeSet, Sets))
@@ -150,6 +151,22 @@ template Variants(Sets...)
     private alias TypeSetsInst(uint id) = Algebraic!(id, Sets);
     ///
     alias Variants = staticMap!(TypeSetsInst, Iota!(Sets.length));
+}
+
+/// 
+version(all) unittest
+{
+    import std.meta: AliasSeq;
+
+    alias V = Variants!(
+        TypeSet!(string, long, SetAlias!1*), // string, long, and V[1][]
+        TypeSet!(SetAlias!0[], int), // int and V[0]*
+    );
+
+    alias A = V[0];
+    alias B = V[1];
+
+    A arr = new B([A("hey"), A(100)]);
 }
 
 private static struct _Null()
@@ -178,10 +195,11 @@ private static struct _Void()
 struct Algebraic(uint _setId, _TypeSets...)
     if (allSatisfy!(isInstanceOf!TypeSet, _TypeSets))
 {
+    private enum _isVariant;
+
     import core.lifetime: moveEmplace;
     import mir.conv: emplaceRef;
     import std.meta: AliasSeq, anySatisfy, allSatisfy, staticMap, templateOr, Replace;
-    import std.typecons: ReplaceTypeUnless;
     import std.traits:
         hasElaborateAssign,
         hasElaborateCopyConstructor,
@@ -193,23 +211,21 @@ struct Algebraic(uint _setId, _TypeSets...)
         Unqual
         ;
 
-    private template _ApplyAliasesImpl(uint length, Types...)
+    private template _ApplyAliasesImpl(int length, Types...)
     {
+        import std.typecons: ReplaceTypeUnless;
         static if (length == 0)
-            alias _ApplyAliasesImpl = Types;
+            alias _ApplyAliasesImpl = ReplaceTypeUnless!(isVariant, This, Algebraic!(_setId, _TypeSets), Types);
         else
         {
             enum next  = length - 1;
-            import std.typecons: ReplaceTypeUnless;
             alias _ApplyAliasesImpl = _ApplyAliasesImpl!(next,
                 ReplaceTypeUnless!(isVariant, SetAlias!next, Algebraic!(next, _TypeSets), Types));
         }
     }
 
-    private enum _isVariant;
-
     ///
-    alias AllowedTypes = _ApplyAliasesImpl!(_TypeSets.length, TemplateArgsOf!(_TypeSets[_setId]));
+    alias AllowedTypes = AliasSeq!(_ApplyAliasesImpl!(_TypeSets.length, TemplateArgsOf!(_TypeSets[_setId])));
 
     private alias _Payload = Replace!(void, _Void!(), Replace!(typeof(null), _Null!(), AllowedTypes));
 
@@ -379,16 +395,6 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (AllowedTypes.length)
-    /++
-    Returns: zero based type index.
-    +/
-    uint id() @nogc nothrow const @property
-    {
-        return _storage.id;
-    }
-
-    static if (allSatisfy!(templateOr!(isPOD, hasToHash), AllowedTypes))
     /++
     +/
     size_t toHash() const
@@ -430,7 +436,6 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (allSatisfy!(isEqualityComparable, AllowedTypes))
     /++
     +/
     auto opEquals(const typeof(this) rhs) const
@@ -455,7 +460,6 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (allSatisfy!(isEqualityComparable, AllowedTypes))
     ///ditto
     auto opEquals(ref const typeof(this) rhs) const
     {
@@ -479,7 +483,6 @@ struct Algebraic(uint _setId, _TypeSets...)
         }
     }
 
-    static if (allSatisfy!(isOrderingComparable, AllowedTypes))
     /++
     +/
     auto opCmp()(auto ref const typeof(this) rhs) const
@@ -501,13 +504,14 @@ struct Algebraic(uint _setId, _TypeSets...)
                         static if (__traits(compiles, __cmp(_trustedGet!T, rhs._trustedGet!T)))
                             return __cmp(_trustedGet!T, rhs._trustedGet!T);
                         else
-                        static if (__traits(hasMember, T, "opCmp"))
+                        static if (__traits(hasMember, T, "opCmp") && !is(T == U*, U))
                             return this._trustedGet!T.opCmp(rhs._trustedGet!T);
                         else
-                        static if (isFloatingPoint!T)
-                            return _trustedGet!T == rhs ? 0 : _trustedGet!T - rhs._trustedGet!T;
-                        return this._trustedGet!T < rhs._trustedGet!T ? -1 :
-                            this._trustedGet!T > rhs._trustedGet!T ? +1 : 0;
+                        // static if (isFloatingPoint!T)
+                        //     return _trustedGet!T == rhs ? 0 : _trustedGet!T - rhs._trustedGet!T;
+                        // else
+                            return this._trustedGet!T < rhs._trustedGet!T ? -1 :
+                                this._trustedGet!T > rhs._trustedGet!T ? +1 : 0;
                 }
                 default: assert(0);
             }
@@ -696,19 +700,16 @@ struct Algebraic(uint _setId, _TypeSets...)
                 emplaceRef(*cast(Unqual!T*)&rhs);
         }
 
-        static if (hasMutableConstruction!T)
         this(T rhs)
         {
             inoutTrustedCtor(rhs);
         }
 
-        static if (hasConstConstruction!T)
         this(const T rhs) const
         {
             inoutTrustedCtor(rhs);
         }
 
-        static if (hasImmutableConstruction!T)
         this(immutable T rhs) immutable
         {
             inoutTrustedCtor(rhs);
@@ -720,14 +721,13 @@ struct Algebraic(uint _setId, _TypeSets...)
         {
             static if (anySatisfy!(hasElaborateDestructor, AllowedTypes))
                 this.__dtor();
-            inoutTrustedCtor(rhs);
+            __ctor(rhs);
             return this;
         }
 
-        static if (isEqualityComparable!T)
         /++
         +/
-        auto opEquals( const T rhs) const
+        auto opEquals()(auto ref const T rhs) const
         {
             static if (AllowedTypes.length > 1)
                 if (_storage.id != i)
@@ -735,10 +735,9 @@ struct Algebraic(uint _setId, _TypeSets...)
             return _trustedGet!T == rhs;
         } 
 
-        static if (isOrderingComparable!T)
         /++
         +/
-        auto opCmp( const T rhs) const
+        auto opCmp()(auto ref const T rhs) const
         {
             import mir.internal.utility: isFloatingPoint;
             static if (AllowedTypes.length > 1)
@@ -747,7 +746,7 @@ struct Algebraic(uint _setId, _TypeSets...)
             static if (__traits(compiles, __cmp(_trustedGet!T, rhs)))
                 return __cmp(_trustedGet!T, rhs);
             else
-            static if (__traits(hasMember, T, "opCmp"))
+            static if (__traits(hasMember, T, "opCmp") && !is(T == U*, U))
                 return _trustedGet!T.opCmp(rhs);
             else
             static if (isFloatingPoint!T)
@@ -787,15 +786,15 @@ alpha renaming) on its constituent types, replacing $(LREF This)
 with the self-referenced type. The structure of the type involving $(LREF This) may
 be arbitrarily complex.
 */
-@safe pure unittest
+@safe pure version(all) unittest
 {
-    import std.typecons : Tuple, tuple;
+    import mir.functional: Tuple = RefTuple;
 
-    // A tree is either a leaf or a branch of two other trees
+    // A tree is either a leaf or a branch of two others
     alias Tree(Leaf) = Variant!(Leaf, Tuple!(This*, This*));
     alias Leafs = Tuple!(Tree!int*, Tree!int*);
 
-    Tree!int tree = tuple(new Tree!int(42), new Tree!int(43));
+    Tree!int tree = Leafs(new Tree!int(41), new Tree!int(43));
     Tree!int* right = tree.get!Leafs[1];
     assert(*right == 43);
 }
@@ -816,8 +815,7 @@ be arbitrarily complex.
 }
 
 /// Test for opCmp, opEqual, toHash
-// version(mir_test)
-version(none)
+version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -857,8 +855,6 @@ unittest
                 double,
                 C!(size1, isPOD, hasToHash, hasOpEquals),
                 C!(size2, isPOD, hasToHash, hasOpEquals));
-        static assert (__traits(hasMember, T, "toHash") == isPOD || hasToHash);
-        static assert (__traits(compiles, T.init == T.init) == isPOD || hasOpEquals);
         static assert (__traits(compiles, T.init <= T.init));
     }}
 }
@@ -935,23 +931,6 @@ unittest
     immutable V l = C3();
     auto g = immutable V(C3());
 }
-
-    static struct S {
-        uint* value;
-        // this(return ref scope typeof(this) rhs) {}
-        // this(return ref scope const typeof(this) rhs) const {}
-        this(return ref scope const typeof(this) rhs) @safe pure immutable {}
-
-        immutable(S) bat()  @safe pure
-        {
-            return this;
-        }
-
-        S bat()  @safe pure immutable
-        {
-            return this;
-        }
-    }
 
 @safe pure nothrow @nogc
 unittest
