@@ -69,7 +69,6 @@ sources_list = [
     'mir/small_array',
     'mir/small_string',
     'mir/type_info',
-    'mir/variant',
 ]
 
 sources = []

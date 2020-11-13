@@ -545,7 +545,8 @@ struct ZipIterator(Iterators...)
     {
         foreach(i, ref val; value.expand)
         {
-            _iterators[i][index] = val;
+            import mir.functional: unref;
+            _iterators[i][index] = unref(val);
         }
         return opIndex(index);
     }
@@ -839,7 +840,66 @@ struct VmapIterator(Iterator, Fun)
         return VmapIterator!(LightImmutableOf!Iterator, LightImmutableOf!Fun)(.lightImmutable(_iterator), .lightImmutable(_fun));
     }
 
-    mixin(map_primitives);
+    import mir.functional: RefTuple, unref;
+
+    auto ref opUnary(string op : "*")()
+    {
+        static if (is(typeof(*_iterator) : RefTuple!T, T...))
+        {
+            auto t = *_iterator;
+            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+        }
+        else
+            return _fun(*_iterator);
+    }
+
+    auto ref opIndex(ptrdiff_t index) scope
+    {
+        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        {
+            auto t = _iterator[index];
+            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+        }
+        else
+            return _fun(_iterator[index]);
+    }
+
+    static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
+    {
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
+        {
+            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            {
+                auto t = _iterator[index];
+                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ") = value");
+            }
+            else
+                return _fun(_iterator[index]) = value;
+        }
+
+        auto ref opIndexUnary(string op)(ptrdiff_t index)
+        {
+            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            {
+                auto t = _iterator[index];
+                return mixin(op ~ "_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            }
+            else
+                return mixin(op ~ "_fun(_iterator[index])");
+        }
+
+        auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
+        {
+            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            {
+                auto t = _iterator[index];
+                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")" ~ op ~ "= value");
+            }
+            else
+                return mixin("_fun(_iterator[index])" ~ op ~ "= value");
+        }
+    }
+    
     mixin(std_ops);
 
     static if (hasZeroShiftFieldMember!Iterator)
@@ -880,7 +940,66 @@ struct MapIterator(Iterator, alias _fun)
     ///
     static alias __map(alias fun1) = MapIterator__map!(Iterator, _fun, pipe!(_fun, fun1));
 
-    mixin(map_primitives);
+    import mir.functional: RefTuple, unref;
+
+    auto ref opUnary(string op : "*")()
+    {
+        static if (is(typeof(*_iterator) : RefTuple!T, T...))
+        {
+            auto t = *_iterator;
+            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+        }
+        else
+            return _fun(*_iterator);
+    }
+
+    auto ref opIndex(ptrdiff_t index) scope
+    {
+        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        {
+            auto t = _iterator[index];
+            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+        }
+        else
+            return _fun(_iterator[index]);
+    }
+
+    static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
+    {
+        auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
+        {
+            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            {
+                auto t = _iterator[index];
+                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ") = value");
+            }
+            else
+                return _fun(_iterator[index]) = value;
+        }
+
+        auto ref opIndexUnary(string op)(ptrdiff_t index)
+        {
+            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            {
+                auto t = _iterator[index];
+                return mixin(op ~ "_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            }
+            else
+                return mixin(op ~ "_fun(_iterator[index])");
+        }
+
+        auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
+        {
+            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            {
+                auto t = _iterator[index];
+                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")" ~ op ~ "= value");
+            }
+            else
+                return mixin("_fun(_iterator[index])" ~ op ~ "= value");
+        }
+    }
+    
     mixin(std_ops);
 
     static if (hasZeroShiftFieldMember!Iterator)

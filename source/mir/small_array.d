@@ -40,7 +40,7 @@ template SmallArray(T, uint maxLength)
 
         void serialize(S)(ref S serializer)
         {
-            serializer.putValue(asArray);
+            serializer.putValue(opIndex);
         }
 
         static if (isImplicitlyConvertible!(const T, T))
@@ -236,9 +236,6 @@ template SmallArray(T, uint maxLength)
         /// ditto
         alias opBinary(string op : "~") = concat;
 
-
-    scope nothrow:
-
         /++
         Returns an scope common array.
 
@@ -246,35 +243,59 @@ template SmallArray(T, uint maxLength)
 
         The alias helps with `[]`, `[i]`, `[i .. j]`, `==`, and `!=` operations and implicit conversion to strings.
         +/
-        inout(T)[] asArray() inout @trusted return @property
+        inout(T)[] opIndex() inout @trusted return scope
         {
             return _data[0 .. _length];
         }
 
-        alias asArray this;
+        ///
+        ref inout(T) opIndex(size_t index) inout scope return
+        {
+            return opIndex[index];
+        }
 
     const:
 
-        /++
-        Checks if the array is empty (null).
-        +/
-        C opCast(C)() const
-            if (is(Unqual!C == bool))
+        ///
+        bool empty() @property
         {
-            return _length != 0;
+            return _length == 0;
         }
 
-        /// Hash implementation
+        ///
+        size_t length() @property
+        {
+            return _length;
+        }
+
+        /// Basic comparison implementation
         size_t toHash()
         {
-            return hashOf(asArray);
+            return hashOf(opIndex);
+        }
+
+        /// ditto
+        bool opEquals()(V[] array)
+        {
+            return opIndex == array;
+        }
+
+        /// ditto
+        bool opEquals(uint rhsMaxLength)(auto ref SmallArray!(T, rhsMaxLength) array)
+        {
+            return opIndex == array.opIndex;
         }
 
         /// ditto
         auto opCmp()(V[] array)
         {
-            import mir.algorithm.iteration: cmp;
-            return cmp(asArray, array);
+            return __cmp(opIndex, array);
+        }
+
+        /// ditto
+        auto opCmp(uint rhsMaxLength)(auto ref SmallArray!(T, rhsMaxLength) array)
+        {
+            return __cmp(opIndex, array.opIndex);
         }
     }
 }
@@ -283,19 +304,18 @@ template SmallArray(T, uint maxLength)
 @safe pure @nogc version(mir_test) unittest
 {
     SmallArray!(char, 16) s16;
-    assert(!s16);
+    assert(s16.empty);
 
     auto s8 = SmallArray!(char, 8)("Hellow!!");
-    assert(s8);
+    assert(!s8.empty);
     assert(s8 == "Hellow!!", s8[]);
 
     s16 = s8;
-    assert(s16 == "Hellow!!", s16);
+    assert(s16 == "Hellow!!", s16[]);
     s16[7] = '@';
     s8 = null;
-    assert(!s8);
+    assert(s8.empty);
     assert(s8 == null);
-    assert(s8 !is null);
     s8 = s16;
     assert(s8 == "Hellow!@");
 

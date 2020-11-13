@@ -59,6 +59,10 @@ void mir_rc_decrease_counter(ref mir_rc_context context) @system nothrow @nogc p
                 mir_rc_delete(context);
             }
         }
+        // else
+        // {
+        //     assert(0);
+        // }
     }
 }
 
@@ -171,27 +175,6 @@ mir_rc_context* mir_rc_create(
 ///
 package mixin template CommonRCImpl()
 {
-    ///
-    ref opAssign(typeof(null)) scope return
-    {
-        this = typeof(this).init;
-    }
-
-    ///
-    ref opAssign(return typeof(this) rhs) scope return @trusted
-    {
-        this.proxySwap(rhs);
-        return this;
-    }
-
-    ///
-    ref opAssign(Q)(return ThisTemplate!Q rhs) scope return pure nothrow @nogc @trusted
-        if (isImplicitlyConvertible!(Q*, T*))
-    {
-        this.proxySwap(*cast(typeof(this)*)&rhs);
-        return this;
-    }
-
     ///
     ThisTemplate!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
     { return *cast(typeof(return)*) &this; }

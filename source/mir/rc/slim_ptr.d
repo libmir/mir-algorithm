@@ -23,8 +23,6 @@ Thread safe reference counting array.
 
 This implementation does not support polymorphism.
 
-`__xdtor` if any is used to destruct objects.
-
 The implementation never adds roots into the GC.
 +/
 struct mir_slim_rcptr(T)
@@ -38,10 +36,10 @@ struct mir_slim_rcptr(T)
     else
         package T* _value;
 
-    package ref inout(mir_rc_context) context() inout scope return pure nothrow @nogc @trusted @property
+    package ref mir_rc_context context() inout scope return pure nothrow @nogc @trusted @property
     {
         assert(_value);
-        return (cast(inout(mir_rc_context)*)_value)[-1];
+        return (cast(mir_rc_context*)_value)[-1];
     }
 
     package void _reset()
@@ -97,12 +95,12 @@ struct mir_slim_rcptr(T)
     ///
     ~this() nothrow
     {
-        static if (hasDestructor!T)
+        static if (hasElaborateDestructor!T || hasDestructor!T)
         {
             if (false) // break @safe and pure attributes
             {
                 Unqual!T* object;
-                (*object).__xdtor();
+                (*object).__xdtor;
             }
         }
         if (this)
@@ -112,13 +110,34 @@ struct mir_slim_rcptr(T)
         }
     }
 
-    ///
-    this(this) scope @trusted pure nothrow @nogc
+    this(return ref scope inout typeof(this) rhs) inout @trusted pure nothrow @nogc
     {
-        if (this)
+        if (rhs)
         {
+            this._value = rhs._value;
             mir_rc_increase_counter(context);
         }
+    }
+
+    ///
+    ref opAssign(typeof(null)) return @trusted // pure nothrow @nogc
+    {
+        this = typeof(this).init;
+    }
+
+    ///
+    ref opAssign(return typeof(this) rhs) return @trusted // pure nothrow @nogc
+    {
+        this.proxySwap(rhs);
+        return this;
+    }
+
+    ///
+    ref opAssign(Q)(return ThisTemplate!Q rhs) return @trusted // pure nothrow @nogc
+        if (isImplicitlyConvertible!(Q*, T*))
+    {
+        this.proxySwap(*()@trusted{return cast(typeof(this)*)&rhs;}());
+        return this;
     }
 }
 
@@ -144,7 +163,7 @@ template createSlimRC(T)
             }
             _value = cast(typeof(_value))(context + 1);
         } ();
-        import core.lifetime: forward;
+        import mir.functional: forward;
         import mir.conv: emplace;
         cast(void) emplace!T(ret._value, forward!args);
         return ret;

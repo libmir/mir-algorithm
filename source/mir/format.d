@@ -23,10 +23,20 @@ unittest
     assert(true.to!string == "true");
 
     assert((cast(S)"str")[] == "str");
+}
+
+/// `mir.conv: to` extension.
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.conv: to;
+    import mir.small_string;
+    alias S = SmallString!32;
 
     auto str = S("str");
-    assert(str.to!(const(char)[]) == "str"); // scope result
-    assert(str.to!(char[]) == "str"); // scope result
+    assert(str.to!(const(char)[]) == "str"); // GC allocated result
+    assert(str.to!(char[]) == "str"); // GC allocated result
 }
 
 /// ditto

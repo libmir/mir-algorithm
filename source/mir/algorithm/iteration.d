@@ -2559,7 +2559,7 @@ template cmp(alias pred = "a < b")
         Positive value if the first differing element of `sl2` is less than the corresponding
         element of `sl1` according to `pred`.
     +/
-    ptrdiff_t cmp(A, B)
+    auto cmp(A, B)
         (scope A sl1, scope B sl2)
         if (DimensionCount!A == DimensionCount!B)
     {
@@ -2571,8 +2571,8 @@ template cmp(alias pred = "a < b")
             auto sh1 = sl1.shape;
             auto sh2 = sl2.shape;
             foreach (i; Iota!(DimensionCount!A))
-                if (ptrdiff_t ret = sh1[i] - sh2[i])
-                    return ret;
+                if (sh1[i] != sh2[i])
+                    return sh1[i] > sh2[i] ? 1 : -1;
             return 0;
         }
         if (b)

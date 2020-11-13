@@ -39,9 +39,9 @@ struct mir_rcptr(T)
         package T* _value;
     package mir_rc_context* _context;
 
-    package ref inout(mir_rc_context) context() inout scope return @trusted @property
+    package ref mir_rc_context context() inout scope return @trusted @property
     {
-        return *_context;
+        return *cast(mir_rc_context*)_context;
     }
 
     package void _reset()
@@ -101,12 +101,12 @@ struct mir_rcptr(T)
     ///
     ~this() nothrow
     {
-        static if (hasDestructor!T)
+        static if (hasElaborateDestructor!T || hasDestructor!T)
         {
             if (false) // break @safe and pure attributes
             {
                 Unqual!T* object;
-                (*object).__xdtor();
+                (*object).__xdtor;
             }
         }
         if (this)
@@ -116,13 +116,35 @@ struct mir_rcptr(T)
         }
     }
 
-    ///
-    this(this) scope @trusted pure nothrow @nogc
+    this(return ref scope inout typeof(this) rhs) inout @trusted pure nothrow @nogc
     {
-        if (this)
+        if (rhs)
         {
+            this._value = rhs._value;
+            this._context = rhs._context;
             mir_rc_increase_counter(context);
         }
+    }
+
+    ///
+    ref opAssign(typeof(null)) return @trusted // pure nothrow @nogc
+    {
+        this = typeof(this).init;
+    }
+
+    ///
+    ref opAssign(return typeof(this) rhs) return @trusted // pure nothrow @nogc
+    {
+        this.proxySwap(rhs);
+        return this;
+    }
+
+    ///
+    ref opAssign(Q)(return ThisTemplate!Q rhs) return @trusted // pure nothrow @nogc
+        if (isImplicitlyConvertible!(Q*, T*))
+    {
+        this.proxySwap(*()@trusted{return cast(typeof(this)*)&rhs;}());
+        return this;
     }
 }
 

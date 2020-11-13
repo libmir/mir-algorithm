@@ -12,8 +12,6 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.type_info;
 
-import std.traits: Unqual;
-
 /++
 +/
 struct mir_type_info
@@ -27,18 +25,12 @@ struct mir_type_info
     int size;
 }
 
-deprecated
-export extern(C) void mir_type_info_init(ref mir_type_info ti, typeof(mir_type_info.init.destructor) destructor, int size)
-    @safe pure nothrow @nogc
-{
-    ti.destructor = destructor;
-    ti.size = size;
-}
-
 /++
 +/
 ref immutable(mir_type_info) mir_get_type_info(T)() @trusted
 {
+    import std.traits: Unqual, hasElaborateDestructor;
+
     static if (is(T == class))
         enum sizeof = __traits(classInstanceSize, T);
     else
@@ -49,7 +41,7 @@ ref immutable(mir_type_info) mir_get_type_info(T)() @trusted
         return mir_get_type_info!(Unqual!T);
     }
     else
-    static if (hasDestructor!T)
+    static if (hasElaborateDestructor!T)
     {
         import std.traits: SetFunctionAttributes, functionAttributes;
         alias fun = void function(void*) @safe pure nothrow @nogc;
@@ -91,6 +83,8 @@ ref immutable(mir_type_info) mir_get_type_info(uint sizeof)()
 
 package template hasDestructor(T)
 {
+    import std.traits: Unqual;
+
     static if (is(T == struct))
     {
         static if (__traits(hasMember, Unqual!T, "__xdtor"))
@@ -111,6 +105,8 @@ package template hasDestructor(T)
 
 package const(void)* mir_get_payload_ptr(T)()
 {
+    import std.traits: Unqual;
+
     static if (!is(T == Unqual!T))
     {
         return mir_get_payload_ptr!(Unqual!T);

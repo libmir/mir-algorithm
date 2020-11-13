@@ -51,19 +51,7 @@ extern(D) @safe pure @nogc:
     }
 
     /// ditto
-    this(const SmallString str) nothrow
-    {
-        this.opAssign(str);
-    }
-
-    /// ditto
-    this(uint n)(const SmallString!n str)
-    {
-        this.opAssign(str);
-    }
-
-    /// ditto
-    this(uint n)(ref scope const SmallString!n str)
+    this(uint n)(auto ref scope const SmallString!n str)
     {
         this.opAssign(str);
     }
@@ -108,21 +96,7 @@ extern(D) @safe pure @nogc:
     }
 
     /// ditto
-    ref typeof(this) opAssign(ref scope const SmallString rhs) return nothrow
-    {
-        _data = rhs._data;
-        return this;
-    }
-    
-    /// ditto
-    ref typeof(this) opAssign(const SmallString rhs) return nothrow
-    {
-        _data = rhs._data;
-        return this;
-    }
-
-    /// ditto
-    ref typeof(this) opAssign(uint n)(ref scope const SmallString!n rhs) return
+    ref typeof(this) opAssign(uint n)(auto ref scope const SmallString!n rhs) return
         if (n != maxLength)
     {
         static if (n < maxLength)
@@ -182,7 +156,7 @@ extern(D) @safe pure @nogc:
     ///
     ref typeof(this) append(char c) @trusted
     {
-        auto length = asArray.length;
+        auto length = opIndex.length;
         if (length == maxLength)
         {
             version(D_Exceptions) throw exception;
@@ -195,7 +169,7 @@ extern(D) @safe pure @nogc:
     ///
     ref typeof(this) append(scope const(char)[] str) @trusted
     {
-        auto length = asArray.length;
+        auto length = opIndex.length;
         if (length + str.length > maxLength)
         {
             version(D_Exceptions) throw exception;
@@ -235,7 +209,7 @@ scope nothrow:
 
     The alias helps with `[]`, `[i]`, `[i .. j]`, `==`, and `!=` operations and implicit conversion to strings.
     +/
-    inout(char)[] asArray() inout @trusted return @property
+    inout(char)[] opIndex() inout @trusted scope return
     {
         size_t i;
         if (__ctfe)
@@ -245,53 +219,57 @@ scope nothrow:
         return _data[0 .. i];
     }
 
-    alias asArray this;
+    ///
+    ref inout(char) opIndex(size_t index) inout scope return
+    {
+        return opIndex[index];
+    }
 
 const:
 
     ///
-    const(char)[] toString() return
+    bool empty() @property
     {
-        return asArray;
+        return _data[0] == 0;
     }
 
-    /// Comparisons operator overloads
-    int opCmp(ref scope const typeof(this) rhs) @trusted
+    ///
+    size_t length() @property
     {
-        if (__ctfe)
-        {
-            foreach (i, ref c; _data)
-                if (auto d = c - rhs._data[i])
-                    return d;
-            return 0;
-        }
-        else
-        {
-            return memcmp(this._data.ptr, rhs._data.ptr, _data.sizeof);
-        }
-
+        return opIndex.length;
     }
 
-    /// ditto
-    int opCmp(scope const(char)[] str)
-    {
-        import mir.algorithm.iteration: cmp;
-        return cast(int) cmp(asArray, str);
-    }
-
-    /++
-    Checks if the string is empty (null).
-    +/
-    C opCast(C)() const
-        if (is(Unqual!C == bool))
-    {
-        return _data[0] != 0;
-    }
+    ///
+    alias toString = opIndex;
 
     /// Hash implementation
     size_t toHash()
     {
-        return hashOf(_data[]);
+        return hashOf(opIndex);
+    }
+
+    /// Comparisons operator overloads
+    bool opEquals(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs) scope
+    {
+        return opIndex == rhs.opIndex;
+    }
+
+    /// ditto
+    bool opEquals()(scope const(char)[] str) scope
+    {
+        return opIndex == str;
+    }
+
+    /// Comparisons operator overloads
+    int opCmp(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs) scope
+    {
+        return __cmp(opIndex, rhs.opIndex);
+    }
+
+    /// ditto
+    int opCmp()(scope const(char)[] str) scope
+    {
+        return __cmp(opIndex, str);
     }
 }
 
@@ -299,19 +277,16 @@ const:
 @safe pure @nogc version(mir_test) unittest
 {
     SmallString!16 s16;
-    assert(!s16);
+    assert(s16.empty);
 
     auto s8 = SmallString!8("Hellow!!");
-    assert(s8);
     assert(s8 == "Hellow!!", s8[]);
 
     s16 = s8;
-    assert(s16 == "Hellow!!", s16);
+    assert(s16 == "Hellow!!", s16[]);
     s16[7] = '@';
     s8 = null;
-    assert(!s8);
-    assert(s8 == null);
-    assert(s8 !is null);
+    assert(s8.empty);
     s8 = s16;
     assert(s8 == "Hellow!@");
 

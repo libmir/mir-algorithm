@@ -1174,7 +1174,7 @@ public:
             fun(w);
         catch (Exception e)
             assert(0, __traits(identifier, fun) ~ " threw.");
-        return w.asArray.idup;
+        return w[].idup;
     }
 
     version(D_BetterC){} else

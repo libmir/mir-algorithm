@@ -441,17 +441,17 @@ struct CoordinateValue(T, size_t N = 1)
     T value;
 
     ///
-    sizediff_t opCmp()(scope auto ref const typeof(this) rht) const
+    int opCmp()(scope auto ref const typeof(this) rht) const
     {
         return cmpCoo(this.index, rht.index);
     }
 }
 
-private sizediff_t cmpCoo(size_t N)(scope const auto ref size_t[N] a, scope const auto ref size_t[N] b)
+private int cmpCoo(size_t N)(scope const auto ref size_t[N] a, scope const auto ref size_t[N] b)
 {
     foreach (i; Iota!(0, N))
         if (auto d = a[i] - b[i])
-            return d;
+            return d > 0 ? 1 : -1;
     return 0;
 }
 
@@ -1992,33 +1992,6 @@ public:
         import mir.ndslice.topology : iota;
         auto sl = iota(3, 4);
         assert(sl.selectBack!1(2) == sl[0 .. $, $ - 2 .. $]);
-    }
-
-    /++
-    Overloading `==` and `!=`
-    +/
-    bool opEquals(scope const ref typeof(this) rslice) @trusted scope const
-    {
-        static if (__traits(isPOD, typeof(this)))
-        {
-            if (this._lengths != rslice._lengths)
-                return false;
-            if (this.strides == rslice.strides && this._iterator == rslice._iterator)
-                return true;
-        }
-
-        import mir.algorithm.iteration : equal;
-        static if (__traits(compiles, this.lightScope))
-        {
-            auto slice1 = this.lightScope;
-            auto slice2 = rslice.lightScope;
-            foreach(i; Iota!(min(slice1.L, slice2.L)))
-                if(slice1.label!i != slice2.label!i)
-                    return false;
-            return equal(slice1.values, slice2.values);
-        }
-        else
-            return equal(*cast(This*)&this, *cast(This*)&rslice);
     }
 
     ///ditto

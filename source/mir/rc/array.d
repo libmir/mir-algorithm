@@ -20,18 +20,16 @@ version (D_Exceptions)
 /++
 Thread safe reference counting array.
 
-`__xdtor` if any is used to destruct objects.
-
 The implementation never adds roots into the GC.
 +/
 struct mir_rcarray(T)
 {
     ///
     package T* _payload;
-    package ref inout(mir_rc_context) context() inout scope return pure nothrow @nogc @trusted @property
+    package ref mir_rc_context context() inout scope return pure nothrow @nogc @trusted @property
     {
         assert(_payload);
-        return (cast(inout(mir_rc_context)*)_payload)[-1];
+        return (cast(mir_rc_context*)_payload)[-1];
     }
     package void _reset() { _payload = null; }
 
@@ -60,27 +58,17 @@ struct mir_rcarray(T)
     ///
     ~this() nothrow
     {
-        static if (hasDestructor!T)
+        static if (hasElaborateDestructor!T || hasDestructor!T)
         {
             if (false) // break @safe and pure attributes
             {
                 Unqual!T* object;
-                (*object).__xdtor();
+                (*object).__xdtor;
             }
         }
         if (this)
         {
             (() @trusted { mir_rc_decrease_counter(context); })();
-            debug _reset;
-        }
-    }
-
-    ///
-    this(this) scope @trusted pure nothrow @nogc
-    {
-        if (this)
-        {
-            mir_rc_increase_counter(context);
         }
     }
 
@@ -190,6 +178,35 @@ struct mir_rcarray(T)
     else
         package alias V = T;
 
+    this(return ref scope inout typeof(this) rhs) inout @trusted pure nothrow @nogc
+    {
+        if (rhs)
+        {
+            this._payload = rhs._payload;
+            mir_rc_increase_counter(context);
+        }
+    }
+
+    ///
+    ref opAssign(typeof(null)) return @trusted // pure nothrow @nogc
+    {
+        this = typeof(this).init;
+    }
+
+    ///
+    ref opAssign(return typeof(this) rhs) return @trusted // pure nothrow @nogc
+    {
+        this.proxySwap(rhs);
+        return this;
+    }
+
+    ///
+    ref opAssign(Q)(return ThisTemplate!Q rhs) return @trusted // pure nothrow @nogc
+        if (isImplicitlyConvertible!(Q*, T*))
+    {
+        this.proxySwap(*()@trusted{return cast(typeof(this)*)&rhs;}());
+        return this;
+    }
 }
 
 /// ditto

@@ -11,7 +11,6 @@ $(BOOKTABLE ,
         $(TH Description)
     )
     $(LEADINGROW Accessories)
-    $(TR $(TDNW $(MREF mir,variant)) $(TD Variant Type (aka Algebraic Type) with clever member access))
     $(TR $(TDNW $(MREF mir,exception)) $(TD @nogc MirException with formatting))
     $(TR $(TDNW $(MREF mir,format)) $(TD @nogc Formatting Utilities))
     $(TR $(TDNW $(MREF mir,parse)) $(TD @nogc Parsing Utilities))
