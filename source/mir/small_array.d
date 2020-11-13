@@ -275,13 +275,13 @@ template SmallArray(T, uint maxLength)
         }
 
         /// Comparisons operator overloads
-        bool opEquals(ref scope const SmallArray rhs) scope
+        bool opEquals(ref const SmallArray rhs)
         {
             return opIndex == rhs.opIndex;
         }
 
         /// ditto
-        bool opEquals(SmallArray rhs) scope
+        bool opEquals(SmallArray rhs)
         {
             return opIndex == rhs.opIndex;
         }
