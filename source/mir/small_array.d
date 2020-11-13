@@ -268,10 +268,22 @@ template SmallArray(T, uint maxLength)
             return _length;
         }
 
-        /// Basic comparison implementation
+        /// Hash implementation
         size_t toHash()
         {
             return hashOf(opIndex);
+        }
+
+        /// Comparisons operator overloads
+        bool opEquals(ref scope const SmallArray rhs) scope
+        {
+            return opIndex == rhs.opIndex;
+        }
+
+        /// ditto
+        bool opEquals(SmallArray rhs) scope
+        {
+            return opIndex == rhs.opIndex;
         }
 
         /// ditto

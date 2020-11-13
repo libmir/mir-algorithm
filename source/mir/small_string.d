@@ -249,7 +249,20 @@ const:
     }
 
     /// Comparisons operator overloads
+    bool opEquals(ref scope const SmallString rhs) scope
+    {
+        return _data == rhs._data;
+    }
+
+    /// ditto
+    bool opEquals(SmallString rhs) scope
+    {
+        return _data == rhs._data;
+    }
+
+    /// ditto
     bool opEquals(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs) scope
+        if (rhsMaxLength != maxLength)
     {
         return opIndex == rhs.opIndex;
     }
@@ -260,7 +273,7 @@ const:
         return opIndex == str;
     }
 
-    /// Comparisons operator overloads
+    /// ditto
     int opCmp(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs) scope
     {
         return __cmp(opIndex, rhs.opIndex);
