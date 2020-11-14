@@ -138,6 +138,17 @@ struct mir_rcptr(T)
         }
     }
 
+    static if (is(T == immutable))
+    this(return ref scope const typeof(this) rhs) const @trusted pure nothrow @nogc
+    {
+        if (rhs)
+        {
+            this._value = cast(typeof(this._value))rhs._value;
+            this._context = cast(typeof(this._context))rhs._context;
+            mir_rc_increase_counter(context);
+        }
+    }
+
     this(return ref scope inout typeof(this) rhs) inout @trusted pure nothrow @nogc
     {
         if (rhs)
