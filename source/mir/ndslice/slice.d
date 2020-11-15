@@ -1163,7 +1163,7 @@ public:
     /++
     Iterator
     Returns:
-        Iterator (pointer) to the $(LREF Slice.first) element.
+        Iterator (pointer) to the $(LREF .Slice.first) element.
     +/
     auto iterator()() inout scope return @property
     {
@@ -1172,7 +1172,7 @@ public:
 
     static if (kind == Contiguous && isPointer!Iterator)
         /++
-        `ptr` alias is available only if the slice kind is $(LREF Contiguous) contiguous and the $(LREF Slice.iterator) is a pointers.
+        `ptr` alias is available only if the slice kind is $(LREF Contiguous) contiguous and the $(LREF .Slice.iterator) is a pointers.
         +/
         alias ptr = iterator;
     else
@@ -2432,7 +2432,7 @@ public:
     /++
     Duplicates slice.
     Returns: GC-allocated Contiguous mutable slice.
-    See_also: $(LREF Slice.idup)
+    See_also: $(LREF .Slice.idup)
     +/
     Slice!(Unqual!DeepElement*, N)
     dup()() scope @property
@@ -2487,7 +2487,7 @@ public:
     /++
     Duplicates slice.
     Returns: GC-allocated Contiguous immutable slice.
-    See_also: $(LREF Slice.dup)
+    See_also: $(LREF .Slice.dup)
     +/
     Slice!(immutable(DeepElement)*, N)
     idup()() scope @property
@@ -2550,8 +2550,8 @@ public:
         location in slice, adjusted for `Slice._strides`
     See_also:
         $(SUBREF topology, flattened),
-        $(LREF Slice.indexStride),
-        $(LREF Slice.accessFlat)
+        $(LREF .Slice.indexStride),
+        $(LREF .Slice.accessFlat)
     +/
     private
     ptrdiff_t indexStrideValue(ptrdiff_t n) @safe scope const
