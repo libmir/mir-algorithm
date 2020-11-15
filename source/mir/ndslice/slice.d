@@ -450,8 +450,8 @@ struct CoordinateValue(T, size_t N = 1)
 private int cmpCoo(size_t N)(scope const auto ref size_t[N] a, scope const auto ref size_t[N] b)
 {
     foreach (i; Iota!(0, N))
-        if (auto d = a[i] - b[i])
-            return d > 0 ? 1 : -1;
+        if (a[i] != b[i])
+            return a[i] > b[i] ? 1 : -1;
     return 0;
 }
 
