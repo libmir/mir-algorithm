@@ -43,8 +43,10 @@ $(TR $(TH Function Name) $(TH Description))
 
 $(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
 $(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
-$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind) (unsafe).)
-$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind) (unsafe).)
+$(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind). Does only `assert` checks.)
+$(T2 assumeContiguous, Converts a slice to contiguous $(SUBREF slice, SliceKind). Does only `assert` checks.)
+$(T2 assumeHypercube, Helps the compiler to use optimisations related to the shape form. Does only `assert` checks.)
+$(T2 assumeSameShape, Helps the compiler to use optimisations related to the shape form. Does only `assert` checks.)
 
 )
 
@@ -416,6 +418,57 @@ version(mir_test) unittest
         Slice!(double*, 2, Contiguous, int*, string*)));
     assert(assmcontdf.label!0[0] == 1);
     assert(assmcontdf.label!1[1] == "Label2");
+}
+
+/++
+Helps the compiler to use optimisations related to the shape form
++/
+void assumeHypercube
+    (Iterator, size_t N, SliceKind kind, Labels...)
+    (ref scope Slice!(Iterator, N, kind, Labels) slice)
+{
+    foreach (i; Iota!(1, N))
+    {
+        assert(slice._lengths[i] == slice._lengths[0]);
+        slice._lengths[i] = slice._lengths[0];
+    }
+}
+
+///
+@safe @nogc pure nothrow version(mir_test) unittest
+{
+    auto b = iota(5, 5);
+    
+    assumeHypercube(b);
+
+    assert(b == iota(5, 5));
+}
+
+/++
+Helps the compiler to use optimisations related to the shape form
++/
+void assumeSameShape(T...)
+    (ref scope T slices)
+    if (allSatisfy!(isSlice, T))
+{
+    foreach (i; Iota!(1, T.length))
+    {
+        assert(slices[i]._lengths == slices[0]._lengths);
+        slices[i]._lengths = slices[0]._lengths;
+    }
+}
+
+///
+@safe @nogc pure nothrow version(mir_test) unittest
+{
+    auto a = iota(5, 5);
+    auto b = iota(5, 5);
+    
+    assumeHypercube(a); // first use this one, if applicable
+    assumeSameShape(a, b); //
+
+    assert(a == iota(5, 5));
+    assert(b == iota(5, 5));
 }
 
 /++
