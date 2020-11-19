@@ -965,7 +965,7 @@ Returns:
     n-dimensional slice
 +/
 Slice!(Iterator, N, kind) dropToHypercube(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
-    if (kind == Canonical || kind == Universal)
+    if (kind == Canonical || kind == Universal || N == 1)
 do
 {
     size_t length = slice._lengths[0];
@@ -979,6 +979,7 @@ do
 
 /// ditto
 Slice!(Iterator, N, Canonical) dropToHypercube(Iterator, size_t N)(Slice!(Iterator, N) slice)
+    if (N > 1)
 {
     import mir.ndslice.topology: canonical;
     return slice.canonical.dropToHypercube;
@@ -997,4 +998,6 @@ Slice!(Iterator, N, Canonical) dropToHypercube(Iterator, size_t N)(Slice!(Iterat
         .universal
         .dropToHypercube
         .shape == cast(size_t[4])[3, 3, 3, 3]);
+
+    assert(4.iota.dropToHypercube == 4.iota);
 }
