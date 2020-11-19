@@ -810,6 +810,24 @@ Params:
 Returns:
     n-dimensional slice
 +/
+auto strided(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice, ptrdiff_t factor)
+{
+    import core.lifetime: move;
+    import std.meta: Repeat;
+    return move(slice).strided!(Iota!N)(Repeat!(N, factor));
+}
+
+///
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.ndslice.topology: iota;
+    // 0  1   2  3
+    // 4  5   6  7
+    // 8  9  10 11
+    assert(iota(3, 4).strided(2) == [[0, 2], [8, 10]]);
+}
+
+/// ditto
 template strided(Dimensions...)
     if (Dimensions.length)
 {
