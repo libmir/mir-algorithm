@@ -722,7 +722,7 @@ struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_
 
 package(mir):
 
-    enum doUnittest = is(Iterator == int*) && N == 1 && kind == Contiguous;
+    enum doUnittest = is(Iterator == int*) && (N == 1 || N == 2) && kind == Contiguous;
 
     enum hasAccessByRef = __traits(compiles, &_iterator[0]);
 
@@ -1789,7 +1789,7 @@ public:
 
         static if (kind_ != SliceKind.contiguous)
         /// Peforms `popFrontAll` for all dimensions
-        void popFrontAll(T)()
+        void popFrontAll()
         {
             assert(!anyEmpty);
             foreach(d; Iota!N_)
@@ -1808,11 +1808,11 @@ public:
 
         static if (kind_ != SliceKind.contiguous)
         /// Peforms `popBackAll` for all dimensions
-        void popBackAll(T)()
+        void popBackAll()
         {
             assert(!anyEmpty);
             foreach(d; Iota!N_)
-                popBackAll!d;
+                popBack!d;
         }
 
         static if (doUnittest)
