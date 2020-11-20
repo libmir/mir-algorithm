@@ -1786,11 +1786,51 @@ public:
             auto f = 5;
             assert([2, 3].iota(f).last == f + 2 * 3 - 1);
         }
+
+        static if (kind_ != SliceKind.contiguous)
+        /// Peforms `popFrontAll` for all dimensions
+        void popFrontAll(T)()
+        {
+            assert(!anyEmpty);
+            foreach(d; Iota!N_)
+                popFront!d;
+        }
+
+        static if (doUnittest)
+        ///
+        @safe pure nothrow version(mir_test) unittest
+        {
+            import mir.ndslice.topology: iota, canonical;
+            auto v = [2, 3].iota.canonical;
+            v.popFrontAll;
+            assert(v == [[4, 5]]);
+        }
+
+        static if (kind_ != SliceKind.contiguous)
+        /// Peforms `popBackAll` for all dimensions
+        void popBackAll(T)()
+        {
+            assert(!anyEmpty);
+            foreach(d; Iota!N_)
+                popBackAll!d;
+        }
+
+        static if (doUnittest)
+        ///
+        @safe pure nothrow version(mir_test) unittest
+        {
+            import mir.ndslice.topology: iota, canonical;
+            auto v = [2, 3].iota.canonical;
+            v.popBackAll;
+            assert(v == [[0, 1]]);
+        }
     }
     else
     {
         alias first = front;
         alias last = back;
+        alias popFrontAll = popFront;
+        alias popBackAll = popBack;
     }
 
     /+

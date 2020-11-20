@@ -2152,6 +2152,48 @@ do
     }
 }
 
+///ditto
+template stride(size_t factor = 2)
+    if (factor > 1)
+{
+    auto stride
+        (Iterator, size_t N, SliceKind kind)
+        (Slice!(Iterator, N, kind) slice)
+    {
+        static if (N > 1)
+        {
+            return stride(slice.move.ipack!1.map!(.stride!factor));
+        }
+        else
+        static if (kind == Contiguous)
+        {
+            immutable rem = slice._lengths[0] % factor;
+            slice._lengths[0] /= factor;
+            if (rem)
+                slice._lengths[0]++;
+            import core.lifetime: move;
+            return Slice!(StrideIterator!(Iterator, factor), 1, kind)(slice._structure, StrideIterator!(Iterator, factor)(move(slice._iterator)));
+        }
+        else
+        {
+            return .stride(slice.move, factor);
+        }
+    }
+
+    /// ditto
+    auto stride(T)(T[] array)
+    {
+        return stride(array.sliced);
+    }
+
+    /// ditto
+    auto stride(T)(T withAsSlice)
+        if (hasAsSlice!T)
+    {
+        return stride(withAsSlice.asSlice);
+    }
+}
+
 /// ditto
 auto stride(T)(T[] array, ptrdiff_t factor)
 {
@@ -2170,7 +2212,9 @@ auto stride(T)(T withAsSlice, ptrdiff_t factor)
 {
     auto slice = iota(6);
     static immutable str = [0, 2, 4];
-    assert(slice.stride(2) == str);
+    assert(slice.stride(2) == str); // runtime factor
+    assert(slice.stride!2 == str); // compile time factor
+    assert(slice.stride == str); // default compile time factor is 2
     assert(slice.universal.stride(2) == str);
 }
 
@@ -3676,40 +3720,51 @@ Returns:
     n-dimensional slice of elements refTuple
 See_also: $(SUBREF slice, Slice.strides).
 +/
-auto zip
-    (bool sameStrides = false, Slices...)(Slices slices)
-    if (Slices.length > 1 && allSatisfy!(isConvertibleToSlice, Slices))
+template zip(bool sameStrides = false)
 {
-    static if (allSatisfy!(isSlice, Slices))
+    /++
+    Groups slices into a slice of refTuples. The slices must have identical strides or be 1-dimensional.
+    Params:
+        slices = list of slices
+    Returns:
+        n-dimensional slice of elements refTuple
+    See_also: $(SUBREF slice, Slice.strides).
+    +/
+    @optmath
+    auto zip(Slices...)(Slices slices)
+        if (Slices.length > 1 && allSatisfy!(isConvertibleToSlice, Slices))
     {
-        enum N = Slices[0].N;
-        foreach(i, S; Slices[1 .. $])
+        static if (allSatisfy!(isSlice, Slices))
         {
-            static assert(S.N == N, "zip: all Slices must have the same dimension count");
-            assert(slices[i + 1]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
-            static if (sameStrides)
-                assert(slices[i + 1].strides == slices[0].strides, "zip: all slices must have the same strides when unpacked");
-        }
-        static if (!sameStrides && minElem(staticMap!(kindOf, Slices)) != Contiguous)
-        {
-            static assert(N == 1, "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
-            mixin(`return .zip(` ~ _iotaArgs!(Slices.length, "slices[", "].hideStride, ") ~`);`);
+            enum N = Slices[0].N;
+            foreach(i, S; Slices[1 .. $])
+            {
+                static assert(S.N == N, "zip: all Slices must have the same dimension count");
+                assert(slices[i + 1]._lengths == slices[0]._lengths, "zip: all slices must have the same lengths");
+                static if (sameStrides)
+                    assert(slices[i + 1].strides == slices[0].strides, "zip: all slices must have the same strides when unpacked");
+            }
+            static if (!sameStrides && minElem(staticMap!(kindOf, Slices)) != Contiguous)
+            {
+                static assert(N == 1, "zip: cannot zip canonical and universal multidimensional slices if `sameStrides` is false");
+                mixin(`return .zip(` ~ _iotaArgs!(Slices.length, "slices[", "].hideStride, ") ~`);`);
+            }
+            else
+            {
+                enum kind = maxElem(staticMap!(kindOf, Slices));
+                alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
+                alias Ret = Slice!(Iterator, N, kind);
+                auto structure = Ret._Structure.init;
+                structure[0] = slices[0]._lengths;
+                foreach (i; Iota!(Ret.S))
+                    structure[1][i] = slices[0]._strides[i];
+                return Ret(structure, mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")"));
+            }
         }
         else
         {
-            enum kind = maxElem(staticMap!(kindOf, Slices));
-            alias Iterator = ZipIterator!(staticMap!(_IteratorOf, Slices));
-            alias Ret = Slice!(Iterator, N, kind);
-            auto structure = Ret._Structure.init;
-            structure[0] = slices[0]._lengths;
-            foreach (i; Iota!(Ret.S))
-                structure[1][i] = slices[0]._strides[i];
-            return Ret(structure, mixin("Iterator(" ~ _iotaArgs!(Slices.length, "slices[", "]._iterator, ") ~ ")"));
+            return .zip(toSlices!slices);
         }
-    }
-    else
-    {
-        return .zip(toSlices!slices);
     }
 }
 
@@ -3796,6 +3851,17 @@ pure nothrow version(mir_test) unittest
 
 private enum TotalDim(NdFields...) = [staticMap!(DimensionCount, NdFields)].sum;
 
+private template applyInner(alias fun, size_t N)
+{
+    static if (N == 0)
+        alias applyInner = fun;
+    else
+    {
+        import mir.functional: pipe;
+        alias applyInner = pipe!(zip!true, map!(.applyInner!(fun, N - 1)));
+    }
+}
+
 /++
 Sliding map for vectors.
 Works with packed slices.
@@ -3819,23 +3885,27 @@ template slide(size_t params, alias fun)
         Params:
             slice = An input slice with first dimension pack equals to one (e.g. 1-dimensional for not packed slices).
         Returns:
-            1d-slice composed of `fun(slice[i], ..., slice[i + params - 1])`.
+            1d-slice composed of `F(slice[i], ..., slice[i + params - 1])`, where `F` is self recursion function accross dimensions.
         +/
-        auto slide(Iterator, SliceKind kind)
-            (Slice!(Iterator, 1, kind) slice)
+        auto slide(Iterator, size_t N, SliceKind kind)
+            (Slice!(Iterator, N, kind) slice)
         {
             import core.lifetime: move;
+            static if (N > 1)
+            {
+                return .slide!(params, applyInner!(fun, N - 1))(slice.move.ipack!1.map!slide);
+            }
+            else
             static if (kind == Universal)
             {
                 return .slide!(params, fun)(slice.move.flattened);
             }
             else
             {
-                if (cast(sizediff_t)slice._lengths[0] < sizediff_t(params - 1))
-                    slice._lengths[0] = 0;
-                else
-                    slice._lengths[0] -= params - 1;
-
+                size_t len = slice._lengths[0] - (params - 1);
+                if (sizediff_t(len) <= 0) // overfow
+                    len = 0;
+                slice._lengths[0] = len;
                 alias I = SlideIterator!(Iterator, params, fun);
                 return Slice!I(slice._structure, I(move(slice._iterator)));
             }
@@ -3870,6 +3940,25 @@ version(mir_test) unittest
     assert(sw.length == max(0, cast(ptrdiff_t)data.length - 3 + 1));
     assert(sw == sw.length.iota.map!"(a + 1) * 4");
     assert(sw == [4, 8, 12, 16, 20, 24, 28, 32]);
+}
+
+/++
+ND-use case
++/
+@safe pure nothrow version(mir_test) unittest
+{
+    import mir.functional: recurseTemplatePipe;
+
+    auto data = [4, 5].iota;
+
+    enum dim = 2; // demension count
+    enum factor = 1.0 / 4 ^^ dim;
+    alias scaled = a => a * factor;
+    alias scaleDeepElements  = recurseTemplatePipe!(map, dim, scaled);
+
+    auto sw = scaleDeepElements(data.slide!(3, "a + 2 * b + c"));
+
+    assert(sw == [[6, 7, 8], [11, 12, 13]]);
 }
 
 /++
