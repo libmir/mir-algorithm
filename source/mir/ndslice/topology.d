@@ -2160,6 +2160,7 @@ template stride(size_t factor = 2)
         (Iterator, size_t N, SliceKind kind)
         (Slice!(Iterator, N, kind) slice)
     {
+        import core.lifetime: move;
         static if (N > 1)
         {
             return stride(slice.move.ipack!1.map!(.stride!factor));
@@ -2171,7 +2172,6 @@ template stride(size_t factor = 2)
             slice._lengths[0] /= factor;
             if (rem)
                 slice._lengths[0]++;
-            import core.lifetime: move;
             return Slice!(StrideIterator!(Iterator, factor), 1, kind)(slice._structure, StrideIterator!(Iterator, factor)(move(slice._iterator)));
         }
         else
@@ -2216,6 +2216,15 @@ auto stride(T)(T withAsSlice, ptrdiff_t factor)
     assert(slice.stride!2 == str); // compile time factor
     assert(slice.stride == str); // default compile time factor is 2
     assert(slice.universal.stride(2) == str);
+}
+
+/// ND-compile time
+@safe pure nothrow @nogc version(mir_test) unittest
+{
+    auto slice = iota(4, 6);
+    static immutable str = [[0, 2, 4], [12, 14, 16]];
+    assert(slice.stride!2 == str); // compile time factor
+    assert(slice.stride == str); // default compile time factor is 2
 }
 
 /++
