@@ -15,6 +15,7 @@ $(T2 IndexIterator, $(SUBREF topology, indexed))
 $(T2 IotaIterator, $(SUBREF topology, iota))
 $(T2 MapIterator, $(SUBREF topology, map))
 $(T2 MemberIterator, $(SUBREF topology, member))
+$(T2 NeighboursIterator, $(SUBREF topology, withNeighboursSum))
 $(T2 RetroIterator, $(SUBREF topology, retro))
 $(T2 SliceIterator, $(SUBREF topology, map) in composition with $(LREF MapIterator) for packed slices.)
 $(T2 SlideIterator, $(SUBREF topology, diff), $(SUBREF topology, pairwise), and $(SUBREF topology, slide).)
@@ -1172,6 +1173,117 @@ auto _vmapIterator(Iterator, Fun)(Iterator iterator, Fun fun)
 
     auto y = bar(data);
     assert(y == result);
+}
+
+/++
+`NeighboursIterator` is used by $(SUBREF topology, map).
++/
+struct NeighboursIterator(Iterator, size_t N, alias _fun, bool around)
+{
+    import std.meta: AliasSeq;
+@optmath:
+    ///
+    Iterator _iterator;
+    static if (N)
+        Iterator[2][N] _neighbours;
+    else alias _neighbours = AliasSeq!();
+
+    ///
+    auto lightConst()() const @property
+    {
+        LightConstOf!Iterator[2][N] neighbours;
+        foreach (i; 0 .. N)
+        {
+            neighbours[i][0] = .lightConst(_neighbours[i][0]);
+            neighbours[i][1] = .lightConst(_neighbours[i][1]);
+        }
+        return NeighboursIterator!(LightConstOf!Iterator, N, _fun, around)(.lightConst(_iterator), neighbours);
+    }
+
+    ///
+    auto lightImmutable()() immutable @property
+    {
+        LightImmutableOf!Iterator[2][N] neighbours;
+        foreach (i; 0 .. N)
+        {
+            neighbours[i][0] = .lightImmutable(_neighbours[i][0]);
+            neighbours[i][1] = .lightImmutable(_neighbours[i][1]);
+        }
+        return NeighboursIterator!(LightImmutableOf!Iterator, N, _fun, around)(.lightImmutable(_iterator), neighbours);
+    }
+
+    import mir.functional: RefTuple, _ref;
+
+    private alias RA = Unqual!(typeof(_fun(_iterator[-1], _iterator[+1])));
+    private alias Result = RefTuple!(_zip_types!Iterator, RA);
+
+    auto ref opUnary(string op : "*")()
+    {
+        return opIndex(0);
+    }
+
+    auto ref opIndex(ptrdiff_t index) scope
+    {
+        static if (around)
+            RA result = _fun(_iterator[index - 1], _iterator[index + 1]);
+
+        foreach (i; Iota!N)
+        {
+            static if (i == 0 && !around)
+                RA result = _fun(_neighbours[i][0][index], _neighbours[i][1][index]);
+            else
+                result = _fun(result, _fun(_neighbours[i][0][index], _neighbours[i][1][index]));
+        }
+        static if (__traits(compiles, &_iterator[index]))
+            return Result(_ref(_iterator[index]), result);
+        else
+            return Result(_iterator[index], result);
+    }
+    
+    void opUnary(string op)() scope
+        if (op == "--" || op == "++")
+    {
+        mixin(op ~ "_iterator;");
+        foreach (i; Iota!N)
+        {
+            mixin(op ~ "_neighbours[i][0];");
+            mixin(op ~ "_neighbours[i][1];");
+        }
+    }
+
+    void opOpAssign(string op)(ptrdiff_t index) scope
+        if (op == "-" || op == "+")
+    {
+
+        mixin("_iterator " ~ op ~ "= index;");
+        foreach (i; Iota!N)
+        {
+            mixin("_neighbours[i][0] " ~ op ~ "= index;");
+            mixin("_neighbours[i][1] " ~ op ~ "= index;");
+        }
+    }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(scope ref const typeof(this) right) scope const
+    { return this._iterator - right._iterator; }
+
+    bool opEquals()(scope ref const typeof(this) right) scope const
+    { return this._iterator == right._iterator; }
+
+    ptrdiff_t opCmp()(scope ref const typeof(this) right) scope const
+    {
+        static if (isPointer!Iterator)
+            return this._iterator - right._iterator;
+        else
+            return this._iterator.opCmp(right._iterator);
+    }
 }
 
 /++

@@ -349,12 +349,53 @@ package(mir) template frontOf(args...)
         enum frontOf = args;
     else
     {
-        alias arg = args[0];
         @optmath @property auto ref ls()()
         {
-            return arg.front;
+            return args[0].front;
         }
         alias frontOf = AliasSeq!(ls, frontOf!(args[1..$]));
+    }
+}
+
+package(mir) template backOf(args...)
+{
+    static if (args.length == 0)
+        enum backOf = args;
+    else
+    {
+        @optmath @property auto ref ls()()
+        {
+            return args[0].back;
+        }
+        alias backOf = AliasSeq!(ls, backOf!(args[1..$]));
+    }
+}
+
+package(mir) template frontOfD(size_t dimension, args...)
+{
+    static if (args.length == 0)
+        enum frontOfD = args;
+    else
+    {
+        @optmath @property auto ref ls()()
+        {
+            return args[0].front!dimension;
+        }
+        alias frontOfD = AliasSeq!(ls, frontOfD!(dimension, args[1..$]));
+    }
+}
+
+package(mir) template backOfD(size_t dimension, args...)
+{
+    static if (args.length == 0)
+        enum backOfD = args;
+    else
+    {
+        @optmath @property auto ref ls()()
+        {
+            return args[0].back!dimension;
+        }
+        alias backOfD = AliasSeq!(ls, backOfD!(dimension, args[1..$]));
     }
 }
 

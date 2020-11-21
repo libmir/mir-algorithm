@@ -10,7 +10,8 @@ $(T2 any, Checks if at least one element satisfy to a predicate.)
 $(T2 cmp, Compares two slices.)
 $(T2 count, Counts elements in a slices according to a predicate.)
 $(T2 each, Iterates all elements.)
-$(T2 eachLower, Iterates lower triangle of matrix.)
+$(T2 each, Iterates all elements.)
+$(T2 eachOnBorder, Iterates elementes on tensors borders and corners.)
 $(T2 eachUploPair, Iterates upper and lower pairs of elements in square matrix.)
 $(T2 eachUpper, Iterates upper triangle of matrix.)
 $(T2 equal, Compares two slices for equality.)
@@ -928,6 +929,103 @@ void eachImpl(alias fun, Slices...)(scope Slices slices)
             slices[i].popFront;
     }
     while(!slices[0].empty);
+}
+
+/++
+The call `each!(fun)(slice1, ..., sliceN)`
+evaluates `fun` for each set of elements `x1, ..., xN` in
+the borders of `slice1, ..., sliceN` respectively.
+
+`each` allows to iterate multiple slices in the lockstep.
+
+Params:
+    fun = A function.
+Note:
+    $(NDSLICEREF dynamic, transposed) and
+    $(NDSLICEREF topology, pack) can be used to specify dimensions.
++/
+template eachOnBorder(alias fun)
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!fun, fun))
+    /++
+    Params:
+        slices = One or more slices.
+    +/
+    @optmath void eachOnBorder(Slices...)(Slices slices)
+        if (allSatisfy!(isSlice, Slices))
+    {
+        import mir.ndslice.traits: isContiguousSlice;
+        static if (Slices.length > 1)
+            slices.checkShapesMatch;
+        if (!slices[0].anyEmpty)
+        {
+            alias N = DimensionCount!(Slices[0]);
+            static if (N == 1)
+            {
+                fun(frontOf!slices);
+                if (slices[0].length > 1)
+                    fun(backOf!slices);
+            }
+            else
+            static if (anySatisfy!(isContiguousSlice, Slices))
+            {
+                import mir.ndslice.topology: canonical;
+                template f(size_t i)
+                {
+                    static if (isContiguousSlice!(Slices[i]))
+                        auto f () { return canonical(slices[i]); }
+                    else
+                        alias f = slices[i];
+                }
+                eachOnBorder(staticMap!(f, Iota!(Slices.length)));
+            }
+            else
+            {
+                foreach (dimension; Iota!N)
+                {
+                    eachImpl!fun(frontOfD!(dimension, slices));
+                    foreach_reverse(ref slice; slices)
+                        slice.popFront!dimension;
+                    if (slices[0].empty!dimension)
+                        return;
+                    eachImpl!fun(backOfD!(dimension, slices));
+                    foreach_reverse(ref slice; slices)
+                        slice.popBack!dimension;
+                    if (slices[0].empty!dimension)
+                        return;
+                }
+            }
+        }
+    }
+    else
+        alias eachOnBorder = .eachOnBorder!(naryFun!fun);
+}
+
+///
+@safe pure nothrow 
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation : slice;
+    import mir.ndslice.topology : repeat, iota;
+
+    auto sl = [3, 4].iota.slice;
+    auto zeros = repeat(0, [3, 4]);
+
+    sl.eachOnBorder!"a = b"(zeros);
+
+    assert(sl == 
+        [[0, 0, 0 ,0],
+         [0, 5, 6, 0],
+         [0, 0, 0 ,0]]);
+    
+    sl.eachOnBorder!"a = 1";
+    sl[0].eachOnBorder!"a = 2";
+
+    assert(sl == 
+        [[2, 1, 1, 2],
+         [1, 5, 6, 1],
+         [1, 1, 1 ,1]]);
 }
 
 /++

@@ -17,14 +17,16 @@ $(T2 repeat, Slice with identical values)
 $(BOOKTABLE $(H2 Shape Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
+$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
+$(T2 diagonal, 1-dimensional slice composed of diagonal elements)
+$(T2 dropBorders, Drops borders for all dimensions.)
+$(T2 reshape, New slice view with changed dimensions)
 $(T2 squeeze, New slice view of an n-dimensional slice with dimension removed)
 $(T2 unsqueeze, New slice view of an n-dimensional slice with a dimension added)
-$(T2 diagonal, 1-dimensional slice composed of diagonal elements)
-$(T2 reshape, New slice view with changed dimensions)
-$(T2 blocks, n-dimensional slice composed of n-dimensional non-overlapping blocks. If the slice has two dimensions, it is a block matrix.)
 $(T2 windows, n-dimensional slice of n-dimensional overlapping windows. If the slice has two dimensions, it is a sliding window.)
 
 )
+
 
 $(BOOKTABLE $(H2 Subspace Selectors),
 $(TR $(TH Function Name) $(TH Description))
@@ -76,15 +78,16 @@ $(T2 orthogonalReduceField, Functional deep-element wise reduce of a slice compo
 $(T2 pairwise, Pairwise map for vectors.)
 $(T2 pairwiseMapSubSlices, Maps pairwise index pairs to subslices.)
 $(T2 retro, Reverses order of iteration for all dimensions.)
-$(T2 slide, Sliding map for vectors.)
+$(T2 slide, Lazy convolution for tensors.)
+$(T2 slideAlong, Lazy convolution for tensors.)
 $(T2 stairs, Two functions to pack, unpack, and iterate triangular and symmetric matrix storage.)
 $(T2 stride, Strides 1-dimensional slice.)
 $(T2 subSlices, Maps index pairs to subslices.)
 $(T2 triplets, Constructs a lazy view of triplets with `left`, `center`, and `right` members. The topology is usefull for Math and Physics.)
 $(T2 unzip, Selects a slice from a zipped slice.)
+$(T2 withNeighboursSum, Zip view of elements packed with sum of their neighbours.)
 $(T2 zip, Zips slices into a slice of refTuples.)
 )
-
 
 Subspace selectors serve to generalize and combine other selectors easily.
 For a slice of `Slice!(Iterator, N, kind)` type `slice.pack!K` creates a slice of
@@ -96,13 +99,11 @@ $(LREF evertPack).
 Examples of use of subspace selectors are available for selectors,
 $(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementCount).
 
-
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
 Authors: Ilya Yaroshenko, John Michael Hall, Shigeki Karita (original numir code)
 
 Sponsors: Part of this work has been sponsored by $(LINK2 http://symmetryinvestments.com, Symmetry Investments) and Kaleidic Associates.
-
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
@@ -110,7 +111,6 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 +/
 module mir.ndslice.topology;
-
 
 import mir.internal.utility;
 import mir.math.common: optmath;
@@ -655,7 +655,6 @@ evertPack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind
         )
          == Slice!(SliceIterator!(int*, 2, Universal), 1)));
 }
-
 
 ///
 @safe pure nothrow @nogc
@@ -2106,7 +2105,6 @@ auto cycle(size_t loopLength, T)(T[] array, size_t length)
     return cycle!loopLength(array.sliced, length);
 }
 
-
 /// ditto
 auto cycle(size_t loopLength, T)(T withAsSlice, size_t length)
     if (hasAsSlice!T)
@@ -2289,7 +2287,6 @@ auto retro(T)(T withAsSlice)
 {
     return retro(withAsSlice.asSlice);
 }
-
 
 /// ditto
 auto retro(Range)(Range r)
@@ -2594,7 +2591,6 @@ bytegroup
     return typeof(return)(structure, BytegroupIterator!(Iterator, group, DestinationType)(slice._iterator.move));
 }
 
-
 /// ditto
 auto bytegroup(size_t pack, DestinationType, T)(T[] array)
 {
@@ -2674,7 +2670,7 @@ template map(fun...)
     import mir.functional: adjoin, naryFun, pipe;
     static if (fun.length == 1)
     {
-        static if (__traits(isSame, naryFun!(fun[0]), fun[0]) && !__traits(isSame, naryFun!"a", fun[0]))
+        static if (__traits(isSame, naryFun!(fun[0]), fun[0]))
         {
             alias f = fun[0];
         @optmath:
@@ -2691,6 +2687,7 @@ template map(fun...)
                 import core.lifetime: move;
                 alias MIterator = typeof(_mapIterator!f(slice._iterator));
                 import mir.ndslice.traits: isIterator;
+                alias testIter = typeof(MIterator.init[0]);
                 static assert(isIterator!MIterator, "mir.ndslice.map: probably the lambda function contains a compile time bug.");
                 return Slice!(MIterator, N, kind)(slice._structure, _mapIterator!f(slice._iterator.move));
             }
@@ -2718,37 +2715,7 @@ template map(fun...)
                 return MapRange!(f, ImplicitlyUnqual!Range)(forward!r);
             }
         }
-        else
-        static if (__traits(isSame, naryFun!"a", fun[0]))
-        {
-            ///
-            @optmath auto map(Iterator, size_t N, SliceKind kind)
-                (Slice!(Iterator, N, kind) slice)
-            {
-                return slice;
-            }
-
-            /// ditto
-            auto map(T)(T[] array)
-            {
-                return array.sliced;
-            }
-
-            /// ditto
-            auto map(T)(T withAsSlice)
-                if (hasAsSlice!T)
-            {
-                return withAsSlice.asSlice;
-            }
-
-            /// ditto
-            ImplicitlyUnqual!Range map(Range)(Range r)
-                if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
-            {
-                return r;
-            }
-        }
-        else alias map = .map!(naryFun!fun);
+        else alias map = .map!(staticMap!(naryFun, fun));
     }
     else alias map = .map!(adjoin!fun);
 }
@@ -3872,15 +3839,117 @@ private template applyInner(alias fun, size_t N)
 }
 
 /++
-Sliding map for vectors.
-Works with packed slices.
+Lazy convolution for tensors.
+
+Suitable for advanced convolution algorithms.
+
+Params:
+    params = convolution windows length.
+    fun = one dimensional convolution function with `params` arity.
+    SDimensions = dimensions to perform lazy convolution along. Negative dimensions are supported.
+See_also: $(LREF slide), $(LREF pairwise), $(LREF diff).
++/
+template slideAlong(size_t params, alias fun, SDimensions...)
+    if (params <= 'z' - 'a' + 1 && SDimensions.length > 0)
+{
+    import mir.functional: naryFun;
+
+    static if (allSatisfy!(isSizediff_t, SDimensions) && params > 1 && __traits(isSame, naryFun!fun, fun))
+    {
+    @optmath:
+        /++
+        Params: slice = ndslice or array
+        Returns: lazy convolution result
+        +/
+        auto slideAlong(Iterator, size_t N, SliceKind kind)
+            (Slice!(Iterator, N, kind) slice)
+        {
+            import core.lifetime: move;
+            static if (N > 1 && kind == Contiguous)
+            {
+                return slideAlong(slice.move.canonical);
+            }
+            else
+            static if (N == 1 && kind == Universal)
+            {
+                return slideAlong(slice.move.flattened);
+            }
+            else
+            {
+                alias Dimensions = staticMap!(ShiftNegativeWith!N, SDimensions);
+                enum dimension = Dimensions[$ - 1];
+                size_t len = slice._lengths[dimension] - (params - 1);
+                if (sizediff_t(len) <= 0) // overfow
+                    len = 0;
+                slice._lengths[dimension] = len;
+                static if (dimension + 1 == N || kind == Universal)
+                {
+                    alias I = SlideIterator!(Iterator, params, fun);
+                    auto ret = Slice!(I, N, kind)(slice._structure, I(move(slice._iterator)));
+                }
+                else
+                {
+                    alias Z = ZipIterator!(Repeat!(params, Iterator));
+                    Z z;
+                    foreach_reverse (p; Iota!(1, params))
+                        z._iterators[p] = slice._iterator + slice._strides[dimension] * p;
+                    z._iterators[0] = move(slice._iterator);
+                    alias M = MapIterator!(Z, fun);
+                    auto ret = Slice!(M, N, kind)(slice._structure, M(move(z)));
+                }
+                static if (Dimensions.length == 1)
+                {
+                    return ret;
+                }
+                else
+                {
+                    return .slideAlong!(params, fun, Dimensions[0 .. $ - 1])(ret);
+                }
+            }
+        }
+
+        /// ditto
+        auto slideAlong(S)(S[] slice)
+        {
+            return slideAlong(slice.sliced);
+        }
+
+        /// ditto
+        auto slideAlong(S)(S slice)
+            if (hasAsSlice!S)
+        {
+            return slideAlong(slice.asSlice);
+        }
+    }
+    else
+    static if (params == 1)
+        alias slideAlong = .map!(naryFun!fun);
+    else alias slideAlong = .slideAlong!(params, naryFun!fun, staticMap!(toSizediff_t, SDimensions));
+}
+
+///
+@safe pure nothrow @nogc version(mir_test) unittest
+{
+    auto data = [4, 5].iota;
+
+    alias scaled = a => a * 0.25;
+
+    auto v = data.slideAlong!(3, "a + 2 * b + c", 0).map!scaled;
+    auto h = data.slideAlong!(3, "a + 2 * b + c", 1).map!scaled;
+
+    assert(v == [4, 5].iota[1 .. $ - 1, 0 .. $]);
+    assert(h == [4, 5].iota[0 .. $, 1 .. $ - 1]);
+}
+
+/++
+Lazy convolution for tensors.
 
 Suitable for simple convolution algorithms.
 
 Params:
     params = windows length.
-    fun = map functions with `params` arity.
-See_also: $(LREF pairwise), $(LREF diff).
+    fun = one dimensional convolution function with `params` arity.
+See_also: $(LREF slideAlong), $(LREF withNeighboursSum), $(LREF pairwise), $(LREF diff).
 +/
 template slide(size_t params, alias fun)
     if (params <= 'z' - 'a' + 1)
@@ -3891,33 +3960,14 @@ template slide(size_t params, alias fun)
     {
     @optmath:
         /++
-        Params:
-            slice = An input slice with first dimension pack equals to one (e.g. 1-dimensional for not packed slices).
-        Returns:
-            1d-slice composed of `F(slice[i], ..., slice[i + params - 1])`, where `F` is self recursion function accross dimensions.
+        Params: slice = ndslice or array
+        Returns: lazy convolution result
         +/
         auto slide(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
         {
             import core.lifetime: move;
-            static if (N > 1)
-            {
-                return .slide!(params, applyInner!(fun, N - 1))(slice.move.ipack!1.map!slide);
-            }
-            else
-            static if (kind == Universal)
-            {
-                return .slide!(params, fun)(slice.move.flattened);
-            }
-            else
-            {
-                size_t len = slice._lengths[0] - (params - 1);
-                if (sizediff_t(len) <= 0) // overfow
-                    len = 0;
-                slice._lengths[0] = len;
-                alias I = SlideIterator!(Iterator, params, fun);
-                return Slice!I(slice._structure, I(move(slice._iterator)));
-            }
+            return slice.move.slideAlong!(params, fun, Iota!N);
         }
 
         /// ditto
@@ -3954,44 +4004,53 @@ version(mir_test) unittest
 /++
 ND-use case
 +/
-@safe pure nothrow version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_test) unittest
 {
-    import mir.functional: recurseTemplatePipe;
-
     auto data = [4, 5].iota;
 
-    enum dim = 2; // demension count
-    enum factor = 1.0 / 4 ^^ dim;
+    enum factor = 1.0 / 4 ^^ data.shape.length;
     alias scaled = a => a * factor;
-    alias scaleDeepElements  = recurseTemplatePipe!(map, dim, scaled);
 
-    auto sw = scaleDeepElements(data.slide!(3, "a + 2 * b + c"));
+    auto sw = data.slide!(3, "a + 2 * b + c").map!scaled;
 
-    assert(sw == [[6, 7, 8], [11, 12, 13]]);
+    assert(sw == [4, 5].iota[1 .. $ - 1, 1 .. $ - 1]);
 }
 
 /++
-Pairwise map for vectors.
-Works with packed slices.
+Pairwise map for tensors.
+
+The computation is performed on request, when the element is accessed.
 
 Params:
     fun = function to accumulate
     lag = an integer indicating which lag to use
 Returns: lazy ndslice composed of `fun(a_n, a_n+1)` values.
 
-See_also: $(LREF slide), $(LREF subSlices).
+See_also: $(LREF slide), $(LREF slideAlong), $(LREF subSlices).
 +/
 alias pairwise(alias fun, size_t lag = 1) = slide!(lag + 1, fun);
 
 ///
-version(mir_test) unittest
+@safe pure nothrow version(mir_test) unittest
 {
     assert([2, 4, 3, -1].sliced.pairwise!"a + b" == [6, 7, 2]);
 }
 
+/// N-dimensional
+@safe pure nothrow
+version(mir_test) unittest
+{
+    // performs pairwise along each dimension
+    // 0 1 2 3
+    // 4 5 6 7
+    // 8 9 10 11
+    assert([3, 4].iota.pairwise!"a + b" == [[10, 14, 18], [26, 30, 34]]);
+}
+
 /++
-Differences between vector elements.
-Works with packed slices.
+Differences between tensor elements.
+
+The computation is performed on request, when the element is accessed.
 
 Params:
     lag = an integer indicating which lag to use
@@ -4005,6 +4064,24 @@ alias diff(size_t lag = 1) = pairwise!(('a' + lag) ~ " - a", lag);
 version(mir_test) unittest
 {
     assert([2, 4, 3, -1].sliced.diff == [2, -1, -4]);
+}
+
+/// N-dimensional
+@safe pure nothrow @nogc
+version(mir_test) unittest
+{
+    // 0 1 2 3
+    // 4 5 6 7     =>
+    // 8 9 10 11
+    
+    // 1 1 1
+    // 1 1 1      =>
+    // 1 1 1
+
+    // 0 0 0
+    // 0 0 0
+
+    assert([3, 4].iota.diff == repeat(0, [2, 3]));
 }
 
 /// packed slices
@@ -4024,6 +4101,132 @@ version(mir_test) unittest
         [1, 1, 1]]);
 }
 
+/++
+Drops borders for all dimensions.
+
+Params:
+    slice = ndslice
+Returns:
+    Tensors with striped borders
+See_also:
+    $(LREF universal),
+    $(LREF assumeCanonical),
+    $(LREF assumeContiguous).
++/
+Slice!(Iterator, N, N == 1 ? Contiguous : Canonical, Labels)
+    dropBorders
+    (Iterator, size_t N, SliceKind kind, Labels...)
+    (Slice!(Iterator, N, kind, Labels) slice)
+    if (kind == Contiguous || kind == Canonical)
+{
+    import core.lifetime: move;
+    auto ret = slice.move.canonical;
+    ret.popFrontAll;
+    ret.popBackAll;
+    return ret;
+}
+
+///
+version(mir_test) unittest
+{
+    assert([4, 5].iota.dropBorders == [[6, 7, 8], [11, 12, 13]]);
+}
+
+/++
+Lazy zip view of elements packed with sum of their neighbours.
+
+Params:
+    fun = neighbours accumulation function.
+See_also: $(LREF slide), $(LREF slideAlong).
++/
+template withNeighboursSum(alias fun = "a + b")
+{
+    import mir.functional: naryFun;
+
+    static if (__traits(isSame, naryFun!fun, fun))
+    {
+    @optmath:
+        /++
+        Params:
+            slice = ndslice or array
+        Returns:
+            Lazy zip view of elements packed with sum of their neighbours.
+        +/
+        auto withNeighboursSum(Iterator, size_t N, SliceKind kind)
+            (Slice!(Iterator, N, kind) slice)
+        {
+            import core.lifetime: move;
+            static if (N > 1 && kind == Contiguous)
+            {
+                return withNeighboursSum(slice.move.canonical);
+            }
+            else
+            static if (N == 1 && kind == Universal)
+            {
+                return withNeighboursSum(slice.move.flattened);
+            }
+            else
+            {
+                enum around = kind != Universal;
+                alias Z = NeighboursIterator!(Iterator, N - around, fun, around);
+
+                size_t shift;
+                foreach (dimension; Iota!N)
+                {
+                    slice._lengths[dimension] -= 2;
+                    if (sizediff_t(slice._lengths[dimension]) <= 0) // overfow
+                        slice._lengths[dimension] = 0;
+                    shift += slice._stride!dimension;
+                }                
+
+                Z z;
+                z._iterator = move(slice._iterator);
+                z._iterator += shift;
+                foreach (dimension; Iota!(N - around))
+                {
+                    z._neighbours[dimension][0] = z._iterator - slice._strides[dimension];
+                    z._neighbours[dimension][1] = z._iterator + slice._strides[dimension];
+                }
+                return Slice!(Z, N, kind)(slice._structure, move(z));
+            }
+        }
+
+        /// ditto
+        auto withNeighboursSum(S)(S[] slice)
+        {
+            return withNeighboursSum(slice.sliced);
+        }
+
+        /// ditto
+        auto withNeighboursSum(S)(S slice)
+            if (hasAsSlice!S)
+        {
+            return withNeighboursSum(slice.asSlice);
+        }
+    }
+    else alias withNeighboursSum = .withNeighboursSum!(naryFun!fun);
+}
+
+///
+@safe pure nothrow @nogc version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.algorithm.iteration: all;
+
+    auto wn = [4, 5].iota.withNeighboursSum;
+    assert(wn.all!"a[0] == a[1] * 0.25");
+    assert(wn.map!"a" == wn.map!"b * 0.25");
+}
+
+@safe pure nothrow @nogc version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    import mir.algorithm.iteration: all;
+
+    auto wn = [4, 5].iota.withNeighboursSum.universal;
+    assert(wn.all!"a[0] == a[1] * 0.25");
+    assert(wn.map!"a" == wn.map!"b * 0.25");
+}
 
 /++
 Cartesian product.
@@ -4105,8 +4308,6 @@ version(mir_test) unittest
             [231, 232],
         ]]);
 }
-
-
 
 /++
 $(LINK2 https://en.wikipedia.org/wiki/Kronecker_product,  Kronecker product).
@@ -4564,7 +4765,6 @@ version(mir_test) unittest
     assert(a.front.unpack == iota([3, 4], 0, 5).universal.transposed);
     a.popFront;
     assert(a.front.front == iota([3], 1, 20));
-
 
     //  ----------------
     // |  0  1  2  3  4 |
@@ -5355,7 +5555,6 @@ unittest
     // [0, 1, 2] -> [[0], [1], [2]]
     assert([3].iota.unsqueeze(-1) == [3, 1].iota);
     assert([3].iota.unsqueeze!(-1) == [3, 1].iota);
-
 
     assert([3].iota.universal.unsqueeze(-1) == [3, 1].iota);
     assert([3].iota.universal.unsqueeze!(-1) == [3, 1].iota);
