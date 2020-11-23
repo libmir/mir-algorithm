@@ -4113,14 +4113,20 @@ See_also:
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
 +/
-Slice!(Iterator, N, N == 1 ? Contiguous : Canonical, Labels)
+Slice!(Iterator, N, N > 1 && kind == Contiguous ? Canonical : Universal, Labels)
     dropBorders
     (Iterator, size_t N, SliceKind kind, Labels...)
     (Slice!(Iterator, N, kind, Labels) slice)
-    if (kind == Contiguous || kind == Canonical)
 {
-    import core.lifetime: move;
-    auto ret = slice.move.canonical;
+    static if (N > 1 && kind == Contiguous)
+    {
+        import core.lifetime: move;
+        auto ret = slice.move.canonical;
+    }
+    else
+    {
+        alias ret = slice;
+    }
     ret.popFrontAll;
     ret.popBackAll;
     return ret;

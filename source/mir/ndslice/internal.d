@@ -343,6 +343,21 @@ pure nothrow version(mir_test) unittest
     assert(lengthsProduct([3, 4, 5]) == 60);
 }
 
+package(mir) template strideOf(args...)
+{
+    static if (args.length == 0)
+        enum strideOf = args;
+    else
+    {
+        @optmath @property auto ref ls()()
+        {
+            import mir.ndslice.topology: stride;
+            return stride(args[0]);
+        }
+        alias strideOf = AliasSeq!(ls, strideOf!(args[1..$]));
+    }
+}
+
 package(mir) template frontOf(args...)
 {
     static if (args.length == 0)

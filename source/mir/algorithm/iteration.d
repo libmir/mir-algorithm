@@ -9,8 +9,8 @@ $(T2 all, Checks if all elements satisfy to a predicate.)
 $(T2 any, Checks if at least one element satisfy to a predicate.)
 $(T2 cmp, Compares two slices.)
 $(T2 count, Counts elements in a slices according to a predicate.)
-$(T2 each, Iterates all elements.)
-$(T2 each, Iterates all elements.)
+$(T2 each, Iterates elements.)
+$(T2 eachLower, Iterates lower triangle of matrix.)
 $(T2 eachOnBorder, Iterates elementes on tensors borders and corners.)
 $(T2 eachUploPair, Iterates upper and lower pairs of elements in square matrix.)
 $(T2 eachUpper, Iterates upper triangle of matrix.)
@@ -28,6 +28,7 @@ $(T2 minmaxPos, Finds backward indices of the minimum and the maximum.)
 $(T2 minPos, Finds backward index of the minimum.)
 $(T2 nBitsToCount, Сount bits until set bit count is reached.)
 $(T2 reduce, Accumulates all elements.)
+$(T2 Chequer, Chequer color selector to work with $(LREF each) .)
 $(T2 uniq, Iterates over the unique elements in a range or an ndslice, which is assumed sorted.)
 )
 
@@ -63,6 +64,43 @@ import mir.qualifier;
 import std.meta;
 import std.range.primitives: isInputRange, isBidirectionalRange, isInfinite, isForwardRange, ElementType;
 import std.traits;
+
+/++
+Chequer color selector to work with $(LREF each)
++/
+enum Chequer : bool
+{
+    /// Main diagonal color
+    black,
+    /// First sub-diagonal color
+    red,
+}
+
+///
+version(mir_test) unittest
+{
+    import mir.ndslice.allocation: slice;
+    auto s = [5, 4].slice!int;
+
+    Chequer.black.each!"a = 1"(s);
+    assert(s == [
+        [1, 0, 1, 0],
+        [0, 1, 0, 1],
+        [1, 0, 1, 0],
+        [0, 1, 0, 1],
+        [1, 0, 1, 0],
+    ]);
+
+    Chequer.red.each!((ref b) => b = 2)(s);
+    assert(s == [
+        [1, 2, 1, 2],
+        [2, 1, 2, 1],
+        [1, 2, 1, 2],
+        [2, 1, 2, 1],
+        [1, 2, 1, 2],
+    ]);
+
+}
 
 @optmath:
 
@@ -931,6 +969,34 @@ void eachImpl(alias fun, Slices...)(scope Slices slices)
     while(!slices[0].empty);
 }
 
+void chequerEachImpl(alias fun, Slices...)(Chequer color, scope Slices slices)
+{
+    foreach(ref slice; slices)
+        assert(!slice.empty);
+    static if (DimensionCount!(Slices[0]) == 1)
+    {
+        if (color)
+        {
+            foreach_reverse(i; Iota!(Slices.length))
+                slices[i].popFront;
+            if (slices[0].empty)
+                return;
+        }
+        eachImpl!fun(strideOf!slices);
+    }
+    else
+    {
+        do
+        {
+            .chequerEachImpl!fun(color, frontOf!slices);
+            color = cast(Chequer)!color;
+            foreach_reverse(i; Iota!(Slices.length))
+                slices[i].popFront;
+        }
+        while(!slices[0].empty);
+    }
+}
+
 /++
 The call `each!(fun)(slice1, ..., sliceN)`
 evaluates `fun` for each set of elements `x1, ..., xN` in
@@ -1046,25 +1112,43 @@ template each(alias fun)
 {
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
-    /++
-    Params:
-        slices = One or more slices, ranges, and arrays.
-    +/
-    @optmath auto each(Slices...)(scope Slices slices)
-        if (Slices.length)
     {
-        static if (Slices.length > 1)
-            slices.checkShapesMatch;
-        static if (areAllContiguousSlices!Slices)
+        /++
+        Params:
+            slices = One or more slices, ranges, and arrays.
+        +/
+        @optmath auto each(Slices...)(scope Slices slices)
+            if (Slices.length && !is(Slices[0] : Chequer))
         {
-            import mir.ndslice.topology: flattened;
-            .each!fun(allFlattened!(allLightScope!slices));
+            static if (Slices.length > 1)
+                slices.checkShapesMatch;
+            static if (areAllContiguousSlices!Slices)
+            {
+                import mir.ndslice.topology: flattened;
+                .each!fun(allFlattened!(allLightScope!slices));
+            }
+            else
+            {
+                if (slices[0].anyEmpty)
+                    return;
+                eachImpl!fun(allLightScope!slices);
+            }
         }
-        else
+
+        /++
+        Iterates elements of selected $(LREF Chequer) color.
+        Params:
+            color = $(LREF Chequer).
+            slices = One or more slices.
+        +/
+        @optmath auto each(Slices...)(Chequer color, scope Slices slices)
+            if (Slices.length && allSatisfy!(isSlice, Slices))
         {
+            static if (Slices.length > 1)
+                slices.checkShapesMatch;
             if (slices[0].anyEmpty)
                 return;
-            eachImpl!fun(allLightScope!slices);
+            chequerEachImpl!fun(color, allLightScope!slices);
         }
     }
     else
