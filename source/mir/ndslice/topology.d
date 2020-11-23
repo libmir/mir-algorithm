@@ -4113,7 +4113,7 @@ See_also:
     $(LREF assumeCanonical),
     $(LREF assumeContiguous).
 +/
-Slice!(Iterator, N, N > 1 && kind == Contiguous ? Canonical : Universal, Labels)
+Slice!(Iterator, N, N > 1 && kind == Contiguous ? Canonical : kind, Labels)
     dropBorders
     (Iterator, size_t N, SliceKind kind, Labels...)
     (Slice!(Iterator, N, kind, Labels) slice)
