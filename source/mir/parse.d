@@ -87,6 +87,7 @@ version(mir_test)
     assert("123".fromString!int == 123);
     static assert("-123".fromString!int == -123);
 
+    assert(".5".fromString!float == .5);
     assert("12.3".fromString!double == 12.3);
     assert("12.3".fromString!float == 12.3f);
     assert("12.3".fromString!real == 12.3L);
