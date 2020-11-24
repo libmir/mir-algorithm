@@ -20,7 +20,7 @@ $(T2 sliced, Creates a slice on top of an iterator, a pointer, or an array's poi
 $(T2 slicedField, Creates a slice on top of a field, a random access range, or an array.)
 $(T2 slicedNdField, Creates a slice on top of an ndField.)
 $(T2 kindOf, Extracts $(LREF SliceKind).)
-$(T2 isSlice, Extracts dimension count from a type. Extracts `null` if the template argument is not a `Slice`.)
+$(T2 isSlice, Checks if the type is `Slice` instance.)
 $(T2 Structure, A tuple of lengths and strides.)
 )
 
@@ -148,14 +148,10 @@ template toSlices(args...)
         alias toSlices = AliasSeq!();
 }
 
-///
-template isSlice(T)
-{
-    static if (is(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind))
-        enum bool isSlice = true;
-    else
-        enum bool isSlice = false;
-}
+/++
+Checks if the type is `Slice` instance.
++/
+enum isSlice(T) = is(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind);
 
 ///
 @safe pure nothrow @nogc
