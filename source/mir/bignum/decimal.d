@@ -153,6 +153,7 @@ bool parseDecimal(size_t maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize
                 t = 1;
                 if (str.length == 0)
                 {
+                M:
                     decimal.exponent -= afterDot;
                     return true;
                 }
@@ -184,7 +185,7 @@ bool parseDecimal(size_t maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize
                 {
                     if (t != 1)
                        goto L;
-                    return true;
+                    goto M;
                 }
                 break;
             default:
@@ -263,4 +264,9 @@ unittest
     assert(!"0.".parseDecimal(decimal, key));
     assert(!"00".parseDecimal(decimal, key));
     assert(!"0d".parseDecimal(decimal, key));
+
+    import mir.math.constant: PI;
+    assert("3.141592653589793378e-10".parseDecimal(decimal, key));
+    assert(cast(double) decimal.view == double(PI) / 1e10);
+    assert(key == DecimalExponentKey.e);
 }
