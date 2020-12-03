@@ -2639,8 +2639,7 @@ type or have a `cdouble` type if `F` is implicitly convertible to a complex type
 Params:
     F = controls type of output
     varianceAlgo = algorithm for calculating variance (default: VarianceAlgo.online)
-    summation: algorithm for calculating sums (default: Summation.appropriate)
-
+    summation = algorithm for calculating sums (default: Summation.appropriate)
 Returns:
     The variance of the input, must be floating point or complex type
 +/
@@ -3019,7 +3018,6 @@ Params:
     F = controls type of output
     varianceAlgo = algorithm for calculating variance (default: VarianceAlgo.online)
     summation = algorithm for calculating sums (default: Summation.appropriate)
-
 Returns:
     The standard deviation of the input, must be floating point type type
 +/
