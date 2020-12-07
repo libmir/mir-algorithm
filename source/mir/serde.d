@@ -1,3 +1,14 @@
+/++
+This implements common de/serialization routines.
+
+License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilya Yaroshenko
+
+Macros:
+T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
+T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
++/
 module mir.serde;
 
 import mir.functional: naryFun;
@@ -586,6 +597,35 @@ bool serdeParseEnum(E)(const char[] str, ref E res)
 }
 
 ///
+version(mir_test)
+unittest
+{
+    enum E
+    {
+        @serdeKeys("A", "alpha")
+        a,
+        @serdeKeys("B", "beta")
+        b,
+        c,
+    }
+
+    auto e = E.c;
+    assert(serdeParseEnum("A", e));
+    assert(e == E.a);
+    assert(serdeParseEnum("alpha", e));
+    assert(e == E.a);
+    assert(serdeParseEnum("beta", e));
+    assert(e == E.b);
+    assert(serdeParseEnum("B", e));
+    assert(e == E.b);
+    assert(serdeParseEnum("c", e));
+    assert(e == E.c);
+
+    assert(!serdeParseEnum("C", e));
+    assert(!serdeParseEnum("Alpha", e));
+}
+
+/// Case insensitive
 version(mir_test)
 unittest
 {

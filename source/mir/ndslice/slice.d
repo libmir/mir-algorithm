@@ -4054,3 +4054,12 @@ unittest
         assert(x.accessFlat(i) == m[i, 0]);
     }
 }
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest // check it can be compiled
+{
+    import mir.algebraic;
+    alias S = Slice!(double*, 2);
+    alias D = Variant!S;
+}
