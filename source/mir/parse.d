@@ -92,6 +92,7 @@ version(mir_test)
     assert("12.3".fromString!float == 12.3f);
     assert("12.3".fromString!real == 12.3L);
     assert("-12.3e-30".fromString!double == -12.3e-30);
+    assert("2.9802322387695312E-8".fromString!double == 2.9802322387695312E-8);
 
     /// Test CTFE support  
     static assert("-12.3e-30".fromString!double == -0x1.f2f280b2414d5p-97);
@@ -131,7 +132,14 @@ bool fromString(T, C)(scope const(C)[] str, ref T value)
         DecimalExponentKey key;
         auto ret = parseDecimal(str, decimal, key);
         if (_expect(ret, true))
-            value =  cast(T) decimal;
+        {
+            switch(key) with(DecimalExponentKey)
+            {
+                case nan: value = decimal.coefficient.sign ? -T.nan : T.nan; break;
+                case infinity: value = decimal.coefficient.sign ? -T.infinity : T.infinity; break;
+                default: value =  cast(T) decimal; break;
+            }
+        }
         return ret;
     }
     else
