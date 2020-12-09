@@ -40,8 +40,7 @@ struct Decimal(size_t maxSize64)
     }
 
     /++
-    Mir parsing supports up-to quadruple precision.
-The conversion error is 0 ULP for normal numbers. 
+    Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
