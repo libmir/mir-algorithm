@@ -64,26 +64,26 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
 int generic_to_chars(const FloatingDecimal128 v, char* result);
 
 // Returns e == 0 ? 1 : ceil(log_2(5^e)); requires 0 <= e <= 32768.
-pragma(inline, true)
 uint pow5bits(const int e)
 {
+    version(LDC) pragma(inline, true);
     assert(e >= 0);
     assert(e <= 1 << 15);
     return cast(uint) (((e * 163391164108059UL) >> 46) + 1);
 }
 
-pragma(inline, true)
 void mul_128_256_shift(const UInt!128 a, const UInt!256 b, const uint shift, const uint corr, ref UInt!256 result)
 {
+    version(LDC) pragma(inline, true);
     assert(shift > 0);
     assert(shift < 256);
     result = (extendedMul(a, b) >> shift).toSize!256 + corr;
 }
 
 // Computes 5^i in the form required by Ryu, and stores it in the given pointer.
-pragma(inline, true)
 void generic_computePow5(const uint i, ref UInt!256 result)
 {
+    version(LDC) pragma(inline, true);
     const uint base = i / POW5_TABLE_SIZE;
     const uint base2 = base * POW5_TABLE_SIZE;
     const mul = UInt!256(GENERIC_POW5_SPLIT[base]);
@@ -128,9 +128,9 @@ version(all) unittest
 }
 
 // Computes 5^-i in the form required by Ryu, and stores it in the given pointer.
-pragma(inline, true)
 void generic_computeInvPow5(const uint i, ref UInt!256 result)
 {
+    version(LDC) pragma(inline, true);
     const uint base = (i + POW5_TABLE_SIZE - 1) / POW5_TABLE_SIZE;
     const uint base2 = base * POW5_TABLE_SIZE;
     const mul = UInt!256(GENERIC_POW5_INV_SPLIT[base]); // 1/5^base2
@@ -211,9 +211,9 @@ UInt!128 div10(UInt!128 value)
 }
 
 // Returns true if value is divisible by 5^p.
-pragma(inline, true)
 bool multipleOfPowerOf5(UInt!128 value, const uint p)
 {
+    version(LDC) pragma(inline, true);
     // I tried a case distinction on p, but there was no performance difference.
     for (uint count = 0; value > 0; ++count)
         if (divRem5(value))
@@ -234,9 +234,9 @@ version(all) unittest
 }
 
 // Returns true if value is divisible by 2^p.
-pragma(inline, true)
 bool multipleOfPowerOf2(const UInt!128 value, const uint p)
 {
+    version(LDC) pragma(inline, true);
     return (value & ((UInt!128(1) << p) - 1)) == 0;
 }
 
@@ -252,9 +252,9 @@ version(all) unittest
     assert(multipleOfPowerOf2(UInt!128(8), 4) == false);
 }
 
-pragma(inline, true)
 UInt!128 mulShift(const UInt!128 m, const UInt!256 mul, const uint j)
 {
+    version(LDC) pragma(inline, true);
     assert(j > 128);
     return (extendedMulHigh(m, mul) >> (j - 128)).toSize!128;
 }
@@ -273,9 +273,9 @@ version(all) unittest
     assert(mulShift(f, m, 131) == f);
 }
 
-pragma(inline, true)
 uint decimalLength(const UInt!128 v)
 {
+    version(LDC) pragma(inline, true);
     enum UInt!128 LARGEST_POW10 = (UInt!128(5421010862427522170UL) << 64) | 687399551400673280UL;
     UInt!128 p10 = LARGEST_POW10;
     for (uint i = 39; i > 0; i--)
@@ -302,9 +302,9 @@ version(all) unittest
 }
 
 // Returns floor(log_10(2^e)).
-pragma(inline, true)
 uint log10Pow2(const int e)
 {
+    version(LDC) pragma(inline, true);
     // The first value this approximation fails for is 2^1651 which is just greater than 10^297.
     assert(e >= 0);
     assert(e <= 1 << 15);
@@ -319,9 +319,9 @@ version(all) unittest
 }
 
 // Returns floor(log_10(5^e)).
-pragma(inline, true)
 uint log10Pow5(const int e)
 {
+    version(LDC) pragma(inline, true);
     // The first value this approximation fails for is 5^2621 which is just greater than 10^1832.
     assert(e >= 0);
     assert(e <= 1 << 15);
@@ -565,17 +565,20 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
 
     // Step 4: Find the shortest decimal representation in the interval of legal representations.
     uint removed = 0;
-    ubyte lastRemovedDigit = 0;
+    uint lastRemovedDigit = 0;
     UInt!128 output;
 
-    while (div10(vp) > div10(vm))
+    for (;;)
     {
-        vmIsTrailingZeros &= vm.rem10 == 0;
+        auto div10vp = div10(vp);
+        auto div10vm = div10(vm);
+        if (div10vp <= div10vm)
+            break;
+        vmIsTrailingZeros &= vm - div10vm * 10 == 0;
         vrIsTrailingZeros &= lastRemovedDigit == 0;
-        lastRemovedDigit = cast(ubyte) (vr.rem10);
-        vr.divRem10;
-        vp.divRem10;
-        vm.divRem10;
+        lastRemovedDigit = vr.divRem10;
+        vp = div10vp;
+        vm = div10vm;
         ++removed;
     }
     debug(ryu) if (!__ctfe)
@@ -586,13 +589,15 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
     }
     if (vmIsTrailingZeros)
     {
-        while (vm.rem10 == 0)
+        for (;;)
         {
+            auto div10vm = div10(vm);
+            if (vm - div10vm * 10)
+                break;
             vrIsTrailingZeros &= lastRemovedDigit == 0;
-            lastRemovedDigit = cast(ubyte) (vr.rem10);
-            vr.divRem10;
-            vp.divRem10;
-            vm.divRem10;
+            lastRemovedDigit = vr.divRem10;
+            vm = div10vm;
+            vp = div10(vp);
             ++removed;
         }
     }
@@ -608,12 +613,8 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
         lastRemovedDigit = 4;
     }
     // We need to take vr+1 if vr is outside bounds or we need to round up.
-    output = vr +
-            ((vr == vm && (!acceptBounds || !vmIsTrailingZeros)) || (lastRemovedDigit >= 5));
+    output = vr + ((vr == vm && (!acceptBounds || !vmIsTrailingZeros)) || (lastRemovedDigit >= 5));
 
-    //   // We need to take vr+1 if vr is outside bounds or we need to round up.
-    //   output = vr +
-    //       ((vr == vm && (!acceptBounds || !vmIsTrailingZeros)) || (lastRemovedDigit >= 5));
     const int exp = e10 + removed;
 
     debug(ryu) if (!__ctfe)
@@ -634,9 +635,9 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
     return fd;
 }
 
-pragma(inline, true)
 int copy_special_str(char* result, const FloatingDecimal128 fd)
 {
+    version(LDC) pragma(inline, true);
     if (fd.sign)
     {
         result[0] = '-';
@@ -674,11 +675,11 @@ int generic_to_chars(const FloatingDecimal128 v, char* result)
 
     for (uint i = 0; i < olength - 1; ++i)
     {
-        const uint c = cast(uint) (output.rem10);
-        output.divRem10;
+        const uint c = output.divRem10;
         result[index + olength - i] = cast(char) ('0' + c);
     }
-    result[index] = cast(char)('0' + output.rem10); // output should be < 10 by now.
+    result[index] = cast(char)('0' + output.divRem10); // output should be < 10 by now.
+    assert(output == 0);
 
     // Print decimal point if needed.
     if (olength > 1)
