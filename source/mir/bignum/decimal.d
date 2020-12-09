@@ -53,7 +53,7 @@ struct Decimal(size_t maxSize64)
         }
         else
         {
-            static immutable exception = new Exception("Can't parse Decimal.");
+            static immutable exception = new Exception("Can't parse Decimal!" ~ (cast(int)maxSize64).stringof ~ ".");
             throw exception;
         }
     }
@@ -157,7 +157,6 @@ bool parseDecimal(size_t maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize
 
     for(;;)
     {
-        import std.stdio;
         enum mp10 = size_t(10) ^^ MaxWordPow10!size_t;
         d = str[0] - '0';
         str = str[1 .. $];
