@@ -39,23 +39,13 @@ struct Decimal(size_t maxSize64)
         return typeof(return)(coefficient.sign, exponent, coefficient.view.unsigned);
     }
 
-    /++
-    Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
-    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
-        if (isFloatingPoint!T && isMutable!T)
-    {
-        return view.opCast!(T, wordNormalized, nonZero);
-    }
-
     ///
-    static Decimal fromString(C)(scope const(C)[] str) @safe pure @nogc
+    this(C)(scope const(C)[] str) @safe pure @nogc
         if (isSomeChar!C)
     {
-        Decimal ret;
         DecimalExponentKey key;
-        if (parseDecimal(str, ret, key))
-            return ret;
+        if (parseDecimal(str, this, key) || key == DecimalExponentKey.nan || key == DecimalExponentKey.infinity)
+            return;
         static if (__traits(compiles, () @nogc { throw new Exception("Can't parse Decimal."); }))
         {
             import mir.exception: MirException;
@@ -73,8 +63,17 @@ struct Decimal(size_t maxSize64)
     version(mir_test) @safe pure @nogc unittest
     {
         import mir.math.constant: PI;
-        auto decimal = Decimal!2.fromString("3.141592653589793378e-40");
+        Decimal!2 decimal = "3.141592653589793378e-40"; // constructor
         assert(cast(double) decimal.view == double(PI) / 1e40);
+    }
+
+    /++
+    Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
+    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
+    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
+        if (isFloatingPoint!T && isMutable!T)
+    {
+        return view.opCast!(T, wordNormalized, nonZero);
     }
 }
 
