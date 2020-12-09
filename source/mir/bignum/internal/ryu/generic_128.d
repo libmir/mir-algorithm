@@ -73,83 +73,28 @@ uint pow5bits(const int e)
 }
 
 pragma(inline, true)
-void mul_128_256_shift(const ulong[2] a, const ulong[4] b, const uint shift, const uint corr, ref ulong[4] result)
+void mul_128_256_shift(const UInt!128 a, const UInt!256 b, const uint shift, const uint corr, ref UInt!256 result)
 {
     assert(shift > 0);
     assert(shift < 256);
-    const UInt!128 b00 =  extendedMul(a[0], b[0]); // 0
-    const UInt!128 b01 =  extendedMul(a[0], b[1]); // 64
-    const UInt!128 b02 =  extendedMul(a[0], b[2]); // 128
-    const UInt!128 b03 =  extendedMul(a[0], b[3]); // 196
-    const UInt!128 b10 =  extendedMul(a[1], b[0]); // 64
-    const UInt!128 b11 =  extendedMul(a[1], b[1]); // 128
-    const UInt!128 b12 =  extendedMul(a[1], b[2]); // 196
-    const UInt!128 b13 =  extendedMul(a[1], b[3]); // 256
-
-    const UInt!128 s0 = b00;       // 0   x
-    const UInt!128 s1 = b01 + b10; // 64  x
-    const UInt!128 c1 = s1 < b01;  // 196 x
-    const UInt!128 s2 = b02 + b11; // 128 x
-    const UInt!128 c2 = s2 < b02;  // 256 x
-    const UInt!128 s3 = b03 + b12; // 196 x
-    const UInt!128 c3 = s3 < b03;  // 324 x
-
-    const UInt!128 p0 = s0 + (s1 << 64);                                // 0
-    const UInt!128 d0 = p0 < b00;                                       // 128
-    const UInt!128 q1 = s2 + (s1 >> 64) + (s3 << 64);                   // 128
-    const UInt!128 d1 = q1 < s2;                                        // 256
-    const UInt!128 p1 = q1 + (c1 << 64) + d0;                           // 128
-    const UInt!128 d2 = p1 < q1;                                        // 256
-    const UInt!128 p2 = b13 + (s3 >> 64) + c2 + (c3 << 64) + d1 + d2;   // 256
-
-    if (shift < 128)
-    {
-        const UInt!128 r0 = corr + ((p0 >> shift) | (p1 << (128 - shift)));
-        const UInt!128 r1 = ((p1 >> shift) | (p2 << (128 - shift))) + (r0 < corr);
-        result[0] = cast(ulong) r0;
-        result[1] = cast(ulong) (r0 >> 64);
-        result[2] = cast(ulong) r1;
-        result[3] = cast(ulong) (r1 >> 64);
-    }
-    else
-    if (shift == 128)
-    {
-        const UInt!128 r0 = corr + p1;
-        const UInt!128 r1 = p2 + (r0 < corr);
-        result[0] = cast(ulong) r0;
-        result[1] = cast(ulong) (r0 >> 64);
-        result[2] = cast(ulong) r1;
-        result[3] = cast(ulong) (r1 >> 64);
-    }
-    else
-    {
-        const UInt!128 r0 = corr + ((p1 >> (shift - 128)) | (p2 << (256 - shift)));
-        const UInt!128 r1 = (p2 >> (shift - 128)) + (r0 < corr);
-        result[0] = cast(ulong) r0;
-        result[1] = cast(ulong) (r0 >> 64);
-        result[2] = cast(ulong) r1;
-        result[3] = cast(ulong) (r1 >> 64);
-    }
+    result = (extendedMul(a, b) >> shift).toSize!256 + corr;
 }
 
 // Computes 5^i in the form required by Ryu, and stores it in the given pointer.
 pragma(inline, true)
-void generic_computePow5(const uint i, ref ulong[4] result)
+void generic_computePow5(const uint i, ref UInt!256 result)
 {
     const uint base = i / POW5_TABLE_SIZE;
     const uint base2 = base * POW5_TABLE_SIZE;
-    const ulong[4] mul = GENERIC_POW5_SPLIT[base];
+    const mul = UInt!256(GENERIC_POW5_SPLIT[base]);
     if (i == base2)
     {
-        result[0] = mul[0];
-        result[1] = mul[1];
-        result[2] = mul[2];
-        result[3] = mul[3];
+        result = mul;
     }
     else
     {
         const uint offset = i - base2;
-        const ulong[2] m = GENERIC_POW5_TABLE[offset];
+        const m = UInt!128(GENERIC_POW5_TABLE[offset]);
         const uint delta = pow5bits(i) - pow5bits(base2);
         const uint corr = cast(uint) ((POW5_ERRORS[i / 32] >> (2 * (i % 32))) & 3);
         mul_128_256_shift(m, mul, delta, corr, result);
@@ -176,33 +121,27 @@ version(all) unittest
 
     for (int i = 0; i < 10; i++)
     {
-        ulong[4] result;
+        UInt!256 result;
         generic_computePow5(EXACT_POW5_IDS[i], result);
-        assert(EXACT_POW5[i][0] == result[0]);
-        assert(EXACT_POW5[i][1] == result[1]);
-        assert(EXACT_POW5[i][2] == result[2]);
-        assert(EXACT_POW5[i][3] == result[3]);
+        assert(UInt!256(EXACT_POW5[i]) == result);
     }
 }
 
 // Computes 5^-i in the form required by Ryu, and stores it in the given pointer.
 pragma(inline, true)
-void generic_computeInvPow5(const uint i, ref ulong[4] result)
+void generic_computeInvPow5(const uint i, ref UInt!256 result)
 {
     const uint base = (i + POW5_TABLE_SIZE - 1) / POW5_TABLE_SIZE;
     const uint base2 = base * POW5_TABLE_SIZE;
-    const ulong[4] mul = GENERIC_POW5_INV_SPLIT[base]; // 1/5^base2
+    const mul = UInt!256(GENERIC_POW5_INV_SPLIT[base]); // 1/5^base2
     if (i == base2)
     {
-        result[0] = mul[0] + 1;
-        result[1] = mul[1];
-        result[2] = mul[2];
-        result[3] = mul[3];
+        result = mul + 1;
     }
     else
     {
         const uint offset = base2 - i;
-        const ulong[2] m = GENERIC_POW5_TABLE[offset]; // 5^offset
+        const m = UInt!128(GENERIC_POW5_TABLE[offset]); // 5^offset
         const uint delta = pow5bits(base2) - pow5bits(i);
         const uint corr = cast(uint) ((POW5_INV_ERRORS[i / 32] >> (2 * (i % 32))) & 3) + 1;
         mul_128_256_shift(m, mul, delta, corr, result);
@@ -227,17 +166,13 @@ version(all) unittest
 
     for (int i = 0; i < 9; i++)
     {
-        ulong[4] result;
+        UInt!256 result;
         generic_computeInvPow5(EXACT_INV_POW5_IDS[i], result);
-        assert(EXACT_INV_POW5[i][0] == result[0]);
-        assert(EXACT_INV_POW5[i][1] == result[1]);
-        assert(EXACT_INV_POW5[i][2] == result[2]);
-        assert(EXACT_INV_POW5[i][3] == result[3]);
+        assert(UInt!256(EXACT_INV_POW5[i]) == result);
     }
 }
 
 enum fiveReciprocal = UInt!128([0xCCCCCCCCCCCCCCCD, 0xCCCCCCCCCCCCCCCC]);
-
 
 uint divRem5(ref UInt!128 value)
 {
@@ -318,27 +253,22 @@ version(all) unittest
 }
 
 pragma(inline, true)
-UInt!128 mulShift(const UInt!128 m, const ulong[4] mul, const int j)
+UInt!128 mulShift(const UInt!128 m, const UInt!256 mul, const uint j)
 {
     assert(j > 128);
-    ulong[2] a;
-    a[0] = cast(ulong) m;
-    a[1] = cast(ulong) (m >> 64);
-    ulong[4] result;
-    mul_128_256_shift(a, mul, j, 0, result);
-    return (UInt!128(result[1]) << 64) | result[0];
+    return (extendedMulHigh(m, mul) >> (j - 128)).toSize!128;
 }
 
 version(all) unittest
 {
-    ulong[4] m = [0, 0, 2, 0];
+    UInt!256 m = [0, 0, 2, 0];
     assert(mulShift(UInt!128(1), m, 129) == 1u);
     assert(mulShift(UInt!128(12345), m, 129) == 12345u);
 }
 
 version(all) unittest
 {
-    ulong[4] m = [0, 0, 8, 0];
+    UInt!256 m = [0, 0, 8, 0];
     UInt!128 f = (UInt!128(123) << 64) | 321;
     assert(mulShift(f, m, 131) == f);
 }
@@ -439,7 +369,7 @@ FloatingDecimal128 real_to_fd128(real d)
 {
     UInt!128 bits = 0;
     memcpy(&bits, &d, real.sizeof);
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         // For some odd reason, this ends up with noise in the top 48 bits. We can
         // clear out those bits with the following line; this is not required, the
@@ -452,7 +382,7 @@ FloatingDecimal128 real_to_fd128(real d)
 
 FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint mantissaBits, const uint exponentBits, const bool explicitLeadingBit)
 {
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         printf("IN=");
         for (int bit = 127; bit >= 0; --bit)
@@ -516,7 +446,7 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
     const bool even = (m2 & 1) == 0;
     const bool acceptBounds = even;
 
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         printf("-> %s %s * 2^%d\n", (ieeeSign ? "-" : "+").ptr, s(m2), e2 + 2);
     }
@@ -541,12 +471,12 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
         e10 = q;
         const int k = FLOAT_128_POW5_INV_BITCOUNT + pow5bits(q) - 1;
         const int i = -e2 + q + k;
-        ulong[4] pow5;
+        UInt!256 pow5;
         generic_computeInvPow5(q, pow5);
         vr = mulShift(mv, pow5, i);
         vp = mulShift(mv + 2, pow5, i);
         vm = mulShift(mv - 1 - mmShift, pow5, i);
-        debug(ryu)
+        debug(ryu) if (!__ctfe)
         {
             printf("%s * 2^%d / 10^%d\n", s(mv), e2, q);
             printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
@@ -582,12 +512,12 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
         const int i = -e2 - q;
         const int k = pow5bits(i) - FLOAT_128_POW5_BITCOUNT;
         const int j = q - k;
-        ulong[4] pow5;
+        UInt!256 pow5;
         generic_computePow5(i, pow5);
         vr = mulShift(mv, pow5, j);
         vp = mulShift(mv + 2, pow5, j);
         vm = mulShift(mv - 1 - mmShift, pow5, j);
-        debug(ryu)
+        debug(ryu) if (!__ctfe)
         {
             printf("%s * 5^%d / 10^%d\n", s(mv), -e2, q);
             printf("%d %d %d %d\n", q, i, k, j);
@@ -619,13 +549,13 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
             // <=> (mv & ((1 << (q-1)) - 1)) == 0
             // We also need to make sure that the left shift does not overflow.
             vrIsTrailingZeros = multipleOfPowerOf2(mv, q - 1);
-            debug(ryu)
+            debug(ryu) if (!__ctfe)
             {
                 printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
             }
         }
     }
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         printf("e10=%d\n", e10);
         printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
@@ -648,7 +578,7 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
         vm.divRem10;
         ++removed;
     }
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
         printf("d-10=%s\n", (vmIsTrailingZeros ? "true" : "false").ptr);
@@ -666,7 +596,7 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
             ++removed;
         }
     }
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         printf("%s %d\n", s(vr), lastRemovedDigit);
         printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
@@ -686,7 +616,7 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
     //       ((vr == vm && (!acceptBounds || !vmIsTrailingZeros)) || (lastRemovedDigit >= 5));
     const int exp = e10 + removed;
 
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
         printf("acceptBounds=%d\n", acceptBounds);
@@ -735,7 +665,7 @@ int generic_to_chars(const FloatingDecimal128 v, char* result)
     UInt!128 output = v.mantissa;
     const uint olength = decimalLength(output);
 
-    debug(ryu)
+    debug(ryu) if (!__ctfe)
     {
         printf("DIGITS=%s\n", s(v.mantissa));
         printf("OLEN=%u\n", olength);

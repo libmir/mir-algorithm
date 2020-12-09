@@ -24,7 +24,7 @@ struct UInt(size_t size)
     size_t[size / (size_t.sizeof * 8)] data;
 
     ///
-    this(size_t N)(auto ref size_t[N] data)
+    this(size_t N)(auto ref const size_t[N] data)
         if (N <= this.data.length)
     {
         version(LittleEndian)
@@ -34,7 +34,7 @@ struct UInt(size_t size)
     }
 
     static if (size_t.sizeof == uint.sizeof && data.length % 2 == 0)
-    this()(auto ref ulong[data.length / 2] data)
+    this()(auto ref const ulong[data.length / 2] data)
     {
         if (!__ctfe)
         {
