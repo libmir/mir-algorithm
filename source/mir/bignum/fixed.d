@@ -85,6 +85,45 @@ struct UInt(size_t size)
     }
 
     ///
+    this(C)(scope const(C)[] str) @safe pure @nogc
+        if (isSomeChar!C)
+    {
+        if (fromStringImpl(str))
+            return;
+        static if (__traits(compiles, () @nogc { throw new Exception("Can't parse UInt."); }))
+        {
+            import mir.exception: MirException;
+            throw new MirException("Can't parse UInt!" ~ size.stringof ~ " from string `", str , "`.");
+        }
+        else
+        {
+            static immutable exception = new Exception("Can't parse UInt!" ~ size.stringof ~ ".");
+            throw exception;
+        }
+    }
+
+    static if (size == 128)
+    ///
+    version(mir_test) @safe pure @nogc unittest
+    {
+        import mir.math.constant: PI;
+        UInt!256 integer = "34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
+        assert(integer == UInt!256.fromHexString("4b313b23aa560e1b0985f89cbe6df5460860e39a64ba92b4abdd3ee77e4e05b8"));
+    }
+
+    /++
+    Returns: false in case of overflow or incorrect string.
+    Precondition: non-empty coefficients.
+    +/
+    bool fromStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        import mir.bignum.low_level_view: BigUIntView;
+        return BigUIntView!size_t(data[]).fromStringImpl(str);
+    }
+
+    ///
     enum UInt!size max = ((){UInt!size ret; ret.data = size_t.max; return ret;})();
 
     ///
@@ -190,6 +229,25 @@ struct UInt(size_t size)
         @safe pure nothrow @nogc
     {
         return view.opOpAssign!op(rhs, carry);
+    }
+
+    /++
+    Performs `uint remainder = (overflow$big) /= scalar` operatrion, where `$` denotes big-endian concatenation.
+    Precondition: `overflow < rhs`
+    Params:
+        rhs = unsigned value to devide by
+        overflow = initial unsigned overflow
+    Returns:
+        unsigned remainder value (evaluated overflow)
+    +/
+    uint opOpAssign(string op : "/")(uint rhs, uint overflow = 0)
+        @safe pure nothrow @nogc
+    {
+        assert(overflow < rhs);
+        auto work = view.normalized;
+        if (worl.coefficients.length)
+            return work.opOpAssign!op(rhs, overflow);
+        return overflow;
     }
 
     ///

@@ -558,6 +558,87 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (isMutable!W && W.sizeof >= 4)
     /++
+    Returns: false in case of overflow or incorrect string.
+    Precondition: non-empty coefficients
+    Note: doesn't support signs.
+    +/
+    bool fromStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        import mir.utility: _expect;
+
+        assert(coefficients.length);
+
+        if (_expect(str.length == 0, false))
+            return false;
+
+        leastSignificant = 0;
+        auto work = topLeastSignificantPart(1);
+
+        uint d = str[0] - '0';
+        str = str[1 .. $];
+
+        W v;
+        W t = 1;
+
+        if (d == 0)
+        {
+            if (str.length == 0)
+                return true;
+            if (str[0] == '0')
+                return false;
+            goto S;
+        }
+        else
+        if (d < 10)
+        {
+            goto S;
+        }
+        else
+            return false;
+
+        for(;;)
+        {
+            enum mp10 = W(10) ^^ MaxWordPow10!W;
+            d = str[0] - '0';
+            str = str[1 .. $];
+            if (_expect(d > 10, false))
+                break;
+            v *= 10;
+    S:
+            t *= 10;
+            v += d;
+
+            if (_expect(t == mp10 || str.length == 0, false))
+            {
+            L:
+                if (auto overflow = work.opOpAssign!"*"(t, v))
+                {
+                    if (_expect(work.coefficients.length < coefficients.length, true))
+                    {
+                        work = topLeastSignificantPart(work.coefficients.length + 1);
+                        work.mostSignificant = overflow;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                v = 0;
+                t = 1;
+                if (str.length == 0)
+                {
+                    this = work;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static if (isMutable!W && W.sizeof >= 4)
+    /++
     Performs `bool overflow = big +(-)= big` operatrion.
     Params:
         rhs = value to add with non-empty coefficients
@@ -665,6 +746,45 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         }
         while (ns.length);
         return overflow;
+    }
+
+    static if (isMutable!W && W.sizeof >= 4)
+    /++
+    Performs `uint remainder = (overflow$big) /= scalar` operatrion, where `$` denotes big-endian concatenation.
+    Precondition: non-empty coefficients, `overflow < rhs`
+    Params:
+        rhs = unsigned value to devide by
+        overflow = initial unsigned overflow
+    Returns:
+        unsigned remainder value (evaluated overflow)
+    +/
+    uint opOpAssign(string op : "/")(uint rhs, uint overflow = 0)
+        @safe pure nothrow @nogc
+    {
+        assert(overflow < rhs);
+        assert(coefficients.length);
+        static if (W.sizeof == 4)
+        {
+            auto ns = this.mostSignificantFirst;
+            do
+            {
+                auto ext = (ulong(overflow) << 32) ^ ns.front;
+                ns.front = cast(uint)(ext / rhs);
+                overflow = ext % rhs;
+                ns.popFront;
+            }
+            while (ns.length);
+            if (mostSignificant == 0)
+                popMostSignificant;
+            return overflow;
+        }
+        else
+        {
+            auto work = opCast!(BigUIntView!uint);
+            auto remainder = work.opOpAssign!op(rhs, overflow);
+            coefficients = coefficients[0 .. work.coefficients.length / 2 + work.coefficients.length % 2];
+            return remainder;
+        }
     }
 
     static if (isMutable!W && W.sizeof == size_t.sizeof)
@@ -1074,6 +1194,34 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     {
         this.unsigned = unsigned;
         this.sign = sign;
+    }
+
+    static if (isMutable!W && W.sizeof >= 4)
+    /++
+    Returns: false in case of overflow or incorrect string.
+    Precondition: non-empty coefficients.
+    +/
+    bool fromStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        import mir.utility: _expect;
+
+        if (_expect(str.length == 0, false))
+            return false;
+
+        if (str[0] == '-')
+        {
+            sign = true;
+            str = str[1 .. $];
+        }
+        else
+        if (_expect(str[0] == '+', false))
+        {
+            str = str[1 .. $];
+        }
+
+        return unsigned.fromStringImpl(str);
     }
 
     ///
@@ -1620,10 +1768,30 @@ unittest
     assert(accumulator.view == BigUIntView!uint.fromHexString("81704fcef32d3bd8117effd5c4389285b05d000000000000000"));
 }
 
+///
+enum DecimalExponentKey
+{
+    ///
+    none = 0,
+    ///
+    dot = '.' - '0',
+    ///
+    d = 'd' - '0',
+    ///
+    e = 'e' - '0',
+    ///
+    D = 'D' - '0',
+    ///
+    E = 'E' - '0',
+    ///
+    infinity,
+    ///
+    nan,
+}
 
 /++
 +/
-struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
+struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
     if (isUnsigned!W)
 {
     ///
@@ -1632,6 +1800,165 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = int)
     Exp exponent;
     ///
     BigUIntView!(W, endian) coefficient;
+
+    static if (isMutable!W && W.sizeof >= 4)
+    /++
+    Returns: false in case of overflow or incorrect string.
+    Precondition: non-empty coefficients
+    Note: doesn't support signs.
+    +/
+    bool fromStringImpl(C)(scope const(C)[] str, out DecimalExponentKey key)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        pragma(inline, false);
+        import mir.utility: _expect;
+
+        assert(coefficient.coefficients.length);
+
+        coefficient.leastSignificant = 0;
+        auto work = coefficient.topLeastSignificantPart(1);
+
+        if (_expect(str.length == 0, false))
+            return false;
+
+        if (str[0] == '-')
+        {
+            sign = true;
+            str = str[1 .. $];
+            if (_expect(str.length == 0, false))
+                return false;
+        }
+        else
+        if (_expect(str[0] == '+', false))
+        {
+            str = str[1 .. $];
+            if (_expect(str.length == 0, false))
+                return false;
+        }
+
+        uint d = str[0] - '0';
+        str = str[1 .. $];
+
+        W v;
+        W t = 1;
+        uint afterDot;
+        bool dot;
+        bool hasExponent;
+
+        if (d == 0)
+        {
+            if (str.length == 0)
+                return true;
+            if (str[0] == '0')
+                return false;
+            goto S;
+        }
+        else
+        if (d < 10)
+        {
+            goto S;
+        }
+        else
+        if (d == '.' - '0')
+        {
+            goto D;
+        }
+        else
+        {
+            coefficient = coefficient.init;
+            if (str.length == 2)
+            {
+                if ((d == 'i' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"nf"))
+                {
+                    key = DecimalExponentKey.infinity;
+                    return true;
+                }
+                if ((d == 'n' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"an"))
+                {
+                    key = DecimalExponentKey.nan;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        for(;;)
+        {
+            enum mp10 = W(10) ^^ MaxWordPow10!W;
+            d = str[0] - '0';
+            str = str[1 .. $];
+
+            if (_expect(d <= 10, true))
+            {
+                v *= 10;
+        S:
+                t *= 10;
+                v += d;
+                afterDot += dot;
+
+                if (_expect(t == mp10 || str.length == 0, false))
+                {
+                L:
+                    if (auto overflow = work.opOpAssign!"*"(t, v))
+                    {
+                        if (_expect(work.coefficients.length < coefficient.coefficients.length, true))
+                        {
+                            work = coefficient.topLeastSignificantPart(work.coefficients.length + 1);
+                            work.mostSignificant = overflow;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+
+                    v = 0;
+                    t = 1;
+                    if (str.length == 0)
+                    {
+                    M:
+                        exponent -= afterDot;
+                        coefficient = work;
+                        return true;
+                    }
+                }
+
+                continue;
+            }
+            else
+            if (key != d) switch (d)
+            {
+                D:
+                case DecimalExponentKey.dot:
+                    key = cast(DecimalExponentKey)d;
+                    if (_expect(!dot, true))
+                    {
+                        dot = true;
+                        if (str.length)
+                            continue;
+                    }
+                    break;
+                case DecimalExponentKey.e:
+                case DecimalExponentKey.d:
+                case DecimalExponentKey.E:
+                case DecimalExponentKey.D:
+                    key = cast(DecimalExponentKey)d;
+                    hasExponent = true;
+                    import mir.parse: parse;
+                    if (parse(str, exponent) && str.length == 0)
+                    {
+                        if (t != 1)
+                            goto L;
+                        goto M;
+                    }
+                    break;
+                default:
+            }
+            break;
+        }
+        return false;
+    }
 
     ///
     DecimalView!(const W, endian, Exp) lightConst()()

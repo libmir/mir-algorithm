@@ -125,12 +125,12 @@ bool fromString(T, C)(scope const(C)[] str, ref T value)
 {
     static if (isFloatingPoint!T)
     {
-        import mir.bignum.decimal: Decimal, DecimalExponentKey, parseDecimal;
+        import mir.bignum.decimal: Decimal, DecimalExponentKey;
         import mir.utility: _expect;
 
         Decimal!256 decimal;
         DecimalExponentKey key;
-        auto ret = parseDecimal(str, decimal, key);
+        auto ret = decimal.fromStringImpl(str, key);
         if (_expect(ret, true))
         {
             switch(key) with(DecimalExponentKey)

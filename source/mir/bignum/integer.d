@@ -70,16 +70,16 @@ struct BigInt(size_t maxSize64)
     this(C)(scope const(C)[] str) @safe pure @nogc
         if (isSomeChar!C)
     {
-        if (parseBigInt(str, this))
+        if (fromStringImpl(str))
             return;
         static if (__traits(compiles, () @nogc { throw new Exception("Can't parse BigInt."); }))
         {
             import mir.exception: MirException;
-            throw new MirException("Can't parse BigInt!" ~ (cast(int)maxSize64).stringof ~ " from string `", str , "`.");
+            throw new MirException("Can't parse BigInt!" ~ maxSize64.stringof ~ " from string `", str , "`.");
         }
         else
         {
-            static immutable exception = new Exception("Can't parse BigInt!" ~ (cast(int)maxSize64).stringof ~ ".");
+            static immutable exception = new Exception("Can't parse BigInt!" ~ maxSize64.stringof ~ ".");
             throw exception;
         }
     }
@@ -89,8 +89,28 @@ struct BigInt(size_t maxSize64)
     version(mir_test) @safe pure @nogc unittest
     {
         import mir.math.constant: PI;
-        BigInt!4 integer = "34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
+        BigInt!4 integer = "-34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
+        assert(integer.sign);
+        integer.sign = false;
         assert(integer == BigInt!4.fromHexString("4b313b23aa560e1b0985f89cbe6df5460860e39a64ba92b4abdd3ee77e4e05b8"));
+    }
+
+    /++
+    Returns: false in case of overflow or incorrect string.
+    Precondition: non-empty coefficients.
+    +/
+    bool fromStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        auto work = BigIntView!size_t(data[]); 
+        if (work.fromStringImpl(str))
+        {
+            length = cast(uint) work.coefficients.length;
+            sign = work.sign;
+            return true;
+        }
+        return false;
     }
 
     ///
@@ -157,7 +177,6 @@ struct BigInt(size_t maxSize64)
 
     /++
     Performs `size_t overflow = (big += overflow) *= scalar` operatrion.
-    Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
         overflow = initial overflow value
@@ -180,8 +199,25 @@ struct BigInt(size_t maxSize64)
     }
 
     /++
+    Performs `uint remainder = (overflow$big) /= scalar` operatrion, where `$` denotes big-endian concatenation.
+    Precondition: `overflow < rhs`
+    Params:
+        rhs = unsigned value to devide by
+        overflow = initial unsigned overflow
+    Returns:
+        unsigned remainder value (evaluated overflow)
+    +/
+    uint opOpAssign(string op : "/")(uint rhs, uint overflow = 0)
+        @safe pure nothrow @nogc
+    {
+        assert(overflow < rhs);
+        if (length)
+            return view.unsigned.opOpAssign!op(rhs, overflow);
+        return overflow;
+    }
+
+    /++
     Performs `size_t overflow = (big += overflow) *= fixed` operatrion.
-    Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
         overflow = initial overflow value
@@ -232,7 +268,6 @@ struct BigInt(size_t maxSize64)
 
     /++
     Performs `size_t overflow = big *= fixed` operatrion.
-    Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
     Returns:
@@ -502,87 +537,4 @@ unittest
     auto bView = cast(BigIntView!ushort)b.view;
     assert(!c.copyFrom(bView.topLeastSignificantPart(bView.unsigned.coefficients.length - 1)));
     assert(c == b);
-}
-
-/++
-Returns: false in case of integer overflow or incorrect input.
-+/
-@trusted @nogc pure nothrow
-bool parseBigInt(size_t maxSize64, C)(scope const(C)[] str, ref BigInt!maxSize64 integer)
-    if (isSomeChar!C)
-{
-    import mir.bignum.low_level_view: MaxWordPow10;
-    import mir.utility: _expect;
-    integer.sign = false;
-    integer.length = 0;
-
-    if (_expect(str.length == 0, false))
-        return false;
-    
-
-
-    if (str[0] == '-')
-    {
-        integer.sign = true;
-        str = str[1 .. $];
-        if (_expect(str.length == 0, false))
-            return false;
-    }
-    else
-    if (_expect(str[0] == '+', false))
-    {
-        str = str[1 .. $];
-        if (_expect(str.length == 0, false))
-            return false;
-    }
-
-    uint d = str[0] - '0';
-    str = str[1 .. $];
-
-    size_t v;
-    size_t t = 1;
-
-    if (d == 0)
-    {
-        if (str.length == 0)
-            return true;
-        if (str[0] == '0')
-            return false;
-        goto S;
-    }
-    else
-    if (d < 10)
-    {
-        goto S;
-    }
-    else
-        return false;
-
-    for(;;)
-    {
-        enum mp10 = size_t(10) ^^ MaxWordPow10!size_t;
-        d = str[0] - '0';
-        str = str[1 .. $];
-        if (_expect(d > 10, false))
-            break;
-        v *= 10;
-S:
-        t *= 10;
-        v += d;
-
-        if (_expect(t == mp10 || str.length == 0, false))
-        {
-        L:
-            auto overflow = integer.opOpAssign!"*"(t, v);
-            if (_expect(overflow, 0))
-                return false;
-            v = 0;
-            t = 1;
-            if (str.length == 0)
-            {
-                return true;
-            }
-        }
-    }
-    return false;
 }
