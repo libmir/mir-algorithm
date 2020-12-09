@@ -48,6 +48,35 @@ The conversion error is 0 ULP for normal numbers.
     {
         return view.opCast!(T, wordNormalized, nonZero);
     }
+
+    ///
+    static Decimal fromString(C)(scope const(C)[] str) @safe pure @nogc
+        if (isSomeChar!C)
+    {
+        Decimal ret;
+        DecimalExponentKey key;
+        if (parseDecimal(str, ret, key))
+            return ret;
+        static if (__traits(compiles, () @nogc { throw new Exception("Can't parse Decimal."); }))
+        {
+            import mir.exception: MirException;
+            throw new MirException("Can't parse Decimal!" ~ (cast(int)maxSize64).stringof ~ " from string `", str , "`");
+        }
+        else
+        {
+            static immutable exception = new Exception("Can't parse Decimal.");
+            throw exception;
+        }
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_test) @safe pure @nogc unittest
+    {
+        import mir.math.constant: PI;
+        auto decimal = Decimal!2.fromString("3.141592653589793378e-40");
+        assert(cast(double) decimal.view == double(PI) / 1e40);
+    }
 }
 
 /++
