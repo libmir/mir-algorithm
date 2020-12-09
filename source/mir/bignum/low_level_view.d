@@ -475,8 +475,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    static BigUIntView fromHexString(scope const(char)[] str)
+    static BigUIntView fromHexString(C)(scope const(C)[] str)
         @trusted pure
+        if (isSomeChar!C)
     {
         auto length = str.length / (W.sizeof * 2) + (str.length % (W.sizeof * 2) != 0);
         auto data = new Unqual!W[length];
@@ -487,8 +488,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     static if (isMutable!W)
     /++
     +/
-    void fromHexStringImpl(scope const(char)[] str)
+    void fromHexStringImpl(C)(scope const(C)[] str)
         @safe pure @nogc
+        if (isSomeChar!C)
     {
         pragma(inline, false);
         import mir.utility: _expect;
