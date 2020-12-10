@@ -1,7 +1,7 @@
 /++
 Low-level betterC utilities for big integer arithmetic libraries.
 
-The module provides $(REF BigUIntAccumulator), $(REF BigUIntView), and $(LREF BigIntView).
+The module provides $(REF BigUIntAccumulator), $(REF BigUIntView), and $(LREF BigIntView),  $(REF DecimalView).
 
 Note:
     The module doesn't provide full arithmetic API for now.
@@ -1596,6 +1596,20 @@ unittest
     }
 }
 
+///
+version(mir_bignum_test)
+unittest
+{
+    import mir.bignum.fixed: UInt;
+    import mir.bignum.low_level_view: BigUIntView;
+    auto bigView = BigUIntView!size_t.fromHexString("55a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf0b5e2e2c7771cd472ae5d7acdb159a56fbf74f851a058ae341f69d1eb750d7e3");
+    auto fixed = UInt!256.fromHexString("55e5669576d31726f4a9b58a90159de5923adc6c762ebd3c4ba518d495229072");
+    auto overflow = bigView *= fixed;
+    assert(overflow == UInt!256.fromHexString("1cbbe8c42dc21f936e4ce5b2f52ac404439857f174084012fcd1b71fdec2a398"));
+    assert(bigView == BigUIntView!size_t.fromHexString("c73fd2b26f2514c103c324943b6c90a05d2732118d5f0099c36a69a8051bb0573adc825b5c9295896c70280faa4c4d369df8e92f82bfffafe078b52ae695d316"));
+
+}
+
 /++
 An utility type to wrap a local buffer to accumulate unsigned numbers.
 +/
@@ -1781,20 +1795,6 @@ unittest
         }
         assert(accumulator.view == BigUIntView!(T, endian).fromHexString("D13F6370F96865DF5DD54000000"));
     }
-}
-
-///
-version(mir_bignum_test)
-unittest
-{
-    import mir.bignum.fixed: UInt;
-    import mir.bignum.low_level_view: BigUIntView;
-    auto bigView = BigUIntView!size_t.fromHexString("55a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf0b5e2e2c7771cd472ae5d7acdb159a56fbf74f851a058ae341f69d1eb750d7e3");
-    auto fixed = UInt!256.fromHexString("55e5669576d31726f4a9b58a90159de5923adc6c762ebd3c4ba518d495229072");
-    auto overflow = bigView *= fixed;
-    assert(overflow == UInt!256.fromHexString("1cbbe8c42dc21f936e4ce5b2f52ac404439857f174084012fcd1b71fdec2a398"));
-    assert(bigView == BigUIntView!size_t.fromHexString("c73fd2b26f2514c103c324943b6c90a05d2732118d5f0099c36a69a8051bb0573adc825b5c9295896c70280faa4c4d369df8e92f82bfffafe078b52ae695d316"));
-
 }
 
 /// Computes `13 * 10^^60`
