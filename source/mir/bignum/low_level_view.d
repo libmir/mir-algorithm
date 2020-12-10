@@ -481,26 +481,26 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     {
         auto length = str.length / (W.sizeof * 2) + (str.length % (W.sizeof * 2) != 0);
         auto data = new Unqual!W[length];
-        BigUIntView!(Unqual!W, endian)(data).fromHexStringImpl(str);
-        return BigUIntView(cast(W[])data);
+        if (BigUIntView!(Unqual!W, endian)(data).fromHexStringImpl(str))
+            return BigUIntView(cast(W[])data);
+        version(D_Exceptions)
+            throw hexStringException;
+        else
+            assert(0, hexStringErrorMsg);
     }
 
     static if (isMutable!W)
     /++
     +/
-    void fromHexStringImpl(C)(scope const(C)[] str)
-        @safe pure @nogc
+    bool fromHexStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
         pragma(inline, false);
         import mir.utility: _expect;
         if (_expect(str.length == 0 || str.length > coefficients.length * W.sizeof * 2, false))
-        {
-            version(D_Exceptions)
-                throw hexStringException;
-            else
-                assert(0, hexStringErrorMsg);
-        }
+            return false;
+        coefficients = coefficients[0 .. str.length / (W.sizeof * 2) + (str.length % (W.sizeof * 2) != 0)];
         auto rdata = leastSignificantFirst;
         W current;
         size_t i;
@@ -531,11 +531,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                 case 'e': c = 0xE; break;
                 case 'F':
                 case 'f': c = 0xF; break;
-                default:
-                    version(D_Exceptions)
-                        throw hexStringException;
-                    else
-                        assert(0, hexStringErrorMsg);
+                default: return false;
             }
             enum s = W.sizeof * 8 - 4;
             W cc = cast(W)(W(c) << s);
@@ -554,6 +550,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
             current >>>= 4 * (W.sizeof * 2 - i % (W.sizeof * 2));
             rdata.front = current;
         }
+        return true;
     }
 
     static if (isMutable!W && W.sizeof >= 4)
@@ -1224,6 +1221,53 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         return unsigned.fromStringImpl(str);
     }
 
+    /++
+    +/
+    static BigIntView fromHexString(C)(scope const(C)[] str)
+        @trusted pure
+        if (isSomeChar!C)
+    {
+        auto length = str.length / (W.sizeof * 2) + (str.length % (W.sizeof * 2) != 0);
+        auto ret = BigIntView!(Unqual!W, endian)(new Unqual!W[length]);
+        if (ret.fromHexStringImpl(str))
+            return  cast(BigIntView) ret;
+        version(D_Exceptions)
+            throw hexStringException;
+        else
+            assert(0, hexStringErrorMsg);
+    }
+
+    static if (isMutable!W)
+    /++
+    +/
+    bool fromHexStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        pragma(inline, false);
+        import mir.utility: _expect;
+
+        assert(unsigned.coefficients.length);
+
+        if (_expect(str.length == 0, false))
+            return false;
+
+        sign = false;
+
+        if (str[0] == '-')
+        {
+            sign = true;
+            str = str[1 .. $];
+        }
+        else
+        if (_expect(str[0] == '+', false))
+        {
+            str = str[1 .. $];
+        }
+
+        return unsigned.fromHexStringImpl(str);
+    }
+
     ///
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T)
@@ -1240,7 +1284,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     version(mir_bignum_test)
     unittest
     {
-        auto a = cast(double) -BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+        auto a = cast(double) BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0029d");
         assert(a == -0xa.fbbfae3cd0bp+124);
     }
 
@@ -1263,7 +1307,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         import mir.bignum.fixed: UInt;
         import mir.bignum.fp: Fp;
 
-        auto fp = cast(Fp!128) -BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+        auto fp = cast(Fp!128) BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0029d");
         assert(fp.sign);
         assert(fp.exponent == 0);
         assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));

@@ -147,8 +147,24 @@ struct UInt(size_t size)
     static UInt!size fromHexString(scope const(char)[] str)
     {
         typeof(return) ret;
-        ret.view.fromHexStringImpl(str);
-        return ret;
+        if (ret.fromHexStringImpl(str))
+            return ret;
+        version(D_Exceptions)
+        {
+            import mir.bignum.low_level_view: hexStringException;
+            throw hexStringException;
+        }
+        else
+            assert(0, hexStringErrorMsg);
+    }
+
+    /++
+    +/
+    bool fromHexStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        return view.fromHexStringImpl(str);
     }
 
     /++

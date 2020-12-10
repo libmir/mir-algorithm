@@ -311,16 +311,27 @@ struct BigInt(size_t maxSize64)
         @trusted pure
     {
         BigInt ret;
-        auto len = str.length / (size_t.sizeof * 2) + (str.length % (size_t.sizeof * 2) != 0);
-        if (len > ret.data.length)
+        if (ret.fromHexStringImpl(str))
+            return ret;
+        version(D_Exceptions)
+            throw hexStringException;
+        else
+            assert(0, hexStringErrorMsg);
+    }
+
+    /++
+    +/
+    bool fromHexStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        auto work = BigIntView!size_t(data);
+        auto ret = work.fromHexStringImpl(str);
+        if (ret)
         {
-            version(D_Exceptions)
-                throw hexStringException;
-            else
-                assert(0, hexStringErrorMsg);
+            length = cast(uint)work.unsigned.coefficients.length;
+            sign = work.sign;
         }
-        ret.length = cast(uint)len;
-        ret.view.unsigned.fromHexStringImpl(str);
         return ret;
     }
 
