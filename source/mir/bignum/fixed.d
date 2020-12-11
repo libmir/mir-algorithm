@@ -130,7 +130,7 @@ struct UInt(size_t size)
         UInt!size copy = this;
         auto work = copy.view.normalized;
         import mir.bignum.low_level_view: ceilLog10Exp2;
-        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8))] buffer = void;
         return buffer[$ - work.toStringImpl(buffer) .. $].idup;
     }
 
@@ -153,7 +153,7 @@ struct UInt(size_t size)
         UInt!size copy = this;
         auto work = copy.view.normalized;
         import mir.bignum.low_level_view: ceilLog10Exp2;
-        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8))] buffer = void;
         w.put(buffer[$ - work.toStringImpl(buffer) .. $]);
     }
 

@@ -9,6 +9,9 @@ module mir.bignum.decimal;
 import mir.serde: serdeProxy, serdeScoped;
 import std.traits: isSomeChar;
 public import mir.bignum.low_level_view: DecimalExponentKey;
+import mir.bignum.low_level_view: ceilLog10Exp2;
+
+private enum expBufferShift = 2 + ceilLog10Exp2(size_t.sizeof * 8);
 
 /++
 Stack-allocated decimal type.
@@ -136,6 +139,92 @@ struct Decimal(size_t maxSize64)
         assert(!decimal.fromStringImpl("0.", key));
         assert(!decimal.fromStringImpl("00", key));
         assert(!decimal.fromStringImpl("0d", key));
+    }
+
+    private enum eDecimalLength = 2 + ceilLog10Exp2(coefficient.data.length * (size_t.sizeof * 8)) + expBufferShift;
+
+    private C[] toStringImpl(C = char)(ref scope return C[eDecimalLength] buffer) scope const @safe pure nothrow
+        if(isSomeChar!C && isMutable!C)
+    {
+        BigInt!maxSize64 work = coefficient;
+        size_t coefficientLength = work.view.unsigned.toStringImpl(buffer[0 .. $ - expBufferShift]);
+        assert(coefficientLength);
+        sizediff_t exponent = this.exponent + coefficientLength - 1;
+
+        if (coefficientLength > 1)
+        {
+            auto c = buffer[$ - expBufferShift - coefficientLength];
+            buffer[$ - expBufferShift - coefficientLength] = '.';
+            buffer[$ - expBufferShift - ++coefficientLength] = c;
+        }
+
+        if (coefficient.sign)
+        {
+            buffer[$ - expBufferShift - ++coefficientLength] = '-';
+        }
+
+        size_t exponentLength;
+        {
+            bool expSign = exponent < 0;
+            size_t unsignedExponent = expSign ? -exponent : exponent;
+            size_t i = buffer.length;
+
+            do
+            {
+                buffer[--i] = cast(char)(unsignedExponent % 10 + '0');
+                unsignedExponent /= 10;
+            }
+            while(unsignedExponent);
+            if (expSign)
+                buffer[--i] = '-';
+            exponentLength = buffer.length - i;
+        }
+
+        buffer[$ - expBufferShift] = 'e';
+
+        assert(exponentLength <= expBufferShift + 1);
+        buffer[$ - (expBufferShift - 1) .. $ - (expBufferShift - 1) + exponentLength] = buffer[$ - exponentLength .. $];
+        return buffer[$ - (expBufferShift + coefficientLength) .. $ - (expBufferShift - 1) + exponentLength];
+    }
+
+    ///
+    immutable(C)[] toString(C = char)() const @safe pure nothrow
+        if(isSomeChar!C && isMutable!C)
+    {
+        C[eDecimalLength] buffer = void;
+        return toStringImpl(buffer).idup;
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) @safe pure unittest
+    {
+        auto str = "-3.4010447314490204552169750449563978034784726557588085989975288830070948234680e-13245";
+        auto integer = Decimal!4(str);
+        assert(integer.toString == str, integer.toString);
+
+        integer = Decimal!4.init;
+        assert(integer.toString == "0e0");
+    }
+
+    ///
+    void toString(C = char, W)(scope ref W w) const
+        if(isSomeChar!C && isMutable!C)
+    {
+        C[eDecimalLength] buffer = void;
+        w.put(toStringImpl(buffer));
+    }
+
+    static if (maxSize64 == 3)
+    /// Check @nogc toString impl
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        import mir.format: stringBuf;
+        auto str = "5.28238923728e9876543210";
+        auto integer = Decimal!1(str);
+        stringBuf buffer;
+        buffer << integer;
+        assert(buffer.data == str, buffer.data);
     }
 
     /++
