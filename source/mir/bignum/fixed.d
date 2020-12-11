@@ -124,6 +124,52 @@ struct UInt(size_t size)
     }
 
     ///
+    immutable(C)[] toString(C = char)() const @safe pure nothrow
+        if(isSomeChar!C && isMutable!C)
+    {
+        UInt!size copy = this;
+        auto work = copy.view.normalized;
+        import mir.bignum.low_level_view: ceilLog10Exp2;
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        return buffer[$ - work.toStringImpl(buffer) .. $].idup;
+    }
+
+    static if (size == 128)
+    ///
+    version(mir_bignum_test) @safe pure unittest
+    {
+        auto str = "34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = UInt!256(str);
+        assert(integer.toString == str);
+
+        integer = UInt!256.init;
+        assert(integer.toString == "0");
+    }
+
+    ///
+    void toString(C = char, W)(scope ref W w) const
+        if(isSomeChar!C && isMutable!C)
+    {
+        UInt!size copy = this;
+        auto work = copy.view.normalized;
+        import mir.bignum.low_level_view: ceilLog10Exp2;
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        w.put(buffer[$ - work.toStringImpl(buffer) .. $]);
+    }
+
+    static if (size == 128)
+    /// Check @nogc toString impl
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        import mir.format: stringBuf;
+        auto str = "34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = UInt!256(str);
+        stringBuf buffer;
+        buffer << integer;
+        assert(buffer.data == str, buffer.data);
+    }
+
+    ///
     enum UInt!size max = ((){UInt!size ret; ret.data = size_t.max; return ret;})();
 
     ///

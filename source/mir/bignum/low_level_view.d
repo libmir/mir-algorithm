@@ -1109,7 +1109,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Params:
         str = string buffer, the tail paer 
-    Precondition: non-empty coefficients, mutable number with word size at least 4 bytes
+    Precondition: mutable number with word size at least 4 bytes
     Postconditoin: the number is destroyed
     Returns: last N bytes used in the buffer
     +/
@@ -1117,7 +1117,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         @safe pure nothrow @nogc
         if (isSomeChar!C && isMutable!C)
     {
-        assert(coefficients.length);
+        assert(str.length);
         assert(str.length >= ceilLog10Exp2(coefficients.length * (size_t.sizeof * 8)));
 
         size_t i = str.length;
@@ -1131,7 +1131,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
             }
         }
 
-        W rem = coefficients[0];
+        W rem = coefficients.length == 1 ? coefficients[0] : W(0);
         do
         {
             str[--i] = cast(char)(rem % 10 + '0');

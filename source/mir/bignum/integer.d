@@ -495,19 +495,12 @@ struct BigInt(size_t maxSize64)
     immutable(C)[] toString(C = char)() const @safe pure nothrow
         if(isSomeChar!C && isMutable!C)
     {
-        if (length)
-        {
-            C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
-            BigInt copy = this;
-            auto len = copy.view.unsigned.toStringImpl(buffer);
-            if (sign)
-                buffer[$ - ++len] = '-';
-            return buffer[$ - len .. $].idup;
-        }
-        else
-        {
-            return "0";
-        }
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        BigInt copy = this;
+        auto len = copy.view.unsigned.toStringImpl(buffer);
+        if (sign)
+            buffer[$ - ++len] = '-';
+        return buffer[$ - len .. $].idup;
     }
 
     static if (maxSize64 == 3)
@@ -528,18 +521,9 @@ struct BigInt(size_t maxSize64)
     {
         C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
         BigInt copy = this;
-        size_t len;
-        if (length)
-        {
-            len = copy.view.unsigned.toStringImpl(buffer);
-            if (sign)
-                buffer[$ - ++len] = '-';
-        }
-        else
-        {
-            buffer[$ - 1] = '0';
-            len = 1;
-        }
+        auto len = copy.view.unsigned.toStringImpl(buffer);
+        if (sign)
+            buffer[$ - ++len] = '-';
         w.put(buffer[$ - len .. $]);
     }
 
