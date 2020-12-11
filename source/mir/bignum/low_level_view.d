@@ -96,6 +96,28 @@ private template MaxFpPow5(T)
 }
 
 /++
+Fast integer computation of `ceil(log10(exp2(e)))` with 64-bit mantissa precision.
+The result is guaranted to be greater then `log10(exp2(e))`, which is irrational number.
++/
+T ceilLog10Exp2(T)(const T e)
+    @safe pure nothrow @nogc
+    if (is(T == ubyte) || is(T == ushort) || is(T == uint) || is(T == ulong))
+{
+    import mir.utility: extMul;
+    auto result = extMul(0x9a209a84fbcff799UL, e);
+    return  cast(T) ((result.high >> 1) + ((result.low != 0) | (result.high & 1)));
+}
+
+///
+version(mir_bignum_test)
+@safe pure nothrow @nogc unittest
+{
+    assert(ceilLog10Exp2(ubyte(10)) == 4); // ubyte
+    assert(ceilLog10Exp2(10U) == 4); // uint
+    assert(ceilLog10Exp2(10UL) == 4); // ulong
+}
+
+/++
 Arbitrary length unsigned integer view.
 +/
 struct BigUIntView(W, WordEndian endian = TargetEndian)
@@ -745,7 +767,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return overflow;
     }
 
-    static if (isMutable!W && W.sizeof >= 4)
+    static if (isMutable!W && W.sizeof == 4 || W.sizeof == 8 && endian == TargetEndian)
     /++
     Performs `uint remainder = (overflow$big) /= scalar` operatrion, where `$` denotes big-endian concatenation.
     Precondition: non-empty coefficients, `overflow < rhs`
@@ -778,6 +800,8 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         else
         {
             auto work = opCast!(BigUIntView!uint);
+            if (work.mostSignificant == 0)
+                work.popMostSignificant;
             auto remainder = work.opOpAssign!op(rhs, overflow);
             coefficients = coefficients[0 .. work.coefficients.length / 2 + work.coefficients.length % 2];
             return remainder;
@@ -1080,6 +1104,58 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         }
         return rhs == 0;
     }
+
+    static if (isMutable!W && W.sizeof >= 4)
+    /++
+    Params:
+        str = string buffer, the tail paer 
+    Precondition: non-empty coefficients, mutable number with word size at least 4 bytes
+    Postconditoin: the number is destroyed
+    Returns: last N bytes used in the buffer
+    +/
+    size_t toStringImpl(C)(scope C[] str)
+        @safe pure nothrow @nogc
+        if (isSomeChar!C && isMutable!C)
+    {
+        assert(coefficients.length);
+        assert(str.length >= ceilLog10Exp2(coefficients.length * (size_t.sizeof * 8)));
+
+        size_t i = str.length;
+        while(coefficients.length > 1)
+        {
+            uint rem = this /= 1_000_000_000;
+            foreach (_; 0 .. 9)
+            {
+                str[--i] = cast(char)(rem % 10 + '0');
+                rem /= 10;
+            }
+        }
+
+        W rem = coefficients[0];
+        do
+        {
+            str[--i] = cast(char)(rem % 10 + '0');
+            rem /= 10;
+        }
+        while(rem);
+
+        return str.length - i;
+    }
+
+    ///
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure @nogc
+    unittest
+    {
+        import mir.bignum.integer;
+
+        auto a = BigInt!2("123456789098765432123456789098765432100");
+        char[ceilLog10Exp2(a.data.length * (size_t.sizeof * 8))] buffer;
+        auto len = a.view.unsigned.toStringImpl(buffer);
+        assert(buffer[$ - len .. $] == "123456789098765432123456789098765432100", buffer[$ - len .. $]);
+    }
 }
 
 ///
@@ -1381,7 +1457,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         if (op == "+" || op == "-")
     {
         assert(rhs.coefficients.length > 0);
-        import std.conv;
+        import mir.conv;
         debug assert(this.coefficients.length >= rhs.coefficients.length, this.coefficients.length.to!string ~ " " ~ rhs.coefficients.length.to!string);
         enum sum = op == "+";
         // pos += pos

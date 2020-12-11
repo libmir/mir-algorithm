@@ -28,8 +28,6 @@ struct BigInt(size_t maxSize64)
     ///
     size_t[ulong.sizeof / size_t.sizeof * maxSize64] data = void;
 
-    @disable this(this);
-
     ///
     this(size_t size)(UInt!size fixedInt)
     {
@@ -86,7 +84,7 @@ struct BigInt(size_t maxSize64)
 
     static if (maxSize64 == 3)
     ///
-    version(mir_test) @safe pure @nogc unittest
+    version(mir_bignum_test) @safe pure @nogc unittest
     {
         import mir.math.constant: PI;
         BigInt!4 integer = "-34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
@@ -492,7 +490,72 @@ struct BigInt(size_t maxSize64)
     {
         return this.copyFrom(BigIntView!(const W, endian)(view));
     }
+
+    ///
+    immutable(C)[] toString(C = char)() const @safe pure nothrow
+        if(isSomeChar!C && isMutable!C)
+    {
+        if (length)
+        {
+            C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+            BigInt copy = this;
+            auto len = copy.view.unsigned.toStringImpl(buffer);
+            if (sign)
+                buffer[$ - ++len] = '-';
+            return buffer[$ - len .. $].idup;
+        }
+        else
+        {
+            return "0";
+        }
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) @safe pure unittest
+    {
+        auto str = "-34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = BigInt!4(str);
+        assert(integer.toString == str);
+
+        integer = BigInt!4.init;
+        assert(integer.toString == "0");
+    }
+
+    ///
+    void toString(C = char, W)(scope ref W w) const
+        if(isSomeChar!C && isMutable!C)
+    {
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        BigInt copy = this;
+        size_t len;
+        if (length)
+        {
+            len = copy.view.unsigned.toStringImpl(buffer);
+            if (sign)
+                buffer[$ - ++len] = '-';
+        }
+        else
+        {
+            buffer[$ - 1] = '0';
+            len = 1;
+        }
+        w.put(buffer[$ - len .. $]);
+    }
+
+    static if (maxSize64 == 3)
+    /// Check @nogc toString impl
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        import mir.format: stringBuf;
+        auto str = "-34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = BigInt!4(str);
+        stringBuf buffer;
+        buffer << integer;
+        assert(buffer.data == str, buffer.data);
+    }
 }
+
 
 ///
 version(mir_bignum_test)

@@ -308,7 +308,7 @@ uint log10Pow2(const int e)
     // The first value this approximation fails for is 2^1651 which is just greater than 10^297.
     assert(e >= 0);
     assert(e <= 1 << 15);
-    return (e * 169464822037455UL) >> 49;
+    return (e * 0x9A209A84FBCFUL) >> 49;
 }
 
 version(all) unittest
@@ -325,7 +325,7 @@ uint log10Pow5(const int e)
     // The first value this approximation fails for is 5^2621 which is just greater than 10^1832.
     assert(e >= 0);
     assert(e <= 1 << 15);
-    return (e * 196742565691928UL) >> 48;
+    return (e * 0xB2EFB2BD8218UL) >> 48;
 }
 
 version(all) unittest
