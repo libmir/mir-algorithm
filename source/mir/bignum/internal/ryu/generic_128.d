@@ -16,7 +16,9 @@ debug(ryu) import core.stdc.stdio;
 import core.stdc.stdlib;
 import core.stdc.string;
 
+import mir.bignum.decimal: Decimal;
 import mir.bignum.fixed : UInt, extendedMulHigh, extendedMul;
+import mir.bignum.integer: BigInt;
 
 private enum ONE = UInt!128(1);
 
@@ -34,34 +36,6 @@ private enum FD128_EXCEPTIONAL_EXPONENT = 0x7FFFFFFF;
 private enum FLOAT_128_POW5_INV_BITCOUNT = 249;
 private enum FLOAT_128_POW5_BITCOUNT = 249;
 private enum POW5_TABLE_SIZE = 56;
-
-// A floating decimal representing (-1)^s * m * 10^e.
-struct FloatingDecimal128
-{
-    UInt!128 mantissa;
-    int exponent;
-    bool sign;
-};
-
-FloatingDecimal128 float_to_fd128(float f);
-FloatingDecimal128 double_to_fd128(double d);
-
-// According to wikipedia (https://en.wikipedia.org/wiki/Long_double), this likely only works on
-// x86 with specific compilers (clang?). May need an ifdef.
-FloatingDecimal128 real_to_fd128(real d);
-
-// Converts the given binary floating point number to the shortest decimal floating point number
-// that still accurately represents it.
-FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint mantissaBits, const uint exponentBits, const bool explicitLeadingBit);
-
-// Converts the given decimal floating point number to a string, writing to result, and returning
-// the number characters written. Does not terminate the buffer with a 0. In the worst case, this
-// function can write up to 53 characters.
-//
-// Maximal char buffer requirement:
-// sign + mantissa digits + decimal dot + 'e' + exponent sign + exponent digits
-// = 1 + 39 + 1 + 1 + 1 + 10 = 53
-int generic_to_chars(const FloatingDecimal128 v, char* result);
 
 // Returns e == 0 ? 1 : ceil(log_2(5^e)); requires 0 <= e <= 32768.
 uint pow5bits(const int e)
@@ -350,7 +324,7 @@ static char* s(UInt!128 v)
     return b;
 }
 
-FloatingDecimal128 float_to_fd128(float f)
+Decimal!2 float_to_fd128(float f)
 {
     uint bits = 0;
     memcpy(&bits, &f, float.sizeof);
@@ -358,14 +332,16 @@ FloatingDecimal128 float_to_fd128(float f)
 }
 
 
-FloatingDecimal128 double_to_fd128(double d)
+Decimal!2 double_to_fd128(double d)
 {
     ulong bits = 0;
     memcpy(&bits, &d, double.sizeof);
     return generic_binary_to_decimal(UInt!128(bits), DOUBLE_MANTISSA_BITS, DOUBLE_EXPONENT_BITS, false);
 }
 
-FloatingDecimal128 real_to_fd128(real d)
+// According to wikipedia (https://en.wikipedia.org/wiki/Long_double), this likely only works on
+// x86 with specific compilers (clang?). May need an ifdef.
+Decimal!2 real_to_fd128(real d)
 {
     UInt!128 bits = 0;
     memcpy(&bits, &d, real.sizeof);
@@ -380,7 +356,9 @@ FloatingDecimal128 real_to_fd128(real d)
     return generic_binary_to_decimal(bits, LONG_DOUBLE_MANTISSA_BITS, LONG_DOUBLE_EXPONENT_BITS, true);
 }
 
-FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint mantissaBits, const uint exponentBits, const bool explicitLeadingBit)
+// Converts the given binary floating point number to the shortest decimal floating point number
+// that still accurately represents it.
+Decimal!2 generic_binary_to_decimal(const UInt!128 bits, const uint mantissaBits, const uint exponentBits, const bool explicitLeadingBit)
 {
     debug(ryu) if (!__ctfe)
     {
@@ -399,18 +377,16 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
 
     if (ieeeExponent == 0 && ieeeMantissa == 0)
     {
-        FloatingDecimal128 fd;
-        fd.mantissa = 0;
-        fd.exponent = 0;
-        fd.sign = ieeeSign;
+        Decimal!2 fd;
+        fd.coefficient.sign = ieeeSign;
         return fd;
     }
     if (ieeeExponent == ((1u << exponentBits) - 1u))
     {
-        FloatingDecimal128 fd;
-        fd.mantissa = explicitLeadingBit ? ieeeMantissa & ((ONE << (mantissaBits - 1)) - 1) : ieeeMantissa;
+        Decimal!2 fd;
+        fd.coefficient = BigInt!2(explicitLeadingBit ? ieeeMantissa & ((ONE << (mantissaBits - 1)) - 1) : ieeeMantissa);
         fd.exponent = FD128_EXCEPTIONAL_EXPONENT;
-        fd.sign = ieeeSign;
+        fd.coefficient.sign = ieeeSign;
         return fd;
     }
 
@@ -628,28 +604,35 @@ FloatingDecimal128 generic_binary_to_decimal(const UInt!128 bits, const uint man
         printf("EXP=%d\n", exp);
     }
 
-    FloatingDecimal128 fd;
-    fd.mantissa = output;
+    Decimal!2 fd;
+    fd.coefficient = BigInt!2(output);
     fd.exponent = exp;
-    fd.sign = ieeeSign;
+    fd.coefficient.sign = ieeeSign;
     return fd;
 }
 
-int copy_special_str(char* result, const FloatingDecimal128 fd)
+int copy_special_str(char* result, const Decimal!2 fd)
 {
     version(LDC) pragma(inline, true);
-    if (fd.sign)
+    if (fd.coefficient.sign)
     {
         result[0] = '-';
     }
-    if (fd.mantissa)
-        memcpy(result + fd.sign, "nan".ptr, 3);
+    if (fd.coefficient.length)
+        memcpy(result + fd.coefficient.sign, "nan".ptr, 3);
     else
-        memcpy(result + fd.sign, "inf".ptr, 3);
-    return fd.sign + 3;
+        memcpy(result + fd.coefficient.sign, "inf".ptr, 3);
+    return fd.coefficient.sign + 3;
 }
 
-int generic_to_chars(const FloatingDecimal128 v, char* result)
+// Converts the given decimal floating point number to a string, writing to result, and returning
+// the number characters written. Does not terminate the buffer with a 0. In the worst case, this
+// function can write up to 53 characters.
+//
+// Maximal char buffer requirement:
+// sign + mantissa digits + decimal dot + 'e' + exponent sign + exponent digits
+// = 1 + 39 + 1 + 1 + 1 + 10 = 53
+int generic_to_chars(const Decimal!2 v, char* result)
 {
     if (v.exponent == FD128_EXCEPTIONAL_EXPONENT)
     {
@@ -658,12 +641,12 @@ int generic_to_chars(const FloatingDecimal128 v, char* result)
 
     // Step 5: Print the decimal representation.
     int index = 0;
-    if (v.sign)
+    if (v.coefficient.sign)
     {
         result[index++] = '-';
     }
 
-    UInt!128 output = v.mantissa;
+    UInt!128 output = v.coefficient.data;
     const uint olength = decimalLength(output);
 
     debug(ryu) if (!__ctfe)
@@ -694,7 +677,7 @@ int generic_to_chars(const FloatingDecimal128 v, char* result)
 
     // Print the exponent.
     result[index++] = 'e';
-    int exp = v.exponent + olength - 1;
+    long exp = v.exponent + olength - 1;
     if (exp < 0)
     {
         result[index++] = '-';
@@ -704,7 +687,7 @@ int generic_to_chars(const FloatingDecimal128 v, char* result)
     uint elength = decimalLength(UInt!128LU(exp));
     for (uint i = 0; i < elength; ++i)
     {
-        const uint c = exp % 10;
+        const c = exp % 10;
         exp /= 10;
         result[index + elength - 1 - i] = cast(char) ('0' + c);
     }
@@ -715,10 +698,9 @@ int generic_to_chars(const FloatingDecimal128 v, char* result)
 version(all) unittest
 {
     char[100] buffer = '\0';
-    FloatingDecimal128 v;
-    v.mantissa = 12345;
+    Decimal!2 v;
+    v.coefficient = BigInt!2(12345);
     v.exponent = -2;
-    v.sign = false;
     int index = generic_to_chars(v, buffer.ptr);
     buffer[index++] = 0;
     assert(strcmp(buffer.ptr, "1.2345e2".ptr) == 0);
@@ -727,10 +709,9 @@ version(all) unittest
 version(all) unittest
 {
     char[100] buffer = '\0';
-    FloatingDecimal128 v;
-    v.mantissa = (UInt!128(5421010862427522170UL) << 64) | 687399551400673280UL;
+    Decimal!2 v;
+    v.coefficient = BigInt!2((UInt!128(5421010862427522170UL) << 64) | 687399551400673280UL);
     v.exponent = -20;
-    v.sign = false;
     int index = generic_to_chars(v, buffer.ptr);
     buffer[index++] = 0;
     assert(strcmp(buffer.ptr, "1.00000000000000000000000000000000000000e18") == 0);
@@ -1150,10 +1131,10 @@ version(all) unittest
 @("direct_double_to_fd128")
 version(all) unittest
 {
-    FloatingDecimal128 v = double_to_fd128(4.708356024711512e18);
-    assert(v.sign == false);
+    Decimal!2 v = double_to_fd128(4.708356024711512e18);
+    assert(v.coefficient.sign == false);
     assert(v.exponent == 3);
-    assert(v.mantissa == 4708356024711512UL);
+    assert(v.coefficient == BigInt!2(4708356024711512UL));
 }
 
 @("double_to_fd128")
