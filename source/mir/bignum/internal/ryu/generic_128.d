@@ -19,19 +19,9 @@ import core.stdc.string;
 import mir.bignum.decimal: Decimal;
 import mir.bignum.fixed : UInt, extendedMulHigh, extendedMul;
 import mir.bignum.integer: BigInt;
+import mir.bignum.fp: Fp;
 
 private enum ONE = UInt!128(1);
-
-private enum FLOAT_EXPONENT_BITS = 8;
-private enum FLOAT_MANTISSA_BITS = 23;
-
-private enum DOUBLE_EXPONENT_BITS = 11;
-private enum DOUBLE_MANTISSA_BITS = 52;
-
-private enum LONG_DOUBLE_MANTISSA_BITS = 64;
-private enum LONG_DOUBLE_EXPONENT_BITS = 15;
-
-private enum FD128_EXCEPTIONAL_EXPONENT = 0x7FFFFFFF;
 
 private enum FLOAT_128_POW5_INV_BITCOUNT = 249;
 private enum FLOAT_128_POW5_BITCOUNT = 249;
@@ -324,290 +314,217 @@ static char* s(UInt!128 v)
     return b;
 }
 
-Decimal!2 float_to_fd128(float f)
-{
-    uint bits = 0;
-    memcpy(&bits, &f, float.sizeof);
-    return generic_binary_to_decimal(UInt!128(bits), FLOAT_MANTISSA_BITS, FLOAT_EXPONENT_BITS, false);
-}
-
-
-Decimal!2 double_to_fd128(double d)
-{
-    ulong bits = 0;
-    memcpy(&bits, &d, double.sizeof);
-    return generic_binary_to_decimal(UInt!128(bits), DOUBLE_MANTISSA_BITS, DOUBLE_EXPONENT_BITS, false);
-}
-
-// According to wikipedia (https://en.wikipedia.org/wiki/Long_double), this likely only works on
-// x86 with specific compilers (clang?). May need an ifdef.
-Decimal!2 real_to_fd128(real d)
-{
-    UInt!128 bits = 0;
-    memcpy(&bits, &d, real.sizeof);
-    debug(ryu) if (!__ctfe)
-    {
-        // For some odd reason, this ends up with noise in the top 48 bits. We can
-        // clear out those bits with the following line; this is not required, the
-        // conversion routine should ignore those bits, but the debug output can be
-        // confusing if they aren't 0s.
-        bits &= (ONE << 80) - 1;
-    }
-    return generic_binary_to_decimal(bits, LONG_DOUBLE_MANTISSA_BITS, LONG_DOUBLE_EXPONENT_BITS, true);
-}
-
 // Converts the given binary floating point number to the shortest decimal floating point number
 // that still accurately represents it.
-Decimal!2 generic_binary_to_decimal(const UInt!128 bits, const uint mantissaBits, const uint exponentBits, const bool explicitLeadingBit)
+Decimal!2 generic_binary_to_decimal(T)(const T x)
 {
-    debug(ryu) if (!__ctfe)
+    import mir.utility: _expect;
+    import mir.math: signbit, fabs;
+    Decimal!2 fd;
+    if (_expect(x != x, false))
     {
-        printf("IN=");
-        for (int bit = 127; bit >= 0; --bit)
-        {
-            printf("%u", cast(uint) ((bits >> bit) & 1));
-        }
-        printf("\n");
-    }
-
-    const uint bias = (1u << (exponentBits - 1)) - 1;
-    const bool ieeeSign = ((bits >> (mantissaBits + exponentBits)) & 1) != 0;
-    const UInt!128 ieeeMantissa = bits & ((ONE << mantissaBits) - 1);
-    const uint ieeeExponent = cast(uint) ((bits >> mantissaBits) & ((ONE << exponentBits) - 1u));
-
-    if (ieeeExponent == 0 && ieeeMantissa == 0)
-    {
-        Decimal!2 fd;
-        fd.coefficient.sign = ieeeSign;
-        return fd;
-    }
-    if (ieeeExponent == ((1u << exponentBits) - 1u))
-    {
-        Decimal!2 fd;
-        fd.coefficient = BigInt!2(explicitLeadingBit ? ieeeMantissa & ((ONE << (mantissaBits - 1)) - 1) : ieeeMantissa);
-        fd.exponent = FD128_EXCEPTIONAL_EXPONENT;
-        fd.coefficient.sign = ieeeSign;
-        return fd;
-    }
-
-    int e2;
-    UInt!128 m2;
-    // We subtract 2 in all cases so that the bounds computation has 2 additional bits.
-    if (explicitLeadingBit)
-    {
-        // mantissaBits includes the explicit leading bit, so we need to correct for that here.
-        if (ieeeExponent == 0)
-        {
-            e2 = 1 - bias - mantissaBits + 1 - 2;
-        }
-        else
-        {
-            e2 = ieeeExponent - bias - mantissaBits + 1 - 2;
-        }
-        m2 = ieeeMantissa;
+        fd.coefficient = 1u;
+        fd.exponent = fd.exponent.max;
     }
     else
+    if (_expect(x.fabs == T.infinity, false))
     {
-        if (ieeeExponent == 0)
-        {
-            e2 = 1 - bias - mantissaBits - 2;
-            m2 = ieeeMantissa;
-        }
-        else
-        {
-            e2 = ieeeExponent - bias - mantissaBits - 2;
-            m2 = (ONE << mantissaBits) | ieeeMantissa;
-        }
-    }
-    const bool even = (m2 & 1) == 0;
-    const bool acceptBounds = even;
-
-    debug(ryu) if (!__ctfe)
-    {
-        printf("-> %s %s * 2^%d\n", (ieeeSign ? "-" : "+").ptr, s(m2), e2 + 2);
-    }
-
-    // Step 2: Determine the interval of legal decimal representations.
-    const UInt!128 mv = m2 << 2;
-    // Implicit bool -> int conversion. True is 1, false is 0.
-    const uint mmShift =
-            (ieeeMantissa != (explicitLeadingBit ? ONE << (mantissaBits - 1) : UInt!128LU.init))
-            || (ieeeExponent == 0);
-
-    // Step 3: Convert to a decimal power base using 128-bit arithmetic.
-    UInt!128 vr, vp, vm;
-    int e10;
-    bool vmIsTrailingZeros = false;
-    bool vrIsTrailingZeros = false;
-    if (e2 >= 0)
-    {
-        // I tried special-casing q == 0, but there was no effect on performance.
-        // This expression is slightly faster than max(0, log10Pow2(e2) - 1).
-        const uint q = log10Pow2(e2) - (e2 > 3);
-        e10 = q;
-        const int k = FLOAT_128_POW5_INV_BITCOUNT + pow5bits(q) - 1;
-        const int i = -e2 + q + k;
-        UInt!256 pow5;
-        generic_computeInvPow5(q, pow5);
-        vr = mulShift(mv, pow5, i);
-        vp = mulShift(mv + 2, pow5, i);
-        vm = mulShift(mv - 1 - mmShift, pow5, i);
-        debug(ryu) if (!__ctfe)
-        {
-            printf("%s * 2^%d / 10^%d\n", s(mv), e2, q);
-            printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
-        }
-        // floor(log_5(2^128)) = 55, this is very conservative
-        if (q <= 55)
-        {
-            // Only one of mp, mv, and mm can be a multiple of 5, if any.
-            if (rem5(mv) == 0)
-            {
-                vrIsTrailingZeros = multipleOfPowerOf5(mv, q - 1);
-            }
-            else
-            if (acceptBounds)
-            {
-                // Same as min(e2 + (~mm & 1), pow5Factor(mm)) >= q
-                // <=> e2 + (~mm & 1) >= q && pow5Factor(mm) >= q
-                // <=> true && pow5Factor(mm) >= q, since e2 >= q.
-                vmIsTrailingZeros = multipleOfPowerOf5(mv - 1 - mmShift, q);
-            }
-            else
-            {
-                // Same as min(e2 + 1, pow5Factor(mp)) >= q.
-                vp -= multipleOfPowerOf5(mv + 2, q);
-            }
-        }
+        fd.exponent = fd.exponent.max;
     }
     else
+    if (x)
     {
-        // This expression is slightly faster than max(0, log10Pow5(-e2) - 1).
-        const uint q = log10Pow5(-e2) - (-e2 > 1);
-        e10 = q + e2;
-        const int i = -e2 - q;
-        const int k = pow5bits(i) - FLOAT_128_POW5_BITCOUNT;
-        const int j = q - k;
-        UInt!256 pow5;
-        generic_computePow5(i, pow5);
-        vr = mulShift(mv, pow5, j);
-        vp = mulShift(mv + 2, pow5, j);
-        vm = mulShift(mv - 1 - mmShift, pow5, j);
+        const fp = Fp!128(x, false);
+        int e2 = cast(int) fp.exponent - 2;
+        UInt!128 m2 = fp.coefficient;
+
+        const bool even = (fp.coefficient & 1) == 0;
+        const bool acceptBounds = even;
+
         debug(ryu) if (!__ctfe)
         {
-            printf("%s * 5^%d / 10^%d\n", s(mv), -e2, q);
-            printf("%d %d %d %d\n", q, i, k, j);
-            printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
+            printf("-> %s %s * 2^%d\n", (fp.sign ? "-" : "+").ptr, s(m2), e2 + 2);
         }
-        if (q <= 1)
+
+        // Step 2: Determine the interval of legal decimal representations.
+        const UInt!128 mv = m2 << 2;
+        // Implicit bool -> int conversion. True is 1, false is 0.
+        const bool mmShift = fp.coefficient != (ONE << (T.mant_dig - 1));
+
+        // Step 3: Convert to a decimal power base using 128-bit arithmetic.
+        UInt!128 vr, vp, vm;
+        int e10;
+        bool vmIsTrailingZeros = false;
+        bool vrIsTrailingZeros = false;
+        if (e2 >= 0)
         {
-            // {vr,vp,vm} is trailing zeros if {mv,mp,mm} has at least q trailing 0 bits.
-            // mv = 4 m2, so it always has at least two trailing 0 bits.
-            vrIsTrailingZeros = true;
-            if (acceptBounds)
-            {
-                // mm = mv - 1 - mmShift, so it has 1 trailing 0 bit iff mmShift == 1.
-                vmIsTrailingZeros = mmShift == 1;
-            }
-            else
-            {
-                // mp = mv + 2, so it always has at least one trailing 0 bit.
-                --vp;
-            }
-        }
-        else
-        if (q < 127)
-        {
-            // TODO(ulfjack): Use a tighter bound here.
-            // We need to compute min(ntz(mv), pow5Factor(mv) - e2) >= q-1
-            // <=> ntz(mv) >= q-1  &&  pow5Factor(mv) - e2 >= q-1
-            // <=> ntz(mv) >= q-1    (e2 is negative and -e2 >= q)
-            // <=> (mv & ((1 << (q-1)) - 1)) == 0
-            // We also need to make sure that the left shift does not overflow.
-            vrIsTrailingZeros = multipleOfPowerOf2(mv, q - 1);
+            // I tried special-casing q == 0, but there was no effect on performance.
+            // This expression is slightly faster than max(0, log10Pow2(e2) - 1).
+            const uint q = log10Pow2(e2) - (e2 > 3);
+            e10 = q;
+            const int k = FLOAT_128_POW5_INV_BITCOUNT + pow5bits(q) - 1;
+            const int i = -e2 + q + k;
+            UInt!256 pow5;
+            generic_computeInvPow5(q, pow5);
+            vr = mulShift(mv, pow5, i);
+            vp = mulShift(mv + 2, pow5, i);
+            vm = mulShift(mv - 1 - mmShift, pow5, i);
             debug(ryu) if (!__ctfe)
             {
-                printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
+                printf("%s * 2^%d / 10^%d\n", s(mv), e2, q);
+                printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
+            }
+            // floor(log_5(2^128)) = 55, this is very conservative
+            if (q <= 55)
+            {
+                // Only one of mp, mv, and mm can be a multiple of 5, if any.
+                if (rem5(mv) == 0)
+                {
+                    vrIsTrailingZeros = multipleOfPowerOf5(mv, q - 1);
+                }
+                else
+                if (acceptBounds)
+                {
+                    // Same as min(e2 + (~mm & 1), pow5Factor(mm)) >= q
+                    // <=> e2 + (~mm & 1) >= q && pow5Factor(mm) >= q
+                    // <=> true && pow5Factor(mm) >= q, since e2 >= q.
+                    vmIsTrailingZeros = multipleOfPowerOf5(mv - 1 - mmShift, q);
+                }
+                else
+                {
+                    // Same as min(e2 + 1, pow5Factor(mp)) >= q.
+                    vp -= multipleOfPowerOf5(mv + 2, q);
+                }
             }
         }
-    }
-    debug(ryu) if (!__ctfe)
-    {
-        printf("e10=%d\n", e10);
-        printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
-        printf("vm is trailing zeros=%s\n", (vmIsTrailingZeros ? "true" : "false").ptr);
-        printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
-    }
+        else
+        {
+            // This expression is slightly faster than max(0, log10Pow5(-e2) - 1).
+            const uint q = log10Pow5(-e2) - (-e2 > 1);
+            e10 = q + e2;
+            const int i = -e2 - q;
+            const int k = pow5bits(i) - FLOAT_128_POW5_BITCOUNT;
+            const int j = q - k;
+            UInt!256 pow5;
+            generic_computePow5(i, pow5);
+            vr = mulShift(mv, pow5, j);
+            vp = mulShift(mv + 2, pow5, j);
+            vm = mulShift(mv - 1 - mmShift, pow5, j);
+            debug(ryu) if (!__ctfe)
+            {
+                printf("%s * 5^%d / 10^%d\n", s(mv), -e2, q);
+                printf("%d %d %d %d\n", q, i, k, j);
+                printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
+            }
+            if (q <= 1)
+            {
+                // {vr,vp,vm} is trailing zeros if {mv,mp,mm} has at least q trailing 0 bits.
+                // mv = 4 m2, so it always has at least two trailing 0 bits.
+                vrIsTrailingZeros = true;
+                if (acceptBounds)
+                {
+                    // mm = mv - 1 - mmShift, so it has 1 trailing 0 bit iff mmShift == 1.
+                    vmIsTrailingZeros = mmShift == 1;
+                }
+                else
+                {
+                    // mp = mv + 2, so it always has at least one trailing 0 bit.
+                    --vp;
+                }
+            }
+            else
+            if (q < 127)
+            {
+                // TODO(ulfjack): Use a tighter bound here.
+                // We need to compute min(ntz(mv), pow5Factor(mv) - e2) >= q-1
+                // <=> ntz(mv) >= q-1  &&  pow5Factor(mv) - e2 >= q-1
+                // <=> ntz(mv) >= q-1    (e2 is negative and -e2 >= q)
+                // <=> (mv & ((1 << (q-1)) - 1)) == 0
+                // We also need to make sure that the left shift does not overflow.
+                vrIsTrailingZeros = multipleOfPowerOf2(mv, q - 1);
+                debug(ryu) if (!__ctfe)
+                {
+                    printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
+                }
+            }
+        }
+        debug(ryu) if (!__ctfe)
+        {
+            printf("e10=%d\n", e10);
+            printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
+            printf("vm is trailing zeros=%s\n", (vmIsTrailingZeros ? "true" : "false").ptr);
+            printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
+        }
 
-    // Step 4: Find the shortest decimal representation in the interval of legal representations.
-    uint removed = 0;
-    uint lastRemovedDigit = 0;
-    UInt!128 output;
+        // Step 4: Find the shortest decimal representation in the interval of legal representations.
+        uint removed = 0;
+        uint lastRemovedDigit = 0;
+        UInt!128 output;
 
-    for (;;)
-    {
-        auto div10vp = div10(vp);
-        auto div10vm = div10(vm);
-        if (div10vp <= div10vm)
-            break;
-        vmIsTrailingZeros &= vm - div10vm * 10 == 0;
-        vrIsTrailingZeros &= lastRemovedDigit == 0;
-        lastRemovedDigit = vr.divRem10;
-        vp = div10vp;
-        vm = div10vm;
-        ++removed;
-    }
-    debug(ryu) if (!__ctfe)
-    {
-        printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
-        printf("d-10=%s\n", (vmIsTrailingZeros ? "true" : "false").ptr);
-        printf("lastRemovedDigit=%d\n", lastRemovedDigit);
-    }
-    if (vmIsTrailingZeros)
-    {
         for (;;)
         {
+            auto div10vp = div10(vp);
             auto div10vm = div10(vm);
-            if (vm - div10vm * 10)
+            if (div10vp <= div10vm)
                 break;
+            vmIsTrailingZeros &= vm - div10vm * 10 == 0;
             vrIsTrailingZeros &= lastRemovedDigit == 0;
             lastRemovedDigit = vr.divRem10;
+            vp = div10vp;
             vm = div10vm;
-            vp = div10(vp);
             ++removed;
         }
-    }
-    debug(ryu) if (!__ctfe)
-    {
-        printf("%s %d\n", s(vr), lastRemovedDigit);
-        printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
-        printf("lastRemovedDigit=%d\n", lastRemovedDigit);
-    }
-    if (vrIsTrailingZeros && (lastRemovedDigit == 5) && ((vr & 1) == 0))
-    {
-        // Round even if the exact numbers is .....50..0.
-        lastRemovedDigit = 4;
-    }
-    // We need to take vr+1 if vr is outside bounds or we need to round up.
-    output = vr + ((vr == vm && (!acceptBounds || !vmIsTrailingZeros)) || (lastRemovedDigit >= 5));
+        debug(ryu) if (!__ctfe)
+        {
+            printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
+            printf("d-10=%s\n", (vmIsTrailingZeros ? "true" : "false").ptr);
+            printf("lastRemovedDigit=%d\n", lastRemovedDigit);
+        }
+        if (vmIsTrailingZeros)
+        {
+            for (;;)
+            {
+                auto div10vm = div10(vm);
+                if (vm - div10vm * 10)
+                    break;
+                vrIsTrailingZeros &= lastRemovedDigit == 0;
+                lastRemovedDigit = vr.divRem10;
+                vm = div10vm;
+                vp = div10(vp);
+                ++removed;
+            }
+        }
+        debug(ryu) if (!__ctfe)
+        {
+            printf("%s %d\n", s(vr), lastRemovedDigit);
+            printf("vr is trailing zeros=%s\n", (vrIsTrailingZeros ? "true" : "false").ptr);
+            printf("lastRemovedDigit=%d\n", lastRemovedDigit);
+        }
+        if (vrIsTrailingZeros && (lastRemovedDigit == 5) && ((vr & 1) == 0))
+        {
+            // Round even if the exact numbers is .....50..0.
+            lastRemovedDigit = 4;
+        }
+        // We need to take vr+1 if vr is outside bounds or we need to round up.
+        output = vr + ((vr == vm && (!acceptBounds || !vmIsTrailingZeros)) || (lastRemovedDigit >= 5));
 
-    const int exp = e10 + removed;
+        const int exp = e10 + removed;
 
-    debug(ryu) if (!__ctfe)
-    {
-        printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
-        printf("acceptBounds=%d\n", acceptBounds);
-        printf("vmIsTrailingZeros=%d\n", vmIsTrailingZeros);
-        printf("lastRemovedDigit=%d\n", lastRemovedDigit);
-        printf("vrIsTrailingZeros=%d\n", vrIsTrailingZeros);
-        printf("O=%s\n", s(output));
-        printf("EXP=%d\n", exp);
+        debug(ryu) if (!__ctfe)
+        {
+            printf("V+=%s\nV =%s\nV-=%s\n", s(vp), s(vr), s(vm));
+            printf("acceptBounds=%d\n", acceptBounds);
+            printf("vmIsTrailingZeros=%d\n", vmIsTrailingZeros);
+            printf("lastRemovedDigit=%d\n", lastRemovedDigit);
+            printf("vrIsTrailingZeros=%d\n", vrIsTrailingZeros);
+            printf("O=%s\n", s(output));
+            printf("EXP=%d\n", exp);
+        }
+
+        fd.coefficient = BigInt!2(output);
+        fd.exponent = exp;
     }
-
-    Decimal!2 fd;
-    fd.coefficient = BigInt!2(output);
-    fd.exponent = exp;
-    fd.coefficient.sign = ieeeSign;
+    fd.coefficient.sign = x.signbit;
     return fd;
 }
 
@@ -634,7 +551,7 @@ int copy_special_str(char* result, const Decimal!2 fd)
 // = 1 + 39 + 1 + 1 + 1 + 10 = 53
 int generic_to_chars(const Decimal!2 v, char* result)
 {
-    if (v.exponent == FD128_EXCEPTIONAL_EXPONENT)
+    if (v.exponent == v.exponent.max)
     {
         return copy_special_str(result, v);
     }
@@ -651,7 +568,7 @@ int generic_to_chars(const Decimal!2 v, char* result)
 
     debug(ryu) if (!__ctfe)
     {
-        printf("DIGITS=%s\n", s(v.mantissa));
+        // printf("DIGITS=%s\n", s(v.mantissa));
         printf("OLEN=%u\n", olength);
         printf("EXP=%u\n", v.exponent + olength);
     }
@@ -1122,7 +1039,7 @@ version(all) unittest
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!float;
-        auto fd = float_to_fd128(number);
+        auto fd = generic_binary_to_decimal(number);
         auto res = buffer[0 .. generic_to_chars(fd, buffer.ptr)];
         assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
     }
@@ -1131,7 +1048,7 @@ version(all) unittest
 @("direct_double_to_fd128")
 version(all) unittest
 {
-    Decimal!2 v = double_to_fd128(4.708356024711512e18);
+    Decimal!2 v = generic_binary_to_decimal(4.708356024711512e18);
     assert(v.coefficient.sign == false);
     assert(v.exponent == 3);
     assert(v.coefficient == BigInt!2(4708356024711512UL));
@@ -1195,7 +1112,7 @@ version(all) unittest
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!double;
-        auto fd = double_to_fd128(number);
+        auto fd = generic_binary_to_decimal(number);
         auto res = buffer[0 .. generic_to_chars(fd, buffer.ptr)];
         assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
     }
@@ -1245,8 +1162,30 @@ version(all) unittest
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!real;
-        auto fd = real_to_fd128(number);
+        auto fd = generic_binary_to_decimal(number);
         auto res = buffer[0 .. generic_to_chars(fd, buffer.ptr)];
         assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
     }
 }
+
+// https://github.com/ulfjack/ryu/issues/156
+//  in: -2.147483648E32
+// out: -2.1474836479999998E32
+
+//  in: -3.1802768007018752E17
+// out: -3.180276800701875E17
+
+//  in: -6.4432225704600013E18
+// out: -6.443222570460001E18
+
+//  in: 1.3867957848030121E18
+// out: 1.386795784803012E18
+
+//  in: 1.41027712162200013E18
+// out: 1.4102771216220001E18
+
+//  in: 8.8243617212999997E18
+// out: 8.8243617213E18
+
+//  in: 8.8243617212999997E18
+// out: 8.8243617213E18

@@ -58,11 +58,11 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         if (value == 0)
             return;
         T x = value.fabs;
+        int exp;
         {
-            int exp;
             enum scale = T(2) ^^ T.mant_dig;
             x = frexp(x, exp) * scale;
-            this.exponent = exp - T.mant_dig;
+            exp -= T.mant_dig;
         }
         static if (T.mant_dig < 64)
         {
@@ -87,10 +87,20 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         }
         if (normalize)
         {
-            auto shift = this.coefficient.ctlz;
-            this.exponent -= cast(Exp) shift;
+            auto shift = cast(int)this.coefficient.ctlz;
+            exp -= shift;
             this.coefficient <<= shift;
         }
+        else
+        {
+            int shift = T.min_exp - T.mant_dig - exp;
+            if (shift > 0)
+            {
+                this.coefficient >>= shift;
+                exp = T.min_exp - T.mant_dig;
+            }
+        }
+        this.exponent = exp;
     }
 
     static if (coefficientSize == 128)
@@ -113,6 +123,28 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         assert(f.sign);
         assert(f.exponent == 0);
         assert(f.coefficient == 0);
+
+        // subnormals
+        static assert(cast(float) Fp!64(float.min_normal / 2) == float.min_normal / 2);
+        static assert(cast(float) Fp!64(float.min_normal * float.epsilon) == float.min_normal * float.epsilon);
+        // subnormals
+        static assert(cast(double) Fp!64(double.min_normal / 2) == double.min_normal / 2);
+        static assert(cast(double) Fp!64(double.min_normal * double.epsilon) == double.min_normal * double.epsilon);
+        // subnormals
+        static assert(cast(real) Fp!64(real.min_normal / 2) == real.min_normal / 2);
+        static assert(cast(real) Fp!64(real.min_normal * real.epsilon) == real.min_normal * real.epsilon);
+
+        enum d = cast(float) Fp!64(float.min_normal / 2, false);
+
+        // subnormals
+        static assert(cast(float) Fp!64(float.min_normal / 2, false) == float.min_normal / 2, d.stringof);
+        static assert(cast(float) Fp!64(float.min_normal * float.epsilon, false) == float.min_normal * float.epsilon);
+        // subnormals
+        static assert(cast(double) Fp!64(double.min_normal / 2, false) == double.min_normal / 2);
+        static assert(cast(double) Fp!64(double.min_normal * double.epsilon, false) == double.min_normal * double.epsilon);
+        // subnormals
+        static assert(cast(real) Fp!64(real.min_normal / 2, false) == real.min_normal / 2);
+        static assert(cast(real) Fp!64(real.min_normal * real.epsilon, false) == real.min_normal * real.epsilon);
     }
 
     static if (coefficientSize == 128)

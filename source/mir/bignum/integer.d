@@ -82,6 +82,25 @@ struct BigInt(size_t maxSize64)
         }
     }
 
+    ///
+    ref opAssign(ulong data) return
+    {
+        static if (size_t.sizeof == ulong.sizeof)
+        {
+            length = 1;
+            view.leastSignificantFirst[0] = data;
+        }
+        else
+        {
+            length = 2;
+            auto d = view.leastSignificantFirst;
+            d[0] = cast(uint) data;
+            d[1] = cast(uint) (data >> 32);
+        }
+        normalize;
+        return this;
+    }
+
     static if (maxSize64 == 3)
     ///
     version(mir_bignum_test) @safe pure @nogc unittest

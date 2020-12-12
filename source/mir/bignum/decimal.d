@@ -235,6 +235,18 @@ struct Decimal(size_t maxSize64)
     {
         return view.opCast!(T, wordNormalized, nonZero);
     }
+
+    ///
+    bool isNaN() const @property
+    {
+        return exponent == exponent.max && coefficient.length;
+    }
+
+    ///
+    bool isInfinity() const @property
+    {
+        return exponent == exponent.max && !coefficient.length;
+    }
 }
 
 ///
