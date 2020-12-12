@@ -14,27 +14,95 @@ package enum half(size_t hs) = (){
 }();
 
 /++
-Software floating point bumber.
+Software floating point number.
+
 Params:
     coefficientSize = coefficient size in bits
+
+Note: the implementation doesn't support NaN and Infinity values.
 +/
-struct Fp(size_t coefficientSize)
-    if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
+struct Fp(size_t coefficientSize, Exp = sizediff_t)
+    if ((is(Exp == int) || is(Exp == long)) && coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
 {
     import mir.bignum.fixed: UInt;
 
     bool sign;
-    sizediff_t exponent;
+    Exp exponent;
     UInt!coefficientSize coefficient;
 
     /++
     +/
     nothrow
-    this(bool sign, sizediff_t exponent, UInt!coefficientSize normalizedCoefficient)
+    this(bool sign, Exp exponent, UInt!coefficientSize normalizedCoefficient)
     {
         this.coefficient = normalizedCoefficient;
         this.exponent = exponent;
         this.sign = sign;
+    }
+
+    /++
+    Params:
+        value = Hardware floating point number. Special values `nan` and `inf` aren't allowed.
+    Params:
+        values = not a special floationg point-value
+    +/
+    this(T)(const T value)
+        @safe pure nothrow @nogc
+        if (isFloatingPoint!T && T.mant_dig <= coefficientSize)
+    {
+        import mir.math.common : fabs;
+        import mir.math.ieee : frexp, signbit, ldexp;
+        assert(value == value);
+        assert(value.fabs < T.infinity);
+        this.sign = value.signbit != 0;
+        if (value == 0)
+            return;
+        T x = value.fabs;
+        {
+            int exp;
+            x = frexp(x, exp);
+            this.exponent = exp;
+        }
+        static if (T.mant_dig < 64)
+        {
+            this.coefficient = UInt!coefficientSize(cast(ulong)cast(long)x);
+        }
+        else
+        static if (T.mant_dig == 64)
+        {
+            this.coefficient = UInt!coefficientSize(cast(ulong)x);
+        }
+        else
+        {
+            enum scale = T(2) ^^ -64;
+            enum scaleInv = T(2) ^^ +64;
+            x *= scale;
+            long high = cast(long) x;
+            if (high > x)
+                --high;
+            x -= high;
+            x *= scaleInv;
+            this.coefficient = (UInt!coefficientSize(ulong(high)) << 64) | cast(ulong)x;
+        }
+        auto shift = this.coefficient.ctlz;
+        this.exponent -= cast(Exp) shift;
+        import std.stdio;
+        debug printf("shift = %ld\n", shift);
+        this.coefficient <<= shift;
+    }
+
+    static if (coefficientSize == 128)
+    ///
+    version(mir_bignum_test)
+    // @safe pure @nogc
+    unittest
+    {
+        auto f = Fp!64(-33.0 * 2.0 ^^ -10);
+        assert(f.sign);
+        import std.stdio;
+        writeln(f.exponent);
+        assert(f.exponent == -10 - (64 - 6));
+        assert(f.coefficient == 33UL << (64 - 6));
     }
 
     /++
@@ -47,7 +115,7 @@ struct Fp(size_t coefficientSize)
         {
             if (normalizedInteger)
             {
-                this(false, sizediff_t(size) - coefficientSize, integer.rightExtend!(coefficientSize - size));
+                this(false, Exp(size) - coefficientSize, integer.rightExtend!(coefficientSize - size));
             }
             else
             {
@@ -177,8 +245,7 @@ struct Fp(size_t coefficientSize)
     T opCast(T, bool noHalf = false)() nothrow const
         if (isFloatingPoint!T)
     {
-        // import mir.math.ieee: ldexp;
-        import std.math: ldexp;
+        import mir.math.ieee: ldexp;
         auto exp = cast()exponent;
         static if (coefficientSize == 32)
         {
