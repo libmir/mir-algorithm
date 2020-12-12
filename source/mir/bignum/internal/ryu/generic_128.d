@@ -465,7 +465,7 @@ Decimal!2 generic_binary_to_decimal(T)(const T x)
         {
             auto div10vp = div10(vp);
             auto div10vm = div10(vm);
-            if (div10vp <= div10vm)
+            if (div10vp == div10vm)
                 break;
             vmIsTrailingZeros &= vm - div10vm * 10 == 0;
             vrIsTrailingZeros &= lastRemovedDigit == 0;
@@ -488,9 +488,8 @@ Decimal!2 generic_binary_to_decimal(T)(const T x)
                 if (vm - div10vm * 10)
                     break;
                 vrIsTrailingZeros &= lastRemovedDigit == 0;
-                lastRemovedDigit = vr.divRem10;
-                vm = div10vm;
-                vp = div10(vp);
+                lastRemovedDigit = cast(uint) (vr - div10vm * 10);
+                vr = vp = vm = div10vm;
                 ++removed;
             }
         }
@@ -1105,6 +1104,8 @@ version(all) unittest
             "4.294967296e0", // 2^32
             "4.294967297e0", // 2^32 + 1
             "4.294967298e0", // 2^32 + 2
+
+            "-2.147483648e32",
         ])
     {
         import mir.conv: to;
@@ -1169,23 +1170,3 @@ version(all) unittest
 }
 
 // https://github.com/ulfjack/ryu/issues/156
-//  in: -2.147483648E32
-// out: -2.1474836479999998E32
-
-//  in: -3.1802768007018752E17
-// out: -3.180276800701875E17
-
-//  in: -6.4432225704600013E18
-// out: -6.443222570460001E18
-
-//  in: 1.3867957848030121E18
-// out: 1.386795784803012E18
-
-//  in: 1.41027712162200013E18
-// out: 1.4102771216220001E18
-
-//  in: 8.8243617212999997E18
-// out: 8.8243617213E18
-
-//  in: 8.8243617212999997E18
-// out: 8.8243617213E18
