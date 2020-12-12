@@ -6,7 +6,7 @@
 // output!
 //
 // For any floating-point type that is not natively defined by the compiler,
-// you can use generic_binary_to_decimal to work directly on the underlying bit
+// you can use genericBinaryToDecimal to work directly on the underlying bit
 // representation.
 
 module mir.bignum.internal.ryu.generic_128;
@@ -65,7 +65,7 @@ void generic_computePow5(const uint i, ref UInt!256 result)
     }
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     // We only test a few entries - we could test the fUL table instead, but should we?
     static immutable uint[10] EXACT_POW5_IDS = [1, 10, 55, 56, 300, 1000, 2345, 3210, 4968 - 3, 4968 - 1];
@@ -112,7 +112,7 @@ void generic_computeInvPow5(const uint i, ref UInt!256 result)
     }
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     static uint[9] EXACT_INV_POW5_IDS = [10, 55, 56, 300, 1000, 2345, 3210, 4897 - 3, 4897 - 1];
 
@@ -185,7 +185,7 @@ bool multipleOfPowerOf5(UInt!128 value, const uint p)
     return 0 >= p;
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     assert(multipleOfPowerOf5(UInt!128(1), 0) == true);
     assert(multipleOfPowerOf5(UInt!128(1), 1) == false);
@@ -204,7 +204,7 @@ bool multipleOfPowerOf2(const UInt!128 value, const uint p)
     return (value & ((UInt!128(1) << p) - 1)) == 0;
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     assert(multipleOfPowerOf5(UInt!128(1), 0) == true);
     assert(multipleOfPowerOf5(UInt!128(1), 1) == false);
@@ -223,46 +223,18 @@ UInt!128 mulShift(const UInt!128 m, const UInt!256 mul, const uint j)
     return (extendedMulHigh(m, mul) >> (j - 128)).toSize!128;
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     UInt!256 m = [0, 0, 2, 0];
     assert(mulShift(UInt!128(1), m, 129) == 1u);
     assert(mulShift(UInt!128(12345), m, 129) == 12345u);
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     UInt!256 m = [0, 0, 8, 0];
     UInt!128 f = (UInt!128(123) << 64) | 321;
     assert(mulShift(f, m, 131) == f);
-}
-
-uint decimalLength(const UInt!128 v)
-{
-    version(LDC) pragma(inline, true);
-    enum UInt!128 LARGEST_POW10 = (UInt!128(5421010862427522170UL) << 64) | 687399551400673280UL;
-    UInt!128 p10 = LARGEST_POW10;
-    for (uint i = 39; i > 0; i--)
-    {
-        if (v >= p10)
-        {
-            return i;
-        }
-        divRem10(p10);
-    }
-    return 1;
-}
-
-version(all) unittest
-{
-    assert(decimalLength(UInt!128(1)) == 1u);
-    assert(decimalLength(UInt!128(9)) == 1u);
-    assert(decimalLength(UInt!128(10)) == 2u);
-    assert(decimalLength(UInt!128(99)) == 2u);
-    assert(decimalLength(UInt!128(100)) == 3u);
-    UInt!128 tenPow38 = (UInt!128(5421010862427522170UL) << 64) | 687399551400673280UL;
-    // 10^38 has 39 digits.
-    assert(decimalLength(tenPow38) == 39u);
 }
 
 // Returns floor(log_10(2^e)).
@@ -275,7 +247,7 @@ uint log10Pow2(const int e)
     return (e * 0x9A209A84FBCFUL) >> 49;
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     assert(log10Pow2(1) == 0u);
     assert(log10Pow2(5) == 1u);
@@ -292,7 +264,7 @@ uint log10Pow5(const int e)
     return (e * 0xB2EFB2BD8218UL) >> 48;
 }
 
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     assert(log10Pow5(1) == 0u);
     assert(log10Pow5(2) == 1u);
@@ -301,22 +273,15 @@ version(all) unittest
 }
 
 debug(ryu)
-static char* s(UInt!128 v)
+private char* s(UInt!128 v)
 {
-    int len = decimalLength(v);
-    char* b = cast(char*) malloc(len + 1);
-    for (int i = 0; i < len; i++)
-    {
-        const uint c = v.divRem10;
-        b[len - 1 - i] = cast(char) ('0' + c);
-    }
-    b[len] = 0;
-    return b;
+    import mir.conv: to;
+    return (v.to!string ~ "\0").ptr;
 }
 
 // Converts the given binary floating point number to the shortest decimal floating point number
 // that still accurately represents it.
-Decimal!2 generic_binary_to_decimal(T)(const T x)
+Decimal!2 genericBinaryToDecimal(T)(const T x)
 {
     import mir.utility: _expect;
     import mir.math: signbit, fabs;
@@ -525,112 +490,6 @@ Decimal!2 generic_binary_to_decimal(T)(const T x)
     }
     fd.coefficient.sign = x.signbit;
     return fd;
-}
-
-int copy_special_str(char* result, const Decimal!2 fd)
-{
-    version(LDC) pragma(inline, true);
-    if (fd.coefficient.sign)
-    {
-        result[0] = '-';
-    }
-    if (fd.coefficient.length)
-        memcpy(result + fd.coefficient.sign, "nan".ptr, 3);
-    else
-        memcpy(result + fd.coefficient.sign, "inf".ptr, 3);
-    return fd.coefficient.sign + 3;
-}
-
-// Converts the given decimal floating point number to a string, writing to result, and returning
-// the number characters written. Does not terminate the buffer with a 0. In the worst case, this
-// function can write up to 53 characters.
-//
-// Maximal char buffer requirement:
-// sign + mantissa digits + decimal dot + 'e' + exponent sign + exponent digits
-// = 1 + 39 + 1 + 1 + 1 + 10 = 53
-int generic_to_chars(const Decimal!2 v, char* result)
-{
-    if (v.exponent == v.exponent.max)
-    {
-        return copy_special_str(result, v);
-    }
-
-    // Step 5: Print the decimal representation.
-    int index = 0;
-    if (v.coefficient.sign)
-    {
-        result[index++] = '-';
-    }
-
-    UInt!128 output = v.coefficient.data;
-    const uint olength = decimalLength(output);
-
-    debug(ryu) if (!__ctfe)
-    {
-        // printf("DIGITS=%s\n", s(v.mantissa));
-        printf("OLEN=%u\n", olength);
-        printf("EXP=%u\n", v.exponent + olength);
-    }
-
-    for (uint i = 0; i < olength - 1; ++i)
-    {
-        const uint c = output.divRem10;
-        result[index + olength - i] = cast(char) ('0' + c);
-    }
-    result[index] = cast(char)('0' + output.divRem10); // output should be < 10 by now.
-    assert(output == 0);
-
-    // Print decimal point if needed.
-    if (olength > 1)
-    {
-        result[index + 1] = '.';
-        index += olength + 1;
-    }
-    else
-    {
-        ++index;
-    }
-
-    // Print the exponent.
-    result[index++] = 'e';
-    long exp = v.exponent + olength - 1;
-    if (exp < 0)
-    {
-        result[index++] = '-';
-        exp = -exp;
-    }
-
-    uint elength = decimalLength(UInt!128LU(exp));
-    for (uint i = 0; i < elength; ++i)
-    {
-        const c = exp % 10;
-        exp /= 10;
-        result[index + elength - 1 - i] = cast(char) ('0' + c);
-    }
-    index += elength;
-    return index;
-}
-
-version(all) unittest
-{
-    char[100] buffer = '\0';
-    Decimal!2 v;
-    v.coefficient = BigInt!2(12345);
-    v.exponent = -2;
-    int index = generic_to_chars(v, buffer.ptr);
-    buffer[index++] = 0;
-    assert(strcmp(buffer.ptr, "1.2345e2".ptr) == 0);
-}
-
-version(all) unittest
-{
-    char[100] buffer = '\0';
-    Decimal!2 v;
-    v.coefficient = BigInt!2((UInt!128(5421010862427522170UL) << 64) | 687399551400673280UL);
-    v.exponent = -20;
-    int index = generic_to_chars(v, buffer.ptr);
-    buffer[index++] = 0;
-    assert(strcmp(buffer.ptr, "1.00000000000000000000000000000000000000e18") == 0);
 }
 
 // These tables are ~4.5 kByte total, compared to ~160 kByte for the fUL tables.
@@ -970,15 +829,15 @@ private static immutable ulong[154] POW5_INV_ERRORS = [
 version(unittest) private:
 
 @("float_to_fd128")
-version(all) unittest
+version(mir_bignum_test) unittest
 {
-    foreach(test; [
+    static immutable tests = [
         "0e0",
         "-0e0",
         "1e0",
         "-1e0",
         "nan",
-        "inf",
+        "+inf",
         "-inf",
         "1.1754944e-38",
         "3.4028235e38",
@@ -1031,30 +890,35 @@ version(all) unittest
         "1.234567e0",
         "1.2345678e0",
         "1.23456735e-36",
-        ])
+        ];
+
+    import mir.conv: to;
+    foreach(test; tests)
     {
-        import mir.conv: to;
-        char[128] buffer;
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!float;
-        auto fd = generic_binary_to_decimal(number);
-        auto res = buffer[0 .. generic_to_chars(fd, buffer.ptr)];
+        auto fd = genericBinaryToDecimal(number);
+        auto res = fd.to!string;
+        import std.stdio;
+        writeln(test.to!float);
         assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
     }
+    // static foreach(test; tests)
+    //     static assert(test.to!float.genericBinaryToDecimal.to!string == test, test ~ " " ~ test.to!float.genericBinaryToDecimal.to!string);
 }
 
 @("direct_double_to_fd128")
-version(all) unittest
+version(mir_bignum_test) unittest
 {
-    Decimal!2 v = generic_binary_to_decimal(4.708356024711512e18);
+    Decimal!2 v = genericBinaryToDecimal(4.708356024711512e18);
     assert(v.coefficient.sign == false);
     assert(v.exponent == 3);
     assert(v.coefficient == BigInt!2(4708356024711512UL));
 }
 
 @("double_to_fd128")
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     foreach(test; [
             "0e0",
@@ -1062,7 +926,7 @@ version(all) unittest
             "1e0",
             "-1e0",
             "nan",
-            "inf",
+            "+inf",
             "-inf",
             "2.2250738585072014e-308",
             "1.7976931348623157e308",
@@ -1109,19 +973,18 @@ version(all) unittest
         ])
     {
         import mir.conv: to;
-        char[128] buffer;
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!double;
-        auto fd = generic_binary_to_decimal(number);
-        auto res = buffer[0 .. generic_to_chars(fd, buffer.ptr)];
+        auto fd = genericBinaryToDecimal(number);
+        auto res = fd.to!string;
         assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
     }
 }
 
 
 @("real_to_fd128")
-version(all) unittest
+version(mir_bignum_test) unittest
 {
     foreach (test; [
             "0e0",
@@ -1129,7 +992,7 @@ version(all) unittest
             "1e0",
             "-1e0",
             "nan",
-            "inf",
+            "+inf",
             "-inf",
 
             "2.2250738585072014e-308",
@@ -1159,12 +1022,11 @@ version(all) unittest
         ])
     {
         import mir.conv: to;
-        char[128] buffer;
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!real;
-        auto fd = generic_binary_to_decimal(number);
-        auto res = buffer[0 .. generic_to_chars(fd, buffer.ptr)];
+        auto fd = genericBinaryToDecimal(number);
+        auto res = fd.to!string;
         assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
     }
 }

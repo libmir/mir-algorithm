@@ -143,9 +143,19 @@ struct Decimal(size_t maxSize64)
 
     private enum eDecimalLength = 2 + ceilLog10Exp2(coefficient.data.length * (size_t.sizeof * 8)) + expBufferShift;
 
-    private C[] toStringImpl(C = char)(ref scope return C[eDecimalLength] buffer) scope const @safe pure nothrow
+    private const(C)[] toStringImpl(C = char)(ref scope return C[eDecimalLength] buffer) scope const @safe pure nothrow
         if(isSomeChar!C && isMutable!C)
     {
+        import mir.utility: _expect;
+        // handle special values
+        if (_expect(exponent == exponent.max, false))
+        {
+            immutable(C)[] nan = "nan";
+            immutable(C)[] ninf = "-inf";
+            immutable(C)[] pinf = "+inf";
+            return coefficient.length == 0 ? coefficient.sign ? ninf : pinf : nan;
+        }
+
         BigInt!maxSize64 work = coefficient;
         size_t coefficientLength = work.view.unsigned.toStringImpl(buffer[0 .. $ - expBufferShift]);
         assert(coefficientLength);
@@ -183,7 +193,9 @@ struct Decimal(size_t maxSize64)
         buffer[$ - expBufferShift] = 'e';
 
         assert(exponentLength <= expBufferShift + 1);
-        buffer[$ - (expBufferShift - 1) .. $ - (expBufferShift - 1) + exponentLength] = buffer[$ - exponentLength .. $];
+        size_t i;
+        do buffer[$ - (expBufferShift - 1) + i] = buffer[$ - exponentLength + i];
+        while(++i < exponentLength);
         return buffer[$ - (expBufferShift + coefficientLength) .. $ - (expBufferShift - 1) + exponentLength];
     }
 
