@@ -41,12 +41,12 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     }
 
     /++
+    Constructs $(LREF Fp) from hardaware floating  point number.
     Params:
         value = Hardware floating point number. Special values `nan` and `inf` aren't allowed.
-    Params:
-        values = not a special floationg point-value
+        normalize = flag to indicate if the normalization should be performed.
     +/
-    this(T)(const T value)
+    this(T)(const T value, bool normalize = true)
         @safe pure nothrow @nogc
         if (isFloatingPoint!T && T.mant_dig <= coefficientSize)
     {
@@ -60,8 +60,9 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         T x = value.fabs;
         {
             int exp;
-            x = frexp(x, exp);
-            this.exponent = exp;
+            enum scale = T(2) ^^ T.mant_dig;
+            x = frexp(x, exp) * scale;
+            this.exponent = exp - T.mant_dig;
         }
         static if (T.mant_dig < 64)
         {
@@ -74,35 +75,56 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         }
         else
         {
-            enum scale = T(2) ^^ -64;
-            enum scaleInv = T(2) ^^ +64;
-            x *= scale;
+            enum scale = T(2) ^^ 64;
+            enum scaleInv = 1 / scale;
+            x *= scaleInv;
             long high = cast(long) x;
             if (high > x)
                 --high;
             x -= high;
-            x *= scaleInv;
+            x *= scale;
             this.coefficient = (UInt!coefficientSize(ulong(high)) << 64) | cast(ulong)x;
         }
-        auto shift = this.coefficient.ctlz;
-        this.exponent -= cast(Exp) shift;
-        import std.stdio;
-        debug printf("shift = %ld\n", shift);
-        this.coefficient <<= shift;
+        if (normalize)
+        {
+            auto shift = this.coefficient.ctlz;
+            this.exponent -= cast(Exp) shift;
+            this.coefficient <<= shift;
+        }
     }
 
     static if (coefficientSize == 128)
     ///
     version(mir_bignum_test)
-    // @safe pure @nogc
+    @safe pure @nogc nothrow
     unittest
     {
-        auto f = Fp!64(-33.0 * 2.0 ^^ -10);
+        enum h = -33.0 * 2.0 ^^ -10;
+        auto f = Fp!64(h);
         assert(f.sign);
-        import std.stdio;
-        writeln(f.exponent);
         assert(f.exponent == -10 - (64 - 6));
         assert(f.coefficient == 33UL << (64 - 6));
+        assert(cast(double) f == h);
+
+        // CTFE
+        static assert(cast(double) Fp!64(h) == h);
+
+        f = Fp!64(-0.0);
+        assert(f.sign);
+        assert(f.exponent == 0);
+        assert(f.coefficient == 0);
+    }
+
+    static if (coefficientSize == 128)
+    /// Without normalization
+    version(mir_bignum_test)
+    @safe pure @nogc nothrow
+    unittest
+    {
+        auto f = Fp!64(-33.0 * 2.0 ^^ -10, false);
+        assert(f.sign);
+        assert(f.exponent == -10 - (double.mant_dig - 6));
+        assert(f.coefficient == 33UL << (double.mant_dig - 6));
     }
 
     /++
