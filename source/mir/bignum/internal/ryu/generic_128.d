@@ -914,7 +914,7 @@ version(mir_bignum_test) unittest
         "1.234567e0",
         "1.2345678e0",
         "1.23456735e-36",
-        ];
+    ];
 
     foreach(test; tests)
     {
@@ -923,10 +923,10 @@ version(mir_bignum_test) unittest
         auto number = test.to!float;
         auto fd = genericBinaryToDecimal(number);
         auto res = fd.to!string;
-        assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
+        assert(res == test);
     }
-    // static foreach(test; tests)
-    //     static assert(test.to!float.genericBinaryToDecimal.to!string == test, test ~ " " ~ test.to!float.genericBinaryToDecimal.to!string);
+    static foreach(test; tests)
+        static assert(test.to!float.genericBinaryToDecimal.to!string == test);
 }
 
 @("direct_double_to_fd128")
@@ -945,115 +945,122 @@ version(mir_bignum_test) unittest
 
     assert(0x0.00000000f424p-1022.genericBinaryToDecimal.to!string == "4.940656e-318");
     assert(0x0.00000016e36p-1022.genericBinaryToDecimal.to!string == "1.18575755e-316");
-    foreach(test; [
-            "0e0",
-            "-0e0",
-            "1e0",
-            "-1e0",
-            "nan",
-            "+inf",
-            "-inf",
-            "2.2250738585072014e-308",
-            "1.7976931348623157e308",
-            "5e-324",
-            "2.9802322387695312e-8",
-            "-2.109808898695963e16",
-            // some test are commented because the reader/parser can't always handle denormal numbers for now
-            // "4.940656e-318",
-            // "1.18575755e-316",
-            "2.989102097996e-312",
-            "9.0608011534336e15",
-            "4.708356024711512e18",
-            "9.409340012568248e18",
-            "1.2345678e0",
-            "5.764607523034235e39",
-            "1.152921504606847e40",
-            "2.305843009213694e40",
+    static immutable tests = [
+        "0e0",
+        "-0e0",
+        "1e0",
+        "-1e0",
+        "nan",
+        "+inf",
+        "-inf",
+        "2.2250738585072014e-308",
+        "1.7976931348623157e308",
+        "5e-324",
+        "2.9802322387695312e-8",
+        "-2.109808898695963e16",
+        // some test are commented because the reader/parser can't always handle denormal numbers for now
+        // "4.940656e-318",
+        // "1.18575755e-316",
+        "2.989102097996e-312",
+        "9.0608011534336e15",
+        "4.708356024711512e18",
+        "9.409340012568248e18",
+        "1.2345678e0",
+        "5.764607523034235e39",
+        "1.152921504606847e40",
+        "2.305843009213694e40",
 
-            "1e0",
-            "1.2e0",
-            "1.23e0",
-            "1.234e0",
-            "1.2345e0",
-            "1.23456e0",
-            "1.234567e0",
-            "1.2345678e0",
-            "1.23456789e0",
-            "1.234567895e0",
-            "1.2345678901e0",
-            "1.23456789012e0",
-            "1.234567890123e0",
-            "1.2345678901234e0",
-            "1.23456789012345e0",
-            "1.234567890123456e0",
-            "1.2345678901234567e0",
+        "1e0",
+        "1.2e0",
+        "1.23e0",
+        "1.234e0",
+        "1.2345e0",
+        "1.23456e0",
+        "1.234567e0",
+        "1.2345678e0",
+        "1.23456789e0",
+        "1.234567895e0",
+        "1.2345678901e0",
+        "1.23456789012e0",
+        "1.234567890123e0",
+        "1.2345678901234e0",
+        "1.23456789012345e0",
+        "1.234567890123456e0",
+        "1.2345678901234567e0",
 
-            // Test 32-bit chunking
-            "4.294967294e0", // 2^32 - 2
-            "4.294967295e0", // 2^32 - 1
-            "4.294967296e0", // 2^32
-            "4.294967297e0", // 2^32 + 1
-            "4.294967298e0", // 2^32 + 2
+        // Test 32-bit chunking
+        "4.294967294e0", // 2^32 - 2
+        "4.294967295e0", // 2^32 - 1
+        "4.294967296e0", // 2^32
+        "4.294967297e0", // 2^32 + 1
+        "4.294967298e0", // 2^32 + 2
 
-            "-2.147483648e32",
-        ])
+        "-2.147483648e32",
+    ];
+    foreach(test; tests)
     {
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!double;
         auto fd = genericBinaryToDecimal(number);
         auto res = fd.to!string;
-        assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
+        assert(res == test);
     }
+    static foreach(test; tests)
+        static assert(test.to!double.genericBinaryToDecimal.to!string == test);
 }
 
 
+static if (real.mant_dig == 64)
 @("real_to_fd128")
 version(mir_bignum_test) unittest
 {
-    foreach (test; [
-            "0e0",
-            "-0e0",
-            "1e0",
-            "-1e0",
-            "nan",
-            "+inf",
-            "-inf",
+    import mir.conv: to;
 
-            "2.2250738585072014e-308",
-            "2.98023223876953125e-8",
-            "-2.109808898695963e16",
-            "4.940656e-318",
-            "1.18575755e-316",
-            "2.989102097996e-312",
-            "9.0608011534336e15",
-            "4.708356024711512e18",
-            "9.409340012568248e18",
-            "1.2345678e0",
+    static immutable tests = [
+        "0e0",
+        "-0e0",
+        "1e0",
+        "-1e0",
+        "nan",
+        "+inf",
+        "-inf",
 
-            // The binary 80-bit representation of this number has a mantissa that is a
-            // one followed by zeros. This is a special case, because the next lower
-            // number is closer to X than the next higher number, so it is possible that
-            // we need to print more digits.
-            // Before this test was added, the code incorrectly checked for an all-zeroes
-            // mantissa in this case - the 80-bit format has an *explicit* leading one,
-            // and the code did not take that into account.
-            "1.10169395793497080013e-4927",
-            // Also check that the next higher and next lower number have *different*
-            // decimal representations.
-            "1.1016939579349708003e-4927",
-            "1.1016939579349708001e-4927",
+        "2.2250738585072014e-308",
+        "2.98023223876953125e-8",
+        "-2.109808898695963e16",
+        "4.940656e-318",
+        "1.18575755e-316",
+        "2.989102097996e-312",
+        "9.0608011534336e15",
+        "4.708356024711512e18",
+        "9.409340012568248e18",
+        "1.2345678e0",
 
-        ])
+        // The binary 80-bit representation of this number has a mantissa that is a
+        // one followed by zeros. This is a special case, because the next lower
+        // number is closer to X than the next higher number, so it is possible that
+        // we need to print more digits.
+        // Before this test was added, the code incorrectly checked for an all-zeroes
+        // mantissa in this case - the 80-bit format has an *explicit* leading one,
+        // and the code did not take that into account.
+        "1.10169395793497080013e-4927",
+        // Also check that the next higher and next lower number have *different*
+        // decimal representations.
+        "1.1016939579349708003e-4927",
+        "1.1016939579349708001e-4927",
+
+    ];
+    foreach(test; tests)
     {
-        import mir.conv: to;
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!real;
         auto fd = genericBinaryToDecimal(number);
         auto res = fd.to!string;
-        assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
+        assert(res == test);
     }
-}
 
-// https://github.com/ulfjack/ryu/issues/156
+    static foreach(test; tests)
+        static assert(test.to!real.genericBinaryToDecimal.to!string == test);
+}

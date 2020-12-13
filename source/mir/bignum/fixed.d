@@ -244,8 +244,22 @@ struct UInt(size_t size)
     +/
     auto opCmp(UInt!size rhs) const
     {
-        import mir.algorithm.iteration: cmp;
-        return cmp(this.view.mostSignificantFirst, rhs.view.mostSignificantFirst);
+        version (LittleEndian) // workaround for CTFE bug
+        {
+            foreach_reverse(i; 0 .. data.length)
+            {
+                if (this.data[i] < rhs.data[i])
+                    return -1;
+                if (this.data[i] > rhs.data[i])
+                    return +1;
+            }
+            return 0;
+        }
+        else
+        {
+            import mir.algorithm.iteration: cmp;
+            return cmp(this.view.mostSignificantFirst, rhs.view.mostSignificantFirst);
+        }
     }
 
     /// ditto

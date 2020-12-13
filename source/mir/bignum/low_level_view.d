@@ -785,14 +785,14 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         static if (W.sizeof == 4)
         {
             auto ns = this.mostSignificantFirst;
+            size_t i;
             do
             {
-                auto ext = (ulong(overflow) << 32) ^ ns.front;
-                ns.front = cast(uint)(ext / rhs);
+                auto ext = (ulong(overflow) << 32) ^ ns[i];
+                ns[i] = cast(uint)(ext / rhs);
                 overflow = ext % rhs;
-                ns.popFront;
             }
-            while (ns.length);
+            while (++i < ns.length);
             if (mostSignificant == 0)
                 popMostSignificant;
             return overflow;
@@ -1118,7 +1118,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if (isSomeChar!C && isMutable!C)
     {
         assert(str.length);
-        assert(str.length >= ceilLog10Exp2(coefficients.length * (size_t.sizeof * 8)));
+        assert(str.length >= ceilLog10Exp2(coefficients.length * (W.sizeof * 8)));
 
         size_t i = str.length;
         while(coefficients.length > 1)
