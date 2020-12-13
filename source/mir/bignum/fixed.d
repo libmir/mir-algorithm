@@ -69,7 +69,6 @@ struct UInt(size_t size)
         }
     }
 
-    static if (size >= 64)
     ///
     this(ulong data)
     {
@@ -301,7 +300,7 @@ struct UInt(size_t size)
         @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
-        return view.opOpAssign!op(UInt!size(rhs));
+        return opOpAssign!op(UInt!size(rhs));
     }
 
     /// ditto
@@ -320,6 +319,15 @@ struct UInt(size_t size)
     {
         return view.opOpAssign!op(rhs, carry);
     }
+
+    static if (size_t.sizeof == 4)
+    /// ditto
+    auto opOpAssign(string op : "*")(ulong rhs)
+        @safe pure nothrow @nogc
+    {
+        return opOpAssign!op(UInt!64(rhs));
+    }
+
 
     /++
     Returns: overflow value of multiplication
@@ -380,11 +388,11 @@ struct UInt(size_t size)
 
     static if (size_t.sizeof < ulong.sizeof)
     /// ditto
-    bool opOpAssign(string op)(ulong rhs)
+    ref opOpAssign(string op)(ulong rhs) return
         @safe pure nothrow @nogc
         if (op == "^" || op == "|" || op == "&")
     {
-        return view.opOpAssign!op(UInt!size(rhs));
+        return opOpAssign!op(UInt!size(rhs));
     }
 
     ///

@@ -157,27 +157,35 @@ struct Decimal(size_t maxSize64)
         }
 
         size_t coefficientLength;
-        if (__ctfe && size_t.sizeof == 8)
+        static if (size_t.sizeof == 8)
         {
-            uint[coefficient.data.length * 2] data;
-            foreach (i; 0 .. coefficient.length)
+            if (__ctfe && size_t.sizeof == 8)
             {
-                auto l = cast(uint)coefficient.data[i];
-                auto h = cast(uint)(coefficient.data[i] >> 32);
-                version (LittleEndian)
+                uint[coefficient.data.length * 2] data;
+                foreach (i; 0 .. coefficient.length)
                 {
-                    data[i * 2 + 0] = l;
-                    data[i * 2 + 1] = h;
+                    auto l = cast(uint)coefficient.data[i];
+                    auto h = cast(uint)(coefficient.data[i] >> 32);
+                    version (LittleEndian)
+                    {
+                        data[i * 2 + 0] = l;
+                        data[i * 2 + 1] = h;
+                    }
+                    else
+                    {
+                        data[$ - 1 - (i * 2 + 0)] = l;
+                        data[$ - 1 - (i * 2 + 1)] = h;
+                    }
                 }
-                else
-                {
-                    data[$ - 1 - (i * 2 + 0)] = l;
-                    data[$ - 1 - (i * 2 + 1)] = h;
-                }
+                auto work = BigUIntView!uint(data);
+                work = work.topLeastSignificantPart(coefficient.length * 2).normalized;
+                coefficientLength = work.toStringImpl(buffer[0 .. $ - expBufferShift]);
             }
-            auto work = BigUIntView!uint(data);
-            work = work.topLeastSignificantPart(coefficient.length * 2).normalized;
-            coefficientLength = work.toStringImpl(buffer[0 .. $ - expBufferShift]);
+            else
+            {
+                BigInt!maxSize64 work = coefficient;
+                coefficientLength = work.view.unsigned.toStringImpl(buffer[0 .. $ - expBufferShift]);
+            }
         }
         else
         {
