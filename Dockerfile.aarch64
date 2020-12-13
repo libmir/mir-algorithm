@@ -7,6 +7,5 @@ RUN curl -fsSLO https://github.com/ldc-developers/ldc/releases/download/v1.24.0/
  && rm -rf ldc*
 COPY source source
 COPY meson.build meson.build
-COPY meson_options.txt meson_options.txt
 COPY subprojects subprojects
 RUN ls subprojects && meson build -D with_test_explicit=true --default-library=static && ninja test -C build
