@@ -83,8 +83,8 @@ string text(string separator = "", A...)(auto ref A args)
 ///
 @safe pure nothrow unittest
 {
-    assert(text("str ", true, " ", 100, " ", 124.1) == "str true 100 124.1");
-    assert(text!" "("str", true, 100, 124.1) == "str true 100 124.1");
+    assert(text("str ", true, " ", 100, " ", 124.1) == "str true 100 1.241e2");
+    assert(text!" "("str", true, 100, 124.1) == "str true 100 1.241e2");
 }
 
 import mir.format_impl;
@@ -414,7 +414,7 @@ ref W print(C = char, W, Args...)(scope return ref W w, scope auto ref const Arg
             return w.print!C(c);
 }
 
-///
+/// Prints enums
 ref W print(C = char, W, T)(scope return ref W w, const T c)
     if (is(T == enum))
 {
@@ -451,7 +451,7 @@ version (mir_test) unittest
     assert(w.data == "yes", w.data);
 }
 
-/// ditto
+/// Prints boolean
 ref W print(C = char, W)(scope return ref W w, bool c)
 {
     enum N = 5;
@@ -479,7 +479,7 @@ version (mir_test) unittest
     assert(w.print(false).data == `false`, w.data);
 }
 
-/// ditto
+/// Prints associative array
 pragma(inline, false)
 ref W print(C = char, W, V, K)(scope return ref W w, scope const V[K] c)
 {
@@ -513,7 +513,7 @@ version (mir_test) unittest
     assert(w.data == `["a": 1, "b": 2]` || w.data == `["b": 2, "a": 1]`, w.data);
 }
 
-/// ditto
+/// Prints array
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
     if (!isSomeChar!T)
@@ -544,7 +544,7 @@ version (mir_test) unittest
     assert(w.print(array[]).data == `["a\na", "b"]`, w.data);
 }
 
-/// ditto
+/// Prints escaped character in the form `'c'`.
 pragma(inline, false)
 ref W print(C = char, W)(scope return ref W w, char c)
 {
@@ -600,7 +600,7 @@ version (mir_test) unittest
         .data == `'\n''\'''a''\xF4'`);
 }
 
-/// ditto
+/// Prints some string
 ref W print(C = char, W)(scope return ref W w, scope const(C)[] c)
     if (isSomeChar!C)
 {
@@ -608,7 +608,7 @@ ref W print(C = char, W)(scope return ref W w, scope const(C)[] c)
     return w;
 }
 
-/// ditto
+/// Prints integers
 ref W print(C = char, W, I)(scope return ref W w, const I c)
     if (isIntegral!I && !is(I == enum))
 {
@@ -628,15 +628,16 @@ ref W print(C = char, W, I)(scope return ref W w, const I c)
     return w;
 }
 
-/// ditto
+/// Prints floating point numbers
 ref W print(C = char, W, T)(scope return ref W w, const T c)
     if(is(T == float) || is(T == double) || is(T == real))
 {
-    auto ff = FormattedFloating!T(c);
-    return w.print!C(ff);
+    import mir.bignum.internal.ryu.generic_128: genericBinaryToDecimal;
+    auto decimal = genericBinaryToDecimal(c);
+    return w.print!C(decimal);
 }
 
-/// ditto
+/// Prints structs and unions
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, ref const T c)
     if (is(T == struct) || is(T == union))
@@ -722,7 +723,7 @@ version (mir_test) unittest
     assert(stringBuf() << A() << S() << D() << F() << G() << getData == "asdfg");
 }
 
-/// ditto
+/// Prints classes and interfaces
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
     if (is(T == class) || is(T == interface))
