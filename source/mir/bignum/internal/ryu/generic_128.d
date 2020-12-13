@@ -16,13 +16,8 @@ version(BigEndian)
 
 debug(ryu) import core.stdc.stdio;
 
-import core.stdc.stdlib;
-import core.stdc.string;
-
 import mir.bignum.decimal: Decimal;
 import mir.bignum.fixed : UInt, extendedMulHigh, extendedMul;
-import mir.bignum.integer: BigInt;
-import mir.bignum.fp: Fp;
 
 // Returns e == 0 ? 1 : ceil(log_2(5^e)); requires 0 <= e <= 32768.
 uint pow5bits(const int e)
@@ -315,6 +310,7 @@ Decimal!(T.mant_dig < 64 ? 1 : 2) genericBinaryToDecimal(T)(const T x)
     else
     if (x)
     {
+        import mir.bignum.fp: Fp;
         const fp = Fp!coefficientSize(x, false);
         int e2 = cast(int) fp.exponent - 2;
         UInt!workSize m2 = fp.coefficient;
@@ -501,6 +497,7 @@ Decimal!(T.mant_dig < 64 ? 1 : 2) genericBinaryToDecimal(T)(const T x)
             printf("EXP=%d\n", exp);
         }
 
+        import mir.bignum.integer: BigInt;
         fd.coefficient = BigInt!wordCount(output);
         fd.exponent = exp;
     }
@@ -852,8 +849,7 @@ version(unittest) private:
 version(mir_bignum_test) unittest
 {
     import mir.conv: to;
-    import std.format;
-    import std.stdio;
+
     assert((float.min_normal * float.epsilon).genericBinaryToDecimal.to!string == "1e-45");
     static immutable tests = [
         "0e0",
@@ -935,6 +931,7 @@ version(mir_bignum_test) unittest
     Decimal!1 v = genericBinaryToDecimal(4.708356024711512e18);
     assert(v.coefficient.sign == false);
     assert(v.exponent == 3);
+    import mir.bignum.integer: BigInt;
     assert(v.coefficient == BigInt!1(4708356024711512UL));
 }
 
