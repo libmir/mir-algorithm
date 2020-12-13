@@ -12,6 +12,11 @@ buildType "unittest" {
     versions "mir_bignum_test"
     dflags "-lowmem"
 }
+buildType "unittest-dip1008" {
+    buildOptions "unittests" "debugMode" "debugInfo"
+    versions "mir_bignum_test"
+    dflags "-lowmem" "-preview=dip1008"
+}
 buildType "unittest-cov" {
     buildOptions "unittests" "coverage" "debugMode" "debugInfo"
     versions "mir_bignum_test"

@@ -21,7 +21,7 @@ matrix:
     - {d: ldc-beta}
     - {d: gdc}
 script:
- - travis_wait 100 dub test --arch "$ARCH" --build=unittest-cov
+ - travis_wait 100 dub test --arch "$ARCH" --build=unittest-dip1008
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)
