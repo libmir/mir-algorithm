@@ -1,3 +1,8 @@
+// Converted and then optimised from generic_128.h and generic_128.c
+// Copyright 2018 Ulf Adams (original code https://github.com/ulfjack/ryu)
+// Copyright 2020 Ilya Yaroshenko (2020 D conversion and optimisation)
+// License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
+
 // This is a generic 128-bit implementation of float to shortest conversion
 // using the Ryu algorithm. It can handle any IEEE-compatible floating-point
 // type up to 128 bits. In order to use this correctly, you must use the
