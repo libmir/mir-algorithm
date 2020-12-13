@@ -33,7 +33,15 @@ struct UInt(size_t size)
             this.data[$ - N .. $] = data;
     }
 
+    ///
+    this(size_t argSize)(auto ref const UInt!argSize arg)
+        if (argSize <= size)
+    {
+        this(arg.data);
+    }
+
     static if (size_t.sizeof == uint.sizeof && data.length % 2 == 0)
+    ///
     this()(auto ref const ulong[data.length / 2] data)
     {
         if (!__ctfe)
@@ -215,9 +223,15 @@ struct UInt(size_t size)
 
     /++
     +/
-    auto opEquals(UInt!size rhs) const
+    auto opEquals(size_t rhsSize)(auto ref const UInt!rhsSize rhs) const
     {
-        return this.data == rhs.data;
+        static if (rhsSize == size)
+            return this.data == rhs.data;
+        else
+        static if (rhsSize > size)
+            return this.toSize!rhsSize.data == rhs.data;
+        else
+            return this.data == rhs.toSize!size.data;
     }
 
     /// ditto
@@ -291,6 +305,16 @@ struct UInt(size_t size)
         @safe pure nothrow @nogc
     {
         return view.opOpAssign!op(rhs, carry);
+    }
+
+    /++
+    Returns: overflow value of multiplication
+    +/
+    void opOpAssign(string op : "*", size_t rhsSize)(UInt!rhsSize rhs)
+        @safe pure nothrow @nogc
+        if (rhsSize <= size)
+    {
+        this = extendedMul(this, rhs).toSize!size;
     }
 
     /++

@@ -11,6 +11,9 @@
 
 module mir.bignum.internal.ryu.generic_128;
 
+version(BigEndian)
+    static assert (0, "Let us know if you are using Mir on BigEndian target and we will add support for this module.");
+
 debug(ryu) import core.stdc.stdio;
 
 import core.stdc.stdlib;
@@ -20,12 +23,6 @@ import mir.bignum.decimal: Decimal;
 import mir.bignum.fixed : UInt, extendedMulHigh, extendedMul;
 import mir.bignum.integer: BigInt;
 import mir.bignum.fp: Fp;
-
-private enum ONE = UInt!128(1);
-
-private enum FLOAT_128_POW5_INV_BITCOUNT = 249;
-private enum FLOAT_128_POW5_BITCOUNT = 249;
-private enum POW5_TABLE_SIZE = 56;
 
 // Returns e == 0 ? 1 : ceil(log_2(5^e)); requires 0 <= e <= 32768.
 uint pow5bits(const int e)
@@ -136,9 +133,14 @@ version(mir_bignum_test) unittest
     }
 }
 
-enum fiveReciprocal = UInt!128([0xCCCCCCCCCCCCCCCD, 0xCCCCCCCCCCCCCCCC]);
+version(LittleEndian)
+    enum fiveReciprocal = UInt!128([0xCCCCCCCCCCCCCCCD, 0xCCCCCCCCCCCCCCCC]);
+else
+    enum fiveReciprocal = UInt!128([0xCCCCCCCCCCCCCCCC, 0xCCCCCCCCCCCCCCCD]);
 
-uint divRem5(ref UInt!128 value)
+enum baseDiv5 = UInt!128([0x3333333333333333, 0x3333333333333333]);
+
+uint divRem5(size_t size)(ref UInt!size value)
 {
     auto q = div5(value);
     auto r = cast(uint)(value - q * 5);
@@ -146,7 +148,7 @@ uint divRem5(ref UInt!128 value)
     return r;
 }
 
-uint divRem10(ref UInt!128 value)
+uint divRem10(size_t size)(ref UInt!size value)
 {
     auto q = div10(value);
     auto r = cast(uint)(value - q * 10);
@@ -154,35 +156,45 @@ uint divRem10(ref UInt!128 value)
     return r;
 }
 
-uint rem5(UInt!128 value)
+uint rem5(size_t size)(UInt!size value)
 {
     return divRem5(value);
 }
 
-uint rem10(UInt!128 value)
+uint rem10(size_t size)(UInt!size value)
 {
     return divRem10(value);
 }
 
-UInt!128 div5(UInt!128 value)
+UInt!size div5(size_t size)(UInt!size value)
 {
-    return extendedMulHigh(value, fiveReciprocal) >> 2;
+    return extendedMulHigh(value, fiveReciprocal.toSize!size) >> 2;
 }
 
-UInt!128 div10(UInt!128 value)
+UInt!size div10(size_t size)(UInt!size value)
 {
-    return extendedMulHigh(value, fiveReciprocal) >> 3;
+    return extendedMulHigh(value, fiveReciprocal.toSize!size) >> 3;
 }
 
 // Returns true if value is divisible by 5^p.
-bool multipleOfPowerOf5(UInt!128 value, const uint p)
+bool multipleOfPowerOf5(size_t size)(UInt!size value, const uint p)
 {
+    enum fiveReciprocal = .fiveReciprocal.toSize!size;
+    enum baseDiv5 = .baseDiv5.toSize!size;
     version(LDC) pragma(inline, true);
-    // I tried a case distinction on p, but there was no performance difference.
-    for (uint count = 0; value > 0; ++count)
-        if (divRem5(value))
-            return count >= p;
-    return 0 >= p;
+    if (value)
+    {
+        for (uint count;; ++count)
+        {
+            if (count >= p)
+                return true;
+            value *= fiveReciprocal;
+            if (value > baseDiv5)
+                return false;
+        }
+    }
+    else
+        return p == 0;
 }
 
 version(mir_bignum_test) unittest
@@ -198,10 +210,10 @@ version(mir_bignum_test) unittest
 }
 
 // Returns true if value is divisible by 2^p.
-bool multipleOfPowerOf2(const UInt!128 value, const uint p)
+bool multipleOfPowerOf2(size_t size)(const UInt!size value, const uint p)
 {
     version(LDC) pragma(inline, true);
-    return (value & ((UInt!128(1) << p) - 1)) == 0;
+    return (value & ((UInt!size(1) << p) - 1)) == 0;
 }
 
 version(mir_bignum_test) unittest
@@ -216,11 +228,11 @@ version(mir_bignum_test) unittest
     assert(multipleOfPowerOf2(UInt!128(8), 4) == false);
 }
 
-UInt!128 mulShift(const UInt!128 m, const UInt!256 mul, const uint j)
+UInt!size mulShift(size_t size)(const UInt!size m, const UInt!256 mul, const uint j)
 {
     version(LDC) pragma(inline, true);
     assert(j > 128);
-    return (extendedMulHigh(m, mul) >> (j - 128)).toSize!128;
+    return (extendedMul(mul, m) >> 128 >> (j - 128)).toSize!size;
 }
 
 version(mir_bignum_test) unittest
@@ -281,11 +293,15 @@ private char* s(UInt!128 v)
 
 // Converts the given binary floating point number to the shortest decimal floating point number
 // that still accurately represents it.
-Decimal!2 genericBinaryToDecimal(T)(const T x)
+Decimal!(T.mant_dig < 64 ? 1 : 2) genericBinaryToDecimal(T)(const T x)
 {
     import mir.utility: _expect;
     import mir.math: signbit, fabs;
-    Decimal!2 fd;
+    enum coefficientSize = T.mant_dig <= 64 ? 64 : 128;
+    enum workSize = T.mant_dig < 64 ? 64 : 128;
+    enum wordCount = workSize / 64;
+
+    Decimal!wordCount fd;
     if (_expect(x != x, false))
     {
         fd.coefficient = 1u;
@@ -299,9 +315,9 @@ Decimal!2 genericBinaryToDecimal(T)(const T x)
     else
     if (x)
     {
-        const fp = Fp!128(x, false);
+        const fp = Fp!coefficientSize(x, false);
         int e2 = cast(int) fp.exponent - 2;
-        UInt!128 m2 = fp.coefficient;
+        UInt!workSize m2 = fp.coefficient;
 
         const bool even = (fp.coefficient & 1) == 0;
         const bool acceptBounds = even;
@@ -312,12 +328,12 @@ Decimal!2 genericBinaryToDecimal(T)(const T x)
         }
 
         // Step 2: Determine the interval of legal decimal representations.
-        const UInt!128 mv = m2 << 2;
+        const UInt!workSize mv = m2 << 2;
         // Implicit bool -> int conversion. True is 1, false is 0.
-        const bool mmShift = fp.coefficient != (ONE << (T.mant_dig - 1));
+        const bool mmShift = fp.coefficient != (UInt!coefficientSize(1) << (T.mant_dig - 1));
 
         // Step 3: Convert to a decimal power base using 128-bit arithmetic.
-        UInt!128 vr, vp, vm;
+        UInt!workSize vr, vp, vm;
         int e10;
         bool vmIsTrailingZeros = false;
         bool vrIsTrailingZeros = false;
@@ -398,7 +414,7 @@ Decimal!2 genericBinaryToDecimal(T)(const T x)
                 }
             }
             else
-            if (q < 127)
+            if (q < workSize - 1)
             {
                 // TODO(ulfjack): Use a tighter bound here.
                 // We need to compute min(ntz(mv), pow5Factor(mv) - e2) >= q-1
@@ -424,7 +440,7 @@ Decimal!2 genericBinaryToDecimal(T)(const T x)
         // Step 4: Find the shortest decimal representation in the interval of legal representations.
         uint removed = 0;
         uint lastRemovedDigit = 0;
-        UInt!128 output;
+        UInt!workSize output;
 
         for (;;)
         {
@@ -485,12 +501,16 @@ Decimal!2 genericBinaryToDecimal(T)(const T x)
             printf("EXP=%d\n", exp);
         }
 
-        fd.coefficient = BigInt!2(output);
+        fd.coefficient = BigInt!wordCount(output);
         fd.exponent = exp;
     }
     fd.coefficient.sign = x.signbit;
     return fd;
 }
+
+private enum FLOAT_128_POW5_INV_BITCOUNT = 249;
+private enum FLOAT_128_POW5_BITCOUNT = 249;
+private enum POW5_TABLE_SIZE = 56;
 
 // These tables are ~4.5 kByte total, compared to ~160 kByte for the fUL tables.
 
@@ -831,6 +851,10 @@ version(unittest) private:
 @("float_to_fd128")
 version(mir_bignum_test) unittest
 {
+    import mir.conv: to;
+    import std.format;
+    import std.stdio;
+    assert((float.min_normal * float.epsilon).genericBinaryToDecimal.to!string == "1e-45");
     static immutable tests = [
         "0e0",
         "-0e0",
@@ -841,7 +865,8 @@ version(mir_bignum_test) unittest
         "-inf",
         "1.1754944e-38",
         "3.4028235e38",
-        "1e-45",
+        // some test are commented because the reader/parser can't always handle denormal numbers for now
+        // "1e-45",
         "3.355445e7",
         "9e9",
         "3.436672e10",
@@ -876,7 +901,6 @@ version(mir_bignum_test) unittest
         "5.368709e18",
         "4.6143166e18",
         "7.812537e-3",
-        "1e-45",
         "1.18697725e20",
         "1.00014165e-36",
         "2e2",
@@ -892,7 +916,6 @@ version(mir_bignum_test) unittest
         "1.23456735e-36",
         ];
 
-    import mir.conv: to;
     foreach(test; tests)
     {
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
@@ -900,8 +923,6 @@ version(mir_bignum_test) unittest
         auto number = test.to!float;
         auto fd = genericBinaryToDecimal(number);
         auto res = fd.to!string;
-        import std.stdio;
-        writeln(test.to!float);
         assert(res == test, test ~ " -> " ~ res ~ " length of " ~ res.length.to!string);
     }
     // static foreach(test; tests)
@@ -911,15 +932,19 @@ version(mir_bignum_test) unittest
 @("direct_double_to_fd128")
 version(mir_bignum_test) unittest
 {
-    Decimal!2 v = genericBinaryToDecimal(4.708356024711512e18);
+    Decimal!1 v = genericBinaryToDecimal(4.708356024711512e18);
     assert(v.coefficient.sign == false);
     assert(v.exponent == 3);
-    assert(v.coefficient == BigInt!2(4708356024711512UL));
+    assert(v.coefficient == BigInt!1(4708356024711512UL));
 }
 
 @("double_to_fd128")
 version(mir_bignum_test) unittest
 {
+    import mir.conv: to;
+
+    assert(0x0.00000000f424p-1022.genericBinaryToDecimal.to!string == "4.940656e-318");
+    assert(0x0.00000016e36p-1022.genericBinaryToDecimal.to!string == "1.18575755e-316");
     foreach(test; [
             "0e0",
             "-0e0",
@@ -933,8 +958,9 @@ version(mir_bignum_test) unittest
             "5e-324",
             "2.9802322387695312e-8",
             "-2.109808898695963e16",
-            "4.940656e-318",
-            "1.18575755e-316",
+            // some test are commented because the reader/parser can't always handle denormal numbers for now
+            // "4.940656e-318",
+            // "1.18575755e-316",
             "2.989102097996e-312",
             "9.0608011534336e15",
             "4.708356024711512e18",
@@ -972,7 +998,6 @@ version(mir_bignum_test) unittest
             "-2.147483648e32",
         ])
     {
-        import mir.conv: to;
         // We don't use Dlang literals because compiler floating point literal parsing is buggy
         // Use Mir parsing instead
         auto number = test.to!double;

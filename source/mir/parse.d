@@ -81,7 +81,7 @@ T fromString(T, C)(scope const(C)[] str)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 @safe pure @nogc unittest
 {
     assert("123".fromString!int == 123);
