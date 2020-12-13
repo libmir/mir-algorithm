@@ -267,7 +267,7 @@ struct Decimal(size_t maxSize64)
     version(mir_bignum_test) @safe pure @nogc unittest
     {
         import mir.format: stringBuf;
-        auto str = "5.28238923728e9876543210";
+        auto str = "5.28238923728e-876543210";
         auto integer = Decimal!1(str);
         stringBuf buffer;
         buffer << integer;
