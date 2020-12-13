@@ -5,7 +5,7 @@ authors "Ilya Yaroshenko" "John Michael Hall" "Shigeki Karita" "Sebastian Wilzba
 copyright "2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments"
 license "Apache-2.0"
 
-dependency "mir-core" version=">=1.1.53"
+dependency "mir-core" version=">=1.1.54"
 
 buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
