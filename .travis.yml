@@ -1,7 +1,6 @@
 sudo: false
 os:
  - linux
- - osx
 language: d
 d:
  - ldc
@@ -26,6 +25,8 @@ matrix:
     - {d: gdc}
   include:
     - {os: linux, env: ARCH="AARCH64", services: docker}
+    - {os: osx, env: ARCH="x86_64", d: ldc}
+    - {os: osx, env: ARCH="x86_64", d: dmd}
 script:
  - travis_wait 100 bash -e test_travis.sh
 
