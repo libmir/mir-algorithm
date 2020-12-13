@@ -239,14 +239,14 @@ UInt!size mulShift(size_t size)(const UInt!size m, const UInt!256 mul, const uin
 
 version(mir_bignum_test) unittest
 {
-    UInt!256 m = cast(uint[4])[0, 0, 2, 0];
+    UInt!256 m = cast(ulong[4])[0, 0, 2, 0];
     assert(mulShift(UInt!128(1), m, 129) == 1u);
     assert(mulShift(UInt!128(12345), m, 129) == 12345u);
 }
 
 version(mir_bignum_test) unittest
 {
-    UInt!256 m = cast(uint[4])[0, 0, 8, 0];
+    UInt!256 m = cast(ulong[4])[0, 0, 8, 0];
     UInt!128 f = (UInt!128(123) << 64) | 321;
     assert(mulShift(f, m, 131) == f);
 }
