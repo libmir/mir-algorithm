@@ -14,27 +14,149 @@ package enum half(size_t hs) = (){
 }();
 
 /++
-Software floating point bumber.
+Software floating point number.
+
 Params:
     coefficientSize = coefficient size in bits
+
+Note: the implementation doesn't support NaN and Infinity values.
 +/
-struct Fp(size_t coefficientSize)
-    if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
+struct Fp(size_t coefficientSize, Exp = sizediff_t)
+    if ((is(Exp == int) || is(Exp == long)) && coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
 {
     import mir.bignum.fixed: UInt;
 
     bool sign;
-    sizediff_t exponent;
+    Exp exponent;
     UInt!coefficientSize coefficient;
 
     /++
     +/
     nothrow
-    this(bool sign, sizediff_t exponent, UInt!coefficientSize normalizedCoefficient)
+    this(bool sign, Exp exponent, UInt!coefficientSize normalizedCoefficient)
     {
         this.coefficient = normalizedCoefficient;
         this.exponent = exponent;
         this.sign = sign;
+    }
+
+    /++
+    Constructs $(LREF Fp) from hardaware floating  point number.
+    Params:
+        value = Hardware floating point number. Special values `nan` and `inf` aren't allowed.
+        normalize = flag to indicate if the normalization should be performed.
+    +/
+    this(T)(const T value, bool normalize = true)
+        @safe pure nothrow @nogc
+        if (isFloatingPoint!T && T.mant_dig <= coefficientSize)
+    {
+        import mir.math.common : fabs;
+        import mir.math.ieee : frexp, signbit, ldexp;
+        assert(value == value);
+        assert(value.fabs < T.infinity);
+        this.sign = value.signbit != 0;
+        if (value == 0)
+            return;
+        T x = value.fabs;
+        int exp;
+        {
+            enum scale = T(2) ^^ T.mant_dig;
+            x = frexp(x, exp) * scale;
+            exp -= T.mant_dig;
+        }
+        static if (T.mant_dig < 64)
+        {
+            this.coefficient = UInt!coefficientSize(cast(ulong)cast(long)x);
+        }
+        else
+        static if (T.mant_dig == 64)
+        {
+            this.coefficient = UInt!coefficientSize(cast(ulong)x);
+        }
+        else
+        {
+            enum scale = T(2) ^^ 64;
+            enum scaleInv = 1 / scale;
+            x *= scaleInv;
+            long high = cast(long) x;
+            if (high > x)
+                --high;
+            x -= high;
+            x *= scale;
+            this.coefficient = (UInt!coefficientSize(ulong(high)) << 64) | cast(ulong)x;
+        }
+        if (normalize)
+        {
+            auto shift = cast(int)this.coefficient.ctlz;
+            exp -= shift;
+            this.coefficient <<= shift;
+        }
+        else
+        {
+            int shift = T.min_exp - T.mant_dig - exp;
+            if (shift > 0)
+            {
+                this.coefficient >>= shift;
+                exp = T.min_exp - T.mant_dig;
+            }
+        }
+        this.exponent = exp;
+    }
+
+    static if (coefficientSize == 128)
+    ///
+    version(mir_bignum_test)
+    @safe pure @nogc nothrow
+    unittest
+    {
+        enum h = -33.0 * 2.0 ^^ -10;
+        auto f = Fp!64(h);
+        assert(f.sign);
+        assert(f.exponent == -10 - (64 - 6));
+        assert(f.coefficient == 33UL << (64 - 6));
+        assert(cast(double) f == h);
+
+        // CTFE
+        static assert(cast(double) Fp!64(h) == h);
+
+        f = Fp!64(-0.0);
+        assert(f.sign);
+        assert(f.exponent == 0);
+        assert(f.coefficient == 0);
+
+        // subnormals
+        static assert(cast(float) Fp!64(float.min_normal / 2) == float.min_normal / 2);
+        static assert(cast(float) Fp!64(float.min_normal * float.epsilon) == float.min_normal * float.epsilon);
+        // subnormals
+        static assert(cast(double) Fp!64(double.min_normal / 2) == double.min_normal / 2);
+        static assert(cast(double) Fp!64(double.min_normal * double.epsilon) == double.min_normal * double.epsilon);
+        // subnormals
+        static assert(cast(real) Fp!64(real.min_normal / 2) == real.min_normal / 2);
+        static assert(cast(real) Fp!64(real.min_normal * real.epsilon) == real.min_normal * real.epsilon);
+
+        enum d = cast(float) Fp!64(float.min_normal / 2, false);
+
+        // subnormals
+        static assert(cast(float) Fp!64(float.min_normal / 2, false) == float.min_normal / 2, d.stringof);
+        static assert(cast(float) Fp!64(float.min_normal * float.epsilon, false) == float.min_normal * float.epsilon);
+        // subnormals
+        static assert(cast(double) Fp!64(double.min_normal / 2, false) == double.min_normal / 2);
+        static assert(cast(double) Fp!64(double.min_normal * double.epsilon, false) == double.min_normal * double.epsilon);
+        // subnormals
+        static assert(cast(real) Fp!64(real.min_normal / 2, false) == real.min_normal / 2);
+        static assert(cast(real) Fp!64(real.min_normal * real.epsilon, false) == real.min_normal * real.epsilon);
+    }
+
+    static if (coefficientSize == 128)
+    /// Without normalization
+    version(mir_bignum_test)
+    @safe pure @nogc nothrow
+    unittest
+    {
+        auto f = Fp!64(-33.0 * 2.0 ^^ -10, false);
+        assert(f.sign);
+        assert(f.exponent == -10 - (double.mant_dig - 6));
+        assert(f.coefficient == 33UL << (double.mant_dig - 6));
     }
 
     /++
@@ -47,7 +169,7 @@ struct Fp(size_t coefficientSize)
         {
             if (normalizedInteger)
             {
-                this(false, sizediff_t(size) - coefficientSize, integer.rightExtend!(coefficientSize - size));
+                this(false, Exp(size) - coefficientSize, integer.rightExtend!(coefficientSize - size));
             }
             else
             {
@@ -177,8 +299,7 @@ struct Fp(size_t coefficientSize)
     T opCast(T, bool noHalf = false)() nothrow const
         if (isFloatingPoint!T)
     {
-        // import mir.math.ieee: ldexp;
-        import std.math: ldexp;
+        import mir.math.ieee: ldexp;
         auto exp = cast()exponent;
         static if (coefficientSize == 32)
         {

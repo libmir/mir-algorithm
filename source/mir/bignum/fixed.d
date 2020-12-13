@@ -24,7 +24,7 @@ struct UInt(size_t size)
     size_t[size / (size_t.sizeof * 8)] data;
 
     ///
-    this(size_t N)(auto ref size_t[N] data)
+    this(size_t N)(auto ref const size_t[N] data)
         if (N <= this.data.length)
     {
         version(LittleEndian)
@@ -33,8 +33,16 @@ struct UInt(size_t size)
             this.data[$ - N .. $] = data;
     }
 
+    ///
+    this(size_t argSize)(auto ref const UInt!argSize arg)
+        if (argSize <= size)
+    {
+        this(arg.data);
+    }
+
     static if (size_t.sizeof == uint.sizeof && data.length % 2 == 0)
-    this()(auto ref ulong[data.length / 2] data)
+    ///
+    this()(auto ref const ulong[data.length / 2] data)
     {
         if (!__ctfe)
         {
@@ -61,7 +69,6 @@ struct UInt(size_t size)
         }
     }
 
-    static if (size >= 64)
     ///
     this(ulong data)
     {
@@ -82,6 +89,91 @@ struct UInt(size_t size)
     this(uint data)
     {
         view.leastSignificant = data;
+    }
+
+    ///
+    this(C)(scope const(C)[] str) @safe pure @nogc
+        if (isSomeChar!C)
+    {
+        if (fromStringImpl(str))
+            return;
+        static if (__traits(compiles, () @nogc { throw new Exception("Can't parse UInt."); }))
+        {
+            import mir.exception: MirException;
+            throw new MirException("Can't parse UInt!" ~ size.stringof ~ " from string `", str , "`.");
+        }
+        else
+        {
+            static immutable exception = new Exception("Can't parse UInt!" ~ size.stringof ~ ".");
+            throw exception;
+        }
+    }
+
+    static if (size == 128)
+    ///
+    version(mir_test) @safe pure @nogc unittest
+    {
+        import mir.math.constant: PI;
+        UInt!256 integer = "34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
+        assert(integer == UInt!256.fromHexString("4b313b23aa560e1b0985f89cbe6df5460860e39a64ba92b4abdd3ee77e4e05b8"));
+    }
+
+    /++
+    Returns: false in case of overflow or incorrect string.
+    Precondition: non-empty coefficients.
+    +/
+    bool fromStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        import mir.bignum.low_level_view: BigUIntView;
+        return BigUIntView!size_t(data[]).fromStringImpl(str);
+    }
+
+    ///
+    immutable(C)[] toString(C = char)() const @safe pure nothrow
+        if(isSomeChar!C && isMutable!C)
+    {
+        UInt!size copy = this;
+        auto work = copy.view.normalized;
+        import mir.bignum.low_level_view: ceilLog10Exp2;
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8))] buffer = void;
+        return buffer[$ - work.toStringImpl(buffer) .. $].idup;
+    }
+
+    static if (size == 128)
+    ///
+    version(mir_bignum_test) @safe pure unittest
+    {
+        auto str = "34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = UInt!256(str);
+        assert(integer.toString == str);
+
+        integer = UInt!256.init;
+        assert(integer.toString == "0");
+    }
+
+    ///
+    void toString(C = char, W)(scope ref W w) const
+        if(isSomeChar!C && isMutable!C)
+    {
+        UInt!size copy = this;
+        auto work = copy.view.normalized;
+        import mir.bignum.low_level_view: ceilLog10Exp2;
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8))] buffer = void;
+        w.put(buffer[$ - work.toStringImpl(buffer) .. $]);
+    }
+
+    static if (size == 128)
+    /// Check @nogc toString impl
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        import mir.format: stringBuf;
+        auto str = "34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = UInt!256(str);
+        stringBuf buffer;
+        buffer << integer;
+        assert(buffer.data == str, buffer.data);
     }
 
     ///
@@ -108,16 +200,80 @@ struct UInt(size_t size)
     static UInt!size fromHexString(scope const(char)[] str)
     {
         typeof(return) ret;
-        ret.view.fromHexStringImpl(str);
-        return ret;
+        if (ret.fromHexStringImpl(str))
+            return ret;
+        version(D_Exceptions)
+        {
+            import mir.bignum.low_level_view: hexStringException;
+            throw hexStringException;
+        }
+        else
+            assert(0, hexStringErrorMsg);
     }
 
     /++
     +/
-    auto opCmp(UInt!size rhs)
+    bool fromHexStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
     {
-        import mir.algorithm.iteration: cmp;
-        return cmp(this.view.mostSignificantFirst, rhs.view.mostSignificantFirst);
+        return view.fromHexStringImpl(str);
+    }
+
+    /++
+    +/
+    auto opEquals(size_t rhsSize)(auto ref const UInt!rhsSize rhs) const
+    {
+        static if (rhsSize == size)
+            return this.data == rhs.data;
+        else
+        static if (rhsSize > size)
+            return this.toSize!rhsSize.data == rhs.data;
+        else
+            return this.data == rhs.toSize!size.data;
+    }
+
+    /// ditto
+    auto opEquals(ulong rhs) const
+    {
+        return opEquals(UInt!size(rhs));
+    }
+
+    /++
+    +/
+    auto opCmp(UInt!size rhs) const
+    {
+        version (LittleEndian) // workaround for CTFE bug
+        {
+            foreach_reverse(i; 0 .. data.length)
+            {
+                if (this.data[i] < rhs.data[i])
+                    return -1;
+                if (this.data[i] > rhs.data[i])
+                    return +1;
+            }
+            return 0;
+        }
+        else
+        {
+            import mir.algorithm.iteration: cmp;
+            return cmp(this.view.mostSignificantFirst, rhs.view.mostSignificantFirst);
+        }
+    }
+
+    /// ditto
+    auto opCmp(ulong rhs) const
+    {
+        return opCmp(UInt!size(rhs));
+    }
+
+    /++
+    +/
+    ref UInt!size opAssign(ulong rhs) return
+        @safe pure nothrow @nogc
+    {
+        this.data = UInt!size(rhs).data;
+        return this;
     }
 
     /++
@@ -138,12 +294,68 @@ struct UInt(size_t size)
         return view.opOpAssign!op(rhs);
     }
 
+    static if (size_t.sizeof < ulong.sizeof)
+    /// ditto
+    bool opOpAssign(string op)(ulong rhs)
+        @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        return opOpAssign!op(UInt!size(rhs));
+    }
+
     /// ditto
     bool opOpAssign(string op, size_t rsize)(UInt!rsize rhs, bool overflow = false)
         @safe pure nothrow @nogc
         if ((op == "+" || op == "-") && rsize < size)
     {
-        return opOpAssign!op(rhs.toSize!size);
+        return opOpAssign!op(rhs.toSize!size, overflow);
+    }
+
+    /++
+    Returns: overflow value of multiplication
+    +/
+    size_t opOpAssign(string op : "*")(size_t rhs, size_t carry = 0)
+        @safe pure nothrow @nogc
+    {
+        return view.opOpAssign!op(rhs, carry);
+    }
+
+    static if (size_t.sizeof == 4)
+    /// ditto
+    auto opOpAssign(string op : "*")(ulong rhs)
+        @safe pure nothrow @nogc
+    {
+        return opOpAssign!op(UInt!64(rhs));
+    }
+
+
+    /++
+    Returns: overflow value of multiplication
+    +/
+    void opOpAssign(string op : "*", size_t rhsSize)(UInt!rhsSize rhs)
+        @safe pure nothrow @nogc
+        if (rhsSize <= size)
+    {
+        this = extendedMul(this, rhs).toSize!size;
+    }
+
+    /++
+    Performs `uint remainder = (overflow$big) /= scalar` operatrion, where `$` denotes big-endian concatenation.
+    Precondition: `overflow < rhs`
+    Params:
+        rhs = unsigned value to devide by
+        overflow = initial unsigned overflow
+    Returns:
+        unsigned remainder value (evaluated overflow)
+    +/
+    uint opOpAssign(string op : "/")(uint rhs, uint overflow = 0)
+        @safe pure nothrow @nogc
+    {
+        assert(overflow < rhs);
+        auto work = view.normalized;
+        if (worl.coefficients.length)
+            return work.opOpAssign!op(rhs, overflow);
+        return overflow;
     }
 
     ///
@@ -164,6 +376,23 @@ struct UInt(size_t size)
         auto a = UInt!128.fromHexString("dfbbfae3cd0aff2714a1de7022b0029d");
         auto b = UInt!128.fromHexString("e3251bacb112c88b71ad3f85a970a314");
         assert((a.opBinary!"|"(b)) == UInt!128.fromHexString("ffbffbeffd1affaf75adfff5abf0a39d"));
+    }
+
+    ///
+    ref UInt!size opOpAssign(string op)(size_t rhs) nothrow return
+        if (op == "^" || op == "|" || op == "&")
+    {
+        mixin(`view.leastSignificantFirst[0] ` ~ op ~ `= rhs;`);
+        return this;
+    }
+
+    static if (size_t.sizeof < ulong.sizeof)
+    /// ditto
+    ref opOpAssign(string op)(ulong rhs) return
+        @safe pure nothrow @nogc
+        if (op == "^" || op == "|" || op == "&")
+    {
+        return opOpAssign!op(UInt!size(rhs));
     }
 
     ///
@@ -253,27 +482,53 @@ struct UInt(size_t size)
     }
 
     /++
-    `auto c = a << b`, and `^`, `|`, `&` operations.
+    Binary operations
     +/
-    UInt!size opBinary(string op)(UInt!size rhs)
-        const @safe pure nothrow @nogc
-        if (op == "^" || op == "|" || op == "&")
+    template opBinary(string op)
+        if (op == "^" || op == "|" || op == "&" || op == "+" || op == "-" || op == "*") //  || op == "/" || op == "%"
     {
-        UInt!size ret = this;
-        ret.opOpAssign!op(rhs);
-        return ret;
+        ///
+        UInt!size opBinary(size_t rsize)(UInt!rsize rhs)
+            const @safe pure nothrow @nogc
+            if (rsize <= size)
+        {
+            UInt!size ret = this;
+            ret.opOpAssign!op(rhs);
+            return ret;
+        }
+
+        /// ditto
+        UInt!size opBinary(ulong rhs)
+            const @safe pure nothrow @nogc
+        {
+            UInt!size ret = this;
+            ret.opOpAssign!op(rhs);
+            return ret;
+        }
     }
 
-    /++
-    `auto c = a + b` and `auto c = a - b` operations.
-    +/
-    UInt!size opBinary(string op, size_t rsize)(UInt!rsize rhs)
-        const @safe pure nothrow @nogc
-        if ((op == "+" || op == "-") && rsize <= size)
+    /// ditto
+    template opBinaryRight(string op)
+        if (op == "^" || op == "|" || op == "&" || op == "+" || op == "*")
     {
-        UInt!size ret = this;
-        ret.opOpAssign!op(rhs);
-        return ret;
+        ///
+        UInt!size opBinaryRight(size_t lsize)(UInt!lsize lhs)
+            const @safe pure nothrow @nogc
+            if (lsize < size)
+        {
+            UInt!size ret = this;
+            ret.opOpAssign!op(lhs);
+            return ret;
+        }
+
+        /// ditto
+        UInt!size opBinaryRight(ulong lhs)
+            const @safe pure nothrow @nogc
+        {
+            UInt!size ret = this;
+            ret.opOpAssign!op(lhs);
+            return ret;
+        }
     }
 
     /++
@@ -536,6 +791,13 @@ struct UInt(size_t size)
         a.signBit = true;
         assert(a == UInt!128.fromHexString("dfbbfae3cd0aff2714a1de7022b0029d"));
     }
+}
+
+/++
++/
+UInt!sizeB extendedMulHigh(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!sizeB b)
+{
+    return (extendedMul(a, b) >> sizeA).toSize!sizeB;
 }
 
 /++

@@ -28,8 +28,6 @@ struct BigInt(size_t maxSize64)
     ///
     size_t[ulong.sizeof / size_t.sizeof * maxSize64] data = void;
 
-    @disable this(this);
-
     ///
     this(size_t size)(UInt!size fixedInt)
     {
@@ -67,6 +65,72 @@ struct BigInt(size_t maxSize64)
     }
 
     ///
+    this(C)(scope const(C)[] str) @safe pure @nogc
+        if (isSomeChar!C)
+    {
+        if (fromStringImpl(str))
+            return;
+        static if (__traits(compiles, () @nogc { throw new Exception("Can't parse BigInt."); }))
+        {
+            import mir.exception: MirException;
+            throw new MirException("Can't parse BigInt!" ~ maxSize64.stringof ~ " from string `", str , "`.");
+        }
+        else
+        {
+            static immutable exception = new Exception("Can't parse BigInt!" ~ maxSize64.stringof ~ ".");
+            throw exception;
+        }
+    }
+
+    ///
+    ref opAssign(ulong data) return
+    {
+        static if (size_t.sizeof == ulong.sizeof)
+        {
+            length = 1;
+            view.leastSignificantFirst[0] = data;
+        }
+        else
+        {
+            length = 2;
+            auto d = view.leastSignificantFirst;
+            d[0] = cast(uint) data;
+            d[1] = cast(uint) (data >> 32);
+        }
+        normalize;
+        return this;
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        import mir.math.constant: PI;
+        BigInt!4 integer = "-34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
+        assert(integer.sign);
+        integer.sign = false;
+        assert(integer == BigInt!4.fromHexString("4b313b23aa560e1b0985f89cbe6df5460860e39a64ba92b4abdd3ee77e4e05b8"));
+    }
+
+    /++
+    Returns: false in case of overflow or incorrect string.
+    Precondition: non-empty coefficients.
+    +/
+    bool fromStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        auto work = BigIntView!size_t(data[]); 
+        if (work.fromStringImpl(str))
+        {
+            length = cast(uint) work.coefficients.length;
+            sign = work.sign;
+            return true;
+        }
+        return false;
+    }
+
+    ///
     BigInt copy() @property
     {
         BigInt ret;
@@ -77,7 +141,7 @@ struct BigInt(size_t maxSize64)
     }
 
     ///
-    bool opEquals(ref const BigInt rhs)
+    bool opEquals()(auto ref const BigInt rhs)
         const @safe pure nothrow @nogc
     {
         return view == rhs.view;
@@ -85,7 +149,7 @@ struct BigInt(size_t maxSize64)
 
     /++
     +/
-    auto opCmp(ref const BigInt rhs) 
+    auto opCmp()(auto ref const BigInt rhs) 
         const @safe pure nothrow @nogc
     {
         return view.opCmp(rhs.view);
@@ -130,7 +194,6 @@ struct BigInt(size_t maxSize64)
 
     /++
     Performs `size_t overflow = (big += overflow) *= scalar` operatrion.
-    Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
         overflow = initial overflow value
@@ -153,8 +216,25 @@ struct BigInt(size_t maxSize64)
     }
 
     /++
+    Performs `uint remainder = (overflow$big) /= scalar` operatrion, where `$` denotes big-endian concatenation.
+    Precondition: `overflow < rhs`
+    Params:
+        rhs = unsigned value to devide by
+        overflow = initial unsigned overflow
+    Returns:
+        unsigned remainder value (evaluated overflow)
+    +/
+    uint opOpAssign(string op : "/")(uint rhs, uint overflow = 0)
+        @safe pure nothrow @nogc
+    {
+        assert(overflow < rhs);
+        if (length)
+            return view.unsigned.opOpAssign!op(rhs, overflow);
+        return overflow;
+    }
+
+    /++
     Performs `size_t overflow = (big += overflow) *= fixed` operatrion.
-    Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
         overflow = initial overflow value
@@ -205,7 +285,6 @@ struct BigInt(size_t maxSize64)
 
     /++
     Performs `size_t overflow = big *= fixed` operatrion.
-    Precondition: non-empty coefficients
     Params:
         rhs = unsigned value to multiply by
     Returns:
@@ -249,16 +328,27 @@ struct BigInt(size_t maxSize64)
         @trusted pure
     {
         BigInt ret;
-        auto len = str.length / (size_t.sizeof * 2) + (str.length % (size_t.sizeof * 2) != 0);
-        if (len > ret.data.length)
+        if (ret.fromHexStringImpl(str))
+            return ret;
+        version(D_Exceptions)
+            throw hexStringException;
+        else
+            assert(0, hexStringErrorMsg);
+    }
+
+    /++
+    +/
+    bool fromHexStringImpl(C)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        auto work = BigIntView!size_t(data);
+        auto ret = work.fromHexStringImpl(str);
+        if (ret)
         {
-            version(D_Exceptions)
-                throw hexStringException;
-            else
-                assert(0, hexStringErrorMsg);
+            length = cast(uint)work.unsigned.coefficients.length;
+            sign = work.sign;
         }
-        ret.length = cast(uint)len;
-        ret.view.unsigned.fromHexStringImpl(str);
         return ret;
     }
 
@@ -419,7 +509,56 @@ struct BigInt(size_t maxSize64)
     {
         return this.copyFrom(BigIntView!(const W, endian)(view));
     }
+
+    ///
+    immutable(C)[] toString(C = char)() const @safe pure nothrow
+        if(isSomeChar!C && isMutable!C)
+    {
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        BigInt copy = this;
+        auto len = copy.view.unsigned.toStringImpl(buffer);
+        if (sign)
+            buffer[$ - ++len] = '-';
+        return buffer[$ - len .. $].idup;
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) @safe pure unittest
+    {
+        auto str = "-34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = BigInt!4(str);
+        assert(integer.toString == str);
+
+        integer = BigInt!4.init;
+        assert(integer.toString == "0");
+    }
+
+    ///
+    void toString(C = char, W)(scope ref W w) const
+        if(isSomeChar!C && isMutable!C)
+    {
+        C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
+        BigInt copy = this;
+        auto len = copy.view.unsigned.toStringImpl(buffer);
+        if (sign)
+            buffer[$ - ++len] = '-';
+        w.put(buffer[$ - len .. $]);
+    }
+
+    static if (maxSize64 == 3)
+    /// Check @nogc toString impl
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        import mir.format: stringBuf;
+        auto str = "-34010447314490204552169750449563978034784726557588085989975288830070948234680";
+        auto integer = BigInt!4(str);
+        stringBuf buffer;
+        buffer << integer;
+        assert(buffer.data == str, buffer.data);
+    }
 }
+
 
 ///
 version(mir_bignum_test)

@@ -1,0 +1,11 @@
+FROM resin/aarch64-ubuntu
+RUN apt-get update && apt-get -y install xz-utils libxml2 gcc git pkg-config ninja-build python3-pip
+RUN pip3 install meson
+RUN curl -fsSLO https://github.com/ldc-developers/ldc/releases/download/v1.24.0/ldc2-1.24.0-linux-aarch64.tar.xz \
+ && tar xf ldc2-1.24.0-linux-aarch64.tar.xz \
+ && sudo cp -rf ldc2-1.24.0-linux-aarch64/* /usr/local \
+ && rm -rf ldc*
+COPY source source
+COPY meson.build meson.build
+COPY subprojects subprojects
+RUN ls subprojects && meson build -D with_test_explicit=true --default-library=static && ninja test -C build
