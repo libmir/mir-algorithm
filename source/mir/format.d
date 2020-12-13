@@ -17,7 +17,9 @@ unittest
     import mir.small_string;
     alias S = SmallString!32;
 
-    assert(123.0.to!S == "123");
+    // Floating-point numbers are formatted to
+    // the shortest precise exponential notation.
+    assert(123.0.to!S == "1.23e2");
     assert(123.to!(immutable S) == "123");
     assert(true.to!S == "true");
     assert(true.to!string == "true");
@@ -48,7 +50,9 @@ unittest
     import mir.small_string;
     alias S = SmallString!32;
 
-    assert(123.0.to!string == "123");
+    // Floating-point numbers are formatted to
+    // the shortest precise exponential notation.
+    assert(123.0.to!string == "1.23e2");
     assert(123.to!(char[]) == "123");
 
     assert(S("str").to!string == "str"); // GC allocated result
@@ -147,7 +151,7 @@ version (mir_test) unittest
 {
     auto name = "D";
     auto ver = 2.0;
-    assert(stringBuf() << "Hi " << name << ver << "!\n" << getData == "Hi D2!\n");
+    assert(stringBuf() << "Hi " << name << ver << "!\n" << getData == "Hi D2e0!\n");
 }
 
 ///
@@ -164,7 +168,7 @@ version (mir_test) unittest
 version (mir_test) unittest
 {
     auto name = "D"d;
-    auto ver = 2;
+    auto ver = 2UL;
     assert(dstringBuf() << "Hi "d  << name << ver << "!\n"d << getData == "Hi D2!\n");
 }
 
