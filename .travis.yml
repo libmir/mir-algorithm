@@ -1,3 +1,7 @@
+sudo: false
+os:
+ - linux
+ - osx
 language: d
 d:
  - ldc
@@ -20,8 +24,10 @@ matrix:
     - {d: dmd-nightly}
     - {d: ldc-beta}
     - {d: gdc}
+  include:
+    - {os: linux, env: ARCH="AARCH64", services: docker}
 script:
- - travis_wait 100 dub test --arch "$ARCH" --build=unittest-dip1008
+ - travis_wait 100 bash -e test_travis.sh
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)
