@@ -89,7 +89,7 @@ struct Decimal(size_t maxSize64)
     @safe pure nothrow @nogc
     unittest
     {
-        // float and double can be used to constructed Decimal of any length
+        // float and double can be used to construct Decimal of any length
         auto decimal64 = Decimal!1(-1.235e-7);
         assert(decimal64.exponent == -10);
         assert(decimal64.coefficient == -1235);

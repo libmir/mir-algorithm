@@ -111,7 +111,6 @@ version(mir_bignum_test)
 // https://issues.dlang.org/show_bug.cgi?id=20951
 // https://issues.dlang.org/show_bug.cgi?id=20952
 // https://issues.dlang.org/show_bug.cgi?id=20953
-// https://issues.dlang.org/show_bug.cgi?id=20963
 // https://issues.dlang.org/show_bug.cgi?id=20967
 }
 
