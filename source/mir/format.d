@@ -636,8 +636,8 @@ ref W print(C = char, W, I)(scope return ref W w, const I c)
 ref W print(C = char, W, T)(scope return ref W w, const T c)
     if(is(T == float) || is(T == double) || is(T == real))
 {
-    import mir.bignum.internal.ryu.generic_128: genericBinaryToDecimal;
-    auto decimal = genericBinaryToDecimal(c);
+    import mir.bignum.decimal;
+    auto decimal = Decimal!(T.mant_dig < 64 ? 1 : 2)(c);
     return w.print!C(decimal);
 }
 

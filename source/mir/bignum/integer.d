@@ -112,6 +112,23 @@ struct BigInt(size_t maxSize64)
         assert(integer == BigInt!4.fromHexString("4b313b23aa560e1b0985f89cbe6df5460860e39a64ba92b4abdd3ee77e4e05b8"));
     }
 
+    ///
+    ref opAssign(size_t rhsMaxSize64)(auto ref scope const BigInt!rhsMaxSize64 rhs) return
+        if (rhsMaxSize64 < maxSize64)
+    {
+        this.sign = rhs.sign;
+        this.length = rhs.length;
+        version(LittleEndian)
+        {
+            data[0 .. length] = rhs.data[0 .. length];
+        }
+        else
+        {
+            data[$ - length .. $] = rhs.data[$ - length .. $];
+        }
+        return this;
+    }
+
     /++
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients.
@@ -145,6 +162,21 @@ struct BigInt(size_t maxSize64)
         const @safe pure nothrow @nogc
     {
         return view == rhs.view;
+    }
+
+    ///
+    bool opEquals()(size_t rhs, bool rhsSign = false)
+        const @safe pure nothrow @nogc
+    {
+        return rhs == 0 && length == 0 || length == 1 && sign == rhsSign && view.unsigned.leastSignificant == rhs;
+    }
+
+    ///
+    bool opEquals()(sizediff_t rhs)
+        const @safe pure nothrow @nogc
+    {
+        auto sign = rhs < 0;
+        return opEquals(sign ? ulong(-rhs) : ulong(rhs), sign);
     }
 
     /++

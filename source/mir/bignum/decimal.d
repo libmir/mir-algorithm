@@ -72,6 +72,48 @@ struct Decimal(size_t maxSize64)
     }
 
     /++
+    Constructs Decimal from the floating point number using the $(HTTPS https://github.com/ulfjack/ryu, Ryu algorithm).
+
+    The number is the shortest decimal representation that being converted back would result the same floating-point number.
+    +/
+    this(T)(const T x)
+        if (isFloatingPoint!T && maxSize64 >= 1 + (T.mant_dig >= 64))
+    {
+        import mir.bignum.internal.ryu.generic_128: genericBinaryToDecimal;
+        this = genericBinaryToDecimal(x);
+    }
+    
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test)
+    @safe pure nothrow @nogc
+    unittest
+    {
+        // float and double can be used to constructed Decimal of any length
+        auto decimal64 = Decimal!1(-1.235e-7);
+        assert(decimal64.exponent == -10);
+        assert(decimal64.coefficient == -1235);
+
+        // real number may need Decimal at least length of 2
+        auto decimal128 = Decimal!2(-1.235e-7L);
+        assert(decimal128.exponent == -10);
+        assert(decimal128.coefficient == -1235);
+
+        decimal128 = Decimal!2(1234e3f);
+        assert(decimal128.exponent == 3);
+        assert(decimal128.coefficient == 1234);
+    }
+
+    ///
+    ref opAssign(size_t rhsMaxSize64)(auto ref scope const Decimal!rhsMaxSize64 rhs) return
+        if (rhsMaxSize64 < maxSize64)
+    {
+        this.exponent = rhs.exponent;
+        this.coefficient = rhs.coefficient;
+        return this;
+    }
+
+    /++
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients.
     +/
