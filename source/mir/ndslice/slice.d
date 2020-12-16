@@ -1907,9 +1907,6 @@ public:
         return len;
     }
 
-    deprecated("use elementCount instead")
-    alias elementsCount = elementCount;
-
     static if (doUnittest)
     /// Regular slice
     @safe @nogc pure nothrow version(mir_test) unittest
