@@ -386,6 +386,37 @@ unittest
 }
 
 
+///
+version(mir_bignum_test) 
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.conv: to;
+    Decimal!3 decimal;
+    DecimalExponentKey key;
+
+    assert(decimal.fromStringImpl("0", key));
+    assert(key == DecimalExponentKey.none);
+    assert(decimal.exponent == 0);
+    assert(decimal.coefficient.length == 0);
+    assert(!decimal.coefficient.sign);
+    assert(cast(double) decimal.coefficient == 0);
+
+    assert(decimal.fromStringImpl("-0.0", key));
+    assert(key == DecimalExponentKey.dot);
+    assert(decimal.exponent == -1);
+    assert(decimal.coefficient.length == 0);
+    assert(decimal.coefficient.sign);
+    assert(cast(double) decimal.coefficient == 0);
+
+    assert(decimal.fromStringImpl("0e0", key));
+    assert(key == DecimalExponentKey.e);
+    assert(decimal.exponent == 0);
+    assert(decimal.coefficient.length == 0);
+    assert(!decimal.coefficient.sign);
+    assert(cast(double) decimal.coefficient == 0);
+}
+
 deprecated("use decimal.fromStringImpl insteade")
 @trusted @nogc pure nothrow
 bool parseDecimal(size_t maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize64 decimal, out DecimalExponentKey key)

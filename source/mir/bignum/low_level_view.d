@@ -1969,7 +1969,10 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         if (d == 0)
         {
             if (str.length == 0)
+            {
+                coefficient = coefficient.init;
                 return true;
+            }
             if (str[0] == '0')
                 return false;
             goto S;
@@ -2039,7 +2042,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     {
                     M:
                         exponent -= afterDot;
-                        coefficient = work;
+                        coefficient = work.mostSignificant == 0 ? coefficient.init : work;
                         return true;
                     }
                 }
