@@ -87,17 +87,17 @@ auto assumePureSafe(T)(T t) @trusted
 
 ////////// FLOATING POINT //////////
 
-pragma(inline, false) size_t printFloatingPoint(float c, scope ref const FormatSpec spec, scope ref char[512] buf)
+size_t printFloatingPoint(float c, scope ref const FormatSpec spec, scope ref char[512] buf)
 {
     return printFloatingPoint(cast(double)c, spec, buf);
 }
 
-pragma(inline, false) size_t printFloatingPoint(double c, scope ref const FormatSpec spec, scope ref char[512] buf)
+size_t printFloatingPoint(double c, scope ref const FormatSpec spec, scope ref char[512] buf)
 {
     return printFloatingPointGen(c, spec, buf);
 }
 
-pragma(inline, false) size_t printFloatingPoint(real c, scope ref const FormatSpec spec, scope ref char[512] buf)
+size_t printFloatingPoint(real c, scope ref const FormatSpec spec, scope ref char[512] buf)
 {
     version (CRuntime_Microsoft)
     {
@@ -105,22 +105,21 @@ pragma(inline, false) size_t printFloatingPoint(real c, scope ref const FormatSp
     }
     else
     {
-        pragma(inline, false);
         return printFloatingPointGen(c, spec, buf);
     }
 }
 
-pragma(inline, false) size_t printFloatingPoint(float c, scope ref const FormatSpec spec, scope ref wchar[512] buf)
+size_t printFloatingPoint(float c, scope ref const FormatSpec spec, scope ref wchar[512] buf)
 {
     return printFloatingPoint(cast(double)c, spec, buf);
 }
 
-pragma(inline, false) size_t printFloatingPoint(double c, scope ref const FormatSpec spec, scope ref wchar[512] buf)
+size_t printFloatingPoint(double c, scope ref const FormatSpec spec, scope ref wchar[512] buf)
 {
     return printFloatingPointExtend(c, spec, buf);
 }
 
-pragma(inline, false) size_t printFloatingPoint(real c, scope ref const FormatSpec spec, scope ref wchar[512] buf)
+size_t printFloatingPoint(real c, scope ref const FormatSpec spec, scope ref wchar[512] buf)
 {
     version (CRuntime_Microsoft)
     {
@@ -132,17 +131,17 @@ pragma(inline, false) size_t printFloatingPoint(real c, scope ref const FormatSp
     }
 }
 
-pragma(inline, false) size_t printFloatingPoint(float c, scope ref const FormatSpec spec, scope ref dchar[512] buf)
+size_t printFloatingPoint(float c, scope ref const FormatSpec spec, scope ref dchar[512] buf)
 {
     return printFloatingPoint(cast(double)c, spec, buf);
 }
 
-pragma(inline, false) size_t printFloatingPoint(double c, scope ref const FormatSpec spec, scope ref dchar[512] buf)
+size_t printFloatingPoint(double c, scope ref const FormatSpec spec, scope ref dchar[512] buf)
 {
     return printFloatingPointExtend(c, spec, buf);
 }
 
-pragma(inline, false) size_t printFloatingPoint(real c, scope ref const FormatSpec spec, scope ref dchar[512] buf)
+size_t printFloatingPoint(real c, scope ref const FormatSpec spec, scope ref dchar[512] buf)
 {
     version (CRuntime_Microsoft)
     {
@@ -156,20 +155,20 @@ pragma(inline, false) size_t printFloatingPoint(real c, scope ref const FormatSp
 
 nothrow:
 
-pragma(inline, false) size_t printHexadecimal(uint c, ref char[8] buf, bool upper) { return printHexadecimalGen!(uint, char)(c, buf, upper); }
-pragma(inline, false) size_t printHexadecimal(ulong c, ref char[16] buf, bool upper) { return printHexadecimalGen!(ulong, char)(c, buf, upper); }
+size_t printHexadecimal(uint c, ref char[8] buf, bool upper) { return printHexadecimalGen!(uint, char)(c, buf, upper); }
+size_t printHexadecimal(ulong c, ref char[16] buf, bool upper) { return printHexadecimalGen!(ulong, char)(c, buf, upper); }
 static if (is(ucent))
-pragma(inline, false) size_t printHexadecimal(ucent c, ref char[32] buf, bool upper) { return printHexadecimalGen!(ucent, char)(c, buf, upper); }
+size_t printHexadecimal(ucent c, ref char[32] buf, bool upper) { return printHexadecimalGen!(ucent, char)(c, buf, upper); }
 
-pragma(inline, false) size_t printHexadecimal(uint c, ref wchar[8] buf, bool upper) { return printHexadecimalGen!(uint, wchar)(c, buf, upper); }
-pragma(inline, false) size_t printHexadecimal(ulong c, ref wchar[16] buf, bool upper) { return printHexadecimalGen!(ulong, wchar)(c, buf, upper); }
+size_t printHexadecimal(uint c, ref wchar[8] buf, bool upper) { return printHexadecimalGen!(uint, wchar)(c, buf, upper); }
+size_t printHexadecimal(ulong c, ref wchar[16] buf, bool upper) { return printHexadecimalGen!(ulong, wchar)(c, buf, upper); }
 static if (is(ucent))
-pragma(inline, false) size_t printHexadecimal(ucent c, ref wchar[32] buf, bool upper) { return printHexadecimalGen!(ucent, wchar)(c, buf, upper); }
+size_t printHexadecimal(ucent c, ref wchar[32] buf, bool upper) { return printHexadecimalGen!(ucent, wchar)(c, buf, upper); }
 
-pragma(inline, false) size_t printHexadecimal(uint c, ref dchar[8] buf, bool upper) { return printHexadecimalGen!(uint, dchar)(c, buf, upper); }
-pragma(inline, false) size_t printHexadecimal(ulong c, ref dchar[16] buf, bool upper) { return printHexadecimalGen!(ulong, dchar)(c, buf, upper); }
+size_t printHexadecimal(uint c, ref dchar[8] buf, bool upper) { return printHexadecimalGen!(uint, dchar)(c, buf, upper); }
+size_t printHexadecimal(ulong c, ref dchar[16] buf, bool upper) { return printHexadecimalGen!(ulong, dchar)(c, buf, upper); }
 static if (is(ucent))
-pragma(inline, false) size_t printHexadecimal(ucent c, ref dchar[32] buf, bool upper) { return printHexadecimalGen!(ucent, dchar)(c, buf, upper); }
+size_t printHexadecimal(ucent c, ref dchar[32] buf, bool upper) { return printHexadecimalGen!(ucent, dchar)(c, buf, upper); }
 
 size_t printHexadecimalGen(T, C)(T c, ref C[T.sizeof * 2] buf, bool upper) @trusted
 {
@@ -194,24 +193,24 @@ size_t printHexadecimalGen(T, C)(T c, ref C[T.sizeof * 2] buf, bool upper) @trus
 
                       size_t printHexAddress(ubyte c, ref char[2] buf, bool upper) { return printHexAddressGen!(ubyte, char)(c, buf, upper); }
                       size_t printHexAddress(ushort c, ref char[4] buf, bool upper) { return printHexAddressGen!(ushort, char)(c, buf, upper); }
-pragma(inline, false) size_t printHexAddress(uint c, ref char[8] buf, bool upper) { return printHexAddressGen!(uint, char)(c, buf, upper); }
-pragma(inline, false) size_t printHexAddress(ulong c, ref char[16] buf, bool upper) { return printHexAddressGen!(ulong, char)(c, buf, upper); }
+size_t printHexAddress(uint c, ref char[8] buf, bool upper) { return printHexAddressGen!(uint, char)(c, buf, upper); }
+size_t printHexAddress(ulong c, ref char[16] buf, bool upper) { return printHexAddressGen!(ulong, char)(c, buf, upper); }
 static if (is(ucent))
-pragma(inline, false) size_t printHexAddress(ucent c, ref char[32] buf, bool upper) { return printHexAddressGen!(ucent, char)(c, buf, upper); }
+size_t printHexAddress(ucent c, ref char[32] buf, bool upper) { return printHexAddressGen!(ucent, char)(c, buf, upper); }
 
                       size_t printHexAddress(ubyte c, ref wchar[2] buf, bool upper) { return printHexAddressGen!(ubyte, wchar)(c, buf, upper); }
                       size_t printHexAddress(ushort c, ref wchar[4] buf, bool upper) { return printHexAddressGen!(ushort, wchar)(c, buf, upper); }
-pragma(inline, false) size_t printHexAddress(uint c, ref wchar[8] buf, bool upper) { return printHexAddressGen!(uint, wchar)(c, buf, upper); }
-pragma(inline, false) size_t printHexAddress(ulong c, ref wchar[16] buf, bool upper) { return printHexAddressGen!(ulong, wchar)(c, buf, upper); }
+size_t printHexAddress(uint c, ref wchar[8] buf, bool upper) { return printHexAddressGen!(uint, wchar)(c, buf, upper); }
+size_t printHexAddress(ulong c, ref wchar[16] buf, bool upper) { return printHexAddressGen!(ulong, wchar)(c, buf, upper); }
 static if (is(ucent))
-pragma(inline, false) size_t printHexAddress(ucent c, ref wchar[32] buf, bool upper) { return printHexAddressGen!(ucent, wchar)(c, buf, upper); }
+size_t printHexAddress(ucent c, ref wchar[32] buf, bool upper) { return printHexAddressGen!(ucent, wchar)(c, buf, upper); }
 
                       size_t printHexAddress(ubyte c, ref dchar[2] buf, bool upper) { return printHexAddressGen!(ubyte, dchar)(c, buf, upper); }
                       size_t printHexAddress(ushort c, ref dchar[4] buf, bool upper) { return printHexAddressGen!(ushort, dchar)(c, buf, upper); }
-pragma(inline, false) size_t printHexAddress(uint c, ref dchar[8] buf, bool upper) { return printHexAddressGen!(uint, dchar)(c, buf, upper); }
-pragma(inline, false) size_t printHexAddress(ulong c, ref dchar[16] buf, bool upper) { return printHexAddressGen!(ulong, dchar)(c, buf, upper); }
+size_t printHexAddress(uint c, ref dchar[8] buf, bool upper) { return printHexAddressGen!(uint, dchar)(c, buf, upper); }
+size_t printHexAddress(ulong c, ref dchar[16] buf, bool upper) { return printHexAddressGen!(ulong, dchar)(c, buf, upper); }
 static if (is(ucent))
-pragma(inline, false) size_t printHexAddress(ucent c, ref dchar[32] buf, bool upper) { return printHexAddressGen!(ucent, dchar)(c, buf, upper); }
+size_t printHexAddress(ucent c, ref dchar[32] buf, bool upper) { return printHexAddressGen!(ucent, dchar)(c, buf, upper); }
 
 size_t printHexAddressGen(T, C)(T c, ref C[T.sizeof * 2] buf, bool upper)
 {
@@ -235,9 +234,9 @@ size_t printHexAddressGen(T, C)(T c, ref C[T.sizeof * 2] buf, bool upper)
 static immutable hexStringUpper = "0123456789ABCDEF";
 static immutable hexStringLower = "0123456789abcdef";
 
-pragma(inline, false) size_t printBufferShift(size_t length, size_t shift, scope char* ptr) { return printBufferShiftGen!char(length, shift, ptr); }
-pragma(inline, false) size_t printBufferShift(size_t length, size_t shift, scope wchar* ptr) { return printBufferShiftGen!wchar(length, shift, ptr); }
-pragma(inline, false) size_t printBufferShift(size_t length, size_t shift, scope dchar* ptr) { return printBufferShiftGen!dchar(length, shift, ptr); }
+size_t printBufferShift(size_t length, size_t shift, scope char* ptr) { return printBufferShiftGen!char(length, shift, ptr); }
+size_t printBufferShift(size_t length, size_t shift, scope wchar* ptr) { return printBufferShiftGen!wchar(length, shift, ptr); }
+size_t printBufferShift(size_t length, size_t shift, scope dchar* ptr) { return printBufferShiftGen!dchar(length, shift, ptr); }
 
 size_t printBufferShiftGen(C)(size_t length, size_t shift, scope C* ptr) @trusted
 {
@@ -247,36 +246,36 @@ size_t printBufferShiftGen(C)(size_t length, size_t shift, scope C* ptr) @truste
     return length;
 }
 
-pragma(inline, false) size_t printSigned(int c, scope ref char[11] buf, char sign = '\0') { return printSignedGen(c, buf, sign); }
-pragma(inline, false) size_t printSigned(long c, scope ref char[21] buf, char sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(int c, scope ref char[11] buf, char sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(long c, scope ref char[21] buf, char sign = '\0') { return printSignedGen(c, buf, sign); }
 static if (is(cent))
-pragma(inline, false) size_t printSigned(cent c, scope ref char[40] buf, char sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(cent c, scope ref char[40] buf, char sign = '\0') { return printSignedGen(c, buf, sign); }
 
-pragma(inline, false) size_t printSigned(int c, scope ref wchar[11] buf, wchar sign = '\0') { return printSignedGen(c, buf, sign); }
-pragma(inline, false) size_t printSigned(long c, scope ref wchar[21] buf, wchar sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(int c, scope ref wchar[11] buf, wchar sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(long c, scope ref wchar[21] buf, wchar sign = '\0') { return printSignedGen(c, buf, sign); }
 static if (is(cent))
-pragma(inline, false) size_t printSigned(cent c, scope ref wchar[40] buf, wchar sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(cent c, scope ref wchar[40] buf, wchar sign = '\0') { return printSignedGen(c, buf, sign); }
 
-pragma(inline, false) size_t printSigned(int c, scope ref dchar[11] buf, dchar sign = '\0') { return printSignedGen(c, buf, sign); }
-pragma(inline, false) size_t printSigned(long c, scope ref dchar[21] buf, dchar sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(int c, scope ref dchar[11] buf, dchar sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(long c, scope ref dchar[21] buf, dchar sign = '\0') { return printSignedGen(c, buf, sign); }
 static if (is(cent))
-pragma(inline, false) size_t printSigned(cent c, scope ref dchar[40] buf, dchar sign = '\0') { return printSignedGen(c, buf, sign); }
+size_t printSigned(cent c, scope ref dchar[40] buf, dchar sign = '\0') { return printSignedGen(c, buf, sign); }
 
 
-pragma(inline, false) size_t printSignedToTail(int c, scope ref char[11] buf, char sign = '\0') { return printSignedToTailGen(c, buf, sign); }
-pragma(inline, false) size_t printSignedToTail(long c, scope ref char[21] buf, char sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(int c, scope ref char[11] buf, char sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(long c, scope ref char[21] buf, char sign = '\0') { return printSignedToTailGen(c, buf, sign); }
 static if (is(cent))
-pragma(inline, false) size_t printSignedToTail(cent c, scope ref char[40] buf, char sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(cent c, scope ref char[40] buf, char sign = '\0') { return printSignedToTailGen(c, buf, sign); }
 
-pragma(inline, false) size_t printSignedToTail(int c, scope ref wchar[11] buf, wchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
-pragma(inline, false) size_t printSignedToTail(long c, scope ref wchar[21] buf, wchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(int c, scope ref wchar[11] buf, wchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(long c, scope ref wchar[21] buf, wchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
 static if (is(cent))
-pragma(inline, false) size_t printSignedToTail(cent c, scope ref wchar[40] buf, wchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(cent c, scope ref wchar[40] buf, wchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
 
-pragma(inline, false) size_t printSignedToTail(int c, scope ref dchar[11] buf, dchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
-pragma(inline, false) size_t printSignedToTail(long c, scope ref dchar[21] buf, dchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(int c, scope ref dchar[11] buf, dchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(long c, scope ref dchar[21] buf, dchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
 static if (is(cent))
-pragma(inline, false) size_t printSignedToTail(cent c, scope ref dchar[40] buf, dchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
+size_t printSignedToTail(cent c, scope ref dchar[40] buf, dchar sign = '\0') { return printSignedToTailGen(c, buf, sign); }
 
 size_t printSignedGen(T, C, size_t N)(T c, scope ref C[N] buf, C sign) @trusted
 {
@@ -305,35 +304,35 @@ size_t printSignedToTailGen(T, C, size_t N)(T c, scope ref C[N] buf, C sign)
     return ret;
 }
 
-pragma(inline, false) size_t printUnsigned(uint c, scope ref char[10] buf) { return printUnsignedGen(c, buf); }
-pragma(inline, false) size_t printUnsigned(ulong c, scope ref char[20] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(uint c, scope ref char[10] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(ulong c, scope ref char[20] buf) { return printUnsignedGen(c, buf); }
 static if (is(ucent))
-pragma(inline, false) size_t printUnsigned(ucent c, scope ref char[39] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(ucent c, scope ref char[39] buf) { return printUnsignedGen(c, buf); }
 
-pragma(inline, false) size_t printUnsigned(uint c, scope ref wchar[10] buf) { return printUnsignedGen(c, buf); }
-pragma(inline, false) size_t printUnsigned(ulong c, scope ref wchar[20] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(uint c, scope ref wchar[10] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(ulong c, scope ref wchar[20] buf) { return printUnsignedGen(c, buf); }
 static if (is(ucent))
-pragma(inline, false) size_t printUnsigned(ucent c, scope ref wchar[39] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(ucent c, scope ref wchar[39] buf) { return printUnsignedGen(c, buf); }
 
-pragma(inline, false) size_t printUnsigned(uint c, scope ref dchar[10] buf) { return printUnsignedGen(c, buf); }
-pragma(inline, false) size_t printUnsigned(ulong c, scope ref dchar[20] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(uint c, scope ref dchar[10] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(ulong c, scope ref dchar[20] buf) { return printUnsignedGen(c, buf); }
 static if (is(ucent))
-pragma(inline, false) size_t printUnsigned(ucent c, scope ref dchar[39] buf) { return printUnsignedGen(c, buf); }
+size_t printUnsigned(ucent c, scope ref dchar[39] buf) { return printUnsignedGen(c, buf); }
 
-pragma(inline, false) size_t printUnsignedToTail(uint c, scope ref char[10] buf) { return printUnsignedToTailGen(c, buf); }
-pragma(inline, false) size_t printUnsignedToTail(ulong c, scope ref char[20] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(uint c, scope ref char[10] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(ulong c, scope ref char[20] buf) { return printUnsignedToTailGen(c, buf); }
 static if (is(ucent))
-pragma(inline, false) size_t printUnsignedToTail(ucent c, scope ref char[39] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(ucent c, scope ref char[39] buf) { return printUnsignedToTailGen(c, buf); }
 
-pragma(inline, false) size_t printUnsignedToTail(uint c, scope ref wchar[10] buf) { return printUnsignedToTailGen(c, buf); }
-pragma(inline, false) size_t printUnsignedToTail(ulong c, scope ref wchar[20] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(uint c, scope ref wchar[10] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(ulong c, scope ref wchar[20] buf) { return printUnsignedToTailGen(c, buf); }
 static if (is(ucent))
-pragma(inline, false) size_t printUnsignedToTail(ucent c, scope ref wchar[39] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(ucent c, scope ref wchar[39] buf) { return printUnsignedToTailGen(c, buf); }
 
-pragma(inline, false) size_t printUnsignedToTail(uint c, scope ref dchar[10] buf) { return printUnsignedToTailGen(c, buf); }
-pragma(inline, false) size_t printUnsignedToTail(ulong c, scope ref dchar[20] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(uint c, scope ref dchar[10] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(ulong c, scope ref dchar[20] buf) { return printUnsignedToTailGen(c, buf); }
 static if (is(ucent))
-pragma(inline, false) size_t printUnsignedToTail(ucent c, scope ref dchar[39] buf) { return printUnsignedToTailGen(c, buf); }
+size_t printUnsignedToTail(ucent c, scope ref dchar[39] buf) { return printUnsignedToTailGen(c, buf); }
 
 size_t printUnsignedToTailGen(T, C, size_t N)(T c, scope ref C[N] buf) @trusted
 {
@@ -387,7 +386,7 @@ size_t printUnsignedGen(T, C, size_t N)(T c, scope ref C[N] buf) @trusted
 }
 
 nothrow @trusted
-pragma(inline, false) size_t extendASCII(char* from, wchar* to, size_t n)
+size_t extendASCII(char* from, wchar* to, size_t n)
 {
     foreach (i; 0 .. n)
         to[i] = from[i];
@@ -395,7 +394,7 @@ pragma(inline, false) size_t extendASCII(char* from, wchar* to, size_t n)
 }
 
 nothrow @trusted
-pragma(inline, false) size_t extendASCII(char* from, dchar* to, size_t n)
+size_t extendASCII(char* from, dchar* to, size_t n)
 {
     foreach (i; 0 .. n)
         to[i] = from[i];

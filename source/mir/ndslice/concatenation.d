@@ -285,9 +285,6 @@ struct Concatenation(size_t dim, Slices...)
         return count;
     }
 
-    deprecated("use elementCount instead")
-    alias elementsCount = elementCount;
-
     /// Shape of the concatenation.
     size_t[N] shape()() const @property
     {

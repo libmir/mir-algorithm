@@ -19,7 +19,7 @@ unittest
 
     // Floating-point numbers are formatted to
     // the shortest precise exponential notation.
-    assert(123.0.to!S == "1.23e2");
+    assert(123.0.to!S == "123.0");
     assert(123.to!(immutable S) == "123");
     assert(true.to!S == "true");
     assert(true.to!string == "true");
@@ -52,7 +52,7 @@ unittest
 
     // Floating-point numbers are formatted to
     // the shortest precise exponential notation.
-    assert(123.0.to!string == "1.23e2");
+    assert(123.0.to!string == "123.0");
     assert(123.to!(char[]) == "123");
 
     assert(S("str").to!string == "str"); // GC allocated result
@@ -87,8 +87,8 @@ string text(string separator = "", A...)(auto ref A args)
 ///
 @safe pure nothrow unittest
 {
-    assert(text("str ", true, " ", 100, " ", 124.1) == "str true 100 1.241e2");
-    assert(text!" "("str", true, 100, 124.1) == "str true 100 1.241e2");
+    assert(text("str ", true, " ", 100, " ", 124.1) == "str true 100 124.1", text("str ", true, " ", 100, " ", 124.1));
+    assert(text!" "("str", true, 100, 124.1) == "str true 100 124.1");
 }
 
 import mir.format_impl;
@@ -151,7 +151,7 @@ version (mir_test) unittest
 {
     auto name = "D";
     auto ver = 2.0;
-    assert(stringBuf() << "Hi " << name << ver << "!\n" << getData == "Hi D2e0!\n");
+    assert(stringBuf() << "Hi " << name << ver << "!\n" << getData == "Hi D2.0!\n");
 }
 
 ///
@@ -176,6 +176,44 @@ version (mir_test) unittest
 version (mir_test) unittest
 {
     assert(stringBuf() << -1234567890 << getData == "-1234567890");
+}
+
+/++
+Mir's numeric format specification
+
+Note: the specification isn't complete an may be extended in the future.
++/
+struct NumericSpec
+{
+    ///
+    enum Format
+    {
+        /++
+        Human-frindly precise output.
+        Examples: `0.000001`, `600000.0`, but `1e-7` and `6e7`.
+        +/
+        human,
+        /++
+        Precise output with explicit exponent.
+        Examples: `1e-6`, `6e6`, `1.23456789e-100`.
+        +/
+        exponent,
+    }
+
+    ///
+    Format format;
+
+    /++
+    Precise output with explicit exponent.
+    Examples: `1e-6`, `6e6`, `1.23456789e-100`.
+    +/
+    enum NumericSpec exponent = NumericSpec(Format.exponent);
+
+    /++
+    Precise output with explicit exponent.
+    Examples: `1e-6`, `6e6`, `1.23456789e-100`.
+    +/
+    enum NumericSpec human = NumericSpec(Format.human);
 }
 
 // 16-bytes
@@ -215,6 +253,7 @@ enum SwitchLU : bool
 }
 
 /++
+Wrapper to format floating point numbers using C's library.
 +/
 struct FormattedFloating(T)
     if(is(T == float) || is(T == double) || is(T == real))
@@ -235,6 +274,31 @@ struct FormattedFloating(T)
 
 /// ditto
 FormattedFloating!T withFormat(T)(const T value, FormatSpec spec)
+{
+    version(LDC) pragma(inline);
+    return typeof(return)(value, spec);
+}
+
+/++
+Wrapper to format floating point numbers using C's library.
++/
+struct FormattedNumeric(T)
+    if(is(T == float) || is(T == double) || is(T == real))
+{
+    ///
+    T value;
+    ///
+    NumericSpec spec;
+
+    ///
+    void toString(C = char, W)(scope ref W w) scope const
+    {
+        print(w, value, spec);
+    }
+}
+
+/// ditto
+FormattedNumeric!T withFormat(T)(const T value, NumericSpec spec)
 {
     version(LDC) pragma(inline);
     return typeof(return)(value, spec);
@@ -633,18 +697,42 @@ ref W print(C = char, W, I)(scope return ref W w, const I c)
 }
 
 /// Prints floating point numbers
-ref W print(C = char, W, T)(scope return ref W w, const T c)
+ref W print(C = char, W, T)(scope return ref W w, const T c, NumericSpec spec = NumericSpec.init)
     if(is(T == float) || is(T == double) || is(T == real))
 {
     import mir.bignum.decimal;
     auto decimal = Decimal!(T.mant_dig < 64 ? 1 : 2)(c);
-    return w.print!C(decimal);
+    decimal.toString(w, spec);
+    return w;
+}
+
+///
+version(mir_bignum_test)
+@safe pure nothrow
+unittest
+{
+    assert(stringBuf() << -0.0 << getData == "-0.0");
+    assert(stringBuf() << 0.0 << getData == "0.0");
+    assert(stringBuf() << -0.01 << getData == "-0.01");
+    assert(stringBuf() << 0.0125 << getData == "0.0125");
+    assert(stringBuf() << 0.000003 << getData == "0.000003");
+    assert(stringBuf() << -3e-7 << getData == "-3e-7");
+    assert(stringBuf() << 123456.0 << getData == "123456.0");
+    assert(stringBuf() << 12.3456 << getData == "12.3456");
+    assert(stringBuf() << -0.123456 << getData == "-0.123456");
+    assert(stringBuf() << 0.1234567 << getData == "1.234567e-1");
+    assert(stringBuf() << -1234567.0 << getData == "-1.234567e6");
+    assert(stringBuf() << 1234567890123.0 << getData == "1.234567890123e12");
+    assert(stringBuf() << +double.nan << getData == "nan");
+    assert(stringBuf() << -double.nan << getData == "nan");
+    assert(stringBuf() << +double.infinity << getData == "+inf");
+    assert(stringBuf() << -double.infinity << getData == "-inf");
 }
 
 /// Prints structs and unions
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, ref const T c)
-    if (is(T == struct) || is(T == union))
+    if (is(T == struct) || is(T == union) && !is(T : NumericSpec))
 {
     static if (__traits(hasMember, T, "toString"))
     {

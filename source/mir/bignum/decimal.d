@@ -11,7 +11,7 @@ import std.traits: isSomeChar;
 public import mir.bignum.low_level_view: DecimalExponentKey;
 import mir.bignum.low_level_view: ceilLog10Exp2;
 
-private enum expBufferShift = 2 + ceilLog10Exp2(size_t.sizeof * 8);
+private enum expBufferLength = 2 + ceilLog10Exp2(size_t.sizeof * 8);
 
 /++
 Stack-allocated decimal type.
@@ -22,6 +22,7 @@ Params:
 struct Decimal(size_t maxSize64)
     if (maxSize64 && maxSize64 <= ushort.max)
 {
+    import mir.format: NumericSpec;
     import mir.bignum.integer;
     import mir.bignum.low_level_view;
     import std.traits: isMutable, isFloatingPoint;
@@ -183,20 +184,49 @@ struct Decimal(size_t maxSize64)
         assert(!decimal.fromStringImpl("0d", key));
     }
 
-    private enum eDecimalLength = 2 + ceilLog10Exp2(coefficient.data.length * (size_t.sizeof * 8)) + expBufferShift;
+    private enum coefficientBufferLength = 2 + ceilLog10Exp2(coefficient.data.length * (size_t.sizeof * 8)); // including dot and sign
+    private enum eDecimalLength = coefficientBufferLength + expBufferLength;
 
-    private const(C)[] toStringImpl(C = char)(ref scope return C[eDecimalLength] buffer) scope const @safe pure nothrow
+    ///
+    immutable(C)[] toString(C = char)(NumericSpec spec = NumericSpec.init) const @safe pure nothrow
         if(isSomeChar!C && isMutable!C)
     {
+        import mir.appender: UnsafeArrayBuffer;
+        C[eDecimalLength] data = void;
+        auto buffer = UnsafeArrayBuffer!C(data);
+        toString(buffer, spec);
+        return buffer.data.idup;
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) @safe pure unittest
+    {
+        auto str = "-3.4010447314490204552169750449563978034784726557588085989975288830070948234680e-13245";
+        auto decimal = Decimal!4(str);
+        assert(decimal.toString == str, decimal.toString);
+
+        decimal = Decimal!4.init;
+        assert(decimal.toString == "0.0");
+    }
+
+    ///
+    void toString(C = char, W)(scope ref W w, NumericSpec spec = NumericSpec.init) const
+        if(isSomeChar!C && isMutable!C)
+    {
+        assert(spec == NumericSpec.exponent || spec == NumericSpec.human);
         import mir.utility: _expect;
         // handle special values
         if (_expect(exponent == exponent.max, false))
         {
-            immutable(C)[] nan = "nan";
-            immutable(C)[] ninf = "-inf";
-            immutable(C)[] pinf = "+inf";
-            return coefficient.length == 0 ? coefficient.sign ? ninf : pinf : nan;
+            static immutable C[3] nan = "nan";
+            static immutable C[4] ninf = "-inf";
+            static immutable C[4] pinf = "+inf";
+            w.put(coefficient.length == 0 ? coefficient.sign ? ninf[] : pinf[] : nan[]);
+            return;
         }
+
+        C[coefficientBufferLength] buffer = void;
 
         size_t coefficientLength;
         static if (size_t.sizeof == 8)
@@ -221,87 +251,89 @@ struct Decimal(size_t maxSize64)
                 }
                 auto work = BigUIntView!uint(data);
                 work = work.topLeastSignificantPart(coefficient.length * 2).normalized;
-                coefficientLength = work.toStringImpl(buffer[0 .. $ - expBufferShift]);
+                coefficientLength = work.toStringImpl(buffer);
             }
             else
             {
                 BigInt!maxSize64 work = coefficient;
-                coefficientLength = work.view.unsigned.toStringImpl(buffer[0 .. $ - expBufferShift]);
+                coefficientLength = work.view.unsigned.toStringImpl(buffer);
             }
         }
         else
         {
             BigInt!maxSize64 work = coefficient;
-            coefficientLength = work.view.unsigned.toStringImpl(buffer[0 .. $ - expBufferShift]);
+            coefficientLength = work.view.unsigned.toStringImpl(buffer);
+        }
+
+        static immutable C[10] zeros = "-0.00000.0";
+
+        if (spec.format == NumericSpec.Format.human)
+        {
+            // try print decimal form without exponent
+            // up to 6 digits exluding leading 0. or final .0
+            if (this.exponent >= 0)
+            {
+                if (this.exponent + coefficientLength <= 6)
+                {
+                    buffer[$ - coefficientLength - 1] = '-';
+                    w.put(buffer[$ - coefficientLength - coefficient.sign .. $]);
+                    w.put(zeros[$ - (exponent + 2) .. $]);
+                    return;
+                }
+            }
+            else
+            if (this.exponent < 0)
+            {
+                if (this.exponent >= -6 && coefficientLength <= 6)
+                {
+                    sizediff_t zerosLength = -this.exponent - coefficientLength;
+                    if (zerosLength >= 0)
+                    {
+                        w.put(zeros[!coefficient.sign .. zerosLength + 2 + 1]);
+                        w.put(buffer[$ - coefficientLength .. $]);
+                        return;
+                    }
+                    else
+                    {
+                        buffer[$ - coefficientLength - 1] = '-';
+                        w.put(buffer[$ - coefficientLength  - coefficient.sign .. $ - coefficientLength - zerosLength]);
+                        buffer[$ - coefficientLength - zerosLength - 1] = '.';
+                        w.put(buffer[$ - coefficientLength - zerosLength - 1 .. $]);
+                        return;
+                    }
+                }
+            }
         }
 
         assert(coefficientLength);
+
         sizediff_t exponent = this.exponent + coefficientLength - 1;
 
         if (coefficientLength > 1)
         {
-            auto c = buffer[$ - expBufferShift - coefficientLength];
-            buffer[$ - expBufferShift - coefficientLength] = '.';
-            buffer[$ - expBufferShift - ++coefficientLength] = c;
+            auto c = buffer[$ - coefficientLength];
+            buffer[$ - coefficientLength] = '.';
+            buffer[$ - ++coefficientLength] = c;
         }
 
         if (coefficient.sign)
         {
-            buffer[$ - expBufferShift - ++coefficientLength] = '-';
+            buffer[$ - ++coefficientLength] = '-';
         }
 
-        size_t exponentLength;
-        {
-            bool expSign = exponent < 0;
-            size_t unsignedExponent = expSign ? -exponent : exponent;
-            size_t i = buffer.length;
+        w.put(buffer[$ - coefficientLength .. $]);
 
-            do
-            {
-                buffer[--i] = cast(char)(unsignedExponent % 10 + '0');
-                unsignedExponent /= 10;
-            }
-            while(unsignedExponent);
-            if (expSign)
-                buffer[--i] = '-';
-            exponentLength = buffer.length - i;
-        }
+        C[expBufferLength] expBuffer = void;
+        import mir.format_impl: printSignedToTail;
 
-        buffer[$ - expBufferShift] = 'e';
+        static if (sizediff_t.sizeof == 8)
+            enum N = 21;
+        else
+            enum N = 11;
 
-        assert(exponentLength <= expBufferShift + 1);
-        size_t i;
-        do buffer[$ - (expBufferShift - 1) + i] = buffer[$ - exponentLength + i];
-        while(++i < exponentLength);
-        return buffer[$ - (expBufferShift + coefficientLength) .. $ - (expBufferShift - 1) + exponentLength];
-    }
-
-    ///
-    immutable(C)[] toString(C = char)() const @safe pure nothrow
-        if(isSomeChar!C && isMutable!C)
-    {
-        C[eDecimalLength] buffer = void;
-        return toStringImpl(buffer).idup;
-    }
-
-    static if (maxSize64 == 3)
-    ///
-    version(mir_bignum_test) @safe pure unittest
-    {
-        auto str = "-3.4010447314490204552169750449563978034784726557588085989975288830070948234680e-13245";
-        auto integer = Decimal!4(str);
-        assert(integer.toString == str, integer.toString);
-
-        integer = Decimal!4.init;
-        assert(integer.toString == "0e0");
-    }
-
-    ///
-    void toString(C = char, W)(scope ref W w) const
-        if(isSomeChar!C && isMutable!C)
-    {
-        C[eDecimalLength] buffer = void;
-        w.put(toStringImpl(buffer));
+        auto expLength = printSignedToTail(exponent, buffer[$ - N .. $], '\0');
+        buffer[$ - ++expLength] = 'e';
+        w.put(buffer[$ - expLength .. $]);
     }
 
     static if (maxSize64 == 3)
@@ -310,9 +342,9 @@ struct Decimal(size_t maxSize64)
     {
         import mir.format: stringBuf;
         auto str = "5.28238923728e-876543210";
-        auto integer = Decimal!1(str);
+        auto decimal = Decimal!1(str);
         stringBuf buffer;
-        buffer << integer;
+        buffer << decimal;
         assert(buffer.data == str, buffer.data);
     }
 
