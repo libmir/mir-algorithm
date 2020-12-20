@@ -184,19 +184,13 @@ bool multipleOfPowerOf5(size_t size)(UInt!size value, const uint p)
     enum fiveReciprocal = .fiveReciprocal.toSize!size;
     enum baseDiv5 = .baseDiv5.toSize!size;
     version(LDC) pragma(inline, true);
-    if (value)
+    assert(value);
+    for (uint count = 0;; ++count)
     {
-        for (uint count;; ++count)
-        {
-            if (count >= p)
-                return true;
-            value *= fiveReciprocal;
-            if (value > baseDiv5)
-                return false;
-        }
+        value *= fiveReciprocal;
+        if (value > baseDiv5)
+            return count >= p;
     }
-    else
-        return p == 0;
 }
 
 version(mir_bignum_test) unittest
