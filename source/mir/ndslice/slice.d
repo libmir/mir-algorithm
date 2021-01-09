@@ -2031,18 +2031,38 @@ public:
     bool opEquals(IteratorR, SliceKind rkind)(auto ref const Slice!(IteratorR, N, rkind) rslice) @trusted scope const
     {
         static if (
-               __traits(isPOD, typeof(this))
-            && __traits(isPOD, typeof(rslice))
+               __traits(isPOD, Iterator)
+            && __traits(isPOD, IteratorR)
             && __traits(compiles, this._iterator == rslice._iterator)
             )
         {
             if (this._lengths != rslice._lengths)
                 return false;
-            if (this.strides == rslice.strides && this._iterator == rslice._iterator)
+            if (anyEmpty)
                 return true;
+            if (this._iterator == rslice._iterator)
+            {
+                auto ls = this.strides;
+                auto rs = rslice.strides;
+                foreach (i; Iota!N)
+                {
+                    if (this._lengths[i] != 1 && ls[i] != rs[i])
+                        goto L;
+                }
+                return true;
+            }
         }
-        import mir.algorithm.iteration : equal;
-        return equal(this.lightScope, rslice.lightScope);
+        L:
+
+        static if (is(Iterator == IotaIterator!UL, UL) && is(IteratorR == Iterator))
+        {
+            return false;
+        }
+        else
+        {
+            import mir.algorithm.iteration : equal;
+            return equal(this.lightScope, rslice.lightScope);
+        }
     }
 
     /// ditto
