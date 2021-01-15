@@ -322,3 +322,26 @@ version (mir_test) unittest
     buf.popBackN(2);
     assert(buf.data == "cs");
 }
+
+version(mir_test)
+unittest
+{
+    import mir.conv: to;
+    import mir.algebraic : Algebraic;
+    static struct S
+    {
+    @safe pure nothrow @nogc:
+        @property string toString() const
+        {
+            return "_";
+        }
+    }
+    Algebraic!(int, string) x;
+    x = 42;
+    assert(x.to!string == "42");
+    x = "abc";
+    assert(x.to!string == "abc");
+    Algebraic!S y;
+    y = S();
+    assert(y.to!string == "_");
+}
