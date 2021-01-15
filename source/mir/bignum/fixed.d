@@ -208,7 +208,10 @@ struct UInt(size_t size)
             throw hexStringException;
         }
         else
+        {
+            import mir.bignum.low_level_view: hexStringErrorMsg;
             assert(0, hexStringErrorMsg);
+        }
     }
 
     /++
