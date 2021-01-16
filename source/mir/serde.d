@@ -140,8 +140,7 @@ immutable(string)[] serdeGetKeysIn(T)(const T value) @trusted pure nothrow @nogc
 }
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     struct S
     {
@@ -171,8 +170,7 @@ unittest
 }
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     enum E
     {
@@ -241,8 +239,7 @@ string serdeGetKeyOut(T)(const T value)
 }
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     struct S
     {
@@ -275,8 +272,7 @@ unittest
 }
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     enum E
     {
@@ -315,8 +311,7 @@ Do not use it on void initialized fields or aggregates with void initialized fie
 enum serdeIgnoreDefault;
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     struct S
     {
@@ -338,8 +333,7 @@ Serialization proxy.
 struct serdeProxy(T);
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     import mir.small_string;
 
@@ -451,8 +445,7 @@ bool hasSerdeIgnoreCase(T)(T value)
 }
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     enum E
     {
@@ -471,8 +464,7 @@ unittest
 }
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     @serdeIgnoreCase
     enum E
@@ -597,8 +589,7 @@ bool serdeParseEnum(E)(const char[] str, ref E res)
 }
 
 ///
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     enum E
     {
@@ -626,8 +617,7 @@ unittest
 }
 
 /// Case insensitive
-version(mir_test)
-unittest
+version(mir_test) unittest
 {
     @serdeIgnoreCase // supported for the whole type
     enum E
@@ -692,7 +682,7 @@ template serdeIsDeserializable(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct S
@@ -707,6 +697,58 @@ unittest
     alias serdeIsDeserializableInS = serdeIsDeserializable!S;
     static assert (!serdeIsDeserializableInS!"i");
     static assert (serdeIsDeserializableInS!"a");
+}
+
+/++
+Serialization member type
++/
+template serdeSerializationMemberType(T, string member)
+{
+    import std.traits: Unqual, Parameters;
+    T* aggregate;
+    static if (isField!(T, member))
+    {
+        alias serdeSerializationMemberType = typeof(__traits(getMember, *aggregate, member));
+    }
+    else
+    {
+        alias serdeSerializationMemberType = typeof(__traits(getMember, *aggregate, member)());
+    }
+}
+
+/// ditto
+template serdeSerializationMemberType(T)
+{
+    ///
+    alias serdeSerializationMemberType(string member) = .serdeSerializationMemberType!(T, member);
+}
+
+
+/++
+Is deserializable member
++/
+template serdeIsSerializable(T)
+{
+    ///
+    enum bool serdeIsSerializable(string member) = serdeGetKeyOut!(__traits(getMember, T, member)) !is null;
+}
+
+///
+version(mir_test) unittest
+{
+
+    static struct S
+    {
+        @serdeIgnore
+        int i;
+
+        @serdeKeys("a", "b")
+        int a;
+    }
+
+    alias serdeIsSerializableInS = serdeIsSerializable!S;
+    static assert (!serdeIsSerializableInS!"i");
+    static assert (serdeIsSerializableInS!"a");
 }
 
 /++
@@ -733,7 +775,7 @@ template serdeGetFinalProxy(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     @serdeProxy!string
@@ -796,7 +838,7 @@ template serdeGetFinalDeepProxy(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     @serdeProxy!string
@@ -828,7 +870,7 @@ template serdeFinalProxyDeserializableMembers(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A
@@ -850,7 +892,78 @@ unittest
 }
 
 /++
-Final deep proxy type deserializable members
+Final deep proxy type serializable members
++/
+template serdeFinalDeepProxySerializableMembers(T)
+{
+    import std.traits: isAggregateType;
+    import std.meta: Filter, aliasSeqOf;
+    alias P = serdeGetFinalDeepProxy!T;
+    static if (isAggregateType!P)
+        enum string[] serdeFinalDeepProxySerializableMembers = [Filter!(serdeIsSerializable!P, aliasSeqOf!(SerializableMembers!P))];
+    else
+        enum string[] serdeFinalDeepProxySerializableMembers = null;
+}
+
+///
+version(mir_test) unittest
+{
+
+    static struct A
+    {
+        @serdeIgnore
+        int i;
+
+        @serdeKeys("a", "b")
+        int m;
+    }
+
+    @serdeProxy!(A[string])
+    static struct B {}
+
+    @serdeProxy!(B[])
+    static struct C {}
+
+    static assert (serdeFinalDeepProxySerializableMembers!C == ["m"]);
+}
+
+/++
+Final proxy type deserializable members
++/
+template serdeFinalProxySerializableMembers(T)
+{
+    import std.meta: Filter, aliasSeqOf;
+    alias P = serdeGetFinalProxy!T;
+    static if (is(P == struct) || is(P == class) || is(P == interface) || is(P == union))
+        enum string[] serdeFinalProxySerializableMembers = [Filter!(serdeIsSerializable!P, aliasSeqOf!(SerializableMembers!P))];
+    else
+        enum string[] serdeFinalProxySerializableMembers = null;
+}
+
+///
+version(mir_test) unittest
+{
+
+    static struct A
+    {
+        @serdeIgnore
+        int i;
+
+        @serdeKeys("a", "b")
+        int m;
+    }
+
+    @serdeProxy!A
+    static struct B {}
+
+    @serdeProxy!B
+    static struct C {}
+
+    static assert (serdeFinalProxySerializableMembers!C == ["m"]);
+}
+
+/++
+Final deep proxy type serializable members
 +/
 template serdeFinalDeepProxyDeserializableMembers(T)
 {
@@ -864,7 +977,7 @@ template serdeFinalDeepProxyDeserializableMembers(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A
@@ -909,7 +1022,7 @@ template serdeFinalDeserializationMemberType(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A
@@ -949,7 +1062,7 @@ template serdeDeserializationFinalProxyMemberTypes(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A {}
@@ -976,6 +1089,96 @@ unittest
 }
 
 /++
+Serialization member final proxy type
++/
+template serdeFinalSerializationMemberType(T, string member)
+{
+    import std.traits: hasUDA;
+    static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
+    {
+        alias serdeFinalSerializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(__traits(getMember, T, member)));
+    }
+    else
+    {
+        alias serdeFinalSerializationMemberType = serdeGetFinalProxy!(serdeSerializationMemberType!(T, member));
+    }
+}
+
+/// ditto
+template serdeFinalSerializationMemberType(T)
+{
+    ///
+    alias serdeFinalSerializationMemberType(string member) = .serdeFinalSerializationMemberType!(T, member);
+}
+
+///
+version(mir_test) unittest
+{
+
+    static struct A
+    {
+        
+    }
+
+    @serdeProxy!A
+    static struct B {}
+
+    @serdeProxy!B
+    static struct C {}
+
+
+    @serdeProxy!double
+    struct E {}
+
+    struct D
+    {
+        C c;
+
+        @serdeProxy!E
+        int d;
+    }
+
+    static assert (is(serdeFinalSerializationMemberType!(D, "c") == A), serdeFinalSerializationMemberType!(D, "c"));
+    static assert (is(serdeFinalSerializationMemberType!(D, "d") == double));
+}
+
+/++
+Serialization members final proxy types
++/
+template serdeSerializationFinalProxyMemberTypes(T)
+{
+    import std.meta: NoDuplicates, staticMap, aliasSeqOf;
+    alias serdeSerializationFinalProxyMemberTypes = NoDuplicates!(staticMap!(serdeGetFinalProxy, staticMap!(serdeFinalSerializationMemberType!T, aliasSeqOf!(serdeFinalProxySerializableMembers!T))));
+}
+
+///
+version(mir_test) unittest
+{
+
+    static struct A {}
+
+    @serdeProxy!A
+    static struct B {}
+
+    @serdeProxy!B
+    static struct C {}
+
+    @serdeProxy!B
+    static struct E {}
+
+    static struct D
+    {
+        C c;
+
+        @serdeProxy!E
+        int d;
+    }
+
+    import std.meta: AliasSeq;
+    static assert (is(serdeSerializationFinalProxyMemberTypes!D == AliasSeq!A), serdeSerializationFinalProxyMemberTypes!D);
+}
+
+/++
 Deserialization members final deep proxy types
 +/
 template serdeDeserializationFinalDeepProxyMemberTypes(T)
@@ -985,7 +1188,7 @@ template serdeDeserializationFinalDeepProxyMemberTypes(T)
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A {}
@@ -1013,6 +1216,44 @@ unittest
     static assert (is(serdeDeserializationFinalDeepProxyMemberTypes!D == AliasSeq!A), serdeDeserializationFinalDeepProxyMemberTypes!D);
 }
 
+/++
+Serialization members final deep proxy types
++/
+template serdeSerializationFinalDeepProxyMemberTypes(T)
+{
+    import std.meta: NoDuplicates, staticMap, aliasSeqOf;
+    alias serdeSerializationFinalDeepProxyMemberTypes = NoDuplicates!(staticMap!(serdeGetFinalDeepProxy, staticMap!(serdeFinalSerializationMemberType!T, aliasSeqOf!(serdeFinalDeepProxySerializableMembers!T))));
+}
+
+///
+version(mir_test) unittest
+{
+
+    static struct A {}
+
+    @serdeProxy!(A[])
+    static struct B {}
+
+    enum R {a, b, c}
+
+    @serdeProxy!(B[R])
+    static struct C {}
+
+    @serdeProxy!(B[string])
+    static struct E {}
+
+    static struct D
+    {
+        C c;
+
+        @serdeProxy!E
+        int d;
+    }
+
+    import std.meta: AliasSeq;
+    static assert (is(serdeSerializationFinalDeepProxyMemberTypes!D == AliasSeq!A), serdeSerializationFinalDeepProxyMemberTypes!D);
+}
+
 private template serdeDeserializationFinalProxyMemberTypesRecurseImpl(T...)
 {
     import std.meta: NoDuplicates, staticMap;
@@ -1029,7 +1270,7 @@ Deserialization members final proxy types (recursive)
 alias serdeDeserializationFinalProxyMemberTypesRecurse(T) = serdeDeserializationFinalProxyMemberTypesRecurseImpl!(serdeGetFinalProxy!T);
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A { double g; }
@@ -1058,6 +1299,16 @@ unittest
     static assert (is(serdeDeserializationFinalProxyMemberTypesRecurse!F == AliasSeq!(D, A, double)));
 }
 
+private template serdeSerializationFinalDeepProxyMemberTypesRecurseImpl(T...)
+{
+    import std.meta: NoDuplicates, staticMap;
+    alias F = NoDuplicates!(T, staticMap!(serdeSerializationFinalDeepProxyMemberTypes, T));
+    static if (F.length == T.length)
+        alias serdeSerializationFinalDeepProxyMemberTypesRecurseImpl = T;
+    else
+        alias serdeSerializationFinalDeepProxyMemberTypesRecurseImpl  = .serdeSerializationFinalDeepProxyMemberTypesRecurseImpl!F;
+}
+
 private template serdeDeserializationFinalDeepProxyMemberTypesRecurseImpl(T...)
 {
     import std.meta: NoDuplicates, staticMap;
@@ -1074,7 +1325,7 @@ Deserialization members final deep proxy types (recursive)
 alias serdeDeserializationFinalDeepProxyMemberTypesRecurse(T) = serdeDeserializationFinalDeepProxyMemberTypesRecurseImpl!(serdeGetFinalDeepProxy!T);
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A { double g; }
@@ -1103,6 +1354,41 @@ unittest
     static assert (is(serdeDeserializationFinalDeepProxyMemberTypesRecurse!F == AliasSeq!(D, A, double)));
 }
 
+/++
+Serialization members final deep proxy types (recursive)
++/
+alias serdeSerializationFinalDeepProxyMemberTypesRecurse(T) = serdeSerializationFinalDeepProxyMemberTypesRecurseImpl!(serdeGetFinalDeepProxy!T);
+
+///
+version(mir_test) unittest
+{
+
+    static struct A { double g; }
+
+    @serdeProxy!(A[])
+    static struct B {}
+
+    @serdeProxy!(B[string])
+    static struct C {}
+
+    @serdeProxy!B
+    static struct E {}
+
+    static struct D
+    {
+        C c;
+
+        @serdeProxy!(E[])
+        int d;
+    }
+
+    @serdeProxy!D
+    static struct F {}
+
+    import std.meta: AliasSeq;
+    static assert (is(serdeSerializationFinalDeepProxyMemberTypesRecurse!F == AliasSeq!(D, A, double)), serdeSerializationFinalDeepProxyMemberTypesRecurse!F);
+}
+
 package string[] sortUniqKeys()(string[] keys)
     @safe pure nothrow
 {
@@ -1127,6 +1413,11 @@ private template serdeGetKeysIn2(T)
     enum string[] serdeGetKeysIn2(string member) = serdeGetKeysIn!(__traits(getMember, T, member));
 }
 
+private template serdeGetKeyOut2(T)
+{
+    enum string[] serdeGetKeyOut2(string member) = serdeGetKeyOut!(__traits(getMember, T, member)) is null ? null : [serdeGetKeyOut!(__traits(getMember, T, member))];
+}
+
 private template serdeFinalDeepProxyDeserializableMemberKeys(T)
 {
     import std.meta: staticMap, aliasSeqOf;
@@ -1139,17 +1430,29 @@ private template serdeFinalDeepProxyDeserializableMemberKeys(T)
         enum string[] serdeFinalDeepProxyDeserializableMemberKeys = null;
 }
 
-/++
-Deserialization members final proxy keys (recursive)
-+/
-template serdeGetDeserializatinKeysRecurse(T)
+private template serdeFinalDeepProxySerializableMemberKeys(T)
 {
     import std.meta: staticMap, aliasSeqOf;
-    enum string[] serdeGetDeserializatinKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalDeepProxyDeserializableMemberKeys, serdeDeserializationFinalDeepProxyMemberTypesRecurse!T))].sortUniqKeys;
+    import std.traits: isAggregateType;
+    import mir.ndslice.fuse: fuseCells;
+
+    static if (isAggregateType!T)
+        enum string[] serdeFinalDeepProxySerializableMemberKeys = [staticMap!(aliasSeqOf, staticMap!(serdeGetKeyOut2!T, aliasSeqOf!(serdeFinalDeepProxySerializableMembers!T)))];
+    else
+        enum string[] serdeFinalDeepProxySerializableMemberKeys = null;
+}
+
+/++
+Serialization members final proxy keys (recursive)
++/
+template serdeGetSerializationKeysRecurse(T)
+{
+    import std.meta: staticMap, aliasSeqOf;
+    enum string[] serdeGetSerializationKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalDeepProxySerializableMemberKeys, serdeSerializationFinalDeepProxyMemberTypesRecurse!T))].sortUniqKeys;
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
 
     static struct A { double g; float d; }
@@ -1174,7 +1477,45 @@ unittest
     @serdeProxy!D
     static struct F { int f; }
 
-    static assert (serdeGetDeserializatinKeysRecurse!F == ["c", "d", "g"]);
+    static assert (serdeGetSerializationKeysRecurse!F == ["c", "d", "g"]);
+}
+
+/++
+Deserialization members final proxy keys (recursive)
++/
+template serdeGetDeserializationKeysRecurse(T)
+{
+    import std.meta: staticMap, aliasSeqOf;
+    enum string[] serdeGetDeserializationKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalDeepProxyDeserializableMemberKeys, serdeDeserializationFinalDeepProxyMemberTypesRecurse!T))].sortUniqKeys;
+}
+
+///
+version(mir_test) unittest
+{
+
+    static struct A { double g; float d; }
+
+    @serdeProxy!A
+    static struct B {  int f; }
+
+    @serdeProxy!(B[string])
+    static union C {  int f; }
+
+    @serdeProxy!(B[])
+    static interface E {  int f() @property; }
+
+    static class D
+    {
+        C c;
+
+        @serdeProxy!(E[])
+        int d;
+    }
+
+    @serdeProxy!D
+    static struct F { int f; }
+
+    static assert (serdeGetDeserializationKeysRecurse!F == ["c", "d", "g"]);
 }
 
 /++
@@ -1362,7 +1703,7 @@ public:
 }
 
 ///
-unittest
+version(mir_test) unittest
 {
     import std.traits;
 
