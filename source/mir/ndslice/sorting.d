@@ -1099,6 +1099,17 @@ unittest {
     assert(x[nth] == 2);
 }
 
+// Check issue #328 fixed
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    auto slice = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].sliced;
+    partitionAt(slice, 8);
+    partitionAt(slice, 9);
+}
+
 version(unittest) {
     template checkPartitionAtAll(alias less = "a < b")
     {
@@ -1372,6 +1383,35 @@ unittest {
     assert(x[nth] == 10);
 }
 
+// Check all partitionAt
+version(mir_test)
+@trusted pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: slice;
+
+    static immutable raw  = [ 6,  7, 10, 25,  5, 10,  9,  0,  2, 15,  7,  9, 11,  8, 13, 18, 17, 13, 25, 22];
+    
+    static void fill(T)(T x) {
+        for (size_t i = 0; i < x.length; i++) {
+            x[i] = raw[i];
+        }
+    }
+    auto x = slice!int(raw.length);
+    fill(x);
+    auto x_sort = x.dup;
+    x_sort = x_sort.sort;
+    size_t i = 0;
+    while (i < raw.length) {
+        auto frontI = x._iterator;
+        auto lastI = frontI + x.length - 1;
+        partitionAtImpl!((a, b) => (a < b))(frontI, lastI, i, true);
+        assert(x[i] == x_sort[i]);
+        fill(x);
+        i++;
+    }
+}
+
 private @trusted pure nothrow @nogc
 Iterator partitionAtPartition(alias less, Iterator)(
     ref Iterator frontI, 
@@ -1397,7 +1437,7 @@ Iterator partitionAtPartition(alias less, Iterator)(
     // We have either one straggler on the left, one on the right, or none.
     assert(loI - frontI <= lastI - hiI + 1 || lastI - hiI <= loI - frontI + 1, "partitionAtPartition: straggler check failed for loI, len, hiI");
     assert(loI - frontI >= ninth * 4, "partitionAtPartition: loI - frontI >= ninth * 4");
-    assert(lastI - hiI >= ninth * 4, "partitionAtPartition: lastI - hiI >= ninth * 4");
+    assert((lastI + 1) - hiI >= ninth * 4, "partitionAtPartition: (lastI + 1) - hiI >= ninth * 4");
 
     // Partition in groups of 3, and the mid tertile again in groups of 3
     if (!useSampling) {
@@ -1428,7 +1468,6 @@ version(mir_test)
 @trusted pure nothrow
 unittest {
     import mir.ndslice.slice: sliced;
-
     auto x = [ 6,  7, 10, 25,  5, 10,  9,  0,  2, 15,  7,  9, 11,  8, 13, 18, 17, 13, 25, 22].sliced;
     auto x_sort = x.dup;
     x_sort = x_sort.sort;

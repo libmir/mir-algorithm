@@ -1549,6 +1549,17 @@ unittest
     assert(x4.median.approxEqual(1));
 }
 
+// Check issue #328 fixed
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.topology: iota;
+
+    auto x = iota(18);
+    auto y = median(x);
+    assert(y == 8.5);
+}
+
 private pure @trusted nothrow @nogc
 F smallMedianImpl(F, Iterator)(Slice!Iterator slice) 
 {
