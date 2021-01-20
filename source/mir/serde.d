@@ -181,7 +181,7 @@ version(mir_test) unittest
         c,
     }
 
-    static assert (serdeGetKeysIn(E.a) == ["A", "alpha"]);
+    static assert (serdeGetKeysIn(E.a) == ["A", "alpha"], serdeGetKeysIn(E.a));
     static assert (serdeGetKeysIn(E.c) == ["c"]);
 }
 
@@ -809,6 +809,11 @@ template serdeGetFinalDeepProxy(T)
             alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!(T.serdeKeysProxy);
         }
         else
+        static if (is(T == enum))
+        {
+            alias serdeGetFinalDeepProxy = typeof(null);
+        }
+        else
         {
             alias serdeGetFinalDeepProxy = T;
         }
@@ -817,7 +822,7 @@ template serdeGetFinalDeepProxy(T)
     static if (isArray!T)
     {
         alias E = Unqual!(ForeachType!T);
-        static if (isAggregateType!E || is(T == enum))
+        static if (isAggregateType!E || is(E == enum))
             alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!E;
         else
             alias serdeGetFinalDeepProxy = T;
@@ -826,7 +831,7 @@ template serdeGetFinalDeepProxy(T)
     static if (is(T == V[K], K, V))
     {
         alias E = Unqual!V;
-        static if (isAggregateType!E || is(T == enum))
+        static if (isAggregateType!E || is(E == enum))
             alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!E;
         else
             alias serdeGetFinalDeepProxy = T;
@@ -1454,13 +1459,19 @@ template serdeGetSerializationKeysRecurse(T)
 ///
 version(mir_test) unittest
 {
+    enum Y
+    {
+        a,
+        b,
+        c,
+    }
 
     static struct A { double g; float d; }
 
     @serdeProxy!A
     static struct B {  int f; }
 
-    @serdeProxy!(B[string])
+    @serdeProxy!(B[Y][string])
     static union C {  int f; }
 
     @serdeProxy!(B[])
