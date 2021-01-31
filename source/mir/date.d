@@ -1168,13 +1168,11 @@ public:
     version(D_BetterC){} else
     private string toStringImpl(alias fun)() const @safe pure nothrow
     {
-        import mir.small_string : SmallString;
-        SmallString!16 w;
-        try
-            fun(w);
-        catch (Exception e)
-            assert(0, __traits(identifier, fun) ~ " threw.");
-        return w[].idup;
+        import mir.appender: UnsafeArrayBuffer;
+        char[16] buffer = void;
+        auto w = UnsafeArrayBuffer!char(buffer);
+        fun(w);
+        return w.data.idup;
     }
 
     version(D_BetterC){} else
