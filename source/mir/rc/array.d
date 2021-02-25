@@ -56,6 +56,31 @@ struct mir_rcarray(T)
     mixin CommonRCImpl;
 
     ///
+    pragma(inline, true)
+    bool opEquals(typeof(null)) @safe scope const pure nothrow @nogc @property
+    {
+        return !this;
+    }
+
+    /// ditto
+    bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc @property
+    {
+        return opIndex() == rhs.opIndex();
+    }
+
+    ///
+    int opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc @property
+    {
+        return __cmp(opIndex(), rhs.opIndex());
+    }
+
+    ///
+    size_t toHash() @trusted scope const pure nothrow @nogc @property
+    {
+        return hashOf(opIndex());
+    }
+
+    ///
     ~this() nothrow
     {
         static if (hasElaborateDestructor!T || hasDestructor!T)

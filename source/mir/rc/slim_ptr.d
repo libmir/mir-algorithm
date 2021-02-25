@@ -92,6 +92,32 @@ struct mir_slim_rcptr(T)
     ///
     mixin CommonRCImpl;
 
+
+    ///
+    pragma(inline, true)
+    bool opEquals(typeof(null)) @safe scope const pure nothrow @nogc @property
+    {
+        return !this;
+    }
+
+    /// ditto
+    bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc @property
+    {
+        return _thisPtr == rhs._thisPtr;
+    }
+
+    ///
+    sizediff_t opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc @property
+    {
+        return cast(void*)_thisPtr - cast(void*)rhs._thisPtr;
+    }
+
+    ///
+    size_t toHash() @trusted scope const pure nothrow @nogc @property
+    {
+        return cast(size_t) _thisPtr;
+    }
+
     ///
     ~this() nothrow
     {
