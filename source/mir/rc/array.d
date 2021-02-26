@@ -57,25 +57,25 @@ struct mir_rcarray(T)
 
     ///
     pragma(inline, true)
-    bool opEquals(typeof(null)) @safe scope const pure nothrow @nogc @property
+    bool opEquals(typeof(null)) @safe scope const pure nothrow @nogc
     {
         return !this;
     }
 
     /// ditto
-    bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc @property
+    bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc
     {
         return opIndex() == rhs.opIndex();
     }
 
     ///
-    int opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc @property
+    int opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc
     {
         return __cmp(opIndex(), rhs.opIndex());
     }
 
     ///
-    size_t toHash() @trusted scope const pure nothrow @nogc @property
+    size_t toHash() @trusted scope const pure nothrow @nogc
     {
         return hashOf(opIndex());
     }

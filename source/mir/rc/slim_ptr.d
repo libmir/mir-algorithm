@@ -95,25 +95,25 @@ struct mir_slim_rcptr(T)
 
     ///
     pragma(inline, true)
-    bool opEquals(typeof(null)) @safe scope const pure nothrow @nogc @property
+    bool opEquals(typeof(null)) @safe scope const pure nothrow @nogc
     {
         return !this;
     }
 
     /// ditto
-    bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc @property
+    bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc
     {
         return _thisPtr == rhs._thisPtr;
     }
 
     ///
-    sizediff_t opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc @property
+    sizediff_t opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc
     {
         return cast(void*)_thisPtr - cast(void*)rhs._thisPtr;
     }
 
     ///
-    size_t toHash() @trusted scope const pure nothrow @nogc @property
+    size_t toHash() @trusted scope const pure nothrow @nogc
     {
         return cast(size_t) _thisPtr;
     }
