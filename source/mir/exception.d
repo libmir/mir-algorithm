@@ -17,6 +17,7 @@ private enum NOGCEXP = __traits(compiles, (()@nogc {throw new Exception("");})()
 ///
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
 {
+    version(LDC) pragma(inline, true);
     import core.lifetime: forward;
     import mir.utility: _expect;
     static if (__traits(compiles, arg !is null))
