@@ -14,6 +14,11 @@ else
 
 private enum NOGCEXP = __traits(compiles, (()@nogc {throw new Exception("");})());
 
+package template staticException(string fmt, string file, int line)
+{
+    static immutable staticException = new Exception(fmt, file, line);
+}
+
 ///
 auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(scope auto return ref Expr arg) @trusted
 {
@@ -30,8 +35,7 @@ auto ref enforce(string fmt, string file = __FILE__, int line = __LINE__, Expr)(
         if (_expect(cast(bool)arg, true))
             return forward!arg;
     }
-    static immutable exception = new Exception(fmt, file, line);
-    throw exception;
+    throw staticException!(fmt, file, line);
 }
 
 ///
