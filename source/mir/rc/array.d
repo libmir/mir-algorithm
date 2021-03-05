@@ -694,8 +694,8 @@ struct mir_rci(T)
     { return this._iterator == right._iterator; }
 
     ///
-    ptrdiff_t opCmp()(scope ref const typeof(this) right) scope const
-    { return this._iterator - right._iterator; }
+    int opCmp()(scope ref const typeof(this) right) scope const
+    { auto d = this - right; return d ? d < 0 ? -1 : 1 : 0; }
 }
 
 /// ditto
