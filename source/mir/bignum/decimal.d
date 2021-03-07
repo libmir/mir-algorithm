@@ -142,38 +142,47 @@ struct Decimal(size_t maxSize64)
         DecimalExponentKey key;
 
         assert(decimal.fromStringImpl("1.334", key));
-        assert(cast(double) decimal.view == 1.334);
         assert(key == DecimalExponentKey.dot);
+        assert(cast(double) decimal.view == 1.334);
 
         assert(decimal.fromStringImpl("+0.334e-5"w, key));
-        assert(cast(double) decimal.view == 0.334e-5);
         assert(key == DecimalExponentKey.e);
+        assert(cast(double) decimal.view == 0.334e-5);
 
         assert(decimal.fromStringImpl("-334D-5"d, key));
-        assert(cast(double) decimal.view == -334e-5);
         assert(key == DecimalExponentKey.D);
+        assert(cast(double) decimal.view == -334e-5);
 
         assert(decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
-        assert(cast(double) decimal.view == 2482734692817364218734682973648217364981273648923423.0);
         assert(key == DecimalExponentKey.none);
+        assert(cast(double) decimal.view == 2482734692817364218734682973648217364981273648923423.0);
 
         assert(decimal.fromStringImpl(".023", key));
-        assert(cast(double) decimal.view == .023);
         assert(key == DecimalExponentKey.dot);
+        assert(cast(double) decimal.view == .023);
 
         assert(decimal.fromStringImpl("0E100", key));
-        assert(cast(double) decimal.view == 0);
         assert(key == DecimalExponentKey.E);
+        assert(cast(double) decimal.view == 0);
 
         assert(decimal.fromStringImpl("-nan", key));
-        assert(decimal.coefficient.length == 0);
-        assert(cast(double) decimal.view == 0);
+        assert(decimal.coefficient.length > 0);
+        assert(decimal.exponent == decimal.exponent.max);
         assert(decimal.coefficient.sign);
         assert(key == DecimalExponentKey.nan);
+        assert(cast(double) decimal.view != cast(double) decimal.view);
 
         assert(decimal.fromStringImpl("inf", key));
-        assert(cast(double) decimal.view == 0);
+        assert(decimal.coefficient.length == 0);
+        assert(decimal.exponent == decimal.exponent.max);
         assert(key == DecimalExponentKey.infinity);
+        assert(cast(double) decimal.view == double.infinity);
+
+        assert(decimal.fromStringImpl("-inf", key));
+        assert(decimal.coefficient.length == 0);
+        assert(decimal.exponent == decimal.exponent.max);
+        assert(key == DecimalExponentKey.infinity);
+        assert(cast(double) decimal.view == -double.infinity);
 
         assert(!decimal.fromStringImpl("3.3.4", key));
         assert(!decimal.fromStringImpl("3.4.", key));

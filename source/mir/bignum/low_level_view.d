@@ -1989,16 +1989,19 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         }
         else
         {
-            coefficient = coefficient.init;
+            exponent = exponent.max;
             if (str.length == 2)
             {
                 if ((d == 'i' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"nf"))
                 {
+                    coefficient = coefficient.init;
                     key = DecimalExponentKey.infinity;
                     return true;
                 }
                 if ((d == 'n' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"an"))
                 {
+                    coefficient.leastSignificant = 1;
+                    coefficient = coefficient.topLeastSignificantPart(1);
                     key = DecimalExponentKey.nan;
                     return true;
                 }
@@ -2115,12 +2118,20 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
         auto coeff = coefficient.lightConst;
         T ret = 0;
+
+        if (_expect(exponent == exponent.max, false))
+        {
+            ret = coeff.coefficients.length ? T.nan : T.infinity;
+            goto R;
+        }
+
         static if (!wordNormalized)
             coeff = coeff.normalized;
         static if (!nonZero)
             if (coeff.coefficients.length == 0)
                 goto R;
         enum S = 9;
+
         static if (T.mant_dig < 64)
         {
             Fp!64 load(Exp e)
