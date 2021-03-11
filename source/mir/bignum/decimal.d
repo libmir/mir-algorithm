@@ -240,7 +240,7 @@ struct Decimal(size_t maxSize64)
         size_t coefficientLength;
         static if (size_t.sizeof == 8)
         {
-            if (__ctfe && size_t.sizeof == 8)
+            if (__ctfe)
             {
                 uint[coefficient.data.length * 2] data;
                 foreach (i; 0 .. coefficient.length)
@@ -280,9 +280,25 @@ struct Decimal(size_t maxSize64)
         {
             // try print decimal form without exponent
             // up to 6 digits exluding leading 0. or final .0
+            sizediff_t s = this.exponent + coefficientLength;
+            if (s <= 0)
+            {
+                //0.001....
+                //0.0001
+                //0.00001
+                //0.000001
+                if (s >= -2 || this.exponent >= -6)
+                {
+                    w.put(zeros[!coefficient.sign .. -s + 2 + 1]);
+                    w.put(buffer[$ - coefficientLength .. $]);
+                    return;
+                }
+            }
+            else
             if (this.exponent >= 0)
             {
-                if (this.exponent + coefficientLength <= 6)
+                ///dddddd.0
+                if (s <= 6)
                 {
                     buffer[$ - coefficientLength - 1] = '-';
                     w.put(buffer[$ - coefficientLength - coefficient.sign .. $]);
@@ -291,25 +307,15 @@ struct Decimal(size_t maxSize64)
                 }
             }
             else
-            if (this.exponent < 0)
             {
-                if (this.exponent >= -6 && coefficientLength <= 6)
+                ///dddddd.d....
+                if (s <= 6 || coefficientLength <= 6)
                 {
-                    sizediff_t zerosLength = -this.exponent - coefficientLength;
-                    if (zerosLength >= 0)
-                    {
-                        w.put(zeros[!coefficient.sign .. zerosLength + 2 + 1]);
-                        w.put(buffer[$ - coefficientLength .. $]);
-                        return;
-                    }
-                    else
-                    {
-                        buffer[$ - coefficientLength - 1] = '-';
-                        w.put(buffer[$ - coefficientLength  - coefficient.sign .. $ - coefficientLength - zerosLength]);
-                        buffer[$ - coefficientLength - zerosLength - 1] = '.';
-                        w.put(buffer[$ - coefficientLength - zerosLength - 1 .. $]);
-                        return;
-                    }
+                    buffer[$ - coefficientLength - 1] = '-';
+                    w.put(buffer[$ - coefficientLength  - coefficient.sign .. $ - coefficientLength + s]);
+                    buffer[$ - coefficientLength + s - 1] = '.';
+                    w.put(buffer[$ - coefficientLength + s - 1 .. $]);
+                    return;
                 }
             }
         }
@@ -340,7 +346,8 @@ struct Decimal(size_t maxSize64)
         else
             enum N = 11;
 
-        auto expLength = printSignedToTail(exponent, buffer[$ - N .. $], '\0');
+        // prints e+/-exponent
+        auto expLength = printSignedToTail(exponent, buffer[$ - N .. $], '+');
         buffer[$ - ++expLength] = 'e';
         w.put(buffer[$ - expLength .. $]);
     }
