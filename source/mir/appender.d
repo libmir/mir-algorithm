@@ -338,7 +338,8 @@ unittest
     }
     Algebraic!(int, string) x;
     x = 42;
-    assert(x.to!string == "42");
+    auto s = x.to!string;
+    assert(s == "42", s);
     x = "abc";
     assert(x.to!string == "abc");
     Algebraic!S y;
