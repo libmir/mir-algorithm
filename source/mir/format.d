@@ -715,8 +715,8 @@ unittest
     assert(stringBuf() << 0.0 << getData == "0.0");
     assert(stringBuf() << -0.01 << getData == "-0.01");
     assert(stringBuf() << 0.0125 << getData == "0.0125");
-    assert(stringBuf() << 0.000003 << getData == "0.000003", stringBuf() << 0.000003 << getData);
-    assert(stringBuf() << -3e-7 << getData == "-3e-7", stringBuf() << -3e-7 << getData);
+    assert(stringBuf() << 0.000003 << getData == "0.000003");
+    assert(stringBuf() << -3e-7 << getData == "-3e-7");
     assert(stringBuf() << 123456.0 << getData == "123456.0");
     assert(stringBuf() << 123456.1 << getData == "123456.1");
     assert(stringBuf() << 12.3456 << getData == "12.3456");
@@ -727,7 +727,7 @@ unittest
     assert(stringBuf() << 1.234567e-4 << getData == "1.234567e-4");
     assert(stringBuf() << -1234567.0 << getData == "-1.234567e+6");
     assert(stringBuf() << 123456.7890123 << getData == "123456.7890123");
-    assert(stringBuf() << 1234567.890123 << getData == "1.234567890123e+6", stringBuf() << 1234567.890123 << getData);
+    assert(stringBuf() << 1234567.890123 << getData == "1.234567890123e+6");
     assert(stringBuf() << 1234567890123.0 << getData == "1.234567890123e+12");
     assert(stringBuf() << 1234567890123.0 << getData == "1.234567890123e+12");
     assert(stringBuf() << 0.30000000000000004 << getData == "0.30000000000000004");
