@@ -194,11 +194,6 @@ struct NumericSpec
         +/
         human,
         /++
-        Human-frindly precise output with underscores.
-        Examples: `345_123_230_000.1234`, but `1e12`
-        +/
-        humanWithUnderscores,
-        /++
         Precise output with explicit exponent.
         Examples: `1e-6`, `6e6`, `1.23456789e-100`.
         +/
@@ -208,8 +203,14 @@ struct NumericSpec
     ///
     Format format;
 
+    /// Default valus is '\0' (no separators)
+    char separatorChar = '\0';
+
     /// Defaults to 'e'
     char exponentChar = 'e';
+
+    /// Adds '+' to positive numbers and `+0`.
+    bool plus;
 
     /++
     Precise output with explicit exponent.
@@ -221,11 +222,6 @@ struct NumericSpec
     Human-frindly precise output.
     +/
     enum NumericSpec human = NumericSpec(Format.human);
-
-    /++
-    Human-frindly precise output with underscores.
-    +/
-    enum NumericSpec humanWithUnderscores = NumericSpec(Format.humanWithUnderscores);
 }
 
 // 16-bytes
@@ -698,11 +694,12 @@ version(mir_bignum_test)
 @safe pure nothrow @nogc
 unittest
 {
+    auto spec = NumericSpec.human;
     stringBuf buffer;
 
     void check(double num, string value)
     {
-        assert(buffer.print(num).data == value, buffer.data); buffer.reset;
+        assert(buffer.print(num, spec).data == value, buffer.data); buffer.reset;
     }
 
     check(-0.0, "-0.0");
@@ -731,20 +728,8 @@ unittest
     check(-double.nan, "nan");
     check(+double.infinity, "+inf");
     check(-double.infinity, "-inf");
-}
 
-/// Human friendly precise output with underscores
-version(mir_bignum_test)
-@safe pure nothrow @nogc
-unittest
-{
-    auto spec = NumericSpec.humanWithUnderscores;
-    stringBuf buffer;
-
-    void check(double num, string value)
-    {
-        assert(buffer.print(num, spec).data == value, buffer.data); buffer.reset;
-    }
+    spec.separatorChar = ',';
 
     check(-0.0, "-0.0");
     check(0.0, "0.0");
@@ -752,19 +737,19 @@ unittest
     check(0.0125, "0.0125");
     check(0.000003, "0.000003");
     check(-3e-7, "-3e-7");
-    check(123456.0, "123_456.0");
-    check(123456e5, "12_345_600_000.0");
-    check(123456.1, "123_456.1");
+    check(123456.0, "123,456.0");
+    check(123456e5, "12,345,600,000.0");
+    check(123456.1, "123,456.1");
     check(12.3456, "12.3456");
     check(-0.123456, "-0.123456");
     check(0.1234567, "0.1234567");
     check(0.01234567, "0.01234567");
     check(0.001234567, "0.001234567");
     check(1.234567e-4, "0.0001234567");
-    check(-1234567.0, "-1_234_567.0");
-    check(123456.7890123, "123_456.7890123");
-    check(1234567.890123, "1_234_567.890123");
-    check(123456789012.0, "123_456_789_012.0");
+    check(-1234567.0, "-1,234,567.0");
+    check(123456.7890123, "123,456.7890123");
+    check(1234567.890123, "1,234,567.890123");
+    check(123456789012.0, "123,456,789,012.0");
     check(1234567890123.0, "1.234567890123e+12");
     check(0.30000000000000004, "0.30000000000000004");
     check(0.030000000000000002, "0.030000000000000002");
@@ -776,6 +761,10 @@ unittest
     check(-double.nan, "nan");
     check(+double.infinity, "+inf");
     check(-double.infinity, "-inf");
+
+    spec.plus = true;
+    check(0.0125, "+0.0125");
+    check(-0.0125, "-0.0125");
 }
 
 /// Prints structs and unions
