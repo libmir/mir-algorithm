@@ -194,6 +194,11 @@ struct NumericSpec
         +/
         human,
         /++
+        Human-frindly precise output with underscores.
+        Examples: `345_123_230_000.1234`, but `1e12`
+        +/
+        humanWithUnderscores,
+        /++
         Precise output with explicit exponent.
         Examples: `1e-6`, `6e6`, `1.23456789e-100`.
         +/
@@ -210,10 +215,14 @@ struct NumericSpec
     enum NumericSpec exponent = NumericSpec(Format.exponent);
 
     /++
-    Precise output with explicit exponent.
-    Examples: `1e-6`, `6e6`, `1.23456789e-100`.
+    Human-frindly precise output.
     +/
     enum NumericSpec human = NumericSpec(Format.human);
+
+    /++
+    Human-frindly precise output with underscores.
+    +/
+    enum NumericSpec humanWithUnderscores = NumericSpec(Format.humanWithUnderscores);
 }
 
 // 16-bytes
@@ -274,31 +283,6 @@ struct FormattedFloating(T)
 
 /// ditto
 FormattedFloating!T withFormat(T)(const T value, FormatSpec spec)
-{
-    version(LDC) pragma(inline);
-    return typeof(return)(value, spec);
-}
-
-/++
-Wrapper to format floating point numbers using C's library.
-+/
-struct FormattedNumeric(T)
-    if(is(T == float) || is(T == double) || is(T == real))
-{
-    ///
-    T value;
-    ///
-    NumericSpec spec;
-
-    ///
-    void toString(C = char, W)(scope ref W w) scope const
-    {
-        print(w, value, spec);
-    }
-}
-
-/// ditto
-FormattedNumeric!T withFormat(T)(const T value, NumericSpec spec)
 {
     version(LDC) pragma(inline);
     return typeof(return)(value, spec);
@@ -706,38 +690,89 @@ ref W print(C = char, W, T)(scope return ref W w, const T c, NumericSpec spec = 
     return w;
 }
 
-///
+/// Human friendly precise output (default)
 version(mir_bignum_test)
-@safe pure nothrow
+@safe pure nothrow @nogc
 unittest
 {
-    assert(stringBuf() << -0.0 << getData == "-0.0");
-    assert(stringBuf() << 0.0 << getData == "0.0");
-    assert(stringBuf() << -0.01 << getData == "-0.01");
-    assert(stringBuf() << 0.0125 << getData == "0.0125");
-    assert(stringBuf() << 0.000003 << getData == "0.000003");
-    assert(stringBuf() << -3e-7 << getData == "-3e-7");
-    assert(stringBuf() << 123456.0 << getData == "123456.0");
-    assert(stringBuf() << 123456.1 << getData == "123456.1");
-    assert(stringBuf() << 12.3456 << getData == "12.3456");
-    assert(stringBuf() << -0.123456 << getData == "-0.123456");
-    assert(stringBuf() << 0.1234567 << getData == "0.1234567");
-    assert(stringBuf() << 0.01234567 << getData == "0.01234567");
-    assert(stringBuf() << 0.001234567 << getData == "0.001234567");
-    assert(stringBuf() << 1.234567e-4 << getData == "1.234567e-4");
-    assert(stringBuf() << -1234567.0 << getData == "-1.234567e+6");
-    assert(stringBuf() << 123456.7890123 << getData == "123456.7890123");
-    assert(stringBuf() << 1234567.890123 << getData == "1.234567890123e+6");
-    assert(stringBuf() << 1234567890123.0 << getData == "1.234567890123e+12");
-    assert(stringBuf() << 1234567890123.0 << getData == "1.234567890123e+12");
-    assert(stringBuf() << 0.30000000000000004 << getData == "0.30000000000000004");
-    assert(stringBuf() << 0.030000000000000002 << getData == "0.030000000000000002");
-    assert(stringBuf() << 0.0030000000000000005 << getData == "0.0030000000000000005");
-    assert(stringBuf() << 3.0000000000000003e-4 << getData == "3.0000000000000003e-4");
-    assert(stringBuf() << +double.nan << getData == "nan");
-    assert(stringBuf() << -double.nan << getData == "nan");
-    assert(stringBuf() << +double.infinity << getData == "+inf");
-    assert(stringBuf() << -double.infinity << getData == "-inf");
+    stringBuf buffer;
+
+    void check(double num, string value)
+    {
+        assert(buffer.print(num).data == value, buffer.data); buffer.reset;
+    }
+
+    check(-0.0, "-0.0");
+    check(0.0, "0.0");
+    check(-0.01, "-0.01");
+    check(0.0125, "0.0125");
+    check(0.000003, "0.000003");
+    check(-3e-7, "-3e-7");
+    check(123456.0, "123456.0");
+    check(123456.1, "123456.1");
+    check(12.3456, "12.3456");
+    check(-0.123456, "-0.123456");
+    check(0.1234567, "0.1234567");
+    check(0.01234567, "0.01234567");
+    check(0.001234567, "0.001234567");
+    check(1.234567e-4, "1.234567e-4");
+    check(-1234567.0, "-1.234567e+6");
+    check(123456.7890123, "123456.7890123");
+    check(1234567.890123, "1.234567890123e+6");
+    check(1234567890123.0, "1.234567890123e+12");
+    check(0.30000000000000004, "0.30000000000000004");
+    check(0.030000000000000002, "0.030000000000000002");
+    check(0.0030000000000000005, "0.0030000000000000005");
+    check(3.0000000000000003e-4, "3.0000000000000003e-4");
+    check(+double.nan, "nan");
+    check(-double.nan, "nan");
+    check(+double.infinity, "+inf");
+    check(-double.infinity, "-inf");
+}
+
+/// Human friendly precise output with underscores
+version(mir_bignum_test)
+@safe pure nothrow @nogc
+unittest
+{
+    auto spec = NumericSpec.humanWithUnderscores;
+    stringBuf buffer;
+
+    void check(double num, string value)
+    {
+        assert(buffer.print(num, spec).data == value, buffer.data); buffer.reset;
+    }
+
+    check(-0.0, "-0.0");
+    check(0.0, "0.0");
+    check(-0.01, "-0.01");
+    check(0.0125, "0.0125");
+    check(0.000003, "0.000003");
+    check(-3e-7, "-3e-7");
+    check(123456.0, "123_456.0");
+    check(123456e5, "12_345_600_000.0");
+    check(123456.1, "123_456.1");
+    check(12.3456, "12.3456");
+    check(-0.123456, "-0.123456");
+    check(0.1234567, "0.1234567");
+    check(0.01234567, "0.01234567");
+    check(0.001234567, "0.001234567");
+    check(1.234567e-4, "0.0001234567");
+    check(-1234567.0, "-1_234_567.0");
+    check(123456.7890123, "123_456.7890123");
+    check(1234567.890123, "1_234_567.890123");
+    check(123456789012.0, "123_456_789_012.0");
+    check(1234567890123.0, "1.234567890123e+12");
+    check(0.30000000000000004, "0.30000000000000004");
+    check(0.030000000000000002, "0.030000000000000002");
+    check(0.0030000000000000005, "0.0030000000000000005");
+    check(3.0000000000000003e-4, "0.00030000000000000003");
+    check(3.0000000000000005e-6, "0.0000030000000000000005");
+    check(3.0000000000000004e-7, "3.0000000000000004e-7");
+    check(+double.nan, "nan");
+    check(-double.nan, "nan");
+    check(+double.infinity, "+inf");
+    check(-double.infinity, "-inf");
 }
 
 /// Prints structs and unions

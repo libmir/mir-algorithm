@@ -223,7 +223,7 @@ struct Decimal(size_t maxSize64)
     void toString(C = char, W)(scope ref W w, NumericSpec spec = NumericSpec.init) const
         if(isSomeChar!C && isMutable!C)
     {
-        assert(spec == NumericSpec.exponent || spec == NumericSpec.human);
+        assert(spec == NumericSpec.exponent || spec == NumericSpec.human || spec == NumericSpec.humanWithUnderscores);
         import mir.utility: _expect;
         // handle special values
         if (_expect(exponent == exponent.max, false))
@@ -235,7 +235,8 @@ struct Decimal(size_t maxSize64)
             return;
         }
 
-        C[coefficientBufferLength] buffer = void;
+        C[coefficientBufferLength + 16] buffer0 = void;
+        auto buffer = buffer0[0 .. $ - 16];
 
         size_t coefficientLength;
         static if (size_t.sizeof == 8)
@@ -274,13 +275,13 @@ struct Decimal(size_t maxSize64)
             coefficientLength = work.view.unsigned.toStringImpl(buffer);
         }
 
-        static immutable C[10] zeros = "-0.00000.0";
+        static immutable C[16] zeros = "-0.00000000000.0";
+        sizediff_t s = this.exponent + coefficientLength;
 
         if (spec.format == NumericSpec.Format.human)
         {
             // try print decimal form without exponent
             // up to 6 digits exluding leading 0. or final .0
-            sizediff_t s = this.exponent + coefficientLength;
             if (s <= 0)
             {
                 //0.001....
@@ -289,6 +290,7 @@ struct Decimal(size_t maxSize64)
                 //0.000001
                 if (s >= -2 || this.exponent >= -6)
                 {
+                T0:
                     w.put(zeros[!coefficient.sign .. -s + 2 + 1]);
                     w.put(buffer[$ - coefficientLength .. $]);
                     return;
@@ -313,16 +315,75 @@ struct Decimal(size_t maxSize64)
                 {
                     buffer[$ - coefficientLength - 1] = '-';
                     w.put(buffer[$ - coefficientLength  - coefficient.sign .. $ - coefficientLength + s]);
+                T2:
                     buffer[$ - coefficientLength + s - 1] = '.';
                     w.put(buffer[$ - coefficientLength + s - 1 .. $]);
                     return;
                 }
             }
         }
+        else
+        if (spec.format == NumericSpec.Format.humanWithUnderscores)
+        {
+            void putL(scope const(C)[] b)
+            {
+                assert(b.length);
+
+                if (coefficient.sign)
+                    w.put(zeros[0 .. 1]);
+
+                auto r = b.length % 3;
+                if (r == 0)
+                    r = 3;
+                goto LS;
+                do
+                {
+                    w.put("_");
+                LS:
+                    w.put(b[0 .. r]);
+                    b = b[r .. $];
+                    r = 3;
+                }
+                while(b.length);
+            }
+
+            // try print decimal form without exponent
+            // up to 6 digits exluding leading 0. or final .0
+            if (s <= 0)
+            {
+                //0.00000d....
+                if (s >= -5 || this.exponent >= -6)
+                {
+                    goto T0;
+                }
+            }
+            else
+            if (this.exponent >= 0)
+            {
+                ///dddddd.0
+                ///ddd000000.0
+                if (s <= 12)
+                {
+                    buffer0[$ - 16 .. $] = '0';
+                    putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + exponent]);
+                    w.put(".0");
+                    return;
+                }
+            }
+            else
+            {
+                ///dddddd.d....
+                if (s <= 12 || coefficientLength <= 12)
+                {
+                    putL(buffer[$ - coefficientLength .. $ - coefficientLength + s]);
+                    goto T2;
+                }
+            }
+        }
 
         assert(coefficientLength);
 
-        sizediff_t exponent = this.exponent + coefficientLength - 1;
+        sizediff_t exponent = s - 1;
 
         if (coefficientLength > 1)
         {
@@ -338,7 +399,6 @@ struct Decimal(size_t maxSize64)
 
         w.put(buffer[$ - coefficientLength .. $]);
 
-        C[expBufferLength] expBuffer = void;
         import mir.format_impl: printSignedToTail;
 
         static if (sizediff_t.sizeof == 8)
@@ -347,7 +407,7 @@ struct Decimal(size_t maxSize64)
             enum N = 11;
 
         // prints e+/-exponent
-        auto expLength = printSignedToTail(exponent, buffer[$ - N .. $], '+');
+        auto expLength = printSignedToTail(exponent, buffer0[$ - N - 16 .. $ - 16], '+');
         buffer[$ - ++expLength] = 'e';
         w.put(buffer[$ - expLength .. $]);
     }
