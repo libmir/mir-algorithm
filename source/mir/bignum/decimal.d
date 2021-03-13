@@ -223,7 +223,7 @@ struct Decimal(size_t maxSize64)
     void toString(C = char, W)(scope ref W w, NumericSpec spec = NumericSpec.init) const
         if(isSomeChar!C && isMutable!C)
     {
-        assert(spec == NumericSpec.exponent || spec == NumericSpec.human || spec == NumericSpec.humanWithUnderscores);
+        assert(spec.format == NumericSpec.Format.exponent || spec.format == NumericSpec.Format.human);
         import mir.utility: _expect;
         // handle special values
         if (_expect(exponent == exponent.max, false))
@@ -275,62 +275,19 @@ struct Decimal(size_t maxSize64)
             coefficientLength = work.view.unsigned.toStringImpl(buffer);
         }
 
-        static immutable C[16] zeros = "-0.00000000000.0";
+        static immutable C[16] zeros = "0.00000000000.0";
+        char sign = coefficient.sign ? '-' : '+';
+        bool addSign = coefficient.sign || spec.plus;
         sizediff_t s = this.exponent + coefficientLength;
 
         if (spec.format == NumericSpec.Format.human)
-        {
-            // try print decimal form without exponent
-            // up to 6 digits exluding leading 0. or final .0
-            if (s <= 0)
-            {
-                //0.001....
-                //0.0001
-                //0.00001
-                //0.000001
-                if (s >= -2 || this.exponent >= -6)
-                {
-                T0:
-                    w.put(zeros[!coefficient.sign .. -s + 2 + 1]);
-                    w.put(buffer[$ - coefficientLength .. $]);
-                    return;
-                }
-            }
-            else
-            if (this.exponent >= 0)
-            {
-                ///dddddd.0
-                if (s <= 6)
-                {
-                    buffer[$ - coefficientLength - 1] = '-';
-                    w.put(buffer[$ - coefficientLength - coefficient.sign .. $]);
-                    w.put(zeros[$ - (exponent + 2) .. $]);
-                    return;
-                }
-            }
-            else
-            {
-                ///dddddd.d....
-                if (s <= 6 || coefficientLength <= 6)
-                {
-                    buffer[$ - coefficientLength - 1] = '-';
-                    w.put(buffer[$ - coefficientLength  - coefficient.sign .. $ - coefficientLength + s]);
-                T2:
-                    buffer[$ - coefficientLength + s - 1] = '.';
-                    w.put(buffer[$ - coefficientLength + s - 1 .. $]);
-                    return;
-                }
-            }
-        }
-        else
-        if (spec.format == NumericSpec.Format.humanWithUnderscores)
         {
             void putL(scope const(C)[] b)
             {
                 assert(b.length);
 
-                if (coefficient.sign)
-                    w.put(zeros[0 .. 1]);
+                if (addSign)
+                    w.put(sign);
 
                 auto r = b.length % 3;
                 if (r == 0)
@@ -338,7 +295,7 @@ struct Decimal(size_t maxSize64)
                 goto LS;
                 do
                 {
-                    w.put("_");
+                    w.put(spec.separatorChar);
                 LS:
                     w.put(b[0 .. r]);
                     b = b[r .. $];
@@ -351,32 +308,68 @@ struct Decimal(size_t maxSize64)
             // up to 6 digits exluding leading 0. or final .0
             if (s <= 0)
             {
-                //0.00000d....
-                if (s >= -5 || this.exponent >= -6)
+                //0.001....
+                //0.0001
+                //0.00001
+                //0.000001
+                //If separatorChar is defined lets be less greed for space.
+                if (this.exponent >= -6 || s >= -2 - (spec.separatorChar != 0) * 3)
                 {
-                    goto T0;
+                    if (addSign)
+                        w.put(sign);
+                    w.put(zeros[0 .. -s + 2 + 1]);
+                    w.put(buffer[$ - coefficientLength .. $]);
+                    return;
                 }
             }
             else
             if (this.exponent >= 0)
             {
                 ///dddddd.0
-                ///ddd000000.0
-                if (s <= 12)
+                if (!spec.separatorChar)
                 {
-                    buffer0[$ - 16 .. $] = '0';
-                    putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + exponent]);
-                    w.put(".0");
-                    return;
+                    if (s <= 6)
+                    {
+                        buffer[$ - coefficientLength - 1] = sign;
+                        w.put(buffer[$ - coefficientLength - addSign .. $]);
+                        w.put(zeros[$ - (exponent + 2) .. $]);
+                        return;
+                    }
+                }
+                else
+                {
+                    if (s <= 12)
+                    {
+                        buffer0[$ - 16 .. $] = '0';
+                        putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + exponent]);
+                        w.put(".0");
+                        return;
+                    }
                 }
             }
             else
             {
-                ///dddddd.d....
-                if (s <= 12 || coefficientLength <= 12)
+                ///dddddd.0
+                if (!spec.separatorChar)
                 {
-                    putL(buffer[$ - coefficientLength .. $ - coefficientLength + s]);
-                    goto T2;
+                    ///dddddd.d....
+                    if (s <= 6 || coefficientLength <= 6)
+                    {
+                        buffer[$ - coefficientLength - 1] = sign;
+                        w.put(buffer[$ - coefficientLength  - addSign .. $ - coefficientLength + s]);
+                    T2:
+                        buffer[$ - coefficientLength + s - 1] = '.';
+                        w.put(buffer[$ - coefficientLength + s - 1 .. $]);
+                        return;
+                    }
+                }
+                else
+                {
+                    if (s <= 12 || coefficientLength <= 12)
+                    {
+                        putL(buffer[$ - coefficientLength .. $ - coefficientLength + s]);
+                        goto T2;
+                    }
                 }
             }
         }
@@ -392,12 +385,8 @@ struct Decimal(size_t maxSize64)
             buffer[$ - ++coefficientLength] = c;
         }
 
-        if (coefficient.sign)
-        {
-            buffer[$ - ++coefficientLength] = '-';
-        }
-
-        w.put(buffer[$ - coefficientLength .. $]);
+        buffer[$ - coefficientLength - 1] = sign;
+        w.put(buffer[$ - coefficientLength - addSign .. $]);
 
         import mir.format_impl: printSignedToTail;
 
