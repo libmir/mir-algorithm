@@ -275,13 +275,15 @@ struct Decimal(size_t maxSize64)
             coefficientLength = work.view.unsigned.toStringImpl(buffer);
         }
 
-        static immutable C[16] zeros = "0.00000000000.0";
+        static immutable C[9] zeros = "0.00000.0";
         char sign = coefficient.sign ? '-' : '+';
         bool addSign = coefficient.sign || spec.plus;
         sizediff_t s = this.exponent + coefficientLength;
 
         if (spec.format == NumericSpec.Format.human)
         {
+            if (!spec.separatorCount)
+                spec.separatorCount = 3;
             void putL(scope const(C)[] b)
             {
                 assert(b.length);
@@ -289,9 +291,9 @@ struct Decimal(size_t maxSize64)
                 if (addSign)
                     w.put(sign);
 
-                auto r = b.length % 3;
+                auto r = b.length % spec.separatorCount;
                 if (r == 0)
-                    r = 3;
+                    r = spec.separatorCount;
                 goto LS;
                 do
                 {
@@ -299,7 +301,7 @@ struct Decimal(size_t maxSize64)
                 LS:
                     w.put(b[0 .. r]);
                     b = b[r .. $];
-                    r = 3;
+                    r = spec.separatorCount;
                 }
                 while(b.length);
             }
@@ -317,7 +319,7 @@ struct Decimal(size_t maxSize64)
                 {
                     if (addSign)
                         w.put(sign);
-                    w.put(zeros[0 .. -s + 2 + 1]);
+                    w.put(zeros[0 .. -s + 2]);
                     w.put(buffer[$ - coefficientLength .. $]);
                     return;
                 }
@@ -332,7 +334,7 @@ struct Decimal(size_t maxSize64)
                     {
                         buffer[$ - coefficientLength - 1] = sign;
                         w.put(buffer[$ - coefficientLength - addSign .. $]);
-                        w.put(zeros[$ - (exponent + 2) .. $]);
+                        w.put(zeros[$ - (this.exponent + 2) .. $]);
                         return;
                     }
                 }
@@ -341,7 +343,7 @@ struct Decimal(size_t maxSize64)
                     if (s <= 12)
                     {
                         buffer0[$ - 16 .. $] = '0';
-                        putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + exponent]);
+                        putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + this.exponent]);
                         w.put(".0");
                         return;
                     }

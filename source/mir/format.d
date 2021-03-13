@@ -212,6 +212,9 @@ struct NumericSpec
     /// Adds '+' to positive numbers and `+0`.
     bool plus;
 
+    /// Separator count
+    ubyte separatorCount = 3;
+
     /++
     Precise output with explicit exponent.
     Examples: `1e-6`, `6e6`, `1.23456789e-100`.
@@ -761,6 +764,10 @@ unittest
     check(-double.nan, "nan");
     check(+double.infinity, "+inf");
     check(-double.infinity, "-inf");
+
+    spec.separatorChar = '_';
+    spec.separatorCount = 2;
+    check(123456e5, "1_23_45_60_00_00.0");
 
     spec.plus = true;
     check(0.0125, "+0.0125");
