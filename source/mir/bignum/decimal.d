@@ -296,10 +296,11 @@ struct Decimal(size_t maxSize64)
                 auto r = b.length % spec.separatorCount;
                 if (r == 0)
                     r = spec.separatorCount;
+                C[1] sep = spec.separatorChar;
                 goto LS;
                 do
                 {
-                    w.put(spec.separatorChar);
+                    w.put(sep);
                 LS:
                     w.put(b[0 .. r]);
                     b = b[r .. $];
