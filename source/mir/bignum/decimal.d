@@ -408,7 +408,7 @@ struct Decimal(size_t maxSize64)
 
         // prints e+/-exponent
         auto expLength = printSignedToTail(exponent, buffer0[$ - N - 16 .. $ - 16], '+');
-        buffer[$ - ++expLength] = 'e';
+        buffer[$ - ++expLength] = spec.exponentChar;
         w.put(buffer[$ - expLength .. $]);
     }
 

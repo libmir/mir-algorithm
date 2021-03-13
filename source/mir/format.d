@@ -208,6 +208,9 @@ struct NumericSpec
     ///
     Format format;
 
+    /// Defaults to 'e'
+    char exponentChar = 'e';
+
     /++
     Precise output with explicit exponent.
     Examples: `1e-6`, `6e6`, `1.23456789e-100`.
