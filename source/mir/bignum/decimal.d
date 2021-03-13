@@ -12,6 +12,7 @@ public import mir.bignum.low_level_view: DecimalExponentKey;
 import mir.bignum.low_level_view: ceilLog10Exp2;
 
 private enum expBufferLength = 2 + ceilLog10Exp2(size_t.sizeof * 8);
+private static immutable C[9] zerosImpl(C) = "0.00000.0";
 
 /++
 Stack-allocated decimal type.
@@ -275,10 +276,11 @@ struct Decimal(size_t maxSize64)
             coefficientLength = work.view.unsigned.toStringImpl(buffer);
         }
 
-        static immutable C[9] zeros = "0.00000.0";
-        char sign = coefficient.sign ? '-' : '+';
+        C[1] sign = coefficient.sign ? "-" : "+";
         bool addSign = coefficient.sign || spec.plus;
         sizediff_t s = this.exponent + coefficientLength;
+
+        alias zeros = zerosImpl!C;
 
         if (spec.format == NumericSpec.Format.human)
         {
@@ -332,7 +334,7 @@ struct Decimal(size_t maxSize64)
                 {
                     if (s <= 6)
                     {
-                        buffer[$ - coefficientLength - 1] = sign;
+                        buffer[$ - coefficientLength - 1] = sign[0];
                         w.put(buffer[$ - coefficientLength - addSign .. $]);
                         w.put(zeros[$ - (this.exponent + 2) .. $]);
                         return;
@@ -344,7 +346,7 @@ struct Decimal(size_t maxSize64)
                     {
                         buffer0[$ - 16 .. $] = '0';
                         putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + this.exponent]);
-                        w.put(".0");
+                        w.put(zeros[$ - 2 .. $]);
                         return;
                     }
                 }
@@ -357,7 +359,7 @@ struct Decimal(size_t maxSize64)
                     ///dddddd.d....
                     if (s <= 6 || coefficientLength <= 6)
                     {
-                        buffer[$ - coefficientLength - 1] = sign;
+                        buffer[$ - coefficientLength - 1] = sign[0];
                         w.put(buffer[$ - coefficientLength  - addSign .. $ - coefficientLength + s]);
                     T2:
                         buffer[$ - coefficientLength + s - 1] = '.';
@@ -387,7 +389,7 @@ struct Decimal(size_t maxSize64)
             buffer[$ - ++coefficientLength] = c;
         }
 
-        buffer[$ - coefficientLength - 1] = sign;
+        buffer[$ - coefficientLength - 1] = sign[0];
         w.put(buffer[$ - coefficientLength - addSign .. $]);
 
         import mir.format_impl: printSignedToTail;
