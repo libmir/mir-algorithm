@@ -291,7 +291,7 @@ struct Decimal(size_t maxSize64)
                 assert(b.length);
 
                 if (addSign)
-                    w.put(sign);
+                    w.put(sign[]);
 
                 auto r = b.length % spec.separatorCount;
                 if (r == 0)
@@ -300,7 +300,7 @@ struct Decimal(size_t maxSize64)
                 goto LS;
                 do
                 {
-                    w.put(sep);
+                    w.put(sep[]);
                 LS:
                     w.put(b[0 .. r]);
                     b = b[r .. $];
@@ -321,7 +321,7 @@ struct Decimal(size_t maxSize64)
                 if (this.exponent >= -6 || s >= -2 - (spec.separatorChar != 0) * 3)
                 {
                     if (addSign)
-                        w.put(sign);
+                        w.put(sign[]);
                     w.put(zeros[0 .. -s + 2]);
                     w.put(buffer[$ - coefficientLength .. $]);
                     return;
