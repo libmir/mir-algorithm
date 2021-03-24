@@ -187,9 +187,9 @@ struct Decimal(size_t maxSize64)
 
         assert(!decimal.fromStringImpl("3.3.4", key));
         assert(!decimal.fromStringImpl("3.4.", key));
-        assert(!decimal.fromStringImpl("4.", key));
+        assert(decimal.fromStringImpl("4.", key));
         assert(!decimal.fromStringImpl(".", key));
-        assert(!decimal.fromStringImpl("0.", key));
+        assert(decimal.fromStringImpl("0.", key));
         assert(!decimal.fromStringImpl("00", key));
         assert(!decimal.fromStringImpl("0d", key));
     }

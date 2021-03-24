@@ -1985,6 +1985,8 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         else
         if (d == '.' - '0')
         {
+            if (str.length == 0)
+                return false;
             goto D;
         }
         else
@@ -2058,13 +2060,12 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                 D:
                 case DecimalExponentKey.dot:
                     key = cast(DecimalExponentKey)d;
-                    if (_expect(!dot, true))
-                    {
-                        dot = true;
-                        if (str.length)
-                            continue;
-                    }
-                    break;
+                    if (_expect(dot, false))
+                        break;
+                    dot = true;
+                    if (str.length == 0)
+                        goto L;
+                    continue;
                 case DecimalExponentKey.e:
                 case DecimalExponentKey.d:
                 case DecimalExponentKey.E:

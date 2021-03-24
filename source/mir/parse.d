@@ -21,6 +21,8 @@ unittest
     import mir.small_string;
     alias S = SmallString!32;
     assert(S("123.0").to!double == 123);
+    assert(S("123.").to!double == 123.);
+    assert(S(".123").to!double == .123);
     assert(S("123").to!(immutable int) == 123);
 }
 
