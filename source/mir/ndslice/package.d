@@ -128,6 +128,7 @@ $(TR $(TDNW $(SUBMODULE topology) $(BR)
      $(TD
         $(SUBREF topology, alongDim)
         $(SUBREF topology, as)
+        $(SUBREF topology, asKindOf)
         $(SUBREF topology, assumeCanonical)
         $(SUBREF topology, assumeContiguous)
         $(SUBREF topology, assumeHypercube)
