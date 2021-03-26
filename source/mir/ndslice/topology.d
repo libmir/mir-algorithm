@@ -43,6 +43,7 @@ $(T2 evertPack, Reverses dimension packs.)
 $(BOOKTABLE $(H2 SliceKind Selectors),
 $(TR $(TH Function Name) $(TH Description))
 
+$(T2 asKindOf, Converts a slice to a user provied kind $(SUBREF slice, SliceKind).)
 $(T2 universal, Converts a slice to universal $(SUBREF slice, SliceKind).)
 $(T2 canonical, Converts a slice to canonical $(SUBREF slice, SliceKind).)
 $(T2 assumeCanonical, Converts a slice to canonical $(SUBREF slice, SliceKind). Does only `assert` checks.)
@@ -128,6 +129,69 @@ private immutable choppedExceptionMsg = "bounds passed to chopped are out of sli
 version (D_Exceptions) private immutable choppedException = new Exception(choppedExceptionMsg);
 
 @optmath:
+
+/++
+Converts a slice to user provided kind.
+
+Contiguous slices can be converted to any kind.
+Canonical slices can't be converted to contiguous slices.
+Universal slices can be converted only to the same kind.
+
+See_also:
+    $(LREF canonical),
+    $(LREF universal),
+    $(LREF assumeCanonical),
+    $(LREF assumeContiguous).
++/
+template asKindOf(SliceKind kind)
+{
+    static if (kind == Contiguous)
+    {
+        auto asKindOf(Iterator, size_t N, Labels...)(Slice!(Iterator, N, Contiguous, Labels) slice)
+        {
+            return slice;
+        }
+    }
+    else
+    static if (kind == Canonical)
+    {
+        alias asKindOf = canonical;
+    }
+    else
+    {
+        alias asKindOf = universal;
+    }
+}
+
+/// Universal
+@safe pure nothrow
+version(mir_test) unittest
+{
+    auto slice = iota(2, 3).asKindOf!Universal;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == [3, 1]);
+}
+
+/// Canonical
+@safe pure nothrow
+version(mir_test) unittest
+{
+    auto slice = iota(2, 3).asKindOf!Canonical;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == [3]);
+}
+
+/// Contiguous
+@safe pure nothrow
+version(mir_test) unittest
+{
+    auto slice = iota(2, 3).asKindOf!Contiguous;
+    assert(slice == [[0, 1, 2], [3, 4, 5]]);
+    assert(slice._lengths == [2, 3]);
+    assert(slice._strides == []);
+}
 
 /++
 Converts a slice to universal kind.
