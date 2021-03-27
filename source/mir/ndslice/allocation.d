@@ -690,12 +690,12 @@ auto ndarray(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice
     import  mir.array.allocation : array;
     static if (slice.N == 1)
     {
-        return array(slice);
+        return slice.array;
     }
     else
     {
         import mir.ndslice.topology: ipack, map;
-        return array(slice.ipack!1.map!(a => .ndarray(a)));
+        return slice.ipack!1.map!(.ndarray).array;
     }
 }
 
