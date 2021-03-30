@@ -167,6 +167,7 @@ template asKindOf(SliceKind kind)
 @safe pure nothrow
 version(mir_test) unittest
 {
+    import mir.ndslice.slice: Universal;
     auto slice = iota(2, 3).asKindOf!Universal;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
     assert(slice._lengths == [2, 3]);
@@ -177,6 +178,7 @@ version(mir_test) unittest
 @safe pure nothrow
 version(mir_test) unittest
 {
+    import mir.ndslice.slice: Canonical;
     auto slice = iota(2, 3).asKindOf!Canonical;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
     assert(slice._lengths == [2, 3]);
@@ -187,6 +189,7 @@ version(mir_test) unittest
 @safe pure nothrow
 version(mir_test) unittest
 {
+    import mir.ndslice.slice: Contiguous;
     auto slice = iota(2, 3).asKindOf!Contiguous;
     assert(slice == [[0, 1, 2], [3, 4, 5]]);
     assert(slice._lengths == [2, 3]);
