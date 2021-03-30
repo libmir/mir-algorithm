@@ -749,7 +749,7 @@ package(mir):
         ///
         public alias _Structure = AliasSeq!(size_t[N], ptrdiff_t[S]);
         ///
-        _Structure _structure;
+        public _Structure _structure;
         ///
         public alias _lengths = _structure[0];
         ///
@@ -760,7 +760,7 @@ package(mir):
         ///
         public alias _Structure = AliasSeq!(size_t[N]);
         ///
-        _Structure _structure;
+        public _Structure _structure;
         ///
         public alias _lengths = _structure[0];
         ///
