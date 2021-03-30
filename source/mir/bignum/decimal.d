@@ -166,18 +166,24 @@ struct Decimal(size_t maxSize64)
         assert(key == DecimalExponentKey.E);
         assert(cast(double) decimal.view == 0);
 
-        assert(decimal.fromStringImpl("-nan", key));
-        assert(decimal.coefficient.length > 0);
-        assert(decimal.exponent == decimal.exponent.max);
-        assert(decimal.coefficient.sign);
-        assert(key == DecimalExponentKey.nan);
-        assert(cast(double) decimal.view != cast(double) decimal.view);
+        foreach (str; ["-nan", "-NaN", "-NAN"])
+        {
+            assert(decimal.fromStringImpl(str, key));
+            assert(decimal.coefficient.length > 0);
+            assert(decimal.exponent == decimal.exponent.max);
+            assert(decimal.coefficient.sign);
+            assert(key == DecimalExponentKey.nan);
+            assert(cast(double) decimal.view != cast(double) decimal.view);
+        }
 
-        assert(decimal.fromStringImpl("inf", key));
-        assert(decimal.coefficient.length == 0);
-        assert(decimal.exponent == decimal.exponent.max);
-        assert(key == DecimalExponentKey.infinity);
-        assert(cast(double) decimal.view == double.infinity);
+        foreach (str; ["inf", "Inf", "INF"])
+        {
+            assert(decimal.fromStringImpl(str, key));
+            assert(decimal.coefficient.length == 0);
+            assert(decimal.exponent == decimal.exponent.max);
+            assert(key == DecimalExponentKey.infinity);
+            assert(cast(double) decimal.view == double.infinity);
+        }
 
         assert(decimal.fromStringImpl("-inf", key));
         assert(decimal.coefficient.length == 0);

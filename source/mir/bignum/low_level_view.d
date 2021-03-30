@@ -341,6 +341,71 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         assert(fp.coefficient == UInt!128.fromHexString("ffffffffffffffffffffffffffffffff"));
     }
 
+
+    ///
+    T opCast(T, bool nonZero = false)() const
+        if (isIntegral!T && isUnsigned!T && isMutable!T)
+    {
+        auto work = lightConst;
+        static if (!nonZero)
+        {
+            if (coefficients.length == 0)
+            {
+                return 0;
+            }
+        }
+        static if (T.sizeof <= W.sizeof)
+        {
+            return cast(T) work.leastSignificant;
+        }
+        else
+        {
+            T ret;
+            do
+            {
+                ret <<= W.sizeof * 8;
+                ret |= work.mostSignificant;
+                work.popMostSignificant;
+            }
+            while(work.coefficients.length);
+            return ret;
+        }
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigUIntView!ulong.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+        assert(cast(ulong) view == 0x14a1de7022b0029d);
+        assert(cast(uint) view == 0x22b0029d);
+        assert(cast(ubyte) view == 0x9d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigUIntView!ushort.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+        assert(cast(ulong) view == 0x14a1de7022b0029d);
+        assert(cast(uint) view == 0x22b0029d);
+        assert(cast(ubyte) view == 0x9d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigUIntView!uint.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+        assert(cast(ulong) view == 0x14a1de7022b0029d);
+        assert(cast(uint) view == 0x22b0029d);
+        assert(cast(ubyte) view == 0x9d);
+    }
+
     static if (endian == TargetEndian)
     ///
     @trusted pure nothrow @nogc
@@ -1346,14 +1411,13 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     ///
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
-        if (isFloatingPoint!T)
+        if (isFloatingPoint!T && isMutable!T)
     {
         auto ret = this.unsigned.opCast!(T, wordNormalized, nonZero);
         if (sign)
             ret = -ret;
         return ret;
     }
-
 
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
@@ -1362,6 +1426,48 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     {
         auto a = cast(double) BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0029d");
         assert(a == -0xa.fbbfae3cd0bp+124);
+    }
+
+
+    ///
+    T opCast(T, bool nonZero = false)() const
+        if (is(T == long) || is(T == int))
+    {
+        auto ret = this.unsigned.opCast!(Unsigned!T, nonZero);
+        if (sign)
+            ret = -ret;
+        return ret;
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0021d");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!ushort.fromHexString("-afbbfae3cd0aff2714a1de7022b0021d");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!ubyte.fromHexString("-afbbfae3cd0aff2714a1de7022b0021d");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
     }
 
     /++
@@ -1426,6 +1532,17 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         const @safe pure nothrow @nogc
     {
         return this.sign == rhs.sign && this.unsigned == rhs.unsigned;
+    }
+
+    /++
+    Returns: true if the integer and equals to `rhs`.
+    +/
+    bool opEquals(long rhs)
+        @safe pure nothrow @nogc const
+    {
+        bool sign = rhs < 0;
+        ulong urhs = sign ? -rhs : rhs;
+        return sign == this.sign && unsigned == urhs;
     }
 
     /++
@@ -1994,13 +2111,14 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
             exponent = exponent.max;
             if (str.length == 2)
             {
-                if ((d == 'i' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"nf"))
+                auto stail = cast(C[2])str[0 .. 2];
+                if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
                 {
                     coefficient = coefficient.init;
                     key = DecimalExponentKey.infinity;
                     return true;
                 }
-                if ((d == 'n' - '0') & (cast(C[2])str[0 .. 2] == cast(C[2])"an"))
+                if (d == 'n' - '0' && stail== cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
                 {
                     coefficient.leastSignificant = 1;
                     coefficient = coefficient.topLeastSignificantPart(1);
