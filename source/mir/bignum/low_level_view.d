@@ -11,6 +11,9 @@ module mir.bignum.low_level_view;
 import mir.checkedint;
 import std.traits;
 
+version(LDC) import ldc.attributes: optStrategy;
+else struct optStrategy { string opt; }
+
 private alias cop(string op : "-") = subu;
 private alias cop(string op : "+") = addu;
 private enum inverseSign(string op) = op == "+" ? "-" : "+";
@@ -432,7 +435,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         import mir.algorithm.iteration: cmp;
         auto l = this.lightConst.normalized;
         auto r = rhs.lightConst.normalized;
-        if (auto d = l.coefficients.length - r.coefficients.length)
+        if (sizediff_t d = l.coefficients.length - r.coefficients.length)
             return d;
         return cmp(l.mostSignificantFirst, r.mostSignificantFirst);
     }
@@ -658,8 +661,6 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
             return false;
 
         leastSignificant = 0;
-        auto work = topLeastSignificantPart(1);
-
         uint d = str[0] - '0';
         str = str[1 .. $];
 
@@ -669,18 +670,19 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if (d == 0)
         {
             if (str.length == 0)
+            {
+                coefficients = null;
                 return true;
+            }
             if (str[0] == '0')
                 return false;
-            goto S;
         }
         else
-        if (d < 10)
-        {
-            goto S;
-        }
-        else
+        if (d >= 10)
             return false;
+
+        auto work = topLeastSignificantPart(1);
+        goto S;
 
         for(;;)
         {
@@ -1521,9 +1523,10 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         import mir.algorithm.iteration: cmp;
         if (auto s = rhs.sign - this.sign)
         {
-            return s;
+            if (this.unsigned.coefficients.length && rhs.unsigned.coefficients.length)
+                return s;
         }
-        sizediff_t d = this.unsigned.opCmp(rhs.unsigned);
+        auto d = this.unsigned.opCmp(rhs.unsigned);
         return sign ? -d : d;
     }
 
@@ -1531,7 +1534,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     bool opEquals(BigIntView!(const W, endian) rhs)
         const @safe pure nothrow @nogc
     {
-        return this.sign == rhs.sign && this.unsigned == rhs.unsigned;
+        return (this.sign == rhs.sign || unsigned.coefficients.length == 0) && this.unsigned == rhs.unsigned;
     }
 
     /++
@@ -1540,6 +1543,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     bool opEquals(long rhs)
         @safe pure nothrow @nogc const
     {
+        if (rhs == 0 && unsigned.coefficients.length == 0)
+            return true;
         bool sign = rhs < 0;
         ulong urhs = sign ? -rhs : rhs;
         return sign == this.sign && unsigned == urhs;
@@ -2011,6 +2016,10 @@ enum DecimalExponentKey
     ///
     none = 0,
     ///
+    infinity = 1,
+    ///
+    nan = 2,
+    ///
     dot = '.' - '0',
     ///
     d = 'd' - '0',
@@ -2020,10 +2029,6 @@ enum DecimalExponentKey
     D = 'D' - '0',
     ///
     E = 'E' - '0',
-    ///
-    infinity,
-    ///
-    nan,
 }
 
 /++
@@ -2044,12 +2049,17 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
     Precondition: non-empty coefficients
     Note: doesn't support signs.
     +/
-    bool fromStringImpl(C)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDExponent = true, bool allowStartingPlus = true)(scope const(C)[] str, out DecimalExponentKey key)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
-        pragma(inline, false);
         import mir.utility: _expect;
+
+        version(LDC)
+        {
+            static if ((allowSpecialValues && allowDExponent && allowStartingPlus) == false)
+                pragma(inline, true);
+        }
 
         assert(coefficient.coefficients.length);
 
@@ -2067,11 +2077,14 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                 return false;
         }
         else
-        if (_expect(str[0] == '+', false))
+        static if (allowStartingPlus)
         {
-            str = str[1 .. $];
-            if (_expect(str.length == 0, false))
-                return false;
+            if (_expect(str[0] == '+', false))
+            {
+                str = str[1 .. $];
+                if (_expect(str.length == 0, false))
+                    return false;
+            }
         }
 
         uint d = str[0] - '0';
@@ -2109,21 +2122,24 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         else
         {
             exponent = exponent.max;
-            if (str.length == 2)
+            static if (allowSpecialValues)
             {
-                auto stail = cast(C[2])str[0 .. 2];
-                if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
+                if (str.length == 2)
                 {
-                    coefficient = coefficient.init;
-                    key = DecimalExponentKey.infinity;
-                    return true;
-                }
-                if (d == 'n' - '0' && stail== cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
-                {
-                    coefficient.leastSignificant = 1;
-                    coefficient = coefficient.topLeastSignificantPart(1);
-                    key = DecimalExponentKey.nan;
-                    return true;
+                    auto stail = cast(C[2])str[0 .. 2];
+                    if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
+                    {
+                        coefficient = coefficient.init;
+                        key = DecimalExponentKey.infinity;
+                        return true;
+                    }
+                    if (d == 'n' - '0' && stail== cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
+                    {
+                        coefficient.leastSignificant = 1;
+                        coefficient = coefficient.topLeastSignificantPart(1);
+                        key = DecimalExponentKey.nan;
+                        return true;
+                    }
                 }
             }
             return false;
@@ -2184,10 +2200,14 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     if (str.length == 0)
                         goto L;
                     continue;
+                static if (allowDExponent)
+                {
+                    case DecimalExponentKey.d:
+                    case DecimalExponentKey.D:
+                        goto case DecimalExponentKey.e;
+                }
                 case DecimalExponentKey.e:
-                case DecimalExponentKey.d:
                 case DecimalExponentKey.E:
-                case DecimalExponentKey.D:
                     key = cast(DecimalExponentKey)d;
                     hasExponent = true;
                     import mir.parse: parse;
@@ -2223,16 +2243,21 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
     /++
     Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
-    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
+    Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.
+    +/
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
-        import mir.bignum.integer: BigInt;
+        version(LDC)
+        {
+            static if (wordNormalized)
+                pragma(inline, true);
+        }
+
         import mir.bignum.fixed: UInt;
         import mir.bignum.fp: Fp, extendedMul;
         import mir.bignum.internal.dec2flt_table;
         import mir.math.common: floor;
-        import mir.math.ieee: ldexp, frexp, nextDown, nextUp;
         import mir.utility: _expect;
 
         auto coeff = coefficient.lightConst;
@@ -2282,7 +2307,8 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                         ret =  c.opCast!(T, true) / cast(T) (cast(ulong)e.coefficient >> e.exponent);
                         goto R;
                     }
-                    goto AlgoR;
+                    ret = algoR!T(ret, coeff, cast(int) exponent);
+                    goto R;
                 }
                 ret = expSign ? 0 : T.infinity;
                 goto R;
@@ -2362,85 +2388,97 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                         goto R;
                     }
                 }
-            }
-        }
-
-    AlgoR:
-        if (exponent >= 0)
-        {
-            BigInt!256 x; // max value is 2^(2^14)-1
-            if (x.copyFrom(coeff) || x.mulPow5(exponent)) // if overflow
+                ret = algoR!T(ret, coeff, cast(int) exponent);
                 goto R;
-            ret = ldexp(cast(T) x, cast(int) exponent);
+            }
         }
-        else do
-        {
-            if (ret < ret.min_normal)
-                break;
-            int k;
-            auto m0 = frexp(ret, k);
-            k -= T.mant_dig;
-            static if (T.mant_dig <= 64)
-            {
-                enum p2 = T(2) ^^ T.mant_dig;
-                auto m = UInt!64(cast(ulong) (m0 * p2));
-            }
-            else
-            {
-                enum p2h = T(2) ^^ (T.mant_dig - 64);
-                enum p2l = T(2) ^^ 64;
-                m0 *= p2h;
-                auto mhf = floor(m0);
-                auto mh = cast(ulong) mhf;
-                m0 -= mhf;
-                m0 *= p2l;
-                auto ml = cast(ulong) m0;
-                auto m = UInt!128(mh);
-                m <<= 64;
-                m |= UInt!128(ml);
-            }
-            auto mtz = m.cttz;
-            if (mtz != m.sizeof * 8)
-            {
-                m >>= mtz;
-                k += mtz;
-            }
-
-            BigInt!256 x; // max value is 2^(2^14)-1
-            if (x.copyFrom(coeff)) // if overflow
-                break;
-            auto y = BigInt!256(m); // max value is 2^(2^14)-1
-            y.mulPow5(-exponent);
-            auto shift = k - cast(int)exponent;
-            (shift >= 0  ? y : x) <<= shift >= 0 ? shift : -shift;
-            x -= y;
-            if (x.length == 0)
-                break;
-            x <<= 1;
-            x *= m;
-            auto cond = mtz == T.mant_dig - 1 && x.sign;
-            auto cmp = x.view.unsigned.opCmp(y.view.unsigned);
-            if (cmp < 0)
-            {
-                if (!cond)
-                    break;
-                x <<= 1;
-                if (x.view.unsigned <= y.view.unsigned)
-                    break;
-            }
-            else
-            if (!cmp && !cond && !mtz)
-                break;
-            ret = x.sign ? nextDown(ret) : nextUp(ret);
-            if (ret == 0)
-                break;
-        }
-        while (T.mant_dig >= 64 && exponent < -512);
     R:
         if (sign)
             ret = -ret;
         return ret;
     }
+}
+
+@optStrategy("minsize")
+private T algoR(T, W, WordEndian endian)(T ret, BigUIntView!(const W, endian) coeff, int exponent)
+{
+    pragma(inline, false);
+
+    import mir.bignum.fixed: UInt;
+    import mir.bignum.integer: BigInt;
+    import mir.math.common: floor;
+    import mir.math.ieee: ldexp, frexp, nextDown, nextUp;
+    import mir.utility: _expect;
+
+    BigInt!256 x = void, y = void; // max value is 2^(2^14)-1
+    if (exponent >= 0)
+    {
+        if (!x.copyFrom(coeff) && !x.mulPow5(exponent)) // if no overflow
+            ret = ldexp(cast(T) x, exponent);
+    }
+    else do
+    {
+        if (ret < ret.min_normal)
+            break;
+        int k;
+        auto m0 = frexp(ret, k);
+        k -= T.mant_dig;
+        static if (T.mant_dig <= 64)
+        {
+            enum p2 = T(2) ^^ T.mant_dig;
+            auto m = UInt!64(cast(ulong) (m0 * p2));
+        }
+        else
+        {
+            enum p2h = T(2) ^^ (T.mant_dig - 64);
+            enum p2l = T(2) ^^ 64;
+            m0 *= p2h;
+            auto mhf = floor(m0);
+            auto mh = cast(ulong) mhf;
+            m0 -= mhf;
+            m0 *= p2l;
+            auto ml = cast(ulong) m0;
+            auto m = UInt!128(mh);
+            m <<= 64;
+            m |= UInt!128(ml);
+        }
+        auto mtz = m.cttz;
+        if (mtz != m.sizeof * 8)
+        {
+            m >>= mtz;
+            k += mtz;
+        }
+
+        if (x.copyFrom(coeff)) // if overflow
+            break;
+        y.__ctor(m);
+        y.mulPow5(-exponent);
+        auto shift = k - exponent;
+        (shift >= 0  ? y : x) <<= shift >= 0 ? shift : -shift;
+        x -= y;
+        if (x.length == 0)
+            break;
+        x <<= 1;
+        x *= m;
+        auto cond = mtz == T.mant_dig - 1 && x.sign;
+        auto cmp = x.view.unsigned.opCmp(y.view.unsigned);
+        if (cmp < 0)
+        {
+            if (!cond)
+                break;
+            x <<= 1;
+            if (x.view.unsigned <= y.view.unsigned)
+                break;
+        }
+        else
+        if (!cmp && !cond && !mtz)
+            break;
+        ret = x.sign ? nextDown(ret) : nextUp(ret);
+        if (ret == 0)
+            break;
+    }
+    while (T.mant_dig >= 64 && exponent < -512);
+    return ret;
 }
 
 ///

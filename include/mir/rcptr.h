@@ -33,7 +33,7 @@ extern "C"
         const mir_type_info* typeInfo,
         size_t length,
         const void* payload = nullptr,
-        bool initialise = true,
+        bool initialize = true,
         bool deallocate = true
     );
 }

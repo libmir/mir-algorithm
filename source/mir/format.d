@@ -71,16 +71,32 @@ string text(string separator = "", A...)(auto ref A args)
     else
     {
         import mir.appender: ScopedBuffer;
-        ScopedBuffer!char buffer;
-        foreach (i, ref arg; args)
+        if (false)
         {
-            buffer.print(arg);
-            static if (separator.length && i + 1 < args.length)
+            ScopedBuffer!char buffer;
+            foreach (i, ref arg; args)
             {
-                buffer.printStaticString!char(separator);
+                buffer.print(arg);
+                static if (separator.length && i + 1 < args.length)
+                {
+                    buffer.printStaticString!char(separator);
+                }
             }
+            return buffer.data.idup;
         }
-        return buffer.data.idup;
+        return () @trusted  {
+            ScopedBuffer!char buffer = void;
+            buffer.initialize;
+            foreach (i, ref arg; args)
+            {
+                buffer.print(arg);
+                static if (separator.length && i + 1 < args.length)
+                {
+                    buffer.printStaticString!char(separator);
+                }
+            }
+            return buffer.data.idup;
+        } ();
     }
 }
 
@@ -106,7 +122,7 @@ struct _stringBuf(C)
     import mir.appender: ScopedBuffer;
 
     ///
-    ScopedBuffer!C buffer;
+    ScopedBuffer!(C, 256) buffer;
 
     ///
     alias buffer this;
@@ -376,8 +392,8 @@ ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
 version (mir_test) unittest
 {
  
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.format: stringBuf;
+    stringBuf w;
     assert(w.printEscaped("Hi \f\t\b \\\r\n" ~ `"@nogc"`).data == "Hi \f\t\b \\\\\\r\\n\\\"@nogc\\\"", w.data);
     w.reset;
     assert(w.printEscaped("\x03").data == `\x03`, w.data);
@@ -924,8 +940,6 @@ version (mir_test) unittest
     static class F { const(char)[] toString()() const return { return "f"; } }
     static class G { const(char)[] s = "g"; alias s this; }
 
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
     assert(stringBuf() << new A() << new S() << new D() << new F() << new G() << getData == "asdfg");
 }
 

@@ -129,7 +129,7 @@ bool fromString(T, C)(scope const(C)[] str, ref T value)
         import mir.bignum.decimal: Decimal, DecimalExponentKey;
         import mir.utility: _expect;
 
-        Decimal!256 decimal;
+        Decimal!256 decimal = void;
         DecimalExponentKey key;
         auto ret = decimal.fromStringImpl(str, key);
         if (_expect(ret, true))
@@ -198,18 +198,18 @@ bool parse(T, Range)(scope ref Range r, scope ref T value)
 }
 
 /// ditto
-pragma(inline, false)
 bool parse(T, Range)(scope ref Range r, scope ref T value)
     if (is(T == int) && isInputRange!Range && !__traits(isUnsigned, T))
 {
+    version(LDC) pragma(inline, true);
     return parseSignedImpl!(int, Range)(r, value);
 }
 
 /// ditto
-pragma(inline, false)
 bool parse(T, Range)(scope ref Range r, scope ref T value)
     if (is(T == long) && isInputRange!Range && !__traits(isUnsigned, T))
 {
+    version(LDC) pragma(inline, true);
     return parseSignedImpl!(long, Range)(r, value);
 }
 
@@ -224,18 +224,18 @@ bool parse(T, Range)(scope ref Range r, scope ref T value)
 }
 
 /// ditto
-pragma(inline, false)
 bool parse(T, Range)(scope ref Range r, scope ref T value)
     if (is(T == uint) && isInputRange!Range && __traits(isUnsigned, T))
 {
+    version(LDC) pragma(inline, true);
     return parseUnsignedImpl!(uint, Range)(r, value);
 }
 
 /// ditto
-pragma(inline, false)
 bool parse(T, Range)(scope ref Range r, scope ref T value)
     if (is(T == ulong) && isInputRange!Range && __traits(isUnsigned, T))
 {
+    version(LDC) pragma(inline, true);
     return parseUnsignedImpl!(ulong, Range)(r, value);
 }
 
@@ -289,14 +289,10 @@ version (mir_test) unittest
     }
 }
 
-alias r1 = parseUnsignedImpl!(uint, string);
-alias r2 = parseUnsignedImpl!(ulong, string);
-alias r3 = parseSignedImpl!(int, string);
-alias r4 = parseSignedImpl!(long, string);
-
 private bool parseUnsignedImpl(T, Range)(scope ref Range r, scope ref T value)
     if(__traits(isUnsigned, T))
 {
+    version(LDC) pragma(inline, true);
     import core.checkedint: addu, mulu;
 
     bool sign;
@@ -342,6 +338,7 @@ R:  return false;
 private bool parseSignedImpl(T, Range)(scope ref Range r, scope ref T value)
     if(!__traits(isUnsigned, T))
 {
+    version(LDC) pragma(inline, true);
     import core.checkedint: negs;
     import std.traits: Unsigned;
 

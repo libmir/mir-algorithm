@@ -499,7 +499,7 @@ Decimal!(T.mant_dig < 64 ? 1 : 2) genericBinaryToDecimal(T)(const T x)
         }
 
         import mir.bignum.integer: BigInt;
-        fd.coefficient = BigInt!wordCount(output);
+        fd.coefficient.__ctor(output);
         fd.exponent = exp;
     }
     fd.coefficient.sign = x.signbit;

@@ -203,6 +203,13 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
+    void initialize() @system scope nothrow @nogc
+    {
+        _currentLength = 0;
+        _buffer = null;
+    }
+
+    ///
     inout(T)[] data() inout @property @safe scope
     {
         return _buffer.length ? _buffer[0 .. _currentLength] : _scopeBuffer[0 .. _currentLength];
@@ -223,10 +230,11 @@ struct ScopedBuffer(T, size_t bytes = 4096)
 }
 
 ///
-@safe pure nothrow @nogc
+@trusted pure nothrow @nogc
 version (mir_test) unittest
 {
-    ScopedBuffer!char buf;
+    ScopedBuffer!char buf = void;
+    buf.initialize;
     buf.put('c');
     buf.put("str");
     assert(buf.data == "cstr");
@@ -236,10 +244,11 @@ version (mir_test) unittest
 }
 
 /// immutable
-@safe pure nothrow @nogc
+@trusted pure nothrow @nogc
 version (mir_test) unittest
 {
-    ScopedBuffer!(immutable char) buf;
+    ScopedBuffer!(immutable char) buf = void;
+    buf.initialize;
     buf.put('c');
     buf.put("str");
     assert(buf.data == "cstr");

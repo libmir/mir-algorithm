@@ -38,6 +38,7 @@ struct BigInt(size_t maxSize64)
     this(size_t N)(size_t[N] data)
         if (N <= this.data.length)
     {
+        sign = false;
         version(LittleEndian)
             this.data[0 .. N] = data;
         else
@@ -49,6 +50,7 @@ struct BigInt(size_t maxSize64)
     ///
     this(ulong data)
     {
+        sign = false;
         static if (size_t.sizeof == ulong.sizeof)
         {
             length = 1;
@@ -65,8 +67,8 @@ struct BigInt(size_t maxSize64)
     }
 
     ///
-    this(C)(scope const(C)[] str) @safe pure @nogc
-        if (isSomeChar!C)
+    this()(scope const(char)[] str) @safe pure @nogc
+        // if (isSomeChar!C)
     {
         if (fromStringImpl(str))
             return;
@@ -505,6 +507,13 @@ struct BigInt(size_t maxSize64)
         return view.opCast!(T, wordNormalized, nonZero);
     }
 
+    ///
+    T opCast(T, bool nonZero = false)() const
+        if (is(T == long) || is(T == int))
+    {
+        return this.view.opCast!(T, nonZero);
+    }
+
     /++
     Returns: overflow flag
     +/
@@ -646,4 +655,12 @@ unittest
     auto bView = cast(BigIntView!ushort)b.view;
     assert(!c.copyFrom(bView.topLeastSignificantPart(bView.unsigned.coefficients.length - 1)));
     assert(c == b);
+}
+
+version(mir_bignum_test)
+@safe pure @nogc unittest
+{
+    BigInt!4 i = "-0";
+    assert(i.view.coefficients.length == 0);
+    assert(cast(long) i == 0);
 }

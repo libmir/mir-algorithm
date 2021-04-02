@@ -48,7 +48,7 @@ Params:
 export extern(C)
 void mir_rc_decrease_counter(ref mir_rc_context context) @system nothrow @nogc pure
 {
-    pragma(inline, false);
+    pragma(inline, true);
     import core.atomic: atomicOp;
     with(context)
     {
@@ -107,7 +107,7 @@ mir_rc_context* mir_rc_create(
     ref immutable(mir_type_info) typeInfo,
     size_t length,
     scope const void* payload = null,
-    bool initialise = true,
+    bool initialize = true,
     bool deallocate = true,
     ) @system nothrow @nogc pure
 {
@@ -129,7 +129,7 @@ mir_rc_context* mir_rc_create(
         context.counter = deallocate;
         context.length = length;
 
-        if (initialise)
+        if (initialize)
         {
             auto ptr = cast(void*)(context + 1);
             if (payload)

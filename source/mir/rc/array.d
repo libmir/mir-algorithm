@@ -399,23 +399,40 @@ template rcarray(T)
         {
             import mir.appender: ScopedBuffer;
             import mir.conv: emplaceRef;
-            ScopedBuffer!T a;
-            static if (isInputRange!Range)
-                for (; !range.empty; range.popFront)
-                    a.put(range.front);
-            else
-            static if (isPointer!Range)
-                foreach (e; *range)
-                    a.put(e);
-            else
-                foreach (e; range)
-                    a.put(e);
-            scope values = a.data;
-            auto ret = RCArray!T(values.length, false);
-            ()@trusted {
+            if (false)
+            {
+                ScopedBuffer!T a;
+                static if (isInputRange!Range)
+                    for (; !range.empty; range.popFront)
+                        a.put(range.front);
+                else
+                static if (isPointer!Range)
+                    foreach (e; *range)
+                        a.put(e);
+                else
+                    foreach (e; range)
+                        a.put(e);
+                scope values = a.data;
+                auto ret = RCArray!T(values.length, false);
+            }
+            return ()@trusted {
+                ScopedBuffer!T a = void;
+                a.initialize;
+                static if (isInputRange!Range)
+                    for (; !range.empty; range.popFront)
+                        a.put(range.front);
+                else
+                static if (isPointer!Range)
+                    foreach (e; *range)
+                        a.put(e);
+                else
+                    foreach (e; range)
+                        a.put(e);
+                scope values = a.data;
+                auto ret = RCArray!T(values.length, false);
                 a.moveDataAndEmplaceTo(ret[]);
-            }();
-            return ret;
+                return ret;
+            } ();
         }
     }
 

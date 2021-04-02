@@ -119,13 +119,19 @@ struct Decimal(size_t maxSize64)
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients.
     +/
-    bool fromStringImpl(C)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDExponent = true, bool allowStartingPlus = true)(scope const(C)[] str, out DecimalExponentKey key)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
+        version(LDC)
+        {
+            static if ((allowSpecialValues && allowDExponent && allowStartingPlus) == false)
+                pragma(inline, true);
+        }
+
         import mir.bignum.low_level_view: DecimalView, BigUIntView, MaxWordPow10;
         auto work = DecimalView!size_t(false, 0, BigUIntView!size_t(coefficient.data));
-        auto ret = work.fromStringImpl(str, key);
+        auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus)(str, key);
         coefficient.length = cast(uint) work.coefficient.coefficients.length;
         coefficient.sign = work.sign;
         exponent = work.exponent;
@@ -499,4 +505,16 @@ bool parseDecimal(size_t maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize
     if (isSomeChar!C)
 {
     return decimal.fromStringImpl(str, key);
+}
+
+
+version(mir_bignum_test)
+@safe pure @nogc unittest
+{
+    Decimal!4 i = "-0";
+    
+    assert(i.view.coefficient.coefficients.length == 0);
+    assert(i.coefficient.view.unsigned.coefficients.length == 0);
+    assert(i.coefficient.view == 0L);
+    assert(cast(long) i.coefficient == 0);
 }

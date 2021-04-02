@@ -115,28 +115,50 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticAr
     else
     {
         import mir.appender: ScopedBuffer;
-        ScopedBuffer!(Unqual!E) a;
-        static if (isInputRange!Range)
-            for (; !r.empty; r.popFront)
-                a.put(r.front);
-        else
-        static if (isPointer!Range)
+
+        if (false)
         {
-            foreach (e; *r)
-                a.put(forward!e);
-        }
-        else
-        {
-            foreach (e; r)
-                a.put(forward!e);
+            ScopedBuffer!(Unqual!E) a;
+            static if (isInputRange!Range)
+                for (; !r.empty; r.popFront)
+                    a.put(r.front);
+            else
+            static if (isPointer!Range)
+            {
+                foreach (e; *r)
+                    a.put(forward!e);
+            }
+            else
+            {
+                foreach (e; r)
+                    a.put(forward!e);
+            }
         }
 
-        return (() @trusted {
+        return () @trusted {
+            ScopedBuffer!(Unqual!E) a = void;
+            a.initialize;
+
+            static if (isInputRange!Range)
+                for (; !r.empty; r.popFront)
+                    a.put(r.front);
+            else
+            static if (isPointer!Range)
+            {
+                foreach (e; *r)
+                    a.put(forward!e);
+            }
+            else
+            {
+                foreach (e; r)
+                    a.put(forward!e);
+            }
+
             import std.array: uninitializedArray;
             auto ret = uninitializedArray!(Unqual!E[])(a.length);
             a.moveDataAndEmplaceTo(ret);
             return ret;
-        })();
+        } ();
     }
 }
 
