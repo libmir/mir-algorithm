@@ -81,7 +81,7 @@ package template MaxWordPow5(T)
         static assert(0);
 }
 
-private template MaxFpPow5(T)
+package template MaxFpPow5(T)
 {
     static if (T.mant_dig == 24)
         enum MaxFpPow5 = 6;
@@ -2049,7 +2049,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
     Precondition: non-empty coefficients
     Note: doesn't support signs.
     +/
-    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDExponent = true, bool allowStartingPlus = true)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true)(scope const(C)[] str, out DecimalExponentKey key)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
@@ -2057,7 +2057,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
         version(LDC)
         {
-            static if ((allowSpecialValues && allowDExponent && allowStartingPlus) == false)
+            static if ((allowSpecialValues && allowDExponent && allowStartingPlus && allowDotOnBounds && checkEmpty) == false)
                 pragma(inline, true);
         }
 
@@ -2066,8 +2066,11 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         coefficient.leastSignificant = 0;
         auto work = coefficient.topLeastSignificantPart(1);
 
-        if (_expect(str.length == 0, false))
-            return false;
+        static if (checkEmpty)
+        {
+            if (_expect(str.length == 0, false))
+                return false;
+        }
 
         if (str[0] == '-')
         {
@@ -2094,7 +2097,6 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         W t = 1;
         uint afterDot;
         bool dot;
-        bool hasExponent;
 
         if (d == 0)
         {
@@ -2107,45 +2109,34 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                 return false;
             goto S;
         }
-        else
+
         if (d < 10)
         {
             goto S;
         }
-        else
-        if (d == '.' - '0')
+
+        static if (allowDotOnBounds)
         {
-            if (str.length == 0)
-                return false;
-            goto D;
+            if (d == '.' - '0')
+            {
+                if (str.length == 0)
+                    return false;
+                key = DecimalExponentKey.dot;
+                dot = true;
+                goto F;
+            }
+        }
+
+        static if (allowSpecialValues)
+        {
+            goto NI;
         }
         else
         {
-            exponent = exponent.max;
-            static if (allowSpecialValues)
-            {
-                if (str.length == 2)
-                {
-                    auto stail = cast(C[2])str[0 .. 2];
-                    if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
-                    {
-                        coefficient = coefficient.init;
-                        key = DecimalExponentKey.infinity;
-                        return true;
-                    }
-                    if (d == 'n' - '0' && stail== cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
-                    {
-                        coefficient.leastSignificant = 1;
-                        coefficient = coefficient.topLeastSignificantPart(1);
-                        key = DecimalExponentKey.nan;
-                        return true;
-                    }
-                }
-            }
             return false;
         }
 
-        for(;;)
+        F: for(;;)
         {
             enum mp10 = W(10) ^^ MaxWordPow10!W;
             d = str[0] - '0';
@@ -2188,18 +2179,24 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
                 continue;
             }
-            else
-            if (key != d) switch (d)
+            key = cast(DecimalExponentKey)d;
+            switch (d)
             {
                 D:
                 case DecimalExponentKey.dot:
-                    key = cast(DecimalExponentKey)d;
                     if (_expect(dot, false))
                         break;
                     dot = true;
-                    if (str.length == 0)
+                    if (str.length)
+                        continue;
+                    static if (allowDotOnBounds)
+                    {
                         goto L;
-                    continue;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 static if (allowDExponent)
                 {
                     case DecimalExponentKey.d:
@@ -2208,8 +2205,6 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                 }
                 case DecimalExponentKey.e:
                 case DecimalExponentKey.E:
-                    key = cast(DecimalExponentKey)d;
-                    hasExponent = true;
                     import mir.parse: parse;
                     if (parse(str, exponent) && str.length == 0)
                     {
@@ -2223,6 +2218,30 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
             break;
         }
         return false;
+
+        static if (allowSpecialValues)
+        {
+        NI:
+            exponent = exponent.max;
+            if (str.length == 2)
+            {
+                auto stail = cast(C[2])str[0 .. 2];
+                if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
+                {
+                    coefficient = coefficient.init;
+                    key = DecimalExponentKey.infinity;
+                    return true;
+                }
+                if (d == 'n' - '0' && stail == cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
+                {
+                    coefficient.leastSignificant = 1;
+                    coefficient = coefficient.topLeastSignificantPart(1);
+                    key = DecimalExponentKey.nan;
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     ///
@@ -2263,17 +2282,19 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         auto coeff = coefficient.lightConst;
         T ret = 0;
 
+        static if (!wordNormalized)
+            coeff = coeff.normalized;
+
         if (_expect(exponent == exponent.max, false))
         {
             ret = coeff.coefficients.length ? T.nan : T.infinity;
             goto R;
         }
 
-        static if (!wordNormalized)
-            coeff = coeff.normalized;
         static if (!nonZero)
             if (coeff.coefficients.length == 0)
                 goto R;
+
         enum S = 9;
 
         static if (T.mant_dig < 64)
@@ -2400,7 +2421,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 }
 
 @optStrategy("minsize")
-private T algoR(T, W, WordEndian endian)(T ret, BigUIntView!(const W, endian) coeff, int exponent)
+package T algoR(T, W, WordEndian endian)(T ret, BigUIntView!(const W, endian) coeff, int exponent)
 {
     pragma(inline, false);
 
