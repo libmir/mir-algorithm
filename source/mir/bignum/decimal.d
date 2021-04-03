@@ -70,7 +70,7 @@ struct Decimal(size_t maxSize64)
     {
         import mir.math.constant: PI;
         Decimal!2 decimal = "3.141592653589793378e-40"; // constructor
-        assert(cast(double) decimal.view == double(PI) / 1e40);
+        assert(cast(double) decimal == double(PI) / 1e40);
     }
 
     /++
@@ -119,23 +119,180 @@ struct Decimal(size_t maxSize64)
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients.
     +/
-    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDExponent = true, bool allowStartingPlus = true)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true)(scope const(C)[] str, out DecimalExponentKey key)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
+        enum optimize = size_t.sizeof == 8 && maxSize64 == 1;
         version(LDC)
         {
-            static if ((allowSpecialValues && allowDExponent && allowStartingPlus) == false)
+            static if (optimize || (allowSpecialValues && allowDExponent && allowStartingPlus && checkEmpty) == false)
                 pragma(inline, true);
         }
+        static if (optimize)
+        {
+            import mir.utility: _expect;
+            static if (checkEmpty)
+            {
+                if (_expect(str.length == 0, false))
+                    return false;
+            }
 
-        import mir.bignum.low_level_view: DecimalView, BigUIntView, MaxWordPow10;
-        auto work = DecimalView!size_t(false, 0, BigUIntView!size_t(coefficient.data));
-        auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus)(str, key);
-        coefficient.length = cast(uint) work.coefficient.coefficients.length;
-        coefficient.sign = work.sign;
-        exponent = work.exponent;
-        return ret;
+            coefficient.sign = str[0] == '-';
+            if (coefficient.sign)
+            {
+                str = str[1 .. $];
+                if (_expect(str.length == 0, false))
+                    return false;
+            }
+            else
+            static if (allowStartingPlus)
+            {
+                if (_expect(str[0] == '+', false))
+                {
+                    str = str[1 .. $];
+                    if (_expect(str.length == 0, false))
+                        return false;
+                }
+            }
+
+            uint d = str[0] - '0';
+            str = str[1 .. $];
+            exponent = 0;
+
+            ulong v;
+            uint afterDot;
+            bool dot;
+
+            if (d == 0)
+            {
+                if (str.length == 0)
+                    goto R;
+                if (str[0] == '0')
+                    return false;
+                goto S;
+            }
+
+            if (d < 10)
+            {
+                goto S;
+            }
+
+            static if (allowDotOnBounds)
+            {
+                if (d == '.' - '0')
+                {
+                    if (str.length == 0)
+                        return false;
+                    key = DecimalExponentKey.dot;
+                    dot = true;
+                    goto F;
+                }
+            }
+
+            static if (allowSpecialValues)
+            {
+                goto NI;
+            }
+            else
+            {
+                return false;
+            }
+
+            F: for(;;)
+            {
+                d = str[0] - '0';
+                str = str[1 .. $];
+
+                if (_expect(d <= 10, true))
+                {
+                    {
+                        import core.checkedint: addu, mulu;
+                        bool overflow;
+                        v = mulu(v, cast(uint)10, overflow);
+                        if (overflow)
+                            break;
+                    }
+                S:
+                    v += d;
+                    afterDot += dot;
+                    if (str.length)
+                        continue;
+                E:
+                    exponent -= afterDot;
+                R:
+                    coefficient.data[0] = v;
+                    coefficient.length = v != 0;
+                    return true;
+                }
+                switch (d)
+                {
+                    D:
+                    case DecimalExponentKey.dot:
+                        if (dot)
+                            break;
+                        key = cast(DecimalExponentKey)d;
+                        dot = true;
+                        if (str.length)
+                            continue;
+                        static if (allowDotOnBounds)
+                        {
+                            goto R;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    static if (allowDExponent)
+                    {
+                        case DecimalExponentKey.d:
+                        case DecimalExponentKey.D:
+                            goto case DecimalExponentKey.e;
+                    }
+                    case DecimalExponentKey.e:
+                    case DecimalExponentKey.E:
+                        key = cast(DecimalExponentKey)d;
+                        import mir.parse: parse;
+                        if (parse(str, exponent) && str.length == 0)
+                            goto E;
+                        break;
+                    default:
+                }
+                break;
+            }
+            return false;
+            static if (allowSpecialValues)
+            {
+            NI:
+                exponent = exponent.max;
+                if (str.length == 2)
+                {
+                    auto stail = cast(C[2])str[0 .. 2];
+                    if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
+                    {
+                        key = DecimalExponentKey.infinity;
+                        goto R;
+                    }
+                    if (d == 'n' - '0' && stail == cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
+                    {
+                        v = 1;
+                        key = DecimalExponentKey.nan;
+                        goto R;
+                    }
+                }
+                return false;
+            }
+        }
+        else
+        {
+            import mir.bignum.low_level_view: DecimalView, BigUIntView, MaxWordPow10;
+            auto work = DecimalView!size_t(false, 0, BigUIntView!size_t(coefficient.data));
+            auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus)(str, key);
+            coefficient.length = cast(uint) work.coefficient.coefficients.length;
+            coefficient.sign = work.sign;
+            exponent = work.exponent;
+            return ret;
+        }
     }
 
     static if (maxSize64 == 3)
@@ -150,27 +307,27 @@ struct Decimal(size_t maxSize64)
 
         assert(decimal.fromStringImpl("1.334", key));
         assert(key == DecimalExponentKey.dot);
-        assert(cast(double) decimal.view == 1.334);
+        assert(cast(double) decimal == 1.334);
 
         assert(decimal.fromStringImpl("+0.334e-5"w, key));
         assert(key == DecimalExponentKey.e);
-        assert(cast(double) decimal.view == 0.334e-5);
+        assert(cast(double) decimal == 0.334e-5);
 
         assert(decimal.fromStringImpl("-334D-5"d, key));
         assert(key == DecimalExponentKey.D);
-        assert(cast(double) decimal.view == -334e-5);
+        assert(cast(double) decimal == -334e-5);
 
         assert(decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
         assert(key == DecimalExponentKey.none);
-        assert(cast(double) decimal.view == 2482734692817364218734682973648217364981273648923423.0);
+        assert(cast(double) decimal == 2482734692817364218734682973648217364981273648923423.0);
 
         assert(decimal.fromStringImpl(".023", key));
         assert(key == DecimalExponentKey.dot);
-        assert(cast(double) decimal.view == .023);
+        assert(cast(double) decimal == .023);
 
         assert(decimal.fromStringImpl("0E100", key));
         assert(key == DecimalExponentKey.E);
-        assert(cast(double) decimal.view == 0);
+        assert(cast(double) decimal == 0);
 
         foreach (str; ["-nan", "-NaN", "-NAN"])
         {
@@ -179,7 +336,7 @@ struct Decimal(size_t maxSize64)
             assert(decimal.exponent == decimal.exponent.max);
             assert(decimal.coefficient.sign);
             assert(key == DecimalExponentKey.nan);
-            assert(cast(double) decimal.view != cast(double) decimal.view);
+            assert(cast(double) decimal != cast(double) decimal);
         }
 
         foreach (str; ["inf", "Inf", "INF"])
@@ -188,14 +345,79 @@ struct Decimal(size_t maxSize64)
             assert(decimal.coefficient.length == 0);
             assert(decimal.exponent == decimal.exponent.max);
             assert(key == DecimalExponentKey.infinity);
-            assert(cast(double) decimal.view == double.infinity);
+            assert(cast(double) decimal == double.infinity);
         }
 
         assert(decimal.fromStringImpl("-inf", key));
         assert(decimal.coefficient.length == 0);
         assert(decimal.exponent == decimal.exponent.max);
         assert(key == DecimalExponentKey.infinity);
-        assert(cast(double) decimal.view == -double.infinity);
+        assert(cast(double) decimal == -double.infinity);
+
+        assert(!decimal.fromStringImpl("3.3.4", key));
+        assert(!decimal.fromStringImpl("3.4.", key));
+        assert(decimal.fromStringImpl("4.", key));
+        assert(!decimal.fromStringImpl(".", key));
+        assert(decimal.fromStringImpl("0.", key));
+        assert(!decimal.fromStringImpl("00", key));
+        assert(!decimal.fromStringImpl("0d", key));
+    }
+
+    static if (maxSize64 == 3)
+    version(mir_bignum_test)
+    // @safe pure nothrow @nogc
+    unittest
+    {
+        import mir.conv: to;
+        Decimal!1 decimal;
+        DecimalExponentKey key;
+
+        assert(decimal.fromStringImpl("1.334", key));
+        assert(key == DecimalExponentKey.dot);
+        assert(cast(double) decimal == 1.334);
+
+        assert(decimal.fromStringImpl("+0.334e-5"w, key));
+        assert(key == DecimalExponentKey.e);
+        assert(cast(double) decimal == 0.334e-5);
+
+        assert(decimal.fromStringImpl("-334D-5"d, key));
+        assert(key == DecimalExponentKey.D);
+        assert(cast(double) decimal == -334e-5);
+
+        assert(!decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
+
+        assert(decimal.fromStringImpl(".023", key));
+        assert(key == DecimalExponentKey.dot);
+        assert(cast(double) decimal == .023);
+
+        assert(decimal.fromStringImpl("0E100", key));
+        assert(key == DecimalExponentKey.E);
+        assert(cast(double) decimal == 0);
+
+        foreach (str; ["-nan", "-NaN", "-NAN"])
+        {
+            assert(decimal.fromStringImpl(str, key));
+            assert(decimal.coefficient.length > 0);
+            assert(decimal.exponent == decimal.exponent.max);
+            assert(decimal.coefficient.sign);
+            assert(key == DecimalExponentKey.nan);
+            assert(cast(double) decimal != cast(double) decimal);
+        }
+
+        foreach (str; ["inf", "Inf", "INF"])
+        {
+            assert(decimal.fromStringImpl(str, key));
+            assert(decimal.coefficient.length == 0);
+            assert(decimal.exponent == decimal.exponent.max);
+            assert(key == DecimalExponentKey.infinity);
+            assert(cast(double) decimal == double.infinity);
+        }
+
+        assert(decimal.fromStringImpl("-inf", key));
+        assert(decimal.coefficient.length == 0);
+        assert(decimal.exponent == decimal.exponent.max);
+        assert(key == DecimalExponentKey.infinity);
+        assert(cast(double) decimal == -double.infinity);
 
         assert(!decimal.fromStringImpl("3.3.4", key));
         assert(!decimal.fromStringImpl("3.4.", key));
@@ -436,7 +658,87 @@ struct Decimal(size_t maxSize64)
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
-        return view.opCast!(T, wordNormalized, nonZero);
+
+        enum optimize = maxSize64 == 1 && size_t.sizeof == 8 && T.mant_dig < 64;
+
+        version(LDC)
+        {
+            static if (optimize || wordNormalized)
+                pragma(inline, true);
+        }
+
+        static if (optimize)
+        {
+            import mir.bignum.fixed: UInt;
+            import mir.bignum.fp: Fp, extendedMul;
+            import mir.bignum.internal.dec2flt_table;
+            import mir.bignum.low_level_view: MaxWordPow5, MaxFpPow5;
+            import mir.math.common: floor;
+            import mir.utility: _expect;
+
+            T ret = 0;
+            size_t length = coefficient.length;
+
+
+            static if (!wordNormalized)
+            {
+                if (coefficient.data[0] == 0)
+                    length = 0;
+            }
+
+            if (_expect(exponent == exponent.max, false))
+            {
+                ret = length ? T.nan : T.infinity;
+                goto R;
+            }
+
+            static if (!nonZero)
+                if (length == 0)
+                    goto R;
+            enum S = 9;
+
+            Fp!64 load(typeof(exponent) e)
+            {
+                auto p10coeff = p10_coefficients[cast(sizediff_t)e - min_p10_e][0];
+                auto p10exp = p10_exponents[cast(sizediff_t)e - min_p10_e];
+                return Fp!64(false, p10exp, UInt!64(p10coeff));
+            }
+            {
+                auto expSign = exponent < 0;
+                if (_expect((expSign ? -exponent : exponent) >>> S == 0, true))
+                {
+                    enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
+                    enum ulong half = (1UL << (64 - T.mant_dig - 1));
+                    enum ulong bound = ulong(1) << T.mant_dig;
+
+                    auto c = Fp!64(UInt!64(coefficient.data[0]));
+                    auto z = c.extendedMul(load(exponent));
+                    ret = cast(T) z;
+                    long bitsDiff = (cast(ulong) z.opCast!(Fp!64).coefficient & mask) - half;
+                    if (_expect((bitsDiff < 0 ? -bitsDiff : bitsDiff) > 3 * expSign, true))
+                        goto R;
+                    if (!expSign && exponent <= MaxWordPow5!ulong || exponent == 0)
+                        goto R;
+                    if (expSign && MaxFpPow5!T >= -exponent && cast(ulong)c.coefficient < bound)
+                    {
+                        auto e = load(-exponent);
+                        ret =  c.opCast!(T, true) / cast(T) (cast(ulong)e.coefficient >> e.exponent);
+                        goto R;
+                    }
+                    ret = algoR!T(ret, view.coefficient, cast(int) exponent);
+                    goto R;
+                }
+                ret = expSign ? 0 : T.infinity;
+            }
+        R:
+            if (coefficient.sign)
+                ret = -ret;
+            return ret;
+        }
+        else
+        {
+            return view.opCast!(T, wordNormalized, nonZero);
+        }
     }
 
     ///
@@ -463,7 +765,7 @@ unittest
 
     import mir.math.constant: PI;
     assert(decimal.fromStringImpl("3.141592653589793378e-10", key));
-    assert(cast(double) decimal.view == double(PI) / 1e10);
+    assert(cast(double) decimal == double(PI) / 1e10);
     assert(key == DecimalExponentKey.e);
 }
 
