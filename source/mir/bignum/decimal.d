@@ -677,8 +677,6 @@ struct Decimal(size_t maxSize64)
             import mir.utility: _expect;
 
             T ret = 0;
-                    import std.stdio;
-
             size_t length = coefficient.length;
 
 
