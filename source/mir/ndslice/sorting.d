@@ -660,8 +660,8 @@ version(mir_test)
     assert(j == 3);
     auto upperBound = a[j .. $];
 
-    assert(a.transitionIndex(a[$-1]) == a.length - 1);
-    assert(a.transitionIndex!"a <= b"(a[$-1]) == a.length);
+    assert(a.transitionIndex(a[$ - 1]) == a.length - 1);
+    assert(a.transitionIndex!"a <= b"(a[$ - 1]) == a.length);
 }
 
 /++
