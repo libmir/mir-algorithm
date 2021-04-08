@@ -37,10 +37,7 @@ struct StringMap(T, U = uint)
     this(string[] keys, T[] values) @trusted pure nothrow
     {
         assert(keys.length == values.length);
-        implementation = new Impl;
-        implementation._length = keys.length;
-        implementation._keys = keys.ptr;
-        implementation._values = values.ptr;
+        implementation = new Impl(keys, values);
     }
 
     /++
@@ -223,9 +220,9 @@ struct StringMap(T, U = uint)
                     implementation._values[index] = move(value);
                     return implementation._values[index];
                 }
-                assert (index < length);
-                index = implementation._indices[index];
-                assert (index < length);
+                assert (index <= length);
+                index = index < length ? implementation.indices[index] : length;
+                assert (index <= length);
             }
             else
             {
@@ -256,6 +253,7 @@ struct StringMap(T, U = uint)
     +/
     ref T require(string key, lazy T value = T.init)
     {
+        import std.stdio;
         size_t index;
         if (_expect(!implementation, false))
         {
@@ -270,12 +268,11 @@ struct StringMap(T, U = uint)
                     assert (index < length);
                     index = implementation.indices[index];
                     assert (index < length);
-                    implementation.values[index] = value;
                     return implementation.values[index];
                 }
-                assert (index < length);
-                index = implementation.indices[index];
-                assert (index < length);
+                assert (index <= length);
+                index = index < length ? implementation.indices[index] : length;
+                assert (index <= length);
             }
             else
             {
@@ -285,6 +282,16 @@ struct StringMap(T, U = uint)
         assert (index <= length);
         implementation.insertAt(key, value, index);
         return implementation.values[index];
+    }
+
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!int aa = ["aa": 1];
+        assert(aa.require("aa", 0) == 1);
+        assert(aa.require("bb", 0) == 0);
+        assert(aa["bb"] == 0);
     }
 }
 
@@ -323,13 +330,46 @@ private struct StructImpl(T, U = uint)
     U* _indices;
     U[] _lengthTable;
 
+    /++
+    +/
+    this(string[] keys, T[] values) @trusted pure nothrow
+    {
+        import mir.array.allocation: array;
+        import mir.ndslice.sorting: sort;
+        import mir.ndslice.topology: iota, indexed;
+        import mir.string_table: smallerStringFirst;
+
+        assert(keys.length == values.length);
+        if (keys.length == 0)
+            return;
+        _length = keys.length;
+        _keys = keys.ptr;
+        _values = values.ptr;
+        _indices = keys.length.iota!U.array.ptr;
+        auto sortedKeys = _keys.indexed(indices);
+        sortedKeys.sort!smallerStringFirst;
+        size_t maxKeyLength;
+        foreach (ref key; keys)
+            if (key.length > maxKeyLength)
+                maxKeyLength = key.length;
+        _lengthTable = new U[maxKeyLength + 2];
+
+        size_t ski;
+        foreach (length; 0 .. maxKeyLength + 1)
+        {
+            while(ski < sortedKeys.length && sortedKeys[ski].length == length)
+                ski++;
+            _lengthTable[length + 1] = cast(U)ski;
+        }
+    }
+
     // this(size_t length, size_t maxKeyLength)
     // {
     //     assert(length);
     //     _length = length;
     //     _keys = new string[length].ptr;
     //     _values = new T[length].ptr;
-    //     _indices = new U[length].ptr;
+    //     _indices = new U[length].assumeSafeAppend;
     //     _lengthTable = new U[maxKeyLength + 2].assumeSafeAppend;
     // }
 
@@ -343,7 +383,7 @@ private struct StructImpl(T, U = uint)
     //     lengthTable[key.length + 1 .. $] = 1;
     // }
 
-    void insertAt(string key, T value, size_t i)
+    void insertAt(string key, T value, size_t i) @trusted
     {
         pragma(inline, false);
 
