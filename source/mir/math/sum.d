@@ -360,7 +360,7 @@ enum Summation
     The resulting decimal elements are summed without rounding.
     The decimal sum is converted back to a binary floating point representation using round-half-to-even rule.
 
-    See_also: The $(HTTPS https://github.com/ulfjack/ryu, Ryu algorithm)
+    See_also: The $(HTTPS github.com/ulfjack/ryu, Ryu algorithm)
     +/
     decimal,
 

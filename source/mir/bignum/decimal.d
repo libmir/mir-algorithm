@@ -74,7 +74,7 @@ struct Decimal(size_t maxSize64)
     }
 
     /++
-    Constructs Decimal from the floating point number using the $(HTTPS https://github.com/ulfjack/ryu, Ryu algorithm).
+    Constructs Decimal from the floating point number using the $(HTTPS github.com/ulfjack/ryu, Ryu algorithm).
 
     The number is the shortest decimal representation that being converted back would result the same floating-point number.
     +/
