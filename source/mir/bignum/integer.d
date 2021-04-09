@@ -324,22 +324,30 @@ struct BigInt(size_t maxSize64)
     Returns:
         overflow
     +/
-    bool opOpAssign(string op)(ref const BigInt rhs)
+    bool opOpAssign(string op, size_t rhsMaxSize64)(ref const BigInt!rhsMaxSize64 rhs)
         @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
-        int diff = length - rhs.length;
+        return opOpAssign!op(rhs.view);
+    }
+
+    /// ditto
+    bool opOpAssign(string op)(BigIntView!(const size_t) rhs)
+        @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        sizediff_t diff = length - rhs.coefficients.length;
         if (diff < 0)
         {
             auto oldLength = length;
-            length = rhs.length;
+            length = cast(int)rhs.coefficients.length;
             view.unsigned.leastSignificantFirst[oldLength .. $] = 0;
         }
         else
-        if (rhs.length == 0)
+        if (rhs.coefficients.length == 0)
             return false;
         auto thisView = view;
-        auto overflow = thisView.opOpAssign!op(rhs.view);
+        auto overflow = thisView.opOpAssign!op(rhs);
         this.sign = thisView.sign;
         if (overflow)
         {
@@ -519,7 +527,7 @@ struct BigInt(size_t maxSize64)
     +/
     bool copyFrom(W, WordEndian endian)(BigIntView!(const W, endian) view)
     {
-        static if (W.sizeof > size_t.sizeof)
+        static if (W.sizeof > size_t.sizeof && endian == TargetEndian)
         {
             return this.copyFrom(cast(BigIntView!(const size_t))view);
         }

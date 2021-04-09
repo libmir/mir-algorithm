@@ -20,6 +20,23 @@ unittest
     assert(r == ar.sum!"kbn");
     assert(r == ar.sum!"kb2");
     assert(r == ar.sum!"precise");
+    assert(r == ar.sum!"decimal");
+}
+
+/// Decimal precise summation
+version(mir_test)
+unittest
+{
+    auto ar = [777.7, -777];
+    assert(ar.sum!"decimal" == 0.7);
+
+    // The exact binary reuslt is 0.7000000000000455
+    assert(ar[0] + ar[1] == 0.7000000000000455);
+    assert(ar.sum!"fast" == 0.7000000000000455);
+    assert(ar.sum!"kahan" == 0.7000000000000455);
+    assert(ar.sum!"kbn" == 0.7000000000000455);
+    assert(ar.sum!"kb2" == 0.7000000000000455);
+    assert(ar.sum!"precise" == 0.7000000000000455);
 }
 
 ///
@@ -111,6 +128,7 @@ unittest
         assert(r == ar.sum!"kb2");
     }
     assert(r == ar.sum!"precise");
+    assert(r == ar.sum!"decimal");
 }
 
 ///
@@ -317,7 +335,7 @@ enum Summation
     Precise summation algorithm.
     The value of the sum is rounded to the nearest representable
     floating-point number using the $(LUCKY round-half-to-even rule).
-    The result can differ from the exact value on `X86`, `nextDown(proir) <= result &&  result <= nextUp(proir)`.
+    The result can differ from the exact value on 32bit `x86`, `nextDown(proir) <= result &&  result <= nextUp(proir)`.
     The current implementation re-establish special value semantics across iterations (i.e. handling ±inf).
 
     References: $(LINK2 http://www.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps,
@@ -334,6 +352,17 @@ enum Summation
     IEEE 754R floating point semantics are assumed.
     +/
     precise,
+
+    /++
+    Precise decimal summation algorithm.
+
+    The elements of the sum are converted to a shortest decimal representation that being converted back would result the same floating-point number.
+    The resulting decimal elements are summed without rounding.
+    The decimal sum is converted back to a binary floating point representation using round-half-to-even rule.
+
+    See_also: The $(HTTPS https://github.com/ulfjack/ryu, Ryu algorithm)
+    +/
+    decimal,
 
     /++
     $(WEB en.wikipedia.org/wiki/Kahan_summation, Kahan summation) algorithm.
@@ -611,6 +640,13 @@ struct Summator(T, Summation summation)
         F s = summationInitValue!F;
     }
     else
+    static if (summation == Summation.decimal)
+    {
+        import mir.bignum.decimal;
+        Decimal!256 s;
+        T ss = 0;
+    }
+    else
     static assert(0, "Unsupported summation type for std.numeric.Summator.");
 
 
@@ -672,6 +708,17 @@ public:
         else
         static if (summation == Summation.fast)
         {
+            s = n;
+        }
+        else
+        static if (summation == Summation.decimal)
+        {
+            ss = 0;
+            if (!(-n.infinity < n && n < n.infinity))
+            {
+                ss = n;
+                n = 0;
+            }
             s = n;
         }
         else
@@ -893,6 +940,20 @@ public:
         static if (summation == Summation.fast)
         {
             s += n;
+        }
+        else
+        static if (summation == summation.decimal)
+        {
+            import mir.bignum.internal.ryu.generic_128: genericBinaryToDecimal;
+            if (-n.infinity < n && n < n.infinity)
+            {
+                auto decimal = genericBinaryToDecimal(n);
+                s += decimal;
+            }
+            else
+            {
+                ss += n;
+            }
         }
         else
         static assert(0);
@@ -1134,7 +1195,12 @@ public:
             return s;
         }
         else
-            static assert(0);
+        static if (summation == Summation.decimal)
+        {
+            return cast(T) s + ss;
+        }
+        else
+        static assert(0);
     }
 
     version(none)
@@ -1309,6 +1375,11 @@ public:
         static if (summation == Summation.fast)
         {
             s = rhs;
+        }
+        else
+        static if (summation == summation.decimal)
+        {
+            __ctor(rhs);
         }
         else
         static assert(0);
@@ -1671,13 +1742,21 @@ template sum(F, Summation summation = Summation.appropriate)
         ///
         F sum(Range r)
         {
-            static if (isComplex!F && summation == Summation.precise)
+            static if (isComplex!F && (summation == Summation.precise || summation == Summation.decimal))
             {
                 return sum(r, summationInitValue!F);
             }
             else
             {
-                Summator!(F, ResolveSummationType!(summation, Range, sumType!Range)) sum;
+                static if (summation == Summation.decimal)
+                {
+                    Summator!(F, summation) sum = void;
+                    sum = 0;
+                }
+                else
+                {
+                    Summator!(F, ResolveSummationType!(summation, Range, sumType!Range)) sum;
+                }
                 sum.put(r.move);
                 return sum.sum;
             }
@@ -1686,11 +1765,22 @@ template sum(F, Summation summation = Summation.appropriate)
         ///
         F sum(Range r, F seed)
         {
-            static if (isComplex!F && summation == Summation.precise)
+            static if (isComplex!F && (summation == Summation.precise || summation == Summation.decimal))
             {
                 alias T = typeof(F.init.re);
-                auto sumRe = Summator!(T, Summation.precise)(seed.re);
-                auto sumIm = Summator!(T, Summation.precise)(seed.im);
+                static if (summation == Summation.decimal)
+                {
+                    Summator!(T, summation) sumRe = void;
+                    sumRe = seed.re;
+
+                    Summator!(T, summation) sumIm = void;
+                    sumIm = seed.im;
+                }
+                else
+                {
+                    auto sumRe = Summator!(T, Summation.precise)(seed.re);
+                    auto sumIm = Summator!(T, Summation.precise)(seed.im);
+                }
                 import mir.ndslice.slice: isSlice;
                 static if (isSlice!Range)
                 {
@@ -1713,7 +1803,15 @@ template sum(F, Summation summation = Summation.appropriate)
             }
             else
             {
-                auto sum = Summator!(F, ResolveSummationType!(summation, Range, F))(seed);
+                static if (summation == Summation.decimal)
+                {
+                    Summator!(F, summation) sum = void;
+                    sum = seed;
+                }
+                else
+                {
+                    auto sum = Summator!(F, ResolveSummationType!(summation, Range, F))(seed);
+                }
                 sum.put(r.move);
                 return sum.sum;
             }
@@ -1723,7 +1821,7 @@ template sum(F, Summation summation = Summation.appropriate)
     ///
     F sum(scope const F[] r...)
     {
-        static if (isComplex!F && summation == Summation.precise)
+        static if (isComplex!F && (summation == Summation.precise || summation == Summation.decimal))
         {
             return sum(r, summationInitValue!F);
         }
