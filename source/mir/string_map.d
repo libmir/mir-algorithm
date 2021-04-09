@@ -32,12 +32,31 @@ struct StringMap(T, U = uint)
         this(aa.keys, aa.values);
     }
 
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!int map = ["key" : 1];
+        assert(map.findPos("key") == 0);
+    }
+
     /++
     +/
     this(string[] keys, T[] values) @trusted pure nothrow
     {
         assert(keys.length == values.length);
         implementation = new Impl(keys, values);
+    }
+
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        auto keys = ["ba", "a"];
+        auto values = [1.0, 3.0];
+        auto map = StringMap!double(keys, values);
+        assert(map.keys is keys);
+        assert(map.values is values);
     }
 
     /++
@@ -48,6 +67,24 @@ struct StringMap(T, U = uint)
         return implementation ? implementation.length : 0;
     }
 
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        assert(map.length == 0);
+        map["a"] = 3.0;
+        assert(map.length == 1);
+        map["c"] = 4.0;
+        assert(map.length == 2);
+        map.remove("c");
+        assert(map.length == 1);
+        map.remove("c");
+        assert(map.length == 1);
+        map.remove("a");
+        assert(map.length == 0);
+    }
+
     /++
     Returns a dynamic array, the elements of which are the keys in the associative array.
     Doesn't allocate a new copy.
@@ -56,7 +93,25 @@ struct StringMap(T, U = uint)
     {
         return implementation ? implementation.keys : null;
     }
-    
+
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        assert(map.keys == []);
+        map["c"] = 4.0;
+        assert(map.keys == ["c"]);
+        map["a"] = 3.0;
+        assert(map.keys == ["c", "a"]);
+        map.remove("c");
+        assert(map.keys == ["a"]);
+        map.remove("a");
+        assert(map.keys == []);
+        map["c"] = 4.0;
+        assert(map.keys == ["c"]);
+    }
+
     /++
     Returns a dynamic array, the elements of which are the values in the associative array.
     Doesn't allocate a new copy.
@@ -64,6 +119,26 @@ struct StringMap(T, U = uint)
     inout(T)[] values() @safe pure nothrow @nogc inout @property
     {
         return implementation ? implementation.values : null;
+    }
+
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        assert(map.values == []);
+        map["c"] = 4.0;
+        assert(map.values == [4.0]);
+        map["a"] = 3.0;
+        assert(map.values == [4.0, 3.0]);
+        map.values[0]++;
+        assert(map.values == [5.0, 3.0]);
+        map.remove("c");
+        assert(map.values == [3.0]);
+        map.remove("a");
+        assert(map.values == []);
+        map["c"] = 4.0;
+        assert(map.values == [4.0]);
     }
 
     /++
@@ -79,6 +154,21 @@ struct StringMap(T, U = uint)
             implementation.values.capacity,
             implementation.indices.capacity,
         );
+    }
+
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        assert(map.capacity == 0);
+        map["c"] = 4.0;
+        assert(map.capacity >= 1);
+        map["a"] = 3.0;
+        assert(map.capacity >= 2);
+        map.remove("c");
+        map.assumeSafeAppend;
+        assert(map.capacity >= 2);
     }
 
     /++
@@ -150,13 +240,13 @@ struct StringMap(T, U = uint)
     +/
     bool remove(scope const(char)[] key) @trusted pure nothrow @nogc
     {
-        if (!implementation)
-            return false;
         size_t index;
-        if (!implementation.findIndex(key, index))
-            return false;
-        implementation.removeAt(index);
-        return true;
+        if (implementation && implementation.findIndex(key, index))
+        {
+            implementation.removeAt(index);
+            return true;
+        }
+        return false;
     }
 
     /++
@@ -458,7 +548,7 @@ private struct StructImpl(T, U = uint)
                 memmove(_indices + i, _indices + i + 1, (length - 1 - i) * U.sizeof);
             }
             foreach (ref elem; indices[0 .. $ - 1])
-                if (elem > i)
+                if (elem > j)
                     elem--;
         }
         {
@@ -480,7 +570,7 @@ private struct StructImpl(T, U = uint)
             }
         }
         _length--;
-        _lengthTable = _lengthTable[0 .. _keys[length - 1].length + 2];
+        _lengthTable = _lengthTable[0 .. length ? _keys[length - 1].length + 2 : 0];
     }
 
     size_t length() @safe pure nothrow @nogc const @property
