@@ -752,6 +752,59 @@ struct Decimal(size_t maxSize64)
     {
         return exponent == exponent.max && !coefficient.length;
     }
+
+    ///
+    ref opOpAssign(string op, size_t rhsMaxSize64)(ref const Decimal!rhsMaxSize64 rhs) @safe pure return
+        if (op == "+" || op == "-")
+    {
+        BigInt!rhsMaxSize64 rhsCopy;
+        BigIntView!(const size_t) rhsView;
+        auto expDiff = exponent - rhs.exponent;
+        if (expDiff >= 0)
+        {
+            exponent = rhs.exponent;
+            coefficient.mulPow5(expDiff);
+            coefficient.opOpAssign!"<<"(expDiff);
+            rhsView = rhs.coefficient.view;
+        }
+        else
+        {
+            rhsCopy.copyFrom(rhs.coefficient.view);
+            rhsCopy.mulPow5(-expDiff);
+            rhsCopy.opOpAssign!"<<"(-expDiff);
+            rhsView = rhsCopy.view;
+        }
+        coefficient.opOpAssign!op(rhsView);
+        return this;
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        import std.stdio;
+        auto a = Decimal!1("777.7");
+        auto b = Decimal!1("777");
+        import mir.format;
+        assert(stringBuf() << cast(double)a - cast(double)b << getData == "0.7000000000000455");
+        a -= b;
+        assert(stringBuf() << a << getData == "0.7");
+
+        a = Decimal!1("-777.7");
+        b = Decimal!1("777");
+        a += b;
+        assert(stringBuf() << a << getData == "-0.7");
+
+        a = Decimal!1("777.7");
+        b = Decimal!1("-777");
+        a += b;
+        assert(stringBuf() << a << getData == "0.7");
+
+        a = Decimal!1("777");
+        b = Decimal!1("777.7");
+        a -= b;
+        assert(stringBuf() << a << getData == "-0.7");
+    }
 }
 
 ///
