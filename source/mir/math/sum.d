@@ -29,6 +29,7 @@ unittest
 {
     auto ar = [777.7, -777];
     assert(ar.sum!"decimal" == 0.7);
+    assert(sum!"decimal"(777.7, -777) == 0.7);
 
     // The exact binary reuslt is 0.7000000000000455
     assert(ar[0] + ar[1] == 0.7000000000000455);
