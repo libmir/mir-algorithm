@@ -8,6 +8,7 @@ subprojects = ['mir-core']
 has_cpp_headers = true
 
 sources_list = [
+    'mir/algebraic_alias/json',
     'mir/algorithm/iteration',
     'mir/algorithm/setops',
     'mir/appender',
