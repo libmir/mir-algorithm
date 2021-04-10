@@ -77,11 +77,11 @@ struct StringMap(T, U = uint)
         assert(map.length == 1);
         map["c"] = 4.0;
         assert(map.length == 2);
-        map.remove("c");
+        assert(map.remove("c"));
         assert(map.length == 1);
-        map.remove("c");
+        assert(!map.remove("c"));
         assert(map.length == 1);
-        map.remove("a");
+        assert(map.remove("a"));
         assert(map.length == 0);
     }
 
@@ -203,6 +203,24 @@ struct StringMap(T, U = uint)
         );
     }
 
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        auto capacity = map.reserve(10);
+        assert(capacity >= 10);
+        assert(map.capacity == capacity);
+        map["c"] = 4.0;
+        assert(map.capacity == capacity);
+        map["a"] = 3.0;
+        assert(map.capacity >= 2);
+        assert(map.remove("c"));
+        capacity = map.reserve(20);
+        assert(capacity >= 20);
+        assert(map.capacity == capacity);
+    }
+
     /++
     Assume that it is safe to append to this associative array.
     Appends made to this associative array after calling this function may append in place, even if the array was a slice of a larger array to begin with.
@@ -223,6 +241,20 @@ struct StringMap(T, U = uint)
         return this;
     }
 
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        map["c"] = 4.0;
+        map["a"] = 3.0;
+        assert(map.capacity >= 2);
+        map.remove("c");
+        assert(map.capacity == 0);
+        map.assumeSafeAppend;
+        assert(map.capacity >= 2);
+    }
+
     /++
     Removes all remaining keys and values from an associative array.
     +/
@@ -234,6 +266,20 @@ struct StringMap(T, U = uint)
             implementation._lengthTable = implementation._lengthTable[0 .. 0];
         }
 
+    }
+
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        map["c"] = 4.0;
+        map["a"] = 3.0;
+        map.clear;
+        assert(map.length == 0);
+        assert(map.capacity == 0);
+        map.assumeSafeAppend;
+        assert(map.capacity >= 2);
     }
 
     /++
@@ -249,6 +295,21 @@ struct StringMap(T, U = uint)
         return false;
     }
 
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        map["a"] = 3.0;
+        map["c"] = 4.0;
+        assert(map.remove("c"));
+        assert(!map.remove("c"));
+        assert(map.remove("a"));
+        assert(map.length == 0);
+        assert(map.capacity == 0);
+        assert(map.assumeSafeAppend.capacity >= 2);
+    }
+
     /++
     +/
     ptrdiff_t findPos(scope const(char)[] key) @trusted pure nothrow @nogc const
@@ -261,6 +322,27 @@ struct StringMap(T, U = uint)
         return implementation._indices[index];
     }
 
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        map["c"] = 3.0;
+        map["La"] = 4.0;
+        map["a"] = 5.0;
+
+        assert(map.findPos("C") == -1);
+        assert(map.findPos("c") == 0);
+        assert(map.findPos("La") == 1);
+        assert(map.findPos("a") == 2);
+
+        map.remove("c");
+
+        assert(map.findPos("c") == -1);
+        assert(map.findPos("La") == 0);
+        assert(map.findPos("a") == 1);
+    }
+
     /++
     +/
     inout(T)* opBinaryRight(string op : "in")(scope const(char)[] key) @system pure nothrow @nogc inout
@@ -271,6 +353,16 @@ struct StringMap(T, U = uint)
         if (!implementation.findIndex(key, index))
             return null;
         return implementation._values + index;
+    }
+
+    static if (is(T == int))
+    ///
+    @system nothrow pure unittest
+    {
+        StringMap!double map;
+        assert(("c" in map) is null);
+        map["c"] = 3.0;
+        assert(*("c" in map) == 3.0);
     }
 
     /++
@@ -287,6 +379,19 @@ struct StringMap(T, U = uint)
         }
         import mir.exception: MirException;
         throw new MirException("No member: ", key);
+    }
+
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        map["c"] = 3.0;
+        map["La"] = 4.0;
+        map["a"] = 5.0;
+
+        map["La"] += 10;
+        assert(map["La"] == 14.0);
     }
 
     /++
@@ -321,6 +426,7 @@ struct StringMap(T, U = uint)
         }
         assert (index <= length);
         implementation.insertAt(key, move(value), index);
+        index = implementation._indices[index];
         return implementation._values[index];
     }
 
@@ -337,6 +443,16 @@ struct StringMap(T, U = uint)
             return implementation.values[index];
         }
         return defaultValue;
+    }
+
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!int map;
+        map["c"] = 3;
+        assert(map.get("c", 1) == 3);
+        assert(map.get("C", 1) == 1);
     }
 
     /++
@@ -371,6 +487,7 @@ struct StringMap(T, U = uint)
         }
         assert (index <= length);
         implementation.insertAt(key, value, index);
+        index = implementation.indices[index];
         return implementation.values[index];
     }
 
@@ -378,10 +495,14 @@ struct StringMap(T, U = uint)
     ///
     @safe pure unittest
     {
-        StringMap!int aa = ["aa": 1];
-        assert(aa.require("aa", 0) == 1);
-        assert(aa.require("bb", 0) == 0);
-        assert(aa["bb"] == 0);
+        StringMap!int map = ["aa": 1];
+        int add3(ref int x) { x += 3; return x; }
+        assert(add3(map.require("aa", 10)) == 4);
+        assert(add3(map.require("bb", 10)) == 13);
+        assert(map.require("a", 100));
+        assert(map.require("aa") == 4);
+        assert(map.require("bb") == 13);
+        assert(map.keys == ["aa", "bb", "a"]);
     }
 }
 
@@ -570,7 +691,7 @@ private struct StructImpl(T, U = uint)
             }
         }
         _length--;
-        _lengthTable = _lengthTable[0 .. length ? _keys[length - 1].length + 2 : 0];
+        _lengthTable = _lengthTable[0 .. length ? _keys[_indices[length - 1]].length + 2 : 0];
     }
 
     size_t length() @safe pure nothrow @nogc const @property
