@@ -25,9 +25,66 @@ struct StringMap(T, U = uint)
     private alias Impl = StructImpl!(T, U);
     private Impl* implementation;
 
+    // // linking bug
+    // version(none)
+    // {
+    //     /++
+    //     +/
+    //     bool opEquals()(typeof(null)) @safe pure nothrow @nogc const
+    //     {
+    //         return implementation is null;
+    //     }
+
+    //     static if (is(T == int))
+    //     ///
+    //     @safe pure unittest
+    //     {
+    //         StringMap!int map;
+    //         assert(map == null);
+    //         map = StringMap!int(["key" : 1]);
+    //         assert(map != null);
+    //         map.remove("key");
+    //         assert(map != null);
+    //     }
+    // }
+
     /++
+    Reset the associtave array
     +/
-    this(T[string] aa) @trusted pure nothrow
+    ref opAssign()(typeof(null)) return @safe pure nothrow @nogc
+    {
+        implementation = null;
+        return this;
+    }
+
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!int map = ["key" : 1];
+        map = null;
+    }
+
+    /++
+    Initialize the associtave array with default value.
+    +/
+    this()(typeof(null) aa) @safe pure nothrow @nogc
+    {
+        implementation = null;
+    }
+
+    static if (is(T == int))
+    /// Usefull for default funcion argument.
+    @safe pure unittest
+    {
+        StringMap!int map = null; //
+    }
+
+    /++
+    Constructs an associative array using keys and values from the builtin associative array
+    Complexity: `O(n log(n))`
+    +/
+    this()(T[string] aa) @trusted pure nothrow
     {
         this(aa.keys, aa.values);
     }
@@ -41,8 +98,15 @@ struct StringMap(T, U = uint)
     }
 
     /++
+    Constructs an associative array using keys and values.
+    Params:
+        keys = mutable array of keys
+        values = mutable array of values
+    Key and value arrays must have the same length.
+
+    Complexity: `O(n log(n))`
     +/
-    this(string[] keys, T[] values) @trusted pure nothrow
+    this()(string[] keys, T[] values) @trusted pure nothrow
     {
         assert(keys.length == values.length);
         implementation = new Impl(keys, values);
@@ -62,7 +126,7 @@ struct StringMap(T, U = uint)
     /++
     Returns: number of elements in the table.
     +/
-    size_t length() @safe pure nothrow @nogc const @property
+    size_t length()() @safe pure nothrow @nogc const @property
     {
         return implementation ? implementation.length : 0;
     }
@@ -77,19 +141,21 @@ struct StringMap(T, U = uint)
         assert(map.length == 1);
         map["c"] = 4.0;
         assert(map.length == 2);
-        map.remove("c");
+        assert(map.remove("c"));
         assert(map.length == 1);
-        map.remove("c");
+        assert(!map.remove("c"));
         assert(map.length == 1);
-        map.remove("a");
+        assert(map.remove("a"));
         assert(map.length == 0);
     }
 
     /++
     Returns a dynamic array, the elements of which are the keys in the associative array.
     Doesn't allocate a new copy.
+
+    Complexity: `O(1)`
     +/
-    const(string)[] keys() @safe pure nothrow @nogc const @property
+    const(string)[] keys()() @safe pure nothrow @nogc const @property
     {
         return implementation ? implementation.keys : null;
     }
@@ -115,8 +181,10 @@ struct StringMap(T, U = uint)
     /++
     Returns a dynamic array, the elements of which are the values in the associative array.
     Doesn't allocate a new copy.
+
+    Complexity: `O(1)`
     +/
-    inout(T)[] values() @safe pure nothrow @nogc inout @property
+    inout(T)[] values()() @safe pure nothrow @nogc inout @property
     {
         return implementation ? implementation.values : null;
     }
@@ -144,8 +212,10 @@ struct StringMap(T, U = uint)
     /++
     (Property) Gets the current capacity of an associative array.
     The capacity is the size that the underlaynig slices can grow to before the underlying arrays may be reallocated or extended.
+
+    Complexity: `O(1)`
     +/
-    size_t capacity() @safe pure nothrow const @property
+    size_t capacity()() @safe pure nothrow const @property
     {
         import mir.utility: min;
 
@@ -175,7 +245,7 @@ struct StringMap(T, U = uint)
     Reserves capacity for an associative array. 
     The capacity is the size that the underlaying slices can grow to before the underlying arrays may be reallocated or extended.
     +/
-    size_t reserve(size_t newcapacity) @trusted pure nothrow 
+    size_t reserve()(size_t newcapacity) @trusted pure nothrow 
     {
         import mir.utility: min;
 
@@ -203,6 +273,24 @@ struct StringMap(T, U = uint)
         );
     }
 
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        auto capacity = map.reserve(10);
+        assert(capacity >= 10);
+        assert(map.capacity == capacity);
+        map["c"] = 4.0;
+        assert(map.capacity == capacity);
+        map["a"] = 3.0;
+        assert(map.capacity >= 2);
+        assert(map.remove("c"));
+        capacity = map.reserve(20);
+        assert(capacity >= 20);
+        assert(map.capacity == capacity);
+    }
+
     /++
     Assume that it is safe to append to this associative array.
     Appends made to this associative array after calling this function may append in place, even if the array was a slice of a larger array to begin with.
@@ -212,7 +300,7 @@ struct StringMap(T, U = uint)
 
     Returns: The input is returned.
     +/
-    ref inout(typeof(this)) assumeSafeAppend() @system nothrow inout return
+    ref inout(typeof(this)) assumeSafeAppend()() @system nothrow inout return
     {
         if (implementation)
         {
@@ -223,10 +311,26 @@ struct StringMap(T, U = uint)
         return this;
     }
 
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        map["c"] = 4.0;
+        map["a"] = 3.0;
+        assert(map.capacity >= 2);
+        map.remove("c");
+        assert(map.capacity == 0);
+        map.assumeSafeAppend;
+        assert(map.capacity >= 2);
+    }
+
     /++
     Removes all remaining keys and values from an associative array.
+
+    Complexity: `O(1)`
     +/
-    void clear() @safe pure nothrow @nogc
+    void clear()() @safe pure nothrow @nogc
     {
         if (implementation)
         {
@@ -236,9 +340,26 @@ struct StringMap(T, U = uint)
 
     }
 
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        map["c"] = 4.0;
+        map["a"] = 3.0;
+        map.clear;
+        assert(map.length == 0);
+        assert(map.capacity == 0);
+        map.assumeSafeAppend;
+        assert(map.capacity >= 2);
+    }
+
     /++
+    `remove(key)` does nothing if the given key does not exist and returns false. If the given key does exist, it removes it from the AA and returns true.
+
+    Complexity: `O(n)`
     +/
-    bool remove(scope const(char)[] key) @trusted pure nothrow @nogc
+    bool remove()(scope const(char)[] key) @trusted pure nothrow @nogc
     {
         size_t index;
         if (implementation && implementation.findIndex(key, index))
@@ -249,9 +370,29 @@ struct StringMap(T, U = uint)
         return false;
     }
 
+    static if (is(T == int))
+    ///
+    unittest
+    {
+        StringMap!double map;
+        map["a"] = 3.0;
+        map["c"] = 4.0;
+        assert(map.remove("c"));
+        assert(!map.remove("c"));
+        assert(map.remove("a"));
+        assert(map.length == 0);
+        assert(map.capacity == 0);
+        assert(map.assumeSafeAppend.capacity >= 2);
+    }
+
     /++
+    Finds position of the key in the associative array .
+    
+    Return: An index starting from `0` that corresponds to the key or `-1` if the associative array doesn't contain the key.
+
+    Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
     +/
-    ptrdiff_t findPos(scope const(char)[] key) @trusted pure nothrow @nogc const
+    ptrdiff_t findPos()(scope const(char)[] key) @trusted pure nothrow @nogc const
     {
         if (!implementation)
             return -1;
@@ -261,7 +402,29 @@ struct StringMap(T, U = uint)
         return implementation._indices[index];
     }
 
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        map["c"] = 3.0;
+        map["La"] = 4.0;
+        map["a"] = 5.0;
+
+        assert(map.findPos("C") == -1);
+        assert(map.findPos("c") == 0);
+        assert(map.findPos("La") == 1);
+        assert(map.findPos("a") == 2);
+
+        map.remove("c");
+
+        assert(map.findPos("c") == -1);
+        assert(map.findPos("La") == 0);
+        assert(map.findPos("a") == 1);
+    }
+
     /++
+    Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
     +/
     inout(T)* opBinaryRight(string op : "in")(scope const(char)[] key) @system pure nothrow @nogc inout
     {
@@ -273,9 +436,20 @@ struct StringMap(T, U = uint)
         return implementation._values + index;
     }
 
+    static if (is(T == int))
+    ///
+    @system nothrow pure unittest
+    {
+        StringMap!double map;
+        assert(("c" in map) is null);
+        map["c"] = 3.0;
+        assert(*("c" in map) == 3.0);
+    }
+
     /++
+    Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
     +/
-    ref inout(T) opIndex(scope const(char)[] key) @trusted pure inout //@nogc
+    ref inout(T) opIndex()(scope const(char)[] key) @trusted pure inout //@nogc
     {
         size_t index;
         if (implementation && implementation.findIndex(key, index))
@@ -289,9 +463,23 @@ struct StringMap(T, U = uint)
         throw new MirException("No member: ", key);
     }
 
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        map["c"] = 3.0;
+        map["La"] = 4.0;
+        map["a"] = 5.0;
+
+        map["La"] += 10;
+        assert(map["La"] == 14.0);
+    }
+
     /++
+    Complexity: `O(n)`.
     +/
-    ref T opIndexAssign(T value, string key) @trusted pure nothrow
+    ref T opIndexAssign()(T value, string key) @trusted pure nothrow
     {
         size_t index;
         if (_expect(!implementation, false))
@@ -321,12 +509,16 @@ struct StringMap(T, U = uint)
         }
         assert (index <= length);
         implementation.insertAt(key, move(value), index);
+        index = implementation._indices[index];
         return implementation._values[index];
     }
 
     /++
+    Looks up key; if it exists returns corresponding value else evaluates and returns defaultValue.
+
+    Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
     +/
-    inout(T) get(scope const(char)[] key, lazy inout(T) defaultValue)
+    inout(T) get()(scope const(char)[] key, lazy inout(T) defaultValue)
     {
         size_t index;
         if (implementation && implementation.findIndex(key, index))
@@ -339,9 +531,22 @@ struct StringMap(T, U = uint)
         return defaultValue;
     }
 
+    static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!int map;
+        map["c"] = 3;
+        assert(map.get("c", 1) == 3);
+        assert(map.get("C", 1) == 1);
+    }
+
     /++
+    Looks up key; if it exists returns corresponding value else evaluates value, adds it to the associative array and returns it.
+
+    Complexity: `O(n)`
     +/
-    ref T require(string key, lazy T value = T.init)
+    ref T require()(string key, lazy T value = T.init)
     {
         import std.stdio;
         size_t index;
@@ -371,6 +576,7 @@ struct StringMap(T, U = uint)
         }
         assert (index <= length);
         implementation.insertAt(key, value, index);
+        index = implementation.indices[index];
         return implementation.values[index];
     }
 
@@ -378,10 +584,68 @@ struct StringMap(T, U = uint)
     ///
     @safe pure unittest
     {
-        StringMap!int aa = ["aa": 1];
-        assert(aa.require("aa", 0) == 1);
-        assert(aa.require("bb", 0) == 0);
-        assert(aa["bb"] == 0);
+        StringMap!int map = ["aa": 1];
+        int add3(ref int x) { x += 3; return x; }
+        assert(add3(map.require("aa", 10)) == 4);
+        assert(add3(map.require("bb", 10)) == 13);
+        assert(map.require("a", 100));
+        assert(map.require("aa") == 4);
+        assert(map.require("bb") == 13);
+        assert(map.keys == ["aa", "bb", "a"]);
+    }
+
+    /++
+    Converts the associtave array to a common Dlang associative array.
+
+    Complexity: `O(n)`.
+    +/
+    template toAA()
+    {
+        static if (__traits(compiles, (ref const T a) { T b; b = a;}))
+        {
+            ///
+            T[string] toAA()() const
+            {
+                T[string] ret;
+                foreach (i; 0 .. length)
+                {
+                    ret[implementation.keys[i]] = implementation.values[i];
+                }
+                return ret;
+            }
+        }
+        else
+        {
+            ///
+            T[string] toAA()()
+            {
+                T[string] ret;
+                foreach (i; 0 .. length)
+                {
+                    ret[implementation.keys[i]] = implementation.values[i];
+                }
+                return ret;
+            }
+
+            ///
+            const(T)[string] toAA()() const
+            {
+                const(T)[string] ret;
+                foreach (i; 0 .. length)
+                {
+                    ret[implementation.keys[i]] = implementation.values[i];
+                }
+                return ret;
+            }
+        }
+    }
+
+    ///
+    @safe pure nothrow unittest
+    {
+        StringMap!int map = ["k": 1];
+        int[string] aa = map.toAA;
+        assert(aa["k"] == 1);
     }
 }
 
@@ -422,7 +686,7 @@ private struct StructImpl(T, U = uint)
 
     /++
     +/
-    this(string[] keys, T[] values) @trusted pure nothrow
+    this()(string[] keys, T[] values) @trusted pure nothrow
     {
         import mir.array.allocation: array;
         import mir.ndslice.sorting: sort;
@@ -453,27 +717,7 @@ private struct StructImpl(T, U = uint)
         }
     }
 
-    // this(size_t length, size_t maxKeyLength)
-    // {
-    //     assert(length);
-    //     _length = length;
-    //     _keys = new string[length].ptr;
-    //     _values = new T[length].ptr;
-    //     _indices = new U[length].assumeSafeAppend;
-    //     _lengthTable = new U[maxKeyLength + 2].assumeSafeAppend;
-    // }
-
-    // void addFirstEntry(string key, T value)
-    // {
-    //     import core.lifetime: move;
-    //     pragma(inline, false);
-    //     __ctor(1, key.length);
-    //     keys[0] = key;
-    //     values[0] = move(value);
-    //     lengthTable[key.length + 1 .. $] = 1;
-    // }
-
-    void insertAt(string key, T value, size_t i) @trusted
+    void insertAt()(string key, T value, size_t i) @trusted
     {
         pragma(inline, false);
 
@@ -525,7 +769,7 @@ private struct StructImpl(T, U = uint)
         }
     }
 
-    void removeAt(size_t i)
+    void removeAt()(size_t i)
     {
         assert(i < length);
         auto j = _indices[i];
@@ -570,41 +814,41 @@ private struct StructImpl(T, U = uint)
             }
         }
         _length--;
-        _lengthTable = _lengthTable[0 .. length ? _keys[length - 1].length + 2 : 0];
+        _lengthTable = _lengthTable[0 .. length ? _keys[_indices[length - 1]].length + 2 : 0];
     }
 
-    size_t length() @safe pure nothrow @nogc const @property
+    size_t length()() @safe pure nothrow @nogc const @property
     {
         return _length;
     }
 
-    inout(string)[] keys() @trusted inout @property
+    inout(string)[] keys()() @trusted inout @property
     {
         return _keys[0 .. _length];
     }
     
-    inout(T)[] values() @trusted inout @property
+    inout(T)[] values()() @trusted inout @property
     {
         return _values[0 .. _length];
     }
     
-    inout(U)[] indices() @trusted inout @property
+    inout(U)[] indices()() @trusted inout @property
     {
         return _indices[0 .. _length];
     }
     
-    inout(U)[] lengthTable() @trusted inout @property
+    inout(U)[] lengthTable()() @trusted inout @property
     {
         return _lengthTable;
     }
 
-    auto sortedKeys() @trusted const @property
+    auto sortedKeys()() @trusted const @property
     {
         import mir.ndslice.topology: indexed;
         return _keys.indexed(indices);
     }
 
-    bool findIndex(scope const(char)[] key, ref size_t index) @trusted pure nothrow @nogc const
+    bool findIndex()(scope const(char)[] key, ref size_t index) @trusted pure nothrow @nogc const
     {
         import mir.utility: _expect;
         if (_expect(key.length + 1 < _lengthTable.length, true))
