@@ -25,28 +25,28 @@ struct StringMap(T, U = uint)
     private alias Impl = StructImpl!(T, U);
     private Impl* implementation;
 
-    // linking bug
-    version(none)
-    {
-        /++
-        +/
-        bool opEquals()(typeof(null)) @safe pure nothrow @nogc const
-        {
-            return implementation is null;
-        }
+    // // linking bug
+    // version(none)
+    // {
+    //     /++
+    //     +/
+    //     bool opEquals()(typeof(null)) @safe pure nothrow @nogc const
+    //     {
+    //         return implementation is null;
+    //     }
 
-        static if (is(T == int))
-        ///
-        @safe pure unittest
-        {
-            StringMap!int map;
-            assert(map == null);
-            map = StringMap!int(["key" : 1]);
-            assert(map != null);
-            map.remove("key");
-            assert(map != null);
-        }
-    }
+    //     static if (is(T == int))
+    //     ///
+    //     @safe pure unittest
+    //     {
+    //         StringMap!int map;
+    //         assert(map == null);
+    //         map = StringMap!int(["key" : 1]);
+    //         assert(map != null);
+    //         map.remove("key");
+    //         assert(map != null);
+    //     }
+    // }
 
     /++
     Reset the associtave array
