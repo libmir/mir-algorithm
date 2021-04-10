@@ -12,7 +12,7 @@ Macros:
 module mir.algebraic_alias.json;
 
 import mir.algebraic: TaggedVariant, This;
-import mir.string_map: StringMap;
+public import mir.string_map: StringMap;
 
 /++
 Definition union for $(LREF JsonAlgebraic).
