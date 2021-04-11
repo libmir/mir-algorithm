@@ -9,6 +9,20 @@ module mir.string_map;
 import std.traits;
 
 /++
+Checks if the type is instance of $(LREF StringMap).
++/
+enum isStringMap(T) = is(Unqual!T == StringMap!V, V);
+
+version(mir_test) 
+///
+unittest
+{
+    static assert(isStringMap!(StringMap!int));
+    static assert(isStringMap!(const StringMap!int));
+    static assert(!isStringMap!int);
+}
+
+/++
 Ordered string-value associtaive array with extremely fast lookup.
 
 Params:
@@ -35,7 +49,7 @@ struct StringMap(T, U = uint)
     //         return implementation is null;
     //     }
 
-    //     static if (is(T == int))
+    //     version(mir_test) static if (is(T == int))
     //     ///
     //     @safe pure unittest
     //     {
@@ -57,7 +71,7 @@ struct StringMap(T, U = uint)
         return this;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -73,7 +87,7 @@ struct StringMap(T, U = uint)
         implementation = null;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     /// Usefull for default funcion argument.
     @safe pure unittest
     {
@@ -89,7 +103,7 @@ struct StringMap(T, U = uint)
         this(aa.keys, aa.values);
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -112,7 +126,7 @@ struct StringMap(T, U = uint)
         implementation = new Impl(keys, values);
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -131,7 +145,7 @@ struct StringMap(T, U = uint)
         return implementation ? implementation.length : 0;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -160,7 +174,7 @@ struct StringMap(T, U = uint)
         return implementation ? implementation.keys : null;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -189,7 +203,7 @@ struct StringMap(T, U = uint)
         return implementation ? implementation.values : null;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -226,7 +240,7 @@ struct StringMap(T, U = uint)
         );
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     unittest
     {
@@ -273,7 +287,7 @@ struct StringMap(T, U = uint)
         );
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     unittest
     {
@@ -311,7 +325,7 @@ struct StringMap(T, U = uint)
         return this;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     unittest
     {
@@ -340,7 +354,7 @@ struct StringMap(T, U = uint)
 
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     unittest
     {
@@ -370,7 +384,7 @@ struct StringMap(T, U = uint)
         return false;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     unittest
     {
@@ -402,7 +416,7 @@ struct StringMap(T, U = uint)
         return implementation._indices[index];
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -436,7 +450,7 @@ struct StringMap(T, U = uint)
         return implementation._values + index;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @system nothrow pure unittest
     {
@@ -463,7 +477,7 @@ struct StringMap(T, U = uint)
         throw new MirException("No member: ", key);
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -531,7 +545,7 @@ struct StringMap(T, U = uint)
         return defaultValue;
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -580,7 +594,7 @@ struct StringMap(T, U = uint)
         return implementation.values[index];
     }
 
-    static if (is(T == int))
+    version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
     {
@@ -649,6 +663,7 @@ struct StringMap(T, U = uint)
     }
 }
 
+version(mir_test) 
 ///
 unittest
 {
