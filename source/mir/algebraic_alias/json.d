@@ -3,7 +3,7 @@ $(H1 Mutable JSON value)
 
 This module contains a single alias definition and doesn't provide JSON serialization API.
 
-See_also: Json libraries $(GMREF mir-ion, index) and $(GMREF asdf, index);
+See_also: JSON libraries $(MIR_PACKAGE mir-ion) and $(MIR_PACKAGE asdf);
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 Authors: Ilya Yaroshenko 
