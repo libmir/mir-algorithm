@@ -371,7 +371,7 @@ struct StringMap(T, U = uint)
     /++
     `remove(key)` does nothing if the given key does not exist and returns false. If the given key does exist, it removes it from the AA and returns true.
 
-    Complexity: `O(n)`
+    Complexity: `O(log(s))` (not exist) or `O(n)` (exist), where `s` is the count of the strings with the same length as they key.
     +/
     bool remove()(scope const(char)[] key) @trusted pure nothrow @nogc
     {
@@ -491,7 +491,7 @@ struct StringMap(T, U = uint)
     }
 
     /++
-    Complexity: `O(n)`.
+    Complexity: `O(log(s))` (exist) or `O(n)` (not exist), where `s` is the count of the strings with the same length as they key.
     +/
     ref T opIndexAssign()(T value, string key) @trusted pure nothrow
     {
@@ -558,7 +558,7 @@ struct StringMap(T, U = uint)
     /++
     Looks up key; if it exists returns corresponding value else evaluates value, adds it to the associative array and returns it.
 
-    Complexity: `O(n)`
+    Complexity: `O(log(s))` (exist) or `O(n)` (not exist), where `s` is the count of the strings with the same length as they key.
     +/
     ref T require()(string key, lazy T value = T.init)
     {
