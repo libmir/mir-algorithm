@@ -130,7 +130,7 @@ struct mir_rcarray(T)
     }
 
     ///
-    auto asSlice() @property
+    auto asSlice()() @property
     {
         import mir.ndslice.slice: mir_slice;
         alias It = mir_rci!T;
@@ -138,7 +138,7 @@ struct mir_rcarray(T)
     }
 
     ///
-    auto asSlice() const @property
+    auto asSlice()() const @property
     {
         import mir.ndslice.slice: mir_slice;
         alias It = mir_rci!(const T);
@@ -146,7 +146,7 @@ struct mir_rcarray(T)
     }
 
     ///
-    auto asSlice() immutable @property
+    auto asSlice()() immutable @property
     {
         import mir.ndslice.slice: mir_slice;
         alias It = mir_rci!(immutable T);
@@ -154,7 +154,7 @@ struct mir_rcarray(T)
     }
 
     ///
-    auto moveToSlice() @property
+    auto moveToSlice()() @property
     {
         import core.lifetime: move;
         import mir.ndslice.slice: mir_slice;
