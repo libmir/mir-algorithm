@@ -649,7 +649,7 @@ template serdeDeserializationMemberType(T, string member)
 {
     import std.traits: Unqual, Parameters;
     T* aggregate;
-    static if (isField!(T, member))
+    static if (hasField!(T, member))
     {
         alias serdeDeserializationMemberType = typeof(__traits(getMember, *aggregate, member));
     }
@@ -706,7 +706,7 @@ template serdeSerializationMemberType(T, string member)
 {
     import std.traits: Unqual, Parameters;
     T* aggregate;
-    static if (isField!(T, member))
+    static if (hasField!(T, member))
     {
         alias serdeSerializationMemberType = typeof(__traits(getMember, *aggregate, member));
     }
@@ -1583,7 +1583,7 @@ struct SerdeOrderedDummy(T, bool __optionalByDefault = false)
     {
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
         {
-            static if (isField!(T, member))
+            static if (hasField!(T, member))
             {
                 static if (__traits(compiles, {__traits(getMember, this, member) = __traits(getMember, value, member);}))
                     __traits(getMember, this, member) = __traits(getMember, value, member);
@@ -1595,7 +1595,7 @@ public:
 
     static foreach (i, member; serdeFinalProxyDeserializableMembers!T)
     {
-        static if (isField!(T, member))
+        static if (hasField!(T, member))
         {
             static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
             {
@@ -1817,7 +1817,7 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
             __traits(getMember, value, member) = to!(serdeDeserializationMemberType!(T, member))(move(temporal));
         }
         else
-        static if (isField!(T, member))
+        static if (hasField!(T, member))
         {
             if (auto exc = impl(data, __traits(getMember, value, member), context))
                 return exc;
@@ -1833,7 +1833,7 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
         static if (hasUDA!(__traits(getMember, value, member), serdeTransformIn))
         {
             alias transform = serdeGetTransformIn!(__traits(getMember, value, member));
-            static if (isField!(T, member))
+            static if (hasField!(T, member))
             {
                 transform(__traits(getMember, value, member));
             }
