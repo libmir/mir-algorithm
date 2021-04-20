@@ -36,6 +36,7 @@ sources_list = [
     'mir/interpolate/polynomial',
     'mir/interpolate/spline',
     'mir/interpolate/utility',
+    'mir/lob',
     'mir/math/func/expdigamma',
     'mir/math/numeric',
     'mir/math/stat',
@@ -71,6 +72,7 @@ sources_list = [
     'mir/small_array',
     'mir/small_string',
     'mir/string_map',
+    'mir/timestamp',
     'mir/type_info',
 ]
 
