@@ -24,7 +24,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,lob)) $(TD Binar and Char Large Objects ))
     $(LEADINGROW Date and time)
     $(TR $(TDNW $(MREF mir,date)) $(TD Fast BetterC Date type with Boost ABI and mangling compatability))
-    $(TR $(TDNW $(MREF mir,timestamp)) $(TD Timestamp ))
+    $(TR $(TDNW $(MREF mir,timestamp)) $(TD General purpose timestamp implementation with arbitrary precision ))
     $(LEADINGROW NDarrays and Algorithms)
     $(TR $(TDNW $(MREF mir,algorithm,iteration)) $(TD Mir & BetterC rework of Phobos.))
     $(TR $(TDNW $(MREF mir,algorithm,setops)) $(TD Mir & BetterC rework of Phobos.))
