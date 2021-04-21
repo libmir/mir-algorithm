@@ -50,8 +50,9 @@ F expDigamma(F)(in F x)
 version(mir_test)
 unittest
 {
-    import std.meta;
-    import std.mathspecial;
+    import std.meta: AliasSeq;
+    import std.mathspecial: digamma;
+    import mir.math: approxEqual, exp, nextUp, nextDown;
     assert(approxEqual(expDigamma(0.001), exp(digamma(0.001))));
     assert(approxEqual(expDigamma(0.1), exp(digamma(0.1))));
     assert(approxEqual(expDigamma(1.0), exp(digamma(1.0))));

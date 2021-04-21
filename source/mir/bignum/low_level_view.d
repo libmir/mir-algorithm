@@ -674,8 +674,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                 coefficients = null;
                 return true;
             }
-            if (str[0] == '0')
-                return false;
+            return false;
         }
         else
         if (d >= 10)
@@ -2105,7 +2104,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                 coefficient = coefficient.init;
                 return true;
             }
-            if (str[0] == '0')
+            if (str[0] >= '0' && str[0] <= '9')
                 return false;
             goto S;
         }

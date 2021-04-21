@@ -116,6 +116,13 @@ version(mir_bignum_test)
 // https://issues.dlang.org/show_bug.cgi?id=20967
 }
 
+version(mir_bignum_test)
+@safe pure unittest
+{
+    import std.exception: assertThrown;
+    assertThrown("010".fromString!float);
+}
+
 /++
 Performs `nothrow` and `@nogc` string to native type conversion.
 

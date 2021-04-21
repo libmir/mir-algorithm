@@ -168,7 +168,7 @@ struct Decimal(size_t maxSize64)
             {
                 if (str.length == 0)
                     goto R;
-                if (str[0] == '0')
+                if (str[0] >= '0' && str[0] <= '9')
                     return false;
                 goto S;
             }
