@@ -93,6 +93,21 @@ struct serdeKeyOut
 }
 
 /++
+An annotation / attribute for algebraic types deserialization.
+
+This feature is used in $(MIR_PACKAGE mir-ion) for $(GMREF mir-core, mir,algebraic).
++/
+struct serdeAlgebraicAnnotation
+{
+    ///
+    string annotation;
+
+@safe pure nothrow @nogc:
+    ///
+    this(string annotation) { this.annotation = annotation; }
+}
+
+/++
 Returns:
     immutable array of the input keys for the symbol or enum value
 +/
