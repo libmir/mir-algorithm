@@ -46,11 +46,11 @@ struct Decimal(size_t maxSize64)
     }
 
     ///
-    this(C)(scope const(C)[] str) @safe pure @nogc
+    this(C)(scope const(C)[] str, int exponentShift = 0) @safe pure @nogc
         if (isSomeChar!C)
     {
         DecimalExponentKey key;
-        if (fromStringImpl(str, key) || key == DecimalExponentKey.nan || key == DecimalExponentKey.infinity)
+        if (fromStringImpl(str, key, exponentShift) || key == DecimalExponentKey.nan || key == DecimalExponentKey.infinity)
             return;
         static if (__traits(compiles, () @nogc { throw new Exception("Can't parse Decimal."); }))
         {
@@ -119,7 +119,16 @@ struct Decimal(size_t maxSize64)
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients.
     +/
-    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true, bool allowUnderscores = true, bool allowLeadingZeros = true)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C,
+        bool allowSpecialValues = true,
+        bool allowDotOnBounds = true,
+        bool allowDExponent = true,
+        bool allowStartingPlus = true,
+        bool allowUnderscores = true,
+        bool allowLeadingZeros = true,
+        bool checkEmpty = true,
+        )
+        (scope const(C)[] str, out DecimalExponentKey key, int exponentShift = 0)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
@@ -161,7 +170,6 @@ struct Decimal(size_t maxSize64)
             exponent = 0;
 
             ulong v;
-            uint afterDot;
             bool dot;
             static if (allowUnderscores)
             {
@@ -225,11 +233,11 @@ struct Decimal(size_t maxSize64)
                     }
                 S:
                     v += d;
-                    afterDot += dot;
+                    exponentShift -= dot;
                     if (str.length)
                         continue;
                 E:
-                    exponent -= afterDot;
+                    exponent += exponentShift;
                 R:
                     coefficient.data[0] = v;
                     coefficient.length = v != 0;
@@ -321,7 +329,7 @@ struct Decimal(size_t maxSize64)
         {
             import mir.bignum.low_level_view: DecimalView, BigUIntView, MaxWordPow10;
             auto work = DecimalView!size_t(false, 0, BigUIntView!size_t(coefficient.data));
-            auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus, checkEmpty, allowUnderscores, allowLeadingZeros)(str, key);
+            auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus, allowUnderscores, allowLeadingZeros, checkEmpty)(str, key, exponentShift);
             coefficient.length = cast(uint) work.coefficient.coefficients.length;
             coefficient.sign = work.sign;
             exponent = work.exponent;
@@ -339,9 +347,11 @@ struct Decimal(size_t maxSize64)
         Decimal!3 decimal;
         DecimalExponentKey key;
 
-        assert(decimal.fromStringImpl("1.334", key));
+        // Check precise percentate parsing
+        assert(decimal.fromStringImpl("71.7", key, -2));
         assert(key == DecimalExponentKey.dot);
-        assert(cast(double) decimal == 1.334);
+        // The result is exact value instead of 0.7170000000000001 = 71.7 / 100
+        assert(cast(double) decimal == 0.717);
 
         assert(decimal.fromStringImpl("+0.334e-5"w, key));
         assert(key == DecimalExponentKey.e);

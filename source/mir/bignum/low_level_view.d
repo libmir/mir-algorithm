@@ -2046,9 +2046,17 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
     /++
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients
-    Note: doesn't support signs.
     +/
-    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true, bool allowUnderscores = true, bool allowLeadingZeros = true)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C,
+        bool allowSpecialValues = true,
+        bool allowDotOnBounds = true,
+        bool allowDExponent = true,
+        bool allowStartingPlus = true,
+        bool allowUnderscores = true,
+        bool allowLeadingZeros = true,
+        bool checkEmpty = true,
+        )
+        (scope const(C)[] str, out DecimalExponentKey key, int exponentShift = 0)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
@@ -2094,7 +2102,6 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
         W v;
         W t = 1;
-        uint afterDot;
         bool dot;
 
         static if (allowUnderscores)
@@ -2159,7 +2166,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         S:
                 t *= 10;
                 v += d;
-                afterDot += dot;
+                exponentShift -= dot;
 
                 if (_expect(t == mp10 || str.length == 0, false))
                 {
@@ -2182,7 +2189,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     if (str.length == 0)
                     {
                     M:
-                        exponent -= afterDot;
+                        exponent += exponentShift;
                         coefficient = work.mostSignificant == 0 ? coefficient.init : work;
                         static if (allowUnderscores)
                         {
