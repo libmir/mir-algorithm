@@ -96,6 +96,16 @@ version(mir_bignum_test)
     assert("-12.3e-30".fromString!double == -12.3e-30);
     assert("2.9802322387695312E-8".fromString!double == 2.9802322387695312E-8);
 
+    // default support of underscores
+    assert("123_456.789_012".fromString!double == 123_456.789_012);
+    assert("12_34_56_78_90_12e-6".fromString!double == 123_456.789_012);
+
+    // default support of leading zeros
+    assert("010".fromString!double == 10.0);
+    assert("000010".fromString!double == 10.0);
+    assert("0000.10".fromString!double == 0.1);
+    assert("0000e10".fromString!double == 0);
+
     /// Test CTFE support  
     static assert("-12.3e-30".fromString!double == -0x1.f2f280b2414d5p-97);
     static assert("+12.3e+30".fromString!double == 0x1.367ee3119d2bap+103);
@@ -120,7 +130,16 @@ version(mir_bignum_test)
 @safe pure unittest
 {
     import std.exception: assertThrown;
-    assertThrown("010".fromString!float);
+    assertThrown("1_".fromString!float);
+    assertThrown("1__2".fromString!float);
+    assertThrown("_1".fromString!float);
+    assertThrown("123_.456".fromString!float);
+    assertThrown("123_e0".fromString!float);
+    assertThrown("123._456".fromString!float);
+    assertThrown("12__34.56".fromString!float);
+    assertThrown("123.456_".fromString!float);
+    assertThrown("-_123.456".fromString!float);
+    assertThrown("_123.456".fromString!float);
 }
 
 /++

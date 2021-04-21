@@ -119,7 +119,7 @@ struct Decimal(size_t maxSize64)
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients.
     +/
-    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true, bool allowUnderscores = true, bool allowLeadingZeros = true)(scope const(C)[] str, out DecimalExponentKey key)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
@@ -163,14 +163,20 @@ struct Decimal(size_t maxSize64)
             ulong v;
             uint afterDot;
             bool dot;
-
-            if (d == 0)
+            static if (allowUnderscores)
             {
-                if (str.length == 0)
-                    goto R;
-                if (str[0] >= '0' && str[0] <= '9')
-                    return false;
-                goto S;
+                bool recentUnderscore;
+            }
+            static if (!allowLeadingZeros)
+            {
+                if (d == 0)
+                {
+                    if (str.length == 0)
+                        goto R;
+                    if (str[0] >= '0' && str[0] <= '9')
+                        return false;
+                    goto S;
+                }
             }
 
             if (d < 10)
@@ -206,6 +212,10 @@ struct Decimal(size_t maxSize64)
 
                 if (_expect(d <= 10, true))
                 {
+                    static if (allowUnderscores)
+                    {
+                        recentUnderscore = false;
+                    }
                     {
                         import core.checkedint: addu, mulu;
                         bool overflow;
@@ -223,18 +233,35 @@ struct Decimal(size_t maxSize64)
                 R:
                     coefficient.data[0] = v;
                     coefficient.length = v != 0;
-                    return true;
+                    static if (allowUnderscores)
+                    {
+                        return !recentUnderscore;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+                key = cast(DecimalExponentKey)d;
+                static if (allowUnderscores)
+                {
+                    if (recentUnderscore)
+                        return false;
                 }
                 switch (d)
                 {
-                    D:
                     case DecimalExponentKey.dot:
-                        if (dot)
+                        if (_expect(dot, false))
                             break;
-                        key = cast(DecimalExponentKey)d;
                         dot = true;
                         if (str.length)
+                        {
+                            static if (allowUnderscores)
+                            {
+                                recentUnderscore = true;
+                            }
                             continue;
+                        }
                         static if (allowDotOnBounds)
                         {
                             goto R;
@@ -251,11 +278,18 @@ struct Decimal(size_t maxSize64)
                     }
                     case DecimalExponentKey.e:
                     case DecimalExponentKey.E:
-                        key = cast(DecimalExponentKey)d;
                         import mir.parse: parse;
                         if (parse(str, exponent) && str.length == 0)
                             goto E;
                         break;
+                    static if (allowUnderscores)
+                    {
+                        case '_' - '0':
+                            recentUnderscore = true;
+                            if (str.length)
+                                continue;
+                            break;
+                    }
                     default:
                 }
                 break;
@@ -287,7 +321,7 @@ struct Decimal(size_t maxSize64)
         {
             import mir.bignum.low_level_view: DecimalView, BigUIntView, MaxWordPow10;
             auto work = DecimalView!size_t(false, 0, BigUIntView!size_t(coefficient.data));
-            auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus)(str, key);
+            auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus, checkEmpty, allowUnderscores, allowLeadingZeros)(str, key);
             coefficient.length = cast(uint) work.coefficient.coefficients.length;
             coefficient.sign = work.sign;
             exponent = work.exponent;
@@ -359,13 +393,13 @@ struct Decimal(size_t maxSize64)
         assert(decimal.fromStringImpl("4.", key));
         assert(!decimal.fromStringImpl(".", key));
         assert(decimal.fromStringImpl("0.", key));
-        assert(!decimal.fromStringImpl("00", key));
+        assert(decimal.fromStringImpl("00", key));
         assert(!decimal.fromStringImpl("0d", key));
     }
 
     static if (maxSize64 == 3)
     version(mir_bignum_test)
-    // @safe pure nothrow @nogc
+    @safe pure nothrow @nogc
     unittest
     {
         import mir.conv: to;
@@ -424,7 +458,7 @@ struct Decimal(size_t maxSize64)
         assert(decimal.fromStringImpl("4.", key));
         assert(!decimal.fromStringImpl(".", key));
         assert(decimal.fromStringImpl("0.", key));
-        assert(!decimal.fromStringImpl("00", key));
+        assert(decimal.fromStringImpl("00", key));
         assert(!decimal.fromStringImpl("0d", key));
     }
 

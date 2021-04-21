@@ -2048,7 +2048,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
     Precondition: non-empty coefficients
     Note: doesn't support signs.
     +/
-    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true)(scope const(C)[] str, out DecimalExponentKey key)
+    bool fromStringImpl(C, bool allowSpecialValues = true, bool allowDotOnBounds = true, bool allowDExponent = true, bool allowStartingPlus = true, bool checkEmpty = true, bool allowUnderscores = true, bool allowLeadingZeros = true)(scope const(C)[] str, out DecimalExponentKey key)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
@@ -2097,16 +2097,24 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         uint afterDot;
         bool dot;
 
-        if (d == 0)
+        static if (allowUnderscores)
         {
-            if (str.length == 0)
+            bool recentUnderscore;
+        }
+
+        static if (!allowLeadingZeros)
+        {
+            if (d == 0)
             {
-                coefficient = coefficient.init;
-                return true;
+                if (str.length == 0)
+                {
+                    coefficient = coefficient.init;
+                    return true;
+                }
+                if (str[0] >= '0' && str[0] <= '9')
+                    return false;
+                goto S;
             }
-            if (str[0] >= '0' && str[0] <= '9')
-                return false;
-            goto S;
         }
 
         if (d < 10)
@@ -2143,6 +2151,10 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
             if (_expect(d <= 10, true))
             {
+                static if (allowUnderscores)
+                {
+                    recentUnderscore = false;
+                }
                 v *= 10;
         S:
                 t *= 10;
@@ -2172,22 +2184,39 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     M:
                         exponent -= afterDot;
                         coefficient = work.mostSignificant == 0 ? coefficient.init : work;
-                        return true;
+                        static if (allowUnderscores)
+                        {
+                            return !recentUnderscore;
+                        }
+                        else
+                        {
+                            return true;
+                        }
                     }
                 }
 
                 continue;
             }
             key = cast(DecimalExponentKey)d;
+            static if (allowUnderscores)
+            {
+                if (recentUnderscore)
+                    return false;
+            }
             switch (d)
             {
-                D:
                 case DecimalExponentKey.dot:
                     if (_expect(dot, false))
                         break;
                     dot = true;
                     if (str.length)
+                    {
+                        static if (allowUnderscores)
+                        {
+                            recentUnderscore = true;
+                        }
                         continue;
+                    }
                     static if (allowDotOnBounds)
                     {
                         goto L;
@@ -2212,6 +2241,14 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                         goto M;
                     }
                     break;
+                static if (allowUnderscores)
+                {
+                    case '_' - '0':
+                        recentUnderscore = true;
+                        if (str.length)
+                            continue;
+                        break;
+                }
                 default:
             }
             break;
