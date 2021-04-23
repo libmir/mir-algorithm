@@ -349,7 +349,6 @@ struct Decimal(size_t maxSize64)
                         return true;
                     }
                 }
-                key = cast(DecimalExponentKey)d;
                 static if (allowUnderscores)
                 {
                     if (recentUnderscore)
@@ -358,6 +357,7 @@ struct Decimal(size_t maxSize64)
                 switch (d)
                 {
                     case DecimalExponentKey.dot:
+                        key = DecimalExponentKey.dot;
                         if (_expect(dot, false))
                             break;
                         dot = true;
@@ -388,6 +388,7 @@ struct Decimal(size_t maxSize64)
                         case DecimalExponentKey.e:
                         case DecimalExponentKey.E:
                             import mir.parse: parse;
+                            key = cast(DecimalExponentKey)d;
                             if (parse(str, exponent) && str.length == 0)
                                 goto E;
                             break;
@@ -467,6 +468,10 @@ struct Decimal(size_t maxSize64)
         assert(decimal.fromStringImpl("+0.334e-5"w, key));
         assert(key == DecimalExponentKey.e);
         assert(cast(double) decimal == 0.334e-5);
+
+        assert(decimal.fromStringImpl("100_000_000"w, key));
+        assert(key == DecimalExponentKey.none);
+        assert(cast(double) decimal == 1e8);
 
         assert(decimal.fromStringImpl("-334D-5"d, key));
         assert(key == DecimalExponentKey.D);

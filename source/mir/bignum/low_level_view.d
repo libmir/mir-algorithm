@@ -2205,7 +2205,6 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
                 continue;
             }
-            key = cast(DecimalExponentKey)d;
             static if (allowUnderscores)
             {
                 if (recentUnderscore)
@@ -2214,6 +2213,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
             switch (d)
             {
                 case DecimalExponentKey.dot:
+                    key = DecimalExponentKey.dot;
                     if (_expect(dot, false))
                         break;
                     dot = true;
@@ -2244,6 +2244,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     case DecimalExponentKey.e:
                     case DecimalExponentKey.E:
                         import mir.parse: parse;
+                        key = cast(DecimalExponentKey)d;
                         if (parse(str, exponent) && str.length == 0)
                         {
                             if (t != 1)
