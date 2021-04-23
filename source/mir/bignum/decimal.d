@@ -116,8 +116,102 @@ struct Decimal(size_t maxSize64)
     }
 
     /++
+    Handle thousand separators for non exponential numbers.
+
     Returns: false in case of overflow or incorrect string.
-    Precondition: non-empty coefficients.
+    +/
+    bool fromStringWithThousandsSeparatorImpl(C,
+        bool allowSpecialValues = true,
+        bool allowStartingPlus = true,
+        bool allowLeadingZeros = true,
+    )(
+        scope const(C)[] str,
+        const C thousandsSeparator,
+        const C fractionSeparator,
+        int exponentShift = 0,
+    )
+        if (isSomeChar!C)
+    {
+        import mir.algorithm.iteration: find;
+        import mir.format: stringBuf;
+        import mir.ndslice.chunks: chunks;
+        import mir.ndslice.slice: sliced;
+        import mir.ndslice.topology: retro;
+
+        stringBuf buffer;
+        assert(thousandsSeparator != fractionSeparator);
+        if (str.length && (str[0] == '+' || str[0] == '-'))
+        {
+            buffer.put(cast(char)str[0]);
+            str = str[1 .. $];
+        }
+        auto integer = str[0 .. $ - str.find!(a => a == fractionSeparator)];
+        if (integer.length % 4 == 0)
+            return false;
+        foreach_reverse (chunk; integer.sliced.retro.chunks(4))
+        {
+            auto s = chunk.retro.field;
+            if (s.length == 4)
+            {
+                if (s[0] != thousandsSeparator)
+                    return false;
+                s = s[1 .. $];
+            }
+            do
+            {
+                if (s[0] < '0' || s[0] > '9')
+                    return false;
+                buffer.put(cast(char)s[0]);
+                s = s[1 .. $];
+            }
+            while(s.length);
+        }
+        if (str.length > integer.length)
+        {
+            buffer.put('.');
+            str = str[integer.length + 1 .. $];
+            if (str.length == 0)
+                return false;
+            do
+            {
+                buffer.put(cast(char)str[0]);
+                str = str[1 .. $];
+            }
+            while(str.length);
+        }
+        DecimalExponentKey key;
+        return fromStringImpl!(char,
+            allowSpecialValues,
+            false, // allowDotOnBounds
+            false, // allowDExponent
+            allowStartingPlus,
+            false, // allowUnderscores
+            allowLeadingZeros, // allowLeadingZeros
+            false, // allowExponent
+            false, // checkEmpty
+        )(buffer.data, key, exponentShift);
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) 
+    @safe pure nothrow @nogc
+    unittest
+    {
+        Decimal!3 decimal;
+
+        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345.678", ',', '.'));
+        assert(cast(double) decimal == 12345.678);
+
+        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345,678", ',', '.', -3));
+        assert(cast(double) decimal == 12345.678);
+
+        assert(decimal.fromStringWithThousandsSeparatorImpl("021 345,678", ' ', ','));
+        assert(cast(double) decimal == 21345.678);
+    }
+
+    /++
+    Returns: false in case of overflow or incorrect string.
     +/
     bool fromStringImpl(C,
         bool allowSpecialValues = true,
@@ -126,6 +220,7 @@ struct Decimal(size_t maxSize64)
         bool allowStartingPlus = true,
         bool allowUnderscores = true,
         bool allowLeadingZeros = true,
+        bool allowExponent = true,
         bool checkEmpty = true,
         )
         (scope const(C)[] str, out DecimalExponentKey key, int exponentShift = 0)
@@ -278,18 +373,21 @@ struct Decimal(size_t maxSize64)
                         {
                             break;
                         }
-                    static if (allowDExponent)
+                    static if (allowExponent)
                     {
-                        case DecimalExponentKey.d:
-                        case DecimalExponentKey.D:
-                            goto case DecimalExponentKey.e;
+                        static if (allowDExponent)
+                        {
+                            case DecimalExponentKey.d:
+                            case DecimalExponentKey.D:
+                                goto case DecimalExponentKey.e;
+                        }
+                        case DecimalExponentKey.e:
+                        case DecimalExponentKey.E:
+                            import mir.parse: parse;
+                            if (parse(str, exponent) && str.length == 0)
+                                goto E;
+                            break;
                     }
-                    case DecimalExponentKey.e:
-                    case DecimalExponentKey.E:
-                        import mir.parse: parse;
-                        if (parse(str, exponent) && str.length == 0)
-                            goto E;
-                        break;
                     static if (allowUnderscores)
                     {
                         case '_' - '0':
@@ -329,7 +427,16 @@ struct Decimal(size_t maxSize64)
         {
             import mir.bignum.low_level_view: DecimalView, BigUIntView, MaxWordPow10;
             auto work = DecimalView!size_t(false, 0, BigUIntView!size_t(coefficient.data));
-            auto ret = work.fromStringImpl!(C, allowSpecialValues, allowDExponent, allowStartingPlus, allowUnderscores, allowLeadingZeros, checkEmpty)(str, key, exponentShift);
+            auto ret = work.fromStringImpl!(C,
+                allowSpecialValues,
+                allowDotOnBounds,
+                allowDExponent,
+                allowStartingPlus,
+                allowUnderscores,
+                allowLeadingZeros,
+                allowExponent,
+                checkEmpty,
+            )(str, key, exponentShift);
             coefficient.length = cast(uint) work.coefficient.coefficients.length;
             coefficient.sign = work.sign;
             exponent = work.exponent;

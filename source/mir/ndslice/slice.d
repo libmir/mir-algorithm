@@ -1935,7 +1935,7 @@ public:
         end = final index of the sub-slice (noninclusive)
     Returns: ndslice with `length!dimension` equal to `end - begin`.
     +/
-    auto select(size_t dimension)(size_t begin, size_t end) scope return
+    auto select(size_t dimension)(size_t begin, size_t end) @trusted
     {
         static if (kind == Contiguous && dimension)
         {

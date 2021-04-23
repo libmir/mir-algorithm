@@ -2054,6 +2054,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         bool allowStartingPlus = true,
         bool allowUnderscores = true,
         bool allowLeadingZeros = true,
+        bool allowExponent = true,
         bool checkEmpty = true,
         )
         (scope const(C)[] str, out DecimalExponentKey key, int exponentShift = 0)
@@ -2232,22 +2233,25 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     {
                         return false;
                     }
-                static if (allowDExponent)
+                static if (allowExponent)
                 {
-                    case DecimalExponentKey.d:
-                    case DecimalExponentKey.D:
-                        goto case DecimalExponentKey.e;
-                }
-                case DecimalExponentKey.e:
-                case DecimalExponentKey.E:
-                    import mir.parse: parse;
-                    if (parse(str, exponent) && str.length == 0)
+                    static if (allowDExponent)
                     {
-                        if (t != 1)
-                            goto L;
-                        goto M;
+                        case DecimalExponentKey.d:
+                        case DecimalExponentKey.D:
+                            goto case DecimalExponentKey.e;
                     }
-                    break;
+                    case DecimalExponentKey.e:
+                    case DecimalExponentKey.E:
+                        import mir.parse: parse;
+                        if (parse(str, exponent) && str.length == 0)
+                        {
+                            if (t != 1)
+                                goto L;
+                            goto M;
+                        }
+                        break;
+                }
                 static if (allowUnderscores)
                 {
                     case '_' - '0':
