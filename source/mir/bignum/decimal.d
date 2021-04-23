@@ -128,6 +128,7 @@ struct Decimal(size_t maxSize64)
         scope const(C)[] str,
         const C thousandsSeparator,
         const C fractionSeparator,
+        out DecimalExponentKey key,
         int exponentShift = 0,
     )
         if (isSomeChar!C)
@@ -179,7 +180,6 @@ struct Decimal(size_t maxSize64)
             }
             while(str.length);
         }
-        DecimalExponentKey key;
         return fromStringImpl!(char,
             allowSpecialValues,
             false, // allowDotOnBounds
@@ -199,15 +199,19 @@ struct Decimal(size_t maxSize64)
     unittest
     {
         Decimal!3 decimal;
+        DecimalExponentKey key;
 
-        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345.678", ',', '.'));
+        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345.678", ',', '.', key));
         assert(cast(double) decimal == 12345.678);
+        assert(key == DecimalExponentKey.dot);
 
-        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345,678", ',', '.', -3));
+        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345,678", ',', '.', key, -3));
         assert(cast(double) decimal == 12345.678);
+        assert(key == DecimalExponentKey.none);
 
-        assert(decimal.fromStringWithThousandsSeparatorImpl("021 345,678", ' ', ','));
+        assert(decimal.fromStringWithThousandsSeparatorImpl("021 345,678", ' ', ',', key));
         assert(cast(double) decimal == 21345.678);
+        assert(key == DecimalExponentKey.dot);
     }
 
     /++
