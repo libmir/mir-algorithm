@@ -334,11 +334,17 @@ struct HexAddress(T)
 }
 
 /++
+Escaped string formats
 +/
 enum EscapeFormat
 {
+    /// JSON escaped string format
     json,
+    /// Amzn Ion CLOB format
+    ionClob,
+    /// Amzn Ion symbol format
     ionSymbol,
+    /// Amzn Ion string format
     ion,
 }
 
@@ -355,6 +361,11 @@ ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
             goto E;
         if (_expect(c < ' ', false))
             goto C;
+        static if (escapeFormat == EscapeFormat.ionClob)
+        {
+            if (c >= 127)
+                goto A;
+        }
     P:
         w.put(c);
         continue;
@@ -367,22 +378,42 @@ ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
             continue;
         }
     C:
-        if (c == '\t' || c == '\f' || c == '\b')
-            goto P;
-        if (c == '\n')
+        switch (c)
         {
-            c = 'n';
-            goto E;
+            static if (escapeFormat != EscapeFormat.json)
+            {
+                case '\0':
+                    c = '0';
+                    goto E;
+                case '\a':
+                    c = 'a';
+                    goto E;
+                case '\v':
+                    c = 'v';
+                    goto E;
+            }
+            case '\b':
+                c = 'b';
+                goto E;
+            case '\t':
+                c = 't';
+                goto E;
+            case '\n':
+                c = 'n';
+                goto E;
+            case '\f':
+                c = 'f';
+                goto E;
+            case '\r':
+                c = 'r';
+                goto E;
+            default:
+    A:
+                static if (escapeFormat == EscapeFormat.json)
+                    put_uXXXX!C(w, cast(char)c);
+                else
+                    put_xXX!C(w, cast(char)c);
         }
-        if (c == '\r')
-        {
-            c = 'r';
-            goto E;
-        }
-        static if (escapeFormat == EscapeFormat.json)
-            put_uXXXX!C(w, cast(char)c);
-        else
-            put_xXX!C(w, cast(char)c);
     }
     return w;
 }
@@ -394,7 +425,7 @@ version (mir_test) unittest
  
     import mir.format: stringBuf;
     stringBuf w;
-    assert(w.printEscaped("Hi \f\t\b \\\r\n" ~ `"@nogc"`).data == "Hi \f\t\b \\\\\\r\\n\\\"@nogc\\\"", w.data);
+    assert(w.printEscaped("Hi \a\v\0\f\t\b \\\r\n" ~ `"@nogc"`).data == `Hi \a\v\0\f\t\b \\\r\n\"@nogc\"`);
     w.reset;
     assert(w.printEscaped("\x03").data == `\x03`, w.data);
 }

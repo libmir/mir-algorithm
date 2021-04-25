@@ -93,6 +93,95 @@ struct serdeKeyOut
 }
 
 /++
+The attribute should be applied to a string-like member that should be de/serialized as an annotation / attribute.
+
+This feature is used in $(MIR_PACKAGE mir-ion).
++/
+enum serdeAnnotation;
+
+
+private template serdeIsAnnotationMemberIn(T)
+{
+    enum bool serdeIsAnnotationMemberIn(string member)
+          = hasUDA!(__traits(getMember, T, member), serdeAnnotation) 
+        && !hasUDA!(__traits(getMember, T, member), serdeIgnore) 
+        && !hasUDA!(__traits(getMember, T, member), serdeIgnoreIn);
+}
+
+/++
++/
+template serdeGetAnnotationMembersIn(T)
+{
+    import std.meta: aliasSeqOf, Filter;
+    static if (isSomeStruct!T)
+        enum string[] serdeGetAnnotationMembersIn = [Filter!(serdeIsAnnotationMemberIn!T, aliasSeqOf!(SerializableMembers!T))];
+    else
+        enum string[] serdeGetAnnotationMembersIn = null;
+}
+
+
+///
+version(mir_test) unittest
+{
+    struct S
+    {
+        double data;
+
+        @serdeAnnotation
+        string a;
+        @serdeAnnotation @serdeIgnoreIn
+        string b;
+        @serdeAnnotation @serdeIgnoreOut
+        string c;
+        @serdeAnnotation @serdeIgnore
+        string d;
+    }
+
+    static assert(serdeGetAnnotationMembersIn!int == []);
+    static assert(serdeGetAnnotationMembersIn!S == ["a", "c"]);
+}
+
+private template serdeIsAnnotationMemberOut(T)
+{
+    enum bool serdeIsAnnotationMemberOut(string member)
+          = hasUDA!(__traits(getMember, T, member), serdeAnnotation) 
+        && !hasUDA!(__traits(getMember, T, member), serdeIgnore) 
+        && !hasUDA!(__traits(getMember, T, member), serdeIgnoreOut);
+}
+
+/++
++/
+template serdeGetAnnotationMembersOut(T)
+{
+    import std.meta: aliasSeqOf, Filter;
+    static if (isSomeStruct!T)
+        enum string[] serdeGetAnnotationMembersOut = [Filter!(serdeIsAnnotationMemberOut!T, aliasSeqOf!(DeserializableMembers!T))];
+    else
+        enum string[] serdeGetAnnotationMembersOut = null;
+}
+
+///
+version(mir_test) unittest
+{
+    struct S
+    {
+        double data;
+
+        @serdeAnnotation
+        string a;
+        @serdeAnnotation @serdeIgnoreIn
+        string b;
+        @serdeAnnotation @serdeIgnoreOut
+        string c;
+        @serdeAnnotation @serdeIgnore
+        string d;
+    }
+
+    static assert(serdeGetAnnotationMembersOut!int == []);
+    static assert(serdeGetAnnotationMembersOut!S == ["a", "b"]);
+}
+
+/++
 An annotation / attribute for algebraic types deserialization.
 
 This feature is used in $(MIR_PACKAGE mir-ion) for $(GMREF mir-core, mir,algebraic).
@@ -108,12 +197,30 @@ struct serdeAlgebraicAnnotation
 }
 
 /++
++/
+template serdeHasAlgebraicAnnotation(T)
+{
+    static if (isSomeStruct!T || is(T == enum))
+    {
+        enum serdeHasAlgebraicAnnotation = hasUDA!(T, serdeAlgebraicAnnotation);
+    }
+    else
+    {
+        enum serdeHasAlgebraicAnnotation = false;
+    }
+}
+
+/++
++/
+enum string serdeGetAlgebraicAnnotation(T) = getUDA!(T, serdeAlgebraicAnnotation).annotation;
+
+/++
 Returns:
     immutable array of the input keys for the symbol or enum value
 +/
 template serdeGetKeysIn(alias symbol)
 {
-    static if (hasUDA!(symbol, serdeIgnore) || hasUDA!(symbol, serdeIgnoreIn))
+    static if (hasUDA!(symbol, serdeAnnotation) || hasUDA!(symbol, serdeIgnore) || hasUDA!(symbol, serdeIgnoreIn))
         enum immutable(string)[] serdeGetKeysIn = null;
     else
     static if (hasUDA!(symbol, serdeKeys))
@@ -206,7 +313,7 @@ Returns:
 +/
 template serdeGetKeyOut(alias symbol)
 {
-    static if (hasUDA!(symbol, serdeIgnore) || hasUDA!(symbol, serdeIgnoreOut))
+    static if (hasUDA!(symbol, serdeAnnotation) || hasUDA!(symbol, serdeIgnore) || hasUDA!(symbol, serdeIgnoreOut))
         enum string serdeGetKeyOut = null;
     else
     static if (hasUDA!(symbol, serdeKeyOut))
@@ -1462,13 +1569,44 @@ private template serdeFinalDeepProxySerializableMemberKeys(T)
         enum string[] serdeFinalDeepProxySerializableMemberKeys = null;
 }
 
+private template serdeGetAlgebraicAnnotations(T)
+{
+    static if (isSomeStruct!T || is(T == enum))
+        static if (hasUDA!(T, serdeAlgebraicAnnotation))
+            enum string[] serdeGetAlgebraicAnnotations = [getUDA!(T, serdeAlgebraicAnnotation).annotation];
+        else
+            enum string[] serdeGetAlgebraicAnnotations = null;
+    else
+        enum string[] serdeGetAlgebraicAnnotations = null;
+}
+
+package template serdeIsComplexVariant(T)
+{
+    import mir.algebraic: Algebraic;
+    static if (is(T == Algebraic!Types, Types...))
+    {
+        static if (Types.length > 1)
+            enum bool serdeIsComplexVariant = Types.length - is(Types[0] == typeof(null)) != 0;
+        else
+            enum bool serdeIsComplexVariant = false;
+    }
+    else
+    {
+        enum bool serdeIsComplexVariant = false;
+    }
+}
+
 /++
 Serialization members final proxy keys (recursive)
 +/
 template serdeGetSerializationKeysRecurse(T)
 {
+    import mir.algebraic: isVariant;
     import std.meta: staticMap, aliasSeqOf;
-    enum string[] serdeGetSerializationKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalDeepProxySerializableMemberKeys, serdeSerializationFinalDeepProxyMemberTypesRecurse!T))].sortUniqKeys;
+    static if (isVariant!T)
+        enum string[] serdeGetSerializationKeysRecurse = ([staticMap!(aliasSeqOf, staticMap!(serdeGetAlgebraicAnnotations, T.AllowedTypes))] ~ [staticMap!(aliasSeqOf, staticMap!(.serdeGetSerializationKeysRecurse, T.AllowedTypes))]).sortUniqKeys;
+    else
+        enum string[] serdeGetSerializationKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalDeepProxySerializableMemberKeys, serdeSerializationFinalDeepProxyMemberTypesRecurse!T))].sortUniqKeys;
 }
 
 ///
@@ -1500,10 +1638,14 @@ version(mir_test) unittest
         int d;
     }
 
+    @serdeAlgebraicAnnotation("$F")
     @serdeProxy!D
     static struct F { int f; }
 
     static assert (serdeGetSerializationKeysRecurse!F == ["c", "d", "g"]);
+
+    import mir.algebraic;
+    static assert (serdeGetSerializationKeysRecurse!(Nullable!(F, int)) == ["c", "d", "g", "$F"]);
 }
 
 /++
@@ -1511,8 +1653,12 @@ Deserialization members final proxy keys (recursive)
 +/
 template serdeGetDeserializationKeysRecurse(T)
 {
+    import mir.algebraic: isVariant;
     import std.meta: staticMap, aliasSeqOf;
-    enum string[] serdeGetDeserializationKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalDeepProxyDeserializableMemberKeys, serdeDeserializationFinalDeepProxyMemberTypesRecurse!T))].sortUniqKeys;
+    static if (isVariant!T)
+        enum string[] serdeGetDeserializationKeysRecurse = ([staticMap!(aliasSeqOf, staticMap!(serdeGetAlgebraicAnnotations, T.AllowedTypes))] ~ [staticMap!(aliasSeqOf, staticMap!(.serdeGetDeserializationKeysRecurse, T.AllowedTypes))]).sortUniqKeys;
+    else
+        enum string[] serdeGetDeserializationKeysRecurse = [staticMap!(aliasSeqOf, staticMap!(serdeFinalDeepProxyDeserializableMemberKeys, serdeDeserializationFinalDeepProxyMemberTypesRecurse!T))].sortUniqKeys;
 }
 
 ///
@@ -1538,10 +1684,14 @@ version(mir_test) unittest
         int d;
     }
 
+    @serdeAlgebraicAnnotation("$F")
     @serdeProxy!D
     static struct F { int f; }
 
     static assert (serdeGetDeserializationKeysRecurse!F == ["c", "d", "g"]);
+
+    import mir.algebraic;
+    static assert (serdeGetDeserializationKeysRecurse!(Nullable!(F, int)) == ["c", "d", "g", "$F"]);
 }
 
 /++
@@ -1576,13 +1726,13 @@ UDA used to force serializer to output members in the alphabetical order of thei
 +/
 enum serdeAlphabetOut;
 
-private enum isCompositeType(T) = is(T == class) || is(T == struct) || is(T == union) || is(T == interface);
+private enum isSomeStruct(T) = is(T == class) || is(T == struct) || is(T == union) || is(T == interface);
 
 /++
 A dummy structure usefull $(LREF serdeOrderedIn) support.
 +/
 struct SerdeOrderedDummy(T, bool __optionalByDefault = false)
-    if (is(serdeGetFinalProxy!T == T) && (is(T == class) || is(T == struct) || is(T == union) || is(T == interface)))
+    if (is(serdeGetFinalProxy!T == T) && isSomeStruct!T)
 {
     import std.traits: hasUDA;
 
@@ -1617,7 +1767,7 @@ public:
                 mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ ";");
             }
             else
-            static if (isCompositeType!(typeof(__traits(getMember, T, member))))
+            static if (isSomeStruct!(typeof(__traits(getMember, T, member))))
             {
                 static if (hasUDA!(typeof(__traits(getMember, T, member)), serdeProxy))
                 {
