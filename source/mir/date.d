@@ -29,6 +29,7 @@ Authors: $(HTTP jmdavisprog.com, Jonathan M Davis), Ilya Yaroshenko (boost-like 
 +/
 module mir.date;
 
+import mir.timestamp: Timestamp;
 import mir.serde: serdeProxy, serdeScoped;
 import std.range.primitives : isOutputRange;
 import std.traits : isSomeChar, Unqual;
@@ -243,11 +244,54 @@ enum DayOfWeek
 }
 
 ///
+@serdeProxy!Timestamp
 struct YearMonthDay
 {
     short year  = 1;
     Month month = Month.jan;
     ubyte day   = 1;
+
+    ///
+    Timestamp timestamp() @safe pure nothrow @nogc @property
+    {
+        return Timestamp(year, cast(ubyte)month, day);
+    }
+
+    ///
+    alias opCast(T : Timestamp) = timestamp;
+
+    ///
+    version(mir_test)
+    unittest
+    {
+        import mir.timestamp;
+        auto timestamp = cast(Timestamp) YearMonthDay(2020, Month.may, 12);
+    }
+
+    ///
+    this(short year, Month month, ubyte day) @safe pure nothrow @nogc
+    {
+        this.year = year;
+        this.month = month;
+        this.day = day;
+    }
+
+    ///
+    this(Date date) @safe pure nothrow @nogc
+    {
+        this = date.yearMonthDay;
+    }
+
+    version(D_Exceptions)
+    ///
+    this(Timestamp timestamp) @safe pure nothrow @nogc
+    {
+        if (timestamp.precision != Timestamp.Precision.day)
+        {
+            static immutable exc = new Exception("YearMonthDay: invalid timestamp precision");
+        }
+        with(timestamp) this(year, cast(Month)month, day);
+    }
 
     // Shares documentation with "years" version.
     @safe pure nothrow @nogc
@@ -410,8 +454,7 @@ struct YearMonthDay
  +/
 extern(C++, "boost", "gregorian")
 extern(C++, class)
-@serdeScoped
-@serdeProxy!(const(char)[])
+@serdeProxy!YearMonthDay
 struct date
 {
 extern(D):
@@ -505,6 +548,22 @@ public:
     R:
         ret._julianDay += _julianShift;
         return ret;
+    }
+
+    ///
+    Timestamp timestamp() @safe pure nothrow @nogc @property
+    {
+        return yearMonthDay.timestamp;
+    }
+
+    version(D_Exceptions)
+    ///
+    this(Timestamp timestamp) @safe pure @nogc
+    {
+        if (timestamp.precision != Timestamp.Precision.day)
+        {
+            static immutable exc = new Exception("Date: invalid timestamp precision");
+        }
     }
 
     version(D_Exceptions)
