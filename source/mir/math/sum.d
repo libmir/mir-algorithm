@@ -962,7 +962,7 @@ public:
 
     ///ditto
     void put(Range)(Range r)
-        if (isIterable!Range)
+        if (isIterable!Range && !is(Range : __vector(V[N]), V, size_t N))
     {
         static if (summation == Summation.pairwise && fastPairwise && isDynamicArray!Range)
         {
