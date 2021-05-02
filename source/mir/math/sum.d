@@ -472,14 +472,16 @@ struct Summator(T, Summation summation)
 
     @attr:
 
-    static if (summation == Summation.pairwise)
+    static if (summation == Summation.pairwise) {
+        import std.complex: Complex;
         private enum bool fastPairwise =
             is(F == float) ||
             is(F == double) ||
-            is(F == cfloat) ||
-            is(F == cdouble) ||
+            is(F == Complex!float) ||
+            is(F == Complex!double) ||
             is(F : __vector(W[N]), W, size_t N);
             //false;
+    }
 
     alias F = T;
 
@@ -1994,7 +1996,13 @@ unittest
     assert(sum!float(1) == 1f);
     assert(sum!float(1, 2, 3) == 6f);
     assert(sum!float(1.0, 2.0, 3.0) == 6f);
-    assert(sum!cfloat(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6f + 6i));
+}
+
+version(mir_test)
+unittest
+{
+    import std.complex: Complex;
+    assert(sum!(Complex!float)(Complex!float(1.0, 1.0), Complex!float(2.0, 2.0), Complex!float(3.0, 3.0)) == Complex!float(6.0, 6.0));
 }
 
 version(LDC)

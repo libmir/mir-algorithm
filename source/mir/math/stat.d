@@ -38,8 +38,9 @@ template statType(T, bool checkComplex = true)
     } else static if (is(T : double)) {
         alias statType = double;
     } else static if (checkComplex) {
-        static if (is(T : cdouble)) {
-            alias statType = cdouble;
+        import std.complex: Complex;
+        static if (isComplex!T || is(T : Complex!U, U)) {
+            alias statType = Complex!double;
         } else {
             static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point (or complex floating point) type");
         }
@@ -57,9 +58,6 @@ unittest
     static assert(is(statType!double == double));
     static assert(is(statType!float == float));
     static assert(is(statType!real == real));
-    static assert(is(statType!cfloat == cfloat));
-    static assert(is(statType!cdouble == cdouble));
-    static assert(is(statType!creal == creal));
     
     static assert(is(statType!(const(int)) == double));
     static assert(is(statType!(immutable(int)) == double));
@@ -71,18 +69,37 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import std.complex: Complex;
+
+    static assert(is(statType!(Complex!float) == Complex!float));
+    static assert(is(statType!(Complex!double) == Complex!double));
+    static assert(is(statType!(Complex!real) == Complex!real));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
     static struct Foo {
         float x;
         alias x this;
     }
-    
+
+    static assert(is(statType!Foo == double)); // note: this is not float
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import std.complex: Complex;
+
     static struct Bar {
-        cfloat x;
+        Complex!float x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == double)); // note: this is not float
-    static assert(is(statType!Bar == cdouble)); // note: this is not cfloat
+    static assert(is(statType!Bar == Complex!double)); // note: this is not Complex!float
 }
 
 version(mir_test)
@@ -93,14 +110,22 @@ unittest
         double x;
         alias x this;
     }
-    
+
+    static assert(is(statType!Foo == double));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import std.complex: Complex;
+
     static struct Bar {
-        cdouble x;
+        Complex!double x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == double));
-    static assert(is(statType!Bar == cdouble));
+    static assert(is(statType!Bar == Complex!double));
 }
 
 version(mir_test)
@@ -111,14 +136,22 @@ unittest
         real x;
         alias x this;
     }
-    
+
+    static assert(is(statType!Foo == double)); // note: this is not real
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import std.complex: Complex;
+
     static struct Bar {
-        creal x;
+        Complex!real x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == double)); // note: this is not real
-    static assert(is(statType!Bar == cdouble)); // note: this is not creal
+    static assert(is(statType!Bar == Complex!double)); // note: this is not Complex!real
 }
 
 version(mir_test)
@@ -285,7 +318,8 @@ Computes the mean of the input.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or have a `Complex!double` type if `F` is implicitly convertible to a
+complex type.
 
 Params:
     F = controls type of output
@@ -607,7 +641,8 @@ Computes the harmonic mean of the input.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or have a `Complex!double` type if `F` is implicitly convertible to a
+complex type.
 
 Params:
     F = controls type of output
@@ -1240,7 +1275,8 @@ Computes the median of `slice`.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or have a `Complex!double` type if `F` is implicitly convertible to a
+complex type.
 
 Can also pass a boolean variable, `allowModify`, that allows the input slice to
 be modified. By default, a reference-counted copy is made. 
@@ -2241,13 +2277,14 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
+    import std.complex: Complex;
 
-    auto x = [1.0 + 3i, 2, 3].sliced;
+    auto x = [Complex!double(1.0, 3), Complex!double(2), Complex!double(3)].sliced;
 
-    VarianceAccumulator!(cdouble, VarianceAlgo.online, Summation.naive) v;
+    VarianceAccumulator!(Complex!double, VarianceAlgo.online, Summation.naive) v;
     v.put(x);
-    assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
-    assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
+    assert(v.variance(true).approxEqual(Complex!double(-4.0, -6) / 3));
+    assert(v.variance(false).approxEqual(Complex!double(-4.0, -6) / 2));
 }
 
 version(mir_test)
@@ -2588,14 +2625,15 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
+    import std.complex: Complex;
 
-    auto a = [1.0 + 3i, 2, 3].sliced;
+    auto a = [Complex!double(1.0, 3), Complex!double(2), Complex!double(3)].sliced;
     auto x = a.center;
 
-    VarianceAccumulator!(cdouble, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    VarianceAccumulator!(Complex!double, VarianceAlgo.assumeZeroMean, Summation.naive) v;
     v.put(x);
-    assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
-    assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
+    assert(v.variance(true).approxEqual(Complex!double(-4.0, -6) / 3));
+    assert(v.variance(false).approxEqual(Complex!double(-4.0, -6) / 2));
 }
 
 version(mir_test)
@@ -2645,7 +2683,8 @@ Calculates the variance of the input
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or have a `Complex!double` type if `F` is implicitly convertible to a
+complex type.
 
 Params:
     F = controls type of output
