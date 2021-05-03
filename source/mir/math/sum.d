@@ -146,8 +146,8 @@ unittest
     //assert(r == ar.sum!"kahan");
     version(LDC) // DMD Internal error: backend/cgxmm.c 628
     {
-        assert(r == ar.sum!"kbn");
-        assert(r == ar.sum!"kb2");
+        //assert(r == ar.sum!"kbn");
+        //assert(r == ar.sum!"kb2");
     }
     //assert(r == ar.sum!"precise");
     //assert(r == ar.sum!"decimal");
