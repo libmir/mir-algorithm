@@ -34,13 +34,20 @@ template statType(T, bool checkComplex = true)
 
     static if (isFloatingPoint!T || (checkComplex && isComplex!T)) {
         import std.traits: Unqual;
-        alias statType = Unqual!T;
+        
+        static if (is(T : cdouble)) {
+            deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = Unqual!T;
+        } else {
+            alias statType = Unqual!T;
+        }
     } else static if (is(T : double)) {
         alias statType = double;
     } else static if (checkComplex) {
         import std.complex: Complex;
         static if (isComplex!T || is(T : Complex!U, U)) {
             alias statType = Complex!double;
+        } else static if (is(T : cdouble)) {
+            deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = cdouble;
         } else {
             static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point (or complex floating point) type");
         }
@@ -63,6 +70,15 @@ unittest
     static assert(is(statType!(immutable(int)) == double));
     static assert(is(statType!(const(double)) == double));
     static assert(is(statType!(immutable(double)) == double));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(statType!cfloat == cfloat));
+    static assert(is(statType!cdouble == cdouble));
+    static assert(is(statType!creal == creal));
 }
 
 version(mir_test)
@@ -88,18 +104,30 @@ unittest
     static assert(is(statType!Foo == double)); // note: this is not float
 }
 
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        cfloat x;
+        alias x this;
+    }
+
+    static assert(is(statType!Foo == cdouble)); // note: this is not Complex!float
+}
+
 version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
     import std.complex: Complex;
 
-    static struct Bar {
+    static struct Foo {
         Complex!float x;
         alias x this;
     }
 
-    static assert(is(statType!Bar == Complex!double)); // note: this is not Complex!float
+    static assert(is(statType!Foo == Complex!double)); // note: this is not Complex!float
 }
 
 version(mir_test)
@@ -114,18 +142,30 @@ unittest
     static assert(is(statType!Foo == double));
 }
 
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        cdouble x;
+        alias x this;
+    }
+
+    static assert(is(statType!Foo == cdouble));
+}
+
 version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
     import std.complex: Complex;
 
-    static struct Bar {
+    static struct Foo {
         Complex!double x;
         alias x this;
     }
 
-    static assert(is(statType!Bar == Complex!double));
+    static assert(is(statType!Foo == Complex!double));
 }
 
 version(mir_test)
@@ -140,18 +180,30 @@ unittest
     static assert(is(statType!Foo == double)); // note: this is not real
 }
 
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
+        creal x;
+        alias x this;
+    }
+
+    static assert(is(statType!Foo == cdouble)); // note: this is not Complex!real
+}
+
 version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
     import std.complex: Complex;
 
-    static struct Bar {
+    static struct Foo {
         Complex!real x;
         alias x this;
     }
 
-    static assert(is(statType!Bar == Complex!double)); // note: this is not Complex!real
+    static assert(is(statType!Foo == Complex!double)); // note: this is not Complex!real
 }
 
 version(mir_test)
@@ -2271,6 +2323,21 @@ unittest
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 }
 
+version(mir_builtincomplex_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [1.0 + 3i, 2, 3].sliced;
+
+    VarianceAccumulator!(cdouble, VarianceAlgo.online, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
+    assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
+}
+
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -2617,6 +2684,22 @@ unittest
     assert(v.variance(PopulationTrueCT).approxEqual(54.76562 / 12));
     assert(v.variance(PopulationFalseRT).approxEqual(54.76562 / 11));
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto a = [1.0 + 3i, 2, 3].sliced;
+    auto x = a.center;
+
+    VarianceAccumulator!(cdouble, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
+    assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
 }
 
 version(mir_test)

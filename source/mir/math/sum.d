@@ -114,7 +114,7 @@ unittest
 /++
 All summation algorithms available for complex numbers.
 +/
-version(mir_test)
+version(mir_builtincomplex_test)
 unittest
 {
     cdouble[] ar = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i];
@@ -130,6 +130,27 @@ unittest
     }
     assert(r == ar.sum!"precise");
     assert(r == ar.sum!"decimal");
+}
+
+///
+version(mir_test)
+unittest
+{
+    import std.complex: Complex;
+
+    auto ar = [Complex!double(1.0, 2), Complex!double(2.0, 3), Complex!double(3.0, 4), Complex!double(4.0, 5)];
+    Complex!double r = Complex!double(10.0, 14);
+    //assert(r == ar.sum!"fast");
+    assert(r == ar.sum!"naive");
+    assert(r == ar.sum!"pairwise");
+    //assert(r == ar.sum!"kahan");
+    version(LDC) // DMD Internal error: backend/cgxmm.c 628
+    {
+        assert(r == ar.sum!"kbn");
+        assert(r == ar.sum!"kb2");
+    }
+    //assert(r == ar.sum!"precise");
+    //assert(r == ar.sum!"decimal");
 }
 
 ///
@@ -448,7 +469,8 @@ Output range for summation.
 struct Summator(T, Summation summation)
     if (isMutable!T)
 {
-    static if (is(T == class) || is(T == interface) || hasElaborateAssign!T)
+    import mir.internal.utility: isComplex;
+    static if (is(T == class) || is(T == interface) || hasElaborateAssign!T && !isComplex!T)
         static assert (summation == Summation.naive,
             "Classes, interfaces, and structures with "
             ~ "elaborate constructor support only naive summation.");
@@ -1987,7 +2009,6 @@ unittest
     assert(sum(1) == 1);
     assert(sum(1, 2, 3) == 6);
     assert(sum(1.0, 2.0, 3.0) == 6);
-    assert(sum(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6 + 6i));
 }
 
 version(mir_test)
@@ -1998,10 +2019,19 @@ unittest
     assert(sum!float(1.0, 2.0, 3.0) == 6f);
 }
 
+version(mir_builtincomplex_test)
+unittest
+{
+    assert(sum(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6 + 6i));
+    assert(sum!cfloat(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6f + 6i));
+}
+
 version(mir_test)
 unittest
 {
     import std.complex: Complex;
+
+    assert(sum(Complex!float(1.0, 1.0), Complex!float(2.0, 2.0), Complex!float(3.0, 3.0)) == Complex!float(6.0, 6.0));
     assert(sum!(Complex!float)(Complex!float(1.0, 1.0), Complex!float(2.0, 2.0), Complex!float(3.0, 3.0)) == Complex!float(6.0, 6.0));
 }
 
