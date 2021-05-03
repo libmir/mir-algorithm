@@ -698,8 +698,8 @@ public:
                     cs = 0 + 0fi;
                     ccs = 0 + 0fi;
                 } else {
-                    cs = Complex!float(0, 0i);
-                    ccs = Complex!float(0, 0i);
+                    cs = Complex!float(0, 0);
+                    ccs = Complex!float(0, 0);
                 }
             }
             else
@@ -716,7 +716,7 @@ public:
                 static if (is(T : cfloat)) {
                     c = 0 + 0fi;
                 } else {
-                    c = Complex!float(0, 0i);
+                    c = Complex!float(0, 0);
                 }
             } else
                 c = 0.0;
@@ -729,7 +729,7 @@ public:
                 static if (is(T : cfloat)) {
                     c = 0 + 0fi;
                 } else {
-                    c = Complex!float(0, 0i);
+                    c = Complex!float(0, 0);
                 }
             } else
                 c = 0.0;
