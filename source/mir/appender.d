@@ -332,7 +332,8 @@ version (mir_test) unittest
     assert(buf.data == "cs");
 }
 
-version(mir_test)
+version(mir_bignum_test) // for DIP1000
+@safe pure nothrow
 unittest
 {
     import mir.conv: to;
@@ -345,12 +346,14 @@ unittest
             return "_";
         }
     }
-    Algebraic!(int, string) x;
+    Algebraic!(int, string, double) x;
     x = 42;
     auto s = x.to!string;
     assert(s == "42", s);
     x = "abc";
     assert(x.to!string == "abc");
+    x = 42.0;
+    assert(x.to!string == "42.0");
     Algebraic!S y;
     y = S();
     assert(y.to!string == "_");
