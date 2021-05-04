@@ -111,7 +111,7 @@ struct UInt(size_t size)
 
     static if (size == 128)
     ///
-    version(mir_test) @safe pure @nogc unittest
+    version(mir_bignum_test) @safe pure @nogc unittest
     {
         import mir.math.constant: PI;
         UInt!256 integer = "34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
@@ -265,14 +265,14 @@ struct UInt(size_t size)
     }
 
     /// ditto
-    auto opCmp(ulong rhs) const
+    auto opCmp(ulong rhs) const scope
     {
         return opCmp(UInt!size(rhs));
     }
 
     /++
     +/
-    ref UInt!size opAssign(ulong rhs) return
+    ref UInt!size opAssign(ulong rhs) scope return
         @safe pure nothrow @nogc
     {
         this.data = UInt!size(rhs).data;
@@ -283,7 +283,7 @@ struct UInt(size_t size)
     `bool overflow = a += b ` and `bool overflow = a -= b` operations.
     +/
     bool opOpAssign(string op)(UInt!size rhs, bool overflow = false)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
         if (op == "+" || op == "-")
     {
         return view.opOpAssign!op(rhs.view, overflow);
@@ -291,7 +291,7 @@ struct UInt(size_t size)
 
     /// ditto
     bool opOpAssign(string op)(size_t rhs)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
         if (op == "+" || op == "-")
     {
         return view.opOpAssign!op(rhs);
@@ -300,7 +300,7 @@ struct UInt(size_t size)
     static if (size_t.sizeof < ulong.sizeof)
     /// ditto
     bool opOpAssign(string op)(ulong rhs)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
         if (op == "+" || op == "-")
     {
         return opOpAssign!op(UInt!size(rhs));
@@ -308,7 +308,7 @@ struct UInt(size_t size)
 
     /// ditto
     bool opOpAssign(string op, size_t rsize)(UInt!rsize rhs, bool overflow = false)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
         if ((op == "+" || op == "-") && rsize < size)
     {
         return opOpAssign!op(rhs.toSize!size, overflow);
@@ -318,7 +318,7 @@ struct UInt(size_t size)
     Returns: overflow value of multiplication
     +/
     size_t opOpAssign(string op : "*")(size_t rhs, size_t carry = 0)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
     {
         return view.opOpAssign!op(rhs, carry);
     }
@@ -326,7 +326,7 @@ struct UInt(size_t size)
     static if (size_t.sizeof == 4)
     /// ditto
     auto opOpAssign(string op : "*")(ulong rhs)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
     {
         return opOpAssign!op(UInt!64(rhs));
     }
@@ -336,7 +336,7 @@ struct UInt(size_t size)
     Returns: overflow value of multiplication
     +/
     void opOpAssign(string op : "*", size_t rhsSize)(UInt!rhsSize rhs)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
         if (rhsSize <= size)
     {
         this = extendedMul(this, rhs).toSize!size;
@@ -352,7 +352,7 @@ struct UInt(size_t size)
         unsigned remainder value (evaluated overflow)
     +/
     uint opOpAssign(string op : "/")(uint rhs, uint overflow = 0)
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
     {
         assert(overflow < rhs);
         auto work = view.normalized;
@@ -382,7 +382,7 @@ struct UInt(size_t size)
     }
 
     ///
-    ref UInt!size opOpAssign(string op)(size_t rhs) nothrow return
+    ref UInt!size opOpAssign(string op)(size_t rhs) nothrow return scope
         if (op == "^" || op == "|" || op == "&")
     {
         mixin(`view.leastSignificantFirst[0] ` ~ op ~ `= rhs;`);
@@ -392,7 +392,7 @@ struct UInt(size_t size)
     static if (size_t.sizeof < ulong.sizeof)
     /// ditto
     ref opOpAssign(string op)(ulong rhs) return
-        @safe pure nothrow @nogc
+        @safe pure nothrow @nogc scope
         if (op == "^" || op == "|" || op == "&")
     {
         return opOpAssign!op(UInt!size(rhs));
@@ -805,7 +805,7 @@ UInt!sizeB extendedMulHigh(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!sizeB 
 
 /++
 +/
-UInt!(sizeA + sizeB) extendedMul(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!sizeB b)
+UInt!(sizeA + sizeB) extendedMul(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!sizeB b) @safe
 {
     UInt!(sizeA + sizeB) ret;
     enum al = a.data.length;
@@ -827,7 +827,7 @@ UInt!(sizeA + sizeB) extendedMul(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!
 
 /// ditto
 UInt!(size + size_t.sizeof * 8)
-    extendedMul(size_t size)(UInt!size a, size_t b)
+    extendedMul(size_t size)(UInt!size a, size_t b) @safe
 {
     size_t overflow = a.view *= b;
     auto ret = a.toSize!(size + size_t.sizeof * 8);
@@ -872,7 +872,6 @@ UInt!64 extendedMul()(uint a, uint b)
 }
 
 ///
-version(mir_bignum_test)
 version(mir_bignum_test)
 @safe pure @nogc
 unittest

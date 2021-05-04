@@ -5,6 +5,7 @@ then
   docker build -t ion-arm64 . -f Dockerfile.aarch64
 else
   echo $ARCH
+  dub test --arch=$ARCH --build=unittest-dip1000
   dub test --arch=$ARCH --build=unittest-cov
   # if [ \( "$DC" = "ldc2" \) -o \( "$DC" = "ldmd2" \) ]
   # then

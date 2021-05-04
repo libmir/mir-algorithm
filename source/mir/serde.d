@@ -114,7 +114,7 @@ template serdeGetAnnotationMembersIn(T)
 {
     import std.meta: aliasSeqOf, Filter;
     static if (isSomeStruct!T)
-        enum string[] serdeGetAnnotationMembersIn = [Filter!(serdeIsAnnotationMemberIn!T, aliasSeqOf!(SerializableMembers!T))];
+        enum string[] serdeGetAnnotationMembersIn = [Filter!(serdeIsAnnotationMemberIn!T, aliasSeqOf!(DeserializableMembers!T))];
     else
         enum string[] serdeGetAnnotationMembersIn = null;
 }
@@ -1610,7 +1610,7 @@ private template serdeFinalDeepProxyDeserializableMemberKeys(T)
         enum string[] serdeFinalDeepProxyDeserializableMemberKeys = null;
 }
 
-private template getAlgebraicAnnotationsOfVariant(T)
+package template getAlgebraicAnnotationsOfVariant(T)
 {
     import std.meta: staticMap, Filter;
     enum string[] getAlgebraicAnnotationsOfVariant = [staticMap!(serdeGetAlgebraicAnnotation, Filter!(serdeHasAlgebraicAnnotation, T.AllowedTypes))];
@@ -1657,7 +1657,7 @@ package template serdeIsComplexVariant(T)
     }
 }
 
-private template isAlgebraicAliasThis(T)
+package template isAlgebraicAliasThis(T)
 {
     static if (__traits(getAliasThis, T).length)
     {
