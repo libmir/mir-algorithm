@@ -219,7 +219,8 @@ alias Observation = mir_observation;
 /// Convenient function for $(LREF Observation) construction.
 auto observation(Index, Data)(Index index, Data data)
 {
-    return mir_observation!(Index, Data)(index, data);
+    alias R = mir_observation!(Index, Data);
+    return R(index, data);
 }
 
 /++
@@ -283,13 +284,13 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     IndexIterator _index;
 
     /// Index / Key / Time type aliases
-    alias Index = typeof(this.front.index);
+    alias Index = typeof(typeof(this).init.index.front);
     /// ditto
     alias Key = Index;
     /// ditto
     alias Time = Index;
     /// Data / Value type aliases
-    alias Data = typeof(this.front.data);
+    alias Data = typeof(typeof(this).init.data.front);
     /// ditto
     alias Value = Data;
 
@@ -1095,7 +1096,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         }
         else
         {
-            return index.front.observation(data.front);
+            return Observation!(Index, Data)(index.front, data.front);
         }
     }
 
