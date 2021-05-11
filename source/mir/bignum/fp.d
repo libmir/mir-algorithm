@@ -216,6 +216,8 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     @safe pure @nogc
     unittest
     {
+        import mir.bignum.fixed: UInt;
+
         auto fp = Fp!128(UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
         assert(fp.exponent == 0);
         assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
@@ -280,6 +282,8 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     @safe pure @nogc
     unittest
     {
+        import mir.bignum.fixed: UInt;
+
         auto a = Fp!128(0, -13, UInt!128.fromHexString("dfbbfae3cd0aff2714a1de7022b0029d"));
         auto b = Fp!128(1, 100, UInt!128.fromHexString("e3251bacb112c88b71ad3f85a970a314"));
         auto fp = a * b;
@@ -354,6 +358,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     @safe pure @nogc
     unittest
     {
+        import mir.bignum.fixed: UInt;
         auto fp = Fp!128(1, 100, UInt!128.fromHexString("e3251bacb112cb8b71ad3f85a970a314"));
         assert(cast(double)fp == -0xE3251BACB112C8p+172);
     }
@@ -364,6 +369,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     @safe pure @nogc
     unittest
     {
+        import mir.bignum.fixed: UInt;
         auto fp = Fp!128(1, 100, UInt!128.fromHexString("e3251bacb112cb8b71ad3f85a970a314"));
         static if (real.mant_dig == 64)
             assert(cast(real)fp == -0xe3251bacb112cb8bp+164L);
@@ -375,6 +381,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     @safe pure @nogc
     unittest
     {
+        import mir.bignum.fixed: UInt;
         auto fp = Fp!64(1, 100, UInt!64(0xe3251bacb112cb8b));
         version (DigitalMars)
         {
@@ -397,6 +404,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     @safe pure @nogc
     unittest
     {
+        import mir.bignum.fixed: UInt;
         auto fp = Fp!64(1, 100, UInt!64(0xe3251bacb112cb8b));
         static if (real.mant_dig == 64)
             assert(cast(real)fp == -0xe3251bacb112cb8bp+100L);
@@ -417,6 +425,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     @safe pure @nogc
     unittest
     {
+        import mir.bignum.fixed: UInt;
         auto fp = cast(Fp!64) Fp!128(UInt!128.fromHexString("afbbfae3cd0aff2784a1de7022b0029d"));
         assert(fp.exponent == 64);
         assert(fp.coefficient == UInt!64.fromHexString("afbbfae3cd0aff28"));
