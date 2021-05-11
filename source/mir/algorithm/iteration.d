@@ -1445,6 +1445,7 @@ template isSymmetric(alias fun = "a == b")
 version(mir_test)
 unittest
 {
+    import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: iota;
     assert(iota(2, 2).isSymmetric == false);
 
@@ -1580,6 +1581,7 @@ template minmaxPos(alias pred = "a < b")
 version(mir_test)
 unittest
 {
+    import mir.ndslice.slice: sliced;
     auto s = [
         2, 6, 4, -3,
         0, -4, -3, 3,
@@ -1651,6 +1653,7 @@ template minmaxIndex(alias pred = "a < b")
 version(mir_test)
 unittest
 {
+    import mir.ndslice.slice: sliced;
     auto s = [
         2, 6, 4, -3,
         0, -4, -3, 3,
@@ -1720,6 +1723,7 @@ template maxPos(alias pred = "a < b")
 version(mir_test)
 unittest
 {
+    import mir.ndslice.slice: sliced;
     auto s = [
         2, 6, 4, -3,
         0, -4, -3, 3,
@@ -1791,6 +1795,7 @@ template maxIndex(alias pred = "a < b")
 version(mir_test)
 unittest
 {
+    import mir.ndslice.slice: sliced;
     auto s = [
         2, 6, 4, -3,
         0, -4, -3, 3,
@@ -1812,6 +1817,7 @@ unittest
 version(mir_test)
 unittest
 {
+    import mir.ndslice.slice: sliced;
     auto s = [
         -8, 6, 4, -3,
         0, -4, -3, 3,
@@ -1827,6 +1833,7 @@ unittest
 version(mir_test)
 unittest
 {
+    import mir.ndslice.slice: sliced;
     auto s = [
             0, 1, 2, 3,
             4, 5, 6, 7,
