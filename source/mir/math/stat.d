@@ -30,26 +30,26 @@ import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonTyp
 package(mir)
 template statType(T, bool checkComplex = true)
 {
-    import mir.internal.utility: isFloatingPoint, isComplex;
+    import mir.internal.utility: isFloatingPoint;
 
-    static if (isFloatingPoint!T || (checkComplex && isComplex!T)) {
+    static if (isFloatingPoint!T) {
         import std.traits: Unqual;
-        
-        static if (is(T : cdouble)) {
-            deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = Unqual!T;
-        } else {
-            alias statType = Unqual!T;
-        }
+        alias statType = Unqual!T;
     } else static if (is(T : double)) {
         alias statType = double;
     } else static if (checkComplex) {
-        import std.complex: Complex;
-        static if (isComplex!T || is(T : Complex!U, U)) {
-            alias statType = Complex!double;
+        import mir.internal.utility: isComplex;
+        static if (isComplex!T) {
+            import std.traits: Unqual;
+            static if (is(T : cdouble)) {
+                deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = Unqual!T;
+            } else {
+                alias statType = Unqual!T;
+            }
         } else static if (is(T : cdouble)) {
-            deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = cdouble;
+                deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = cdouble;
         } else {
-            static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point (or complex floating point) type");
+            static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a complex floating point type");
         }
     } else {
         static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point type");
@@ -120,20 +120,6 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
-    import std.complex: Complex;
-
-    static struct Foo {
-        Complex!float x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == Complex!double)); // note: this is not Complex!float
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
     static struct Foo {
         double x;
         alias x this;
@@ -158,20 +144,6 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
-    import std.complex: Complex;
-
-    static struct Foo {
-        Complex!double x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == Complex!double));
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
     static struct Foo {
         real x;
         alias x this;
@@ -190,20 +162,6 @@ unittest
     }
 
     static assert(is(statType!Foo == cdouble)); // note: this is not Complex!real
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    import std.complex: Complex;
-
-    static struct Foo {
-        Complex!real x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == Complex!double)); // note: this is not Complex!real
 }
 
 version(mir_test)
