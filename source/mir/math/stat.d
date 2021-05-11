@@ -42,12 +42,12 @@ template statType(T, bool checkComplex = true)
         static if (isComplex!T) {
             import std.traits: Unqual;
             static if (is(T : cdouble)) {
-                deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = Unqual!T;
+                deprecated("Built-in complex types deprecated in D language version 2.097") alias statType = Unqual!T;
             } else {
                 alias statType = Unqual!T;
             }
         } else static if (is(T : cdouble)) {
-                deprecated("Built-in complex types deprecated in D language version 2.097, use std.complex") alias statType = cdouble;
+                deprecated("Built-in complex types deprecated in D language version 2.097") alias statType = cdouble;
         } else {
             static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a complex floating point type");
         }
@@ -203,6 +203,12 @@ unittest
     static assert(is(meanType!(int[]) == double));
     static assert(is(meanType!(double[]) == double));
     static assert(is(meanType!(float[]) == float));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
     static assert(is(meanType!(cfloat[]) == cfloat));
 }
 
@@ -214,14 +220,20 @@ unittest
         float x;
         alias x this;
     }
-    
-    static struct Bar {
+
+    static assert(is(meanType!(Foo[]) == float));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
         cfloat x;
         alias x this;
     }
 
-    static assert(is(meanType!(Foo[]) == float));
-    static assert(is(meanType!(Bar[]) == cfloat));
+    static assert(is(meanType!(Foo[]) == cfloat));
 }
 
 /++
@@ -328,8 +340,7 @@ Computes the mean of the input.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `Complex!double` type if `F` is implicitly convertible to a
-complex type.
+type or a type for which `isComplex!F` is true.
 
 Params:
     F = controls type of output
@@ -651,8 +662,7 @@ Computes the harmonic mean of the input.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `Complex!double` type if `F` is implicitly convertible to a
-complex type.
+type or a type for which `isComplex!F` is true.
 
 Params:
     F = controls type of output
@@ -1285,8 +1295,7 @@ Computes the median of `slice`.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `Complex!double` type if `F` is implicitly convertible to a
-complex type.
+type or a type for which `isComplex!F` is true.
 
 Can also pass a boolean variable, `allowModify`, that allows the input slice to
 be modified. By default, a reference-counted copy is made. 
@@ -2724,8 +2733,7 @@ Calculates the variance of the input
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `Complex!double` type if `F` is implicitly convertible to a
-complex type.
+type or a type for which `isComplex!F` is true.
 
 Params:
     F = controls type of output
