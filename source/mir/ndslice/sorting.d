@@ -5,8 +5,8 @@ Note:
     The combination of
     $(SUBREF topology, pairwise) with lambda `"a <= b"` (`"a < b"`) and $(SUBREF algorithm, all) can be used
     to check if an ndslice is sorted (strictly monotonic).
-    $(SUBREF topology iota) can be used to make an index.
-    $(SUBREF topology map) and $(SUBREF topology zip) can be used to create Schwartzian transform.
+    $(SUBREF topology, iota) can be used to make an index.
+    $(SUBREF topology, map) and $(SUBREF topology, zip) can be used to create Schwartzian transform.
     See also the examples in the module.
 
 
@@ -667,7 +667,9 @@ version(mir_test)
 /++
 Computes an index for `r` based on the comparison `less`. The
 index is a sorted array of indices into the original
-range. This technique is similar to sorting, but it is more flexible
+range. 
+
+This technique is similar to sorting, but it is more flexible
 because (1) it allows "sorting" of immutable collections, (2) allows
 binary search even if the original collection does not offer random
 access, (3) allows multiple indices, each on a different predicate,
@@ -676,10 +678,19 @@ an index may also be slower under certain circumstances due to the
 extra indirection, and is always larger than a sorting-based solution
 because it needs space for the index in addition to the original
 collection. The complexity is the same as `sort`'s.
+
+Can be combined with $(SUBREF topology, indexed) to create a view that is sorted
+based on the index.
+
 Params:
     less = The comparison to use.
     r = The slice/array to index.
-Returns: Index slice/array.
+
+Returns:
+    Index slice/array.
+    
+See_Also:
+    $(HTTPS numpy.org/doc/stable/reference/generated/numpy.argsort.html, numpy.argsort)
 +/
 Slice!(I*) makeIndex(I = size_t, alias less = "a < b", Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) r)
 {
@@ -701,7 +712,8 @@ I[] makeIndex(I = size_t, alias less = "a < b", T)(scope T[] r)
 
 ///
 version(mir_test)
-@system unittest
+@safe pure nothrow
+unittest
 {
     import mir.algorithm.iteration: all;
     import mir.ndslice.topology: indexed, pairwise;
@@ -710,6 +722,23 @@ version(mir_test)
     auto index = arr.makeIndex;
 
     assert(arr.indexed(index).pairwise!"a < b".all);
+}
+
+/// Sort based on index created from a separate array
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: equal;
+    import mir.ndslice.topology: indexed;
+
+    immutable arr0 = [ 2, 3, 1, 5,  0 ];
+    immutable arr1 = [ 1, 5, 4, 2, -1 ];
+
+    auto index = makeIndex(arr0);
+    assert(index.equal([4, 2, 0, 1, 3]));
+    auto view = arr1.indexed(index);
+    assert(view.equal([-1, 4, 1, 5, 2]));
 }
 
 /++
@@ -741,7 +770,7 @@ Params:
 
 Returns:
     The new position of the pivot
-    
+
 See_Also:
     $(HTTP jgrcs.info/index.php/jgrcs/article/view/142, Engineering of a Quicksort
     Partitioning Algorithm), D. Abhyankar, Journal of Global Research in Computer
