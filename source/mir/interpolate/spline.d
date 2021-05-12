@@ -126,6 +126,7 @@ public import mir.interpolate: atInterval;
 ///
 @safe pure version(mir_test) unittest
 {
+    import mir.rc.array: rcarray;
     import mir.algorithm.iteration: all;
     import mir.functional: aliasCall;
     import mir.math.common: approxEqual;

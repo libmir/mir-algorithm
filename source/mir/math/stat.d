@@ -25,6 +25,7 @@ import mir.math.sum;
 import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 import mir.primitives;
 import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonType;
+public import mir.math.sum: Summation;
 
 ///
 package(mir)

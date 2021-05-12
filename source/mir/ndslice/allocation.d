@@ -162,6 +162,7 @@ auto rcslice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 version(mir_test)
 @safe pure nothrow @nogc unittest
 {
+    import mir.rc.array: RCI;
     import mir.ndslice.slice: Slice;
     import mir.ndslice.topology : iota;
     import mir.ndslice.concatenation;
@@ -955,6 +956,7 @@ auto stdcUninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @sys
 version(mir_test)
 @system pure nothrow unittest
 {
+    import mir.ndslice.slice: Slice;
     auto tensor = stdcUninitAlignedSlice!double([5, 6, 7], 64);
     assert(tensor.length == 5);
     assert(tensor.elementCount == 5 * 6 * 7);

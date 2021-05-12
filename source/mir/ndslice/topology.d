@@ -570,7 +570,7 @@ pack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sli
 ///
 @safe @nogc pure nothrow version(mir_test) unittest
 {
-    import mir.ndslice.slice : sliced, Slice;
+    import mir.ndslice.slice: sliced, Slice;
 
     auto a = iota(3, 4, 5, 6);
     auto b = a.pack!2;
@@ -624,7 +624,7 @@ ipack(size_t P, Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) sl
 ///
 @safe @nogc pure nothrow version(mir_test) unittest
 {
-    import mir.ndslice.slice : sliced, Slice;
+    import mir.ndslice.slice: sliced, Slice;
 
     auto a = iota(3, 4, 5, 6);
     auto b = a.ipack!2;
@@ -712,7 +712,8 @@ evertPack(Iterator, size_t M, SliceKind innerKind, size_t N, SliceKind outerKind
 ///
 @safe pure nothrow version(mir_test) unittest
 {
-    import mir.ndslice.slice: sliced;
+    import mir.ndslice.iterator: SliceIterator;
+    import mir.ndslice.slice: sliced, Slice, Universal;
     import mir.ndslice.allocation: slice;
     static assert(is(typeof(
         slice!int(6)
@@ -750,7 +751,7 @@ iota
     (I = sizediff_t, size_t N)(size_t[N] lengths...)
     if (__traits(isIntegral, I))
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
     return IotaIterator!I(I.init).sliced(lengths);
 }
 
@@ -759,7 +760,7 @@ Slice!(IotaIterator!sizediff_t, N)
 iota
     (size_t N)(size_t[N] lengths, sizediff_t start)
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
     return IotaIterator!sizediff_t(start).sliced(lengths);
 }
 
@@ -768,7 +769,7 @@ Slice!(StrideIterator!(IotaIterator!sizediff_t), N)
 iota
     (size_t N)(size_t[N] lengths, sizediff_t start, size_t stride)
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
     return StrideIterator!(IotaIterator!sizediff_t)(stride, IotaIterator!sizediff_t(start)).sliced(lengths);
 }
 
@@ -782,7 +783,7 @@ template iota(I)
         (size_t N)(size_t[N] lengths, I start)
         if (__traits(isIntegral, I))
     {
-        import mir.ndslice.slice : sliced;
+        import mir.ndslice.slice: sliced;
         return IotaIterator!I(start).sliced(lengths);
     }
 
@@ -792,7 +793,7 @@ template iota(I)
         (size_t N)(size_t[N] lengths, I start, size_t stride)
         if (__traits(isIntegral, I))
     {
-        import mir.ndslice.slice : sliced;
+        import mir.ndslice.slice: sliced;
         return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
     }
 }
@@ -803,7 +804,7 @@ iota
     (I, size_t N)(size_t[N] lengths, I start)
     if (is(I P : P*))
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
     return IotaIterator!I(start).sliced(lengths);
 }
 
@@ -813,13 +814,14 @@ iota
     (I, size_t N)(size_t[N] lengths, I start, size_t stride)
     if (is(I P : P*))
 {
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
     return StrideIterator!(IotaIterator!I)(stride, IotaIterator!I(start)).sliced(lengths);
 }
 
 ///
 @safe pure nothrow @nogc version(mir_test) unittest
 {
+    import mir.primitives: DeepElementType;
     auto slice = iota(2, 3);
     static immutable array =
         [[0, 1, 2],
@@ -1746,7 +1748,7 @@ Random access and slicing
 nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     auto elems = iota(4, 5).slice.flattened;
 
@@ -2111,6 +2113,8 @@ version(mir_test) unittest
 ///
 @safe pure nothrow version(mir_test) unittest
 {
+    import mir.primitives: DeepElementType;
+
     auto sl = repeat(4.0, 2, 3);
     assert(sl == [[4.0, 4.0, 4.0],
                   [4.0, 4.0, 4.0]]);
@@ -2675,7 +2679,7 @@ auto bytegroup(size_t pack, DestinationType, T)(T withAsSlice)
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : DeepElementType, sliced;
+    import mir.ndslice.slice: DeepElementType, sliced;
 
     ubyte[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
@@ -2697,7 +2701,7 @@ version(mir_test) unittest
 @safe pure nothrow @nogc
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : DeepElementType, sliced;
+    import mir.ndslice.slice: DeepElementType, sliced;
     ushort[20] data;
     // creates a packed unsigned integer slice with max allowed value equal to `2^^6 - 1 == 63`.
     auto int48ar = data[].sliced.bytegroup!(3, long); // 48 bit integers
@@ -3551,6 +3555,7 @@ template as(T)
 ///
 @safe pure nothrow version(mir_test) unittest
 {
+    import mir.ndslice.slice: Slice;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : diagonal, as;
 
@@ -3573,7 +3578,7 @@ template as(T)
 @safe pure nothrow version(mir_test) unittest
 {
     import mir.ndslice.allocation : slice;
-    import mir.ndslice.slice : Contiguous, Slice;
+    import mir.ndslice.slice: Contiguous, Slice;
 
     Slice!(double*, 2)              matrix = slice!double([2, 2], 0);
     Slice!(const(double)*, 2) const_matrix = matrix.as!(const double);
@@ -3743,7 +3748,7 @@ auto chopped(S, Sliceable)(Sliceable sliceable, S bounds)
 @safe pure version(mir_test) unittest
 {
     import mir.functional: staticArray;
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
     auto pairwiseIndexes = [2, 4, 10].sliced;
     auto sliceable = 10.iota;
 
@@ -4100,6 +4105,7 @@ alias pairwise(alias fun, size_t lag = 1) = slide!(lag + 1, fun);
 ///
 @safe pure nothrow version(mir_test) unittest
 {
+    import mir.ndslice.slice: sliced;
     assert([2, 4, 3, -1].sliced.pairwise!"a + b" == [6, 7, 2]);
 }
 
@@ -4130,6 +4136,7 @@ alias diff(size_t lag = 1) = pairwise!(('a' + lag) ~ " - a", lag);
 ///
 version(mir_test) unittest
 {
+    import mir.ndslice.slice: sliced;
     assert([2, 4, 3, -1].sliced.diff == [2, -1, -4]);
 }
 
@@ -4412,7 +4419,7 @@ template kronecker(alias fun = product)
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     // eye
     auto a = slice!double([4, 4], 0);
@@ -4450,7 +4457,7 @@ version(mir_test) unittest
 version(mir_test) unittest
 {
     import mir.ndslice.allocation: slice;
-    import mir.ndslice.slice : sliced;
+    import mir.ndslice.slice: sliced;
 
     auto a = [ 1,  2,
                3,  4].sliced(2, 2);
@@ -5829,6 +5836,7 @@ auto triplets(string type, S)(S slice, size_t n)
 ///
 version(mir_test) unittest
 {
+    import mir.ndslice.slice: sliced;
     import mir.ndslice.topology: triplets, member, iota;
 
     auto a = [4, 5, 2, 8];

@@ -199,7 +199,7 @@ FindRootResult!T findRoot(alias f, alias tolerance = null, T)(
 // @nogc
 version(mir_test) @safe unittest
 {
-    import mir.math.common: log, exp;
+    import mir.math.common: log, exp, fabs;
 
     auto logRoot = findRoot!log(0, double.infinity).validate.x;
     assert(logRoot == 1);
@@ -1376,7 +1376,7 @@ version(mir_test) @safe unittest
 ///
 version(mir_test) @safe unittest
 {
-    import mir.math.common: approxEqual;
+    import mir.math.common: approxEqual, log, fabs;
     alias AliasSeq(T...) = T;
     static foreach (T; AliasSeq!(double, float, real))
     {

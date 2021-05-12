@@ -215,7 +215,7 @@ PythonBufferErrorCode toPythonBuffer(T, size_t N, SliceKind kind)(Slice!(T*, N, 
 ///
 version(mir_test) unittest
 {
-    import mir.ndslice.slice : Slice, Structure, Universal, Contiguous;
+    import mir.ndslice.slice : Slice, Structure, Universal, Contiguous, SliceKind;
     Py_buffer bar(SliceKind kind)(Slice!(double*, 2, kind) slice)
     {
         import core.stdc.stdlib;
