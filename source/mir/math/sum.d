@@ -495,7 +495,6 @@ struct Summator(T, Summation summation)
     @attr:
 
     static if (summation == Summation.pairwise) {
-        import std.complex: Complex;
         private enum bool fastPairwise =
             is(F == float) ||
             is(F == double) ||
