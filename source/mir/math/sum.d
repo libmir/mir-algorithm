@@ -501,8 +501,7 @@ struct Summator(T, Summation summation)
             is(F == double) ||
             is(F == cfloat) ||
             is(F == cdouble) ||
-            is(F == Complex!float) ||
-            is(F == Complex!double) ||
+            (isComplex!F && F.sizeof <= 16) ||
             is(F : __vector(W[N]), W, size_t N);
             //false;
     }
@@ -877,9 +876,8 @@ public:
                         s = x_re + s.im * 1fi;
                         x = s_re + x.im * 1fi;
                     } else {
-                        import std.complex: Complex;
-                        s = Complex!float(x_re, s.im);
-                        x = Complex!float(s_re, x.im);
+                        s = F(x_re, s.im);
+                        x = F(s_re, x.im);
                     }
                 }
                 if (fabs(s.im) < fabs(x.im))
@@ -890,9 +888,8 @@ public:
                         s = s.re + x_im * 1fi;
                         x = x.re + s_im * 1fi;
                     } else {
-                        import std.complex: Complex;
-                        s = Complex!float(s.re, x_im);
-                        x = Complex!float(x.re, s_im);
+                        s = F(s.re, x_im);
+                        x = F(x.re, s_im);
                     }
                 }
                 F c = (s-t)+x;
@@ -905,9 +902,8 @@ public:
                         c = cs_re + c.im * 1fi;
                         cs = c_re + cs.im * 1fi;
                     } else {
-                        import std.complex: Complex;
-                        c = Complex!float(cs_re, c.im);
-                        cs = Complex!float(c_re, cs.im);
+                        c = F(cs_re, c.im);
+                        cs = F(c_re, cs.im);
                     }
                 }
                 if (fabs(cs.im) < fabs(c.im))
@@ -918,9 +914,8 @@ public:
                         c = c.re + cs_im * 1fi;
                         cs = cs.re + c_im * 1fi;
                     } else {
-                        import std.complex: Complex;
-                        c = Complex!float(c.re, cs_im);
-                        cs = Complex!float(cs.re, c_im);
+                        c = F(c.re, cs_im);
+                        cs = F(cs.re, c_im);
                     }
                 }
                 F d = cs - t;
@@ -960,9 +955,8 @@ public:
                         s = x_re + s.im * 1fi;
                         x = s_re + x.im * 1fi;
                     } else {
-                        import std.complex: Complex;
-                        s = Complex!float(x_re, s.im);
-                        x = Complex!float(s_re, x.im);
+                        s = F(x_re, s.im);
+                        x = F(s_re, x.im);
                     }
                 }
                 if (fabs(s.im) < fabs(x.im))
@@ -973,9 +967,8 @@ public:
                         s = s.re + x_im * 1fi;
                         x = x.re + s_im * 1fi;
                     } else {
-                        import std.complex: Complex;
-                        s = Complex!float(s.re, x_im);
-                        x = Complex!float(x.re, s_im);
+                        s = F(s.re, x_im);
+                        x = F(x.re, s_im);
                     }
                 }
                 F d = s - t;
@@ -1068,12 +1061,11 @@ public:
         else
         static if (summation == Summation.fast)
         {
-            static if (isComplex!T) {
-                static if (is(T : cfloat)) {
+            static if (isComplex!F) {
+                static if (is(F : cfloat)) {
                     F s0 = 0 + 0fi;
                 } else {
-                    import std.complex: Complex;
-                    F s0 = Complex!float(0.0, 0.0);
+                    F s0 = F(0, 0f);
                 }
             } else
                 F s0 = 0;
@@ -1106,12 +1098,11 @@ public:
         else
         static if (summation == Summation.fast && N == 1)
         {
-            static if (isComplex!T) {
-                static if (is(T : cfloat)) {
+            static if (isComplex!F) {
+                static if (is(F : cfloat)) {
                     F s0 = 0 + 0fi;
                 } else {
-                    import std.complex: Complex;
-                    F s0 = Complex!float(0.0, 0.0);
+                    F s0 = F(0, 0f);
                 }
             } else
                 F s0 = 0;
@@ -1422,9 +1413,8 @@ public:
                     cs = 0 + 0fi;
                     ccs = 0 + 0fi;
                 } else {
-                    import std.complex: Complex;
-                    cs = Complex!float(0.0, 0.0);
-                    ccs = Complex!float(0.0, 0.0);
+                    cs = T(0, 0f);
+                    ccs = T(0.0, 0f);
                 }
             }
             else
@@ -1441,8 +1431,7 @@ public:
                 static if (is(T : cfloat)) {
                     c = 0 + 0fi;
                 } else {
-                    import std.complex: Complex;
-                    c = Complex!float(0.0, 0.0);
+                    c = T(0, 0f);
                 }
             } else
                 c = 0.0;
@@ -1455,8 +1444,7 @@ public:
                 static if (is(T : cfloat)) {
                     c = 0 + 0fi;
                 } else {
-                    import std.complex: Complex;
-                    c = Complex!float(0.0, 0.0);
+                    c = T(0, 0f);
                 }
             } else
                 c = 0.0;
