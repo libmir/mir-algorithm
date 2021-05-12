@@ -147,6 +147,8 @@ RCGraph!(I, J) rcgraph(I = uint, J = size_t, KeyIterator, RangeIterator)(Series!
 @safe pure @nogc version(mir_test)
 unittest
 {
+    import mir.series: series;
+
     static immutable keys = ["a", "b", "c"];
     static immutable data = [
         ["b", "c"],
