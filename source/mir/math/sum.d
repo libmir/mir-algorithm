@@ -114,11 +114,32 @@ unittest
 /++
 All summation algorithms available for complex numbers.
 +/
-version(mir_test)
+version(mir_builtincomplex_test)
 unittest
 {
     cdouble[] ar = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i];
     cdouble r = 10 + 14i;
+    assert(r == ar.sum!"fast");
+    assert(r == ar.sum!"naive");
+    assert(r == ar.sum!"pairwise");
+    assert(r == ar.sum!"kahan");
+    version(LDC) // DMD Internal error: backend/cgxmm.c 628
+    {
+        assert(r == ar.sum!"kbn");
+        assert(r == ar.sum!"kb2");
+    }
+    assert(r == ar.sum!"precise");
+    assert(r == ar.sum!"decimal");
+}
+
+///
+version(mir_test)
+unittest
+{
+    import std.complex: Complex;
+
+    auto ar = [Complex!double(1.0, 2), Complex!double(2.0, 3), Complex!double(3.0, 4), Complex!double(4.0, 5)];
+    Complex!double r = Complex!double(10.0, 14);
     assert(r == ar.sum!"fast");
     assert(r == ar.sum!"naive");
     assert(r == ar.sum!"pairwise");
@@ -448,7 +469,8 @@ Output range for summation.
 struct Summator(T, Summation summation)
     if (isMutable!T)
 {
-    static if (is(T == class) || is(T == interface) || hasElaborateAssign!T)
+    import mir.internal.utility: isComplex;
+    static if (is(T == class) || is(T == interface) || hasElaborateAssign!T && !isComplex!T)
         static assert (summation == Summation.naive,
             "Classes, interfaces, and structures with "
             ~ "elaborate constructor support only naive summation.");
@@ -472,14 +494,16 @@ struct Summator(T, Summation summation)
 
     @attr:
 
-    static if (summation == Summation.pairwise)
+    static if (summation == Summation.pairwise) {
         private enum bool fastPairwise =
             is(F == float) ||
             is(F == double) ||
             is(F == cfloat) ||
             is(F == cdouble) ||
+            (isComplex!F && F.sizeof <= 16) ||
             is(F : __vector(W[N]), W, size_t N);
             //false;
+    }
 
     alias F = T;
 
@@ -668,8 +692,13 @@ public:
             s = n;
             static if (isComplex!T)
             {
-                cs = 0 + 0fi;
-                ccs = 0 + 0fi;
+                static if (is(T : cfloat)) {
+                    cs = 0 + 0fi;
+                    ccs = 0 + 0fi;
+                } else {
+                    cs = Complex!float(0, 0);
+                    ccs = Complex!float(0, 0);
+                }
             }
             else
             {
@@ -681,18 +710,26 @@ public:
         static if (summation == Summation.kbn)
         {
             s = n;
-            static if (isComplex!T)
-                c = 0 + 0fi;
-            else
+            static if (isComplex!T) {
+                static if (is(T : cfloat)) {
+                    c = 0 + 0fi;
+                } else {
+                    c = Complex!float(0, 0);
+                }
+            } else
                 c = 0.0;
         }
         else
         static if (summation == Summation.kahan)
         {
             s = n;
-            static if (isComplex!T)
-                c = 0 + 0fi;
-            else
+            static if (isComplex!T) {
+                static if (is(T : cfloat)) {
+                    c = 0 + 0fi;
+                } else {
+                    c = Complex!float(0, 0);
+                }
+            } else
                 c = 0.0;
         }
         else
@@ -834,15 +871,25 @@ public:
                 {
                     auto s_re = s.re;
                     auto x_re = x.re;
-                    s = x_re + s.im * 1fi;
-                    x = s_re + x.im * 1fi;
+                    static if (is(F : cfloat)) {
+                        s = x_re + s.im * 1fi;
+                        x = s_re + x.im * 1fi;
+                    } else {
+                        s = F(x_re, s.im);
+                        x = F(s_re, x.im);
+                    }
                 }
                 if (fabs(s.im) < fabs(x.im))
                 {
                     auto s_im = s.im;
                     auto x_im = x.im;
-                    s = s.re + x_im * 1fi;
-                    x = x.re + s_im * 1fi;
+                    static if (is(F : cfloat)) {
+                        s = s.re + x_im * 1fi;
+                        x = x.re + s_im * 1fi;
+                    } else {
+                        s = F(s.re, x_im);
+                        x = F(x.re, s_im);
+                    }
                 }
                 F c = (s-t)+x;
                 s = t;
@@ -850,15 +897,25 @@ public:
                 {
                     auto c_re = c.re;
                     auto cs_re = cs.re;
-                    c = cs_re + c.im * 1fi;
-                    cs = c_re + cs.im * 1fi;
+                    static if (is(F : cfloat)) {
+                        c = cs_re + c.im * 1fi;
+                        cs = c_re + cs.im * 1fi;
+                    } else {
+                        c = F(cs_re, c.im);
+                        cs = F(c_re, cs.im);
+                    }
                 }
                 if (fabs(cs.im) < fabs(c.im))
                 {
                     auto c_im = c.im;
                     auto cs_im = cs.im;
-                    c = c.re + cs_im * 1fi;
-                    cs = cs.re + c_im * 1fi;
+                    static if (is(F : cfloat)) {
+                        c = c.re + cs_im * 1fi;
+                        cs = cs.re + c_im * 1fi;
+                    } else {
+                        c = F(c.re, cs_im);
+                        cs = F(cs.re, c_im);
+                    }
                 }
                 F d = cs - t;
                 d += c;
@@ -893,15 +950,25 @@ public:
                 {
                     auto s_re = s.re;
                     auto x_re = x.re;
-                    s = x_re + s.im * 1fi;
-                    x = s_re + x.im * 1fi;
+                    static if (is(F : cfloat)) {
+                        s = x_re + s.im * 1fi;
+                        x = s_re + x.im * 1fi;
+                    } else {
+                        s = F(x_re, s.im);
+                        x = F(s_re, x.im);
+                    }
                 }
                 if (fabs(s.im) < fabs(x.im))
                 {
                     auto s_im = s.im;
                     auto x_im = x.im;
-                    s = s.re + x_im * 1fi;
-                    x = x.re + s_im * 1fi;
+                    static if (is(F : cfloat)) {
+                        s = s.re + x_im * 1fi;
+                        x = x.re + s_im * 1fi;
+                    } else {
+                        s = F(s.re, x_im);
+                        x = F(x.re, s_im);
+                    }
                 }
                 F d = s - t;
                 d += x;
@@ -993,9 +1060,13 @@ public:
         else
         static if (summation == Summation.fast)
         {
-            static if (isComplex!T)
-                F s0 = 0 + 0fi;
-            else
+            static if (isComplex!F) {
+                static if (is(F : cfloat)) {
+                    F s0 = 0 + 0fi;
+                } else {
+                    F s0 = F(0, 0f);
+                }
+            } else
                 F s0 = 0;
             foreach (ref elem; r)
                 s0 += elem;
@@ -1026,9 +1097,13 @@ public:
         else
         static if (summation == Summation.fast && N == 1)
         {
-            static if (isComplex!T)
-                F s0 = 0 + 0fi;
-            else
+            static if (isComplex!F) {
+                static if (is(F : cfloat)) {
+                    F s0 = 0 + 0fi;
+                } else {
+                    F s0 = F(0, 0f);
+                }
+            } else
                 F s0 = 0;
             import mir.algorithm.iteration: reduce;
             s0 = s0.reduce!"a + b"(r);
@@ -1333,8 +1408,13 @@ public:
             s = rhs;
             static if (isComplex!T)
             {
-                cs = 0 + 0fi;
-                ccs = 0 + 0fi;
+                static if (is(T : cfloat)) {
+                    cs = 0 + 0fi;
+                    ccs = 0 + 0fi;
+                } else {
+                    cs = T(0, 0f);
+                    ccs = T(0.0, 0f);
+                }
             }
             else
             {
@@ -1346,18 +1426,26 @@ public:
         static if (summation == Summation.kbn)
         {
             s = rhs;
-            static if (isComplex!T)
-                c = 0 + 0fi;
-            else
+            static if (isComplex!T) {
+                static if (is(T : cfloat)) {
+                    c = 0 + 0fi;
+                } else {
+                    c = T(0, 0f);
+                }
+            } else
                 c = 0.0;
         }
         else
         static if (summation == Summation.kahan)
         {
             s = rhs;
-            static if (isComplex!T)
-                c = 0 + 0fi;
-            else
+            static if (isComplex!T) {
+                static if (is(T : cfloat)) {
+                    c = 0 + 0fi;
+                } else {
+                    c = T(0, 0f);
+                }
+            } else
                 c = 0.0;
         }
         else
@@ -1800,7 +1888,11 @@ template sum(F, Summation summation = Summation.appropriate)
                         sumIm.put(elem.im);
                     }
                 }
-                return sumRe.sum + sumIm.sum * 1fi;
+                static if (is(F : cfloat)) {
+                    return sumRe.sum + sumIm.sum * 1fi;
+                } else {
+                    return F(sumRe.sum, sumIm.sum);
+                }
             }
             else
             {
@@ -1985,7 +2077,6 @@ unittest
     assert(sum(1) == 1);
     assert(sum(1, 2, 3) == 6);
     assert(sum(1.0, 2.0, 3.0) == 6);
-    assert(sum(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6 + 6i));
 }
 
 version(mir_test)
@@ -1994,7 +2085,22 @@ unittest
     assert(sum!float(1) == 1f);
     assert(sum!float(1, 2, 3) == 6f);
     assert(sum!float(1.0, 2.0, 3.0) == 6f);
+}
+
+version(mir_builtincomplex_test)
+unittest
+{
+    assert(sum(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6 + 6i));
     assert(sum!cfloat(1.0 + 1i, 2.0 + 2i, 3.0 + 3i) == (6f + 6i));
+}
+
+version(mir_test)
+unittest
+{
+    import std.complex: Complex;
+
+    assert(sum(Complex!float(1.0, 1.0), Complex!float(2.0, 2.0), Complex!float(3.0, 3.0)) == Complex!float(6.0, 6.0));
+    assert(sum!(Complex!float)(Complex!float(1.0, 1.0), Complex!float(2.0, 2.0), Complex!float(3.0, 3.0)) == Complex!float(6.0, 6.0));
 }
 
 version(LDC)

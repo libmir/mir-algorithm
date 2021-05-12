@@ -30,18 +30,26 @@ import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonTyp
 package(mir)
 template statType(T, bool checkComplex = true)
 {
-    import mir.internal.utility: isFloatingPoint, isComplex;
+    import mir.internal.utility: isFloatingPoint;
 
-    static if (isFloatingPoint!T || (checkComplex && isComplex!T)) {
+    static if (isFloatingPoint!T) {
         import std.traits: Unqual;
         alias statType = Unqual!T;
     } else static if (is(T : double)) {
         alias statType = double;
     } else static if (checkComplex) {
-        static if (is(T : cdouble)) {
-            alias statType = cdouble;
+        import mir.internal.utility: isComplex;
+        static if (isComplex!T) {
+            import std.traits: Unqual;
+            static if (is(T : cdouble)) {
+                deprecated("Built-in complex types deprecated in D language version 2.097") alias statType = Unqual!T;
+            } else {
+                alias statType = Unqual!T;
+            }
+        } else static if (is(T : cdouble)) {
+                deprecated("Built-in complex types deprecated in D language version 2.097") alias statType = cdouble;
         } else {
-            static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point (or complex floating point) type");
+            static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a complex floating point type");
         }
     } else {
         static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point type");
@@ -57,14 +65,31 @@ unittest
     static assert(is(statType!double == double));
     static assert(is(statType!float == float));
     static assert(is(statType!real == real));
-    static assert(is(statType!cfloat == cfloat));
-    static assert(is(statType!cdouble == cdouble));
-    static assert(is(statType!creal == creal));
     
     static assert(is(statType!(const(int)) == double));
     static assert(is(statType!(immutable(int)) == double));
     static assert(is(statType!(const(double)) == double));
     static assert(is(statType!(immutable(double)) == double));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static assert(is(statType!cfloat == cfloat));
+    static assert(is(statType!cdouble == cdouble));
+    static assert(is(statType!creal == creal));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import std.complex: Complex;
+
+    static assert(is(statType!(Complex!float) == Complex!float));
+    static assert(is(statType!(Complex!double) == Complex!double));
+    static assert(is(statType!(Complex!real) == Complex!real));
 }
 
 version(mir_test)
@@ -75,14 +100,20 @@ unittest
         float x;
         alias x this;
     }
-    
-    static struct Bar {
+
+    static assert(is(statType!Foo == double)); // note: this is not float
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
         cfloat x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == double)); // note: this is not float
-    static assert(is(statType!Bar == cdouble)); // note: this is not cfloat
+    static assert(is(statType!Foo == cdouble)); // note: this is not Complex!float
 }
 
 version(mir_test)
@@ -93,14 +124,20 @@ unittest
         double x;
         alias x this;
     }
-    
-    static struct Bar {
+
+    static assert(is(statType!Foo == double));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
         cdouble x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == double));
-    static assert(is(statType!Bar == cdouble));
+    static assert(is(statType!Foo == cdouble));
 }
 
 version(mir_test)
@@ -111,14 +148,20 @@ unittest
         real x;
         alias x this;
     }
-    
-    static struct Bar {
+
+    static assert(is(statType!Foo == double)); // note: this is not real
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
         creal x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == double)); // note: this is not real
-    static assert(is(statType!Bar == cdouble)); // note: this is not creal
+    static assert(is(statType!Foo == cdouble)); // note: this is not Complex!real
 }
 
 version(mir_test)
@@ -160,6 +203,12 @@ unittest
     static assert(is(meanType!(int[]) == double));
     static assert(is(meanType!(double[]) == double));
     static assert(is(meanType!(float[]) == float));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
     static assert(is(meanType!(cfloat[]) == cfloat));
 }
 
@@ -171,14 +220,20 @@ unittest
         float x;
         alias x this;
     }
-    
-    static struct Bar {
+
+    static assert(is(meanType!(Foo[]) == float));
+}
+
+version(mir_builtincomplex_test)
+@safe pure nothrow @nogc
+unittest
+{
+    static struct Foo {
         cfloat x;
         alias x this;
     }
 
-    static assert(is(meanType!(Foo[]) == float));
-    static assert(is(meanType!(Bar[]) == cfloat));
+    static assert(is(meanType!(Foo[]) == cfloat));
 }
 
 /++
@@ -285,7 +340,7 @@ Computes the mean of the input.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or a type for which `isComplex!F` is true.
 
 Params:
     F = controls type of output
@@ -607,7 +662,7 @@ Computes the harmonic mean of the input.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or a type for which `isComplex!F` is true.
 
 Params:
     F = controls type of output
@@ -1240,7 +1295,7 @@ Computes the median of `slice`.
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or a type for which `isComplex!F` is true.
 
 Can also pass a boolean variable, `allowModify`, that allows the input slice to
 be modified. By default, a reference-counted copy is made. 
@@ -2235,7 +2290,7 @@ unittest
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 }
 
-version(mir_test)
+version(mir_builtincomplex_test)
 @safe pure nothrow
 unittest
 {
@@ -2248,6 +2303,22 @@ unittest
     v.put(x);
     assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
     assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    import std.complex: Complex;
+
+    auto x = [Complex!double(1.0, 3), Complex!double(2), Complex!double(3)].sliced;
+
+    VarianceAccumulator!(Complex!double, VarianceAlgo.online, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual(Complex!double(-4.0, -6) / 3));
+    assert(v.variance(false).approxEqual(Complex!double(-4.0, -6) / 2));
 }
 
 version(mir_test)
@@ -2582,7 +2653,7 @@ unittest
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 }
 
-version(mir_test)
+version(mir_builtincomplex_test)
 @safe pure nothrow
 unittest
 {
@@ -2596,6 +2667,23 @@ unittest
     v.put(x);
     assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
     assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    import std.complex: Complex;
+
+    auto a = [Complex!double(1.0, 3), Complex!double(2), Complex!double(3)].sliced;
+    auto x = a.center;
+
+    VarianceAccumulator!(Complex!double, VarianceAlgo.assumeZeroMean, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual(Complex!double(-4.0, -6) / 3));
+    assert(v.variance(false).approxEqual(Complex!double(-4.0, -6) / 2));
 }
 
 version(mir_test)
@@ -2645,7 +2733,7 @@ Calculates the variance of the input
 
 By default, if `F` is not floating point type or complex type, then the result
 will have a `double` type if `F` is implicitly convertible to a floating point 
-type or have a `cdouble` type if `F` is implicitly convertible to a complex type.
+type or a type for which `isComplex!F` is true.
 
 Params:
     F = controls type of output
