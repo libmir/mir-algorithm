@@ -24,7 +24,6 @@ sources_list = [
     'mir/container/binaryheap',
     'mir/cpp_export/numeric',
     'mir/date',
-    'mir/exception',
     'mir/format_impl',
     'mir/format',
     'mir/graph/package',

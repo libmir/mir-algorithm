@@ -319,7 +319,7 @@ private bool parseUnsignedImpl(T, Range)(scope ref Range r, scope ref T value)
     if(__traits(isUnsigned, T))
 {
     version(LDC) pragma(inline, true);
-    import core.checkedint: addu, mulu;
+    import mir.checkedint: addu, mulu;
 
     bool sign;
 B:

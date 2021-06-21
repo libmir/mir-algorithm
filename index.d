@@ -13,7 +13,6 @@ $(BOOKTABLE ,
     $(LEADINGROW Accessories)
     $(TR $(TDNW $(MREF mir,algebraic_alias,json)) $(TD Mutable JSON value))
     $(TR $(TDNW $(MREF mir,array,allocation)) $(TD `std.array` reworked for Mir))
-    $(TR $(TDNW $(MREF mir,exception)) $(TD @nogc MirException with formatting))
     $(TR $(TDNW $(MREF mir,format)) $(TD @nogc Formatting Utilities))
     $(TR $(TDNW $(MREF mir,parse)) $(TD @nogc Parsing Utilities))
     $(TR $(TDNW $(MREF mir,range)) $(TD Ranges))

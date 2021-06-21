@@ -324,7 +324,7 @@ struct Decimal(size_t maxSize64)
                         recentUnderscore = false;
                     }
                     {
-                        import core.checkedint: addu, mulu;
+                        import mir.checkedint: mulu;
                         bool overflow;
                         v = mulu(v, cast(uint)10, overflow);
                         if (overflow)

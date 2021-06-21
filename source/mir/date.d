@@ -29,8 +29,8 @@ Authors: $(HTTP jmdavisprog.com, Jonathan M Davis), Ilya Yaroshenko (boost-like 
 +/
 module mir.date;
 
-import mir.timestamp: Timestamp;
 import mir.serde: serdeProxy, serdeScoped;
+import mir.timestamp: Timestamp;
 import std.range.primitives : isOutputRange;
 import std.traits : isSomeChar, Unqual;
 
@@ -551,7 +551,7 @@ public:
     }
 
     ///
-    Timestamp timestamp() @safe pure nothrow @nogc @property
+    Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
         return yearMonthDay.timestamp;
     }
