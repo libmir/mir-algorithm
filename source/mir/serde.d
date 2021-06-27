@@ -439,11 +439,15 @@ version(mir_test) unittest
 
 /++
 Attribute to ignore field.
+
+See_also: $(LREF serdeIgnoreIn) $(LREF serdeIgnoreOut)
 +/
 enum serdeIgnore;
 
 /++
 Attribute to ignore field during deserialization.
+
+See_also: $(LREF serdeIgnoreInIfAggregate)
 +/
 enum serdeIgnoreIn;
 
@@ -510,15 +514,60 @@ Use this attributes only for strings that would not be used after the input data
 deprecated("use @serdeScoped @serdeProxy!(const(char)[]) instead") enum serdeScopeStringProxy;
 
 /++
-Attributes to out conditional ignore field during serialization.
+Attributes to conditional ignore field during serialization.
 
-The predicate should be aplied to the aggregate type itself, not to the member.
+The predicate should be aplied to the member, to the aggregate type.
+
+See_also: $(LREF serdeIgnoreOutIfAggregate)
 +/
 struct serdeIgnoreOutIf(alias pred);
 
 /++
 +/
 alias serdeGetIgnoreOutIf(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreOutIf))[0]);
+
+/++
+Attributes to conditional ignore field during serialization.
+
+The attribute can be combined with $(LREF serdeOrderedIn), $(LREF serdeRealOrderedIn).
+
+The predicate should be aplied to the aggregate value, not to the member.
+
+See_also: $(LREF serdeIgnoreIfAggregate) $(LREF serdeIgnoreOutIf), $(LREF serdeIgnoreInIfAggregate)
++/
+struct serdeIgnoreOutIfAggregate(alias pred);
+
+/++
++/
+alias serdeGetIgnoreOutIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreOutIfAggregate))[0]);
+
+/++
+Attributes to conditional ignore field during deserialization.
+
+The predicate should be aplied to the aggregate value, not to the member.
+
+See_also: $(LREF serdeIgnoreIfAggregate) $(LREF serdeIgnoreOutIfAggregate) $(LREF serdeIgnoreIn)
++/
+struct serdeIgnoreInIfAggregate(alias pred);
+
+/++
++/
+alias serdeGetIgnoreInIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreInIfAggregate))[0]);
+
+/++
+Attributes to conditional ignore field during serialization and deserialization.
+
+The attribute can be combined with $(LREF serdeOrderedIn), $(LREF serdeRealOrderedIn).
+
+The predicate should be aplied to the aggregate value, not to the member.
+
+See_also: $(LREF serdeIgnoreOutIfAggregate) $(LREF serdeIgnoreInIfAggregate) $ $(LREF serdeIgnore)
++/
+struct serdeIgnoreIfAggregate(alias pred);
+
+/++
++/
+alias serdeGetIgnoreIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreIfAggregate))[0]);
 
 /++
 Allows to use flexible deserialization rules such as conversion from input string to numeric types.
@@ -1768,7 +1817,7 @@ UDA used to force deserializer to initilize members in the order of their defini
 The attribute force deserializer to create a dummy type (recursively), initializer its fields and then assign them to
 to the object members (fields and setters) in the order of their definition.
 
-See_also: $(LREF SerdeOrderedDummy), $(LREF serdeRealOrderedIn).
+See_also: $(LREF SerdeOrderedDummy), $(LREF serdeRealOrderedIn), $(LREF serdeIgnoreInIfAggregate).
 +/
 enum serdeOrderedIn;
 
@@ -1778,7 +1827,7 @@ UDA used to force deserializer to initilize members in the order of their defini
 Unlike $(LREF serdeOrderedIn) `serdeRealOrderedDummy` force deserialzier to iterate all DOM keys for each object deserialization member.
 It is slower but more universal approach.
 
-See_also: $(LREF serdeOrderedIn).
+See_also: $(LREF serdeOrderedIn), $(LREF serdeIgnoreInIfAggregate)
 +/
 enum serdeRealOrderedIn;
 
