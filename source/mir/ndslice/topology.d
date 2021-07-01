@@ -2731,7 +2731,7 @@ Note:
 Params:
     fun = One or more functions.
 See_Also:
-    $(LREF cached), $(LREF vmap), $(LREF indexed),
+    $(LREF cached), $(LREF vmap),  $(LREF rcmap), $(LREF indexed),
     $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip),
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -3041,7 +3041,7 @@ Params:
     slice = ndslice
     callable = callable object, structure, delegate, or function pointer.
 See_Also:
-    $(LREF cached), $(LREF map), $(LREF indexed),
+    $(LREF cached), $(LREF map),  $(LREF rcmap), $(LREF indexed),
     $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip),
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
@@ -3181,7 +3181,7 @@ version(none) version(mir_test) unittest
     }
 }
 
-/// Use map with byDim/alongDim to apply functions to each dimension
+/// Use vmap with byDim/alongDim to apply functions to each dimension
 version(mir_test)
 @safe pure
 unittest
@@ -3214,7 +3214,7 @@ unittest
 }
 
 /++
-Use map with a lambda and with byDim/alongDim, but may need to allocate result. 
+Use vmap with a lambda and with byDim/alongDim, but may need to allocate result. 
 This example uses fuse, which allocates. Note: fuse!1 will transpose the result. 
 +/
 version(mir_test)
@@ -3289,6 +3289,158 @@ private auto unhideStride
     }
     else
         return slice;
+}
+
+/++
+Implements the homonym function (also known as `transform`) present
+in many languages of functional flavor. The call `rmap!(fun)(slice)`
+returns an RC array (1D) or  RC slice (ND) of which elements are obtained by applying `fun`
+for all elements in `slice`. The original slices are
+not changed. Evaluation is done eagerly.
+
+Note:
+    $(SUBREF dynamic, transposed) and
+    $(SUBREF topology, pack) can be used to specify dimensions.
+Params:
+    fun = One or more functions.
+See_Also:
+    $(LREF cached), $(LREF map), $(LREF vmap), $(LREF indexed),
+    $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip),
+    $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
++/
+template rcmap(fun...)
+    if (fun.length)
+{
+    import mir.functional: adjoin, naryFun, pipe;
+    static if (fun.length == 1)
+    {
+        static if (__traits(isSame, naryFun!(fun[0]), fun[0]))
+        {
+            alias f = fun[0];
+        @optmath:
+            /++
+            Params:
+                slice = An ndslice, array, or an input range.
+            Returns:
+                ndslice or an input range with each fun applied to all the elements. If there is more than one
+                fun, the element type will be `Tuple` containing one element for each fun.
+            +/
+            auto rcmap(Iterator, size_t N, SliceKind kind)
+                (Slice!(Iterator, N, kind) slice)
+            {
+                import core.lifetime: move;
+                auto shape = slice.shape;
+                auto r = slice.move.flattened;
+                if (false)
+                {
+                    auto e = f(r.front);
+                    r.popFront;
+                    auto d = r.empty;
+                }
+                return () @trusted
+                {
+                    import mir.rc.array: RCArray;
+                    import std.traits: Unqual;
+                    import mir.conv: emplaceRef;
+
+                    alias T = typeof(f(r.front));
+                    auto ret = RCArray!T(r.length);
+                    auto next = ret.ptr;
+                    while (!r.empty)
+                    {
+                        emplaceRef(*cast(Unqual!T*)next++, f(r.front));
+                        r.popFront;
+                    }
+                    static if (N == 1)
+                    {
+                        return ret;
+                    }
+                    else
+                    {
+                        return ret.moveToSlice.sliced(shape);
+                    }
+                } ();
+            }
+
+            /// ditto
+            auto rcmap(T)(T[] array)
+            {
+                return rcmap(array.sliced);
+            }
+
+            /// ditto
+            auto rcmap(T)(T withAsSlice)
+                if (hasAsSlice!T)
+            {
+                static if (__traits(hasMember, T, "moveToSlice"))
+                    return rcmap(withAsSlice.moveToSlice);
+                else
+                    return rcmap(withAsSlice.asSlice);
+            }
+
+            /// ditto
+            auto rcmap(Range)(Range r)
+                if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
+            {
+                import core.lifetime: forward;
+                import std.range.primitives: isInputRange;
+                import mir.rc.array: RCArray;
+
+                if (false)
+                {
+                    auto e = f(r.front);
+                    r.popFront;
+                    auto d = r.empty;
+                }
+                return () @trusted
+                {
+                    import mir.appender: ScopedBuffer;
+                    alias T = typeof(f(r.front));
+                    ScopedBuffer!T buffer = void;
+                    buffer.initialize;
+                    while (!r.empty)
+                    {
+                        buffer.put(f(r.front));
+                        r.popFront;
+                    }
+                    auto ret = RCArray!T(buffer.length, false);
+                    buffer.moveDataAndEmplaceTo(ret[]);
+                    return ret;
+                } ();
+            }
+        }
+        else alias rcmap = .rcmap!(staticMap!(naryFun, fun));
+    }
+    else alias rcmap = .rcmap!(adjoin!fun);
+}
+
+/// Returns RCArray for input ranges and one-dimensional slices.
+@safe pure nothrow @nogc
+version(mir_test) unittest
+{
+    import mir.algorithm.iteration: filter, equal;
+    auto factor = 10;
+    auto step = 20;
+    assert (3.iota.rcmap!(a => a * factor).moveToSlice.equal(3.iota * factor)); 
+    assert (6.iota.filter!"a % 2".rcmap!(a => a * factor).moveToSlice.equal([3].iota(factor, step))); 
+}
+
+/// For multidimensional case returns `Slice!(RCI!T, N)`.
+@safe pure nothrow @nogc
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota;
+    auto factor = 3;
+    auto s = iota(2, 3).rcmap!(a => a * factor);
+    assert(s == iota(2, 3) * factor);
+}
+
+/// String lambdas
+@safe pure nothrow
+version(mir_test) unittest
+{
+    import mir.ndslice.topology : iota;
+    assert(iota(2, 3).rcmap!"a * 2" == iota(2, 3) * 2);
 }
 
 /++

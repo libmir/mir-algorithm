@@ -887,4 +887,3 @@ unittest
     RCArray!int value = null;
     value = null;
 }
-
