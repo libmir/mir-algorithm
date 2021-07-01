@@ -4090,6 +4090,105 @@ version(mir_test)
 }
 
 /++
+Implements the higher order filter and map function. The predicate and map functions are passed to
+`mir.functional.naryFun`, and can either accept a string, or any callable
+that can be executed via `pred(element)` and `map(element)`.
+Params:
+    pred = Filter function to apply to each element of range (optional)
+    map = Map function to apply to each  element of range
+Returns:
+    `rcfilter!(pred)(range)` returns a new RCArray containing only elements `map(x)` in `range` for
+    which `pred(x)` returns `true`.
+See_Also:
+    $(HTTP en.wikipedia.org/wiki/Filter_(higher-order_function), Filter (higher-order function))
++/
+template rcfilter(alias pred = "a", alias map = "a")
+{
+    static if (__traits(isSame, naryFun!pred, pred) && __traits(isSame, naryFun!map, map))
+    {
+        /++ 
+        Params:
+            r = An input range of elements to filter.
+        Returns:
+            A new range containing only elements `x` in `range` for which `predicate(x)` returns `true`.
+        +/
+        auto rcfilter(Range)(Range r)
+            if (isIterable!Range && (!isSlice!Range || DimensionCount!Range == 1))
+        {
+                import core.lifetime: forward;
+                import std.range.primitives: isInputRange;
+                import mir.rc.array: RCArray;
+
+                if (false)
+                {
+                    auto p = pred(r.front);
+                    auto e = map(r.front);
+                    r.popFront;
+                    auto d = r.empty;
+                }
+                return () @trusted
+                {
+                    import mir.appender: ScopedBuffer;
+                    alias T = typeof(map(r.front));
+                    ScopedBuffer!T buffer = void;
+                    buffer.initialize;
+                    foreach (ref e; r)
+                    {
+                        if (pred(e))
+                        {
+                            static if (__traits(isSame, naryFun!"a", map))
+                                buffer.put(forward!e);
+                            else
+                                buffer.put(map(forward!e));
+                        }
+                    }
+                    auto ret = RCArray!T(buffer.length);
+                    buffer.moveDataAndEmplaceTo(ret[]);
+                    return ret;
+                } ();
+        }
+
+        /// ditto
+        auto rcfilter(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+            if (N > 1)
+        {
+            import mir.ndslice.topology: flattened; 
+            import core.lifetime: move;
+            return rcfilter(slice.move.flattened);
+        }
+    }
+    else
+        alias rcfilter = .rcfilter!(naryFun!pred, naryFun!map);
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    import mir.ndslice.topology: iota;
+
+    auto val = 3;
+    auto factor = 5;
+    // Filter iota 2x3 matrix below 3
+    assert(iota(2, 3).rcfilter!(a => a < val).moveToSlice.equal(val.iota));
+    // Filter and map below 3
+    assert(6.iota.rcfilter!(a => a < val, a => a * factor).moveToSlice.equal(val.iota * factor));
+}
+
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    import mir.ndslice.topology: iota, as;
+
+    auto val = 3;
+    auto factor = 5;
+    // Filter iota 2x3 matrix below 3
+    assert(iota(2, 3).as!(const int).rcfilter!(a => a < val).moveToSlice.equal(val.iota));
+    // Filter and map below 3
+    assert(6.iota.as!(immutable int).rcfilter!(a => a < val, a => a * factor).moveToSlice.equal(val.iota * factor));
+}
+
+/++
 Implements the homonym function (also known as `accumulate`, $(D
 compress), `inject`, or `foldl`) present in various programming
 languages of functional flavor. The call `fold!(fun)(slice, seed)`
