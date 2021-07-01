@@ -4175,6 +4175,19 @@ version(mir_test)
     assert(6.iota.rcfilter!(a => a < val, a => a * factor).moveToSlice.equal(val.iota * factor));
 }
 
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    import mir.ndslice.topology: iota, as;
+
+    auto val = 3;
+    auto factor = 5;
+    // Filter iota 2x3 matrix below 3
+    assert(iota(2, 3).as!(const int).rcfilter!(a => a < val).moveToSlice.equal(val.iota));
+    // Filter and map below 3
+    assert(6.iota.as!(immutable int).rcfilter!(a => a < val, a => a * factor).moveToSlice.equal(val.iota * factor));
+}
+
 /++
 Implements the homonym function (also known as `accumulate`, $(D
 compress), `inject`, or `foldl`) present in various programming

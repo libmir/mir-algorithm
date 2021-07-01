@@ -3443,6 +3443,16 @@ version(mir_test) unittest
     assert(iota(2, 3).rcmap!"a * 2" == iota(2, 3) * 2);
 }
 
+@safe pure nothrow @nogc
+version(mir_test) unittest
+{
+    import mir.algorithm.iteration: filter, equal;
+    auto factor = 10;
+    auto step = 20;
+    assert (3.iota.as!(const int).rcmap!(a => a * factor).moveToSlice.equal(3.iota * factor)); 
+    assert (6.iota.filter!"a % 2".as!(immutable int).rcmap!(a => a * factor).moveToSlice.equal([3].iota(factor, step))); 
+}
+
 /++
 Creates a random access cache for lazyly computed elements.
 Params:
