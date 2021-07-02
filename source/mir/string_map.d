@@ -111,6 +111,34 @@ struct StringMap(T, U = uint)
         assert(map.findPos("key") == 0);
     }
 
+    ///
+    string toString() const
+    {
+        import mir.format: stringBuf;
+        stringBuf buffer;
+        toString(buffer);
+        return buffer.data.idup;
+    }
+
+    ///ditto
+    void toString(W)(scope ref W w) const
+    {
+        bool next;
+        w.put('[');
+        import mir.format: printEscaped, EscapeFormat, print;
+        foreach (i, ref value; values)
+        {
+            if (next)
+                w.put(`, `);
+            next = true;
+            w.put('\"');
+            printEscaped!(char, EscapeFormat.ion)(w, keys[i]);
+            w.put(`": `);
+            print(w, value);
+        }
+        w.put(']');
+    }
+
     /++
     Constructs an associative array using keys and values.
     Params:
@@ -704,7 +732,7 @@ private struct StructImpl(T, U = uint)
     this()(string[] keys, T[] values) @trusted pure nothrow
     {
         import mir.array.allocation: array;
-        import mir.ndslice.sorting: sort;
+        import mir.ndslice.sorting: makeIndex;
         import mir.ndslice.topology: iota, indexed;
         import mir.string_table: smallerStringFirst;
 
@@ -714,13 +742,9 @@ private struct StructImpl(T, U = uint)
         _length = keys.length;
         _keys = keys.ptr;
         _values = values.ptr;
-        _indices = keys.length.iota!U.array.ptr;
+        _indices = keys.makeIndex!(U, smallerStringFirst).ptr;
         auto sortedKeys = _keys.indexed(indices);
-        sortedKeys.sort!smallerStringFirst;
-        size_t maxKeyLength;
-        foreach (ref key; keys)
-            if (key.length > maxKeyLength)
-                maxKeyLength = key.length;
+        size_t maxKeyLength = sortedKeys[$ - 1].length;
         _lengthTable = new U[maxKeyLength + 2];
 
         size_t ski;

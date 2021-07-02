@@ -529,8 +529,6 @@ alias serdeGetIgnoreOutIf(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbo
 /++
 Attributes to conditional ignore field during serialization.
 
-The attribute can be combined with $(LREF serdeOrderedIn), $(LREF serdeRealOrderedIn).
-
 The predicate should be aplied to the aggregate value, not to the member.
 
 See_also: $(LREF serdeIgnoreIfAggregate) $(LREF serdeIgnoreOutIf), $(LREF serdeIgnoreInIfAggregate)
@@ -544,7 +542,7 @@ alias serdeGetIgnoreOutIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getU
 /++
 Attributes to conditional ignore field during deserialization.
 
-The predicate should be aplied to the aggregate value, not to the member.
+The attribute should be combined with $(LREF serdeRealOrderedIn) applied on the aggregate.
 
 See_also: $(LREF serdeIgnoreIfAggregate) $(LREF serdeIgnoreOutIfAggregate) $(LREF serdeIgnoreIn)
 +/
@@ -557,7 +555,7 @@ alias serdeGetIgnoreInIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getUD
 /++
 Attributes to conditional ignore field during serialization and deserialization.
 
-The attribute can be combined with $(LREF serdeOrderedIn), $(LREF serdeRealOrderedIn).
+The attribute should be combined with $(LREF serdeRealOrderedIn) applied on the aggregate.
 
 The predicate should be aplied to the aggregate value, not to the member.
 

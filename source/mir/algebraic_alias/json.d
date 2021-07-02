@@ -124,4 +124,8 @@ unittest
 
     JsonAlgebraic[string] aa = object.toAA;
     object = StringMap!JsonAlgebraic(aa);
+
+    JsonAlgebraic fromAA = ["a" : JsonAlgebraic(3), "b" : JsonAlgebraic("b")];
+    assert(fromAA.get!(StringMap!JsonAlgebraic)["a"] == 3);
+    assert(fromAA.get!(StringMap!JsonAlgebraic)["b"] == "b");
 }
