@@ -39,6 +39,12 @@ struct StringMap(T, U = uint)
     private alias Impl = StructImpl!(T, U);
     private Impl* implementation;
 
+    ///
+    bool opEquals()(const StringMap rhs) const
+    {
+        return keys == rhs.keys && values == rhs.values;
+    }
+
     // // linking bug
     // version(none)
     // {
@@ -713,6 +719,8 @@ unittest
     assert(table.values == [3, 11]);
     assert(table["L"] == 3);
     assert(table["val"] == 11);
+
+    assert(table == table);
 }
 
 private struct StructImpl(T, U = uint)
