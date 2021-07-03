@@ -58,8 +58,7 @@ unittest
     assert(value.kind == JsonAlgebraic.Kind.null_);
 
     // Boolean
-    value = true;
-    object["bool"] = value;
+    value = object["bool"] = true;
     assert(!value.isNull);
     assert(value == true);
     assert(value.kind == JsonAlgebraic.Kind.boolean);
@@ -67,8 +66,7 @@ unittest
     assert(value.get!(JsonAlgebraic.Kind.boolean) == true);
 
     // Null
-    value = null;
-    object["null"] = value;
+    value = object["null"] = null;
     assert(value.isNull);
     assert(value == null);
     assert(value.kind == JsonAlgebraic.Kind.null_);
@@ -76,16 +74,14 @@ unittest
     assert(value.get!(JsonAlgebraic.Kind.null_) == null);
 
     // String
-    value = "s";
-    object["string"] = value;
+    value = object["string"] = "s";
     assert(value.kind == JsonAlgebraic.Kind.string);
     assert(value == "s");
     assert(value.get!string == "s");
     assert(value.get!(JsonAlgebraic.Kind.string) == "s");
 
     // Integer
-    value = 4;
-    object["integer"] = value;
+    value = object["integer"] = 4;
     assert(value.kind == JsonAlgebraic.Kind.integer);
     assert(value == 4);
     assert(value != 4.0);
@@ -93,8 +89,7 @@ unittest
     assert(value.get!(JsonAlgebraic.Kind.integer) == 4);
 
     // Float
-    value = 3.0;
-    object["float"] = value;
+    value = object["float"] = 3.0;
     assert(value.kind == JsonAlgebraic.Kind.float_);
     assert(value != 3);
     assert(value == 3.0);
@@ -104,8 +99,7 @@ unittest
     // Array
     JsonAlgebraic[] arr = [0, 1, 2, 3, 4].map!JsonAlgebraic.array;
 
-    value = arr;
-    object["array"] = value;
+    value = object["array"] = arr;
     assert(value.kind == JsonAlgebraic.Kind.array);
     assert(value == arr);
     assert(value.get!(JsonAlgebraic[])[3] == 3);
@@ -116,8 +110,7 @@ unittest
     assert(object["bool"] == "false"); // it is a string now
     object.remove("bool"); // remove the member
 
-    value = object;
-    object["array"] = value;
+    value = object["array"] = object;
     assert(value.kind == JsonAlgebraic.Kind.object);
     assert(value.get!(StringMap!JsonAlgebraic).keys is object.keys);
     assert(value.get!(StringMap!JsonAlgebraic).values is object.values);

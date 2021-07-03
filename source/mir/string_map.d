@@ -527,6 +527,15 @@ struct StringMap(T, U = uint)
     /++
     Complexity: `O(log(s))` (exist) or `O(n)` (not exist), where `s` is the count of the strings with the same length as they key.
     +/
+    ref T opIndexAssign(R)(auto ref R value, string key) @trusted pure nothrow
+    {
+        import core.lifetime: forward, move;
+        T v;
+        v = forward!value;
+        return opIndexAssign(move(v), key);
+    }
+
+    /// ditto
     ref T opIndexAssign()(T value, string key) @trusted pure nothrow
     {
         size_t index;
