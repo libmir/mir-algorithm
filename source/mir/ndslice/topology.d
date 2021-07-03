@@ -2781,7 +2781,7 @@ template map(fun...)
                 if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
             {
                 import core.lifetime: forward;
-                import std.range.primitives: isInputRange;
+                import mir.primitives: isInputRange;
                 static assert (isInputRange!Range, "map can work with ndslice, array, or an input range.");
                 return MapRange!(f, ImplicitlyUnqual!Range)(forward!r);
             }
@@ -3383,7 +3383,7 @@ template rcmap(fun...)
                 if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
             {
                 import core.lifetime: forward;
-                import std.range.primitives: isInputRange;
+                import mir.primitives: isInputRange;
                 import mir.rc.array: RCArray;
 
                 if (false)

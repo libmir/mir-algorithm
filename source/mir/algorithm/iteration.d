@@ -62,7 +62,6 @@ import mir.ndslice.slice;
 import mir.primitives;
 import mir.qualifier;
 import std.meta;
-import std.range.primitives: isInputRange, isBidirectionalRange, isInfinite, isForwardRange, ElementType;
 import std.traits;
 
 /++
@@ -3857,6 +3856,8 @@ struct Uniq(alias pred, Range)
         return _input.front;
     }
 
+    import std.range.primitives: isBidirectionalRange;
+
     static if (isBidirectionalRange!Range)
     {
         void popBack() scope
@@ -3885,6 +3886,8 @@ struct Uniq(alias pred, Range)
     {
         @property bool empty() const { return _input.empty; }
     }
+
+    import std.range.primitives: isForwardRange;
 
     static if (isForwardRange!Range)
     {
@@ -4022,6 +4025,7 @@ struct Filter(alias pred, Range)
         }
     }
 
+    import std.range.primitives: isForwardRange;
     static if (isForwardRange!Range)
     {
         @property typeof(this) save() scope return
@@ -4116,7 +4120,7 @@ template rcfilter(alias pred = "a", alias map = "a")
             if (isIterable!Range && (!isSlice!Range || DimensionCount!Range == 1))
         {
                 import core.lifetime: forward;
-                import std.range.primitives: isInputRange;
+                import mir.primitives: isInputRange;
                 import mir.rc.array: RCArray;
 
                 if (false)

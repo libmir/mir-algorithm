@@ -52,7 +52,6 @@ struct MultiwayMerge(alias less, RangeOfRanges)
 {
     import mir.primitives;
     import mir.container.binaryheap;
-    import std.range.primitives: ElementType;
 
     ///
     @disable this();

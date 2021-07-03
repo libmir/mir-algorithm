@@ -27,7 +27,6 @@ unittest
 }
 
 import mir.primitives;
-import std.range.primitives: isInputRange;
 import std.traits: isMutable, isFloatingPoint, isSomeChar;
 
 /++

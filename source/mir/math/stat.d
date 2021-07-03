@@ -3454,7 +3454,7 @@ A linear regression model with a single explanatory variable.
 template simpleLinearRegression(Summation summation = Summation.kbn)
 {
     import mir.ndslice.slice;
-    import std.range.primitives: isInputRange;
+    import mir.primitives: isInputRange;
 
     /++
     Params:

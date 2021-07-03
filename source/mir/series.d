@@ -1894,7 +1894,7 @@ Params:
 +/
 template troykaGalop(alias lfun, alias cfun, alias rfun)
 {
-    import std.range.primitives: isInputRange;
+    import mir.primitives: isInputRange;
 
     /++
     Params:

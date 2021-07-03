@@ -24,9 +24,7 @@ module mir.array.allocation;
 
 import mir.functional;
 import mir.primitives;
-
 import std.traits;
-import std.range.primitives: isInfinite, isInputRange, ElementType;
 
 /**
  * Allocates an array and initializes it with copies of the elements

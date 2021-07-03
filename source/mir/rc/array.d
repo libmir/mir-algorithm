@@ -361,7 +361,7 @@ RCArray!V rcarray(T = void, V)(scope V[] values, bool deallocate)
 template rcarray(T)
     if(!is(T == E[], E) && !is(T == void))
 {
-    import std.range.primitives: isInputRange, isInfinite;
+    import mir.primitives: isInputRange, isInfinite;
 
     ///
     auto rcarray(Range)(ref Range range)

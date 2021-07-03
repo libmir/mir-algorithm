@@ -9,7 +9,7 @@ module mir.math.numeric;
 
 import mir.math.common;
 import mir.primitives;
-import std.range.primitives: isInputRange;
+import mir.primitives: isInputRange;
 import std.traits: CommonType, Unqual, isIterable, ForeachType, isPointer;
 import mir.internal.utility: isFloatingPoint;
 

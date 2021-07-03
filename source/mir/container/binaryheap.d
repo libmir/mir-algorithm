@@ -15,9 +15,7 @@ Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Ya
 module mir.container.binaryheap;
 
 import mir.primitives;
-import mir.primitives;
-
-import std.range.primitives: isRandomAccessRange, hasSwappableElements, ElementType;
+import std.range.primitives: isRandomAccessRange, hasSwappableElements;
 import std.traits;
 
 ///
@@ -384,7 +382,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
 @system nothrow version(mir_test) unittest
 {
     // Test range interface.
-    import std.range.primitives: isInputRange;
+    import mir.primitives: isInputRange;
     import mir.algorithm.iteration : equal;
     int[] a = [4, 1, 3, 2, 16, 9, 10, 14, 8, 7];
     auto h = heapify(a);

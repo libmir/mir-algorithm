@@ -29,10 +29,10 @@ Authors: $(HTTP jmdavisprog.com, Jonathan M Davis), Ilya Yaroshenko (boost-like 
 +/
 module mir.date;
 
+import mir.primitives: isOutputRange;
 import mir.serde: serdeProxy, serdeScoped;
 import mir.timestamp: Timestamp;
-import std.range.primitives : isOutputRange;
-import std.traits : isSomeChar, Unqual;
+import std.traits: isSomeChar, Unqual;
 
 version(mir_test)
 version(D_Exceptions)
