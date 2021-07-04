@@ -4,6 +4,7 @@ Timestamp
 module mir.timestamp;
 
 private alias isDigit = (dchar c) => uint(c - '0') < 10;
+import mir.serde: serdeIgnore;
 
 version(D_Exceptions)
 ///
@@ -105,6 +106,8 @@ struct Timestamp
             return _offset & 1;
         }
     }
+
+@serdeIgnore:
 
     /++
     Year
@@ -256,6 +259,133 @@ struct Timestamp
         this.fractionExponent = fractionExponent;
         this.fractionCoefficient = fractionCoefficient;
         this.precision = Precision.fraction;
+    }
+
+    ///
+    this(Date)(const Date datetime)
+        if (Date.stringof == "Date" || Date.stringof == "date")
+    {
+        static if (__traits(hasMember, Date, "yearMonthDay"))
+            with(datetime.yearMonthDay) this(year, cast(ubyte)month, day);
+        else
+            with(datetime) this(year, month, day);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest {
+        import mir.date : Date;
+        auto dt = Date(1982, 4, 1);
+        Timestamp ts = dt;
+        assert(dt.toISOExtString == ts.toString);
+        assert(dt == cast(Date) ts);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest {
+        import std.datetime.date : Date;
+        auto dt = Date(1982, 4, 1);
+        Timestamp ts = dt;
+        assert(dt.toISOExtString == ts.toString);
+        assert(dt == cast(Date) ts);
+    }
+
+    ///
+    this(DateTime)(const DateTime datetime)
+        if (DateTime.stringof == "DateTime")
+    {
+        with(datetime) this(year, cast(ubyte)month, day, hour, minute, second);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest {
+        import std.datetime.date : DateTime;
+        auto dt = DateTime(1982, 4, 1, 20, 59, 22);
+        Timestamp ts = dt;
+        assert(dt.toISOExtString ~ "Z" == ts.toString);
+        assert(dt == cast(DateTime) ts);
+    }
+
+    ///
+    this(SysTime)(const SysTime systime)
+        if (SysTime.stringof == "SysTime")
+    {
+        with(systime.toUTC) this(year, month, day, hour, minute, second, -7, fracSecs.total!"hnsecs");
+        offset = cast(short) systime.utcOffset.total!"minutes";
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest {
+        import core.time : hnsecs, minutes;
+        import std.datetime.date : DateTime;
+        import std.datetime.timezone : SimpleTimeZone;
+        import std.datetime.systime : SysTime;
+
+        auto dt = DateTime(1982, 4, 1, 20, 59, 22);
+        auto tz = new immutable SimpleTimeZone(-330.minutes);
+        auto st = SysTime(dt, 1234567.hnsecs, tz);
+        Timestamp ts = st;
+
+        assert(st.toISOExtString == ts.toString);
+        assert(st == cast(SysTime) ts);
+    }
+
+    ///
+    T opCast(T)() const
+        if (T.stringof == "YearMonth"
+         || T.stringof == "YearMonthDay"
+         || T.stringof == "Date"
+         || T.stringof == "date"
+         || T.stringof == "DateTime"
+         || T.stringof == "SysTime")
+    {
+        static if (T.stringof == "YearMonth")
+        {
+            return T(year, month, day);
+        }
+        else
+        static if (T.stringof == "Date" || T.stringof == "date" || T.stringof == "YearMonthDay")
+        {
+            return T(year, month, day);
+        }
+        else
+        static if (T.stringof == "DateTime")
+        {
+            return T(year, month, day, hour, minute, second);
+        }
+        else
+        static if (T.stringof == "SysTime")
+        {
+            import core.time : hnsecs, minutes;
+            import std.datetime.date: DateTime;
+            import std.datetime.systime: SysTime;
+            import std.datetime.timezone: UTC, SimpleTimeZone;
+            auto ret = SysTime(DateTime(year, month, day, hour, minute, second), UTC());
+            if (fractionCoefficient)
+            {
+                long coeff = fractionCoefficient;
+                int exp = fractionExponent;
+                while (exp > -7)
+                {
+                    exp--;
+                    coeff *= 10;
+                }
+                while (exp < -7)
+                {
+                    exp++;
+                    coeff /= 10;
+                }
+                ret.fracSecs = coeff.hnsecs;
+            }
+            if (offset)
+            {
+                ret = ret.toOtherTZ(new immutable SimpleTimeZone(offset.minutes));
+            }
+            return ret;
+        }
     }
 
     /++
