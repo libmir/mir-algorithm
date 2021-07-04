@@ -66,6 +66,28 @@ version (D_Exceptions)
 }
 
 /++
+Helper enumeration for for serializer .
+Use negative `int` values for user defined targets.
++/
+enum SerdeTarget : int
+{
+    ///
+    ion,
+    ///
+    json,
+    ///
+    cbor,
+    ///
+    msgpack,
+    ///
+    yaml,
+    ///
+    csv,
+    ///
+    excel,
+}
+
+/++
 Attribute for key overloading during Serialization and Deserialization.
 The first argument overloads the key value during serialization unless `serdeKeyOut` is given.
 +/
