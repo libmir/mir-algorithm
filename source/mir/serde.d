@@ -973,12 +973,18 @@ Final proxy type
 +/
 template serdeGetFinalProxy(T)
 {
+    import mir.timestamp: Timestamp;
     import std.traits: hasUDA, isAggregateType;
     static if (isAggregateType!T || is(T == enum))
     {
         static if (hasUDA!(T, serdeProxy))
         {
             alias serdeGetFinalProxy = .serdeGetFinalProxy!(serdeGetProxy!T);
+        }
+        else
+        static if (is(typeof(Timestamp(T.init))))
+        {
+            alias serdeGetFinalProxy = string;
         }
         else
         {
@@ -1013,12 +1019,18 @@ Final deep proxy type
 +/
 template serdeGetFinalDeepProxy(T)
 {
+    import mir.timestamp: Timestamp;
     import std.traits: Unqual, hasUDA, isAggregateType, isArray, ForeachType;
     static if (isAggregateType!T || is(T == enum))
     {
         static if (hasUDA!(T, serdeProxy))
         {
             alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!(serdeGetProxy!T);
+        }
+        else
+        static if (is(typeof(Timestamp(T.init))))
+        {
+            alias serdeGetFinalDeepProxy = string;
         }
         else
         static if (__traits(hasMember, T, "serdeKeysProxy"))
