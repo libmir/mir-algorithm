@@ -20,33 +20,22 @@ version(D_Exceptions)
 template SmallArray(T, uint maxLength)
     if (maxLength)
 {
+    import std.traits: Unqual, isIterable, isImplicitlyConvertible;
+
+    static if (isImplicitlyConvertible!(const T, T))
+        alias V = const T;
+    else
+        alias V = T;
+
     ///
-    @serdeProxy!(T[])
+    @serdeProxy!(V[])
     struct SmallArray
     {
-        import std.traits: Unqual, isIterable, isImplicitlyConvertible;
-
         uint _length;
         T[maxLength] _data;
 
         ///
         alias serdeKeysProxy = T;
-
-        static SmallArray deserialize(S)(S data)
-        {
-            import asdf.serialization: deserialize;
-            return SmallArray(data.deserialize!(T[]));
-        }
-
-        void serialize(S)(ref S serializer)
-        {
-            serializer.putValue(opIndex);
-        }
-
-        static if (isImplicitlyConvertible!(const T, T))
-            alias V = const T;
-        else
-            alias V = T;
 
     @safe pure @nogc:
 

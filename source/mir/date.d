@@ -30,7 +30,7 @@ Authors: $(HTTP jmdavisprog.com, Jonathan M Davis), Ilya Yaroshenko (boost-like 
 module mir.date;
 
 import mir.primitives: isOutputRange;
-import mir.serde: serdeProxy, serdeScoped;
+import mir.serde: serdeProxy;
 import mir.timestamp: Timestamp;
 import std.traits: isSomeChar, Unqual;
 
@@ -2167,22 +2167,6 @@ package:
     }
 
     int _julianDay;
-
-    /// ASDF(JSON) serialization support
-    public void serialize(S)(ref S serializer) pure
-    {
-        import mir.format: print;
-        import mir.small_string : SmallString;
-        SmallString!16 w;
-        print(w, this);
-        serializer.putValue(w[]);
-    }
-
-    /// ASDF(JSON) deserialization support
-    public static Date deserialize(D)(auto ref D deserializer)
-    {
-        return fromString(cast(const(char)[])deserializer);
-    }
 }
 
 /// ditto
