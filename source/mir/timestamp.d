@@ -271,12 +271,47 @@ struct Timestamp
             with(datetime) this(year, month, day);
     }
 
+    int opCmp(Timestamp rhs) const @safe pure nothrow @nogc
+    {
+        import std.meta: AliasSeq;
+        static foreach (member; [
+            "year",
+            "month",
+            "day",
+            "hour",
+            "minute",
+            "second",
+        ])
+            if (auto d = int(__traits(getMember, this, member)) - int(__traits(getMember, rhs, member)))
+                return d;
+        int frel = this.fractionExponent;
+        int frer = rhs.fractionExponent;
+        ulong frcl = this.fractionCoefficient;
+        ulong frcr = rhs.fractionCoefficient;
+        while(frel > frer)
+        {
+            frel--;
+            frcl *= 10;
+        }
+        while(frer > frel)
+        {
+            frer--;
+            frcr *= 10;
+        }
+        if (frcl < frcr) return -1;
+        if (frcl > frcr) return +1;
+        if (auto d = int(this.fractionExponent) - int(rhs.fractionExponent))
+            return d;
+        return int(this.offset) - int(rhs.offset);
+    }
+
     ///
     version (mir_test)
     @safe unittest {
         import mir.date : Date;
         auto dt = Date(1982, 4, 1);
         Timestamp ts = dt;
+        assert(ts.opCmp(ts) == 0);
         assert(dt.toISOExtString == ts.toString);
         assert(dt == cast(Date) ts);
     }
