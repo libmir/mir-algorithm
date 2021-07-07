@@ -85,6 +85,10 @@ enum SerdeTarget : int
     csv,
     ///
     excel,
+    ///
+    bloomberg,
+    ///
+    typedJson,
 }
 
 /++

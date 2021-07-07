@@ -38,7 +38,7 @@ Timestamp
 Note: The component values in the binary encoding are always in UTC, while components in the text encoding are in the local time!
 This means that transcoding requires a conversion between UTC and local time.
 
-`Timestamp` precision is up to `10^-12` seconds;
+`Timestamp` precision is up to picosecond (second/10^12).
 +/
 struct Timestamp
 {
@@ -75,6 +75,14 @@ struct Timestamp
         assert(Timestamp("20100704") == Timestamp(2010, 7, 4));
         assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30) == Timestamp.fromISOString("20210129T201244+0730"));
         static assert(Timestamp(2021, 01, 29,  4, 42, 44).withOffset(- (7 * 60 + 30)) == Timestamp.fromISOExtString("2021-01-28T21:12:44-07:30"));
+
+        assert(Timestamp("T0740Z") == Timestamp.onlyTime(7, 40));
+        assert(Timestamp("T074030Z") == Timestamp.onlyTime(7, 40, 30));
+        assert(Timestamp("T074030.056Z") == Timestamp.onlyTime(7, 40, 30, -3, 56));
+
+        assert(Timestamp("07:40Z") == Timestamp.onlyTime(7, 40));
+        assert(Timestamp("07:40:30Z") == Timestamp.onlyTime(7, 40, 30));
+        assert(Timestamp("T07:40:30.056Z") == Timestamp.onlyTime(7, 40, 30, -3, 56));
     }
 
     version(all)
@@ -262,6 +270,27 @@ struct Timestamp
     }
 
     ///
+    @safe pure nothrow @nogc
+    static Timestamp onlyTime(ubyte hour, ubyte minute)
+    {
+        return Timestamp(0, 0, 0, hour, minute);
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    static Timestamp onlyTime(ubyte hour, ubyte minute, ubyte second)
+    {
+        return Timestamp(0, 0, 0, hour, minute, second);
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    static Timestamp onlyTime(ubyte hour, ubyte minute, ubyte second, byte fractionExponent, ulong fractionCoefficient)
+    {
+        return Timestamp(0, 0, 0, hour, minute, second, fractionExponent, fractionCoefficient);
+    }
+
+    ///
     this(Date)(const Date datetime)
         if (Date.stringof == "Date" || Date.stringof == "date")
     {
@@ -269,40 +298,6 @@ struct Timestamp
             with(datetime.yearMonthDay) this(year, cast(ubyte)month, day);
         else
             with(datetime) this(year, month, day);
-    }
-
-    int opCmp(Timestamp rhs) const @safe pure nothrow @nogc
-    {
-        import std.meta: AliasSeq;
-        static foreach (member; [
-            "year",
-            "month",
-            "day",
-            "hour",
-            "minute",
-            "second",
-        ])
-            if (auto d = int(__traits(getMember, this, member)) - int(__traits(getMember, rhs, member)))
-                return d;
-        int frel = this.fractionExponent;
-        int frer = rhs.fractionExponent;
-        ulong frcl = this.fractionCoefficient;
-        ulong frcr = rhs.fractionCoefficient;
-        while(frel > frer)
-        {
-            frel--;
-            frcl *= 10;
-        }
-        while(frer > frel)
-        {
-            frer--;
-            frcr *= 10;
-        }
-        if (frcl < frcr) return -1;
-        if (frcl > frcr) return +1;
-        if (auto d = int(this.fractionExponent) - int(rhs.fractionExponent))
-            return d;
-        return int(this.offset) - int(rhs.offset);
     }
 
     ///
@@ -324,6 +319,23 @@ struct Timestamp
         Timestamp ts = dt;
         assert(dt.toISOExtString == ts.toString);
         assert(dt == cast(Date) ts);
+    }
+
+    ///
+    this(TimeOfDay)(const TimeOfDay timeOfDay)
+        if (TimeOfDay.stringof == "TimeOfDay")
+    {
+        with(timeOfDay) this = onlyTime(hour, minute, second);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest {
+        import std.datetime.date : TimeOfDay;
+        auto dt = TimeOfDay(7, 14, 30);
+        Timestamp ts = dt;
+        assert(dt.toISOExtString ~ "Z" == ts.toString);
+        assert(dt == cast(TimeOfDay) ts);
     }
 
     ///
@@ -373,6 +385,7 @@ struct Timestamp
         if (T.stringof == "YearMonth"
          || T.stringof == "YearMonthDay"
          || T.stringof == "Date"
+         || T.stringof == "TimeOfDay"
          || T.stringof == "date"
          || T.stringof == "DateTime"
          || T.stringof == "SysTime")
@@ -390,6 +403,11 @@ struct Timestamp
         static if (T.stringof == "DateTime")
         {
             return T(year, month, day, hour, minute, second);
+        }
+        else
+        static if (T.stringof == "TimeOfDay")
+        {
+            return T(hour, minute, second);
         }
         else
         static if (T.stringof == "SysTime")
@@ -421,6 +439,49 @@ struct Timestamp
             }
             return ret;
         }
+    }
+
+    /++
+    Returns: true if timestamp represent a time only value.
+    +/
+    bool isOnlyTime() @property const @safe pure nothrow @nogc
+    {
+        return precision > Precision.day && day == 0;
+    }
+
+    ///
+    int opCmp(Timestamp rhs) const @safe pure nothrow @nogc
+    {
+        import std.meta: AliasSeq;
+        static foreach (member; [
+            "year",
+            "month",
+            "day",
+            "hour",
+            "minute",
+            "second",
+        ])
+            if (auto d = int(__traits(getMember, this, member)) - int(__traits(getMember, rhs, member)))
+                return d;
+        int frel = this.fractionExponent;
+        int frer = rhs.fractionExponent;
+        ulong frcl = this.fractionCoefficient;
+        ulong frcr = rhs.fractionCoefficient;
+        while(frel > frer)
+        {
+            frel--;
+            frcl *= 10;
+        }
+        while(frer > frel)
+        {
+            frer--;
+            frcr *= 10;
+        }
+        if (frcl < frcr) return -1;
+        if (frcl > frcr) return +1;
+        if (auto d = int(this.fractionExponent) - int(rhs.fractionExponent))
+            return d;
+        return int(this.offset) - int(rhs.offset);
     }
 
     /++
@@ -457,7 +518,7 @@ struct Timestamp
     Returns:
         A `string` when not using an output range; `void` otherwise.
     +/
-    alias toISOExtString = toISOStringImp!true;
+    alias toString = toISOExtString;
 
     ///
     version (mir_test)
@@ -476,6 +537,10 @@ struct Timestamp
         assert(Timestamp(2021, 01, 29, 19, 42).toString == "2021-01-29T19:42Z");
         assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60).toString == "2021-01-29T19:42:44+07", Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60).toString);
         assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30).toString == "2021-01-29T20:12:44+07:30");
+
+        assert(Timestamp.onlyTime(7, 40).toString == "07:40Z");
+        assert(Timestamp.onlyTime(7, 40, 30).toString == "07:40:30Z");
+        assert(Timestamp.onlyTime(7, 40, 30, -3, 56).toString == "07:40:30.056Z");
     }
 
     ///
@@ -497,6 +562,10 @@ struct Timestamp
         assert(Timestamp(-9999, 7, 4).toISOExtString == "-9999-07-04");
         assert(Timestamp(-10000, 10, 20).toISOExtString == "-10000-10-20");
 
+        assert(Timestamp.onlyTime(7, 40).toISOExtString == "07:40Z");
+        assert(Timestamp.onlyTime(7, 40, 30).toISOExtString == "07:40:30Z");
+        assert(Timestamp.onlyTime(7, 40, 30, -3, 56).toISOExtString == "07:40:30.056Z");
+
         const cdate = Timestamp(1999, 7, 6);
         immutable idate = Timestamp(1999, 7, 6);
         assert(cdate.toISOExtString == "1999-07-06");
@@ -504,7 +573,7 @@ struct Timestamp
     }
 
     /// ditto
-    alias toString = toISOExtString;
+    alias toISOExtString = toISOStringImp!true;
 
     /++
     Converts this $(LREF Timestamp) to a string with the format `YYYYMMDDThhmmss±hhmm`.
@@ -535,6 +604,10 @@ struct Timestamp
         assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60).toISOString == "20210129T194244+07");
         assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30).toISOString == "20210129T201244+0730");
         static assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30).toISOString == "20210129T201244+0730");
+
+        assert(Timestamp.onlyTime(7, 40).toISOString == "T0740Z");
+        assert(Timestamp.onlyTime(7, 40, 30).toISOString == "T074030Z");
+        assert(Timestamp.onlyTime(7, 40, 30, -3, 56).toISOString == "T074030.056Z");
     }
 
     /// Helpfer for time zone offsets
@@ -593,28 +666,33 @@ struct Timestamp
                 t.addMinutes(t.offset);
             }
 
-            if (t.year >= 10_000)
-                w.put('+');
-            printZeroPad(w, t.year, t.year >= 0 ? t.year < 10_000 ? 4 : 5 : t.year > -10_000 ? 5 : 6);
-            if (precision == Precision.year)
+            if (!t.isOnlyTime)
             {
-                w.put('T');
-                return;
-            }
-            if (ext || precision == Precision.month) w.put('-');
+                if (t.year >= 10_000)
+                    w.put('+');
+                printZeroPad(w, t.year, t.year >= 0 ? t.year < 10_000 ? 4 : 5 : t.year > -10_000 ? 5 : 6);
+                if (precision == Precision.year)
+                {
+                    w.put('T');
+                    return;
+                }
+                if (ext || precision == Precision.month) w.put('-');
 
-            printZeroPad(w, cast(uint)t.month, 2);
-            if (precision == Precision.month)
-            {
-                w.put('T');
-                return;
-            }
-            static if (ext) w.put('-');
+                printZeroPad(w, cast(uint)t.month, 2);
+                if (precision == Precision.month)
+                {
+                    w.put('T');
+                    return;
+                }
+                static if (ext) w.put('-');
 
-            printZeroPad(w, t.day, 2);
-            if (precision == Precision.day)
-                return;
-            w.put('T');
+                printZeroPad(w, t.day, 2);
+                if (precision == Precision.day)
+                    return;
+            }
+
+            if (!ext || !t.isOnlyTime)
+                w.put('T');
 
             printZeroPad(w, t.hour, 2);
             static if (ext) w.put(':');
@@ -939,69 +1017,89 @@ struct Timestamp
         {
             import mir.parse: fromString, parse;
 
-            // YYYY
             static if (ext)
-            {{
-                auto startIsDigit = str.length && str[0].isDigit;
-                auto strOldLength = str.length;
-                if (!parse(str, value.year))
-                    return false;
-                auto l = strOldLength - str.length;
-                if ((l == 4) != startIsDigit)
-                    return false;
-            }}
+                auto isOnlyTime = str.length >= 3 && (str[0] == 'T' || str[2] == ':');
             else
+                auto isOnlyTime = str.length >= 3 && str[0] == 'T';
+
+            if (!isOnlyTime)
             {
-                if (str.length < 4 || !str[0].isDigit || !fromString(str[0 .. 4], value.year))
+                // YYYY
+                static if (ext)
+                {{
+                    auto startIsDigit = str.length && str[0].isDigit;
+                    auto strOldLength = str.length;
+                    if (!parse(str, value.year))
+                        return false;
+                    auto l = strOldLength - str.length;
+                    if ((l == 4) != startIsDigit)
+                        return false;
+                }}
+                else
+                {
+                    if (str.length < 4 || !str[0].isDigit || !fromString(str[0 .. 4], value.year))
+                        return false;
+                    str = str[4 .. $];
+                }
+
+                value.precision = Precision.year;
+                if (str.length == 0 || str == "T")
+                    return true;
+                
+                static if (ext)
+                {
+                    if (str[0] != '-')
+                        return false;
+                    str = str[1 .. $];
+                }
+
+                // MM
+                if (str.length < 2 || !str[0].isDigit || !fromString(str[0 .. 2], value.month))
                     return false;
-                str = str[4 .. $];
+                str = str[2 .. $];
+                value.precision = Precision.month;
+                if (str.length == 0 || str == "T")
+                    return ext;
+
+                static if (ext)
+                {
+                    if (str[0] != '-')
+                        return false;
+                    str = str[1 .. $];
+                }
+
+                // DD
+                if (str.length < 2 || !str[0].isDigit || !fromString(str[0 .. 2], value.day))
+                    return false;
+                str = str[2 .. $];
+                value.precision = Precision.day;
+                if (str.length == 0)
+                    return true;
             }
 
-            value.precision = Precision.year;
-            if (str.length == 0 || str == "T")
-                return true;
-            
-            static if (ext)
-            {
-                if (str[0] != '-')
-                    return false;
-                str = str[1 .. $];
-            }
-
-            // MM
-            if (str.length < 2 || !str[0].isDigit || !fromString(str[0 .. 2], value.month))
-                return false;
-            str = str[2 .. $];
-            value.precision = Precision.month;
-            if (str.length == 0 || str == "T")
-                return ext;
-
-            static if (ext)
-            {
-                if (str[0] != '-')
-                    return false;
-                str = str[1 .. $];
-            }
-
-            // DD
-            if (str.length < 2 || !str[0].isDigit || !fromString(str[0 .. 2], value.day))
-                return false;
-            str = str[2 .. $];
-            value.precision = Precision.day;
-            if (str.length == 0)
-                return true;
-
+            // str isn't empty here
             // T
-            if (str[0] != 'T')
-                return false;
-            str = str[1 .. $];
-            if (str.length == 0)
-                return true;
+            if (str[0] == 'T')
+            {
+                str = str[1 .. $];
+                // OK, onlyTime requires length >= 3
+                if (str.length == 0)
+                    return true;
+            }
+            else 
+            {
+                if (!(ext && isOnlyTime))
+                    return false;
+            }
+
+            value.precision = Precision.minute; // we don't have hour precision
 
             // hh
-            if (str.length < 4 + ext || !str[0].isDigit || !fromString(str[0 .. 2], value.hour))
+            if (str.length < 2 || !str[0].isDigit || !fromString(str[0 .. 2], value.hour))
                 return false;
             str = str[2 .. $];
+            if (str.length == 0)
+                return true;
 
             static if (ext)
             {
@@ -1013,11 +1111,10 @@ struct Timestamp
             // mm
             {
                 uint minute;
-                if (!str[0].isDigit || !fromString(str[0 .. 2], minute))
+                if (str.length < 2 || !str[0].isDigit || !fromString(str[0 .. 2], minute))
                     return false;
                 value.minute = cast(ubyte) minute;
                 str = str[2 .. $];
-                value.precision = Precision.minute;
                 if (str.length == 0)
                     return true;
             }
