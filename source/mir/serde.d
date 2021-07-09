@@ -13,7 +13,7 @@ module mir.serde;
 
 import mir.functional: naryFun;
 import mir.reflection;
-import std.traits: TemplateArgsOf, EnumMembers, hasUDA;
+import std.traits: TemplateArgsOf, EnumMembers, hasUDA, isAggregateType;
 
 version (D_Exceptions)
 {
@@ -139,7 +139,7 @@ private template serdeIsAnnotationMemberIn(T)
 template serdeGetAnnotationMembersIn(T)
 {
     import std.meta: aliasSeqOf, Filter;
-    static if (isSomeStruct!T)
+    static if (isAggregateType!T)
         enum string[] serdeGetAnnotationMembersIn = [Filter!(serdeIsAnnotationMemberIn!T, aliasSeqOf!(DeserializableMembers!T))];
     else
         enum string[] serdeGetAnnotationMembersIn = null;
@@ -180,7 +180,7 @@ private template serdeIsAnnotationMemberOut(T)
 template serdeGetAnnotationMembersOut(T)
 {
     import std.meta: aliasSeqOf, Filter;
-    static if (isSomeStruct!T)
+    static if (isAggregateType!T)
         enum string[] serdeGetAnnotationMembersOut = [Filter!(serdeIsAnnotationMemberOut!T, aliasSeqOf!(DeserializableMembers!T))];
     else
         enum string[] serdeGetAnnotationMembersOut = null;
@@ -226,7 +226,7 @@ struct serdeAlgebraicAnnotation
 +/
 template serdeHasAlgebraicAnnotation(T)
 {
-    static if (isSomeStruct!T || is(T == enum))
+    static if (isAggregateType!T || is(T == enum))
     {
         static if (hasUDA!(T, serdeAlgebraicAnnotation))
         {
@@ -986,7 +986,7 @@ template serdeGetFinalProxy(T)
             alias serdeGetFinalProxy = .serdeGetFinalProxy!(serdeGetProxy!T);
         }
         else
-        static if (is(typeof(Timestamp(T.init))))
+        static if (isAggregateType!T && is(typeof(Timestamp(T.init))))
         {
             alias serdeGetFinalProxy = string;
         }
@@ -1032,7 +1032,7 @@ template serdeGetFinalDeepProxy(T)
             alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!(serdeGetProxy!T);
         }
         else
-        static if (is(typeof(Timestamp(T.init))))
+        static if (isAggregateType!T && is(typeof(Timestamp(T.init))))
         {
             alias serdeGetFinalDeepProxy = string;
         }
@@ -1042,11 +1042,11 @@ template serdeGetFinalDeepProxy(T)
             alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!(T.serdeKeysProxy);
         }
         else
-        static if (is(T == enum))
-        {
-            alias serdeGetFinalDeepProxy = typeof(null);
-        }
-        else
+        // static if (is(T == enum))
+        // {
+        //     alias serdeGetFinalDeepProxy = typeof(null);
+        // }
+        // else
         {
             alias serdeGetFinalDeepProxy = T;
         }
@@ -1061,7 +1061,7 @@ template serdeGetFinalDeepProxy(T)
             alias serdeGetFinalDeepProxy = T;
     }
     else
-    static if (is(T == V[K], K, V))
+    static if (is(immutable T == immutable V[K], K, V))
     {
         alias E = Unqual!V;
         static if (isAggregateType!E || is(E == enum))
@@ -1101,9 +1101,12 @@ template serdeFinalProxyDeserializableMembers(T)
 {
     import std.meta: Filter, aliasSeqOf;
     alias P = serdeGetFinalProxy!T;
-    static if (isSomeStruct!P)
+    static if (isAggregateType!P || is(P == enum))
         enum string[] serdeFinalProxyDeserializableMembers = [Filter!(serdeIsDeserializable!P, aliasSeqOf!(DeserializableMembers!P))];
     else
+    // static if (is(P == enum))
+    //     enum string[] serdeFinalProxyDeserializableMembers = serdeGetKeysIn!P;
+    // else
         enum string[] serdeFinalProxyDeserializableMembers = null;
 }
 
@@ -1137,9 +1140,12 @@ template serdeFinalDeepProxySerializableMembers(T)
     import std.traits: isAggregateType;
     import std.meta: Filter, aliasSeqOf;
     alias P = serdeGetFinalDeepProxy!T;
-    static if (isSomeStruct!P)
+    static if (isAggregateType!P || is(P == enum))
         enum string[] serdeFinalDeepProxySerializableMembers = [Filter!(serdeIsSerializable!P, aliasSeqOf!(SerializableMembers!P))];
     else
+    // static if (is(P == enum))
+    //     enum string[] serdeFinalDeepProxySerializableMembers = [serdeGetKeyOut!P];
+    // else
         enum string[] serdeFinalDeepProxySerializableMembers = null;
 }
 
@@ -1172,9 +1178,12 @@ template serdeFinalProxySerializableMembers(T)
 {
     import std.meta: Filter, aliasSeqOf;
     alias P = serdeGetFinalProxy!T;
-    static if (isSomeStruct!P)
+    static if (isAggregateType!P || is(P == enum))
         enum string[] serdeFinalProxySerializableMembers = [Filter!(serdeIsSerializable!P, aliasSeqOf!(SerializableMembers!P))];
     else
+    // static if (is(P == enum))
+    //     enum string[] serdeFinalProxySerializableMembers = [serdeGetKeyOut!P];
+    // else
         enum string[] serdeFinalProxySerializableMembers = null;
 }
 
@@ -1208,16 +1217,18 @@ template serdeFinalDeepProxyDeserializableMembers(T)
     import std.traits: isAggregateType;
     import std.meta: Filter, aliasSeqOf;
     alias P = serdeGetFinalDeepProxy!T;
-    static if (isAggregateType!P)
+    static if (isAggregateType!P || is(P == enum))
         enum string[] serdeFinalDeepProxyDeserializableMembers = [Filter!(serdeIsDeserializable!P, aliasSeqOf!(DeserializableMembers!P))];
     else
+    // static if (is(P == enum))
+    //     enum string[] serdeFinalDeepProxyDeserializableMembers = serdeGetKeysIn!P;
+    // else
         enum string[] serdeFinalDeepProxyDeserializableMembers = null;
 }
 
 ///
 version(mir_test) unittest
 {
-
     static struct A
     {
         @serdeIgnore
@@ -1692,6 +1703,11 @@ private template serdeFinalDeepProxyDeserializableMemberKeys(T)
             enum string[] serdeFinalDeepProxyDeserializableMemberKeys = [staticMap!(aliasSeqOf, staticMap!(serdeGetKeysIn2!T, aliasSeqOf!(serdeFinalDeepProxyDeserializableMembers!T)))];
     }
     else
+    static if (is(T == enum))
+    {
+        enum string[] serdeFinalDeepProxyDeserializableMemberKeys = enumAllKeysIn!T;
+    }
+    else
         enum string[] serdeFinalDeepProxyDeserializableMemberKeys = null;
 }
 
@@ -1715,12 +1731,17 @@ private template serdeFinalDeepProxySerializableMemberKeys(T)
             enum string[] serdeFinalDeepProxySerializableMemberKeys = [staticMap!(aliasSeqOf, staticMap!(serdeGetKeyOut2!T, aliasSeqOf!(serdeFinalDeepProxySerializableMembers!T)))];
     }
     else
+    static if (is(T == enum))
+    {
+        enum string[] serdeFinalDeepProxySerializableMemberKeys = enumAllKeysOut!T;
+    }
+    else
         enum string[] serdeFinalDeepProxySerializableMemberKeys = null;
 }
 
 private template serdeGetAlgebraicAnnotations(T)
 {
-    static if (isSomeStruct!T || is(T == enum))
+    static if (isAggregateType!T || is(T == enum))
         static if (hasUDA!(T, serdeAlgebraicAnnotation))
             enum string[] serdeGetAlgebraicAnnotations = [getUDA!(T, serdeAlgebraicAnnotation).annotation];
         else
@@ -1787,22 +1808,26 @@ version(mir_test) unittest
     @serdeProxy!(B[])
     static interface E {  int f() @property; }
 
+    enum N { a, b }
+
     static class D
     {
         C c;
 
         @serdeProxy!(E[])
         int d;
+
+        N e;
     }
 
     @serdeAlgebraicAnnotation("$F")
     @serdeProxy!D
     static struct F { int f; }
 
-    static assert (serdeGetSerializationKeysRecurse!F == ["c", "d", "g"]);
+    static assert (serdeGetSerializationKeysRecurse!F == ["a", "b", "c", "d", "e", "g"]);
 
     import mir.algebraic;
-    static assert (serdeGetSerializationKeysRecurse!(Nullable!(F, int)) == ["c", "d", "g", "$F"]);
+    static assert (serdeGetSerializationKeysRecurse!(Nullable!(F, int)) == ["a", "b", "c", "d", "e", "g", "$F"]);
 }
 
 /++
@@ -1829,22 +1854,28 @@ version(mir_test) unittest
     @serdeProxy!(B[])
     static interface E {  int f() @property; }
 
+    enum N { a, b }
+
     static class D
     {
         C c;
 
         @serdeProxy!(E[])
         int d;
+
+        N e;
     }
 
     @serdeAlgebraicAnnotation("$F")
     @serdeProxy!D
     static struct F { int f; }
 
-    static assert (serdeGetDeserializationKeysRecurse!F == ["c", "d", "g"]);
+    static assert (serdeGetDeserializationKeysRecurse!N == ["a", "b"], serdeGetDeserializationKeysRecurse!N);
+
+    static assert (serdeGetDeserializationKeysRecurse!F == ["a", "b", "c", "d", "e", "g"]);
 
     import mir.algebraic;
-    static assert (serdeGetDeserializationKeysRecurse!(Nullable!(F, int)) == ["c", "d", "g", "$F"]);
+    static assert (serdeGetDeserializationKeysRecurse!(Nullable!(F, int)) == ["a", "b", "c", "d", "e", "g", "$F"]);
 }
 
 /++
@@ -1883,7 +1914,7 @@ enum serdeAlphabetOut;
 A dummy structure usefull $(LREF serdeOrderedIn) support.
 +/
 struct SerdeOrderedDummy(T, bool __optionalByDefault = false)
-    if (is(serdeGetFinalProxy!T == T) && isSomeStruct!T)
+    if (is(serdeGetFinalProxy!T == T) && isAggregateType!T)
 {
     import std.traits: hasUDA;
 
@@ -1918,7 +1949,7 @@ public:
                 mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ ";");
             }
             else
-            static if (isSomeStruct!(typeof(__traits(getMember, T, member))))
+            static if (isAggregateType!(typeof(__traits(getMember, T, member))))
             {
                 static if (hasUDA!(typeof(__traits(getMember, T, member)), serdeProxy))
                 {
@@ -2184,4 +2215,20 @@ char[] fastToUpperInPlace()(scope return char[] a)
     foreach(ref char e; a)
         e = e.fastToUpper;
     return a;
+}
+
+template enumAllKeysIn(T)
+    if (is(T == enum))
+{
+    import std.traits: EnumMembers;
+    import std.meta: staticMap, aliasSeqOf;
+    enum string[] enumAllKeysIn = [staticMap!(aliasSeqOf, staticMap!(.serdeGetKeysIn, EnumMembers!T))];
+}
+
+template enumAllKeysOut(T)
+    if (is(T == enum))
+{
+    import std.traits: EnumMembers;
+    import std.meta: staticMap, aliasSeqOf;
+    enum string[] enumAllKeysOut = [staticMap!(.serdeGetKeyOut, EnumMembers!T)];
 }
