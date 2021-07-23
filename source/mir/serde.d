@@ -119,6 +119,13 @@ struct serdeKeyOut
 }
 
 /++
+The attribute should be used as a hind for scripting languages to register type deserializer in the type system.
+
+The attribute should be applied to a type definition.
++/
+enum serdeRegisterDeserializer;
+
+/++
 The attribute should be applied to a string-like member that should be de/serialized as an annotation / attribute.
 
 This feature is used in $(MIR_PACKAGE mir-ion).
