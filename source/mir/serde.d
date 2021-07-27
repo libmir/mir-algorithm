@@ -123,7 +123,7 @@ The attribute should be used as a hind for scripting languages to register type 
 
 The attribute should be applied to a type definition.
 +/
-enum serdeRegisterDeserializer;
+enum serdeRegister;
 
 /++
 The attribute should be applied to a string-like member that should be de/serialized as an annotation / attribute.
