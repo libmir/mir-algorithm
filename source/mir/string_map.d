@@ -939,6 +939,7 @@ private struct StructImpl(T, U = uint)
     }
 }
 
+version(mir_test)
 unittest
 {
     import mir.algebraic_alias.json: JsonAlgebraic;
