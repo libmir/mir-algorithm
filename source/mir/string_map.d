@@ -556,8 +556,6 @@ struct StringMap(T, U = uint)
                     return implementation._values[index];
                 }
                 assert (index <= length);
-                index = index < length ? implementation.indices[index] : length;
-                assert (index <= length);
             }
             else
             {
@@ -622,8 +620,6 @@ struct StringMap(T, U = uint)
                     assert (index < length);
                     return implementation.values[index];
                 }
-                assert (index <= length);
-                index = index < length ? implementation.indices[index] : length;
                 assert (index <= length);
             }
             else
@@ -941,4 +937,19 @@ private struct StructImpl(T, U = uint)
         }
         return false;
     }
+}
+
+unittest
+{
+    import mir.algebraic_alias.json: JsonAlgebraic;
+    import mir.string_map: StringMap;
+
+    StringMap!JsonAlgebraic token;
+    token[`access_token`] = "secret-data";
+    token[`expires_in`] = 3599;
+    token[`token_type`] = "Bearer";
+
+    assert(token[`access_token`] == "secret-data");
+    assert(token[`expires_in`] == 3599);
+    assert(token[`token_type`] == "Bearer"); // mir/string_map.d(511): No member: token_type
 }
