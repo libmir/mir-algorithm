@@ -481,6 +481,9 @@ struct StringMap(T, U = uint)
         size_t index;
         if (!implementation.findIndex(key, index))
             return null;
+        assert (index < length);
+        index = implementation.indices[index];
+        assert (index < length);
         return implementation._values + index;
     }
 
@@ -953,4 +956,8 @@ unittest
     assert(token[`access_token`] == "secret-data");
     assert(token[`expires_in`] == 3599);
     assert(token[`token_type`] == "Bearer"); // mir/string_map.d(511): No member: token_type
+
+    const tkType = `token_type` in token;
+
+    assert((*tkType) == "Bearer"); // *tkType contains value 3599
 }
