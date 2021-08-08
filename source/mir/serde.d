@@ -66,6 +66,23 @@ version (D_Exceptions)
 }
 
 /++
+Constructs annotated type.
++/
+template SerdeAnnotated(T, string annotation)
+{
+    ///
+    @serdeAlgebraicAnnotation(annotation)
+    @serdeProxy!T
+    struct SerdeAnnotated
+    {
+        ///
+        T value;
+        ///
+        alias value this;
+    }
+}
+
+/++
 Helper enumeration for for serializer .
 Use negative `int` values for user defined targets.
 +/
