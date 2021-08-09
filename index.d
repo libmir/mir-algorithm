@@ -28,7 +28,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,algorithm,iteration)) $(TD Mir & BetterC rework of Phobos.))
     $(TR $(TDNW $(MREF mir,algorithm,setops)) $(TD Mir & BetterC rework of Phobos.))
     $(TR $(TDNW $(MREF mir,ndslice)★) $(TD Package for ndarrays and iteration algorithms.))
-    $(TR $(TDNW $(MREF mir,range)) $(TD Additoinal primitive ranges. See also $(MREF mir,ndslice), which contains a lot of range constructos.))
+    $(TR $(TDNW $(MREF mir,range)) $(TD Additional primitive ranges. See also $(MREF mir,ndslice), which contains a lot of range constructos.))
     $(LEADINGROW Math)
     $(TR $(TDNW $(MREF mir,interpolate)★) $(TD Interpolation algorithms))
     $(TR $(TDNW $(MREF mir,math,numeric)) $(TD Simple numeric algorithms))
