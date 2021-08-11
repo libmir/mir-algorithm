@@ -601,6 +601,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         auto work = topLeastSignificantPart(1);
         W current;
         size_t i, j;
+        static if (allowUnderscores) bool recentUnderscore;
 
         do
         {
@@ -631,11 +632,15 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                 case 'f': c = 0xF; break;
                 static if (allowUnderscores) 
                 {
-                    case '_': continue;
+                    case '_': 
+                        if (recentUnderscore) return false;
+                        recentUnderscore = true;
+                        continue;
                 }
                 default: return false;
             }
             ++j;
+            static if (allowUnderscores) recentUnderscore = false;
             // how far do we need to shift to get to the top 4 bits
             enum s = W.sizeof * 8 - 4;
             // shift number to the top most 4 bits
@@ -660,6 +665,12 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         }
         while(i < str.length);
 
+        static if (allowUnderscores) 
+        {
+            // check for a underscore at the beginning or the end
+            if (recentUnderscore || str[$ - 1] == '_') return false;
+        }
+
         if (current)
         {
             current >>>= 4 * (W.sizeof * 2 - j % (W.sizeof * 2));
@@ -679,6 +690,38 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     {
         auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd_efab_cdef");
         assert(cast(ulong)view == 0xabcd_efab_cdef);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        bool caught = false;
+        try {
+            auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd_efab_cef_");
+        } catch (Exception e) {
+            caught = true;
+        }
+
+        assert(caught);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        bool caught = false;
+        try {
+            auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd__efab__cef");
+        } catch (Exception e) {
+            caught = true;
+        }
+
+        assert(caught);
     }
 
     static if (isMutable!W && W.sizeof >= 4)
