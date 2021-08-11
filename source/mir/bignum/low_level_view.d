@@ -1153,7 +1153,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     bool opEquals(ulong rhs)
         @safe pure nothrow @nogc const scope
     {
-        foreach_reverse(d; lightConst.leastSignificantFirst)
+        foreach (d; lightConst.leastSignificantFirst)
         {
             static if (W.sizeof >= ulong.sizeof)
             {
@@ -1169,6 +1169,20 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
             }
         }
         return rhs == 0;
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view2 = BigUIntView!(const(ubyte), WordEndian.big)([1, 0]);
+        assert(view2 == 256); // false
+        assert(cast(ulong)view2 == 256); // true
+        auto view = BigUIntView!(const(ubyte), WordEndian.big)([15, 255, 255]);
+        assert(view == 1048575); // false
+        assert(cast(ulong)view == 1048575); // true
     }
 
     static if (isMutable!W && W.sizeof >= 4)
@@ -1208,7 +1222,6 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return str.length - i;
     }
 
-    ///
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
     version(mir_bignum_test)
