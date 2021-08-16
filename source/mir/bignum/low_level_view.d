@@ -698,30 +698,28 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     @safe pure
     unittest
     {
-        bool caught = false;
-        try {
-            auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd_efab_cef_");
-        } catch (Exception e) {
-            caught = true;
+        // Check that invalid underscores in hex literals throw an error.
+        void expectThrow(const(char)[] input) {
+            bool caught = false;
+            try { 
+                auto view = BigUIntView!size_t.fromHexString!(char, true)(input);
+            } catch (Exception e) {
+                caught = true;
+            }
+
+            assert(caught);
         }
 
-        assert(caught);
-    }
-
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    ///
-    version(mir_bignum_test)
-    @safe pure
-    unittest
-    {
-        bool caught = false;
-        try {
-            auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd__efab__cef");
-        } catch (Exception e) {
-            caught = true;
-        }
-
-        assert(caught);
+        expectThrow("abcd_efab_cef_");
+        expectThrow("abcd__efab__cef");
+        expectThrow("_abcd_efab_cdef");
+        expectThrow("_abcd_efab_cdef_");
+        expectThrow("_abcd_efab_cdef__");
+        expectThrow("__abcd_efab_cdef");
+        expectThrow("__abcd_efab_cdef_");
+        expectThrow("__abcd_efab_cdef__");
+        expectThrow("__abcd__efab_cdef__");
+        expectThrow("__abcd__efab__cdef__");
     }
 
     static if (isMutable!W && W.sizeof >= 4)
