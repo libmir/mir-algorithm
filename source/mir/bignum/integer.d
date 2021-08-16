@@ -366,11 +366,11 @@ struct BigInt(size_t maxSize64)
 
     /++
     +/
-    static BigInt fromHexString()(scope const(char)[] str)
+    static BigInt fromHexString(bool allowUnderscores = false)(scope const(char)[] str)
         @trusted pure
     {
         BigInt ret;
-        if (ret.fromHexStringImpl(str))
+        if (ret.fromHexStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
             throw hexStringException;
@@ -380,12 +380,12 @@ struct BigInt(size_t maxSize64)
 
     /++
     +/
-    bool fromHexStringImpl(C)(scope const(C)[] str)
+    bool fromHexStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
         auto work = BigIntView!size_t(data);
-        auto ret = work.fromHexStringImpl(str);
+        auto ret = work.fromHexStringImpl!(C, allowUnderscores)(str);
         if (ret)
         {
             length = cast(uint)work.unsigned.coefficients.length;

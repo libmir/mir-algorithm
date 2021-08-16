@@ -197,10 +197,10 @@ struct UInt(size_t size)
     }
 
     ///
-    static UInt!size fromHexString(scope const(char)[] str)
+    static UInt!size fromHexString(bool allowUnderscores = false)(scope const(char)[] str)
     {
         typeof(return) ret;
-        if (ret.fromHexStringImpl(str))
+        if (ret.fromHexStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
         {
@@ -216,11 +216,11 @@ struct UInt(size_t size)
 
     /++
     +/
-    bool fromHexStringImpl(C)(scope const(C)[] str)
+    bool fromHexStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
-        return view.fromHexStringImpl(str);
+        return view.fromHexStringImpl!(C, allowUnderscores)(str);
     }
 
     /++
