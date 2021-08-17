@@ -14,13 +14,13 @@ jobs:
   builder:
     name: 'Build and test on ${{ matrix.arch }}-${{ matrix.os }}/${{ matrix.dc }}'
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ contains(matrix.dc, 'master') || contains(matrix.dc, 'beta') || matrix.dc == 'gdc' }}
+    continue-on-error: ${{ contains(matrix.dc, 'master') || contains(matrix.dc, 'beta') }}
     env:
       ARCH: ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
-        dc: [ldc-latest, ldc-beta, dmd-latest, dmd-master, dmd-beta, gdc]
+        dc: [ldc-latest, ldc-beta, dmd-latest, dmd-master, dmd-beta]
         os: [ubuntu-latest]
         arch: [x86, x86_64]
         include:
@@ -33,19 +33,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: dlang-community/setup-dlang@v1.1.0
-        if: matrix.dc != 'gdc'
         with:
           compiler: ${{ matrix.dc }}
-      - uses: dlang-community/setup-dlang@v1.1.0
-        name: 'Work around Ubuntu-packaged dub bug'
-        if: matrix.dc == 'gdc'
-        with:
-          compiler: dmd-latest
-      - name: Install GDC
-        if: matrix.dc == 'gdc'
-        run: |
-          sudo apt-get install gdc
-          echo "DC=gdc" >> $GITHUB_ENV
       - name: Install multi-lib for 32-bit systems
         if: matrix.arch == 'x86'
         run: sudo apt-get install gcc-multilib
