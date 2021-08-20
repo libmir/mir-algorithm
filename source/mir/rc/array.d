@@ -24,6 +24,7 @@ The implementation never adds roots into the GC.
 +/
 struct mir_rcarray(T)
 {
+    import mir.internal.utility: isComplex, realType;
     ///
     package T* _payload;
     package ref mir_rc_context context() inout scope return pure nothrow @nogc @trusted @property
@@ -65,19 +66,28 @@ struct mir_rcarray(T)
     /// ditto
     bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc
     {
-        return opIndex() == rhs.opIndex();
+        static if (isComplex!T)
+            return cast(const realType!T[]) opIndex() == cast(const realType!Y[]) rhs.opIndex();
+        else
+            return opIndex() == rhs.opIndex();
     }
 
     ///
     int opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc
     {
-        return __cmp(opIndex(), rhs.opIndex());
+        static if (isComplex!T)
+            return __cmp(cast(const realType!T[])opIndex(), cast(const realType!Y[])rhs.opIndex());
+        else
+            return __cmp(opIndex(), rhs.opIndex());
     }
 
     ///
     size_t toHash() @trusted scope const pure nothrow @nogc
     {
-        return hashOf(opIndex());
+        static if (isComplex!T)
+            return hashOf(cast(const realType!T[])opIndex());
+        else
+            return hashOf(opIndex());
     }
 
     ///
@@ -293,6 +303,14 @@ unittest
 
     auto fs = r.sliced; // scope fast random access range (ndslice)
     static assert(is(typeof(fs) == Slice!(double*)));
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.complex;
+    auto a = rcarray(complex(2.0, 3), complex(4.9, 2));
 }
 
 package template LikeArray(Range)
