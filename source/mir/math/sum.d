@@ -514,7 +514,7 @@ struct Summator(T, Summation summation)
         import mir.math.ieee: signbit;
     private:
         enum F M = (cast(F)(2)) ^^ (T.max_exp - 1);
-        ScopedBuffer!(F, 8) partials;
+        auto partials = scopedBuffer!(F, 8 * T.sizeof);
         //sum for NaN and infinity.
         F s = summationInitValue!F;
         //Overflow Degree. Count of 2^^F.max_exp minus count of -(2^^F.max_exp)

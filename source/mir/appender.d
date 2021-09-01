@@ -14,7 +14,7 @@ private extern(C) @system nothrow @nogc pure void* memcpy(scope void* s1, scope 
 
 ///
 struct ScopedBuffer(T, size_t bytes = 4096)
-    if (bytes)
+    if (bytes && T.sizeof <= bytes)
 {
     import std.traits: Unqual, isMutable, isStaticArray, isIterable, hasElaborateAssign, isAssignable, isArray;
     import mir.primitives: hasLength;
@@ -229,12 +229,19 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 }
 
+/// ditto
+auto scopedBuffer(T, size_t bytes = 4096)() @trusted
+{
+    ScopedBuffer!(T, bytes) buffer = void;
+    buffer.initialize;
+    return buffer;
+}
+
 ///
-@trusted pure nothrow @nogc
+@safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    ScopedBuffer!char buf = void;
-    buf.initialize;
+    auto buf = scopedBuffer!char;
     buf.put('c');
     buf.put("str");
     assert(buf.data == "cstr");
@@ -244,11 +251,10 @@ version (mir_test) unittest
 }
 
 /// immutable
-@trusted pure nothrow @nogc
+@safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    ScopedBuffer!(immutable char) buf = void;
-    buf.initialize;
+    auto buf = scopedBuffer!(immutable char);
     buf.put('c');
     buf.put("str");
     assert(buf.data == "cstr");
@@ -260,7 +266,7 @@ version (mir_test) unittest
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    ScopedBuffer!(char, 3) buf;
+    auto buf = scopedBuffer!(char, 3);
     buf.put('c');
     buf.put("str");
     assert(buf.data == "cstr");

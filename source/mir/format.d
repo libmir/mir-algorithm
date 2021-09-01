@@ -70,33 +70,17 @@ string text(string separator = "", A...)(auto ref A args)
     }
     else
     {
-        import mir.appender: ScopedBuffer;
-        if (false)
+        import mir.appender: scopedBuffer;
+        auto buffer = scopedBuffer!char;
+        foreach (i, ref arg; args)
         {
-            ScopedBuffer!char buffer;
-            foreach (i, ref arg; args)
+            buffer.print(arg);
+            static if (separator.length && i + 1 < args.length)
             {
-                buffer.print(arg);
-                static if (separator.length && i + 1 < args.length)
-                {
-                    buffer.printStaticString!char(separator);
-                }
+                buffer.printStaticString!char(separator);
             }
-            return buffer.data.idup;
         }
-        return () @trusted  {
-            ScopedBuffer!char buffer = void;
-            buffer.initialize;
-            foreach (i, ref arg; args)
-            {
-                buffer.print(arg);
-                static if (separator.length && i + 1 < args.length)
-                {
-                    buffer.printStaticString!char(separator);
-                }
-            }
-            return buffer.data.idup;
-        } ();
+        return buffer.data.idup;
     }
 }
 
@@ -546,8 +530,8 @@ version (mir_test) unittest
         yes,
     }
 
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     w.print(Flag.yes);
     assert(w.data == "yes", w.data);
 }
@@ -573,8 +557,8 @@ ref W print(C = char, W)(scope return ref W w, bool c)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     assert(w.print(true).data == `true`, w.data);
     w.reset;
     assert(w.print(false).data == `false`, w.data);
@@ -608,8 +592,8 @@ ref W print(C = char, W, V, K)(scope return ref W w, scope const V[K] c)
 @safe pure
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     w.print(["a": 1, "b": 2]);
     assert(w.data == `["a": 1, "b": 2]` || w.data == `["b": 2, "a": 1]`, w.data);
 }
@@ -639,8 +623,8 @@ ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     string[2] array = ["a\na", "b"];
     assert(w.print(array[]).data == `["a\na", "b"]`, w.data);
 }
@@ -691,8 +675,8 @@ ref W print(C = char, W)(scope return ref W w, char c)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     assert(w
         .print('\n')
         .print('\'')
@@ -902,8 +886,8 @@ version (mir_test) unittest
     static struct F { scope const(char)[] toString()() const return { return "f"; } }
     static struct G { const(char)[] s = "g"; alias s this; }
 
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     assert(stringBuf() << A() << S() << D() << F() << G() << getData == "asdfg");
 }
 
@@ -1061,7 +1045,7 @@ ref W printZeroPad(C = char, W, I)(scope return ref W w, const I c, size_t minim
 version (mir_test) unittest
 {
     import mir.appender;
-    ScopedBuffer!char w;
+    auto w = scopedBuffer!char;
 
     w.printZeroPad(-123, 5);
     w.put(' ');
