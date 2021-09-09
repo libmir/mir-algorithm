@@ -1,3 +1,4 @@
+#pragma once
 // Self contained generic small string implementaton.
 #include <cstring>
 #include <cstddef>

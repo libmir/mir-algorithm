@@ -1,3 +1,7 @@
+#ifndef MIR_NDSLICE
+
+#define MIR_NDSLICE
+
 /**
  ************ Mir-Algorithm ************
 
@@ -8,11 +12,6 @@ License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
 Authors: Ilya Yaroshenko
 */
-
-#ifndef MIR_NDSLICE
-
-#define MIR_NDSLICE
-
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
