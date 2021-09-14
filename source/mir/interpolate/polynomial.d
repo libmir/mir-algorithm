@@ -101,6 +101,9 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0, X = T)
 
 @optmath @safe pure @nogc extern(D):
 
+    ///
+    enum uint derivativeOrder = maxAdditionalFunctions;
+
     /++
     Complexity: `O(N)`
     +/
