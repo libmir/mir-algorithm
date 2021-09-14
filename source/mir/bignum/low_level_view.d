@@ -729,7 +729,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Note: doesn't support signs.
     +/
     bool fromStringImpl(C)(scope const(C)[] str)
-        @safe pure @nogc nothrow
+        scope @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
         import mir.utility: _expect;
@@ -1433,7 +1433,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     Precondition: non-empty coefficients.
     +/
     bool fromStringImpl(C)(scope const(C)[] str)
-        @safe pure @nogc nothrow
+        scope @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
         import mir.utility: _expect;
@@ -2219,7 +2219,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         bool checkEmpty = true,
         )
         (scope const(C)[] str, out DecimalExponentKey key, int exponentShift = 0)
-        @safe pure @nogc nothrow
+        scope @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
         import mir.utility: _expect;
