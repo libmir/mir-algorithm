@@ -40,9 +40,15 @@ struct StringMap(T, U = uint)
     private Impl* implementation;
 
     ///
-    bool opEquals()(const StringMap rhs) const
+    bool opEquals(const StringMap rhs) const
     {
-        return keys == rhs.keys && values == rhs.values;
+        if (keys != rhs.keys)
+            return false;
+        if (implementation)
+            foreach (const i; 0 .. implementation._length)
+                if (implementation._values[i] != rhs.implementation._values[i])
+                    return false;
+        return true;
     }
 
     // // linking bug
@@ -118,7 +124,7 @@ struct StringMap(T, U = uint)
     }
 
     ///
-    string toString() const
+    string toString()() const
     {
         import mir.format: stringBuf;
         stringBuf buffer;
