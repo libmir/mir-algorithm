@@ -228,7 +228,7 @@ struct Decimal(size_t maxSize64)
         bool checkEmpty = true,
         )
         (scope const(C)[] str, out DecimalExponentKey key, int exponentShift = 0)
-        @safe pure @nogc nothrow
+        scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
         enum optimize = size_t.sizeof == 8 && maxSize64 == 1;

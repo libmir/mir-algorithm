@@ -136,7 +136,7 @@ struct BigInt(size_t maxSize64)
     Precondition: non-empty coefficients.
     +/
     bool fromStringImpl(C)(scope const(C)[] str)
-        @safe pure @nogc nothrow
+        scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
         auto work = BigIntView!size_t(data[]); 

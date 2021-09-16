@@ -123,7 +123,7 @@ struct UInt(size_t size)
     Precondition: non-empty coefficients.
     +/
     bool fromStringImpl(C)(scope const(C)[] str)
-        @safe pure @nogc nothrow
+        scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
         import mir.bignum.low_level_view: BigUIntView;
