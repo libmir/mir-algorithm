@@ -16,7 +16,7 @@ private extern(C) @system nothrow @nogc pure void* memcpy(scope void* s1, scope 
 struct ScopedBuffer(T, size_t bytes = 4096)
     if (bytes && T.sizeof <= bytes)
 {
-    import std.traits: Unqual, isMutable, isStaticArray, isIterable, hasElaborateAssign, isAssignable, isArray;
+    import std.traits: Unqual, isMutable, isIterable, hasElaborateAssign, isAssignable, isArray;
     import mir.primitives: hasLength;
     import mir.conv: emplaceRef;
 
@@ -177,7 +177,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
 
     ///
     void put(Iterable)(Iterable range) scope
-        if (isIterable!Iterable && !isStaticArray!Iterable && (!isArray!Iterable || hasElaborateAssign!T))
+        if (isIterable!Iterable && !__traits(isStaticArray, Iterable) && (!isArray!Iterable || hasElaborateAssign!T))
     {
         static if (hasLength!Iterable)
         {

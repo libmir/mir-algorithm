@@ -38,7 +38,7 @@ import std.traits;
  *      allocated and initialized array
  */
 auto array(Range)(Range r)
-if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticArray!Range || isPointer!Range && (isInputRange!(PointerTarget!Range) || isIterable!(PointerTarget!Range)))
+if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !__traits(isStaticArray, Range) || isPointer!Range && (isInputRange!(PointerTarget!Range) || isIterable!(PointerTarget!Range)))
 {
     static if (isIterable!Range)
         alias E = ForeachType!Range;
@@ -132,7 +132,7 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticAr
                 a.put(forward!e);
         }
 
-        return () @trusted { 
+        return () @trusted {
             auto ret = uninitializedArray!(Unqual!E[])(a.length);
             a.moveDataAndEmplaceTo(ret);
             return ret;
