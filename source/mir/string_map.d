@@ -40,6 +40,7 @@ struct StringMap(T, U = uint)
     private Impl* implementation;
 
     ///
+    // current implementation is workaround for linking bugs when used in self referencing algebraic types
     bool opEquals(const StringMap rhs) const
     {
         if (keys != rhs.keys)
