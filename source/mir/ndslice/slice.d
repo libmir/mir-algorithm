@@ -239,7 +239,7 @@ Returns:
     n-dimensional slice
 +/
 auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
-    if (!isStaticArray!Iterator && N
+    if (!__traits(isStaticArray, Iterator) && N
         && !is(Iterator : Slice!(_Iterator, _N, kind), _Iterator, size_t _N, SliceKind kind))
 {
     alias C = ImplicitlyUnqual!(typeof(iterator));
@@ -2591,11 +2591,11 @@ public:
         assert(imm == x);
         assert(mut == x);
     }
-    
+
     /++
     Provides the index location of a slice, taking into account
     `Slice._strides`. Similar to `Slice.indexStride`, except the slice is
-    indexed by a value. Called by `Slice.accessFlat`. 
+    indexed by a value. Called by `Slice.accessFlat`.
 
     Params:
         n = location in slice
@@ -2632,7 +2632,7 @@ public:
     }
 
     /++
-    Provides access to a slice as if it were `flattened`. 
+    Provides access to a slice as if it were `flattened`.
 
     Params:
         index = location in slice
