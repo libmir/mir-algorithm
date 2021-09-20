@@ -59,10 +59,10 @@ unittest
 }
 
 /// Concatenated string results
-string text(string separator = "", A...)(auto ref A args)
-        if (A.length > 0)
+string text(string separator = "", Args...)(auto ref Args args)
+    if (Args.length > 0)
 {
-    static if (A.length == 1)
+    static if (Args.length == 1)
     {
         import mir.functional: forward;
         import mir.conv: to;
@@ -406,7 +406,7 @@ ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
- 
+
     import mir.format: stringBuf;
     stringBuf w;
     assert(w.printEscaped("Hi \a\v\0\f\t\b \\\r\n" ~ `"@nogc"`).data == `Hi \a\v\0\f\t\b \\\r\n\"@nogc\"`);
