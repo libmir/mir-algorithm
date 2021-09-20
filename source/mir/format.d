@@ -60,10 +60,10 @@ unittest
 }
 
 /// Concatenated string results
-string text(string separator = "", A...)(auto ref A args)
-    if (A.length > 0)
+string text(string separator = "", Args...)(auto ref const(Args) args)
+    if (Args.length > 0)
 {
-    static if (A.length == 1)
+    static if (Args.length == 1)
     {
         import mir.functional: forward;
         import mir.conv: to;
