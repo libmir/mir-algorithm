@@ -59,8 +59,8 @@ unittest
 }
 
 /// Concatenated string results
-string text(string separator = "", A...)(auto ref const(Args) args)
-        if (Args.length > 0)
+string text(string separator = "", Args...)(auto ref const(Args) args)
+    if (Args.length > 0)
 {
     static if (Args.length == 1)
     {
