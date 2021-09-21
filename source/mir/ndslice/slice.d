@@ -2929,15 +2929,24 @@ public:
             sl.opIndexOpAssignImplConcatenation!""(concatenation);
         }
 
+        static if (!isNumeric!DeepElement)
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined slice).
         +/
-        void opIndexAssign(T, Slices...)(T value, Slices slices) scope return
+        void opIndexAssign(T, Slices...)(T value, Slices slices) scope
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElement)
                 && DynamicArrayDimensionsCount!T == DynamicArrayDimensionsCount!DeepElement
                 && !isSlice!T
                 && !isConcatenation!T)
+        {
+            auto sl = this.lightScope.opIndex(slices);
+            if(!sl.anyRUEmpty)
+                sl.opIndexOpAssignImplValue!""(value);
+        }
+        else
+        void opIndexAssign(Slices...)(DeepElement value, Slices slices) scope
+            if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
             auto sl = this.lightScope.opIndex(slices);
             if(!sl.anyRUEmpty)
@@ -2995,6 +3004,17 @@ public:
                 return t = v;
             }
             return _iterator[indexStride(_indices)] = value;
+        }
+        ///ditto
+        auto ref opIndexAssign()(DeepElement value, size_t[N] _indices...) scope return @trusted
+        {
+            import mir.functional: forward;
+            // check assign safety
+            static auto ref fun(ref DeepElement t, ref DeepElement v) @safe
+            {
+                return t = v;
+            }
+            return _iterator[indexStride(_indices)] = forward!value;
         }
 
         static if (doUnittest)
@@ -4079,4 +4099,18 @@ unittest // check it can be compiled
     import mir.algebraic;
     alias S = Slice!(double*, 2);
     alias D = Variant!S;
+}
+
+version(mir_test)
+unittest
+{
+    import mir.ndslice;
+
+    auto matrix = slice!short(3, 4);
+    matrix[] = 0;
+    matrix.diagonal[] = 1;
+
+    auto row = matrix[2];
+    row[3] = 6;
+    assert(matrix[2, 3] == 6); // D & C index order
 }
