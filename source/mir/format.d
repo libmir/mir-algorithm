@@ -277,7 +277,7 @@ struct FormattedFloating(T)
 
     ///
     void toString(C = char, W)(scope ref W w) scope const
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
     {
         C[512] buf = void;
         auto n = printFloatingPoint(value, spec, buf);
@@ -304,7 +304,7 @@ struct HexAddress(T)
 
     ///
     void toString(C = char, W)(scope ref W w) scope const
-        if (isSomeChar!C && isOutputRange!(W, C))
+        if (isSomeChar!C)
     {
         enum N = T.sizeof * 2;
         static if(isFastBuffer!W)
@@ -421,7 +421,7 @@ version (mir_test) unittest
 Decodes `char` `c` to the form `u00XX`, where `XX` is 2 hexadecimal characters.
 +/
 ref W put_xXX(C = char, W)(scope return ref W w, char c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     ubyte[2] spl;
     spl[0] = c >> 4;
@@ -438,7 +438,7 @@ ref W put_xXX(C = char, W)(scope return ref W w, char c)
 Decodes `char` `c` to the form `u00XX`, where `XX` is 2 hexadecimal characters.
 +/
 ref W put_uXXXX(C = char, W)(scope return ref W w, char c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     ubyte[2] spl;
     spl[0] = c >> 4;
@@ -457,7 +457,7 @@ ref W put_uXXXX(C = char, W)(scope return ref W w, char c)
 Decodes ushort `c` to the form `uXXXX`, where `XXXX` is 2 hexadecimal characters.
 +/
 ref W put_uXXXX(C = char, W)(scope return ref W w, ushort c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     ubyte[4] spl;
     spl[0] = (c >> 12) & 0xF;
@@ -476,7 +476,7 @@ ref W put_uXXXX(C = char, W)(scope return ref W w, ushort c)
 
 ///
 ref W printElement(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope return ref W w, scope const(C)[] c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     static immutable C[1] quote = '\"';
     return w
@@ -487,7 +487,7 @@ ref W printElement(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
 
 ///
 ref W printElement(C = char, EscapeFormat escapeFormat = EscapeFormat.ion, W, T)(scope return ref W w, scope auto ref const T c)
-    if (!isSomeString!T && isOutputRange!(W, C))
+    if (!isSomeString!T)
 {
     return w.print!C(c);
 }
@@ -496,7 +496,7 @@ ref W printElement(C = char, EscapeFormat escapeFormat = EscapeFormat.ion, W, T)
 Multiargument overload.
 +/
 ref W print(C = char, W, Args...)(scope return ref W w, scope auto ref const Args args)
-    if (isSomeChar!C && isOutputRange!(W, C) && Args.length > 1)
+    if (isSomeChar!C && Args.length > 1)
 {
     foreach(i, ref c; args)
         static if (i < Args.length - 1)
@@ -507,7 +507,7 @@ ref W print(C = char, W, Args...)(scope return ref W w, scope auto ref const Arg
 
 /// Prints enums
 ref W print(C = char, W, T)(scope return ref W w, const T c)
-    if (isSomeChar!C && isOutputRange!(W, C) && is(T == enum))
+    if (isSomeChar!C && is(T == enum))
 {
     import mir.enums: getEnumIndex, enumStrings;
     import mir.utility: _expect;
@@ -544,7 +544,7 @@ version (mir_test) unittest
 
 /// Prints boolean
 ref W print(C = char, W)(scope return ref W w, bool c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     enum N = 5;
     static if(isFastBuffer!W)
@@ -574,7 +574,7 @@ version (mir_test) unittest
 /// Prints associative array
 pragma(inline, false)
 ref W print(C = char, W, V, K)(scope return ref W w, scope const V[K] c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     enum C left = '[';
     enum C right = ']';
@@ -609,7 +609,7 @@ version (mir_test) unittest
 /// Prints array
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
-    if (isSomeChar!C && isOutputRange!(W, C) && !isSomeChar!T)
+    if (isSomeChar!C && !isSomeChar!T)
 {
     enum C left = '[';
     enum C right = ']';
@@ -640,7 +640,7 @@ version (mir_test) unittest
 /// Prints escaped character in the form `'c'`.
 pragma(inline, false)
 ref W print(C = char, W)(scope return ref W w, char c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     w.put('\'');
     if (c >= 0x20)
@@ -696,7 +696,7 @@ version (mir_test) unittest
 
 /// Prints some string
 ref W print(C = char, W)(scope return ref W w, scope const(C)[] c)
-    if (isSomeChar!C && isOutputRange!(W, C))
+    if (isSomeChar!C)
 {
     w.put(c);
     return w;
@@ -704,7 +704,7 @@ ref W print(C = char, W)(scope return ref W w, scope const(C)[] c)
 
 /// Prints integers
 ref W print(C = char, W, I)(scope return ref W w, const I c)
-    if (isSomeChar!C && isOutputRange!(W, C) && isIntegral!I && !is(I == enum))
+    if (isSomeChar!C && isIntegral!I && !is(I == enum))
 {
     static if (I.sizeof == 16)
         enum N = 39;
@@ -724,7 +724,7 @@ ref W print(C = char, W, I)(scope return ref W w, const I c)
 
 /// Prints floating point numbers
 ref W print(C = char, W, T)(scope return ref W w, const T c, NumericSpec spec = NumericSpec.init)
-    if(isSomeChar!C && isOutputRange!(W, C) && is(T == float) || is(T == double) || is(T == real))
+    if(isSomeChar!C && is(T == float) || is(T == double) || is(T == real))
 {
     import mir.bignum.decimal;
     auto decimal = Decimal!(T.mant_dig < 64 ? 1 : 2)(c);
@@ -817,7 +817,7 @@ unittest
 /// Prints structs and unions
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, ref const T c)
-    if (isSomeChar!C && isOutputRange!(W, C) && is(T == struct) || is(T == union) && !is(T : NumericSpec))
+    if (isSomeChar!C && is(T == struct) || is(T == union) && !is(T : NumericSpec))
 {
     static if (__traits(hasMember, T, "toString"))
     {
@@ -880,7 +880,7 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
 // FUTURE: remove it
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
-    if (isSomeChar!C && isOutputRange!(W, C) && is(T == struct) || is(T == union))
+    if (isSomeChar!C && is(T == struct) || is(T == union))
 {
     return print!(C, W, T)(w, c);
 }
@@ -903,7 +903,7 @@ version (mir_test) unittest
 /// Prints classes and interfaces
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
-    if (isSomeChar!C && isOutputRange!(W, C) && is(T == class) || is(T == interface))
+    if (isSomeChar!C && is(T == class) || is(T == interface))
 {
     enum C[4] Null = "null";
     static if (__traits(hasMember, T, "toString") || __traits(compiles, { scope const(C)[] string_of_c = c; }))
@@ -969,7 +969,7 @@ version (mir_test) unittest
 
 ///
 ref W printStaticString(C, size_t N, W)(scope return ref W w, ref scope const C[N] c)
-    if (isSomeChar!C && isOutputRange!(W, C) && is(C == char) || is(C == wchar) || is(C == dchar))
+    if (isSomeChar!C && is(C == char) || is(C == wchar) || is(C == dchar))
 {
     static if (isFastBuffer!W)
     {
@@ -1017,7 +1017,7 @@ template isFastBuffer(W)
 
 ///
 ref W printZeroPad(C = char, W, I)(scope return ref W w, const I c, size_t minimalLength)
-    if (isSomeChar!C && isOutputRange!(W, C) && isIntegral!I && !is(I == enum))
+    if (isSomeChar!C && isIntegral!I && !is(I == enum))
 {
     static if (I.sizeof == 16)
         enum N = 39;
