@@ -1087,9 +1087,9 @@ template serdeGetFinalDeepProxy(T)
     else
     static if (is(immutable T == immutable V[K], K, V))
     {
-        alias E = Unqual!V;
+        alias E = serdeGetFinalDeepProxy!(Unqual!V);
         static if (isAggregateType!E || is(E == enum))
-            alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!E;
+            alias serdeGetFinalDeepProxy = E;
         else
             alias serdeGetFinalDeepProxy = T;
     }
@@ -1114,7 +1114,7 @@ version(mir_test) unittest
     @serdeProxy!(B[])
     static struct C {}
 
-    static assert (is(serdeGetFinalDeepProxy!C == string), serdeGetFinalDeepProxy!C.stringof);
+    static assert (is(serdeGetFinalDeepProxy!C == A[E]));
     static assert (is(serdeGetFinalDeepProxy!string == string));
 }
 
