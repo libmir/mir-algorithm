@@ -60,7 +60,7 @@ unittest
 }
 
 /// Concatenated string results
-string text(string separator = "", Args...)(auto ref const(Args) args)
+string text(string separator = "", Args...)(auto ref Args args)
     if (Args.length > 0)
 {
     static if (Args.length == 1)
@@ -88,7 +88,8 @@ string text(string separator = "", Args...)(auto ref const(Args) args)
 ///
 @safe pure nothrow unittest
 {
-    assert(text("str ", true, " ", 100, " ", 124.1) == "str true 100 124.1", text("str ", true, " ", 100, " ", 124.1));
+    const i = 100;
+    assert(text("str ", true, " ", i, " ", 124.1) == "str true 100 124.1", text("str ", true, " ", 100, " ", 124.1));
     assert(text!" "("str", true, 100, 124.1) == "str true 100 124.1");
 }
 
