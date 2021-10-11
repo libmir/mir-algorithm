@@ -10,27 +10,27 @@ dependency "mir-core" version=">=1.1.75"
 buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_bignum_test" "mir_builtincomplex_test" "mir_test"
-    dflags "-lowmem"
+    dflags "-lowmem" "-allinst"
 }
 buildType "unittest-dip1008" {
     buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_bignum_test" "mir_test"
-    dflags "-lowmem" "-preview=dip1008"
+    dflags "-lowmem" "-preview=dip1008" "-allinst"
 }
 buildType "unittest-dip1000" {
     buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_bignum_test" // "mir_test"
-    dflags "-lowmem" "-preview=dip1000"
+    dflags "-lowmem" "-preview=dip1000" "-allinst"
 }
 buildType "unittest-cov" {
     buildOptions "unittests" "coverage" "debugMode" "debugInfo"
     versions "mir_bignum_test" "mir_test"
-    dflags "-lowmem"
+    dflags "-lowmem" "-allinst"
 }
 buildType "unittest-release" {
     buildOptions "unittests" "releaseMode" "optimize" "inline" "noBoundsCheck"
     versions "mir_bignum_test" "mir_test"
-    dflags "-lowmem"
+    dflags "-lowmem" "-allinst"
 }
 
 configuration "default" {
