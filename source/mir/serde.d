@@ -1010,7 +1010,7 @@ template serdeGetFinalProxy(T)
             alias serdeGetFinalProxy = .serdeGetFinalProxy!(serdeGetProxy!T);
         }
         else
-        static if (isAggregateType!T && is(typeof(Timestamp(T.init))))
+        static if (isAggregateType!T && is(typeof(Timestamp(T.init))) && __traits(getAliasThis, T).length == 0)
         {
             alias serdeGetFinalProxy = string;
         }

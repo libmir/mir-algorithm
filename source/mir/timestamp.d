@@ -173,7 +173,7 @@ struct Timestamp
         +/
         byte fractionExponent;
         /// ditto
-        long fractionCoefficient;
+        ulong fractionCoefficient;
     }
     else
     {
@@ -185,13 +185,13 @@ struct Timestamp
                     ubyte, "minute", 8,
                     ubyte, "second", 8,
                     byte, "fractionExponent", 8,
-                    long, "fractionCoefficient", 40,
+                    ulong, "fractionCoefficient", 40,
             ));
         }
         else
         {
             mixin(bitfields!(
-                    long, "fractionCoefficient", 40,
+                    ulong, "fractionCoefficient", 40,
                     byte, "fractionExponent", 8,
                     ubyte, "second", 8,
                     ubyte, "minute", 8,
