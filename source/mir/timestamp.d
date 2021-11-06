@@ -446,7 +446,7 @@ struct Timestamp
     }
 
     ///
-    unittest
+    @safe unittest
     {
         import core.time : hnsecs, minutes;
         import mir.algebraic;
