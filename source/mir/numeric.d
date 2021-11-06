@@ -1479,7 +1479,7 @@ DiffResult!T diff(alias f, T)(const T x, const T h, const T factor = T(2).sqrt, 
 ///ditto
 DiffResult!T diffImpl(T)
     (scope const T delegate(T) @safe pure nothrow @nogc f, const T x, const T h, const T factor = T(2).sqrt, const T safe = 2)
-    @safe pure nothrow @nogc
+    @trusted pure nothrow @nogc
 in {
     assert(h < T.max);
     assert(h > T.min_normal);

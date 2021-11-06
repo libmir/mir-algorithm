@@ -130,7 +130,7 @@ struct Decimal(size_t maxSize64)
         const C fractionSeparator,
         out DecimalExponentKey key,
         int exponentShift = 0,
-    )
+    ) @trusted
         if (isSomeChar!C)
     {
         import mir.algorithm.iteration: find;

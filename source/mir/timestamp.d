@@ -394,9 +394,10 @@ struct Timestamp
     $(LI `DateTime`)
     $(LI `SysTime`)
     $(LI `Timestamp` as fallback type)
+    )
+
 
     Throws: an exception if timestamp cannot be converted to an algebraic type and there is no `Timestamp` type in the Algebraic set.
-    )
     +/
     T opCast(T)() const
         if (__traits(hasMember, T, "AllowedTypes"))
