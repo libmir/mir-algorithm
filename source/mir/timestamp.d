@@ -380,19 +380,122 @@ struct Timestamp
         assert(st == cast(SysTime) ts);
     }
 
-    ///
+    /++
+    Decomposes Timestamp to an algebraic type.
+    Supported types up to T.stringof equivalence:
+
+    $(UL
+    $(LI `Year`)
+    $(LI `YearMonth`)
+    $(LI `YearMonthDay`)
+    $(LI `Date`)
+    $(LI `date`)
+    $(LI `TimeOfDay`)
+    $(LI `DateTime`)
+    $(LI `SysTime`)
+    $(LI `Timestamp` as fallback type)
+
+    Throws: an exception if timestamp cannot be converted to an algebraic type and there is no `Timestamp` type in the Algebraic set.
+    )
+    +/
     T opCast(T)() const
-        if (T.stringof == "YearMonth"
+        if (__traits(hasMember, T, "AllowedTypes"))
+    {
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "Year")
+                if (precision == precision.year)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "YearMonth")
+                if (precision == precision.month)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "YearMonthDay" || AT.stringof == "Date" ||  AT.stringof == "date")
+                if (precision == precision.day)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "TimeOfDay")
+                if (isOnlyTime)
+                    return T(opCast!AT);
+
+        if (!isOnlyTime && precision >= precision.day)
+        {
+            foreach (AT; T.AllowedTypes)
+                static if (AT.stringof == "DateTime")
+                    if (offset == 0 && precision <= precision.second)
+                        return T(opCast!AT);
+
+            foreach (AT; T.AllowedTypes)
+                static if (AT.stringof == "SysTime")
+                    return T(opCast!AT);
+        }
+
+        import std.meta: staticIndexOf;
+        static if (staticIndexOf!(Timestamp, T.AllowedTypes) < 0)
+        {
+            static immutable exc = Exception("Cannot cast Timestamp to " ~ T.stringof);
+            throw exc;
+        }
+        else
+        {
+            return T(this);
+        }
+    }
+
+    ///
+    unittest
+    {
+        import core.time : hnsecs, minutes;
+        import mir.algebraic;
+        import mir.date: Date; // Can be other Date type as well
+        import std.datetime.date : TimeOfDay, DateTime;
+        import std.datetime.systime : SysTime;
+        import std.datetime.timezone: UTC, SimpleTimeZone;
+
+        alias A = Variant!(Date, TimeOfDay, DateTime, SysTime, Timestamp, string); // non-date-time types is OK
+        assert(cast(A) Timestamp(1023) == Timestamp(1023)); // Year isn't represented in the algebraic, use fallback type
+        assert(cast(A) Timestamp.onlyTime(7, 40, 30) == TimeOfDay(7, 40, 30));
+        assert(cast(A) Timestamp(1982, 4, 1, 20, 59, 22) == DateTime(1982, 4, 1, 20, 59, 22));
+
+        auto dt = DateTime(1982, 4, 1, 20, 59, 22);
+        auto tz = new immutable SimpleTimeZone(-330.minutes);
+        auto st = SysTime(dt, 1234567.hnsecs, tz);
+        assert(cast(A) Timestamp(st) == st);
+    }
+
+    /++
+    Casts timestamp to a date-time type.
+
+    Supported types up to T.stringof equivalence:
+
+    $(UL
+    $(LI `Year`)
+    $(LI `YearMonth`)
+    $(LI `YearMonthDay`)
+    $(LI `Date`)
+    $(LI `date`)
+    $(LI `TimeOfDay`)
+    $(LI `DateTime`)
+    $(LI `SysTime`)
+    )
+    +/
+    T opCast(T)() const
+        if (
+            T.stringof == "Year"
+         || T.stringof == "YearMonth"
          || T.stringof == "YearMonthDay"
          || T.stringof == "Date"
-         || T.stringof == "TimeOfDay"
          || T.stringof == "date"
+         || T.stringof == "TimeOfDay"
          || T.stringof == "DateTime"
          || T.stringof == "SysTime")
     {
         static if (T.stringof == "YearMonth")
         {
-            return T(year, month, day);
+            return T(year, month);
         }
         else
         static if (T.stringof == "Date" || T.stringof == "date" || T.stringof == "YearMonthDay")
