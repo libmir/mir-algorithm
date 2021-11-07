@@ -133,4 +133,10 @@ unittest
     IonAlgebraic fromAA = ["a" : IonAlgebraic(3), "b" : IonAlgebraic("b")];
     assert(fromAA.get!(StringMap!IonAlgebraic)["a"] == 3);
     assert(fromAA.get!(StringMap!IonAlgebraic)["b"] == "b");
+
+    auto annotated = Annotated!IonAlgebraic(["birthday"], Timestamp("2001-01-01"));
+    value = annotated;
+    assert(value == annotated);
+    value = annotated.IonAlgebraic;
+    assert(value == annotated);
 }
