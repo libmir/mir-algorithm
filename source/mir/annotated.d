@@ -68,6 +68,12 @@ struct Annotated(T) {
     ///
     alias _value this;
 
+    ///
+    bool opEquals(const Annotated rhs) const
+    {
+        return annotations == rhs.annotations && _value == rhs._value;
+    }
+
     /++
     Params:
         annotations = non-empty array of annotations
