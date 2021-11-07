@@ -437,7 +437,7 @@ struct Timestamp
         import std.meta: staticIndexOf;
         static if (staticIndexOf!(Timestamp, T.AllowedTypes) < 0)
         {
-            static immutable exc = Exception("Cannot cast Timestamp to " ~ T.stringof);
+            static immutable exc = new Exception("Cannot cast Timestamp to " ~ T.stringof);
             throw exc;
         }
         else
