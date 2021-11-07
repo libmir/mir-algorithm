@@ -293,6 +293,77 @@ template serdeGetAlgebraicAnnotation(T)
 }
 
 /++
+User defined attribute used to attach a function that returns a deserialization delegate.
+
+The attribute is usefull for scripting languages and dynamic algebraic types.
++/
+template serdeDynamicAlgebraic(alias getAlgebraicDeserializerByAnnotation)
+{
+    enum serdeDynamicAlgebraic;
+}
+
+///
+unittest
+{
+    static struct _global
+    {
+        alias Deserializer = S delegate(string s, ubyte[] data) @safe pure;
+        Deserializer getDeserializer(string name) { return map[name]; }
+        Deserializer[string] map;
+
+        @serdeDynamicAlgebraic!getDeserializer
+        struct S {}
+
+        static assert(serdeIsDynamicAlgebraic!S);
+        static assert(__traits(isSame, serdeGetAlgebraicDeserializer!S, getDeserializer));
+    }
+}
+
+/++
++/
+template serdeIsDynamicAlgebraic(T)
+{
+    static if (isAggregateType!T)
+    {
+        static if (hasUDA!(T, serdeDynamicAlgebraic))
+        {
+            enum serdeIsDynamicAlgebraic = true;
+        }
+        else
+        static if (__traits(getAliasThis, T).length)
+        {
+            T* aggregate;
+            alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
+            enum serdeIsDynamicAlgebraic = .serdeIsDynamicAlgebraic!A;
+        }
+        else
+        {
+            enum serdeIsDynamicAlgebraic = false;
+        }
+    }
+    else
+    {
+        enum serdeIsDynamicAlgebraic = false;
+    }
+}
+
+/++
++/
+template serdeGetAlgebraicDeserializer(T)
+{
+    static if (hasUDA!(T, serdeDynamicAlgebraic))
+    {
+        alias serdeGetAlgebraicDeserializer = TemplateArgsOf!(getUDA!(T, serdeDynamicAlgebraic))[0];
+    }
+    else
+    {
+        T* aggregate;
+        alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
+        alias serdeGetAlgebraicDeserializer = .serdeGetAlgebraicDeserializer!A;
+    }
+}
+
+/++
 Returns:
     immutable array of the input keys for the symbol or enum value
 +/
