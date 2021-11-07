@@ -58,6 +58,12 @@ struct Annotated(T) {
             }
             return *_value_;
         }
+
+        ///
+        bool opEquals(const Annotated rhs) const
+        {
+            return annotations == rhs.annotations && _value == rhs._value;
+        }
     }
     else
     {
@@ -67,12 +73,6 @@ struct Annotated(T) {
 
     ///
     alias _value this;
-
-    ///
-    bool opEquals(const Annotated rhs) const
-    {
-        return annotations == rhs.annotations && _value == rhs._value;
-    }
 
     /++
     Params:
