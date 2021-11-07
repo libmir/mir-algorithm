@@ -143,7 +143,9 @@ The attribute should be applied to a type definition.
 enum serdeRegister;
 
 /++
-The attribute should be applied to a string-like member that should be de/serialized as an annotation / attribute.
+The attribute can be applied to a string-like member that should be de/serialized as an annotation / attribute.
+
+Also, the attribute can be applied to on a type used in an algebraic type to denote that the type should be used to deserialize annotated value.
 
 This feature is used in $(MIR_PACKAGE mir-ion).
 +/
