@@ -394,6 +394,36 @@ struct BigInt(size_t maxSize64)
         return ret;
     }
 
+    /++
+    +/
+    static BigInt fromBinaryString(bool allowUnderscores = false)(scope const(char)[] str)
+        @trusted pure
+    {
+        BigInt ret;
+        if (ret.fromBinaryStringImpl!(char, allowUnderscores)(str))
+            return ret;
+        version(D_Exceptions)
+            throw binaryStringException;
+        else
+            assert(0, binaryStringErrorMsg);
+    }
+
+    /++
+    +/
+    bool fromBinaryStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        auto work = BigIntView!size_t(data);
+        auto ret = work.fromBinaryStringImpl!(C, allowUnderscores)(str);
+        if (ret)
+        {
+            length = cast(uint)work.unsigned.coefficients.length;
+            sign = work.sign;
+        }
+        return ret;
+    }
+
     ///
     bool mulPow5(size_t degree)
     {
