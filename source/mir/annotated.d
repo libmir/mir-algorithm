@@ -14,7 +14,7 @@ version (D_Exceptions)
     static immutable exc = new Exception(excMsg);
 
 /++
-A convenience difintion of an annotated value. 
+A convenience difinition of an annotated value. 
 +/
 @serdeRegister
 @serdeAnnotation
