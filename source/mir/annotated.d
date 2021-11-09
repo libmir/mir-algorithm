@@ -40,44 +40,42 @@ struct Annotated(T) {
     static if (_alloc_)
     {
         ///
-        private T* _value_;
+        private T* _value;
         ///
-        ref inout(T) _value() inout @property
+        ref inout(T) value() inout @property
         {
-            return *_value_;
+            return *_value;
         }
 
         ///
-        ref T _value(T value) @property
+        ref T value(T value) @property
         {
-            if (_value_ is null)
+            if (_value is null)
             {
-                _value_ = new T;
+                _value = new T;
                 import core.lifetime: move;
-                *_value_ = move(value);
+                *_value = move(value);
             }
-            return *_value_;
+            return *_value;
         }
 
         ///
         bool opEquals(const Annotated rhs) const
         {
-            return annotations == rhs.annotations && _value == rhs._value;
+            return annotations == rhs.annotations && value == rhs.value;
         }
     }
     else
     {
         ///
-        T _value;
+        T value;
     }
 
-    ///
-    alias _value this;
 
     /++
     Params:
         annotations = non-empty array of annotations
-        value = actual value
+        args = arguments to construct value with
     +/
     this(Args...)(string[] annotations, Args args) @safe pure {
         if (annotations.length == 0)
@@ -90,15 +88,15 @@ struct Annotated(T) {
         import core.lifetime: forward;
         this.annotations = annotations;
         static if (_alloc_)
-            this._value_ = new T(forward!args);
-        else
-        static if (__traits(compiles, value = args))
-            this._value = args;
-        else
-        static if (is(T == class))
             this._value = new T(forward!args);
         else
-            this._value = T(forward!args);
+        static if (__traits(compiles, value = args))
+            this.value = args;
+        else
+        static if (is(T == class))
+            this.value = new T(forward!args);
+        else
+            this.value = T(forward!args);
     }
 }
 
@@ -109,12 +107,12 @@ unittest
     static struct S {double x;}
     auto as = Annotated!S(annotations, 5);
     assert(as.annotations == annotations);
-    assert(as.x == 5);
+    assert(as.value.x == 5);
 
     static struct C {double x;}
     auto ac = Annotated!S(annotations, 5);
     assert(ac.annotations == annotations);
-    assert(ac.x == 5);
+    assert(ac.value.x == 5);
 }
 
 ///
@@ -125,10 +123,10 @@ unittest
     static struct S {double x;}
     auto as = Annotated!(Variant!S)(annotations, 5);
     assert(as.annotations == annotations);
-    assert(as.x == 5);
+    assert(as.value.x == 5);
 
     static struct C {double x;}
     auto ac = Annotated!(Variant!S)(annotations, 5);
     assert(ac.annotations == annotations);
-    assert(ac.x == 5);
+    assert(ac.value.x == 5);
 }
