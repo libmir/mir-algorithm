@@ -145,12 +145,26 @@ enum serdeRegister;
 /++
 The attribute can be applied to a string-like member that should be de/serialized as an annotation / attribute.
 
-Also, the attribute can be applied to on a type used in an algebraic type to denote that the type should be used to deserialize annotated value.
+Also, the attribute can be applied on a type to denote that the type should be used to de/serialize annotated value.
 
 This feature is used in $(MIR_PACKAGE mir-ion).
 +/
 enum serdeAnnotation;
 
+/++
+Checks if the type marked with $(LREF serdeAnnotation).
++/
+template isAnnotated(T)
+{
+    import mir.serde: serdeAnnotation;
+    static if (is(T == enum) || isAggregateType!T) {
+        enum isAnnotated = hasUDA!(T, serdeAnnotation);
+        static if (isAnnotated)
+            static assert(__traits(getAliasThis, T).length == 1 || __traits(hasMember, T, "value"), "@serdeAnnotation " ~ T.stringof ~" requires alias this member or `value` member.");
+    }
+    else
+        enum isAnnotated = false;
+}
 
 private template serdeIsAnnotationMemberIn(T)
 {
