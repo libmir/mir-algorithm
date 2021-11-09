@@ -447,16 +447,17 @@ struct Timestamp
     }
 
     ///
+    version (mir_test)
     @safe unittest
     {
-        import core.time : hnsecs, minutes;
+        import core.time : hnsecs, minutes, Duration;
         import mir.algebraic;
         import mir.date: Date; // Can be other Date type as well
         import std.datetime.date : TimeOfDay, DateTime;
         import std.datetime.systime : SysTime;
         import std.datetime.timezone: UTC, SimpleTimeZone;
 
-        alias A = Variant!(Date, TimeOfDay, DateTime, SysTime, Timestamp, string); // non-date-time types is OK
+        alias A = Variant!(Date, TimeOfDay, DateTime, Duration, SysTime, Timestamp, string); // non-date-time types is OK
         assert(cast(A) Timestamp(1023) == Timestamp(1023)); // Year isn't represented in the algebraic, use fallback type
         assert(cast(A) Timestamp.onlyTime(7, 40, 30) == TimeOfDay(7, 40, 30));
         assert(cast(A) Timestamp(1982, 4, 1, 20, 59, 22) == DateTime(1982, 4, 1, 20, 59, 22));
