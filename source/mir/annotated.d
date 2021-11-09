@@ -14,7 +14,9 @@ version (D_Exceptions)
     static immutable exc = new Exception(excMsg);
 
 /++
-A convenience difinition of an annotated value. 
+A convenience difinition of an annotated value.
+
+A structure that behaves like a recursive algebraic type should define `enum _serdeRecursiveAlgebraic;` member.
 +/
 @serdeRegister
 @serdeAnnotation
@@ -26,7 +28,7 @@ struct Annotated(T) {
     static if (!(is(T == union) || is(T == struct)))
         private enum _alloc_ = false;
     else
-    static if (serdeIsDynamicAlgebraic!T)
+    static if (__traits(hasMember, T, "_serdeRecursiveAlgebraic"))
         private enum _alloc_ = true;
     else
     {
