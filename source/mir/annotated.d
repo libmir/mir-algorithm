@@ -14,7 +14,7 @@ version (D_Exceptions)
     static immutable exc = new Exception(excMsg);
 
 /++
-A convenience difinition of an annotated value.
+A convenience definition of an annotated value.
 
 A structure that behaves like a recursive algebraic type should define `enum _serdeRecursiveAlgebraic;` member.
 +/
