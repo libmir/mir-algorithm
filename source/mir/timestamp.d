@@ -162,7 +162,7 @@ struct Timestamp
         /++
         Fraction
 
-        The `fraction_exponent` and `fraction_coefficient` denote the fractional seconds of the timestamp as a decimal value
+        The `fractionExponent` and `fractionCoefficient` denote the fractional seconds of the timestamp as a decimal value
         The fractional seconds’ value is `coefficient * 10 ^ exponent`.
         It must be greater than or equal to zero and less than 1.
         A missing coefficient defaults to zero.
@@ -383,6 +383,53 @@ struct Timestamp
     }
 
     /++
+    Creates a fake timestamp from a Duration using `total!"hnsecs"` method.
+    For positive and zero timestamps the format is
+        `wwww-dd-88Thh:mm:ss.nnnnnnn`
+        and for negative timestamps
+        `wwww-dd-99Thh:mm:ss.nnnnnnn`.
+    +/
+    this(Duration)(const Duration duration)
+        if (Duration.stringof == "Duration")
+    {
+        auto hnsecs = duration.total!"hnsecs";
+        ulong abs = hnsecs < 0 ? -hnsecs : hnsecs;
+        precision = Precision.fraction;
+        day = hnsecs >= 0 ? 88 : 99;
+        fractionExponent = -7;
+        fractionCoefficient = abs % 10_000_000U;
+        abs /= 10_000_000U;
+        second = abs % 60;
+        abs /= 60;
+        minute = abs % 60;
+        abs /= 60;
+        hour = abs % 24;
+        abs /= 24;
+        month = abs % 7;
+        abs /= 7;
+        year = cast(typeof(year)) abs;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest {
+        import core.time : Duration, weeks, days, hours, minutes, seconds, hnsecs;
+
+        auto duration = 5.weeks + 2.days + 7.hours + 40.minutes + 4.seconds + 9876543.hnsecs;
+        Timestamp ts = duration;
+
+        assert(ts.toISOExtString == `0005-02-88T07:40:04.9876543Z`);
+        assert(duration == cast(Duration) ts);
+
+        duration = -duration;
+        ts = Timestamp(duration);
+        assert(ts.toISOExtString == `0005-02-99T07:40:04.9876543Z`);
+        assert(duration == cast(Duration) ts);
+
+        assert(Timestamp(Duration.zero).toISOExtString == `0000-00-88T00:00:00.0000000Z`);
+    }
+
+    /++
     Decomposes Timestamp to an algebraic type.
     Supported types up to T.stringof equivalence:
 
@@ -412,6 +459,11 @@ struct Timestamp
         foreach (AT; T.AllowedTypes)
             static if (AT.stringof == "YearMonth")
                 if (precision == precision.month)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "Duration")
+                if (isDuration)
                     return T(opCast!AT);
 
         foreach (AT; T.AllowedTypes)
@@ -494,6 +546,7 @@ struct Timestamp
          || T.stringof == "Date"
          || T.stringof == "date"
          || T.stringof == "TimeOfDay"
+         || T.stringof == "Duration"
          || T.stringof == "DateTime"
          || T.stringof == "SysTime")
     {
@@ -523,29 +576,47 @@ struct Timestamp
             import std.datetime.date: DateTime;
             import std.datetime.systime: SysTime;
             import std.datetime.timezone: UTC, SimpleTimeZone;
-            auto ret = SysTime(DateTime(year, month, day, hour, minute, second), UTC());
-            if (fractionCoefficient)
-            {
-                long coeff = fractionCoefficient;
-                int exp = fractionExponent;
-                while (exp > -7)
-                {
-                    exp--;
-                    coeff *= 10;
-                }
-                while (exp < -7)
-                {
-                    exp++;
-                    coeff /= 10;
-                }
-                ret.fracSecs = coeff.hnsecs;
-            }
+            auto ret = SysTime(DateTime(year, month, day, hour, minute, second), getPhobosFraction.hnsecs, UTC());
             if (offset)
             {
                 ret = ret.toOtherTZ(new immutable SimpleTimeZone(offset.minutes));
             }
             return ret;
         }
+        else
+        static if (T.stringof == "Duration")
+        {
+            if (!isDuration)
+                throw ExpectedDuration;
+            auto coeff = ((((long(year) * 7 + month) * 24 + hour) * 60 + minute) * 60 + second) * 10_000_000 + getPhobosFraction;
+            if (isNegativeDuration)
+                coeff = -coeff;
+
+            import mir.conv: to;
+            import core.time: hnsecs;
+            return coeff.hnsecs.to!T;
+        }
+    }
+
+    private long getPhobosFraction() @property const @safe pure nothrow @nogc
+    {
+        long coeff;
+        if (fractionCoefficient)
+        {
+            coeff = fractionCoefficient;
+            int exp = fractionExponent;
+            while (exp > -7)
+            {
+                exp--;
+                coeff *= 10;
+            }
+            while (exp < -7)
+            {
+                exp++;
+                coeff /= 10;
+            }
+        }
+        return coeff;
     }
 
     /++
@@ -617,7 +688,7 @@ struct Timestamp
     }
 
     /++
-    Converts this $(LREF Timestamp) to a string with the format `YYYY-MM-DDThh:mm:ss±hh:mm`.
+    Converts this $(LREF Timestamp) to a string with the format `yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm`.
 
     If `w` writer is set, the resulting string will be written directly
     to it.
@@ -637,7 +708,7 @@ struct Timestamp
         assert(Timestamp(0, 1, 5).toString == "0000-01-05");
         assert(Timestamp(-4, 1, 5).toString == "-0004-01-05");
 
-        // YYYY-MM-DDThh:mm:ss±hh:mm
+        // yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm
         assert(Timestamp(2021).toString == "2021T");
         assert(Timestamp(2021, 01).toString == "2021-01T", Timestamp(2021, 01).toString);
         assert(Timestamp(2021, 01, 29).toString == "2021-01-29");
@@ -763,7 +834,7 @@ struct Timestamp
             // if (isOutputRange!(W, char))
         {
             import mir.format: printZeroPad;
-            // YYYY-MM-DDThh:mm:ss±hh:mm
+            // yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm
             Timestamp t = this;
 
             if (t.offset)
@@ -956,9 +1027,8 @@ struct Timestamp
     }
 
     /++
-    Creates a $(LREF Timestamp) from a string with the format `YYYY-MM-DDThh:mm:ss±hh:mm`
+    Creates a $(LREF Timestamp) from a string with the format `yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm`
     or its leading part allowed by the standard.
-
 
     Params:
         str = A string formatted in the way that $(LREF .Timestamp.toISOExtString) formats dates.
@@ -1295,5 +1365,17 @@ struct Timestamp
             value.addMinutes(cast(short)-int(value.offset));
             return true;
         }
+    }
+
+    ///
+    bool isDuration() const @safe pure nothrow @nogc @property
+    {
+        return day == 88 || day == 99;
+    }
+
+    ///
+    bool isNegativeDuration() const @safe pure nothrow @nogc @property
+    {
+        return day == 99;
     }
 }
