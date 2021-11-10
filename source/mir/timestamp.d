@@ -4,7 +4,7 @@ Timestamp
 module mir.timestamp;
 
 private alias isDigit = (dchar c) => uint(c - '0') < 10;
-import mir.serde: serdeIgnore, serdeRegister;
+import mir.serde: serdeIgnore;
 
 version(D_Exceptions)
 ///
@@ -415,6 +415,11 @@ struct Timestamp
                     return T(opCast!AT);
 
         foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "Duration")
+                if (isDuration)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
             static if (AT.stringof == "YearMonthDay" || AT.stringof == "Date" ||  AT.stringof == "date")
                 if (precision == precision.day)
                     return T(opCast!AT);
@@ -494,6 +499,7 @@ struct Timestamp
          || T.stringof == "Date"
          || T.stringof == "date"
          || T.stringof == "TimeOfDay"
+         || T.stringof == "Duration"
          || T.stringof == "DateTime"
          || T.stringof == "SysTime")
     {
@@ -524,9 +530,24 @@ struct Timestamp
             import std.datetime.systime: SysTime;
             import std.datetime.timezone: UTC, SimpleTimeZone;
             auto ret = SysTime(DateTime(year, month, day, hour, minute, second), UTC());
+            ret.fracSecs = getPhobosFraction.hnsecs;
+            if (offset)
+            {
+                ret = ret.toOtherTZ(new immutable SimpleTimeZone(offset.minutes));
+            }
+            return ret;
+        }
+        else
+        static if (T.stringof == "Duration")
+        {
+            if (!isDuration)
+                throw ExpectedDuration;
+            long coeff;
+
+            import core.time : hnsecs, minutes;
             if (fractionCoefficient)
             {
-                long coeff = fractionCoefficient;
+                coeff = fractionCoefficient;
                 int exp = fractionExponent;
                 while (exp > -7)
                 {
@@ -538,14 +559,36 @@ struct Timestamp
                     exp++;
                     coeff /= 10;
                 }
-                ret.fracSecs = coeff.hnsecs;
             }
-            if (offset)
-            {
-                ret = ret.toOtherTZ(new immutable SimpleTimeZone(offset.minutes));
-            }
-            return ret;
+            coeff += ((((year * 7 + month) * 24 + hour) * 60 + minute) * 60 + second) * 10_000_000 + getPhobosFraction;
+            if (isNegativeDuration)
+                coeff = -coeff;
+
+            import mir.conv: to;
+            import core.time: hnsecs;
+            return hnsecs(coeff).to!T;
         }
+    }
+
+    private long getPhobosFraction() @property const @safe pure nothrow @nogc
+    {
+        long coeff;
+        if (fractionCoefficient)
+        {
+            coeff = fractionCoefficient;
+            int exp = fractionExponent;
+            while (exp > -7)
+            {
+                exp--;
+                coeff *= 10;
+            }
+            while (exp < -7)
+            {
+                exp++;
+                coeff /= 10;
+            }
+        }
+        return coeff;
     }
 
     /++
