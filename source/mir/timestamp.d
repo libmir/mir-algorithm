@@ -4,7 +4,7 @@ Timestamp
 module mir.timestamp;
 
 private alias isDigit = (dchar c) => uint(c - '0') < 10;
-import mir.serde: serdeIgnore;
+import mir.serde: serdeIgnore, serdeRegister;
 
 version(D_Exceptions)
 ///
@@ -30,6 +30,7 @@ version(D_Exceptions)
     private static immutable InvalidISOString = new DateTimeException("Invalid ISO String");
     private static immutable InvalidISOExtendedString = new DateTimeException("Invalid ISO Extended String");
     private static immutable InvalidString = new DateTimeException("Invalid String");
+    private static immutable ExpectedDuration = new DateTimeException("Expected Duration");
 }
 
 /++
@@ -40,6 +41,7 @@ This means that transcoding requires a conversion between UTC and local time.
 
 `Timestamp` precision is up to picosecond (second/10^12).
 +/
+@serdeRegister
 struct Timestamp
 {
     import std.traits: isSomeChar;
