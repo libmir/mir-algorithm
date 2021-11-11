@@ -223,6 +223,33 @@ struct UInt(size_t size)
         return view.fromHexStringImpl!(C, allowUnderscores)(str);
     }
 
+    ///
+    static UInt!size fromBinaryString(bool allowUnderscores = false)(scope const(char)[] str)
+    {
+        typeof(return) ret;
+        if (ret.fromBinaryStringImpl!(char, allowUnderscores)(str))
+            return ret;
+        version(D_Exceptions)
+        {
+            import mir.bignum.low_level_view: binaryStringException;
+            throw binaryStringException;
+        }
+        else
+        {
+            import mir.bignum.low_level_view: binaryStringErrorMsg;
+            assert(0, binaryStringErrorMsg);
+        }
+    }
+
+    /++
+    +/
+    bool fromBinaryStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        return view.fromBinaryStringImpl!(C, allowUnderscores)(str);
+    }
+
     /++
     +/
     auto opEquals(size_t rhsSize)(auto ref const UInt!rhsSize rhs) const

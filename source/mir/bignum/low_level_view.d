@@ -19,9 +19,11 @@ private alias cop(string op : "+") = addu;
 private enum inverseSign(string op) = op == "+" ? "-" : "+";
 
 package immutable hexStringErrorMsg = "Incorrect hex string for BigUIntView.fromHexString";
+package immutable binaryStringErrorMsg = "Incorrect binary string for BigUIntView.fromBinaryString";
 version (D_Exceptions)
 {
     package immutable hexStringException = new Exception(hexStringErrorMsg);
+    package immutable binaryStringException = new Exception(binaryStringErrorMsg);
 }
 
 /++
@@ -720,6 +722,144 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         expectThrow("__abcd_efab_cdef__");
         expectThrow("__abcd__efab_cdef__");
         expectThrow("__abcd__efab__cdef__");
+    }
+ 
+    /++
+    +/
+    static BigUIntView fromBinaryString(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @trusted pure
+        if (isSomeChar!C)
+    {
+        auto length = str.length / (W.sizeof * 8) + (str.length % (W.sizeof * 8) != 0);
+        auto data = new Unqual!W[length];
+        auto view = BigUIntView!(Unqual!W, endian)(data);
+        if (view.fromBinaryStringImpl!(C, allowUnderscores)(str))
+            return BigUIntView(cast(W[])view.coefficients);
+        version(D_Exceptions)
+            throw binaryStringException;
+        else
+            assert(0, binaryStringErrorMsg);
+    }
+
+    static if (isMutable!W)
+    /++
+    +/
+    bool fromBinaryStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @safe pure @nogc nothrow scope
+        if (isSomeChar!C)
+    {
+        pragma(inline, false);
+        import mir.utility: _expect;
+        static if (allowUnderscores) {
+            if (_expect(str.length == 0, false)) // can't tell how big the coeff array needs to be, rely on a runtime check
+                return false;
+        } else {
+            if (_expect(str.length == 0 || str.length > coefficients.length * W.sizeof * 8, false))
+                return false;
+        }
+
+        leastSignificant = 0;
+        auto work = topLeastSignificantPart(1);
+        W current;
+        size_t i, j;
+        static if (allowUnderscores) bool recentUnderscore;
+
+        do
+        {
+            ubyte c;
+            switch(str[$ - ++i])
+            {
+                case '0': c = 0x0; break;
+                case '1': c = 0x1; break;
+                static if (allowUnderscores) 
+                {
+                    case '_': 
+                        if (recentUnderscore) return false;
+                        recentUnderscore = true;
+                        continue;
+                }
+                default: return false;
+            }
+            ++j;
+            static if (allowUnderscores) recentUnderscore = false;
+            // how far do we need to shift to get to the top bit?
+            enum s = W.sizeof * 8 - 1;
+            // shift number to the top most bit
+            W cc = cast(W)(W(c) << s);
+            // shift unsigned right 1 bit
+            current >>>= 1;
+            // add number to top most bit of current var
+            current |= cc;
+            if (j % (W.sizeof * 8) == 0) // is this packed var full? 
+            {
+                work.mostSignificant = current;
+                current = 0;
+                if (_expect(work.coefficients.length < coefficients.length, true))
+                {
+                    work = topLeastSignificantPart(work.coefficients.length + 1);
+                }
+                else if (i < str.length) // if we've run out of coefficients before reaching the end of the string, error
+                {
+                    return false;
+                }
+            }
+        }
+        while(i < str.length);
+
+        static if (allowUnderscores) 
+        {
+            // check for a underscore at the beginning or the end
+            if (recentUnderscore || str[$ - 1] == '_') return false;
+        }
+
+        if (current)
+        {
+            current >>>= (W.sizeof * 8 - j % (W.sizeof * 8));
+            work.mostSignificant = current;
+        }
+
+        coefficients = coefficients[0 .. (j / (W.sizeof * 8) + (j % (W.sizeof * 8) != 0))];
+
+        return true;
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigUIntView!size_t.fromBinaryString!(char, true)("1111_0000_0101");
+        assert(cast(ulong)view == 0b1111_0000_0101);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        // Check that invalid underscores in hex literals throw an error.
+        void expectThrow(const(char)[] input) {
+            bool caught = false;
+            try { 
+                auto view = BigUIntView!size_t.fromBinaryString!(char, true)(input);
+            } catch (Exception e) {
+                caught = true;
+            }
+
+            assert(caught);
+        }
+
+        expectThrow("abcd");
+        expectThrow("0101__1011__0111");
+        expectThrow("_0101_1011_0111");
+        expectThrow("_0101_1011_0111_");
+        expectThrow("_0101_1011_0111__");
+        expectThrow("__0101_1011_0111_");
+        expectThrow("__0101_1011_0111__");
+        expectThrow("__0101__1011_0111__");
+        expectThrow("__1011__0111__1011__");
     }
 
     static if (isMutable!W && W.sizeof >= 4)
@@ -1502,6 +1642,53 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         return unsigned.fromHexStringImpl!(C, allowUnderscores)(str);
     }
 
+    /++
+    +/
+    static BigIntView fromBinaryString(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @trusted pure
+        if (isSomeChar!C)
+    {
+        auto length = str.length / (W.sizeof * 8) + (str.length % (W.sizeof * 8) != 0);
+        auto ret = BigIntView!(Unqual!W, endian)(new Unqual!W[length]);
+        if (ret.fromBinaryStringImpl!(C, allowUnderscores)(str))
+            return cast(BigIntView) ret;
+        version(D_Exceptions)
+            throw binaryStringException;
+        else
+            assert(0, binaryStringErrorMsg);
+    }
+
+    static if (isMutable!W)
+    /++
+    +/
+    bool fromBinaryStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        pragma(inline, false);
+        import mir.utility: _expect;
+
+        assert(unsigned.coefficients.length);
+
+        if (_expect(str.length == 0, false))
+            return false;
+
+        sign = false;
+
+        if (str[0] == '-')
+        {
+            sign = true;
+            str = str[1 .. $];
+        }
+        else
+        if (_expect(str[0] == '+', false))
+        {
+            str = str[1 .. $];
+        }
+
+        return unsigned.fromBinaryStringImpl!(C, allowUnderscores)(str);
+    }
+
     ///
     T opCast(T, bool wordNormalized = false, bool nonZero = false)() scope const
         if (isFloatingPoint!T && isMutable!T)
@@ -1528,7 +1715,27 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     @safe pure
     unittest
     {
+        auto a = cast(double) BigIntView!size_t.fromBinaryString("-10101111101110111111101011100011110011010000101011111111001001110001010010100001110111100111000000100010101100000000001010011101");
+        assert(a == -0xa.fbbfae3cd0bp+124);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
         auto a = cast(double) BigIntView!size_t.fromHexString!(char, true)("-afbb_fae3_cd0a_ff27_14a1_de70_22b0_029d");
+        assert(a == -0xa.fbbfae3cd0bp+124);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    ///
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto a = cast(double) BigIntView!size_t.fromBinaryString!(char, true)("-1010_1111_1011_1011_1111_1010_1110_0011_1100_1101_0000_1010_1111_1111_0010_0111_0001_0100_1010_0001_1101_1110_0111_0000_0010_0010_1011_0000_0000_0010_1001_1101");
         assert(a == -0xa.fbbfae3cd0bp+124);
     }
 
@@ -1600,6 +1807,66 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     unittest
     {
         auto view = BigIntView!ubyte.fromHexString!(char, true)("-afbb_fae3_cd0a_ff27_14a1_de70_22b0_021d");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!size_t.fromBinaryString!(char, true)("-10101111101110111111101011100011110011010000101011111111001001110001010010100001110111100111000000100010101100000000001000011101");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!size_t.fromBinaryString!(char, true)("-1010_1111_1011_1011_1111_1010_1110_0011_1100_1101_0000_1010_1111_1111_0010_0111_0001_0100_1010_0001_1101_1110_0111_0000_0010_0010_1011_0000_0000_0010_0001_1101");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!ushort.fromBinaryString!(char, true)("-10101111101110111111101011100011110011010000101011111111001001110001010010100001110111100111000000100010101100000000001000011101");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!ushort.fromBinaryString!(char, true)("-1010_1111_1011_1011_1111_1010_1110_0011_1100_1101_0000_1010_1111_1111_0010_0111_0001_0100_1010_0001_1101_1110_0111_0000_0010_0010_1011_0000_0000_0010_0001_1101");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!ubyte.fromBinaryString!(char, true)("-10101111101110111111101011100011110011010000101011111111001001110001010010100001110111100111000000100010101100000000001000011101");
+        assert(cast(long) view == -0x14a1de7022b0021d);
+        assert(cast(int) view == -0x22b0021d);
+    }
+
+    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    version(mir_bignum_test)
+    @safe pure
+    unittest
+    {
+        auto view = BigIntView!ubyte.fromBinaryString!(char, true)("-1010_1111_1011_1011_1111_1010_1110_0011_1100_1101_0000_1010_1111_1111_0010_0111_0001_0100_1010_0001_1101_1110_0111_0000_0010_0010_1011_0000_0000_0010_0001_1101");
         assert(cast(long) view == -0x14a1de7022b0021d);
         assert(cast(int) view == -0x22b0021d);
     }
