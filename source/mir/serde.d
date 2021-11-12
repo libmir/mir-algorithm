@@ -221,7 +221,7 @@ template serdeGetAnnotationMembersOut(T)
 {
     import std.meta: aliasSeqOf, Filter;
     static if (isAggregateType!T)
-        enum string[] serdeGetAnnotationMembersOut = [Filter!(serdeIsAnnotationMemberOut!T, aliasSeqOf!(DeserializableMembers!T))];
+        enum string[] serdeGetAnnotationMembersOut = [Filter!(serdeIsAnnotationMemberOut!T, aliasSeqOf!(SerializableMembers!T))];
     else
         enum string[] serdeGetAnnotationMembersOut = null;
 }
@@ -241,10 +241,14 @@ version(mir_test) unittest
         string c;
         @serdeAnnotation @serdeIgnore
         string d;
+        @serdeAnnotation enum string e = "e";
+        static @serdeAnnotation string f() @safe pure nothrow @nogc @property {
+            return "f";
+        }
     }
 
     static assert(serdeGetAnnotationMembersOut!int == []);
-    static assert(serdeGetAnnotationMembersOut!S == ["a", "b"]);
+    static assert(serdeGetAnnotationMembersOut!S == ["a", "b", "f"]);
 }
 
 /++
