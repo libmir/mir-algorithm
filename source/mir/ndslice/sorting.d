@@ -293,6 +293,9 @@ void quickSortImpl(alias less, Iterator)(Slice!Iterator slice) @trusted
         auto r = l;
         r += slice.length;
 
+        if(slice.length <= 1)
+            return;
+
         static if (naive > 1)
         {
             if (slice.length <= naive || __ctfe)
@@ -340,11 +343,6 @@ void quickSortImpl(alias less, Iterator)(Slice!Iterator slice) @trusted
                 }
                 return;
             }
-        }
-        else
-        {
-            if(slice.length <= 1)
-                return;
         }
 
         // partition
@@ -1821,4 +1819,41 @@ unittest
     auto pivotI = frontI + 5;
     auto hiI = frontI + 6;
     assert(expandPartition!((a, b) => a < b)(frontI, lastI, loI, pivotI, hiI) == (frontI + 9));
+}
+
+version(mir_test)
+unittest
+{
+    import std.random;
+    import mir.ndslice.sorting: sort;
+
+    static struct StructA
+    {
+        double val0;
+        double val1;
+        double val2;
+    }
+
+    static struct StructB
+    {
+        ulong   productId; 
+        StructA strA;       
+    }
+
+    auto createStructBArray(uint nbTrades)
+    {
+        auto rnd = Random(42);
+
+        auto p = StructA(0,0,0);
+
+        StructB[] ret;    
+        foreach(i;0..nbTrades)
+        {
+            ret ~= StructB(uniform(0, nbTrades, rnd), p);
+        }
+
+        return ret;
+    }
+
+    auto arrayB = createStructBArray(10000).sort!((a,b) => a.productId<b.productId);
 }
