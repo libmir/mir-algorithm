@@ -66,6 +66,23 @@ version (D_Exceptions)
 }
 
 /++
+Constructs annotated type.
++/
+template SerdeAnnotated(T, string annotation)
+{
+    ///
+    @serdeAlgebraicAnnotation(annotation)
+    @serdeProxy!T
+    struct SerdeAnnotated
+    {
+        ///
+        T value;
+        ///
+        alias value this;
+    }
+}
+
+/++
 Helper enumeration for for serializer .
 Use negative `int` values for user defined targets.
 +/
@@ -126,12 +143,28 @@ The attribute should be applied to a type definition.
 enum serdeRegister;
 
 /++
-The attribute should be applied to a string-like member that should be de/serialized as an annotation / attribute.
+The attribute can be applied to a string-like member that should be de/serialized as an annotation / attribute.
+
+Also, the attribute can be applied on a type to denote that the type should be used to de/serialize annotated value.
 
 This feature is used in $(MIR_PACKAGE mir-ion).
 +/
 enum serdeAnnotation;
 
+/++
+Checks if the type marked with $(LREF serdeAnnotation).
++/
+template isAnnotated(T)
+{
+    import mir.serde: serdeAnnotation;
+    static if (is(T == enum) || isAggregateType!T) {
+        enum isAnnotated = hasUDA!(T, serdeAnnotation);
+        static if (isAnnotated)
+            static assert(__traits(getAliasThis, T).length == 1 || __traits(hasMember, T, "value"), "@serdeAnnotation " ~ T.stringof ~" requires alias this member or `value` member.");
+    }
+    else
+        enum isAnnotated = false;
+}
 
 private template serdeIsAnnotationMemberIn(T)
 {
@@ -188,7 +221,7 @@ template serdeGetAnnotationMembersOut(T)
 {
     import std.meta: aliasSeqOf, Filter;
     static if (isAggregateType!T)
-        enum string[] serdeGetAnnotationMembersOut = [Filter!(serdeIsAnnotationMemberOut!T, aliasSeqOf!(DeserializableMembers!T))];
+        enum string[] serdeGetAnnotationMembersOut = [Filter!(serdeIsAnnotationMemberOut!T, aliasSeqOf!(SerializableMembers!T))];
     else
         enum string[] serdeGetAnnotationMembersOut = null;
 }
@@ -208,10 +241,14 @@ version(mir_test) unittest
         string c;
         @serdeAnnotation @serdeIgnore
         string d;
+        @serdeAnnotation enum string e = "e";
+        static @serdeAnnotation string f() @safe pure nothrow @nogc @property {
+            return "f";
+        }
     }
 
     static assert(serdeGetAnnotationMembersOut!int == []);
-    static assert(serdeGetAnnotationMembersOut!S == ["a", "b"]);
+    static assert(serdeGetAnnotationMembersOut!S == ["a", "b", "f"]);
 }
 
 /++
@@ -270,6 +307,77 @@ template serdeGetAlgebraicAnnotation(T)
         T* aggregate;
         alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
         enum serdeGetAlgebraicAnnotation = .serdeGetAlgebraicAnnotation!A;
+    }
+}
+
+/++
+User defined attribute used to attach a function that returns a deserialization delegate.
+
+The attribute is usefull for scripting languages and dynamic algebraic types.
++/
+template serdeDynamicAlgebraic(alias getAlgebraicDeserializerByAnnotation)
+{
+    enum serdeDynamicAlgebraic;
+}
+
+///
+unittest
+{
+    static struct _global
+    {
+        alias Deserializer = S delegate(string s, ubyte[] data) @safe pure;
+        Deserializer getDeserializer(string name) { return map[name]; }
+        Deserializer[string] map;
+
+        @serdeDynamicAlgebraic!getDeserializer
+        struct S {}
+
+        static assert(serdeIsDynamicAlgebraic!S);
+        static assert(__traits(isSame, serdeGetAlgebraicDeserializer!S, getDeserializer));
+    }
+}
+
+/++
++/
+template serdeIsDynamicAlgebraic(T)
+{
+    static if (isAggregateType!T)
+    {
+        static if (hasUDA!(T, serdeDynamicAlgebraic))
+        {
+            enum serdeIsDynamicAlgebraic = true;
+        }
+        else
+        static if (__traits(getAliasThis, T).length)
+        {
+            T* aggregate;
+            alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
+            enum serdeIsDynamicAlgebraic = .serdeIsDynamicAlgebraic!A;
+        }
+        else
+        {
+            enum serdeIsDynamicAlgebraic = false;
+        }
+    }
+    else
+    {
+        enum serdeIsDynamicAlgebraic = false;
+    }
+}
+
+/++
++/
+template serdeGetAlgebraicDeserializer(T)
+{
+    static if (hasUDA!(T, serdeDynamicAlgebraic))
+    {
+        alias serdeGetAlgebraicDeserializer = TemplateArgsOf!(getUDA!(T, serdeDynamicAlgebraic))[0];
+    }
+    else
+    {
+        T* aggregate;
+        alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
+        alias serdeGetAlgebraicDeserializer = .serdeGetAlgebraicDeserializer!A;
     }
 }
 
@@ -993,7 +1101,7 @@ template serdeGetFinalProxy(T)
             alias serdeGetFinalProxy = .serdeGetFinalProxy!(serdeGetProxy!T);
         }
         else
-        static if (isAggregateType!T && is(typeof(Timestamp(T.init))))
+        static if (isAggregateType!T && is(typeof(Timestamp(T.init))) && __traits(getAliasThis, T).length == 0)
         {
             alias serdeGetFinalProxy = string;
         }
@@ -1070,9 +1178,9 @@ template serdeGetFinalDeepProxy(T)
     else
     static if (is(immutable T == immutable V[K], K, V))
     {
-        alias E = Unqual!V;
+        alias E = serdeGetFinalDeepProxy!(Unqual!V);
         static if (isAggregateType!E || is(E == enum))
-            alias serdeGetFinalDeepProxy = .serdeGetFinalDeepProxy!E;
+            alias serdeGetFinalDeepProxy = E;
         else
             alias serdeGetFinalDeepProxy = T;
     }
@@ -1097,7 +1205,7 @@ version(mir_test) unittest
     @serdeProxy!(B[])
     static struct C {}
 
-    static assert (is(serdeGetFinalDeepProxy!C == string), serdeGetFinalDeepProxy!C.stringof);
+    static assert (is(serdeGetFinalDeepProxy!C == A[E]));
     static assert (is(serdeGetFinalDeepProxy!string == string));
 }
 
@@ -1777,7 +1885,10 @@ package template isAlgebraicAliasThis(T)
         import mir.algebraic: isVariant;
         T* aggregate;
         alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
-        enum isAlgebraicAliasThis = isVariant!A;
+        static if (isVariant!A)
+            enum isAlgebraicAliasThis = true;
+        else
+            enum isAlgebraicAliasThis = serdeIsDynamicAlgebraic!A;
     }
     else
     {

@@ -3383,26 +3383,18 @@ template rcmap(fun...)
                 if (!hasAsSlice!Range && !isSlice!Range && !is(Range : T[], T))
             {
                 import core.lifetime: forward;
+                import mir.appender: scopedBuffer;
                 import mir.primitives: isInputRange;
                 import mir.rc.array: RCArray;
-
-                if (false)
+                alias T = typeof(f(r.front));
+                auto buffer = scopedBuffer!T;
+                while (!r.empty)
                 {
-                    auto e = f(r.front);
+                    buffer.put(f(r.front));
                     r.popFront;
-                    auto d = r.empty;
                 }
                 return () @trusted
                 {
-                    import mir.appender: ScopedBuffer;
-                    alias T = typeof(f(r.front));
-                    ScopedBuffer!T buffer = void;
-                    buffer.initialize;
-                    while (!r.empty)
-                    {
-                        buffer.put(f(r.front));
-                        r.popFront;
-                    }
                     auto ret = RCArray!T(buffer.length, false);
                     buffer.moveDataAndEmplaceTo(ret[]);
                     return ret;

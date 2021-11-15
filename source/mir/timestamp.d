@@ -4,7 +4,7 @@ Timestamp
 module mir.timestamp;
 
 private alias isDigit = (dchar c) => uint(c - '0') < 10;
-import mir.serde: serdeIgnore;
+import mir.serde: serdeIgnore, serdeRegister;
 
 version(D_Exceptions)
 ///
@@ -30,6 +30,7 @@ version(D_Exceptions)
     private static immutable InvalidISOString = new DateTimeException("Invalid ISO String");
     private static immutable InvalidISOExtendedString = new DateTimeException("Invalid ISO Extended String");
     private static immutable InvalidString = new DateTimeException("Invalid String");
+    private static immutable ExpectedDuration = new DateTimeException("Expected Duration");
 }
 
 /++
@@ -40,6 +41,7 @@ This means that transcoding requires a conversion between UTC and local time.
 
 `Timestamp` precision is up to picosecond (second/10^12).
 +/
+@serdeRegister
 struct Timestamp
 {
     import std.traits: isSomeChar;
@@ -160,7 +162,7 @@ struct Timestamp
         /++
         Fraction
 
-        The `fraction_exponent` and `fraction_coefficient` denote the fractional seconds of the timestamp as a decimal value
+        The `fractionExponent` and `fractionCoefficient` denote the fractional seconds of the timestamp as a decimal value
         The fractional seconds’ value is `coefficient * 10 ^ exponent`.
         It must be greater than or equal to zero and less than 1.
         A missing coefficient defaults to zero.
@@ -173,7 +175,7 @@ struct Timestamp
         +/
         byte fractionExponent;
         /// ditto
-        long fractionCoefficient;
+        ulong fractionCoefficient;
     }
     else
     {
@@ -185,13 +187,13 @@ struct Timestamp
                     ubyte, "minute", 8,
                     ubyte, "second", 8,
                     byte, "fractionExponent", 8,
-                    long, "fractionCoefficient", 40,
+                    ulong, "fractionCoefficient", 40,
             ));
         }
         else
         {
             mixin(bitfields!(
-                    long, "fractionCoefficient", 40,
+                    ulong, "fractionCoefficient", 40,
                     byte, "fractionExponent", 8,
                     ubyte, "second", 8,
                     ubyte, "minute", 8,
@@ -380,19 +382,177 @@ struct Timestamp
         assert(st == cast(SysTime) ts);
     }
 
+    /++
+    Creates a fake timestamp from a Duration using `total!"hnsecs"` method.
+    For positive and zero timestamps the format is
+        `wwww-dd-88Thh:mm:ss.nnnnnnn`
+        and for negative timestamps
+        `wwww-dd-99Thh:mm:ss.nnnnnnn`.
+    +/
+    this(Duration)(const Duration duration)
+        if (Duration.stringof == "Duration")
+    {
+        auto hnsecs = duration.total!"hnsecs";
+        ulong abs = hnsecs < 0 ? -hnsecs : hnsecs;
+        precision = Precision.fraction;
+        day = hnsecs >= 0 ? 88 : 99;
+        fractionExponent = -7;
+        fractionCoefficient = abs % 10_000_000U;
+        abs /= 10_000_000U;
+        second = abs % 60;
+        abs /= 60;
+        minute = abs % 60;
+        abs /= 60;
+        hour = abs % 24;
+        abs /= 24;
+        month = abs % 7;
+        abs /= 7;
+        year = cast(typeof(year)) abs;
+    }
+
     ///
+    version (mir_test)
+    @safe unittest {
+        import core.time : Duration, weeks, days, hours, minutes, seconds, hnsecs;
+
+        auto duration = 5.weeks + 2.days + 7.hours + 40.minutes + 4.seconds + 9876543.hnsecs;
+        Timestamp ts = duration;
+
+        assert(ts.toISOExtString == `0005-02-88T07:40:04.9876543Z`);
+        assert(duration == cast(Duration) ts);
+
+        duration = -duration;
+        ts = Timestamp(duration);
+        assert(ts.toISOExtString == `0005-02-99T07:40:04.9876543Z`);
+        assert(duration == cast(Duration) ts);
+
+        assert(Timestamp(Duration.zero).toISOExtString == `0000-00-88T00:00:00.0000000Z`);
+    }
+
+    /++
+    Decomposes Timestamp to an algebraic type.
+    Supported types up to T.stringof equivalence:
+
+    $(UL
+    $(LI `Year`)
+    $(LI `YearMonth`)
+    $(LI `YearMonthDay`)
+    $(LI `Date`)
+    $(LI `date`)
+    $(LI `TimeOfDay`)
+    $(LI `DateTime`)
+    $(LI `SysTime`)
+    $(LI `Timestamp` as fallback type)
+    )
+
+
+    Throws: an exception if timestamp cannot be converted to an algebraic type and there is no `Timestamp` type in the Algebraic set.
+    +/
     T opCast(T)() const
-        if (T.stringof == "YearMonth"
+        if (__traits(hasMember, T, "AllowedTypes"))
+    {
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "Year")
+                if (precision == precision.year)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "YearMonth")
+                if (precision == precision.month)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "Duration")
+                if (isDuration)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "YearMonthDay" || AT.stringof == "Date" ||  AT.stringof == "date")
+                if (precision == precision.day)
+                    return T(opCast!AT);
+
+        foreach (AT; T.AllowedTypes)
+            static if (AT.stringof == "TimeOfDay")
+                if (isOnlyTime)
+                    return T(opCast!AT);
+
+        if (!isOnlyTime && precision >= precision.day)
+        {
+            foreach (AT; T.AllowedTypes)
+                static if (AT.stringof == "DateTime")
+                    if (offset == 0 && precision <= precision.second)
+                        return T(opCast!AT);
+
+            foreach (AT; T.AllowedTypes)
+                static if (AT.stringof == "SysTime")
+                    return T(opCast!AT);
+        }
+
+        import std.meta: staticIndexOf;
+        static if (staticIndexOf!(Timestamp, T.AllowedTypes) < 0)
+        {
+            static immutable exc = new Exception("Cannot cast Timestamp to " ~ T.stringof);
+            throw exc;
+        }
+        else
+        {
+            return T(this);
+        }
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        import core.time : hnsecs, minutes, Duration;
+        import mir.algebraic;
+        import mir.date: Date; // Can be other Date type as well
+        import std.datetime.date : TimeOfDay, DateTime;
+        import std.datetime.systime : SysTime;
+        import std.datetime.timezone: UTC, SimpleTimeZone;
+
+        alias A = Variant!(Date, TimeOfDay, DateTime, Duration, SysTime, Timestamp, string); // non-date-time types is OK
+        assert(cast(A) Timestamp(1023) == Timestamp(1023)); // Year isn't represented in the algebraic, use fallback type
+        assert(cast(A) Timestamp.onlyTime(7, 40, 30) == TimeOfDay(7, 40, 30));
+        assert(cast(A) Timestamp(1982, 4, 1, 20, 59, 22) == DateTime(1982, 4, 1, 20, 59, 22));
+
+        auto dt = DateTime(1982, 4, 1, 20, 59, 22);
+        auto tz = new immutable SimpleTimeZone(-330.minutes);
+        auto st = SysTime(dt, 1234567.hnsecs, tz);
+        assert(cast(A) Timestamp(st) == st);
+    }
+
+    /++
+    Casts timestamp to a date-time type.
+
+    Supported types up to T.stringof equivalence:
+
+    $(UL
+    $(LI `Year`)
+    $(LI `YearMonth`)
+    $(LI `YearMonthDay`)
+    $(LI `Date`)
+    $(LI `date`)
+    $(LI `TimeOfDay`)
+    $(LI `DateTime`)
+    $(LI `SysTime`)
+    )
+    +/
+    T opCast(T)() const
+        if (
+            T.stringof == "Year"
+         || T.stringof == "YearMonth"
          || T.stringof == "YearMonthDay"
          || T.stringof == "Date"
-         || T.stringof == "TimeOfDay"
          || T.stringof == "date"
+         || T.stringof == "TimeOfDay"
+         || T.stringof == "Duration"
          || T.stringof == "DateTime"
          || T.stringof == "SysTime")
     {
         static if (T.stringof == "YearMonth")
         {
-            return T(year, month, day);
+            return T(year, month);
         }
         else
         static if (T.stringof == "Date" || T.stringof == "date" || T.stringof == "YearMonthDay")
@@ -416,29 +576,47 @@ struct Timestamp
             import std.datetime.date: DateTime;
             import std.datetime.systime: SysTime;
             import std.datetime.timezone: UTC, SimpleTimeZone;
-            auto ret = SysTime(DateTime(year, month, day, hour, minute, second), UTC());
-            if (fractionCoefficient)
-            {
-                long coeff = fractionCoefficient;
-                int exp = fractionExponent;
-                while (exp > -7)
-                {
-                    exp--;
-                    coeff *= 10;
-                }
-                while (exp < -7)
-                {
-                    exp++;
-                    coeff /= 10;
-                }
-                ret.fracSecs = coeff.hnsecs;
-            }
+            auto ret = SysTime(DateTime(year, month, day, hour, minute, second), getPhobosFraction.hnsecs, UTC());
             if (offset)
             {
                 ret = ret.toOtherTZ(new immutable SimpleTimeZone(offset.minutes));
             }
             return ret;
         }
+        else
+        static if (T.stringof == "Duration")
+        {
+            if (!isDuration)
+                throw ExpectedDuration;
+            auto coeff = ((((long(year) * 7 + month) * 24 + hour) * 60 + minute) * 60 + second) * 10_000_000 + getPhobosFraction;
+            if (isNegativeDuration)
+                coeff = -coeff;
+
+            import mir.conv: to;
+            import core.time: hnsecs;
+            return coeff.hnsecs.to!T;
+        }
+    }
+
+    private long getPhobosFraction() @property const @safe pure nothrow @nogc
+    {
+        long coeff;
+        if (fractionCoefficient)
+        {
+            coeff = fractionCoefficient;
+            int exp = fractionExponent;
+            while (exp > -7)
+            {
+                exp--;
+                coeff *= 10;
+            }
+            while (exp < -7)
+            {
+                exp++;
+                coeff /= 10;
+            }
+        }
+        return coeff;
     }
 
     /++
@@ -510,7 +688,7 @@ struct Timestamp
     }
 
     /++
-    Converts this $(LREF Timestamp) to a string with the format `YYYY-MM-DDThh:mm:ss±hh:mm`.
+    Converts this $(LREF Timestamp) to a string with the format `yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm`.
 
     If `w` writer is set, the resulting string will be written directly
     to it.
@@ -530,7 +708,7 @@ struct Timestamp
         assert(Timestamp(0, 1, 5).toString == "0000-01-05");
         assert(Timestamp(-4, 1, 5).toString == "-0004-01-05");
 
-        // YYYY-MM-DDThh:mm:ss±hh:mm
+        // yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm
         assert(Timestamp(2021).toString == "2021T");
         assert(Timestamp(2021, 01).toString == "2021-01T", Timestamp(2021, 01).toString);
         assert(Timestamp(2021, 01, 29).toString == "2021-01-29");
@@ -656,7 +834,7 @@ struct Timestamp
             // if (isOutputRange!(W, char))
         {
             import mir.format: printZeroPad;
-            // YYYY-MM-DDThh:mm:ss±hh:mm
+            // yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm
             Timestamp t = this;
 
             if (t.offset)
@@ -849,9 +1027,8 @@ struct Timestamp
     }
 
     /++
-    Creates a $(LREF Timestamp) from a string with the format `YYYY-MM-DDThh:mm:ss±hh:mm`
+    Creates a $(LREF Timestamp) from a string with the format `yyyy-mm-ddThh:mm:ss[.mmm]±hh:mm`
     or its leading part allowed by the standard.
-
 
     Params:
         str = A string formatted in the way that $(LREF .Timestamp.toISOExtString) formats dates.
@@ -1188,5 +1365,17 @@ struct Timestamp
             value.addMinutes(cast(short)-int(value.offset));
             return true;
         }
+    }
+
+    ///
+    bool isDuration() const @safe pure nothrow @nogc @property
+    {
+        return day == 88 || day == 99;
+    }
+
+    ///
+    bool isNegativeDuration() const @safe pure nothrow @nogc @property
+    {
+        return day == 99;
     }
 }

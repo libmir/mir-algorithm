@@ -7,6 +7,7 @@ Authors: Ilya Yaroshenko
 module mir.format;
 
 import std.traits;
+import mir.primitives: isOutputRange;
 
 /// `mir.conv: to` extension.
 version(mir_test)
@@ -59,10 +60,10 @@ unittest
 }
 
 /// Concatenated string results
-string text(string separator = "", A...)(auto ref A args)
-        if (A.length > 0)
+string text(string separator = "", Args...)(auto ref Args args)
+    if (Args.length > 0)
 {
-    static if (A.length == 1)
+    static if (Args.length == 1)
     {
         import mir.functional: forward;
         import mir.conv: to;
@@ -70,40 +71,25 @@ string text(string separator = "", A...)(auto ref A args)
     }
     else
     {
-        import mir.appender: ScopedBuffer;
-        if (false)
+        import mir.appender: scopedBuffer;
+        auto buffer = scopedBuffer!char;
+        foreach (i, ref arg; args)
         {
-            ScopedBuffer!char buffer;
-            foreach (i, ref arg; args)
+            buffer.print(arg);
+            static if (separator.length && i + 1 < args.length)
             {
-                buffer.print(arg);
-                static if (separator.length && i + 1 < args.length)
-                {
-                    buffer.printStaticString!char(separator);
-                }
+                buffer.printStaticString!char(separator);
             }
-            return buffer.data.idup;
         }
-        return () @trusted  {
-            ScopedBuffer!char buffer = void;
-            buffer.initialize;
-            foreach (i, ref arg; args)
-            {
-                buffer.print(arg);
-                static if (separator.length && i + 1 < args.length)
-                {
-                    buffer.printStaticString!char(separator);
-                }
-            }
-            return buffer.data.idup;
-        } ();
+        return buffer.data.idup;
     }
 }
 
 ///
 @safe pure nothrow unittest
 {
-    assert(text("str ", true, " ", 100, " ", 124.1) == "str true 100 124.1", text("str ", true, " ", 100, " ", 124.1));
+    const i = 100;
+    assert(text("str ", true, " ", i, " ", 124.1) == "str true 100 124.1", text("str ", true, " ", 100, " ", 124.1));
     assert(text!" "("str", true, 100, 124.1) == "str true 100 124.1");
 }
 
@@ -292,6 +278,7 @@ struct FormattedFloating(T)
 
     ///
     void toString(C = char, W)(scope ref W w) scope const
+    if (isSomeChar!C)
     {
         C[512] buf = void;
         auto n = printFloatingPoint(value, spec, buf);
@@ -318,6 +305,7 @@ struct HexAddress(T)
 
     ///
     void toString(C = char, W)(scope ref W w) scope const
+        if (isSomeChar!C)
     {
         enum N = T.sizeof * 2;
         static if(isFastBuffer!W)
@@ -353,6 +341,7 @@ enum escapeFormatQuote(EscapeFormat escapeFormat) = escapeFormat == EscapeFormat
 /++
 +/
 ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope return ref W w, scope const(C)[] str)
+    if (isOutputRange!(W, C))
 {
     import mir.utility: _expect;
     foreach (C c; str)
@@ -422,7 +411,6 @@ ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
- 
     import mir.format: stringBuf;
     stringBuf w;
     assert(w.printEscaped("Hi \a\v\0\f\t\b \\\r\n" ~ `"@nogc"`).data == `Hi \a\v\0\f\t\b \\\r\n\"@nogc\"`);
@@ -434,6 +422,7 @@ version (mir_test) unittest
 Decodes `char` `c` to the form `u00XX`, where `XX` is 2 hexadecimal characters.
 +/
 ref W put_xXX(C = char, W)(scope return ref W w, char c)
+    if (isSomeChar!C)
 {
     ubyte[2] spl;
     spl[0] = c >> 4;
@@ -450,6 +439,7 @@ ref W put_xXX(C = char, W)(scope return ref W w, char c)
 Decodes `char` `c` to the form `u00XX`, where `XX` is 2 hexadecimal characters.
 +/
 ref W put_uXXXX(C = char, W)(scope return ref W w, char c)
+    if (isSomeChar!C)
 {
     ubyte[2] spl;
     spl[0] = c >> 4;
@@ -468,6 +458,7 @@ ref W put_uXXXX(C = char, W)(scope return ref W w, char c)
 Decodes ushort `c` to the form `uXXXX`, where `XXXX` is 2 hexadecimal characters.
 +/
 ref W put_uXXXX(C = char, W)(scope return ref W w, ushort c)
+    if (isSomeChar!C)
 {
     ubyte[4] spl;
     spl[0] = (c >> 12) & 0xF;
@@ -506,7 +497,7 @@ ref W printElement(C = char, EscapeFormat escapeFormat = EscapeFormat.ion, W, T)
 Multiargument overload.
 +/
 ref W print(C = char, W, Args...)(scope return ref W w, scope auto ref const Args args)
-    if (Args.length > 1)
+    if (isSomeChar!C && Args.length > 1)
 {
     foreach(i, ref c; args)
         static if (i < Args.length - 1)
@@ -517,7 +508,7 @@ ref W print(C = char, W, Args...)(scope return ref W w, scope auto ref const Arg
 
 /// Prints enums
 ref W print(C = char, W, T)(scope return ref W w, const T c)
-    if (is(T == enum))
+    if (isSomeChar!C && is(T == enum))
 {
     import mir.enums: getEnumIndex, enumStrings;
     import mir.utility: _expect;
@@ -546,14 +537,15 @@ version (mir_test) unittest
         yes,
     }
 
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     w.print(Flag.yes);
     assert(w.data == "yes", w.data);
 }
 
 /// Prints boolean
 ref W print(C = char, W)(scope return ref W w, bool c)
+    if (isSomeChar!C)
 {
     enum N = 5;
     static if(isFastBuffer!W)
@@ -573,8 +565,8 @@ ref W print(C = char, W)(scope return ref W w, bool c)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     assert(w.print(true).data == `true`, w.data);
     w.reset;
     assert(w.print(false).data == `false`, w.data);
@@ -583,6 +575,7 @@ version (mir_test) unittest
 /// Prints associative array
 pragma(inline, false)
 ref W print(C = char, W, V, K)(scope return ref W w, scope const V[K] c)
+    if (isSomeChar!C)
 {
     enum C left = '[';
     enum C right = ']';
@@ -608,8 +601,8 @@ ref W print(C = char, W, V, K)(scope return ref W w, scope const V[K] c)
 @safe pure
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     w.print(["a": 1, "b": 2]);
     assert(w.data == `["a": 1, "b": 2]` || w.data == `["b": 2, "a": 1]`, w.data);
 }
@@ -617,7 +610,7 @@ version (mir_test) unittest
 /// Prints array
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
-    if (!isSomeChar!T)
+    if (isSomeChar!C && !isSomeChar!T)
 {
     enum C left = '[';
     enum C right = ']';
@@ -639,8 +632,8 @@ ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     string[2] array = ["a\na", "b"];
     assert(w.print(array[]).data == `["a\na", "b"]`, w.data);
 }
@@ -648,6 +641,7 @@ version (mir_test) unittest
 /// Prints escaped character in the form `'c'`.
 pragma(inline, false)
 ref W print(C = char, W)(scope return ref W w, char c)
+    if (isSomeChar!C)
 {
     w.put('\'');
     if (c >= 0x20)
@@ -691,8 +685,8 @@ ref W print(C = char, W)(scope return ref W w, char c)
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     assert(w
         .print('\n')
         .print('\'')
@@ -711,7 +705,7 @@ ref W print(C = char, W)(scope return ref W w, scope const(C)[] c)
 
 /// Prints integers
 ref W print(C = char, W, I)(scope return ref W w, const I c)
-    if (isIntegral!I && !is(I == enum))
+    if (isSomeChar!C && isIntegral!I && !is(I == enum))
 {
     static if (I.sizeof == 16)
         enum N = 39;
@@ -731,7 +725,7 @@ ref W print(C = char, W, I)(scope return ref W w, const I c)
 
 /// Prints floating point numbers
 ref W print(C = char, W, T)(scope return ref W w, const T c, NumericSpec spec = NumericSpec.init)
-    if(is(T == float) || is(T == double) || is(T == real))
+    if(isSomeChar!C && is(T == float) || is(T == double) || is(T == real))
 {
     import mir.bignum.decimal;
     auto decimal = Decimal!(T.mant_dig < 64 ? 1 : 2)(c);
@@ -824,7 +818,7 @@ unittest
 /// Prints structs and unions
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, ref const T c)
-    if (is(T == struct) || is(T == union) && !is(T : NumericSpec))
+    if (isSomeChar!C && is(T == struct) || is(T == union) && !is(T : NumericSpec))
 {
     static if (__traits(hasMember, T, "toString"))
     {
@@ -887,7 +881,7 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
 // FUTURE: remove it
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
-    if (is(T == struct) || is(T == union))
+    if (isSomeChar!C && is(T == struct) || is(T == union))
 {
     return print!(C, W, T)(w, c);
 }
@@ -902,15 +896,15 @@ version (mir_test) unittest
     static struct F { scope const(char)[] toString()() const return { return "f"; } }
     static struct G { const(char)[] s = "g"; alias s this; }
 
-    import mir.appender: ScopedBuffer;
-    ScopedBuffer!char w;
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
     assert(stringBuf() << A() << S() << D() << F() << G() << getData == "asdfg");
 }
 
 /// Prints classes and interfaces
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
-    if (is(T == class) || is(T == interface))
+    if (isSomeChar!C && is(T == class) || is(T == interface))
 {
     enum C[4] Null = "null";
     static if (__traits(hasMember, T, "toString") || __traits(compiles, { scope const(C)[] string_of_c = c; }))
@@ -976,7 +970,7 @@ version (mir_test) unittest
 
 ///
 ref W printStaticString(C, size_t N, W)(scope return ref W w, ref scope const C[N] c)
-    if (is(C == char) || is(C == wchar) || is(C == dchar))
+    if (isSomeChar!C && is(C == char) || is(C == wchar) || is(C == dchar))
 {
     static if (isFastBuffer!W)
     {
@@ -1024,7 +1018,7 @@ template isFastBuffer(W)
 
 ///
 ref W printZeroPad(C = char, W, I)(scope return ref W w, const I c, size_t minimalLength)
-    if (isIntegral!I && !is(I == enum))
+    if (isSomeChar!C && isIntegral!I && !is(I == enum))
 {
     static if (I.sizeof == 16)
         enum N = 39;
@@ -1061,7 +1055,7 @@ ref W printZeroPad(C = char, W, I)(scope return ref W w, const I c, size_t minim
 version (mir_test) unittest
 {
     import mir.appender;
-    ScopedBuffer!char w;
+    auto w = scopedBuffer!char;
 
     w.printZeroPad(-123, 5);
     w.put(' ');

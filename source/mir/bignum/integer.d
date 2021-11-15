@@ -136,7 +136,7 @@ struct BigInt(size_t maxSize64)
     Precondition: non-empty coefficients.
     +/
     bool fromStringImpl(C)(scope const(C)[] str)
-        @safe pure @nogc nothrow
+        scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
         auto work = BigIntView!size_t(data[]); 
@@ -366,11 +366,11 @@ struct BigInt(size_t maxSize64)
 
     /++
     +/
-    static BigInt fromHexString()(scope const(char)[] str)
+    static BigInt fromHexString(bool allowUnderscores = false)(scope const(char)[] str)
         @trusted pure
     {
         BigInt ret;
-        if (ret.fromHexStringImpl(str))
+        if (ret.fromHexStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
             throw hexStringException;
@@ -380,12 +380,50 @@ struct BigInt(size_t maxSize64)
 
     /++
     +/
-    bool fromHexStringImpl(C)(scope const(C)[] str)
+    bool fromHexStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
         auto work = BigIntView!size_t(data);
-        auto ret = work.fromHexStringImpl(str);
+        auto ret = work.fromHexStringImpl!(C, allowUnderscores)(str);
+        if (ret)
+        {
+            length = cast(uint)work.unsigned.coefficients.length;
+            sign = work.sign;
+        }
+        return ret;
+    }
+
+    /++
+    +/
+    static BigInt fromBinaryString(bool allowUnderscores = false)(scope const(char)[] str)
+        @trusted pure
+    {
+        BigInt ret;
+        if (ret.fromBinaryStringImpl!(char, allowUnderscores)(str))
+            return ret;
+        version(D_Exceptions)
+            throw binaryStringException;
+        else
+            assert(0, binaryStringErrorMsg);
+    }
+
+    static if (maxSize64 == 3)
+    ///
+    version(mir_bignum_test) @safe pure @nogc unittest
+    {
+        BigInt!4 integer = "-34010447314490204552169750449563978034784726557588085989975288830070948234680"; // constructor
+        assert(integer == BigInt!4.fromBinaryString("-100101100110001001110110010001110101010010101100000111000011011000010011000010111111000100111001011111001101101111101010100011000001000011000001110001110011010011001001011101010010010101101001010101111011101001111101110011101111110010011100000010110111000"));
+    }
+
+    /++
+    +/
+    bool fromBinaryStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        auto work = BigIntView!size_t(data);
+        auto ret = work.fromBinaryStringImpl!(C, allowUnderscores)(str);
         if (ret)
         {
             length = cast(uint)work.unsigned.coefficients.length;

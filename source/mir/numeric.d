@@ -4,7 +4,7 @@ Base numeric algorithms.
 Reworked part of `std.numeric`.
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Authors: Ilya Yaroshenko (API, findLocalMin, findRoot extension), Don Clugston (findRoot)
+Authors: Ilya Yaroshenko (API, findLocalMin, findRoot extension), Don Clugston (findRoot), Lars Tandle Kyllingstad (diff)
 +/
 module mir.numeric;
 
@@ -502,8 +502,8 @@ private @fmamath FindRootResult!T findRootImplGen(T)(
     {
         // Find the coefficients of the quadratic polynomial.
         const T a0 = fa;
-        const T a1 = (fb - fa)/(b - a);
-        const T a2 = ((fd - fb)/(d - b) - a1)/(d - a);
+        const T a1 = (fb - fa) / (b - a);
+        const T a2 = ((fd - fb) / (d - b) - a1) / (d - a);
 
         // Determine the starting point of newton steps.
         T c = a2.signbit != fa.signbit ? a : b;
@@ -950,7 +950,7 @@ version(mir_test) @safe unittest
         return pow(x, n) + double.min_normal;
     }
     int [] power_nvals = [3, 5, 7, 9, 19, 25];
-    // Alefeld paper states that pow(x,n) is a very poor case, where bisection
+    // Alefeld paper states that pow(x, n) is a very poor case, where bisection
     // outperforms his method, and gives total numcalls =
     // 921 for bisection (2.4 calls per bit), 1830 for Alefeld (4.76/bit),
     // 0.5f624 for brent (6.8/bit)
@@ -977,7 +977,7 @@ version(mir_test) @safe unittest
         ++numCalls;
         real q =  sin(x) - x/2;
         for (int i=1; i<20; ++i)
-            q+=(2*i-5.0)*(2*i-5.0)/((x-i*i)*(x-i*i)*(x-i*i));
+            q+=(2*i-5.0)*(2*i-5.0) / ((x-i*i)*(x-i*i)*(x-i*i));
         return q;
     }
     real alefeld1(real x)
@@ -1020,7 +1020,7 @@ version(mir_test) @safe unittest
     {
         ++numCalls;
         ++alefeldSums[7];
-        return (n*x-1)/((n-1)*x);
+        return (n*x-1) / ((n-1)*x);
     }
 
     numProblems=0;
@@ -1431,4 +1431,131 @@ private auto trustedAllAttr(T)(T t) @trusted
         | FunctionAttribute.nogc
         | FunctionAttribute.nothrow_;
     return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
+}
+
+/++
+Calculate the derivative of a function.
+This function uses Ridders' method of extrapolating the results
+of finite difference formulas for consecutively smaller step sizes,
+with an improved stopping criterion described in the Numerical Recipes
+books by Press et al.
+
+This method gives a much higher degree of accuracy in the answer
+compared to a single finite difference calculation, but requires
+more function evaluations; typically 6 to 12. The maximum number
+of function evaluations is $(D 24).
+
+Params:
+    f = The function of which to take the derivative.
+    x = The point at which to take the derivative.
+    h = A "characteristic scale" over which the function changes.
+    factor = Stepsize is decreased by factor at each iteration.
+    safe = Return when error is SAFE worse than the best so far.
+
+References:
+$(UL
+    $(LI
+        C. J. F. Ridders,
+        $(I Accurate computation of F'(x) and F'(x)F''(x)).
+        Advances in Engineering Software, vol. 4 (1982), issue 2, p. 75.)
+    $(LI
+        W. H. Press, S. A. Teukolsky, W. T. Vetterling, and B. P. Flannery,
+        $(I Numerical Recipes in C++) (2nd ed.).
+        Cambridge University Press, 2003.)
+)
++/
+@fmamath
+DiffResult!T diff(alias f, T)(const T x, const T h, const T factor = T(2).sqrt, const T safe = 2)
+{
+    if (false) // break attributes
+        T y = f(T(1));
+    scope funInst = delegate(T x) {
+        return T(f(x));
+    };
+    scope fun = funInst.trustedAllAttr;
+    return diffImpl(fun, x, h, factor, safe);
+}
+
+///ditto
+DiffResult!T diffImpl(T)
+    (scope const T delegate(T) @safe pure nothrow @nogc f, const T x, const T h, const T factor = T(2).sqrt, const T safe = 2)
+    @trusted pure nothrow @nogc
+in {
+    assert(h < T.max);
+    assert(h > T.min_normal);
+}
+do {
+    // Set up Romberg tableau.
+    import mir.ndslice.slice: sliced;
+    pragma(inline, false);
+
+    enum tableauSize = 16;
+    T[tableauSize ^^ 2] workspace = void;
+    auto tab = workspace[].sliced(tableauSize, tableauSize);
+
+    // From the NR book: Stop when the difference between consecutive
+    // approximations is bigger than SAFE*error, where error is an
+    // estimate of the absolute error in the current (best) approximation.
+
+    // First approximation: A_0
+    T result = void;
+    T error = T.max;
+    T hh = h;
+
+    tab[0,0] = (f(x + h) - f(x - h))  / (2 * h);
+    foreach (n; 1 .. tableauSize)
+    {
+        // Decrease h.
+        hh /= factor;
+
+        // Compute A_n
+        tab[0, n] = (f(x + hh) - f(x - hh)) / (2 * hh);
+
+        T facm = 1;
+        foreach (m; 1 .. n + 1)
+        {
+            facm *= factor ^^ 2;
+
+            // Compute B_(n-1), C_(n-2), ...
+            T upLeft  = tab[m - 1, n - 1];
+            T up      = tab[m - 1, n];
+            T current = (facm * up - upLeft) / (facm - 1);
+            tab[m, n] = current;
+
+            // Calculate and check error.
+            T currentError = fmax(fabs(current - upLeft), fabs(current - up));
+            if (currentError <= error)
+            {
+                result = current;
+                error = currentError;
+            }
+        }
+
+        if (fabs(tab[n, n] - tab[n - 1, n - 1]) >= safe * error)
+            break;
+    }
+
+    return typeof(return)(result, error);
+}
+
+///
+unittest
+{
+    import mir.math.common;
+
+    auto f(double x) { return exp(x) / (sin(x) - x ^^ 2); }
+    auto d(double x) { return -(exp(x) * ((x - 2) * x - sin(x) + cos(x)))/(x^^2 - sin(x))^^2; }
+    auto r = diff!f(1.0, 0.01);
+    assert (approxEqual(r.value, d(1)));
+}
+
+/++
++/
+struct DiffResult(T)
+    if (__traits(isFloating, T))
+{
+    ///
+    T value = 0;
+    ///
+    T error = 0;
 }

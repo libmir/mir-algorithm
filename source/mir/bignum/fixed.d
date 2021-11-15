@@ -123,7 +123,7 @@ struct UInt(size_t size)
     Precondition: non-empty coefficients.
     +/
     bool fromStringImpl(C)(scope const(C)[] str)
-        @safe pure @nogc nothrow
+        scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
         import mir.bignum.low_level_view: BigUIntView;
@@ -197,10 +197,10 @@ struct UInt(size_t size)
     }
 
     ///
-    static UInt!size fromHexString(scope const(char)[] str)
+    static UInt!size fromHexString(bool allowUnderscores = false)(scope const(char)[] str)
     {
         typeof(return) ret;
-        if (ret.fromHexStringImpl(str))
+        if (ret.fromHexStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
         {
@@ -216,11 +216,38 @@ struct UInt(size_t size)
 
     /++
     +/
-    bool fromHexStringImpl(C)(scope const(C)[] str)
+    bool fromHexStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
         @safe pure @nogc nothrow
         if (isSomeChar!C)
     {
-        return view.fromHexStringImpl(str);
+        return view.fromHexStringImpl!(C, allowUnderscores)(str);
+    }
+
+    ///
+    static UInt!size fromBinaryString(bool allowUnderscores = false)(scope const(char)[] str)
+    {
+        typeof(return) ret;
+        if (ret.fromBinaryStringImpl!(char, allowUnderscores)(str))
+            return ret;
+        version(D_Exceptions)
+        {
+            import mir.bignum.low_level_view: binaryStringException;
+            throw binaryStringException;
+        }
+        else
+        {
+            import mir.bignum.low_level_view: binaryStringErrorMsg;
+            assert(0, binaryStringErrorMsg);
+        }
+    }
+
+    /++
+    +/
+    bool fromBinaryStringImpl(C, bool allowUnderscores = false)(scope const(C)[] str)
+        @safe pure @nogc nothrow
+        if (isSomeChar!C)
+    {
+        return view.fromBinaryStringImpl!(C, allowUnderscores)(str);
     }
 
     /++

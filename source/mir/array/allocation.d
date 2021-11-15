@@ -38,7 +38,7 @@ import std.traits;
  *      allocated and initialized array
  */
 auto array(Range)(Range r)
-if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticArray!Range || isPointer!Range && (isInputRange!(PointerTarget!Range) || isIterable!(PointerTarget!Range)))
+if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !__traits(isStaticArray, Range) || isPointer!Range && (isInputRange!(PointerTarget!Range) || isIterable!(PointerTarget!Range)))
 {
     static if (isIterable!Range)
         alias E = ForeachType!Range;
@@ -112,47 +112,27 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !isStaticAr
     }
     else
     {
-        import mir.appender: ScopedBuffer;
+        import mir.appender: scopedBuffer;
+        import std.array: uninitializedArray;
 
-        if (false)
+        auto a = scopedBuffer!(Unqual!E);
+
+        static if (isInputRange!Range)
+            for (; !r.empty; r.popFront)
+                a.put(r.front);
+        else
+        static if (isPointer!Range)
         {
-            ScopedBuffer!(Unqual!E) a;
-            static if (isInputRange!Range)
-                for (; !r.empty; r.popFront)
-                    a.put(r.front);
-            else
-            static if (isPointer!Range)
-            {
-                foreach (e; *r)
-                    a.put(forward!e);
-            }
-            else
-            {
-                foreach (e; r)
-                    a.put(forward!e);
-            }
+            foreach (e; *r)
+                a.put(forward!e);
+        }
+        else
+        {
+            foreach (e; r)
+                a.put(forward!e);
         }
 
         return () @trusted {
-            ScopedBuffer!(Unqual!E) a = void;
-            a.initialize;
-
-            static if (isInputRange!Range)
-                for (; !r.empty; r.popFront)
-                    a.put(r.front);
-            else
-            static if (isPointer!Range)
-            {
-                foreach (e; *r)
-                    a.put(forward!e);
-            }
-            else
-            {
-                foreach (e; r)
-                    a.put(forward!e);
-            }
-
-            import std.array: uninitializedArray;
             auto ret = uninitializedArray!(Unqual!E[])(a.length);
             a.moveDataAndEmplaceTo(ret);
             return ret;

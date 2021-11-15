@@ -424,6 +424,7 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
 /// Heap operations for random-access ranges
 template HeapOps(alias less, Range)
 {
+    import std.range.primitives : hasSwappableElements, hasAssignableElements;
     import mir.functional;
     import std.algorithm.mutation : swapAt;
 

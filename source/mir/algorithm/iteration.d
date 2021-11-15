@@ -4119,37 +4119,29 @@ template rcfilter(alias pred = "a", alias map = "a")
         auto rcfilter(Range)(Range r)
             if (isIterable!Range && (!isSlice!Range || DimensionCount!Range == 1))
         {
-                import core.lifetime: forward;
-                import mir.primitives: isInputRange;
-                import mir.rc.array: RCArray;
+            import core.lifetime: forward;
+            import mir.appender: scopedBuffer;
+            import mir.primitives: isInputRange;
+            import mir.rc.array: RCArray;
 
-                if (false)
+            alias T = typeof(map(r.front));
+            auto buffer = scopedBuffer!T;
+            foreach (ref e; r)
+            {
+                if (pred(e))
                 {
-                    auto p = pred(r.front);
-                    auto e = map(r.front);
-                    r.popFront;
-                    auto d = r.empty;
+                    static if (__traits(isSame, naryFun!"a", map))
+                        buffer.put(forward!e);
+                    else
+                        buffer.put(map(forward!e));
                 }
-                return () @trusted
-                {
-                    import mir.appender: ScopedBuffer;
-                    alias T = typeof(map(r.front));
-                    ScopedBuffer!T buffer = void;
-                    buffer.initialize;
-                    foreach (ref e; r)
-                    {
-                        if (pred(e))
-                        {
-                            static if (__traits(isSame, naryFun!"a", map))
-                                buffer.put(forward!e);
-                            else
-                                buffer.put(map(forward!e));
-                        }
-                    }
-                    auto ret = RCArray!T(buffer.length);
-                    buffer.moveDataAndEmplaceTo(ret[]);
-                    return ret;
-                } ();
+            }
+            return () @trusted
+            {
+                auto ret = RCArray!T(buffer.length);
+                buffer.moveDataAndEmplaceTo(ret[]);
+                return ret;
+            } ();
         }
 
         /// ditto
