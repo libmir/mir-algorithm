@@ -1292,53 +1292,11 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
-    void toString(Writer, Spec)(auto ref Writer w, const ref Spec f) const
+    void toString(Writer)(scope ref Writer w) const
     {
-        import std.format: formatValue, formatElement;
-        import std.range: put;
-
-        if (f.spec != 's' && f.spec != '(')
-            throw new Exception("incompatible format character for Mir Series argument: %" ~ f.spec);
-
-        enum defSpec = "%s" ~ f.keySeparator ~ "%s" ~ f.seqSeparator;
-        auto fmtSpec = f.spec == '(' ? f.nested : defSpec;
-
-        if (f.spec == 's')
-            put(w, f.seqBefore);
-        if (length) for (size_t i = 0;;)
-        {
-            auto fmt = Spec(fmtSpec);
-            fmt.writeUpToNextSpec(w);
-            if (f.flDash)
-            {
-                formatValue(w, index[i], fmt);
-                fmt.writeUpToNextSpec(w);
-                formatValue(w, data[i], fmt);
-            }
-            else
-            {
-                formatElement(w, index[i], fmt);
-                fmt.writeUpToNextSpec(w);
-                formatElement(w, data[i], fmt);
-            }
-            if (f.sep !is null)
-            {
-                fmt.writeUpToNextSpec(w);
-                if (++i != length)
-                    put(w, f.sep);
-                else
-                    break;
-            }
-            else
-            {
-                if (++i != length)
-                    fmt.writeUpToNextSpec(w);
-                else
-                    break;
-            }
-        }
-        if (f.spec == 's')
-            put(w, f.seqAfter);
+        import mir.format: print;
+        auto ls = lightScope;
+        print(w, "{ index: ", ls.index, ", data: ", ls.data, " }");
     }
 
     version(mir_test)
@@ -1348,13 +1306,8 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         import mir.series: series, sort;
         auto s = ["b", "a"].series([9, 8]).sort;
 
-        import std.conv : to;
-        assert(s.to!string == `["a":8, "b":9]`);
-
-        import std.format : format;
-        assert("%s".format(s) == `["a":8, "b":9]`);
-        assert("%(%s %s | %)".format(s) == `"a" 8 | "b" 9`);
-        assert("%-(%s,%s\n%)\n".format(s) == "a,8\nb,9\n");
+        import mir.format : text;
+        assert(s.text == `{ index: [a, b], data: [8, 9] }`, s.text);
     }
 }
 
