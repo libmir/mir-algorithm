@@ -204,13 +204,11 @@ struct mir_observation(Index, Data)
 {
     /// Date, date-time, time, or index.
     Index index;
-    /// An alias for time-series index.
-    deprecated ("use `index` instead") alias time = index;
-    /// An alias for key-value representation.
-    deprecated ("use `index` instead") alias key = index;
     /// Value or ndslice.
     Data data;
-    /// An alias for key-value representation.
+@serdeIgnore:
+    deprecated ("use `index` instead") alias time = index;
+    deprecated ("use `index` instead") alias key = index;
     deprecated ("use `data` instead") alias value = data;
 }
 
@@ -264,7 +262,7 @@ $(LREF sort) can be used to normalise a series.
 +/
 struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
 {
-    private enum doUnittest = is(typeof(this) == Series!(int*, double*));
+    private enum doUnittest = is(typeof(this) == mir_series!(int*, double*));
 
     ///
     alias IndexIterator = IndexIterator_;
@@ -273,10 +271,10 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     alias Iterator = Iterator_;
 
     ///
-    enum size_t N = N_;
+    @serdeIgnore enum size_t N = N_;
 
     ///
-    enum SliceKind kind = kind_;
+    @serdeIgnore enum SliceKind kind = kind_;
 
     /++
     Data is any ndslice with only one constraints,
@@ -285,24 +283,63 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     Slice!(Iterator, N, kind) data;
 
     ///
-    IndexIterator _index;
+    @serdeIgnore IndexIterator _index;
+
+    /++
+    Index series is assumed to be sorted.
+
+    `IndexIterator` is an iterator on top of date, date-time, time, or numbers or user defined types with defined `opCmp`.
+    For example, `Date*`, `DateTime*`, `immutable(long)*`, `mir.ndslice.iterator.IotaIterator`.
+    +/
+    auto index()() @property @trusted
+    {
+        return _index.sliced(this.data._lengths[0]);
+    }
+
+    /// ditto
+    auto index()() @property @trusted const
+    {
+        return _index.lightConst.sliced(this.data._lengths[0]);
+    }
+
+    /// ditto
+    auto index()() @property @trusted immutable
+    {
+        return _index.lightImmutable.sliced(this.data._lengths[0]);
+    }
+
+    /// ditto
+    void index()(Slice!IndexIterator index) @property @trusted
+    {
+        import core.lifetime: move;
+        assert(index._lengths[0] == data._lengths[0]);
+        this._index = move(index._iterator);
+    }
+
+    ///
+    static if (doUnittest)
+    unittest
+    {
+        import mir.ndslice.slice: sliced;
+        auto s = ["a", "b"].series([5, 6]);
+        assert(s.index == ["a", "b"]);
+        s.index = ["c", "d"].sliced;
+        assert(s.index == ["c", "d"]);
+    }
+
+@serdeIgnore:
 
     /// Index / Key / Time type aliases
     alias Index = typeof(typeof(this).init.index.front);
-    /// ditto
-    deprecated ("use `Index` instead") alias Key = Index;
-    /// ditto
-    deprecated ("use `Index` instead") alias Time = Index;
     /// Data / Value type aliases
     alias Data = typeof(typeof(this).init.data.front);
-    /// ditto
+
+    deprecated ("use `Index` instead") alias Key = Index;
+    deprecated ("use `Index` instead") alias Time = Index;
     deprecated ("use `Data` instead") alias Value = Data;
 
-    /// An alias for time-series index.
     deprecated ("use `index` instead") alias time = index;
-    /// An alias for key-value representation.
     deprecated ("use `index` instead") alias key = index;
-    /// An alias for key-value representation.
     deprecated ("use `data` instead") alias value = data;
 
     private enum defaultMsg() = "Series " ~ Unqual!(this.Data).stringof ~ "[" ~ Unqual!(this.Index).stringof ~ "]: Missing";
@@ -330,29 +367,6 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool opEquals(RIndexIterator, RIterator, size_t RN, SliceKind rkind, )(Series!(RIndexIterator, RIterator, RN, rkind) rhs) const
     {
         return this.lightScopeIndex == rhs.lightScopeIndex && this.data.lightScope == rhs.data.lightScope;
-    }
-
-    /++
-    Index series is assumed to be sorted.
-
-    `IndexIterator` is an iterator on top of date, date-time, time, or numbers or user defined types with defined `opCmp`.
-    For example, `Date*`, `DateTime*`, `immutable(long)*`, `mir.ndslice.iterator.IotaIterator`.
-    +/
-    auto index()() @property @trusted
-    {
-        return _index.sliced(this.data._lengths[0]);
-    }
-
-    /// ditto
-    auto index()() @property @trusted const
-    {
-        return _index.lightConst.sliced(this.data._lengths[0]);
-    }
-
-    /// ditto
-    auto index()() @property @trusted immutable
-    {
-        return _index.lightImmutable.sliced(this.data._lengths[0]);
     }
 
     private auto lightScopeIndex()() @property @trusted
