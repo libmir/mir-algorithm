@@ -1307,7 +1307,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         auto s = ["b", "a"].series([9, 8]).sort;
 
         import mir.format : text;
-        assert(s.text == `{ index: [a, b], data: [8, 9] }`, s.text);
+        assert(s.text == `{ index: [a, b], data: [8, 9] }`);
     }
 }
 
