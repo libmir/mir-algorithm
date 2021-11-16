@@ -318,7 +318,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
 
     ///
     static if (doUnittest)
-    unittest
+    @safe version(mir_test) unittest
     {
         import mir.ndslice.slice: sliced;
         auto s = ["a", "b"].series([5, 6]);
