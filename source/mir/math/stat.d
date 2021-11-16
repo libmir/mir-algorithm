@@ -41,14 +41,14 @@ template statType(T, bool checkComplex = true)
     } else static if (checkComplex) {
         import mir.internal.utility: isComplex;
         static if (isComplex!T) {
-            import std.traits: Unqual;
-            static if (is(T : cdouble)) {
-                deprecated("Built-in complex types deprecated in D language version 2.097") alias statType = Unqual!T;
-            } else {
+            static if (__traits(getAliasThis, T).length == 1)
+            {
+                alias statType = .statType!(typeof(__traits(getMember, T, __traits(getAliasThis, T)[0]))); 
+            }
+            else
+            {
                 alias statType = Unqual!T;
             }
-        } else static if (is(T : cdouble)) {
-                deprecated("Built-in complex types deprecated in D language version 2.097") alias statType = cdouble;
         } else {
             static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a complex floating point type");
         }
@@ -71,15 +71,6 @@ unittest
     static assert(is(statType!(immutable(int)) == double));
     static assert(is(statType!(const(double)) == double));
     static assert(is(statType!(immutable(double)) == double));
-}
-
-version(mir_builtincomplex_test)
-@safe pure nothrow @nogc
-unittest
-{
-    static assert(is(statType!cfloat == cfloat));
-    static assert(is(statType!cdouble == cdouble));
-    static assert(is(statType!creal == creal));
 }
 
 version(mir_test)
@@ -105,16 +96,17 @@ unittest
     static assert(is(statType!Foo == double)); // note: this is not float
 }
 
-version(mir_builtincomplex_test)
+version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.complex;
     static struct Foo {
-        cfloat x;
+        Complex!float x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == cdouble)); // note: this is not Complex!float
+    static assert(is(statType!Foo == Complex!float));
 }
 
 version(mir_test)
@@ -129,16 +121,17 @@ unittest
     static assert(is(statType!Foo == double));
 }
 
-version(mir_builtincomplex_test)
+version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.complex;
     static struct Foo {
-        cdouble x;
+        Complex!double x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == cdouble));
+    static assert(is(statType!Foo == Complex!double));
 }
 
 version(mir_test)
@@ -153,16 +146,17 @@ unittest
     static assert(is(statType!Foo == double)); // note: this is not real
 }
 
-version(mir_builtincomplex_test)
+version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.complex;
     static struct Foo {
-        creal x;
+        Complex!real x;
         alias x this;
     }
 
-    static assert(is(statType!Foo == cdouble)); // note: this is not Complex!real
+    static assert(is(statType!Foo == Complex!real));
 }
 
 version(mir_test)
@@ -206,11 +200,12 @@ unittest
     static assert(is(meanType!(float[]) == float));
 }
 
-version(mir_builtincomplex_test)
+version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
-    static assert(is(meanType!(cfloat[]) == cfloat));
+    import mir.complex;
+    static assert(is(meanType!(Complex!float[]) == Complex!float));
 }
 
 version(mir_test)
@@ -225,16 +220,17 @@ unittest
     static assert(is(meanType!(Foo[]) == float));
 }
 
-version(mir_builtincomplex_test)
+version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.complex;
     static struct Foo {
-        cfloat x;
+        Complex!float x;
         alias x this;
     }
 
-    static assert(is(meanType!(Foo[]) == cfloat));
+    static assert(is(meanType!(Foo[]) == Complex!float));
 }
 
 /++
@@ -423,9 +419,11 @@ version(mir_test)
 unittest
 {
     import mir.ndslice.slice: sliced;
+    import mir.complex;
+    alias C = Complex!double;
 
     assert(mean([1.0, 2, 3]) == 2);
-    assert(mean([1.0 + 3i, 2, 3]) == 2 + 1i);
+    assert(mean([C(1, 3), C(2), C(3)]) == C(2, 1));
     
     assert(mean!float([0, 1, 2, 3, 4, 5].sliced(3, 2)) == 2.5);
     
@@ -539,9 +537,11 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
+    import mir.complex;
+    alias C = Complex!double;
 
-    auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
-    assert(x.mean.approxEqual(2.5 + 3.5i));
+    auto x = [C(1.0, 2), C(2, 3), C(3, 4), C(4, 5)].sliced;
+    assert(x.mean.approxEqual(C(2.5, 3.5)));
 }
 
 /// Compute mean tensors along specified dimention of tensors
@@ -634,28 +634,30 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.complex;
     static assert(is(hmeanType!(int[]) == double));
     static assert(is(hmeanType!(double[]) == double));
     static assert(is(hmeanType!(float[]) == float)); 
-    static assert(is(hmeanType!(cfloat[]) == cfloat));    
+    static assert(is(hmeanType!(Complex!float[]) == Complex!float));    
 }
 
 version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.complex;
     static struct Foo {
         float x;
         alias x this;
     }
     
     static struct Bar {
-        cfloat x;
+        Complex!float x;
         alias x this;
     }
 
     static assert(is(hmeanType!(Foo[]) == float));
-    static assert(is(hmeanType!(Bar[]) == cfloat));
+    static assert(is(hmeanType!(Bar[]) == Complex!float));
 }
 
 /++
@@ -864,9 +866,11 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
+    import mir.complex;
+    alias C = Complex!double;
 
-    auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
-    assert(x.hmean.approxEqual(1.97110904 + 3.14849332i));
+    auto x = [C(1, 2), C(2, 3), C(3, 4), C(4, 5)].sliced;
+    assert(x.hmean.approxEqual(C(1.97110904, 3.14849332)));
 }
 
 /// Arbitrary harmonic mean
@@ -2291,21 +2295,6 @@ unittest
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 }
 
-version(mir_builtincomplex_test)
-@safe pure nothrow
-unittest
-{
-    import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-
-    auto x = [1.0 + 3i, 2, 3].sliced;
-
-    VarianceAccumulator!(cdouble, VarianceAlgo.online, Summation.naive) v;
-    v.put(x);
-    assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
-    assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
-}
-
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -2654,22 +2643,6 @@ unittest
     assert(v.variance(PopulationFalseCT).approxEqual(54.76562 / 11));
 }
 
-version(mir_builtincomplex_test)
-@safe pure nothrow
-unittest
-{
-    import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-
-    auto a = [1.0 + 3i, 2, 3].sliced;
-    auto x = a.center;
-
-    VarianceAccumulator!(cdouble, VarianceAlgo.assumeZeroMean, Summation.naive) v;
-    v.put(x);
-    assert(v.variance(true).approxEqual((-4.0 - 6i) / 3));
-    assert(v.variance(false).approxEqual((-4.0 - 6i) / 2));
-}
-
 version(mir_test)
 @safe pure nothrow
 unittest
@@ -2824,11 +2797,13 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
+    import mir.complex;
+    alias C = Complex!double;
 
     assert(variance([1.0, 2, 3]).approxEqual(2.0 / 2));
     assert(variance([1.0, 2, 3], true).approxEqual(2.0 / 3));
 
-    assert(variance([1.0 + 3i, 2, 3]).approxEqual((-4.0 - 6i) / 2));
+    assert(variance([C(1, 3), C(2), C(3)]).approxEqual(C(-4, -6) / 2));
     
     assert(variance!float([0, 1, 2, 3, 4, 5].sliced(3, 2)).approxEqual(17.5 / 5));
     
@@ -2993,9 +2968,11 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
+    import mir.complex;
+    alias C = Complex!double;
 
-    auto x = [1.0 + 2i, 2 + 3i, 3 + 4i, 4 + 5i].sliced;
-    assert(x.variance.approxEqual((0.0+10.0i)/ 3));
+    auto x = [C(1, 2), C(2, 3), C(3, 4), C(4, 5)].sliced;
+    assert(x.variance.approxEqual((C(0, 10)) / 3));
 }
 
 /// Compute variance along specified dimention of tensors

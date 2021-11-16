@@ -2027,8 +2027,10 @@ version(mir_test) unittest
 @safe pure nothrow
 version(mir_test) unittest
 {
-    auto s = linspace!cdouble([3], [1.0 + 0i, 2.0 + 4i]);
-    assert(s == [1.0 + 0i, 1.5 + 2i, 2.0 + 4i]);
+    import mir.complex;
+    alias C = Complex!double;
+    auto s = linspace!C([3], [C(1.0, 0), C(2.0, 4)]);
+    assert(s == [C(1.0, 0), C(1.5, 2), C(2.0, 4)]);
 }
 
 /++
