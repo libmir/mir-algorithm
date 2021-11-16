@@ -77,7 +77,7 @@ version(mir_test)
 @safe pure nothrow @nogc
 unittest
 {
-    import std.complex: Complex;
+    import mir.complex: Complex;
 
     static assert(is(statType!(Complex!float) == Complex!float));
     static assert(is(statType!(Complex!double) == Complex!double));
@@ -2301,7 +2301,7 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
-    import std.complex: Complex;
+    import mir.complex: Complex;
 
     auto x = [Complex!double(1.0, 3), Complex!double(2), Complex!double(3)].sliced;
 
@@ -2649,7 +2649,7 @@ unittest
 {
     import mir.math.common: approxEqual;
     import mir.ndslice.slice: sliced;
-    import std.complex: Complex;
+    import mir.complex: Complex;
 
     auto a = [Complex!double(1.0, 3), Complex!double(2), Complex!double(3)].sliced;
     auto x = a.center;

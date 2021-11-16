@@ -117,7 +117,7 @@ All summation algorithms available for complex numbers.
 version(mir_test)
 unittest
 {
-    import std.complex: Complex;
+    import mir.complex: Complex;
 
     auto ar = [Complex!double(1.0, 2), Complex!double(2.0, 3), Complex!double(3.0, 4), Complex!double(4.0, 5)];
     Complex!double r = Complex!double(10.0, 14);
@@ -2003,7 +2003,7 @@ unittest
 version(mir_test)
 unittest
 {
-    import std.complex: Complex;
+    import mir.complex: Complex;
 
     assert(sum(Complex!float(1.0, 1.0), Complex!float(2.0, 2.0), Complex!float(3.0, 3.0)) == Complex!float(6.0, 6.0));
     assert(sum!(Complex!float)(Complex!float(1.0, 1.0), Complex!float(2.0, 2.0), Complex!float(3.0, 3.0)) == Complex!float(6.0, 6.0));
