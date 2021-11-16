@@ -18,7 +18,7 @@ module mir.series;
 import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.sorting: transitionIndex;
 import mir.qualifier;
-import mir.serde: serdeIgnore;
+import mir.serde: serdeIgnore, serdeFields, serdeKeys, serdeKeyOut;
 import std.traits;
 public import mir.ndslice.slice;
 public import mir.ndslice.sorting: sort;
@@ -260,6 +260,7 @@ Plain index series data structure.
 Index is assumed to be sorted.
 $(LREF sort) can be used to normalise a series.
 +/
+@serdeFields
 struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous)
 {
     private enum doUnittest = is(typeof(this) == mir_series!(int*, double*));
@@ -277,33 +278,24 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     @serdeIgnore enum SliceKind kind = kind_;
 
     /++
-    Data is any ndslice with only one constraints,
-    `data` and `index` lengths should be equal.
-    +/
-    Slice!(Iterator, N, kind) data;
-
-    ///
-    @serdeIgnore IndexIterator _index;
-
-    /++
     Index series is assumed to be sorted.
 
     `IndexIterator` is an iterator on top of date, date-time, time, or numbers or user defined types with defined `opCmp`.
     For example, `Date*`, `DateTime*`, `immutable(long)*`, `mir.ndslice.iterator.IotaIterator`.
     +/
-    auto index()() @property @trusted
+    auto index() @property @trusted
     {
         return _index.sliced(this.data._lengths[0]);
     }
 
     /// ditto
-    auto index()() @property @trusted const
+    auto index() @property @trusted const
     {
         return _index.lightConst.sliced(this.data._lengths[0]);
     }
 
     /// ditto
-    auto index()() @property @trusted immutable
+    auto index() @property @trusted immutable
     {
         return _index.lightImmutable.sliced(this.data._lengths[0]);
     }
@@ -312,11 +304,10 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     void index()(Slice!IndexIterator index) @property @trusted
     {
         import core.lifetime: move;
-        assert(index._lengths[0] == data._lengths[0]);
         this._index = move(index._iterator);
     }
 
-    ///
+    /// ditto
     static if (doUnittest)
     @safe version(mir_test) unittest
     {
@@ -327,7 +318,16 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         assert(s.index == ["c", "d"]);
     }
 
+    /++
+    Data is any ndslice with only one constraints,
+    `data` and `index` lengths should be equal.
+    +/
+    Slice!(Iterator, N, kind) data;
+
 @serdeIgnore:
+
+    ///
+    IndexIterator _index;
 
     /// Index / Key / Time type aliases
     alias Index = typeof(typeof(this).init.index.front);
