@@ -15,12 +15,13 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.series;
 
-public import mir.ndslice.slice;
-public import mir.ndslice.sorting: sort;
 import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.sorting: transitionIndex;
 import mir.qualifier;
+import mir.serde: serdeIgnore;
 import std.traits;
+public import mir.ndslice.slice;
+public import mir.ndslice.sorting: sort;
 
 /++
 See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
@@ -204,13 +205,13 @@ struct mir_observation(Index, Data)
     /// Date, date-time, time, or index.
     Index index;
     /// An alias for time-series index.
-    alias time = index;
+    deprecated ("use `index` instead") alias time = index;
     /// An alias for key-value representation.
-    alias key = index;
+    deprecated ("use `index` instead") alias key = index;
     /// Value or ndslice.
     Data data;
     /// An alias for key-value representation.
-    alias value = data;
+    deprecated ("use `data` instead") alias value = data;
 }
 
 /// ditto
@@ -277,8 +278,11 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     enum SliceKind kind = kind_;
 
-    ///
-    Slice!(Iterator, N, kind) _data;
+    /++
+    Data is any ndslice with only one constraints,
+    `data` and `index` lengths should be equal.
+    +/
+    Slice!(Iterator, N, kind) data;
 
     ///
     IndexIterator _index;
@@ -286,20 +290,20 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// Index / Key / Time type aliases
     alias Index = typeof(typeof(this).init.index.front);
     /// ditto
-    alias Key = Index;
+    deprecated ("use `Index` instead") alias Key = Index;
     /// ditto
-    alias Time = Index;
+    deprecated ("use `Index` instead") alias Time = Index;
     /// Data / Value type aliases
     alias Data = typeof(typeof(this).init.data.front);
     /// ditto
-    alias Value = Data;
+    deprecated ("use `Data` instead") alias Value = Data;
 
     /// An alias for time-series index.
-    alias time = index;
+    deprecated ("use `index` instead") alias time = index;
     /// An alias for key-value representation.
-    alias key = index;
+    deprecated ("use `index` instead") alias key = index;
     /// An alias for key-value representation.
-    alias value = data;
+    deprecated ("use `data` instead") alias value = data;
 
     private enum defaultMsg() = "Series " ~ Unqual!(this.Data).stringof ~ "[" ~ Unqual!(this.Index).stringof ~ "]: Missing";
     private static immutable defaultExc() = new Exception(defaultMsg!() ~ " required key");
@@ -310,7 +314,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     this()(Slice!IndexIterator index, Slice!(Iterator, N, kind) data)
     {
         assert(index.length == data.length, "Series constructor: index and data lengths must be equal.");
-        _data = data;
+        this.data = data;
         _index = index._iterator;
     }
 
@@ -318,14 +322,14 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// Construct from null
     this(typeof(null))
     {
-        _data = _data.init;
+        this.data = this.data.init;
         _index = _index.init;
     }
 
     ///
     bool opEquals(RIndexIterator, RIterator, size_t RN, SliceKind rkind, )(Series!(RIndexIterator, RIterator, RN, rkind) rhs) const
     {
-        return this.lightScopeIndex == rhs.lightScopeIndex && this._data.lightScope == rhs._data.lightScope;
+        return this.lightScopeIndex == rhs.lightScopeIndex && this.data.lightScope == rhs.data.lightScope;
     }
 
     /++
@@ -336,55 +340,34 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     +/
     auto index()() @property @trusted
     {
-        return _index.sliced(_data._lengths[0]);
+        return _index.sliced(this.data._lengths[0]);
     }
 
     /// ditto
     auto index()() @property @trusted const
     {
-        return _index.lightConst.sliced(_data._lengths[0]);
+        return _index.lightConst.sliced(this.data._lengths[0]);
     }
 
     /// ditto
     auto index()() @property @trusted immutable
     {
-        return _index.lightImmutable.sliced(_data._lengths[0]);
+        return _index.lightImmutable.sliced(this.data._lengths[0]);
     }
 
     private auto lightScopeIndex()() @property @trusted
     {
-        return .lightScope(_index).sliced(_data._lengths[0]);
+        return .lightScope(_index).sliced(this.data._lengths[0]);
     }
 
     private auto lightScopeIndex()() @property @trusted const
     {
-        return .lightScope(_index).sliced(_data._lengths[0]);
+        return .lightScope(_index).sliced(this.data._lengths[0]);
     }
 
     private auto lightScopeIndex()() @property @trusted immutable
     {
-        return .lightScope(_index).sliced(_data._lengths[0]);
-    }
-
-    /++
-    Data is any ndslice with only one constraints,
-    `data` and `index` lengths should be equal.
-    +/
-    auto data()() @property @trusted
-    {
-        return _data;
-    }
-
-    /// ditto
-    auto data()() @property @trusted const
-    {
-        return _data[];
-    }
-
-    /// ditto
-    auto data()() @property @trusted immutable
-    {
-        return _data[];
+        return .lightScope(_index).sliced(this.data._lengths[0]);
     }
 
     ///
@@ -606,7 +589,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (!is(Value : const(Exception)))
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        return idx < _data._lengths[0] && _index[idx] == key ? _data[idx] : _default;
+        return idx < this.data._lengths[0] && _index[idx] == key ? this.data[idx] : _default;
     }
 
     /// ditto
@@ -627,7 +610,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (!is(Value : const(Exception)))
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        return idx < _data._lengths[0] && _index[idx] == key ? _data[idx] : _default;
+        return idx < this.data._lengths[0] && _index[idx] == key ? this.data[idx] : _default;
     }
 
     /// ditto
@@ -659,9 +642,9 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     auto ref get(Index)(auto ref scope const Index key) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        if (idx < _data._lengths[0] && _index[idx] == key)
+        if (idx < this.data._lengths[0] && _index[idx] == key)
         {
-            return _data[idx];
+            return this.data[idx];
         }
         throw defaultExc!();
     }
@@ -670,9 +653,9 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     auto ref get(Index)(auto ref scope const Index key, lazy const Exception exc) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        if (idx < _data._lengths[0] && _index[idx] == key)
+        if (idx < this.data._lengths[0] && _index[idx] == key)
         {
-            return _data[idx];
+            return this.data[idx];
         }
         throw exc;
     }
@@ -760,18 +743,18 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool contains(Index)(auto ref scope const Index key) const @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        return idx < _data._lengths[0] && _index[idx] == key;
+        return idx < this.data._lengths[0] && _index[idx] == key;
     }
 
     ///
     auto opBinaryRight(string op : "in", Index)(auto ref scope const Index key) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        bool cond = idx < _data._lengths[0] && _index[idx] == key;
-        static if (__traits(compiles, &_data[size_t.init]))
+        bool cond = idx < this.data._lengths[0] && _index[idx] == key;
+        static if (__traits(compiles, &this.data[size_t.init]))
         {
             if (cond)
-                return &_data[idx];
+                return &this.data[idx];
             return null;
         }
         else
@@ -802,9 +785,9 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGet(Index, Value)(Index key, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        auto cond = idx < _data._lengths[0] && _index[idx] == key;
+        auto cond = idx < this.data._lengths[0] && _index[idx] == key;
         if (cond)
-            val = _data[idx];
+            val = this.data[idx];
         return cond;
     }
 
@@ -828,9 +811,9 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetNext(Index, Value)(auto ref scope const Index key, scope ref Value val)
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        auto cond = idx < _data._lengths[0];
+        auto cond = idx < this.data._lengths[0];
         if (cond)
-            val = _data[idx];
+            val = this.data[idx];
         return cond;
     }
 
@@ -855,11 +838,11 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetNextUpdateKey(Index, Value)(scope ref Index key, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(key);
-        auto cond = idx < _data._lengths[0];
+        auto cond = idx < this.data._lengths[0];
         if (cond)
         {
             key = _index[idx];
-            val = _data[idx];
+            val = this.data[idx];
         }
         return cond;
     }
@@ -886,7 +869,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         size_t idx = lightScopeIndex.transitionIndex!"a <= b"(key) - 1;
         auto cond = 0 <= sizediff_t(idx);
         if (cond)
-            val = _data[idx];
+            val = this.data[idx];
         return cond;
     }
 
@@ -915,7 +898,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (cond)
         {
             key = _index[idx];
-            val = _data[idx];
+            val = this.data[idx];
         }
         return cond;
     }
@@ -940,9 +923,9 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetFirst(Index, Value)(auto ref scope const Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(lowerBound);
-        auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
+        auto cond = idx < this.data._lengths[0] && _index[idx] <= upperBound;
         if (cond)
-            val = _data[idx];
+            val = this.data[idx];
         return cond;
     }
 
@@ -967,11 +950,11 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     bool tryGetFirstUpdateLower(Index, Value)(ref Index lowerBound, auto ref scope const Index upperBound, scope ref Value val) @trusted
     {
         size_t idx = lightScopeIndex.transitionIndex(lowerBound);
-        auto cond = idx < _data._lengths[0] && _index[idx] <= upperBound;
+        auto cond = idx < this.data._lengths[0] && _index[idx] <= upperBound;
         if (cond)
         {
             lowerBound = _index[idx];
-            val = _data[idx];
+            val = this.data[idx];
         }
         return cond;
     }
@@ -998,7 +981,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         size_t idx = lightScopeIndex.transitionIndex!"a <= b"(upperBound) - 1;
         auto cond = 0 <= sizediff_t(idx) && _index[idx] >= lowerBound;
         if (cond)
-            val = _data[idx];
+            val = this.data[idx];
         return cond;
     }
 
@@ -1027,7 +1010,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (cond)
         {
             upperBound = _index[idx];
-            val = _data[idx];
+            val = this.data[idx];
         }
         return cond;
     }
@@ -1082,7 +1065,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     size_t length(size_t dimension = 0)() const @property
         if (dimension < N)
     {
-        return _data.length!dimension;
+        return this.data.length!dimension;
     }
 
     /// ditto
@@ -1107,11 +1090,11 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         assert(!empty!dimension);
         static if (dimension)
         {
-            return index.series(_data.back!dimension);
+            return index.series(this.data.back!dimension);
         }
         else
         {
-            return index.back.observation(_data.back);
+            return index.back.observation(this.data.back);
         }
     }
 
@@ -1122,7 +1105,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         assert(!empty!dimension);
         static if (dimension == 0)
             _index++;
-        _data.popFront!dimension;
+        this.data.popFront!dimension;
     }
 
     /// ditto
@@ -1130,7 +1113,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (dimension < N)
     {
         assert(!empty!dimension);
-        _data.popBack!dimension;
+        this.data.popBack!dimension;
     }
 
     /// ditto
@@ -1140,7 +1123,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         assert(length!dimension >= n);
         static if (dimension == 0)
             _index += n;
-        _data.popFrontExactly!dimension(n);
+        this.data.popFrontExactly!dimension(n);
     }
 
     /// ditto
@@ -1148,7 +1131,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (dimension < N)
     {
         assert(length!dimension >= n);
-        _data.popBackExactly!dimension(n);
+        this.data.popBackExactly!dimension(n);
     }
 
     /// ditto
@@ -1178,7 +1161,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
             "Series.opSlice!" ~ dimension.stringof ~ ": the left opSlice boundary must be less than or equal to the right bound.");
         enum errorMsg = ": difference between the right and the left bounds"
                         ~ " must be less than or equal to the length of the given dimension.";
-        assert(j - i <= _data._lengths[dimension],
+        assert(j - i <= this.data._lengths[dimension],
               "Series.opSlice!" ~ dimension.stringof ~ errorMsg);
     }
     do
@@ -1189,7 +1172,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     /// ditto
     size_t opDollar(size_t dimension = 0)() const
     {
-        return _data.opDollar!dimension;
+        return this.data.opDollar!dimension;
     }
 
     /// ditto
@@ -1229,8 +1212,8 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ref opAssign(typeof(this) rvalue) return @trusted
     {
         import mir.utility: swap;
-        this._data._structure = rvalue._data._structure;
-        swap(this._data._iterator, rvalue._data._iterator);
+        this.data._structure = rvalue.data._structure;
+        swap(this.data._iterator, rvalue.data._iterator);
         swap(this._index, rvalue._index);
         return this;
     }
@@ -1240,8 +1223,8 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
         import core.lifetime: move;
-        this._data._structure = rvalue._data._structure;
-        this._data._iterator = rvalue._data._iterator.move;
+        this.data._structure = rvalue.data._structure;
+        this.data._iterator = rvalue.data._iterator.move;
         this._index = rvalue._index.move;
         return this;
     }
@@ -1275,31 +1258,31 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() @trusted @property
     {
-        return typeof(return)(lightScopeIndex, _data.lightScope);
+        return typeof(return)(lightScopeIndex, this.data.lightScope);
     }
 
     /// ditto
     Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted const @property
     {
-        return typeof(return)(lightScopeIndex, _data.lightScope);
+        return typeof(return)(lightScopeIndex, this.data.lightScope);
     }
 
     /// ditto
     Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted immutable @property
     {
-        return typeof(return)(lightScopeIndex, _data.lightScope);
+        return typeof(return)(lightScopeIndex, this.data.lightScope);
     }
 
     ///
     Series!(LightConstOf!IndexIterator, LightConstOf!Iterator, N, kind) lightConst()() const @property @trusted
     {
-        return index.series(data);
+        return index[].series(data[]);
     }
 
     ///
     Series!(LightImmutableOf!IndexIterator, LightImmutableOf!Iterator, N, kind) lightImmutable()() immutable @property @trusted
     {
-        return index.series(data);
+        return index[].series(data[]);
     }
 
     ///
@@ -1562,7 +1545,7 @@ Series!(K*, V*) series(RK, RV, K = RK, V = RV)(RV[RK] aa)
     {
         import mir.conv: emplaceRef;
         emplaceRef!K(it.index.front, kv.key.to!K);
-        emplaceRef!V(it._data.front, kv.value.to!V);
+        emplaceRef!V(it.data.front, kv.value.to!V);
         it.popFront;
     }
     .sort(ret);
@@ -1639,7 +1622,7 @@ auto rcseries(RK, RV, K = RK, V = RV)(RV[RK] aa)
     {
         import mir.conv: emplaceRef;
         emplaceRef!K(it.lightScopeIndex.front, kv.key.to!K);
-        emplaceRef!V(it._data.front, kv.value.to!V);
+        emplaceRef!V(it.data.front, kv.value.to!V);
         it.popFront;
     }
     import core.lifetime: move;
@@ -1828,7 +1811,7 @@ Returns:
 size_t findIndex(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, auto ref scope const Index key)
 {
     auto idx = series.lightScopeIndex.transitionIndex(key);
-    if (idx < series._data._lengths[0] && series.index[idx] == key)
+    if (idx < series.data._lengths[0] && series.index[idx] == key)
     {
         return idx;
     }
@@ -1858,7 +1841,7 @@ Returns:
 size_t find(IndexIterator, Iterator, size_t N, SliceKind kind, Index)(Series!(IndexIterator, Iterator, N, kind) series, auto ref scope const Index key)
 {
     auto idx = series.lightScopeIndex.transitionIndex(key);
-    auto bidx = series._data._lengths[0] - idx;
+    auto bidx = series.data._lengths[0] - idx;
     if (bidx && series.index[idx] == key)
     {
         return bidx;
@@ -2426,7 +2409,7 @@ auto unionSeriesImpl(I, E,
 
     enum N = N;
     alias I = DeepElementType!(typeof(seriesTuple[0].index));
-    alias E = DeepElementType!(typeof(seriesTuple[0]._data));
+    alias E = DeepElementType!(typeof(seriesTuple[0].data));
 
     if(uninitSeries.length)
     {
@@ -2436,9 +2419,9 @@ auto unionSeriesImpl(I, E,
             auto obs = u.front;
             emplaceRef!I(uninitSeries.index.front, obs.index);
             static if (N == 1)
-                emplaceRef!E(uninitSeries._data.front, obs.data);
+                emplaceRef!E(uninitSeries.data.front, obs.data);
             else
-                each!(emplaceRef!E)(uninitSeries._data.front, obs.data);
+                each!(emplaceRef!E)(uninitSeries.data.front, obs.data);
             u.popFront;
             uninitSeries.popFront;
         }
@@ -2473,12 +2456,12 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
 
     static if (N > 1)
     {
-        auto shape = seriesTuple[0]._data._lengths;
+        auto shape = seriesTuple[0].data._lengths;
         shape[0] = len;
 
         foreach (ref sl; seriesTuple[1 .. $])
             foreach (i; Iota!(1, N))
-                if (seriesTuple._data[0]._lengths[i] != sl._data._lengths[i])
+                if (seriesTuple.data[0]._lengths[i] != sl.data._lengths[i])
                     assert(0, "shapes mismatch");
     }
     else
