@@ -755,6 +755,11 @@ See_also: $(MREF serdeIgnoreOut), $(MREF serdeIgnoreIn)
 enum serdeLikeStruct;
 
 /++
+Force serialize / deserialize on fields instead of Range API.
++/
+enum serdeFields;
+
+/++
 Ignore keys for object and enum members.
 Should be applied to members or enum type itself.
 +/
