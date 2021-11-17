@@ -104,8 +104,6 @@ Decode a Base64 encoded value, placing the result onto an Appender.
 void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope const(char)[] data,
                                                                        scope return ref Appender appender) @safe pure
 {
-    import mir.ndslice.slice : sliced;
-    import mir.ndslice.chunks : chunks;
     // We expect data should be well-formed (with padding),
     // so we should throw if it is not well-formed.
     if (data.length % 4 != 0)
@@ -119,10 +117,12 @@ void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
     
     ubyte[3] decodedByteGroup;
     ubyte sz = 0;
-    auto groups = data.sliced.chunks(4);
-    for (size_t i = 0; i < groups.length; i++)
+    
+    // We can't use mir.ndslice.chunk.chunks here, as it violates
+    // the scope requirements.
+    for (size_t i = 0; i < data.length; i += 4)
     {
-        auto group = groups[i];
+        auto group = data[i .. (i + 4)];
 
         ubyte[4] decodedBytes;
         decodedBytes[0] = lookup_decoding!(PlusChar, SlashChar)(group[0]);
@@ -147,7 +147,7 @@ void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
             // If we are not at the end of a string, according to RFC4648,
             // we can safely treat a padding character as "non-alphabet data",
             // and as such, we should throw. See RFC4648 Section 3.3 for more information
-            if (i != (groups.length - 1))
+            if ((i / 4) != ((data.length / 4) - 1))
             {
                 version(D_Exceptions)
                     throw base64DecodeInvalidCharException;
@@ -176,7 +176,7 @@ void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
             // If we are not at the end of a string, according to RFC4648,
             // we can safely treat a padding character as "non-alphabet data",
             // and as such, we should throw. See RFC4648 Section 3.3 for more information
-            if (i != (groups.length - 1))
+            if ((i / 4) != ((data.length / 4) - 1))
             {
                 version(D_Exceptions)
                     throw base64DecodeInvalidCharException;
