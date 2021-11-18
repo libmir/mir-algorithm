@@ -116,7 +116,7 @@ version(mir_bignum_test)
     static assert("3.518437208883201171875".fromString!float == 0x1.c25c26p+1);
     static assert("3.518437208883201171875".fromString!double == 0x1.c25c268497684p+1);
     static if (real.mant_dig >= 64)
-        static assert("3.518437208883201171875".fromString!real == 0xe.12e13424bb4232fp-2L);
+        static assert("3.518437208883201171875".fromString!real == 0xe.12e13424bb4232fp-2L);    
 
 //  Related DMD Issues:
 // https://issues.dlang.org/show_bug.cgi?id=20951
@@ -124,6 +124,18 @@ version(mir_bignum_test)
 // https://issues.dlang.org/show_bug.cgi?id=20953
 // https://issues.dlang.org/show_bug.cgi?id=20967
 }
+
+// unittest
+// {
+//     import std.stdio;
+//     import mir.conv;
+//     import mir.format;
+//     text(double.min_normal).writeln;
+//     text(double.min_normal * double.epsilon).writeln;
+//     assert("2.2250738585072014e-308".fromString!double == double.min_normal);
+//     assert("5e-324".fromString!double == double.min_normal * double.epsilon);
+//     assert("2.5e-324".fromString!double == double.min_normal * double.epsilon);
+// }
 
 version(mir_bignum_test)
 @safe pure unittest
