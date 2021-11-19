@@ -3,7 +3,7 @@ $(H1 @nogc Simple Base64 parsing)
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 Authors: Harrison Ford
-Copyright: 2021 Harrison Ford, Kaleidic Associates Advisory Limited, Symmetry Investments
+Copyright: 2021 Harrison Ford, Symmetry Investments
 +/
 module mir.base64;
 import mir.ndslice.topology;
@@ -19,7 +19,7 @@ version(D_Exceptions) {
 // Needs further testing to figure out if it *does* work on them.
 
 // Technique borrowed from http://0x80.pl/notesen/2016-01-12-sse-base64-encoding.html#branchless-code-for-lookup-table
-private char lookup_encoding(char PlusChar = '+', char SlashChar = '/')(ubyte i) @safe @nogc pure {
+private char lookup_encoding(ubyte i, char plusChar = '+', char slashChar = '/') @safe @nogc pure {
     assert(i < 64);
 
     ubyte shift;
@@ -42,19 +42,19 @@ private char lookup_encoding(char PlusChar = '+', char SlashChar = '/')(ubyte i)
     else if (i == 62)
     {
         // character plus
-        shift = cast(ubyte)(PlusChar - 62);
+        shift = cast(ubyte)(plusChar - 62);
     }
     else if (i == 63)
     {
         // character slash
-        shift = cast(ubyte)(SlashChar - 63);
+        shift = cast(ubyte)(slashChar - 63);
     }
 
     return cast(char)(i + shift);
 }
 
 // Do the inverse of above (convert an ASCII value into the Base64 character set)
-private ubyte lookup_decoding(char PlusChar = '+', char SlashChar = '/')(char i) @safe @nogc pure
+private ubyte lookup_decoding(char i, char plusChar = '+', char slashChar = '/') @safe @nogc pure
 {
     // Branching bad, but this isn't performance sensitive
     if (i <= 'Z' && i >= 'A') {
@@ -66,10 +66,10 @@ private ubyte lookup_decoding(char PlusChar = '+', char SlashChar = '/')(char i)
     else if (i <= '9' && i >= '0') {
         return cast(ubyte)(i - '0' + 52);
     }
-    else if (i == PlusChar) {
+    else if (i == plusChar) {
         return 62;
     }
-    else if (i == SlashChar) {
+    else if (i == slashChar) {
         return 63;
     }
     // Just return 0 for padding,
@@ -90,19 +90,21 @@ private ubyte lookup_decoding(char PlusChar = '+', char SlashChar = '/')(char i)
 /++
 Decode a Base64 encoded value, returning the buffer.
 +/
-ubyte[] decodeBase64(char PlusChar = '+', char SlashChar = '/')(scope const(char)[] data) @safe pure
+ubyte[] decodeBase64(scope const(char)[] data, char plusChar = '+', char slashChar = '/') @safe pure
 {
     import mir.appender : scopedBuffer;
     auto app = scopedBuffer!ubyte;
-    decodeBase64!(PlusChar, SlashChar)(data, app);
+    decodeBase64(data, app, plusChar, slashChar);
     return app.data.dup;
 }
 
 /++
 Decode a Base64 encoded value, placing the result onto an Appender.
 +/
-void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope const(char)[] data,
-                                                                       scope return ref Appender appender) @safe pure
+void decodeBase64(Appender)(scope const(char)[] data,
+                            scope return ref Appender appender,
+                            char plusChar = '+',
+                            char slashChar = '/') @safe pure
 {
     // We expect data should be well-formed (with padding),
     // so we should throw if it is not well-formed.
@@ -117,7 +119,7 @@ void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
     
     ubyte[3] decodedByteGroup;
     ubyte sz = 0;
-    
+
     // We can't use mir.ndslice.chunk.chunks here, as it violates
     // the scope requirements.
     for (size_t i = 0; i < data.length; i += 4)
@@ -125,8 +127,8 @@ void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
         auto group = data[i .. (i + 4)];
 
         ubyte[4] decodedBytes;
-        decodedBytes[0] = lookup_decoding!(PlusChar, SlashChar)(group[0]);
-        decodedBytes[1] = lookup_decoding!(PlusChar, SlashChar)(group[1]);
+        decodedBytes[0] = lookup_decoding(group[0], plusChar, slashChar);
+        decodedBytes[1] = lookup_decoding(group[1], plusChar, slashChar);
 
         uint transformed_group = (decodedBytes[0] << 26) | (decodedBytes[1] << 20);
 
@@ -184,15 +186,15 @@ void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
                     assert(0, base64DecodeInvalidCharMsg);
             }
 
-            decodedBytes[2] = lookup_decoding!(PlusChar, SlashChar)(group[2]);
+            decodedBytes[2] = lookup_decoding(group[2], plusChar, slashChar);
             transformed_group |= (decodedBytes[2] << 14);
             sz = 2;
         }
         // xxxx
         else 
         {
-            decodedBytes[2] = lookup_decoding!(PlusChar, SlashChar)(group[2]);
-            decodedBytes[3] = lookup_decoding!(PlusChar, SlashChar)(group[3]);
+            decodedBytes[2] = lookup_decoding(group[2], plusChar, slashChar);
+            decodedBytes[3] = lookup_decoding(group[3], plusChar, slashChar);
             transformed_group |= ((decodedBytes[2] << 14) | (decodedBytes[3] << 8)); 
             sz = 3;
         }
@@ -208,7 +210,7 @@ void decodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
 
 /// Test decoding of data which has a length which can be
 /// cleanly decoded.
-unittest
+@safe pure unittest
 {
     {
         enum data = "QUJD";
@@ -252,14 +254,14 @@ unittest
 }
 
 /// Test decoding invalid data
-unittest
+@safe pure unittest
 {
-    void testFail(const(char)[] input)
+    void testFail(const(char)[] input) @safe pure
     {
         bool thrown = false;
         try {
             ubyte[] decoded = input.decodeBase64;
-        } catch (Throwable t) {
+        } catch (Exception t) {
             thrown = true;
         }
 
@@ -286,23 +288,24 @@ unittest
 /++
 Encode a ubyte array as Base64, returning the encoded value.
 +/
-const(char)[] encodeBase64(char PlusChar = '+', char SlashChar = '/')(scope const(ubyte)[] buf) @safe pure
+const(char)[] encodeBase64(scope const(ubyte)[] buf, char plusChar = '+', char slashChar = '/') @safe pure
 {
     import mir.appender : scopedBuffer;
-    // XXX: is a stringBuf more appropriate here?
     auto app = scopedBuffer!char;
-    encodeBase64!(PlusChar, SlashChar)(buf, app);
+    encodeBase64(buf, app, plusChar, slashChar);
     return app.data.dup;
 }
 
 /++
 Encode a ubyte array as Base64, placing the result onto an Appender.
 +/
-void encodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope const(ubyte)[] input,
-                                                                       scope return ref Appender appender) @safe pure
+void encodeBase64(Appender)(scope const(ubyte)[] input,
+                            scope return ref Appender appender,
+                            char plusChar = '+',
+                            char slashChar = '/') @safe pure
 {
-    import mir.ndslice.topology : bytegroup, map;
     import core.bitop : bswap;
+    import mir.ndslice.topology : bytegroup, map;
     // Slice our input array so that n % 3 == 0 (we have a multiple of 3) 
     // If we have less then 3, then this is effectively a no-op (will result in a 0-length slice)
     char[4] encodedByteGroup;
@@ -313,10 +316,10 @@ void encodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
         const(ubyte) c = (group >> 14) & 0x3f;
         const(ubyte) d = (group >> 8) & 0x3f;
 
-        encodedByteGroup[0] = a.lookup_encoding!(PlusChar, SlashChar);
-        encodedByteGroup[1] = b.lookup_encoding!(PlusChar, SlashChar);
-        encodedByteGroup[2] = c.lookup_encoding!(PlusChar, SlashChar);
-        encodedByteGroup[3] = d.lookup_encoding!(PlusChar, SlashChar);
+        encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
+        encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
+        encodedByteGroup[2] = c.lookup_encoding(plusChar, slashChar);
+        encodedByteGroup[3] = d.lookup_encoding(plusChar, slashChar);
         appender.put(encodedByteGroup[]);
     }
 
@@ -331,71 +334,76 @@ void encodeBase64(char PlusChar = '+', char SlashChar = '/', Appender)(scope con
         if (window.length == 1) {
             const(ubyte) a = (group >> 26) & 0x3f;
             const(ubyte) b = (group >> 20) & 0x3f;
-            encodedByteGroup[0] = a.lookup_encoding!(PlusChar, SlashChar);
-            encodedByteGroup[1] = b.lookup_encoding!(PlusChar, SlashChar);
+            encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
             encodedByteGroup[2] = '=';
             encodedByteGroup[3] = '=';
-            appender.put(encodedByteGroup[]);
         }
         else {
-            // Just in case math fails or something
+            // Just in case 
             assert(window.length == 2);
 
             group |= (window[1] << 16);
             const(ubyte) a = (group >> 26) & 0x3f;
             const(ubyte) b = (group >> 20) & 0x3f;
             const(ubyte) c = (group >> 14) & 0x3f;
-            encodedByteGroup[0] = a.lookup_encoding!(PlusChar, SlashChar);
-            encodedByteGroup[1] = b.lookup_encoding!(PlusChar, SlashChar);
-            encodedByteGroup[2] = c.lookup_encoding!(PlusChar, SlashChar);
+            encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[2] = c.lookup_encoding(plusChar, slashChar);
             encodedByteGroup[3] = '=';
-            appender.put(encodedByteGroup[]);
         }
+
+        appender.put(encodedByteGroup[]);
     }
 }
 
 /// Test encoding of data which has a length that can be cleanly
 /// encoded.
-unittest
+@safe pure unittest
 {
     // 3 bytes
     {
-        enum data = cast(ubyte[])"ABC";
+        enum data = cast(immutable(ubyte)[])"ABC";
         assert(data.encodeBase64 == "QUJD");
     }
 
     // 6 bytes
     {
-        enum data = cast(ubyte[])"ABCDEF";
+        enum data = cast(immutable(ubyte)[])"ABCDEF";
         assert(data.encodeBase64 == "QUJDREVG");
     }
 
     // 9 bytes
     {
-        enum data = cast(ubyte[])"ABCDEFGHI";
+        enum data = cast(immutable(ubyte)[])"ABCDEFGHI";
         assert(data.encodeBase64 == "QUJDREVGR0hJ");
     }
 
     // 12 bytes
     {
-        enum data = cast(ubyte[])"ABCDEFGHIJKL";
+        enum data = cast(immutable(ubyte)[])"ABCDEFGHIJKL";
         assert(data.encodeBase64 == "QUJDREVGR0hJSktM");
     }
 }
 
 /// Test encoding of data which has a length which CANNOT be cleanly encoded.
 /// This typically means that there's padding.
-unittest
+@safe pure unittest
 {
     // 1 byte 
     {
-        enum data = cast(ubyte[])"A";
+        enum data = cast(immutable(ubyte)[])"A";
         assert(data.encodeBase64 == "QQ==");
     }
     // 2 bytes
     {
-        enum data = cast(ubyte[])"AB";
+        enum data = cast(immutable(ubyte)[])"AB";
         assert(data.encodeBase64 == "QUI=");
+    }
+    // 2 bytes
+    {
+        enum data = [0xFF, 0xFF];
+        assert(data.encodeBase64 == "//8=");
     }
     // 4 bytes
     {
@@ -404,22 +412,43 @@ unittest
     }
     // 37 bytes
     {
-        enum data = cast(ubyte[])"A Very Very Very Very Large Test Blob";
+        enum data = cast(immutable(ubyte)[])"A Very Very Very Very Large Test Blob";
         assert(data.encodeBase64 == "QSBWZXJ5IFZlcnkgVmVyeSBWZXJ5IExhcmdlIFRlc3QgQmxvYg==");
     }
 }
 
+/// Test nogc encoding
+@safe pure @nogc unittest
+{
+    import mir.appender : scopedBuffer;
+
+    {
+        enum data = cast(immutable(ubyte)[])"A Very Very Very Very Large Test Blob";
+        auto appender = scopedBuffer!char();
+        data.encodeBase64(appender); 
+        assert(appender.data == "QSBWZXJ5IFZlcnkgVmVyeSBWZXJ5IExhcmdlIFRlc3QgQmxvYg==");     
+    }
+
+    {
+        enum data = cast(immutable(ubyte)[])"abc123!?$*&()'-=@~";
+        auto appender = scopedBuffer!char();
+        data.encodeBase64(appender);
+        assert(appender.data == "YWJjMTIzIT8kKiYoKSctPUB+");
+    }
+}
+
 /// Make sure we can decode what we encode.
-unittest
+@safe pure unittest
 {
     // Test an example string
     {
-        enum data = cast(ubyte[])"abc123!?$*&()'-=@~";
+        enum data = cast(immutable(ubyte)[])"abc123!?$*&()'-=@~";
         assert(data.encodeBase64.decodeBase64 == data);
     }
     // Test an example from Ion data
     {
-        enum data = cast(ubyte[])"a b c d e f g h i j k l m n o p q r s t u v w x y z";
+        enum data = cast(immutable(ubyte)[])"a b c d e f g h i j k l m n o p q r s t u v w x y z";
         assert(data.encodeBase64.decodeBase64 == data);
     }
 }
+
