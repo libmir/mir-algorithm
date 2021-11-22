@@ -2489,7 +2489,6 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
-        debug import std.stdio;
         import mir.utility: _expect;
 
         version(LDC)

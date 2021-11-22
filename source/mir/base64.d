@@ -6,7 +6,6 @@ Authors: Harrison Ford
 Copyright: 2021 Harrison Ford, Symmetry Investments
 +/
 module mir.base64;
-import mir.ndslice.topology;
 
 package static immutable base64DecodeInvalidCharMsg = "Invalid character encountered.";
 package static immutable base64DecodeInvalidLenMsg = "Cannot decode a buffer with given length (not a multiple of 4, missing padding?)";
