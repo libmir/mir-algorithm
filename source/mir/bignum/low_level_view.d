@@ -2653,7 +2653,8 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
 
                     static if (allowUnderscores)
                     {
-                        // If we allow underscores, it also CANNOT be preceded by any underscores.
+                        // If we allow underscores, the dot also CANNOT be preceded by any underscores.
+                        // It must be preceded by a number.
                         if (recentUnderscore)
                             return false;
                     }
@@ -2688,7 +2689,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                         import mir.parse: parse;
                         // We don't really care if the e/E/d/D modifiers are preceded by a modifier,
                         // so as long as they are a dot or a regular number.
-                        if (key != DecimalExponentKey.dot || key != DecimalExponentKey.none)
+                        if (key != DecimalExponentKey.dot && key != DecimalExponentKey.none)
                             return false;
                         key = cast(DecimalExponentKey)d;
                         if (parse(str, exponent) && str.length == 0)
@@ -2917,27 +2918,6 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         if (sign)
             ret = -ret;
         return ret;
-    }
-}
-
-/// Test that DecimalView can handle a dot followed by an exponent
-version(mir_bignum_test)
-unittest
-{
-    {
-        DecimalView!ulong view = void;
-        DecimalExponentKey exponentKey;
-
-        assert(view.fromStringImpl!(char,
-            true /* allowSpecialValues */,
-            true /* allowDotOnBounds */,
-            true /* allowDExponent */,
-            true /* allowStartingPlus */,
-            true /* allowUnderscores */,
-            true /* allowLeadingZeros */,
-            true /* allowExponent */,
-            true /* checkEmpty */)
-        ("123456.e0", exponentKey));
     }
 }
 

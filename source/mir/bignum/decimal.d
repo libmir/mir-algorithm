@@ -274,6 +274,8 @@ struct Decimal(size_t maxSize64)
             {
                 bool recentUnderscore;
             }
+            // Was there a recent character within the set: ['.', 'e', 'E', 'd', 'D']?
+            bool recentModifier;
             static if (!allowLeadingZeros)
             {
                 if (d == 0)
@@ -299,6 +301,7 @@ struct Decimal(size_t maxSize64)
                         return false;
                     key = DecimalExponentKey.dot;
                     dot = true;
+                    recentModifier = true;
                     goto F;
                 }
             }
@@ -323,6 +326,7 @@ struct Decimal(size_t maxSize64)
                     {
                         recentUnderscore = false;
                     }
+                    recentModifier = false;
                     {
                         import mir.checkedint: mulu;
                         bool overflow;
@@ -342,31 +346,35 @@ struct Decimal(size_t maxSize64)
                     coefficient.length = v != 0;
                     static if (allowUnderscores)
                     {
-                        return !recentUnderscore;
+                        return !recentUnderscore && !recentModifier;
                     }
                     else
                     {
-                        return true;
+                        return !recentModifier;
                     }
                 }
-                static if (allowUnderscores)
-                {
-                    if (recentUnderscore)
-                        return false;
-                }
+
                 switch (d)
                 {
                     case DecimalExponentKey.dot:
+                        // The dot modifier CANNOT be preceded by any modifiers. 
+                        if (recentModifier || key != DecimalExponentKey.none)
+                            break;
+
+                        static if (allowUnderscores)
+                        {
+                            // If we allow underscores, the dot also CANNOT be preceded by any underscores.
+                            // It must be preceded by a number.
+                            if (recentUnderscore)
+                                break;
+                        }
                         key = DecimalExponentKey.dot;
                         if (_expect(dot, false))
                             break;
                         dot = true;
                         if (str.length)
                         {
-                            static if (allowUnderscores)
-                            {
-                                recentUnderscore = true;
-                            }
+                            recentModifier = true;
                             continue;
                         }
                         static if (allowDotOnBounds)
@@ -388,14 +396,24 @@ struct Decimal(size_t maxSize64)
                         case DecimalExponentKey.e:
                         case DecimalExponentKey.E:
                             import mir.parse: parse;
+                            // We don't really care if the e/E/d/D modifiers are preceded by a modifier,
+                            // so as long as they are a dot or a regular number.
+                            if (key != DecimalExponentKey.dot && key != DecimalExponentKey.none)
+                                break; 
                             key = cast(DecimalExponentKey)d;
-                            if (parse(str, exponent) && str.length == 0)
+                            if (parse(str, exponent) && str.length == 0) {
+                                recentModifier = false;
                                 goto E;
+                            }
                             break;
                     }
                     static if (allowUnderscores)
                     {
                         case '_' - '0':
+                            // A underscore cannot be preceded by an underscore or a modifier.
+                            if (recentUnderscore || recentModifier)
+                                break;
+
                             recentUnderscore = true;
                             if (str.length)
                                 continue;
@@ -553,6 +571,52 @@ struct Decimal(size_t maxSize64)
         assert(decimal.fromStringImpl("0E100", key));
         assert(key == DecimalExponentKey.E);
         assert(cast(double) decimal == 0);
+
+        /++ Test that Issue #365 is handled properly +/
+        assert(decimal.fromStringImpl("123456.e0", key));
+        assert(key == DecimalExponentKey.e);
+        assert(cast(double) decimal == 123_456.0);
+
+        assert(decimal.fromStringImpl("123_456.e0", key));
+        assert(key == DecimalExponentKey.e);
+        assert(cast(double) decimal == 123_456.0);
+
+        assert(decimal.fromStringImpl("123456.E0", key));
+        assert(key == DecimalExponentKey.E);
+        assert(cast(double) decimal == 123_456.0);
+
+        assert(decimal.fromStringImpl("123_456.E0", key));
+        assert(key == DecimalExponentKey.E);
+        assert(cast(double) decimal == 123_456.0);
+
+        assert(decimal.fromStringImpl("123456.d0", key));
+        assert(key == DecimalExponentKey.d);
+        assert(cast(double) decimal == 123_456.0);
+
+        assert(decimal.fromStringImpl("123_456.d0", key));
+        assert(key == DecimalExponentKey.d);
+        assert(cast(double) decimal == 123_456.0);
+
+        assert(decimal.fromStringImpl("123456.D0", key));
+        assert(key == DecimalExponentKey.D);
+        assert(cast(double) decimal == 123_456.0);
+
+        assert(decimal.fromStringImpl("123_456.D0", key));
+        assert(key == DecimalExponentKey.D);
+        assert(cast(double) decimal == 123_456.0);
+
+        /++ Test invalid examples with the fix introduced for Issue #365 +/
+        assert(!decimal.fromStringImpl("123_456_.D0", key));
+        assert(!decimal.fromStringImpl("123_456.DD0", key));
+        assert(!decimal.fromStringImpl("123_456_.E0", key));
+        assert(!decimal.fromStringImpl("123_456.EE0", key));
+        assert(!decimal.fromStringImpl("123456.ED0", key));
+        assert(!decimal.fromStringImpl("123456E0D0", key));
+        assert(!decimal.fromStringImpl("123456._D0", key));
+        assert(!decimal.fromStringImpl("123456_.D0", key));
+        assert(!decimal.fromStringImpl("123456.E0D0", key));
+        assert(!decimal.fromStringImpl("123456.D0_", key));
+        assert(!decimal.fromStringImpl("123456_", key));
 
         foreach (str; ["-nan", "-NaN", "-NAN"])
         {
