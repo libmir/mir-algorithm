@@ -2489,6 +2489,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
+        debug import std.stdio;
         import mir.utility: _expect;
 
         version(LDC)
@@ -2538,6 +2539,9 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
             bool recentUnderscore;
         }
 
+        // Was there a recent character within the set: ['.', 'e', 'E', 'd', 'D']?
+        bool recentModifier;
+
         static if (!allowLeadingZeros)
         {
             if (d == 0)
@@ -2566,6 +2570,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     return false;
                 key = DecimalExponentKey.dot;
                 dot = true;
+                recentModifier = true;
                 goto F;
             }
         }
@@ -2591,6 +2596,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                 {
                     recentUnderscore = false;
                 }
+                recentModifier = false;
                 v *= 10;
         S:
                 t *= 10;
@@ -2622,35 +2628,44 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                         coefficient = work.mostSignificant == 0 ? coefficient.init : work;
                         static if (allowUnderscores)
                         {
-                            return !recentUnderscore;
+                            // If we have no characters, then we should return true IF
+                            // the last character was NOT a underscore OR a modifier
+                            return !recentUnderscore && !recentModifier;
                         }
                         else
                         {
-                            return true;
+                            // If we don't allow underscores, and we have no characters,
+                            // then we should return true IF the character was NOT a modifier.
+                            return !recentModifier;
                         }
                     }
                 }
 
                 continue;
             }
-            static if (allowUnderscores)
-            {
-                if (recentUnderscore)
-                    return false;
-            }
+
             switch (d)
             {
                 case DecimalExponentKey.dot:
+                    // The dot modifier CANNOT be preceded by any modifiers. 
+                    if (recentModifier || key != DecimalExponentKey.none)
+                        return false;
+
+                    static if (allowUnderscores)
+                    {
+                        // If we allow underscores, the dot also CANNOT be preceded by any underscores.
+                        // It must be preceded by a number.
+                        if (recentUnderscore)
+                            return false;
+                    }
+
                     key = DecimalExponentKey.dot;
                     if (_expect(dot, false))
                         break;
                     dot = true;
                     if (str.length)
                     {
-                        static if (allowUnderscores)
-                        {
-                            recentUnderscore = true;
-                        }
+                        recentModifier = true;
                         continue;
                     }
                     static if (allowDotOnBounds)
@@ -2672,9 +2687,14 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                     case DecimalExponentKey.e:
                     case DecimalExponentKey.E:
                         import mir.parse: parse;
+                        // We don't really care if the e/E/d/D modifiers are preceded by a modifier,
+                        // so as long as they are a dot or a regular number.
+                        if (key != DecimalExponentKey.dot && key != DecimalExponentKey.none)
+                            return false;
                         key = cast(DecimalExponentKey)d;
                         if (parse(str, exponent) && str.length == 0)
                         {
+                            recentModifier = false;
                             if (t != 1)
                                 goto L;
                             goto M;
@@ -2684,6 +2704,10 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
                 static if (allowUnderscores)
                 {
                     case '_' - '0':
+                        // A underscore cannot be preceded by an underscore or a modifier.
+                        if (recentUnderscore || recentModifier)
+                            return false;
+                        
                         recentUnderscore = true;
                         if (str.length)
                             continue;
@@ -2693,6 +2717,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
             }
             break;
         }
+
         return false;
 
         static if (allowSpecialValues)
