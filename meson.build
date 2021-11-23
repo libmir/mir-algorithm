@@ -15,6 +15,7 @@ sources_list = [
     'mir/annotated',
     'mir/appender',
     'mir/array/allocation',
+    'mir/base64',
     'mir/bignum/decimal',
     'mir/bignum/fixed',
     'mir/bignum/fp',
