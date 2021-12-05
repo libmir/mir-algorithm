@@ -112,10 +112,9 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !__traits(i
     }
     else
     {
-        import mir.appender: scopedBuffer;
-        import std.array: uninitializedArray;
+        import std.array: std_appender = appender;
 
-        auto a = scopedBuffer!(Unqual!E);
+        auto a = std_appender!(E[]);
 
         static if (isInputRange!Range)
             for (; !r.empty; r.popFront)
@@ -131,12 +130,7 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !__traits(i
             foreach (e; r)
                 a.put(forward!e);
         }
-
-        return () @trusted {
-            auto ret = uninitializedArray!(Unqual!E[])(a.length);
-            a.moveDataAndEmplaceTo(ret);
-            return ret;
-        } ();
+        return a.data;
     }
 }
 

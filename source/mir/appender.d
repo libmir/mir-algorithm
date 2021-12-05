@@ -12,7 +12,11 @@ import mir.conv: _mir_destroy = xdestroy;
 private extern(C) @system nothrow @nogc pure void* memcpy(scope void* s1, scope const void* s2, size_t n);
 
 
-///
+/++
+The buffer uses stack memory and C Runtime to allocate temporal memory.
+
+Shouldn't store references to GC allocated data.
++/
 struct ScopedBuffer(T, size_t bytes = 4096)
     if (bytes && T.sizeof <= bytes)
 {
