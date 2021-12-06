@@ -355,7 +355,7 @@ struct StringMap(T, U = uint)
 
     Returns: The input is returned.
     +/
-    ref inout(typeof(this)) assumeSafeAppend()() @system nothrow inout return
+    ref inout(typeof(this)) assumeSafeAppend()() nothrow inout return
     {
         if (implementation)
         {
@@ -496,7 +496,7 @@ struct StringMap(T, U = uint)
 
     version(mir_test) static if (is(T == int))
     ///
-    @system nothrow pure unittest
+    @safe nothrow pure unittest
     {
         StringMap!double map;
         assert(("c" in map) is null);
