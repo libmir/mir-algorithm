@@ -774,15 +774,19 @@ version(mir_test)
 @safe unittest
 {
     StringMap!int x;
-    x["L"] = 3;
-    x["A"] = 2;
-    x["val"] = 1;
-
     StringMap!uint y;
+    assert(x == y);
+    x["L"] = 3;
+    assert(x != y);
+    x["A"] = 2;
+    assert(x != y);
+    x["val"] = 1;
+    assert(x != y);
     y["L"] = 3;
+    assert(x != y);
     y["A"] = 2;
+    assert(x != y);
     y["val"] = 1;
-
     assert(x == y);
 }
 
@@ -791,15 +795,19 @@ version(mir_test)
 @safe unittest
 {
     StringMap!int x;
-    x["L"] = 3;
-    x["A"] = 2;
-    x["val"] = 1;
-
     uint[string] y;
+    assert(x == y);
+    x["L"] = 3;
+    assert(x != y);
+    x["A"] = 2;
+    assert(x != y);
+    x["val"] = 1;
+    assert(x != y);
     y["L"] = 3;
+    assert(x != y);
     y["A"] = 2;
+    assert(x != y);
     y["val"] = 1;
-
     assert(x == y);
 }
 
