@@ -34,7 +34,6 @@ struct StringMap(T, U = uint)
 {
     import mir.utility: _expect;
     import core.lifetime: move;
-    import mir.conv: emplaceRef;
 
     private alias Impl = StructImpl!(T, U);
     private Impl* implementation;
@@ -762,7 +761,6 @@ private struct StructImpl(T, U = uint)
     if (!__traits(hasMember, T, "opPostMove") && __traits(isUnsigned, U))
 {
     import core.lifetime: move;
-    import mir.conv: emplaceRef;
 
     size_t _length;
     string* _keys;
@@ -889,6 +887,7 @@ private struct StructImpl(T, U = uint)
             else
             {
                 import core.stdc.string: memmove;
+                import mir.conv: emplaceRef;
                 destroy!false(_values[j]);
                 memmove(_keys + j, _keys + j + 1, (length - 1 - j) * string.sizeof);
                 memmove(_values + j, _values + j + 1, (length - 1 - j) * T.sizeof);
