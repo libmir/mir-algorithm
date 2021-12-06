@@ -776,42 +776,37 @@ version(mir_test)
 ///
 @safe unittest
 {
-    StringMap!int x;
-    StringMap!uint y;
-    assert(x == y);
-    x["L"] = 3;
-    assert(x != y);
-    x["A"] = 2;
-    assert(x != y);
-    x["val"] = 1;
-    assert(x != y);
-    y["L"] = 3;
-    assert(x != y);
-    y["A"] = 2;
-    assert(x != y);
-    y["val"] = 1;
-    assert(x == y);
-}
+    static void testEquals(X, Y)()
+    {
+        X x;
+        Y y;
 
-version(mir_test)
-///
-@safe unittest
-{
-    StringMap!int x;
-    uint[string] y;
-    assert(x == y);
-    x["L"] = 3;
-    assert(x != y);
-    x["A"] = 2;
-    assert(x != y);
-    x["val"] = 1;
-    assert(x != y);
-    y["L"] = 3;
-    assert(x != y);
-    y["A"] = 2;
-    assert(x != y);
-    y["val"] = 1;
-    assert(x == y);
+        assert(x == y);
+
+        x["L"] = 3;
+        assert(x != y);
+        x["A"] = 2;
+        assert(x != y);
+        x["val"] = 1;
+        assert(x != y);
+
+        y["L"] = 3;
+        assert(x != y);
+        y["A"] = 2;
+        assert(x != y);
+        y["val"] = 1;
+
+        assert(x == y);
+
+        x = X.init;
+        y = Y.init;
+
+        assert(x == y);
+    }
+
+    testEquals!(StringMap!int, StringMap!uint)();
+    testEquals!(StringMap!int, uint[string])();
+    testEquals!(uint[string], StringMap!int)();
 }
 
 private struct StructImpl(T, U = uint)
