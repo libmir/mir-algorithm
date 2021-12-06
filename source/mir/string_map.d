@@ -44,13 +44,42 @@ struct StringMap(T, U = uint)
     {
         // NOTE: moving this to template restriction fails with recursive template instanation
         static assert(is(typeof(T.init == V.init) : bool),
-                      "Unsupported rhs of type " ~ typeof(rhs).stringof); // TODO:
+                      "Unsupported rhs of type " ~ typeof(rhs).stringof);
         if (keys != rhs.keys)
             return false;
         if (implementation)
             foreach (const i; 0 .. implementation._length)
                 if (implementation.values[i] != rhs.implementation.values[i]) // needs `values` instead of `_values` to be @safe
                     return false;
+        return true;
+    }
+    /// ditto
+    bool opEquals(K, V)(scope const V[K] rhs) const
+    {
+        // NOTE: moving this to template restriction fails with recursive template instanation
+        static assert(is(typeof(K.init == string.init) : bool),
+                      "Unsupported rhs key type " ~ typeof(rhs).stringof);
+        static assert(is(typeof(V.init == T.init) : bool),
+                      "Unsupported rhs value type " ~ typeof(rhs).stringof);
+        if (implementation is null)
+            return rhs.length == 0;
+        if (implementation.length != rhs.length)
+            return false;
+        foreach (const i, const key; keys)
+        {
+            if (const V* valuePtr = key in rhs)
+            {
+                size_t valuesIndex;
+                const hit = implementation.findIndex(key, valuesIndex);
+                assert(hit);
+                if (*valuePtr != implementation.values[valuesIndex])
+                    return false;
+            }
+            else
+            {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -750,6 +779,23 @@ version(mir_test)
     x["val"] = 1;
 
     StringMap!uint y;
+    y["L"] = 3;
+    y["A"] = 2;
+    y["val"] = 1;
+
+    assert(x == y);
+}
+
+version(mir_test)
+///
+@safe unittest
+{
+    StringMap!int x;
+    x["L"] = 3;
+    x["A"] = 2;
+    x["val"] = 1;
+
+    uint[string] y;
     y["L"] = 3;
     y["A"] = 2;
     y["val"] = 1;
