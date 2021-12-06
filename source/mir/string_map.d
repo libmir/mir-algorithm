@@ -69,10 +69,13 @@ struct StringMap(T, U = uint)
         {
             if (const valuePtr = key in rhs)
             {
-                size_t valuesIndex;
-                const hit = implementation.findIndex(key, valuesIndex);
+                size_t index;
+                const hit = implementation.findIndex(key, index);
                 assert(hit);
-                if (*valuePtr != implementation.values[valuesIndex])
+                assert(index < length);
+                index = implementation.indices[index];
+                assert(index < length);
+                if (*valuePtr != implementation.values[index])
                     return false;
             }
             else
