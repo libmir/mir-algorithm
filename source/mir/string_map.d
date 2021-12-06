@@ -50,7 +50,7 @@ struct StringMap(T, U = uint)
             return false;
         if (implementation)
             foreach (const i; 0 .. implementation._length)
-                if (implementation._values[i] != rhs.implementation._values[i])
+                if (implementation.values[i] != rhs.implementation.values[i]) // needs `values` instead of `_values` to be @safe
                     return false;
         return true;
     }
@@ -739,6 +739,23 @@ unittest
     assert(table["val"] == 11);
 
     assert(table == table);
+}
+
+version(mir_test)
+///
+@safe unittest
+{
+    StringMap!int x;
+    x["L"] = 3;
+    x["A"] = 2;
+    x["val"] = 1;
+
+    StringMap!uint y;
+    y["L"] = 3;
+    y["A"] = 2;
+    y["val"] = 1;
+
+    assert(x == y);
 }
 
 private struct StructImpl(T, U = uint)
