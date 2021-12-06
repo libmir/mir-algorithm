@@ -41,8 +41,11 @@ struct StringMap(T, U = uint)
 
     ///
     // current implementation is workaround for linking bugs when used in self referencing algebraic types
-    bool opEquals(const StringMap rhs) const
+    bool opEquals(V)(scope const StringMap!(V, U) rhs) const
     {
+        // NOTE: moving this to template restriction fails with recursive template instanation
+        static assert(is(typeof(T[].init == V[].init) : bool),
+                      "Unsupported rhs of type " ~ typeof(rhs).stringof); // TODO:
         if (keys != rhs.keys)
             return false;
         if (implementation)
