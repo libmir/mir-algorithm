@@ -780,7 +780,6 @@ version(mir_test)
     {
         X x;
         Y y;
-
         assert(x == y);
 
         x["L"] = 3;
@@ -795,12 +794,12 @@ version(mir_test)
         y["A"] = 2;
         assert(x != y);
         y["val"] = 1;
-
         assert(x == y);
 
         x = X.init;
-        y = Y.init;
+        assert(x != y);
 
+        y = Y.init;
         assert(x == y);
     }
 
