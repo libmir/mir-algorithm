@@ -692,7 +692,7 @@ struct StringMap(T, U = uint)
     }
 
     /++
-    Converts the associtave array to a common Dlang associative array.
+    Converts to a builtin associative array.
 
     Complexity: `O(n)`.
     +/
