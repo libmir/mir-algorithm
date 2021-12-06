@@ -67,7 +67,7 @@ struct StringMap(T, U = uint)
             return false;
         foreach (const i, const key; keys)
         {
-            if (const V* valuePtr = key in rhs)
+            if (const valuePtr = key in rhs)
             {
                 size_t valuesIndex;
                 const hit = implementation.findIndex(key, valuesIndex);
