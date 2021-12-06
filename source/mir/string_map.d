@@ -63,25 +63,17 @@ struct StringMap(T, U = uint)
                       "Unsupported rhs value type " ~ typeof(rhs).stringof);
         if (implementation is null)
             return rhs.length == 0;
-        if (implementation.length != rhs.length)
+        if (implementation._length != rhs.length)
             return false;
-        foreach (const i, const key; keys)
+        foreach (const i; 0 .. implementation._length)
         {
-            if (const valuePtr = key in rhs)
+            if (const valuePtr = implementation.keys[i] in rhs)
             {
-                size_t index;
-                const hit = implementation.findIndex(key, index);
-                assert(hit);
-                assert(index < length);
-                index = implementation.indices[index];
-                assert(index < length);
-                if (*valuePtr != implementation.values[index])
+                if (*valuePtr != implementation.values[i])
                     return false;
             }
             else
-            {
                 return false;
-            }
         }
         return true;
     }
