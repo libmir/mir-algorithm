@@ -13,7 +13,7 @@ Checks if the type is instance of $(LREF StringMap).
 +/
 enum isStringMap(T) = is(Unqual!T == StringMap!V, V);
 
-version(mir_test) 
+version(mir_test)
 ///
 unittest
 {
@@ -297,10 +297,10 @@ struct StringMap(T, U = uint)
     }
 
     /++
-    Reserves capacity for an associative array. 
+    Reserves capacity for an associative array.
     The capacity is the size that the underlaying slices can grow to before the underlying arrays may be reallocated or extended.
     +/
-    size_t reserve()(size_t newcapacity) @trusted pure nothrow 
+    size_t reserve()(size_t newcapacity) @trusted pure nothrow
     {
         import mir.utility: min;
 
@@ -355,7 +355,7 @@ struct StringMap(T, U = uint)
 
     Returns: The input is returned.
     +/
-    ref inout(typeof(this)) assumeSafeAppend()() @system nothrow inout return
+    ref inout(typeof(this)) assumeSafeAppend()() nothrow inout return
     {
         if (implementation)
         {
@@ -442,7 +442,7 @@ struct StringMap(T, U = uint)
 
     /++
     Finds position of the key in the associative array .
-    
+
     Return: An index starting from `0` that corresponds to the key or `-1` if the associative array doesn't contain the key.
 
     Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
@@ -481,7 +481,7 @@ struct StringMap(T, U = uint)
     /++
     Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
     +/
-    inout(T)* opBinaryRight(string op : "in")(scope const(char)[] key) @system pure nothrow @nogc inout
+    inout(T)* opBinaryRight(string op : "in")(scope const(char)[] key) pure nothrow @nogc inout
     {
         if (!implementation)
             return null;
@@ -491,12 +491,12 @@ struct StringMap(T, U = uint)
         assert (index < length);
         index = implementation.indices[index];
         assert (index < length);
-        return implementation._values + index;
+        return &implementation.values[index];
     }
 
     version(mir_test) static if (is(T == int))
     ///
-    @system nothrow pure unittest
+    @safe nothrow pure unittest
     {
         StringMap!double map;
         assert(("c" in map) is null);
@@ -712,7 +712,7 @@ struct StringMap(T, U = uint)
     }
 }
 
-version(mir_test) 
+version(mir_test)
 ///
 unittest
 {
@@ -888,17 +888,17 @@ private struct StructImpl(T, U = uint)
     {
         return _keys[0 .. _length];
     }
-    
+
     inout(T)[] values()() @trusted inout @property
     {
         return _values[0 .. _length];
     }
-    
+
     inout(U)[] indices()() @trusted inout @property
     {
         return _indices[0 .. _length];
     }
-    
+
     inout(U)[] lengthTable()() @trusted inout @property
     {
         return _lengthTable;
@@ -923,7 +923,7 @@ private struct StructImpl(T, U = uint)
             auto high = _lengthTable[key.length + 1] + 0u;
             while (low < high)
             {
-                auto mid = (low + high) / 2;
+                const mid = (low + high) / 2;
 
                 import core.stdc.string: memcmp;
                 int r = void;
@@ -950,7 +950,7 @@ private struct StructImpl(T, U = uint)
 }
 
 version(mir_test)
-unittest
+@safe unittest
 {
     import mir.algebraic_alias.json: JsonAlgebraic;
     import mir.string_map: StringMap;
