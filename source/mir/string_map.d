@@ -46,19 +46,14 @@ struct StringMap(T, U = uint)
         if (keys != rhs.keys)
             return false;
         if (implementation)
-            foreach (const i; 0 .. implementation._length)
-                if (implementation.values[i] != rhs.implementation.values[i]) // needs `values` instead of `_values` to be @safe
-                    return false;
+            return implementation.values == rhs.implementation.values;
         return true;
     }
     /// ditto
     bool opEquals(K, V)(scope const const(V)[const(K)] rhs) const
+    if (is(typeof(K.init == string.init) : bool) &&
+        is(typeof(V.init == T.init) : bool))
     {
-        // NOTE: moving this to template restriction fails with recursive template instanation
-        static assert(is(typeof(K.init == string.init) : bool),
-                      "Unsupported rhs key type " ~ typeof(rhs).stringof);
-        static assert(is(typeof(V.init == T.init) : bool),
-                      "Unsupported rhs value type " ~ typeof(rhs).stringof);
         if (implementation is null)
             return rhs.length == 0;
         if (implementation._length != rhs.length)
