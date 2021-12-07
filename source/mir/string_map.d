@@ -52,7 +52,7 @@ struct StringMap(T, U = uint)
         return true;
     }
     /// ditto
-    bool opEquals(K, V)(scope const V[K] rhs) const
+    bool opEquals(K, V)(scope const const(V)[const(K)] rhs) const
     {
         // NOTE: moving this to template restriction fails with recursive template instanation
         static assert(is(typeof(K.init == string.init) : bool),
