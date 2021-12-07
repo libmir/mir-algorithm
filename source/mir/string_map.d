@@ -38,17 +38,21 @@ struct StringMap(T, U = uint)
 
     ///
     // current implementation is workaround for linking bugs when used in self referencing algebraic types
-    bool opEquals(V)(scope const StringMap!(V, U) rhs) const
+    bool opEquals(V)(scope const StringMap!(V, U) rhs) const @trusted
     {
         // NOTE: moving this to template restriction fails with recursive template instanation
         static assert(is(typeof(T.init == V.init) : bool),
                       "Unsupported rhs of type " ~ typeof(rhs).stringof);
-        if (keys != rhs.keys)
+        if (implementation is null)
+            return rhs.length == 0;
+        if (rhs.implementation is null)
+            return length == 0;
+        if (implementation._length != rhs.implementation._length)
             return false;
-        if (implementation)
-            foreach (const i; 0 .. implementation._length)
-                if (implementation.values[i] != rhs.implementation.values[i]) // needs `values` instead of `_values` to be @safe
-                    return false;
+        foreach (const i, const index; implementation.indices)
+            if (implementation._keys[index] != rhs.implementation._keys[rhs.implementation._indices[i]] ||
+                implementation._values[index] != rhs.implementation._values[rhs.implementation._indices[i]])
+                return false;
         return true;
     }
     /// ditto
@@ -987,11 +991,11 @@ version(mir_test)
         x["val"] = 1;
         assert(x != y);
 
+        y["val"] = 1;
+        assert(x != y);
         y["L"] = 3;
         assert(x != y);
         y["A"] = 2;
-        assert(x != y);
-        y["val"] = 1;
         assert(x == y);
 
         x = X.init;
