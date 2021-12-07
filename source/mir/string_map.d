@@ -34,9 +34,7 @@ struct StringMap(T, U = uint)
 {
     import mir.utility: _expect;
     import core.lifetime: move;
-
-    private alias Impl = StructImpl!(T, U);
-    private Impl* implementation;
+    import mir.conv: emplaceRef;
 
     ///
     // current implementation is workaround for linking bugs when used in self referencing algebraic types
@@ -736,6 +734,217 @@ struct StringMap(T, U = uint)
         int[string] aa = map.toAA;
         assert(aa["k"] == 1);
     }
+
+    private static struct Impl
+    {
+        import core.lifetime: move;
+        import mir.conv: emplaceRef;
+
+        size_t _length;
+        string* _keys;
+        T* _values;
+        U* _indices;
+        U[] _lengthTable;
+
+        /++
+         +/
+        this()(string[] keys, T[] values) @trusted pure nothrow
+        {
+            import mir.array.allocation: array;
+            import mir.ndslice.sorting: makeIndex;
+            import mir.ndslice.topology: iota, indexed;
+            import mir.string_table: smallerStringFirst;
+
+            assert(keys.length == values.length);
+            if (keys.length == 0)
+                return;
+            _length = keys.length;
+            _keys = keys.ptr;
+            _values = values.ptr;
+            _indices = keys.makeIndex!(U, smallerStringFirst).ptr;
+            auto sortedKeys = _keys.indexed(indices);
+            size_t maxKeyLength = sortedKeys[$ - 1].length;
+            _lengthTable = new U[maxKeyLength + 2];
+
+            size_t ski;
+            foreach (length; 0 .. maxKeyLength + 1)
+            {
+                while(ski < sortedKeys.length && sortedKeys[ski].length == length)
+                    ski++;
+                _lengthTable[length + 1] = cast(U)ski;
+            }
+        }
+
+        void insertAt()(string key, T value, size_t i) @trusted
+        {
+            pragma(inline, false);
+
+            assert(i <= length);
+            {
+                auto a = keys;
+                a ~= key;
+                _keys = a.ptr;
+            }
+            {
+                auto a = values;
+                a ~= move(value);
+                _values = a.ptr;
+            }
+            {
+                auto a = indices;
+                a ~= 0;
+                _indices = a.ptr;
+
+                if (__ctfe)
+                {
+                    foreach_reverse (idx; i .. length)
+                    {
+                        _indices[idx + 1] = _indices[idx];
+                    }
+                }
+                else
+                {
+                    import core.stdc.string: memmove;
+                    memmove(_indices + i + 1, _indices + i, (length - i) * U.sizeof);
+                }
+                assert(length <= U.max);
+                _indices[i] = cast(U)length;
+                _length++;
+            }
+            {
+                if (key.length + 2 <= lengthTable.length)
+                {
+                    ++lengthTable[key.length + 1 .. $];
+                }
+                else
+                {
+                    auto oldLen = _lengthTable.length;
+                    _lengthTable.length = key.length + 2;
+                    auto oldVal = oldLen ? _lengthTable[oldLen - 1] : 0;
+                    _lengthTable[oldLen .. key.length + 1] =  oldVal;
+                    _lengthTable[key.length + 1] =  oldVal + 1;
+                }
+            }
+        }
+
+        void removeAt()(size_t i)
+        {
+            assert(i < length);
+            auto j = _indices[i];
+            assert(j < length);
+            {
+                --_lengthTable[_keys[j].length + 1 .. $];
+            }
+            {
+                if (__ctfe)
+                {
+                    foreach (idx; i .. length)
+                    {
+                        _indices[idx] = _indices[idx + 1];
+                        _indices[idx] = _indices[idx + 1];
+                    }
+                }
+                else
+                {
+                    import core.stdc.string: memmove;
+                    memmove(_indices + i, _indices + i + 1, (length - 1 - i) * U.sizeof);
+                }
+                foreach (ref elem; indices[0 .. $ - 1])
+                    if (elem > j)
+                        elem--;
+            }
+            {
+                if (__ctfe)
+                {
+                    foreach_reverse (idx; j .. length - 1)
+                    {
+                        _keys[idx] = _keys[idx + 1];
+                        _values[idx] = move(_values[idx + 1]);
+                    }
+                }
+                else
+                {
+                    import core.stdc.string: memmove;
+                    destroy!false(_values[j]);
+                    memmove(_keys + j, _keys + j + 1, (length - 1 - j) * string.sizeof);
+                    memmove(_values + j, _values + j + 1, (length - 1 - j) * T.sizeof);
+                    emplaceRef(_values[length - 1]);
+                }
+            }
+            _length--;
+            _lengthTable = _lengthTable[0 .. length ? _keys[_indices[length - 1]].length + 2 : 0];
+        }
+
+        size_t length()() @safe pure nothrow @nogc const @property
+        {
+            return _length;
+        }
+
+        inout(string)[] keys()() @trusted inout @property
+        {
+            return _keys[0 .. _length];
+        }
+
+        inout(T)[] values()() @trusted inout @property
+        {
+            return _values[0 .. _length];
+        }
+
+        inout(U)[] indices()() @trusted inout @property
+        {
+            return _indices[0 .. _length];
+        }
+
+        inout(U)[] lengthTable()() @trusted inout @property
+        {
+            return _lengthTable;
+        }
+
+        auto sortedKeys()() @trusted const @property
+        {
+            import mir.ndslice.topology: indexed;
+            return _keys.indexed(indices);
+        }
+
+        bool findIndex()(scope const(char)[] key, ref size_t index) @trusted pure nothrow @nogc const
+        {
+            import mir.utility: _expect;
+            if (_expect(key.length + 1 < _lengthTable.length, true))
+            {
+
+                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+                // 0 1 2 3 4 5 6   8 9 10    12          16
+
+                auto low = _lengthTable[key.length] + 0u;
+                auto high = _lengthTable[key.length + 1] + 0u;
+                while (low < high)
+                {
+                    const mid = (low + high) / 2;
+
+                    import core.stdc.string: memcmp;
+                    int r = void;
+
+                    if (__ctfe)
+                        r = __cmp(key, _keys[_indices[mid]]);
+                    else
+                        r = memcmp(key.ptr, _keys[_indices[mid]].ptr, key.length);
+
+                    if (r == 0)
+                    {
+                        index = mid;
+                        return true;
+                    }
+                    if (r > 0)
+                        low = mid + 1;
+                    else
+                        high = mid;
+                }
+                index = low;
+            }
+            return false;
+        }
+    }
+    private Impl* implementation;
 }
 
 version(mir_test)
@@ -798,217 +1007,6 @@ version(mir_test)
     testEquals!(StringMap!int, StringMap!uint)();
     testEquals!(StringMap!int, uint[string])();
     testEquals!(uint[string], StringMap!int)();
-}
-
-private struct StructImpl(T, U = uint)
-    if (!__traits(hasMember, T, "opPostMove") && __traits(isUnsigned, U))
-{
-    import core.lifetime: move;
-
-    size_t _length;
-    string* _keys;
-    T* _values;
-    U* _indices;
-    U[] _lengthTable;
-
-    /++
-    +/
-    this()(string[] keys, T[] values) @trusted pure nothrow
-    {
-        import mir.array.allocation: array;
-        import mir.ndslice.sorting: makeIndex;
-        import mir.ndslice.topology: iota, indexed;
-        import mir.string_table: smallerStringFirst;
-
-        assert(keys.length == values.length);
-        if (keys.length == 0)
-            return;
-        _length = keys.length;
-        _keys = keys.ptr;
-        _values = values.ptr;
-        _indices = keys.makeIndex!(U, smallerStringFirst).ptr;
-        auto sortedKeys = _keys.indexed(indices);
-        size_t maxKeyLength = sortedKeys[$ - 1].length;
-        _lengthTable = new U[maxKeyLength + 2];
-
-        size_t ski;
-        foreach (length; 0 .. maxKeyLength + 1)
-        {
-            while(ski < sortedKeys.length && sortedKeys[ski].length == length)
-                ski++;
-            _lengthTable[length + 1] = cast(U)ski;
-        }
-    }
-
-    void insertAt()(string key, T value, size_t i) @trusted
-    {
-        pragma(inline, false);
-
-        assert(i <= length);
-        {
-            auto a = keys;
-            a ~= key;
-            _keys = a.ptr;
-        }
-        {
-            auto a = values;
-            a ~= move(value);
-            _values = a.ptr;
-        }
-        {
-            auto a = indices;
-            a ~= 0;
-            _indices = a.ptr;
-
-            if (__ctfe)
-            {
-                foreach_reverse (idx; i .. length)
-                {
-                    _indices[idx + 1] = _indices[idx];
-                }
-            }
-            else
-            {
-                import core.stdc.string: memmove;
-                memmove(_indices + i + 1, _indices + i, (length - i) * U.sizeof);
-            }
-            assert(length <= U.max);
-            _indices[i] = cast(U)length;
-            _length++;
-        }
-        {
-            if (key.length + 2 <= lengthTable.length)
-            {
-                ++lengthTable[key.length + 1 .. $];
-            }
-            else
-            {
-                auto oldLen = _lengthTable.length;
-                _lengthTable.length = key.length + 2;
-                auto oldVal = oldLen ? _lengthTable[oldLen - 1] : 0;
-                _lengthTable[oldLen .. key.length + 1] =  oldVal;
-                _lengthTable[key.length + 1] =  oldVal + 1;
-            }
-        }
-    }
-
-    void removeAt()(size_t i)
-    {
-        assert(i < length);
-        auto j = _indices[i];
-        assert(j < length);
-        {
-            --_lengthTable[_keys[j].length + 1 .. $];
-        }
-        {
-            if (__ctfe)
-            {
-                foreach (idx; i .. length)
-                {
-                    _indices[idx] = _indices[idx + 1];
-                    _indices[idx] = _indices[idx + 1];
-                }
-            }
-            else
-            {
-                import core.stdc.string: memmove;
-                memmove(_indices + i, _indices + i + 1, (length - 1 - i) * U.sizeof);
-            }
-            foreach (ref elem; indices[0 .. $ - 1])
-                if (elem > j)
-                    elem--;
-        }
-        {
-            if (__ctfe)
-            {
-                foreach_reverse (idx; j .. length - 1)
-                {
-                    _keys[idx] = _keys[idx + 1];
-                    _values[idx] = move(_values[idx + 1]);
-                }
-            }
-            else
-            {
-                import core.stdc.string: memmove;
-                import mir.conv: emplaceRef;
-                destroy!false(_values[j]);
-                memmove(_keys + j, _keys + j + 1, (length - 1 - j) * string.sizeof);
-                memmove(_values + j, _values + j + 1, (length - 1 - j) * T.sizeof);
-                emplaceRef(_values[length - 1]);
-            }
-        }
-        _length--;
-        _lengthTable = _lengthTable[0 .. length ? _keys[_indices[length - 1]].length + 2 : 0];
-    }
-
-    size_t length()() @safe pure nothrow @nogc const @property
-    {
-        return _length;
-    }
-
-    inout(string)[] keys()() @trusted inout @property
-    {
-        return _keys[0 .. _length];
-    }
-
-    inout(T)[] values()() @trusted inout @property
-    {
-        return _values[0 .. _length];
-    }
-
-    inout(U)[] indices()() @trusted inout @property
-    {
-        return _indices[0 .. _length];
-    }
-
-    inout(U)[] lengthTable()() @trusted inout @property
-    {
-        return _lengthTable;
-    }
-
-    auto sortedKeys()() @trusted const @property
-    {
-        import mir.ndslice.topology: indexed;
-        return _keys.indexed(indices);
-    }
-
-    bool findIndex()(scope const(char)[] key, ref size_t index) @trusted pure nothrow @nogc const
-    {
-        import mir.utility: _expect;
-        if (_expect(key.length + 1 < _lengthTable.length, true))
-        {
-
-            // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
-            // 0 1 2 3 4 5 6   8 9 10    12          16
-
-            auto low = _lengthTable[key.length] + 0u;
-            auto high = _lengthTable[key.length + 1] + 0u;
-            while (low < high)
-            {
-                const mid = (low + high) / 2;
-
-                import core.stdc.string: memcmp;
-                int r = void;
-
-                if (__ctfe)
-                    r = __cmp(key, _keys[_indices[mid]]);
-                else
-                    r = memcmp(key.ptr, _keys[_indices[mid]].ptr, key.length);
-
-                if (r == 0)
-                {
-                    index = mid;
-                    return true;
-                }
-                if (r > 0)
-                    low = mid + 1;
-                else
-                    high = mid;
-            }
-            index = low;
-        }
-        return false;
-    }
 }
 
 version(mir_test)
