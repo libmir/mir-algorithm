@@ -619,6 +619,16 @@ struct Spline(F, size_t N = 1, X = F)
 
 @fmamath extern(D):
 
+    bool opEquals()(auto ref scope const typeof(this) rhs) scope const @trusted pure nothrow @nogc
+    {
+        if (rhs._data != this._data)
+            return false;
+        static foreach (d; 0 .. N)
+            if (gridScopeView!d != rhs.gridScopeView!d)
+                return false;
+        return true;
+    }
+
     /++
     +/
     this(Repeat!(N, Slice!(RCI!(immutable X))) grid) @safe @nogc

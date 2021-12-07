@@ -84,6 +84,16 @@ struct Constant(F, size_t N = 1, X = F)
 
 extern(D):
 
+    bool opEquals()(auto ref scope const typeof(this) rhs) scope const @trusted pure nothrow @nogc
+    {
+        if (rhs._data != this._data)
+            return false;
+        static foreach (d; 0 .. N)
+            if (gridScopeView!d != rhs.gridScopeView!d)
+                return false;
+        return true;
+    }
+
     /++
     +/
     this(Repeat!(N, Slice!(RCI!(immutable X))) grid, Slice!(RCI!(const F), N) data) @safe @nogc

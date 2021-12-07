@@ -109,19 +109,29 @@ struct mir_rcptr(T)
     /// ditto
     bool opEquals(Y)(auto ref scope const ThisTemplate!Y rhs) @safe scope const pure nothrow @nogc
     {
-        return _thisPtr == rhs._thisPtr;
+        if (_thisPtr is null)
+            return rhs._thisPtr is null;
+        if (rhs._thisPtr is null)
+            return false;
+        return _get_value == rhs._get_value;
     }
 
     ///
-    sizediff_t opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc
+    auto opCmp(Y)(auto ref scope const ThisTemplate!Y rhs) @trusted scope const pure nothrow @nogc
     {
-        return cast(void*)_thisPtr - cast(void*)rhs._thisPtr;
+        if (_thisPtr is null)
+            return (rhs._thisPtr is null) - 1;
+        if (rhs._thisPtr is null)
+            return 1;
+        return _get_value.opCmp(rhs._get_value);
     }
 
     ///
     size_t toHash() @trusted scope const pure nothrow @nogc
     {
-        return cast(size_t) _thisPtr;
+        if (_thisPtr is null)
+            return 0;
+        return hashOf(_get_value);
     }
 
     ///
@@ -331,6 +341,11 @@ unittest
     static class C
     {
         int index = 34;
+
+        override size_t toHash() const scope @safe pure nothrow @nogc
+        {
+            return index;
+        }
     }
     assert(createRC!C.index == 34);
 }
@@ -340,13 +355,29 @@ version(mir_test)
 @safe pure @nogc nothrow
 unittest
 {
-    static interface I { ref double bar() @safe pure nothrow @nogc; }
-    static abstract class D { int index; }
+    static interface I {
+        ref double bar() @safe pure nothrow @nogc;
+        size_t toHash() @trusted scope const pure nothrow @nogc;
+    }
+    static abstract class D
+    {
+        int index;
+
+        override size_t toHash() const scope @safe pure nothrow @nogc
+        {
+            return index;
+        }
+    }
     static class C : D, I
     {
         double value;
         ref double bar() @safe pure nothrow @nogc { return value; }
-        this(double d) { value = d; }
+        this(double d){ value = d; }
+
+        override size_t toHash() const scope @safe pure nothrow @nogc
+        {
+            return hashOf(value, super.toHash);
+        }
     }
     auto a = createRC!C(10);
     assert(a._counter == 1);

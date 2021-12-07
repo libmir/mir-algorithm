@@ -103,6 +103,16 @@ struct Generic(X, F)
     /// Grid iterators. $(RED For internal use.)
     RCI!(immutable X) _grid;
 
+    bool opEquals()(auto ref scope const typeof(this) rhs) scope const @trusted pure nothrow @nogc
+    {
+        if (rhs._data != this._data)
+            return false;
+        static foreach (d; 0 .. 1)
+            if (gridScopeView!d != rhs.gridScopeView!d)
+                return false;
+        return true;
+    }
+
 extern(D):
 
     /++
