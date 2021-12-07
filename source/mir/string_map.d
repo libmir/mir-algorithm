@@ -46,7 +46,9 @@ struct StringMap(T, U = uint)
         if (keys != rhs.keys)
             return false;
         if (implementation)
-            return implementation.values == rhs.implementation.values;
+            foreach (const i; 0 .. implementation._length)
+                if (implementation.values[i] != rhs.implementation.values[i]) // needs `values` instead of `_values` to be @safe
+                    return false;
         return true;
     }
     /// ditto
