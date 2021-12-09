@@ -532,7 +532,7 @@ struct StringMap(T, U = uint)
     /++
     Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
     +/
-    ref inout(T) opIndex()(scope const(char)[] key) @trusted pure inout //@nogc
+    ref inout(T) opIndex()(scope const(char)[] key) @trusted pure inout nothrow @nogc
     {
         size_t index;
         if (implementation && implementation.findIndex(key, index))
@@ -542,8 +542,9 @@ struct StringMap(T, U = uint)
             assert (index < length);
             return implementation._values[index];
         }
-        import mir.exception: MirException;
-        throw new MirException("No member: ", key);
+        import core.exception : onRangeError;
+        onRangeError();
+        return implementation._values[0]; // TODO: remove when onRangeError is noreturn
     }
 
     version(mir_test) static if (is(T == int))
