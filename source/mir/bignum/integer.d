@@ -318,6 +318,208 @@ struct BigInt(uint maxSize64)
     }
 
     /++
+    Performs `big /= rhs` operation.
+    Params:
+        rhs = unsigned value to divide by
+    Returns:
+        quotient from division
+    +/
+    ref opOpAssign(string op : "/", size_t size)(UInt!size rhs)
+        @safe pure nothrow @nogc return
+    {
+        import mir.bignum.low_level_view : divm, BigUIntView;
+
+        enum m = ((data.length * (size_t.sizeof * 8)) / (uint.sizeof * 8));
+
+        if (length)
+        {
+            uint[m + 1] _div = void;
+            // shouldn't be unaligned here -- maybe a possibility though
+            _div[0 .. $ - 1] = cast(uint[m])data;
+            _div[$ - 1] = 0;
+
+            BigUIntView!uint dividend = BigUIntView!uint(_div);
+            BigUIntView!uint divisor = cast(BigUIntView!uint)rhs.view;
+            BigUIntView!uint quotient = cast(BigUIntView!uint)view.unsigned;
+            data = 0;
+            divm(dividend, divisor, quotient);
+            length = cast(uint)view.normalized.coefficients.length;
+        }
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "/")(ulong rhs)
+        @safe pure nothrow @nogc return
+    {
+        if (length)
+        {
+            return this.opOpAssign!"/"(UInt!64(rhs));
+        }
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "/")(long rhs)
+        @safe pure nothrow @nogc return
+    {
+        if (length)
+        {
+            ulong div = rhs < 0 ? rhs * -1 : rhs;
+            auto result = this.opOpAssign!"/"(div);
+            // If this is a negative number, then we should keep the negative sign if rhs > 0.
+            // If it is not, then we should check if we're dividing by a negative number (rhs < 0),
+            // and apply the negative sign as such.
+            this.sign = result.sign ? rhs > 0 : rhs < 0; 
+        }
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "/", size_t rhsMaxSize64)(const ref BigInt!rhsMaxSize64 rhs)
+        @safe pure nothrow @nogc return
+    {
+        import mir.bignum.low_level_view : divm, BigUIntView;
+
+        enum m = (data.length * (size_t.sizeof * 8)), n = (rhsMaxSize64 / (uint.sizeof * 8));
+
+        if (length)
+        {
+            UInt!(m + (size_t.sizeof * 8)) _div;
+            // shouldn't be unaligned here -- maybe a possibility though
+            _div.data[0 .. $ - 1] = data;
+
+            BigUIntView!uint dividend = cast(BigUIntView!uint)_div.view;
+            BigUIntView!uint divisor = cast(BigUIntView!uint)rhs.view.unsigned;
+            BigUIntView!uint quotient = cast(BigUIntView!uint)view.unsigned;
+            data = 0;
+            divm(dividend, divisor, quotient);
+            length = cast(uint)view.normalized.coefficients.length;
+
+            // If this is a negative number, then we should keep the negative sign if we are not negative.
+            // If we are not negative, then we should check if we're dividing by a negative number (,
+            // and apply the negative sign as such.
+            this.sign = rhs.sign ? this.sign != rhs.sign : this.sign;
+        }
+        return this;
+    }
+
+    /++
+    Performs `big %= rhs` operation.
+    Params:
+        rhs = unsigned value to divide by
+    Returns:
+        remainder from division
+    +/
+    ref opOpAssign(string op : "%", size_t size)(UInt!size rhs)
+        @safe pure nothrow @nogc return
+    {
+        import mir.bignum.low_level_view : divm, BigUIntView;
+
+        enum m = ((data.length * (size_t.sizeof * 8)) / (uint.sizeof * 8));
+
+        if (length)
+        {
+            uint[m+1] _div = void;
+            // We don't necessarily care about the quotient,
+            // so we should avoid an expensive 0-initialization here.
+            uint[m] q = void;
+            // shouldn't be unaligned here -- maybe a possibility though
+            _div[0 .. $ - 1] = cast(uint[m])data;
+            _div[$ - 1] = 0;
+
+            BigUIntView!uint dividend = BigUIntView!uint(_div);
+            BigUIntView!uint divisor = cast(BigUIntView!uint)rhs.view;
+            BigUIntView!uint quotient = BigUIntView!uint(q); 
+            divm(dividend, divisor, quotient);
+
+            data = 0;
+            // FIXME: ugly ugly cast
+            (cast(uint[m])data)[0 .. dividend.coefficients.length] = dividend.coefficients;
+            auto normLen = cast(uint)dividend.normalized.coefficients.length;
+
+            static if (uint.sizeof != size_t.sizeof) {
+                // Round up where size_t is not as large as uint
+                normLen += (normLen % (size_t.sizeof / uint.sizeof));
+            } 
+            length = (normLen * (uint.sizeof * 8)) / (size_t.sizeof * 8);
+        }
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "%")(ulong rhs)
+        @safe pure nothrow @nogc return
+    {
+        if (length)
+        {
+            return this.opOpAssign!"%"(UInt!64(rhs));
+        }
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "%")(long rhs)
+        @safe pure nothrow @nogc return
+    {
+        if (length)
+        {
+            ulong div = rhs < 0 ? rhs * -1 : rhs;
+            this.opOpAssign!"%"(div);
+
+            // Add back if it is necessary (XXX: is this even correct??) 
+            if ((this.sign && rhs > 0) || (!this.sign && rhs < 0))
+            {
+                this.opOpAssign!("+")(BigIntView!(const size_t)(UInt!64(div).view, rhs < 0));
+            }
+        }
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "%", size_t rhsMaxSize64)(ref const BigInt!rhsMaxSize64 rhs)
+    {
+        import mir.bignum.low_level_view : divm, BigUIntView;
+
+        enum m = ((data.length * (size_t.sizeof * 8)) / (uint.sizeof * 8));
+
+        if (length)
+        {
+            uint[m+1] _div = void;
+            // We don't necessarily care about the quotient,
+            // so we should avoid an expensive 0-initialization here.
+            uint[m] q = void;
+            // shouldn't be unaligned here -- maybe a possibility though
+            _div[0 .. $ - 1] = cast(uint[m])data;
+            _div[$ - 1] = 0;
+
+            BigUIntView!uint dividend = BigUIntView!uint(_div);
+            BigUIntView!uint divisor = cast(BigUIntView!uint)rhs.view.unsigned;
+            BigUIntView!uint quotient = BigUIntView!uint(q); 
+            divm(dividend, divisor, quotient);
+
+            data = 0;
+            (cast(uint[m])data)[0 .. dividend.coefficients.length] = dividend.coefficients;
+
+            // Round to even upwards
+            auto normLen = cast(uint)dividend.normalized.coefficients.length;
+
+            static if (uint.sizeof != size_t.sizeof) {
+                // Round up where size_t is not as large as uint
+                normLen += (normLen % (size_t.sizeof / uint.sizeof));
+            } 
+            length = (normLen * (uint.sizeof * 8)) / (size_t.sizeof * 8);
+            // Add back if it is necessary (XXX: is this even correct??) 
+            if ((this.sign && !rhs.sign) || (!this.sign && rhs.sign))
+            {
+                this.opOpAssign!("+")(rhs);
+            }
+        }
+
+        return this;
+    }
+
+    /++
     Performs `size_t overflow = big *= fixed` operatrion.
     Params:
         rhs = unsigned value to multiply by
@@ -363,7 +565,6 @@ struct BigInt(uint maxSize64)
         }
         return overflow;
     }
-
     /++
     +/
     static BigInt fromHexString(bool allowUnderscores = false)(scope const(char)[] str)
@@ -646,6 +847,94 @@ struct BigInt(uint maxSize64)
     }
 }
 
+
+///
+version(mir_bignum_test)
+unittest
+{
+    import mir.bignum.fixed;
+    import mir.bignum.low_level_view;
+
+    {
+        auto a = BigInt!4.fromHexString("c39b18a9f06fd8e962d99935cea0707f79a222050aaeaaaed17feb7aa76999d7");
+        auto b = UInt!128.fromHexString("f79a222050aaeaaa417fa25a2ac93291");
+
+        assert((a /= b) == BigInt!4.fromHexString("ca3d7e25aebe687b7cc1b250b44690fb"));
+        a = BigInt!4.fromHexString("c39b18a9f06fd8e962d99935cea0707f79a222050aaeaaaed17feb7aa76999d7");
+        assert((a %= b) == BigInt!4.fromHexString("bf4c87424431d21563f23b1fc00d75ac"));
+    }
+
+    {
+        auto a = BigInt!4.fromHexString("7fff000080000000000000000000");
+        auto b = UInt!128.fromHexString("80000000000000000001"); 
+
+        assert((a /= b) == BigInt!4.fromHexString("fffe0000"));
+        a = BigInt!4.fromHexString("7fff000080000000000000000000");
+        assert((a %= b) == BigInt!4.fromHexString("7fffffffffff00020000"));
+    }
+
+    {
+        auto a = BigInt!16.fromHexString("76d053cdcc87ec8c9455c375d6a08c799fad73cf07415e70af5dfacaff4bd306647a7cceb98839cce89ae65900938821564fd2af3c9d881c172264bb17e3530ce79b938d5eb7ffec558be43ab5b684978417c5053fb8df63fc65c9efd8b2e86469c53259509eb597f81647930f24ef05a79bfecf04e5ec52414c6a3f7481d533");
+        auto b = UInt!128.fromHexString("9c5c1aa6ad7ad18065a3a74598e27bee");
+
+        assert((a /= b) == BigInt!16.fromHexString("c2871f2b07522bda1e63de12850d2208bb242c716b5739d6744ee1d9c937b8d765d3742e18785d08c2405e5c83f3c875d5726d09dfaee29e813675a4f91bfee01e8cbbbca9588325d54cf2a625faffde4d8709e0517f786f609d8ce6997e0e71d2f976ae169b0c4be7a7dba3135af96c"));
+        a = BigInt!16.fromHexString("76d053cdcc87ec8c9455c375d6a08c799fad73cf07415e70af5dfacaff4bd306647a7cceb98839cce89ae65900938821564fd2af3c9d881c172264bb17e3530ce79b938d5eb7ffec558be43ab5b684978417c5053fb8df63fc65c9efd8b2e86469c53259509eb597f81647930f24ef05a79bfecf04e5ec52414c6a3f7481d533");
+        assert((a %= b) == BigInt!16.fromHexString("85d81587a8b62af1874315d26ebf0ecb"));
+    }
+
+    {
+        auto a = BigInt!4.fromHexString("DEADBEEF");
+        auto b = UInt!256.fromHexString("18aeff9fa4aace484a9f8f9002cdf38fa6e53fc0f6c035051dc86931c1c08316");
+
+        assert((a /= b) == 0);
+        a = BigInt!4.fromHexString("DEADBEEF");
+        assert((a %= b) == 0xDEADBEEF);
+    }
+
+    {
+        auto a = BigInt!4.fromHexString("DEADBEEF");
+        assert((a /= -0xDEADL) == -65536);
+        a = BigInt!4.fromHexString("DEADBEEF"); 
+        assert((a %= 0xDEADL) == 48879);
+        a = BigInt!4.fromHexString("DEADBEEF"); 
+        assert((a %= -0xDEADL) == -8126);
+        a = BigInt!4.fromHexString("-DEADBEEF");
+        assert((a %= 0xDEADL) == 8126);
+        a = BigInt!4.fromHexString("-DEADBEEF");
+        assert((a %= -0xDEADL) == -48879);
+    }
+
+    {
+        // Test whether or not our sign flipping is actually correct in division
+        auto a = BigInt!4.fromHexString("DEADBEEF");
+        auto b = BigInt!4.fromHexString("DEAD");
+        assert((a /= b) == 65536);
+        a = BigInt!4.fromHexString("-DEADBEEF");
+        b = BigInt!4.fromHexString("DEAD");
+        assert((a /= b) == -65536);
+        a = BigInt!4.fromHexString("DEADBEEF");
+        b = BigInt!4.fromHexString("-DEAD");
+        assert((a /= b) == -65536);
+        a = BigInt!4.fromHexString("-DEADBEEF");
+        b = BigInt!4.fromHexString("-DEAD");
+        assert((a /= b) == 65536);
+
+        // Test whether or not our sign flipping is actually correct in rem
+        a = BigInt!4.fromHexString("DEADBEEF");
+        b = BigInt!4.fromHexString("DEAD");
+        assert((a %= b) == 48879);
+        a = BigInt!4.fromHexString("DEADBEEF");
+        b = BigInt!4.fromHexString("-DEAD");
+        assert((a %= b) == -8126);
+        a = BigInt!4.fromHexString("-DEADBEEF");
+        b = BigInt!4.fromHexString("DEAD");
+        assert((a %= b) == 8126);
+        a = BigInt!4.fromHexString("-DEADBEEF");
+        b = BigInt!4.fromHexString("-DEAD");
+        assert((a %= b) == -48879);
+    }
+    
+}
 
 ///
 version(mir_bignum_test)

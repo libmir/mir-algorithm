@@ -123,6 +123,207 @@ version(mir_bignum_test)
 }
 
 /++
+Performs `q = u / v, u = u % v` (unsigned)
+Params:
+    _u = The dividend (which will contain the remainder after the algorithm has run)
+    _v = The divisor
+    _q = The quotient
+Preconditions:
+    * non-empty coefficients
+    * little-endian order
+    * _u.coefficients.length >= _u.normalized.coefficients.length + 1
+    * _v.coefficients.length >= _v.normalized.coefficients.length
+    * _q.coefficients.length >= (_u.normalized.coefficients.length - _v.normalized.coefficients.length) + 1
++/
+void divm(scope ref BigUIntView!uint _u, scope BigUIntView!uint _v, scope ref BigUIntView!uint _q)
+    @trusted pure nothrow @nogc
+{
+    // Adopted from Hacker's Delight (2nd Edition), 4-2
+    // License permits inclusion:
+    // You are free to use, copy, and distribute any of the code on this web site, whether modified by you or not.
+    // You need not give attribution. This includes the algorithms (some of which appear in Hacker's Delight), the Hacker's Assistant, and any code submitted by readers. Submitters implicitly agree to this.
+    // The textural material and pictures are copyright by the author, and the usual copyright rules apply. E.g., you may store the material on your computer and make hard or soft copies for your own use.
+    // However, you may not incorporate this material into another publication without written permission from the author (which the author may give by email).
+    // The author has taken care in the preparation of this material, but makes no expressed or implied warranty of any kind and assumes no responsibility for errors or omissions.
+    // No liability is assumed for incidental or consequential damages in connection with or arising out of the use of the information or programs contained herein. 
+    import mir.bitop: ctlz;
+    import mir.utility: _expect;
+
+    enum shift = (uint.sizeof * 8);
+
+    // Convert all of our input arguments to little-endian
+    auto u = _u.leastSignificantFirst();
+    auto v = _v.leastSignificantFirst();
+    auto q = _q.leastSignificantFirst();
+    size_t m = _u.normalized.coefficients.length, n = _v.normalized.coefficients.length;
+
+    assert(m != 0 && n != 0);
+    assert(_u.coefficients.length >= m + 1, "Dividend array is too small (should be m+1)");
+    assert(_v.coefficients.length >= n, "Divisor array is too small");
+    assert(v[n - 1] != 0);
+
+    // Handle a common edge case with division (where the dividend is smaller then the divisor)
+    // We don't care about how big the quotient array is here (and in fact, our math will fail)
+    // since we just dump the dividend into the remainder 
+    if (_expect(m < n, false))
+    {
+        _u.coefficients = _u.normalized.coefficients;
+        return;
+    }
+
+    // From this point on, now we care if the quotient array is appropriately sized
+    assert(_q.coefficients.length >= (m - n) + 1, "Quotient array is too small");
+
+    // According to Knuth, when the divisor length is equal to one,
+    // we should fall back to a simplified algorithm
+    if (_expect(n == 1, false))
+    {
+        uint k = 0;
+        foreach_reverse(j; 0 .. m)
+        {
+            // Same optimization as down below (left-shifting / ORing in place of multiplication / addition)
+            auto ut = ((cast(ulong)(k) << shift) | u[j]); 
+            q[j] = cast(uint)(ut / v[0]);
+            k = cast(uint)(ut % v[0]);
+            u[j] = 0;
+        }
+        _u.leastSignificant = k;
+    }
+    else
+    {
+        // pre-condition for this algorithm to succeed.
+        // assert(m >= n, "failed algorithm pre-condition");
+
+        // D1: Normalize
+        // In TAOCP, this is specified as b/(v[n - 1] + 1)
+        auto s = cast(uint)ctlz(v[n - 1]);
+        assert(s <= 31 && s >= 0);
+
+        // This normally uses a for loop, but we just use
+        // a LLV primitive here instead.
+        _v.smallLeftShiftInPlace(s);
+        _u.smallLeftShiftInPlace(s);
+
+        foreach_reverse(j; 0 .. (m - n) + 1)
+        {
+            // D3: Calculate qhat, rhat == remainder
+            // In TOACP, this is specified as u[j+n]*b + u[j+n-1] / v[n - 1]
+            // but, since we assume b is a power of 2, we can rewrite it to just
+            // use left-shifting (as left-shifting effectively multiples by powers of 2)
+            // and use an OR in place of the addition (as we've cleared the bottom 32 bits)
+            auto ut = ((cast(ulong)(u[j+n]) << shift) | u[j + n - 1]); 
+            ulong qhat = ut / v[n - 1];
+            ulong rhat = ut % v[n - 1];
+
+            // Similarly here, this is specified as qhat*v[n-2] > rhat*b + u[j+n-2]
+            // but we can just get away with a shift instead.
+            while (qhat >= uint.max || qhat*v[n-2] > (rhat << shift) + u[j+n-2])
+            {
+                qhat -= 1;
+                rhat += v[n - 1];
+
+                if (rhat > uint.max)
+                {
+                    break;
+                }
+            }
+
+            long t = 0, k = 0;
+            // D4: Multiply and subtract
+            foreach(i; 0 .. n)
+            {
+                ulong p = qhat * v[i];
+                // t = u[i + j] - k - (p & cast(uint)((ulong(1) << shift) - 1));
+                t = u[i + j] - k - (cast(uint)p);
+                u[i + j] = cast(uint)t;
+                k = (p >> shift) - (t >> shift);
+            }
+            
+            t = u[j + n] - k;
+            // These are admittedly super sketchy casts, but
+            // we really are only interested in the bottom 32-bits here.
+            u[j + n] = cast(uint)t;
+            q[j] = cast(uint)(qhat);
+            // D5: Test remainder
+            if (_expect(t < 0, false))
+            {
+                q[j] -= 1;
+                k = 0;
+                foreach(i; 0 .. n)
+                {
+                    t = cast(ulong)(u[i + j]) + v[i] + k;
+                    u[i + j] = cast(uint)t;
+                    k = t >> shift;
+                }
+                u[j + n] = cast(uint)(u[j + n] + k);
+            }
+        }
+
+        // D8: Un-normalize (obtain the remainder)
+        _u.smallRightShiftInPlace(s);
+        _v.smallRightShiftInPlace(s);
+    }
+
+    // Finally, normalize these when they're "headed out the door"
+    _u.coefficients = _u.normalized.coefficients;
+    _q.coefficients = _q.normalized.coefficients;
+}
+
+///
+version(mir_bignum_test)
+unittest
+{
+    import mir.bignum.fixed: UInt;
+    import mir.bignum.low_level_view: BigUIntView;
+
+    {
+        // Test division by a single-digit divisor here.
+        auto dividend = BigUIntView!uint.fromHexString("000000005");
+        auto divisor = BigUIntView!uint.fromHexString("5");
+        auto quotient = BigUIntView!uint.fromHexString("0");
+        // auto remainder = BigUIntView!uint.fromHexString("0");
+
+        divm(dividend, divisor, quotient);
+        assert(quotient == BigUIntView!uint.fromHexString("1"));
+        assert(dividend.coefficients.length == 0);
+    }
+
+    {
+        // Test division by a single-digit divisor here.
+        auto dividend = BigUIntView!uint.fromHexString("055a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf");
+        auto divisor = BigUIntView!uint.fromHexString("5");
+        auto quotient = BigUIntView!uint.fromHexString("0000000000000000000000000000000000000000000000000000000000000000");
+        divm(dividend, divisor, quotient);
+        assert(dividend.normalized == BigUIntView!uint.fromHexString("3"));
+        assert(quotient == BigUIntView!uint.fromHexString("1120a1229e8a217d0691b02b819107174a4b677088ef0df874259b283c1d588c"));
+    }
+
+    // Test big number division
+    {
+        auto dividend = BigUIntView!uint.fromHexString("055a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf0b5e2e2c7771cd472ae5d7acdb159a56fbf74f851a058ae341f69d1eb750d7e3");
+        auto divisor = BigUIntView!uint.fromHexString("55e5669576d31726f4a9b58a90159de5923adc6c762ebd3c4ba518d495229072");
+        auto quotient = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000");
+        // auto remainder = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+
+        divm(dividend, divisor, quotient);
+        assert(quotient.normalized == BigUIntView!uint.fromHexString("ff3a8aa4da35237811a0ffbf007fe938630dee8a810f2f82ae01f80c033291f6"));
+        assert(dividend.normalized == BigUIntView!uint.fromHexString("27926263cf248bef1c2cd63ea004d9f7041bffc8568560ec30fc9a9548057857"));
+    }
+
+    // Trigger the adding back sequence
+    {
+        auto dividend = BigUIntView!uint.fromHexString("0800000000000000000000003");
+        auto divisor = BigUIntView!uint.fromHexString("200000000000000000000001");
+        auto quotient = BigUIntView!uint.fromHexString("0");
+        // auto remainder = BigUIntView!uint.fromHexString("000000000000000000000000");
+        divm(dividend, divisor, quotient);
+        assert(quotient == BigUIntView!uint.fromHexString("3"));
+        assert(dividend == BigUIntView!uint.fromHexString("200000000000000000000000"));
+    }
+    
+}
+
+/++
 Arbitrary length unsigned integer view.
 +/
 struct BigUIntView(W, WordEndian endian = TargetEndian)
