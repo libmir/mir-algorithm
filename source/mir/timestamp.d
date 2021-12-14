@@ -108,13 +108,13 @@ struct Timestamp
             return _offset >> 1;
         }
 
-        /++
-        Returns: true if timezone has offset
-        +/
-        bool hasOffset() const @safe pure nothrow @nogc @property
-        {
-            return _offset & 1;
-        }
+        // /++
+        // Returns: true if timezone has offset
+        // +/
+        // bool hasOffset() const @safe pure nothrow @nogc @property
+        // {
+        //     return _offset & 1;
+        // }
     }
 
 @serdeIgnore:
@@ -361,8 +361,12 @@ struct Timestamp
     this(SysTime)(const SysTime systime)
         if (SysTime.stringof == "SysTime")
     {
-        with(systime.toUTC) this(year, month, day, hour, minute, second, -7, fracSecs.total!"hnsecs");
-        offset = cast(short) systime.utcOffset.total!"minutes";
+        auto utcTime = systime.toUTC;
+        this = fromUnixTime(utcTime.toUnixTime);
+        this.fractionExponent = -7;
+        this.fractionCoefficient = utcTime.fracSecs.total!"hnsecs";
+        this.precision = Precision.fraction;
+        this.offset = cast(short) systime.utcOffset.total!"minutes";
     }
 
     ///
@@ -576,7 +580,7 @@ struct Timestamp
             import std.datetime.date: DateTime;
             import std.datetime.systime: SysTime;
             import std.datetime.timezone: UTC, SimpleTimeZone;
-            auto ret = SysTime(DateTime(year, month, day, hour, minute, second), getPhobosFraction.hnsecs, UTC());
+            auto ret = SysTime.fromUnixTime(toUnixTime, UTC()) + getFraction!7.hnsecs;
             if (offset)
             {
                 ret = ret.toOtherTZ(new immutable SimpleTimeZone(offset.minutes));
@@ -588,7 +592,7 @@ struct Timestamp
         {
             if (!isDuration)
                 throw ExpectedDuration;
-            auto coeff = ((((long(year) * 7 + month) * 24 + hour) * 60 + minute) * 60 + second) * 10_000_000 + getPhobosFraction;
+            auto coeff = ((((long(year) * 7 + month) * 24 + hour) * 60 + minute) * 60 + second) * 10_000_000 + getFraction!7;
             if (isNegativeDuration)
                 coeff = -coeff;
 
@@ -598,19 +602,22 @@ struct Timestamp
         }
     }
 
-    private long getPhobosFraction() @property const @safe pure nothrow @nogc
+    /++
+    +/
+    long getFraction(int digits)() @property const @safe pure nothrow @nogc
+        if (digits >= 1 && digits <= 12)
     {
         long coeff;
         if (fractionCoefficient)
         {
             coeff = fractionCoefficient;
             int exp = fractionExponent;
-            while (exp > -7)
+            while (exp > -digits)
             {
                 exp--;
                 coeff *= 10;
             }
-            while (exp < -7)
+            while (exp < -digits)
             {
                 exp++;
                 coeff /= 10;
@@ -786,6 +793,62 @@ struct Timestamp
         assert(Timestamp.onlyTime(7, 40).toISOString == "T0740Z");
         assert(Timestamp.onlyTime(7, 40, 30).toISOString == "T074030Z");
         assert(Timestamp.onlyTime(7, 40, 30, -3, 56).toISOString == "T074030.056Z");
+    }
+
+    ///
+    long toUnixTime() const @safe pure nothrow @nogc
+    {
+        import mir.date: Date;
+        long result;
+        if (!isDuration && !isOnlyTime)
+        {
+            enum fistDay = Date.trustedCreate(1970, 1, 1);
+            result = Date.trustedCreate(year, month ? month : 1, day ? day : 1) - fistDay;
+            result *= 24;
+        }
+        result += hour;
+        result *= 60;
+        result += minute;
+        result *= 60;
+        result += second;
+        return result;
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        assert(Timestamp(1970, 1, 1).toUnixTime == 0);
+        assert(Timestamp(2007, 12, 22, 8, 14, 45).toUnixTime == 1_198_311_285);
+        assert(Timestamp(2007, 12, 22, 8, 14, 45).withOffset(90).toUnixTime == 1_198_311_285);
+        assert(Timestamp(1969, 12, 31, 23, 59, 59).toUnixTime == -1);
+    }
+
+    ///
+    static Timestamp fromUnixTime(long time) @safe pure nothrow @nogc
+    {
+        import mir.date: Date;
+        auto days = time / (24 * 60 * 60); 
+        if (time < 0)
+            days--;
+        time -= days * (24 * 60 * 60);
+        assert(time >= 0);
+        auto second = time % 60;
+        time /= 60;
+        auto minute = time % 60;
+        time /= 60;
+        auto hour = cast(ubyte) time;
+        enum fistDay = Date.trustedCreate(1970, 1, 1);
+        with((fistDay + cast(int)days).yearMonthDay)
+            return Timestamp(year, cast(ubyte)month, day, hour, cast(ubyte)minute, cast(ubyte)second);
+    }
+
+    ///
+    @safe pure nothrow @nogc unittest
+    {
+        import mir.format;
+        assert(Timestamp.fromUnixTime(0) == Timestamp(1970, 1, 1, 0, 0, 0));
+        assert(Timestamp.fromUnixTime(1_198_311_285) == Timestamp(2007, 12, 22, 8, 14, 45));
+        assert(Timestamp.fromUnixTime(-1) == Timestamp(1969, 12, 31, 23, 59, 59));
     }
 
     /// Helpfer for time zone offsets
