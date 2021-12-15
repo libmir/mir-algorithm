@@ -26,7 +26,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
 
     private enum size_t _bufferLength =  bytes / T.sizeof + (bytes % T.sizeof != 0);
     private T[] _buffer;
-    private size_t _currentLength;
+    size_t _currentLength;
 
     version (mir_secure_memory)
         private align(T.alignof) ubyte[_bufferLength * T.sizeof] _scopeBufferPayload;
