@@ -63,6 +63,8 @@ struct Timestamp
         fraction,
     }
 
+@serdeIgnore:
+
     ///
     this(scope const(char)[] str) @safe pure @nogc
     {
@@ -116,8 +118,6 @@ struct Timestamp
         //     return _offset & 1;
         // }
     }
-
-@serdeIgnore:
 
     /++
     Year
@@ -828,9 +828,12 @@ struct Timestamp
     {
         import mir.date: Date;
         auto days = time / (24 * 60 * 60); 
-        if (time < 0)
-            days--;
         time -= days * (24 * 60 * 60);
+        if (time < 0)
+        {
+            days--;
+            time += 24 * 60 * 60;
+        }
         assert(time >= 0);
         auto second = time % 60;
         time /= 60;
@@ -1441,4 +1444,20 @@ struct Timestamp
     {
         return day == 99;
     }
+}
+
+version(mir_test)
+unittest
+{
+    long sec = -2208988800;
+    uint nanosec = 0;
+    auto ts = Timestamp.fromUnixTime(sec);
+    if (nanosec >= 0)
+    {
+        ts.precision = Timestamp.Precision.fraction;
+        ts.fractionCoefficient = nanosec;
+        ts.fractionExponent = -9;
+    }
+    auto ts2 = "1900-01-01T00:00:00.000000000Z".Timestamp;
+    assert(ts == ts2);
 }
