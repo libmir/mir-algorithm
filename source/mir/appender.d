@@ -33,12 +33,12 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     else
         private align(T.alignof) ubyte[_bufferLength * T.sizeof] _scopeBufferPayload = void;
 
-    private ref inout(T[_bufferLength]) _scopeBuffer() inout @trusted scope
+    private ref inout(T[_bufferLength]) _scopeBuffer() inout @trusted return scope
     {
         return *cast(inout(T[_bufferLength])*)&_scopeBufferPayload;
     }
 
-    private T[] prepare(size_t n) @trusted scope
+    private T[] prepare(size_t n) @trusted return scope
     {
         import mir.internal.memory: realloc, malloc;
         _currentLength += n;
@@ -214,7 +214,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
-    inout(T)[] data() inout @property @safe scope
+    inout(T)[] data() inout @property @safe return scope
     {
         return _buffer.length ? _buffer[0 .. _currentLength] : _scopeBuffer[0 .. _currentLength];
     }
