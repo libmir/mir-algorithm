@@ -1280,7 +1280,7 @@ do
         i++;
         T m = (a + b) * 0.5f;
         // This fix is not part of the original algorithm
-        if (!((m.fabs < T.infinity))) // fix infinity loop. Issue can be reproduced in R.
+        if (!(m.fabs < T.infinity)) // fix infinity loop. Issue can be reproduced in R.
         {
             m = a.half + b.half;
         }
@@ -1558,4 +1558,211 @@ struct DiffResult(T)
     T value = 0;
     ///
     T error = 0;
+}
+
+/++
+Integrates function on the interval `[a, b]` using adaptive Gauss-Lobatto algorithm.
+
+References:
+    W. Gander and W. Gautschi. Adaptive Quadrature — Revisited
+
+Params:
+    f = function to integrate. `f` should be valid on interval `[a, b]` including the bounds.
+    a = finite left interval bound
+    b = finite right interval bound
+    tolerance = (optional) relative tolerance should be greater or equal to `T.epsilon`
+
+Returns:
+    Integral value
++/
+T integrate(alias f, T)(const T a, const T b, const T tolerance = T.epsilon)
+    if (__traits(isFloating, T))
+{
+    if (false) // break attributes
+        T y = f(T(1));
+    scope funInst = delegate(T x) {
+        return T(f(x));
+    };
+    scope fun = funInst.trustedAllAttr;
+    return integrateImpl(fun, a, b, tolerance);
+}
+
+/// ditto
+@optmath
+T integrateImpl(T)(
+    scope const T delegate(T) @safe pure nothrow @nogc f,
+    const T a,
+    const T b,
+    const T tolerance = T.epsilon,
+) @safe pure nothrow @nogc
+    if (__traits(isFloating, T))
+in {
+    assert(-T.infinity < a);
+    assert(b < +T.infinity);
+    assert(a < b);
+    assert(tolerance >= T.epsilon);
+}
+do {
+    pragma(inline, false);
+    enum T alpha = 0.816496580927726032732428024901963797322;
+    enum T beta = 0.447213595499957939281834733746255247088;
+    enum T x1 = 0.94288241569947971905635175843185720232;
+    enum T x2 = 0.64185334234978130978123554132903188394;
+    enum T x3 = 0.23638319966214988028222377349205292599;
+    enum T A = 0.015827191973480183087169986733305510591;
+    enum T B = 0.094273840218850045531282505077108171960;
+    enum T C = 0.19507198733658539625363597980210298680;
+    enum T D = 0.18882157396018245442000533937297167125;
+    enum T E = 0.19977340522685852679206802206648840246;
+    enum T F = 0.22492646533333952701601768799639508076;
+    enum T G = 0.24261107190140773379964095790325635233;
+    enum T A1 = 77 / 1470.0L;
+    enum T B1 = 432 / 1470.0L;
+    enum T C1 = 625 / 1470.0L;
+    enum T D1 = 672 / 1470.0L;
+    enum T A2 = 1 / 6.0L;
+    enum T B2 = 5 / 6.0L;
+
+    T m = (a + b) * 0.5f;
+    // This fix is not part of the original algorithm
+    if (!(m.fabs < T.infinity))
+    {
+        m = a.half + b.half;
+    }
+    T h = (b - a) * 0.5f;
+    // This fix is not part of the original algorithm
+    if (!(h.fabs < T.infinity))
+    {
+        h = b.half - a.half;
+    }
+    T fa = f(a);
+    T fb = f(b);
+    T[7] y = [
+        fa + fb,
+        f(m - x1 * h) + f(m + x1 * h),
+        f(m - alpha * h) + f(m + alpha * h),
+        f(m - x2 * h) + f(m + x2 * h),
+        f(m - beta * h) + f(m + beta * h),
+        f(m - x3 * h) + f(m + x3 * h),
+        f(m),
+    ];
+    T i2 = h * (
+        + A2 * y[0]
+        + B2 * y[4]
+    );
+    T i1 = h * (
+        + A1 * y[0]
+        + B1 * y[2]
+        + C1 * y[4]
+        + D1 * y[6]
+    );
+    T si = h * (
+        + A * y[0]
+        + B * y[1]
+        + C * y[2]
+        + D * y[3]
+        + E * y[4]
+        + F * y[5]
+        + G * y[6]
+    );
+    T erri1 = fabs(i1 - si);
+    T erri2 = fabs(i2 - si);
+    T R = erri1 / erri2;
+    T tol = tolerance;
+    if (tol < T.epsilon)
+        tol = T.epsilon;
+    if (0 < R && R < 1)
+        tol /= R;
+    si *= tol / T.epsilon;
+    if (si == 0)
+        si = b - a;
+    
+    if (!(si.fabs < T.infinity))
+        return T.nan;
+
+    T step(const T a, const T b, const T fa, const T fb)
+    {
+        T m = (a + b) * 0.5f;
+        // This fix is not part of the original algorithm
+        if (!(m.fabs < T.infinity))
+        {
+            m = a.half + b.half;
+        }
+        T h = (b - a) * 0.5f;
+        if (!(h.fabs < T.infinity))
+        {
+            h = b.half - a.half;
+        }
+        T[5] x = [
+            m - alpha * h,
+            m - beta * h,
+            m,
+            m + beta * h,
+            m + alpha * h,
+        ];
+        T[5] y = [
+            f(x[0]),
+            f(x[1]),
+            f(x[2]),
+            f(x[3]),
+            f(x[4]),
+        ];
+        T i2 = h * (
+            + A2 * (fa + fb)
+            + B2 * (y[1] + y[3])
+        );
+        T i1 = h * (
+            + A1 * (fa + fb)
+            + B1 * (y[0] + y[4])
+            + C1 * (y[1] + y[3])
+            + D1 * y[2]
+        );
+        if (!(i1.fabs < T.infinity) || (si + (i1 - i2) == si) || !(a < x[0]) || !(x[4] < b))
+        {
+            return i1;
+        }
+        return
+             +(step(   a, x[0],   fa, y[0])
+             + step(x[0], x[1], y[0], y[1]))
+             +(step(x[1], x[2], y[1], y[2])
+             + step(x[2], x[3], y[2], y[3]))
+             +(step(x[3], x[4], y[3], y[4])
+             + step(x[4],    b, y[4],   fb));
+    }
+
+    return step(a, b, fa, fb);
+}
+
+///
+unittest
+{
+    import mir.math.common;
+    import mir.math.constant;
+
+    alias cosh = x => 0.5 * (exp(x) + exp(-x));
+    enum Pi = double(PI);
+
+    assert(integrate!exp(0.0, 1.0).approxEqual(double(E - 1)));
+    assert(integrate!(x => x >= 3)(0.0, 10.0).approxEqual(7.0));
+    assert(integrate!sqrt(0.0, 1.0).approxEqual(2.0 / 3));
+    assert(integrate!(x => 23.0 / 25 * cosh(x) - cos(x))(-1.0, 1.0).approxEqual(0.479428226688801667));
+    assert(integrate!(x => 1 / (x ^^ 4 + x ^^ 2 + 0.9))(-1.0, 1.0).approxEqual(1.5822329637294));
+    assert(integrate!(x => sqrt(x ^^ 3))(0.0, 1.0).approxEqual(0.4));
+    assert(integrate!(x => x ? 1 / sqrt(x) : 0)(0.0, 1.0).approxEqual(2));
+    assert(integrate!(x => 1 / (1 + x ^^ 4))(0.0, 1.0).approxEqual(0.866972987339911));
+    assert(integrate!(x => 2 / (2 + sin(10 * Pi * x)))(0.0, 1.0).approxEqual(1.1547005383793));
+    assert(integrate!(x => 1 / (1 + x))(0.0, 1.0).approxEqual(0.6931471805599));
+    assert(integrate!(x => 1 / (1 + exp(x)))(0.0, 1.0).approxEqual(0.3798854930417));
+    assert(integrate!(x => exp(x) - 1 ? x / (exp(x) - 1) : 0)(0.0, 1.0).approxEqual(0.777504634112248));
+    assert(integrate!(x => sin(100 * Pi * x) / (Pi * x))(0.1, 1.0).approxEqual(0.0090986375391668));
+    assert(integrate!(x => sqrt(50.0) * exp(-50 * Pi * x ^^ 2))(0.0, 10.0).approxEqual(0.5));
+    assert(integrate!(x => 25 * exp(-25 * x))(0.0, 10.0).approxEqual(1.0));
+    assert(integrate!(x => 50 / Pi * (2500 * x ^^ 2 + 1))(0.0, 10.0).approxEqual(1.3263071079268e+7));
+    assert(integrate!(x => 50 * (sin(50 * Pi * x) / (50 * Pi * x)) ^^ 2)(0.01, 1.0).approxEqual(0.11213930374164));
+    assert(integrate!(x => cos(cos(x) + 3 * sin(x) + 2 * cos(2 * x) + 3 * sin(2 * x) + 3 * cos(3 * x)))(0.0, Pi).approxEqual(0.83867634269443));
+    assert(integrate!(x => x > 1e-15 ? log(x) : 0)(0.0, 1.0).approxEqual(-1));
+    assert(integrate!(x => 1 / (x ^^ 2 + 1.005))(-1.0, 1.0).approxEqual(1.5643964440690));
+    assert(integrate!(x => 1 / cosh(20 * (x - 0.2)) + 1 / cosh(400 * (x - 0.04)) + 1 / cosh(8000 * (x - 0.008)))(0.0, 1.0).approxEqual(0.16349495585710));
+    assert(integrate!(x => 4 * Pi ^^ 2 * x * sin(20 * Pi * x) * cos(2 * Pi * x))(0.0, 1.0).approxEqual(-0.6346651825434));
+    assert(integrate!(x => 1 / (1 + (230 * x - 30) ^^ 2))(0.0, 1.0).approxEqual(0.013492485649468));
 }
