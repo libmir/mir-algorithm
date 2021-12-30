@@ -1635,35 +1635,54 @@ do {
     {
         h = b.half - a.half;
     }
-    T fa = f(a);
-    T fb = f(b);
-    T[7] y = [
-        fa + fb,
-        f(m - x1 * h) + f(m + x1 * h),
-        f(m - alpha * h) + f(m + alpha * h),
-        f(m - x2 * h) + f(m + x2 * h),
-        f(m - beta * h) + f(m + beta * h),
-        f(m - x3 * h) + f(m + x3 * h),
-        f(m),
+    T[13] x = [
+        a,
+        m - x1 * h,
+        m - alpha * h,
+        m - x2 * h,
+        m - beta * h,
+        m - x3 * h,
+        m,
+        m + x3 * h,
+        m + beta * h,
+        m + x2 * h,
+        m + alpha * h,
+        m + x1 * h,
+        b,
+    ];
+    T[13] y = [
+        f(x[ 0]),
+        f(x[ 1]),
+        f(x[ 2]),
+        f(x[ 3]),
+        f(x[ 4]),
+        f(x[ 5]),
+        f(x[ 6]),
+        f(x[ 7]),
+        f(x[ 8]),
+        f(x[ 9]),
+        f(x[10]),
+        f(x[11]),
+        f(x[12]),
     ];
     T i2 = h * (
-        + A2 * y[0]
-        + B2 * y[4]
+        + A2 * (y[0] + y[12])
+        + B2 * (y[4] + y[ 8])
     );
     T i1 = h * (
-        + A1 * y[0]
-        + B1 * y[2]
-        + C1 * y[4]
-        + D1 * y[6]
+        + A1 * (y[0] + y[12])
+        + B1 * (y[2] + y[10])
+        + C1 * (y[4] + y[ 8])
+        + D1 * (y[6]        )
     );
     T si = h * (
-        + A * y[0]
-        + B * y[1]
-        + C * y[2]
-        + D * y[3]
-        + E * y[4]
-        + F * y[5]
-        + G * y[6]
+        + A * (y[0] + y[12])
+        + B * (y[1] + y[11])
+        + C * (y[2] + y[10])
+        + D * (y[3] + y[ 9])
+        + E * (y[4] + y[ 8])
+        + F * (y[5] + y[ 7])
+        + G * (y[6]        )
     );
     T erri1 = fabs(i1 - si);
     T erri2 = fabs(i2 - si);
@@ -1722,15 +1741,27 @@ do {
             return i1;
         }
         return
-             +(step(   a, x[0],   fa, y[0])
-             + step(x[0], x[1], y[0], y[1]))
-             +(step(x[1], x[2], y[1], y[2])
-             + step(x[2], x[3], y[2], y[3]))
-             +(step(x[3], x[4], y[3], y[4])
-             + step(x[4],    b, y[4],   fb));
+            + (step(   a, x[0],   fa, y[0])
+            +  step(x[0], x[1], y[0], y[1]))
+            + (step(x[1], x[2], y[1], y[2])
+            +  step(x[2], x[3], y[2], y[3]))
+            + (step(x[3], x[4], y[3], y[4])
+            +  step(x[4],    b, y[4],   fb));
     }
 
-    return step(a, b, fa, fb);
+    return
+        + ((step(x[ 0], x[ 1], y[ 0], y[ 1])
+        +   step(x[ 1], x[ 2], y[ 1], y[ 2]))
+        +  (step(x[ 2], x[ 3], y[ 2], y[ 3])
+        +   step(x[ 3], x[ 4], y[ 3], y[ 4])))
+        + ((step(x[ 4], x[ 5], y[ 4], y[ 5])
+        +   step(x[ 5], x[ 6], y[ 5], y[ 6]))
+        +  (step(x[ 6], x[ 7], y[ 6], y[ 7])
+        +   step(x[ 7], x[ 8], y[ 7], y[ 8])))
+        + ((step(x[ 8], x[ 9], y[ 8], y[ 9])
+        +   step(x[ 9], x[10], y[ 9], y[10]))
+        +  (step(x[10], x[11], y[10], y[11])
+        +   step(x[11], x[12], y[11], y[12])));
 }
 
 ///
