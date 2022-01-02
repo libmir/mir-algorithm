@@ -1736,7 +1736,8 @@ do {
             + C1 * (y[1] + y[3])
             + D1 * y[2]
         );
-        if (!(i1.fabs < T.infinity) || (si + (i1 - i2) == si) || !(a < x[0]) || !(x[4] < b))
+        auto sic = si + (i1 - i2);
+        if (!(i1.fabs < T.infinity) || sic == si || !(a < x[0]) || !(x[4] < b))
         {
             return i1;
         }
