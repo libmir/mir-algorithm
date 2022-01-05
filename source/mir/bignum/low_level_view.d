@@ -1642,6 +1642,8 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return str.length - i;
     }
 
+
+
     static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
     ///
     version(mir_bignum_test)
@@ -3118,6 +3120,209 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
         if (sign)
             ret = -ret;
         return ret;
+    }
+}
+
+@optStrategy("minsize")
+package T algoM(T)(T ret, scope BigUIntView!(const(uint)) coeff, int exponent)
+{
+    import mir.bignum.fixed : UInt;
+    import mir.math.ieee: ldexp, frexp, nextDown, nextUp;
+
+    BigUIntAccumulator!uint u, v;
+    u.coefficients = coeff.coefficients.dup;
+    u.length = coeff.coefficients.length;
+
+    v.coefficients.length++;
+    v.put(1);
+
+    if (exponent < 0)
+    {
+        auto degree = -exponent;
+
+        if (v.approxCanMulPow5(degree)) {
+            v.mulPow5(degree);
+        }
+        else
+        {
+            enum n = MaxWordPow5!uint;
+            auto growFactor = degree / n + (degree % n != 0);
+            v.coefficients.length += growFactor;
+            v.mulPow5(degree);
+        }
+
+        if (v.canMulPow2(degree))
+        {
+            v.mulPow2(degree);
+        }
+        else
+        {
+            import mir.bitop: ctlz;
+            enum n = uint.sizeof * 8;
+            auto growFactor = degree / n + (degree % n > ctlz(v.view.mostSignificant));
+            v.coefficients.length += growFactor;
+            v.mulPow2(degree);
+        }
+
+    }
+    else
+    {
+        auto degree = exponent;
+
+        if (u.approxCanMulPow5(degree))
+        {
+            u.mulPow5(degree);
+        }
+        else
+        {
+            enum n = MaxWordPow5!uint;
+            auto growFactor = degree / n + (degree % n != 0);
+
+        }
+        u.mulPow5(exponent);
+        u.mulPow2(exponent);
+    }
+
+    // XXX: is this needed?
+    // v.coefficients = v.view.normalized.coefficients;
+
+    // Adopted from Rust's rawfp implementation (TBD: do we have these already?)
+    enum EXP_BITS = (T.sizeof * 8) - T.mant_dig;
+    enum MAX_EXP = (1 << (EXP_BITS - 1)) - 1;
+    enum MIN_EXP = -MAX_EXP + 1;
+    enum MAX_EXP_INT = MAX_EXP - (T.mant_dig - 1);
+    enum MIN_EXP_INT = MIN_EXP - (T.mant_dig - 1);
+
+    // MAX_SIG
+    enum betaN = (ulong(1) << T.mant_dig) - 1;
+    // MIN_SIG
+    enum betaNMinus1 = ulong(1) << (T.mant_dig - 1);
+
+    int k = 0;
+
+    // Ugly ugly ugly, but we don't want to cast to ulong to compare
+    // as there's a potential for truncation
+    auto min_sig = cast(BigUIntView!uint)UInt!64(betaNMinus1).view;
+    auto max_sig = cast(BigUIntView!uint)UInt!64(betaN).view;
+
+    BigUIntView!uint x, rem;
+    while (true)
+    {
+        auto m = u.view.normalized.coefficients.length;
+        auto n = v.view.normalized.coefficients.length;
+        // As part of "scaling", we'll initially start with m < n as true, 
+        // so we need to have this fall back here
+        if (m < n) {
+            x.coefficients.length = m;
+        } 
+        else {
+            x.coefficients.length = (m - n) + 1;
+        }
+
+        // Division requires us to introduce
+        // a new digit in the MSB-place -- we do that here
+        rem.coefficients.length = u.view.coefficients.length + 1;
+        rem.coefficients[0 .. $ - 1] = u.view.coefficients;
+        rem.coefficients[$ - 1] = 0;
+        divm(rem, v.view, x);
+
+        // Check if we're about to underflow
+        if (k == MAX_EXP_INT)
+        {
+            if (x >= min_sig && x <= max_sig)
+            {
+                break;
+            }
+            // XXX: deal with underflow
+            assert(0, "underflow");
+        }
+
+        // Check if our exponent is out of range
+        if (k > MAX_EXP_INT)
+        {
+            return T.infinity;
+        }
+
+        if (x < min_sig)
+        {
+            if (!u.canMulPow2(1))
+            {
+                u.coefficients.length++;
+            }
+
+            u.mulPow2(1); 
+            k -= 1;
+        }
+        else if (max_sig <= x)
+        {
+            if (!v.canMulPow2(1))
+            {
+                v.coefficients.length++;
+            }
+
+            v.mulPow2(1);
+            k += 1;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    // This part is specified as ratio->float within the paper
+    ulong q = cast(ulong)x;
+    T z = ldexp(cast(T)q, k);
+    auto vmr = v.view;
+    vmr -= rem;
+
+    if (rem < vmr)
+    {
+        ret = z;
+    }
+    else if (rem > vmr)
+    {
+        ret = nextUp(z);
+    }
+    else if (q % 2 == 0)
+    {
+        ret = z;
+    }
+    else
+    {
+        ret = nextUp(z);
+    }
+
+    return ret;
+}
+
+///
+version(mir_bignum_test)
+unittest
+{
+    {
+        auto view = DecimalView!ulong(false, -8, BigUIntView!ulong.fromHexString("BEBC2000000011E1A3"));
+        auto coeff = (cast(BigUIntView!uint)view.coefficient).lightConst;
+        assert (algoM!double(0.0, coeff, cast(int)view.exponent) == 3.518437208883201171875E+013);
+    }
+
+    // TBD: triggers underflow
+    // {
+    //     auto view = DecimalView!ulong(false, 0, BigUIntView!ulong.fromHexString("88BF4748507FB9900ADB624CCFF8D78897DC900FB0460327D4D86D327219"));
+    //     auto coeff = (cast(BigUIntView!uint)view.coefficient).lightConst;
+    //     debug {
+    //         import std.stdio;
+    //         writefln("%s", algoM!float(0.0, coeff, cast(int)view.exponent));
+    //         writefln("%s", algoM!double(0.0, coeff, cast(int)view.exponent));
+    //     }
+    //     assert (algoM!float(0.0, coeff, cast(int)view.exponent) == float.infinity);
+    //     assert (algoM!double(0.0, coeff, cast(int)view.exponent) == 0x1.117e8e90a0ff7p+239);
+    // }
+
+    {
+        auto view = DecimalView!ulong(false, -324, BigUIntView!ulong.fromHexString("4F0CEDC95A718E"));
+        auto coeff = (cast(BigUIntView!uint)view.coefficient).lightConst;
+        assert (algoM!float(0.0, coeff, cast(int)view.exponent) == 0);
+        assert (algoM!double(0.0, coeff, cast(int)view.exponent) == 2.2250738585072014e-308);
     }
 }
 
