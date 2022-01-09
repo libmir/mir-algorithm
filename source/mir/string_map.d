@@ -751,21 +751,32 @@ struct StringMap(T, U = uint)
          +/
         this()(string[] keys, T[] values) @trusted pure nothrow
         {
-            import mir.array.allocation: array;
-            import mir.ndslice.sorting: makeIndex;
-            import mir.ndslice.topology: iota, indexed;
-            import mir.string_table: smallerStringFirst;
-
             assert(keys.length == values.length);
             if (keys.length == 0)
                 return;
             _length = keys.length;
             _keys = keys.ptr;
             _values = values.ptr;
-            _indices = keys.makeIndex!(U, smallerStringFirst).ptr;
+            _indices = new U[keys.length].ptr;
+            size_t maxKeyLength;
+            foreach(ref key; keys)
+                if (key.length > maxKeyLength)
+                    maxKeyLength = key.length;
+            _lengthTable = new U[maxKeyLength + 2];
+            sortIndices();
+        }
+
+        private void sortIndices() pure nothrow
+        {
+            import mir.ndslice.sorting: sort;
+            import mir.ndslice.topology: indexed;
+            import mir.string_table: smallerStringFirst;
+            foreach (i, ref index; indices)
+                index = cast(U)i;
+
+            indices.sort!((a, b) => smallerStringFirst(keys[a], keys[b]));
             auto sortedKeys = _keys.indexed(indices);
             size_t maxKeyLength = sortedKeys[$ - 1].length;
-            _lengthTable = new U[maxKeyLength + 2];
 
             size_t ski;
             foreach (length; 0 .. maxKeyLength + 1)
@@ -945,6 +956,20 @@ struct StringMap(T, U = uint)
             return false;
         }
     }
+
+    /// Sorts table according to the keys
+    ref sort(alias less = "a < b")() return
+    {
+        import mir.functional: naryFun;
+        import mir.ndslice.sorting: sort;
+        import mir.ndslice.topology: zip;
+        if (length) {
+            zip(implementation.keys, implementation.values).sort!((l, r) => naryFun!less(l.a, r.a));
+            implementation.sortIndices;
+        }
+        return this;
+    }
+
     private Impl* implementation;
 }
 
@@ -972,6 +997,15 @@ unittest
     assert(table["val"] == 11);
 
     assert(table == table);
+
+    // sorting
+    table["A"] = 2;
+    table.sort;
+    assert(table.keys == ["A", "L", "val"]);
+    assert(table.values == [2, 3, 11]);
+    assert(table["A"] == 2);
+    assert(table["L"] == 3);
+    assert(table["val"] == 11);
 }
 
 version(mir_test)
