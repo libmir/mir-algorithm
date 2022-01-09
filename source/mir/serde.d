@@ -755,6 +755,12 @@ See_also: $(MREF serdeIgnoreOut), $(MREF serdeIgnoreIn)
 enum serdeLikeStruct;
 
 /++
+The attribute is used for algebraic deserialization for types like `Variant!(string, S)`
+`@serdeFallbackStruct struct S {}`
++/
+enum serdeFallbackStruct;
+
+/++
 Force serialize / deserialize on fields instead of Range API.
 +/
 enum serdeFields;
