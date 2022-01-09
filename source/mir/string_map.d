@@ -37,6 +37,9 @@ struct StringMap(T, U = uint)
     import mir.conv: emplaceRef;
 
     ///
+    alias serdeKeysProxy = T;
+
+    ///
     // current implementation is workaround for linking bugs when used in self referencing algebraic types
     bool opEquals(V)(scope const StringMap!(V, U) rhs) const @trusted
     {
