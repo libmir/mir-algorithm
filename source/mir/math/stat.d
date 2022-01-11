@@ -535,7 +535,7 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.math.common: approxEqual;
+    import mir.complex.math: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.complex;
     alias C = Complex!double;
@@ -864,7 +864,7 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.math.common: approxEqual;
+    import mir.complex.math: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.complex;
     alias C = Complex!double;
@@ -2299,7 +2299,7 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.math.common: approxEqual;
+    import mir.complex.math: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.complex: Complex;
 
@@ -2647,7 +2647,7 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.math.common: approxEqual;
+    import mir.complex.math: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.complex: Complex;
 
@@ -2796,6 +2796,7 @@ version(mir_test)
 unittest
 {
     import mir.math.common: approxEqual;
+    import mir.complex.math: capproxEqual = approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.complex;
     alias C = Complex!double;
@@ -2803,7 +2804,7 @@ unittest
     assert(variance([1.0, 2, 3]).approxEqual(2.0 / 2));
     assert(variance([1.0, 2, 3], true).approxEqual(2.0 / 3));
 
-    assert(variance([C(1, 3), C(2), C(3)]).approxEqual(C(-4, -6) / 2));
+    assert(variance([C(1, 3), C(2), C(3)]).capproxEqual(C(-4, -6) / 2));
     
     assert(variance!float([0, 1, 2, 3, 4, 5].sliced(3, 2)).approxEqual(17.5 / 5));
     
@@ -2966,7 +2967,7 @@ version(mir_test)
 @safe pure nothrow
 unittest
 {
-    import mir.math.common: approxEqual;
+    import mir.complex.math: approxEqual;
     import mir.ndslice.slice: sliced;
     import mir.complex;
     alias C = Complex!double;
