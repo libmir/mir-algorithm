@@ -10,6 +10,7 @@ has_cpp_headers = true
 sources_list = [
     'mir/algebraic_alias/ion',
     'mir/algebraic_alias/json',
+    'mir/algebraic_alias/transform',
     'mir/algorithm/iteration',
     'mir/algorithm/setops',
     'mir/annotated',

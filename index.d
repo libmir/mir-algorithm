@@ -13,6 +13,7 @@ $(BOOKTABLE ,
     $(LEADINGROW Accessories)
     $(TR $(TDNW $(MREF mir,algebraic_alias,ion)) $(TD Mutable Amazon's Ion value))
     $(TR $(TDNW $(MREF mir,algebraic_alias,json)) $(TD Mutable JSON value))
+    $(TR $(TDNW $(MREF mir,algebraic_alias,transform)) $(TD Mutation algorithms for Ion/JSON-like values))
     $(TR $(TDNW $(MREF mir,annotated)) $(TD Mutable generic Annotated value))
     $(TR $(TDNW $(MREF mir,array,allocation)) $(TD `std.array` reworked for Mir))
     $(TR $(TDNW $(MREF mir,format)) $(TD @nogc Formatting Utilities))
