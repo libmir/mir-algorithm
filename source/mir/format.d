@@ -65,9 +65,16 @@ string text(string separator = "", Args...)(auto ref Args args)
 {
     static if (Args.length == 1)
     {
-        import mir.functional: forward;
-        import mir.conv: to;
-        return to!string(forward!args);
+        static if (is(immutable Args[0] == immutable typeof(null)))
+        {
+            return "null";
+        }
+        else
+        {
+            import mir.functional: forward;
+            import mir.conv: to;
+            return to!string(forward!args);
+        }
     }
     else
     {
@@ -90,7 +97,8 @@ string text(string separator = "", Args...)(auto ref Args args)
 {
     const i = 100;
     assert(text("str ", true, " ", i, " ", 124.1) == "str true 100 124.1", text("str ", true, " ", 100, " ", 124.1));
-    assert(text!" "("str", true, 100, 124.1) == "str true 100 124.1");
+    assert(text!" "("str", true, 100, 124.1, null) == "str true 100 124.1 null");
+    assert(text(null) == "null", text(null));
 }
 
 import mir.format_impl;
@@ -607,6 +615,24 @@ version (mir_test) unittest
     assert(w.data == `["a": 1, "b": 2]` || w.data == `["b": 2, "a": 1]`, w.data);
 }
 
+/// Prints null
+ref W print(C = char, W, V)(scope return ref W w, const V c)
+    if (is(V == typeof(null)))
+{
+    enum C[4] Null = "null";
+    return w.printStaticString!C(Null);
+}
+
+///
+@safe pure @nogc
+version (mir_test) unittest
+{
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
+    w.print(null);
+    assert(w.data == `null`);
+}
+
 /// Prints array
 pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
@@ -906,23 +932,34 @@ pragma(inline, false)
 ref W print(C = char, W, T)(scope return ref W w, scope const T c)
     if (isSomeChar!C && is(T == class) || is(T == interface))
 {
-    enum C[4] Null = "null";
     static if (__traits(hasMember, T, "toString") || __traits(compiles, { scope const(C)[] string_of_c = c; }))
     {
         if (c is null)
-            w.printStaticString!C(Null);
+            return w.print(null);
         else
         static if (is(typeof(c.toString!C(w))))
+        {
             c.toString!C(w);
+            return w;
+        }
         else
         static if (is(typeof(c.toString(w))))
+        {
             c.toString(w);
+            return w;
+        }
         else
         static if (is(typeof(c.toString((scope const(C)[] s) { w.put(s); }))))
+        {
             c.toString((scope const(C)[] s) { w.put(s); });
+            return w;
+        }
         else
         static if (is(typeof(w.put(c.toString))))
+        {
             w.put(c.toString);
+            return w;
+        }
         else
         static if (__traits(compiles, { scope const(C)[] string_of_c = c; }))
         {
@@ -947,12 +984,13 @@ ref W print(C = char, W, T)(scope return ref W w, scope const T c)
             print!C(w, e);
         }
         w.put(right);
+        return w;
     }
     else
     {
         w.put(T.stringof);
+        return w;
     }
-    return w;
 }
 
 ///
