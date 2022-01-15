@@ -579,6 +579,11 @@ version(mir_test) unittest
 }
 
 /++
+Attribute used to ignore unexpected keys during an aggregate type deserialization.
++/
+enum serdeIgnoreUnexpectedKeys;
+
+/++
 Attribute to ignore field.
 
 See_also: $(LREF serdeIgnoreIn) $(LREF serdeIgnoreOut)
