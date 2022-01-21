@@ -18,7 +18,7 @@ module mir.series;
 import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.sorting: transitionIndex;
 import mir.qualifier;
-import mir.serde: serdeIgnore, serdeFields, serdeKeys, serdeKeyOut;
+import mir.serde: serdeIgnore, serdeFields;
 import std.traits;
 public import mir.ndslice.slice;
 public import mir.ndslice.sorting: sort;
@@ -344,6 +344,19 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
 
     private enum defaultMsg() = "Series " ~ Unqual!(this.Data).stringof ~ "[" ~ Unqual!(this.Index).stringof ~ "]: Missing";
     private static immutable defaultExc() = new Exception(defaultMsg!() ~ " required key");
+
+    ///
+    void serdeFinalize()() @trusted
+    {
+        import mir.algorithm.iteration: any;
+        import mir.ndslice.topology: pairwise;
+        import std.traits: Unqual;
+        if (length <= 1)
+            return;
+        auto mutableOf = cast(Series!(Unqual!Index*, Unqual!Data*)) this.lightScope();
+        if (any(pairwise!"a > b"(mutableOf.index)))
+            sort(mutableOf);
+    }
 
 @optmath:
 
