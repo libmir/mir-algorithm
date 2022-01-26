@@ -180,7 +180,7 @@ template fuseImpl(bool RC, T_, Dimensions...)
     Params:
         r = parallelotope (ndrange) with length/shape and input range primitives.
     +/
-    auto fuseImpl(NDRange)(NDRange r)
+    auto fuseImpl(NDRange)(NDRange r) @safe
         if (hasShape!NDRange)
     {
         import mir.conv: emplaceRef;
@@ -231,11 +231,11 @@ template fuseImpl(bool RC, T_, Dimensions...)
                     ret = shapep.slice!UT;
                     ret.transposed!InverseDimensions.each!"a = b"(r);
                 }
-                else
+                else () @trusted
                 {
                     ret = shapep.uninitSlice!UT;
                     ret.transposed!InverseDimensions.each!(emplaceRef!T)(r);
-                }
+                } ();
 
             }
         }
@@ -253,11 +253,11 @@ template fuseImpl(bool RC, T_, Dimensions...)
                     ret = shape.slice!UT;
                     ret.each!"a = b"(r);
                 }
-                else
+                else () @trusted
                 {
                     ret = shape.uninitSlice!UT;
                     ret.each!(emplaceRef!T)(r);
-                }
+                } ();
             }
         }
         static if (RC)
@@ -356,15 +356,15 @@ auto fuseCells(S)(S cells)
         else
             return ret;
     }
-    else
+    else return () @trusted
     {
         import mir.ndslice.allocation: uninitSlice;
         import mir.conv;
         auto ret = cells.fuseCellsShape.uninitSlice!UT;
         ret.fuseCellsAssign!(emplaceRef!T) = cells;
         alias R = Slice!(T*, ret.N);
-        return R(ret._structure, (() @trusted => cast(T*)ret._iterator)());
-    }
+        return R(ret._structure, cast(T*)ret._iterator);
+    } ();
 }
 
 /// 1D
