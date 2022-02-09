@@ -11,6 +11,7 @@ else
     dub test --arch=$ARCH --build=unittest-dip1000
   fi
   dub test --arch=$ARCH --build=unittest-cov
+  dub test --arch=$ARCH --combined
   # if [ \( "$DC" = "ldc2" \) -o \( "$DC" = "ldmd2" \) ]
   # then
   #     cd benchmarks/sajson ; dub --build=release-nobounds --compiler=ldmd2 ; cd ../..
