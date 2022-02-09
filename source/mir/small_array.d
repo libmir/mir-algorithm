@@ -10,8 +10,6 @@ Authors: Ilya Yaroshenko
 +/
 module mir.small_array;
 
-import mir.serde: serdeProxy;
-
 private static immutable errorMsg = "Cannot create SmallArray: input range exceeds maximum allowed length.";
 version(D_Exceptions)
     private static immutable exception = new Exception(errorMsg);
@@ -20,6 +18,7 @@ version(D_Exceptions)
 template SmallArray(T, uint maxLength)
     if (maxLength)
 {
+    import mir.serde: serdeProxy, serdeScoped;
     import std.traits: Unqual, isIterable, isImplicitlyConvertible;
 
     static if (isImplicitlyConvertible!(const T, T))
@@ -28,6 +27,7 @@ template SmallArray(T, uint maxLength)
         alias V = T;
 
     ///
+    @serdeScoped
     @serdeProxy!(V[])
     struct SmallArray
     {
@@ -45,7 +45,7 @@ template SmallArray(T, uint maxLength)
         }
 
         /// ditto
-        this(V[] array)
+        this(scope V[] array)
         {
             this.opAssign(array);
         }

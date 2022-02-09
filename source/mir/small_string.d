@@ -205,9 +205,7 @@ scope nothrow:
     /++
     Returns an scope common string.
 
-    The property is used as common string representation self alias.
-
-    The alias helps with `[]`, `[i]`, `[i .. j]`, `==`, and `!=` operations and implicit conversion to strings.
+    The method implement with `[]` operation.
     +/
     inout(char)[] opIndex() inout @trusted scope return
     {
@@ -225,7 +223,24 @@ scope nothrow:
         return opIndex[index];
     }
 
+    /++
+    Returns a common scope string.
+
+    The method implement with `[i .. j]` operation.
+    +/
+    inout(char)[] opIndex(size_t[2] range) inout @trusted scope return
+    in (range[0] <= range[1])
+    in (range[1] <= this.length)
+    {
+        return opIndex()[range[0] .. range[1]];
+    }
+
 const:
+
+    /// ditto
+    size_t[2] opSlice(size_t pos : 0)(size_t i, size_t j) scope {
+        return [i, j];
+    }
 
     ///
     bool empty() @property
@@ -238,6 +253,9 @@ const:
     {
         return opIndex.length;
     }
+
+    /// ditto
+    alias opDollar(size_t pos : 0) = length;
 
     ///
     alias toString = opIndex;
@@ -294,6 +312,9 @@ const:
 
     auto s8 = SmallString!8("Hellow!!");
     assert(s8 == "Hellow!!", s8[]);
+    assert(s8[] == "Hellow!!");
+    assert(s8[0 .. $] == "Hellow!!");
+    assert(s8[1 .. 4] == "ell");
 
     s16 = s8;
     assert(s16 == "Hellow!!", s16[]);

@@ -1040,9 +1040,8 @@ unittest
     Decimal!3 decimal;
     DecimalExponentKey key;
 
-    import mir.math.constant: PI;
     assert(decimal.fromStringImpl("3.141592653589793378e-10", key));
-    assert(cast(double) decimal == double(PI) / 1e10);
+    assert(cast(double) decimal == 0x1.596bf8ce7631ep-32);
     assert(key == DecimalExponentKey.e);
 }
 
