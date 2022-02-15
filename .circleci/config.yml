@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  mirci: libmir/upload_docs@0.1.4
+  mirci: libmir/upload_docs@0.3.0
 
 workflows:
   version: 2
