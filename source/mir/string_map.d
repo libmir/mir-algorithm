@@ -30,7 +30,7 @@ Params:
     U = an unsigned type that can hold an index of keys. `U.max` must be less then the maximum possible number of struct members.
 +/
 struct StringMap(T, U = uint)
-    if (isMutable!T && !__traits(hasMember, T, "opPostMove") && __traits(isUnsigned, U))
+    if (isMutable!T && !is(typeof(T.opPostMove)) && __traits(isUnsigned, U))
 {
     import mir.utility: _expect;
     import core.lifetime: move;
