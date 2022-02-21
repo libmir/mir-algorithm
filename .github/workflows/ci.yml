@@ -14,14 +14,14 @@ jobs:
   builder:
     name: 'Build and test on ${{ matrix.arch }}-${{ matrix.os }}/${{ matrix.dc }}'
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ contains(matrix.dc, 'master') || contains(matrix.dc, 'beta') }}
+    continue-on-error: ${{ contains(matrix.dc, 'beta') }}
     env:
       ARCH: ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
-        dc: [ldc-latest, ldc-beta, dmd-latest, dmd-master, dmd-beta]
-        os: [ubuntu-latest]
+        dc: [ldc-latest, ldc-beta, dmd-latest, dmd-beta]
+        os: [ubuntu-latest, windows-latest]
         arch: [x86, x86_64]
         include:
           - dc: ldc-latest
@@ -36,14 +36,15 @@ jobs:
         with:
           compiler: ${{ matrix.dc }}
       - name: Install multi-lib for 32-bit systems
-        if: matrix.arch == 'x86'
+        if: matrix.arch == 'x86' && matrix.os == 'ubuntu-latest'
         run: sudo apt-get install gcc-multilib
       - id: build
         name: Test building
-        run: dub test --arch=$ARCH --build=unittest-cov
-        run: dub test --arch=$ARCH --combined
+        run: |
+          dub test --arch=$ARCH --build=unittest-cov
+          dub test --arch=$ARCH --combined
+        shell: bash
       - id: coverage
-        name: Upload coverage data
-        run: bash <(curl -s https://codecov.io/bash)
+        uses: codecov/codecov-action@v2
     
         
