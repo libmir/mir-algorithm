@@ -31,8 +31,8 @@ jobs:
             os: macos-latest
             arch: x86_64
     steps:
-      - uses: actions/checkout@v2
-      - uses: dlang-community/setup-dlang@v1.1.0
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
           compiler: ${{ matrix.dc }}
       - name: Install multi-lib for 32-bit systems
@@ -45,6 +45,6 @@ jobs:
           dub test --arch=$ARCH --combined
         shell: bash
       - id: coverage
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
     
         
