@@ -2227,6 +2227,20 @@ struct SerdeFlags(T)
         static foreach(member; serdeFinalProxyDeserializableMembers!T)
             mixin("bool " ~ member ~ ";");
 }
+
+/++
+The UDA used on struct or class definitions to denote an discriminated field and its tag
+for algebraic deserialization.
+
+Discriminated field is ignored during the annotated structure/class deseriliazation.
++/
+struct serdeDiscriminatedField
+{
+    /// Name of the field in the JSON like data object.
+    string field;
+    /// Value of the field for the current type.
+    string tag;
+}
         
 template deserializeValueMemberImpl(alias deserializeValue, alias deserializeScoped)
 {
