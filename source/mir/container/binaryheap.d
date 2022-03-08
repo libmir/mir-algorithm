@@ -397,6 +397,20 @@ BinaryHeap!(less, Store) heapify(alias less = "a < b", Store)(Store s,
     Array!int elements = [1, 2, 10, 12];
     auto heap = heapify(elements);
     assert(heap.front == 12);
+    heap.insert(100);
+    assert(heap.front == 100);
+    heap.insert(1);
+    assert(heap.front == 100);
+}
+
+@system version(mir_test) unittest
+{
+    import std.container.array : Array;
+
+    Array!Object elements;
+    auto heap = heapify(elements);
+    Object obj;
+    heap.insert(obj);
 }
 
 @system nothrow version(mir_test) unittest
