@@ -37,7 +37,7 @@ struct StringMap(T, U = uint)
     import mir.conv: emplaceRef;
 
     ///
-    alias serdeKeysProxy = T;
+    alias serdeKeysProxy = Unqual!T;
 
     ///
     // current implementation is workaround for linking bugs when used in self referencing algebraic types
