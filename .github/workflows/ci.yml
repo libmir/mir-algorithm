@@ -11,40 +11,124 @@ on:
     # allow this workflow to be triggered manually
 
 jobs:
-  builder:
-    name: 'Build and test on ${{ matrix.arch }}-${{ matrix.os }}/${{ matrix.dc }}'
-    runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ contains(matrix.dc, 'beta') }}
+  setup:
+    name: 'Load job configuration'
+    runs-on: ubuntu-latest
+    outputs:
+      compilers: ${{ steps.load-config.outputs.compilers }}
+    steps:
+    - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    - id: load-config
+      run: |
+        echo "::set-output name=compilers::$(cat .github/workflows/compilers.json | jq -c -M)"
+
+  macos:
+    name: '[macos] x86_64/${{ matrix.dc }}'
+    runs-on: macos-latest
+    needs: setup
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
+    env:
+      ARCH: x86_64
+    strategy:
+      fail-fast: false
+      matrix:
+        dc: ${{ fromJSON(needs.setup.outputs.compilers) }}
+    steps:
+      - name: Checkout repo 
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        with:
+          fetch-depth: 0
+      - name: Setup D compiler 
+        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        with:
+          compiler: ${{ matrix.dc }}
+      - name: Cache dub dependencies
+        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        with:
+          path: ~/.dub/packages
+          key: macos-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          restore-keys: |
+            macos-latest-build-
+      - name: Build / test
+        run: |
+          dub test --arch=$ARCH --build=unittest-cov
+          dub test --arch=$ARCH --combined
+        shell: bash
+      - name: Upload coverage data
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+
+  ubuntu:
+    name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
+    runs-on: ubuntu-latest
+    needs: setup
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     env:
       ARCH: ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
-        dc: [ldc-latest, ldc-beta, dmd-latest, dmd-beta]
-        os: [ubuntu-latest, windows-latest]
+        dc: ${{ fromJSON(needs.setup.outputs.compilers) }}
         arch: [x86, x86_64]
-        include:
-          - dc: ldc-latest
-            os: macos-latest
-            arch: x86_64
-          - dc: dmd-latest
-            os: macos-latest
-            arch: x86_64
     steps:
-      - uses: actions/checkout@v2
-      - uses: dlang-community/setup-dlang@v1.1.0
+      - name: Checkout repo 
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        with:
+          fetch-depth: 0
+      - name: Setup D compiler 
+        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
           compiler: ${{ matrix.dc }}
       - name: Install multi-lib for 32-bit systems
-        if: matrix.arch == 'x86' && matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install gcc-multilib
-      - id: build
-        name: Test building
+        if: matrix.arch == 'x86'
+        run: sudo apt-get update && sudo apt-get install gcc-multilib
+      - name: Cache dub dependencies
+        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        with:
+          path: ~/.dub/packages
+          key: ubuntu-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          restore-keys: |
+            ubuntu-latest-build-
+      - name: Build / test 
+        run: |
+          dub test --arch=$ARCH --build=unittest-cov
+          dub test --arch=$ARCH --combined 
+        shell: bash
+      - name: Upload coverage data
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+  
+  windows:
+    name: '[windows] x86_64/${{ matrix.dc }}'
+    runs-on: windows-latest
+    needs: setup
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
+    env:
+      ARCH: x86_64
+    strategy:
+      fail-fast: false
+      matrix:
+        dc: ${{ fromJSON(needs.setup.outputs.compilers) }}
+    steps:
+      - name: Checkout repo 
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+        with:
+          fetch-depth: 0
+      - name: Setup D compiler 
+        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        with:
+          compiler: ${{ matrix.dc }}
+      - name: Cache dub dependencies
+        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        with:
+          path: ~\AppData\Local\dub
+          key: windows-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          restore-keys: |
+            windows-latest-build-
+      - name: Build / test
         run: |
           dub test --arch=$ARCH --build=unittest-cov
           dub test --arch=$ARCH --combined
         shell: bash
-      - id: coverage
-        uses: codecov/codecov-action@v2
+      - name: Upload coverage data
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
     
         
