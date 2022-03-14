@@ -42,19 +42,19 @@ jobs:
           });
           const head_commit_message = commit.data.message;
 
-          if (head_commit_message.includes("[windows-only]"))
+          if (head_commit_message.startsWith("[windows-only]"))
           {
             compilers.windows = base_compiler_config;
           }
-          else if (head_commit_message.includes("[macos-only]"))
+          else if (head_commit_message.startsWith("[macos-only]"))
           {
             compilers.macos = base_compiler_config;
           }
-          else if (head_commit_message.includes("[ubuntu-only]"))
+          else if (head_commit_message.startsWith("[ubuntu-only]"))
           {
             compilers.ubuntu = base_compiler_config;
           }
-          else if (!head_commit_message.includes("[skip-ci]"))
+          else if (!head_commit_message.startsWith("[skip-ci]"))
           {
             compilers.windows = base_compiler_config;
             compilers.macos = base_compiler_config;
