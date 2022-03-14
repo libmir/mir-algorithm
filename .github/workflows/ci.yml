@@ -10,6 +10,7 @@ on:
   workflow_dispatch:
     # allow this workflow to be triggered manually
 
+# Only allow for one job to run at a time, and cancel any jobs currently in progress.
 concurrency:
   group: gh-actions-${{ github.actor }}-${{ github.head_ref }}
   cancel-in-progress: true
@@ -17,13 +18,16 @@ concurrency:
 jobs:
   setup:
     name: 'Load job configuration'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       compilers: ${{ steps.load-config.outputs.compilers }}
     steps:
     - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    # This step checks if we want to only run tests on a specific platform or
+    # if we want to skip CI entirely, then outputs the compilers to be used for
+    # each job.
     - id: load-config
-      uses: actions/github-script@v6
+      uses: actions/github-script@9ac08808f993958e9de277fe43a64532a609130e
       with:
         script: |
           const base_compiler_config = require("./.github/workflows/compilers.json");
@@ -64,10 +68,12 @@ jobs:
 
   macos:
     name: '[macos] x86_64/${{ matrix.dc }}'
-    runs-on: macos-latest
+    runs-on: macos-11
     needs: setup
-    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
+    # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).macos != '' && fromJSON(needs.setup.outputs.compilers).macos != '[]' }}
+    # Beta / master versions of any compiler are allowed to fail
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     env:
       ARCH: x86_64
     strategy:
@@ -77,8 +83,6 @@ jobs:
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-        with:
-          fetch-depth: 0
       - name: Setup D compiler 
         uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
@@ -100,9 +104,11 @@ jobs:
 
   ubuntu:
     name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: setup
+    # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu != '' && fromJSON(needs.setup.outputs.compilers).ubuntu != '[]' }}
+    # Beta / master versions of any compiler are allowed to fail
     continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     env:
       ARCH: ${{ matrix.arch }}
@@ -114,8 +120,6 @@ jobs:
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-        with:
-          fetch-depth: 0
       - name: Setup D compiler 
         uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
@@ -140,9 +144,11 @@ jobs:
   
   windows:
     name: '[windows] x86_64/${{ matrix.dc }}'
-    runs-on: windows-latest
+    runs-on: windows-2022
     needs: setup
+    # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).windows != '' && fromJSON(needs.setup.outputs.compilers).windows != '[]' }}
+    # Beta / master versions of any compiler are allowed to fail
     continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     env:
       ARCH: x86_64
@@ -153,8 +159,6 @@ jobs:
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
-        with:
-          fetch-depth: 0
       - name: Setup D compiler 
         uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
@@ -166,6 +170,8 @@ jobs:
           key: windows-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
           restore-keys: |
             windows-latest-build-
+      # Tests are split up to work around OOM errors -- no combined testing is done
+      # as it's simply too big for the compiler to handle on Windows.
       - name: Build / test
         run: |
           dub test --arch=$ARCH --build=unittest-ci -c ci-bignum-test
