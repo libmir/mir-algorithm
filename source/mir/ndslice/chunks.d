@@ -72,7 +72,7 @@ Chunks!([0], Iterator, N, kind) chunks(Iterator, size_t N, SliceKind kind)(Slice
 
 
 /// 1Dx1D
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     import mir.ndslice.chunks: chunks, isChunks;
     import mir.ndslice.topology: iota;
@@ -112,7 +112,7 @@ Chunks!([0], Iterator, N, kind) chunks(Iterator, size_t N, SliceKind kind)(Slice
 
 /// 2Dx2D
 @safe pure nothrow
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.chunks: chunks, isChunks;
     import mir.ndslice.topology: iota;
@@ -179,7 +179,7 @@ version(mir_test) unittest
 }
 
 /// 1Dx2D
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.chunks: chunks, isChunks;
     import mir.ndslice.topology: iota;
@@ -209,7 +209,7 @@ version(mir_test) unittest
 }
 
 // conversion to ndslice
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.slice : slicedField;
     import mir.ndslice.chunks: chunks;
@@ -565,7 +565,7 @@ template isChunks(T)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.chunks: chunks, isChunks;
     import mir.ndslice.topology: iota;
@@ -613,7 +613,7 @@ do
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.chunks: chunks;
     import mir.ndslice.topology: iota;

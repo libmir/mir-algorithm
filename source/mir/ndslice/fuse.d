@@ -37,7 +37,7 @@ alias fuse(Dimensions...) = fuseImpl!(false, void, Dimensions);
 alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 
 ///
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice : Contiguous, Slice;
@@ -66,7 +66,7 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 }
 
 /// Transposed
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
@@ -94,7 +94,7 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 }
 
 /// 3D
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
@@ -115,7 +115,7 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 }
 
 /// Work with RC Arrays of RC Arrays
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice;
@@ -143,7 +143,7 @@ alias fuseAs(T, Dimensions...) = fuseImpl!(false, T, Dimensions);
 alias rcfuseAs(T, Dimensions...) = fuseImpl!(true, T, Dimensions);
 
 ///
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice : Contiguous, Slice;
@@ -368,7 +368,7 @@ auto fuseCells(S)(S cells)
 }
 
 /// 1D
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: iota;
     enum ar = [[0, 1], [], [2, 3, 4, 5], [6], [7, 8, 9]];
@@ -377,7 +377,7 @@ auto fuseCells(S)(S cells)
 }
 
 /// 2D
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: iota;
     import mir.ndslice.chunks;

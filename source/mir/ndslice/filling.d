@@ -43,7 +43,7 @@ do {
 }
 
 ///
-@safe pure nothrow version(mir_test) unittest
+@safe pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.slice: sliced;
     import mir.ndslice.allocation: uninitSlice;

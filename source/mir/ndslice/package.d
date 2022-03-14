@@ -38,7 +38,7 @@
 
 8. Memory allocation and algorithm logic should be separated whenever possible.
 
-9. CTFE version(mir_test) unittests should be added to new functions.
+9. CTFE version(mir_ndslice_test) unittests should be added to new functions.
 +/
 
 /**
@@ -511,7 +511,7 @@ public import mir.ndslice.topology;
 public import mir.ndslice.traits;
 
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     auto matrix = new double[12].sliced(3, 4);
     matrix[] = 0;
@@ -524,7 +524,7 @@ version(mir_test) unittest
 }
 
 // relaxed example
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.qualifier;
 
@@ -585,7 +585,7 @@ version(mir_test) unittest
     }
 }
 
-@safe @nogc pure nothrow version(mir_test) unittest
+@safe @nogc pure nothrow version(mir_ndslice_test) unittest
 {
     immutable r = 1000.iota;
 
@@ -612,7 +612,7 @@ version(mir_test) unittest
     assert(t1 == iota([6], 12));
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology : iota;
     import mir.array.allocation : array;
@@ -703,7 +703,7 @@ pure nothrow version(mir_test) unittest
     assert(&t1[$ - 1] is &(t1.back()));
 }
 
-@safe @nogc pure nothrow version(mir_test) unittest
+@safe @nogc pure nothrow version(mir_ndslice_test) unittest
 {
     import std.range : iota;
     auto r = (10_000L * 2 * 3 * 4).iota;
@@ -716,14 +716,14 @@ pure nothrow version(mir_test) unittest
     assert(t0.length!3 == 40);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto tensor = new int[3 * 4 * 8].sliced(3, 4, 8);
     assert(&(tensor.back.back.back()) is &tensor[2, 3, 7]);
     assert(&(tensor.front.front.front()) is &tensor[0, 0, 0]);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto slice = new int[24].sliced(2, 3, 4);
     auto r0 = slice.pack!1[1, 2];
@@ -732,7 +732,7 @@ pure nothrow version(mir_test) unittest
     assert(slice[1, 2, 3] == 4);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto ar = new int[3 * 8 * 9];
 

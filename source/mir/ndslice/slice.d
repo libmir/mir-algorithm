@@ -60,7 +60,7 @@ template hasAsSlice(T)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.series;
     static assert(!hasAsSlice!(int[]));
@@ -73,7 +73,7 @@ Check if $(LREF toConst) function can be called with type T.
 enum isConvertibleToSlice(T) = isSlice!T || isDynamicArray!T || hasAsSlice!T;
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.series: SeriesMap;
     static assert(isConvertibleToSlice!(immutable int[]));
@@ -155,7 +155,7 @@ enum isSlice(T) = is(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKin
 
 ///
 @safe pure nothrow @nogc
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias A = uint[];
     alias S = Slice!(int*);
@@ -211,7 +211,7 @@ enum kindOf(T : Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind) =
 
 ///
 @safe pure nothrow @nogc
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     static assert(kindOf!(Slice!(int*, 1, Universal)) == Universal);
 }
@@ -270,7 +270,7 @@ auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
 }
 
 /// Random access range primitives for slices over user defined types
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     struct MyIota
     {
@@ -312,7 +312,7 @@ Slice!(T*) sliced(T)(T[] array) @trusted
 }
 
 /// Creates a slice from an array.
-@safe pure nothrow version(mir_test) unittest
+@safe pure nothrow version(mir_ndslice_test) unittest
 {
     auto slice = new int[10].sliced;
     assert(slice.length == 10);
@@ -345,7 +345,7 @@ Slice!(Iterator, N, kind)
 }
 
 ///
-@safe pure nothrow version(mir_test) unittest
+@safe pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology : iota;
     auto data = new int[24];
@@ -388,7 +388,7 @@ auto slicedField(Field)(Field field)
 }
 
 /// Creates an 1-dimensional slice over a field, array, or random access range.
-@safe @nogc pure nothrow version(mir_test) unittest
+@safe @nogc pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology : iota;
     auto slice = 10.iota.slicedField;
@@ -904,7 +904,7 @@ public:
 
     // static if (doUnittest)
     // ///
-    // @safe pure version(mir_test) unittest
+    // @safe pure version(mir_ndslice_test) unittest
     // {
     //     import mir.ndslice.slice;
     //     alias Array = Slice!(double*);
@@ -922,7 +922,7 @@ public:
     static if (doUnittest)
     /// Creates a 2-dimentional slice with custom strides.
     nothrow pure
-    version(mir_test) unittest
+    version(mir_ndslice_test) unittest
     {
         uint[8] array = [1, 2, 3, 4, 5, 6, 7, 8];
         auto slice = Slice!(uint*, 2, Universal)([2, 2], [4, 1], array.ptr);
@@ -1089,7 +1089,7 @@ public:
 
         static if (doUnittest)
         ///
-        version(mir_test) unittest
+        version(mir_ndslice_test) unittest
         {
             static struct Foo
             {
@@ -1114,7 +1114,7 @@ public:
 
         static if (doUnittest)
         ///
-        version(mir_test) unittest
+        version(mir_ndslice_test) unittest
         {
             Slice!(double*, 2, Universal) nn;
             Slice!(immutable(double)*, 2, Universal) ni;
@@ -1216,7 +1216,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe version(mir_test) unittest
+    @safe version(mir_ndslice_test) unittest
     {
         auto arr = [1, 2, 3, 4];
         auto sl0 = arr.sliced;
@@ -1246,7 +1246,7 @@ public:
 
     static if (doUnittest)
     /// Regular slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         assert(iota(3, 4, 5).shape == cast(size_t[3])[3, 4, 5]);
@@ -1255,7 +1255,7 @@ public:
     static if (doUnittest)
     /// Packed slice
     @safe @nogc pure nothrow
-    version(mir_test) unittest
+    version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : pack, iota;
         size_t[3] s = [3, 4, 5];
@@ -1292,7 +1292,7 @@ public:
     static if (doUnittest)
     /// Regular slice
     @safe @nogc pure nothrow
-    version(mir_test) unittest
+    version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         size_t[3] s = [20, 5, 1];
@@ -1301,7 +1301,7 @@ public:
 
     static if (doUnittest)
     /// Modified regular slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : pack, iota, universal;
         import mir.ndslice.dynamic : reversed, strided, transposed;
@@ -1315,7 +1315,7 @@ public:
 
     static if (doUnittest)
     /// Packed slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : pack, iota;
         size_t[3] s = [20 * 42, 5 * 42, 1 * 42];
@@ -1335,7 +1335,7 @@ public:
 
     static if (doUnittest)
     /// Regular slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         assert(iota(3, 4, 5)
@@ -1344,7 +1344,7 @@ public:
 
     static if (doUnittest)
     /// Modified regular slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : pack, iota, universal;
         import mir.ndslice.dynamic : reversed, strided, transposed;
@@ -1358,7 +1358,7 @@ public:
 
     static if (doUnittest)
     /// Packed slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : pack, iota;
         assert(iota(3, 4, 5, 6, 7)
@@ -1376,7 +1376,7 @@ public:
 
     static if (doUnittest)
     /// Save range
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         auto slice = iota(2, 3).save;
@@ -1384,7 +1384,7 @@ public:
 
     static if (doUnittest)
     /// Pointer type.
-    @safe pure nothrow version(mir_test) unittest
+    @safe pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.allocation;
         //sl type is `Slice!(2, int*)`
@@ -1404,7 +1404,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         auto slice = iota(3, 4, 5);
@@ -1445,7 +1445,7 @@ public:
 
     static if (doUnittest)
     /// Regular slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         auto slice = iota(3, 4, 5);
@@ -1457,7 +1457,7 @@ public:
 
     static if (doUnittest)
     /// Modified regular slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.dynamic : reversed, strided, swapped;
         import mir.ndslice.topology : universal, iota;
@@ -1679,7 +1679,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import std.range.primitives;
         import mir.ndslice.topology : iota, canonical;
@@ -1752,7 +1752,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow @nogc version(mir_test) unittest
+        @safe pure nothrow @nogc version(mir_ndslice_test) unittest
         {
             import mir.ndslice.topology: iota, universal, canonical;
             auto f = 5;
@@ -1776,7 +1776,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow @nogc version(mir_test) unittest
+        @safe pure nothrow @nogc version(mir_ndslice_test) unittest
         {
             import mir.ndslice.topology: iota;
             auto f = 5;
@@ -1794,7 +1794,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.topology: iota, canonical;
             auto v = [2, 3].iota.canonical;
@@ -1813,7 +1813,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.topology: iota, canonical;
             auto v = [2, 3].iota.canonical;
@@ -1854,7 +1854,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure nothrow @nogc version(mir_test) unittest
+    @safe pure nothrow @nogc version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota, canonical;
         auto s = iota(2, 3).canonical;
@@ -1889,7 +1889,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         auto s = iota(2, 3);
@@ -1909,7 +1909,7 @@ public:
 
     static if (doUnittest)
     /// Regular slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         assert(iota(3, 4, 5).elementCount == 60);
@@ -1918,7 +1918,7 @@ public:
 
     static if (doUnittest)
     /// Packed slice
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : pack, evertPack, iota;
         auto slice = iota(3, 4, 5, 6, 7, 8);
@@ -1955,7 +1955,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         auto sl = iota(3, 4);
@@ -1987,7 +1987,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         auto sl = iota(3, 4);
@@ -2020,7 +2020,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe @nogc pure nothrow version(mir_test) unittest
+    @safe @nogc pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology : iota;
         auto sl = iota(3, 4);
@@ -2085,7 +2085,7 @@ public:
     static if (doUnittest)
     ///
     @safe pure nothrow
-    version(mir_test) unittest
+    version(mir_ndslice_test) unittest
     {
         auto a = [1, 2, 3, 4].sliced(2, 2);
 
@@ -2100,7 +2100,7 @@ public:
     }
 
     static if (doUnittest)
-    @safe pure nothrow version(mir_test) unittest
+    @safe pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.allocation: slice;
         import mir.ndslice.topology : iota;
@@ -2277,7 +2277,7 @@ public:
 
     static if (doUnittest)
     ///
-    pure nothrow version(mir_test) unittest
+    pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.allocation;
         auto slice = slice!int(5, 3);
@@ -2307,7 +2307,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure nothrow version(mir_test) unittest
+    @safe pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.allocation: slice;
         auto sli = slice!int(4, 3);
@@ -2342,7 +2342,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure nothrow version(mir_test) unittest
+    @safe pure nothrow version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology: iota;
         import mir.ndslice.allocation: slice;
@@ -2387,7 +2387,7 @@ public:
 
     static if (doUnittest)
     ///
-    version(mir_test) unittest
+    version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology;
 
@@ -2428,7 +2428,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure nothrow @nogc version(mir_test) unittest
+    @safe pure nothrow @nogc version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology;
 
@@ -2442,7 +2442,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure nothrow @nogc version(mir_test) unittest
+    @safe pure nothrow @nogc version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology;
 
@@ -2473,7 +2473,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure nothrow @nogc version(mir_test) unittest
+    @safe pure nothrow @nogc version(mir_ndslice_test) unittest
     {
         import mir.ndslice.topology: iota, map, zip;
 
@@ -2527,7 +2527,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure version(mir_test) unittest
+    @safe pure version(mir_ndslice_test) unittest
     {
         import mir.ndslice;
         auto x = 3.iota!int;
@@ -2582,7 +2582,7 @@ public:
 
     static if (doUnittest)
     ///
-    @safe pure version(mir_test) unittest
+    @safe pure version(mir_ndslice_test) unittest
     {
         import mir.ndslice;
         auto x = 3.iota!int;
@@ -2646,7 +2646,7 @@ public:
     }
 
     ///
-    version(mir_test)
+    version(mir_ndslice_test)
     @safe pure @nogc nothrow
     unittest
     {
@@ -2726,7 +2726,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2748,7 +2748,7 @@ public:
 
         static if (doUnittest)
         /// Left slice is packed
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.topology : blocks, iota;
             import mir.ndslice.allocation : slice;
@@ -2764,7 +2764,7 @@ public:
 
         static if (doUnittest)
         /// Both slices are packed
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.topology : blocks, iota, pack;
             import mir.ndslice.allocation : slice;
@@ -2850,7 +2850,7 @@ public:
 
         static if (doUnittest)
         ///
-        pure nothrow version(mir_test) unittest
+        pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2874,7 +2874,7 @@ public:
 
         static if (doUnittest)
         /// Packed slices
-        pure nothrow version(mir_test) unittest
+        pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation : slice;
             import mir.ndslice.topology : blocks;
@@ -2956,7 +2956,7 @@ public:
         static if (doUnittest)
         ///
         @safe pure nothrow
-        version(mir_test) unittest
+        version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -2983,7 +2983,7 @@ public:
 
         static if (doUnittest)
         /// Packed slices have the same behavior.
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             import mir.ndslice.topology : pack;
@@ -3019,7 +3019,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -3029,7 +3029,7 @@ public:
         }
 
         static if (doUnittest)
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             auto a = new int[6].sliced(2, 3);
 
@@ -3059,7 +3059,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -3069,7 +3069,7 @@ public:
         }
 
         static if (doUnittest)
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             auto a = new int[6].sliced(2, 3);
 
@@ -3092,7 +3092,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -3113,7 +3113,7 @@ public:
 
         static if (doUnittest)
         /// Left slice is packed
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation : slice;
             import mir.ndslice.topology : blocks, iota;
@@ -3129,7 +3129,7 @@ public:
 
         static if (doUnittest)
         /// Both slices are packed
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation : slice;
             import mir.ndslice.topology : blocks, iota, pack;
@@ -3157,7 +3157,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation : slice;
             auto a = slice!int(2, 3);
@@ -3178,7 +3178,7 @@ public:
         static if (doUnittest)
         /// Packed slices
         @safe pure nothrow
-        version(mir_test) unittest
+        version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation : slice;
             import mir.ndslice.topology : blocks;
@@ -3236,7 +3236,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -3262,7 +3262,7 @@ public:
 
         static if (doUnittest)
         /// Packed slices have the same behavior.
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             import mir.ndslice.topology : pack;
@@ -3291,7 +3291,7 @@ public:
 
         static if (doUnittest)
         ///
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -3302,7 +3302,7 @@ public:
 
         // Issue 16473
         static if (doUnittest)
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto sl = slice!double(2, 5);
@@ -3310,7 +3310,7 @@ public:
         }
 
         static if (doUnittest)
-        @safe pure nothrow version(mir_test) unittest
+        @safe pure nothrow version(mir_ndslice_test) unittest
         {
             auto a = new int[6].sliced(2, 3);
 
@@ -3351,7 +3351,7 @@ public:
         static if (doUnittest)
         ///
         @safe pure nothrow
-        version(mir_test) unittest
+        version(mir_ndslice_test) unittest
         {
             import mir.ndslice.allocation;
             auto a = slice!int(2, 3);
@@ -3372,7 +3372,7 @@ alias Slice = mir_slice;
 /++
 Slicing, indexing, and arithmetic operations.
 +/
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.dynamic : transposed;
@@ -3406,7 +3406,7 @@ pure nothrow version(mir_test) unittest
 /++
 Operations with rvalue slices.
 +/
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.topology: universal;
@@ -3440,7 +3440,7 @@ pure nothrow version(mir_test) unittest
 Creating a slice from text.
 See also $(MREF std, format).
 +/
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.algorithm.iteration: filter, all;
     import mir.array.allocation;
@@ -3482,7 +3482,7 @@ version(mir_test) unittest
 }
 
 // Slicing
-@safe @nogc pure nothrow version(mir_test) unittest
+@safe @nogc pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology : iota;
     auto a = iota(10, 20, 30, 40);
@@ -3495,7 +3495,7 @@ version(mir_test) unittest
 }
 
 // Operator overloading. # 1
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.topology : iota;
@@ -3515,7 +3515,7 @@ pure nothrow version(mir_test) unittest
 }
 
 // Operator overloading. # 2
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: map, iota;
     import mir.array.allocation : array;
@@ -3537,7 +3537,7 @@ pure nothrow version(mir_test) unittest
 }
 
 // Operator overloading. # 3
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation;
     import mir.ndslice.topology : iota;
@@ -3559,7 +3559,7 @@ pure nothrow version(mir_test) unittest
 }
 
 // Type deduction
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     // Arrays
     foreach (T; AliasSeq!(int, const int, immutable int))
@@ -3573,7 +3573,7 @@ version(mir_test) unittest
 }
 
 // Test for map #1
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: map, byDim;
     auto slice = [1, 2, 3, 4].sliced(2, 2);
@@ -3595,7 +3595,7 @@ version(mir_test) unittest
 }
 
 // Test for map #2
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: map, byDim;
     import std.range.primitives;
@@ -3656,7 +3656,7 @@ private bool _checkAssignLengths(
     }
 }
 
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology : iota;
 
@@ -3666,7 +3666,7 @@ private bool _checkAssignLengths(
     assert(!_checkAssignLengths(iota(2, 2), iota(3, 3)));
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto slice = new int[15].slicedField(5, 3);
 
@@ -3679,7 +3679,7 @@ pure nothrow version(mir_test) unittest
     auto col = slice[0..$, 1];
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
     auto b = [1, 2, 3, 4].sliced(2, 2);
@@ -3697,7 +3697,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1] == [1, 2, 0]);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
     auto b = [[1, 2], [3, 4]];
@@ -3718,7 +3718,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1] == [3, 4, 6]);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3741,7 +3741,7 @@ pure nothrow version(mir_test) unittest
     //assert(a[1] == [5, 5, 9]);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3749,7 +3749,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1, 2] == 3);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3757,7 +3757,7 @@ pure nothrow version(mir_test) unittest
     assert(a[[1, 2]] == 3);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3765,7 +3765,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1, 2] == 3);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3773,7 +3773,7 @@ pure nothrow version(mir_test) unittest
     assert(a[[1, 2]] == 3);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
     auto b = [1, 2, 3, 4].sliced(2, 2);
@@ -3791,7 +3791,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1] == [8, 12, 0]);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3808,7 +3808,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1] == [8, 12, 0]);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3822,7 +3822,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1] == [6, 6, 1]);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3830,7 +3830,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1, 2] == 1);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3838,7 +3838,7 @@ pure nothrow version(mir_test) unittest
     assert(a[[1, 2]] == 1);
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     auto a = new int[6].slicedField(2, 3);
 
@@ -3849,7 +3849,7 @@ pure nothrow version(mir_test) unittest
     assert(a[1] == [0, 0, 1]);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: iota, universal;
 
@@ -3857,13 +3857,13 @@ version(mir_test) unittest
     assert(sl[0 .. $] == sl);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: canonical, iota;
     static assert(kindOf!(typeof(iota([1, 2]).canonical[1])) == Contiguous);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: iota;
     auto s = iota(2, 3);
@@ -3897,7 +3897,7 @@ auto ndassign(string op = "", L, R)(L lside, auto ref R rside) @property
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology: iota;
     import mir.ndslice.allocation: slice;
@@ -3917,7 +3917,7 @@ version(mir_test) unittest
     assert(vector == [5, 7, 9]);
 }
 
-version(mir_test) pure nothrow unittest
+version(mir_ndslice_test) pure nothrow unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: universal;
@@ -3946,7 +3946,7 @@ version(mir_test) pure nothrow unittest
     assert(immdf2.label!1[1] == 2);
 }
 
-version(mir_test) pure nothrow unittest
+version(mir_ndslice_test) pure nothrow unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: universal;
@@ -3962,7 +3962,7 @@ version(mir_test) pure nothrow unittest
     assert(immvalues[0][0] == 5);
 }
 
-version(mir_test) @safe unittest
+version(mir_ndslice_test) @safe unittest
 {
     import mir.ndslice.allocation;
     auto a = rcslice!double([2, 3], 0);
@@ -3972,7 +3972,7 @@ version(mir_test) @safe unittest
     assert(a == b);
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -3986,7 +3986,7 @@ unittest
     }
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -4000,7 +4000,7 @@ unittest
     }
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -4016,7 +4016,7 @@ unittest
 }
 
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -4032,7 +4032,7 @@ unittest
 }
 
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -4048,7 +4048,7 @@ unittest
     }
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -4064,7 +4064,7 @@ unittest
     }
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -4078,7 +4078,7 @@ unittest
     }
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest
 {
@@ -4092,7 +4092,7 @@ unittest
     }
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure @nogc nothrow
 unittest // check it can be compiled
 {
@@ -4101,7 +4101,7 @@ unittest // check it can be compiled
     alias D = Variant!S;
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 unittest
 {
     import mir.ndslice;

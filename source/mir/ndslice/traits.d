@@ -65,7 +65,7 @@ enum bool isUniversalMatrix(T) = is(T : Slice!(Iterator,  2, Universal), Iterato
 
 ///
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.slice : Slice;
 
@@ -86,7 +86,7 @@ version(mir_test) unittest
 }
 
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias S2 = Slice!(float*, 1, Universal);
     static assert(!isContiguousVector!S2);
@@ -105,7 +105,7 @@ version(mir_test) unittest
 }
 
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias S3 = Slice!(byte*, 2);
     static assert(!isContiguousVector!S3);
@@ -124,7 +124,7 @@ version(mir_test) unittest
 }
 
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias S4 = Slice!(int*, 2, Canonical);
     static assert(!isContiguousVector!S4);
@@ -143,7 +143,7 @@ version(mir_test) unittest
 }
 
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias S5 = Slice!(int*, 2, Universal);
     static assert(!isContiguousVector!S5);
@@ -162,7 +162,7 @@ version(mir_test) unittest
 }
 
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias S6 = Slice!(int*, 3);
     
@@ -182,7 +182,7 @@ version(mir_test) unittest
 }
 
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias S7 = Slice!(int*, 3, Canonical);
 
@@ -202,7 +202,7 @@ version(mir_test) unittest
 }
 
 @safe pure nothrow @nogc 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     alias S8 = Slice!(int*, 3, Universal);
     

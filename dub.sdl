@@ -9,12 +9,12 @@ dependency "mir-core" version=">=1.1.88"
 
 buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
-    versions "mir_bignum_test" "mir_test" "mir_core_test"
+    versions "mir_bignum_test" "mir_ndslice_test" "mir_test" "mir_core_test"
     dflags "-lowmem"
 }
 buildType "unittest-dip1008" {
     buildOptions "unittests" "debugMode" "debugInfo"
-    versions "mir_bignum_test" "mir_test"
+    versions "mir_bignum_test" "mir_ndslice_test" "mir_test"
     dflags "-lowmem" "-preview=dip1008"
 }
 buildType "unittest-dip1000" {
@@ -24,7 +24,7 @@ buildType "unittest-dip1000" {
 }
 buildType "unittest-cov" {
     buildOptions "unittests" "coverage" "debugMode" "debugInfo"
-    versions "mir_bignum_test" "mir_test"
+    versions "mir_bignum_test" "mir_ndslice_test" "mir_test"
     dflags "-lowmem"
 }
 buildType "unittest-ci" {
@@ -33,7 +33,7 @@ buildType "unittest-ci" {
 }
 buildType "unittest-release" {
     buildOptions "unittests" "releaseMode" "optimize" "inline" "noBoundsCheck"
-    versions "mir_bignum_test" "mir_test"
+    versions "mir_bignum_test" "mir_ndslice_test" "mir_test"
     dflags "-lowmem"
 }
 
@@ -58,6 +58,10 @@ configuration "ci-bignum-test" {
 
 configuration "ci-core-test" {
     versions "mir_core_test"
+}
+
+configuration "ci-ndslice-test" {
+    versions "mir_ndslice_test"
 }
 
 configuration "ci-test" {

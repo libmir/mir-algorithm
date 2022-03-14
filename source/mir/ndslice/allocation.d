@@ -120,7 +120,7 @@ auto rcslice(T, I)(I[] array)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow @nogc unittest
 {
     import mir.ndslice.slice: Slice;
@@ -136,7 +136,7 @@ version(mir_test)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow @nogc unittest
 {
     import mir.ndslice.slice: Slice;
@@ -159,7 +159,7 @@ auto rcslice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow @nogc unittest
 {
     import mir.rc.array: RCI;
@@ -188,7 +188,7 @@ Slice!(RCI!T, N)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow @nogc unittest
 {
     import mir.ndslice.slice: Slice;
@@ -219,7 +219,7 @@ Slice!(FieldIterator!(BitField!(RCI!size_t)), N) bitRcslice(size_t N)(size_t[N] 
 
 /// 1D
 @safe pure nothrow @nogc
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     auto bitarray = 100.bitRcslice; // allocates 16 bytes total (plus RC context)
     assert(bitarray.shape == cast(size_t[1])[100]);
@@ -230,7 +230,7 @@ version(mir_test) unittest
 
 /// 2D
 @safe pure nothrow @nogc
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     auto bitmatrix = bitRcslice(20, 6); // allocates 16 bytes total (plus RC context)
     assert(bitmatrix.shape == cast(size_t[2])[20, 6]);
@@ -254,7 +254,7 @@ Slice!(RCI!T, N) mininitRcslice(T, size_t N)(size_t[N] lengths...)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 pure nothrow @nogc unittest
 {
     import mir.ndslice.slice: Slice;
@@ -317,7 +317,7 @@ template slice(Args...)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.slice: Slice;
@@ -329,7 +329,7 @@ version(mir_test)
 }
 
 /// 2D DataFrame example
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure unittest
 {
     import mir.ndslice.slice;
@@ -410,7 +410,7 @@ auto slice(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow unittest
 {
     auto tensor = slice([2, 3], 5);
@@ -436,7 +436,7 @@ auto slice(size_t dim, Slices...)(Concatenation!(dim, Slices) concatenation)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.slice: Slice;
@@ -466,7 +466,7 @@ Slice!(FieldIterator!(BitField!(size_t*)), N) bitSlice(size_t N)(size_t[N] lengt
 }
 
 /// 1D
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     auto bitarray = bitSlice(100); // allocates 16 bytes total
     assert(bitarray.shape == [100]);
@@ -476,7 +476,7 @@ Slice!(FieldIterator!(BitField!(size_t*)), N) bitSlice(size_t N)(size_t[N] lengt
 }
 
 /// 2D
-@safe pure version(mir_test) unittest
+@safe pure version(mir_ndslice_test) unittest
 {
     auto bitmatrix = bitSlice(20, 6); // allocates 16 bytes total
     assert(bitmatrix.shape == [20, 6]);
@@ -505,7 +505,7 @@ auto uninitSlice(T, size_t N)(size_t[N] lengths...)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.slice: Slice;
@@ -535,7 +535,7 @@ auto uninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @system
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @system pure nothrow unittest
 {
     import mir.ndslice.slice: Slice;
@@ -600,7 +600,7 @@ auto makeSlice(Allocator, Iterator, size_t N, SliceKind kind)
 }
 
 /// Initialization with default value
-version(mir_test)
+version(mir_ndslice_test)
 @nogc unittest
 {
     import std.experimental.allocator;
@@ -620,7 +620,7 @@ version(mir_test)
     Mallocator.instance.dispose(ar2);
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @nogc unittest
 {
     import std.experimental.allocator;
@@ -664,7 +664,7 @@ makeUninitSlice(T, Allocator, size_t N)(auto ref Allocator alloc, size_t[N] leng
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @system @nogc unittest
 {
     import std.experimental.allocator;
@@ -701,7 +701,7 @@ auto ndarray(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow unittest
 {
     import mir.ndslice.topology : iota;
@@ -737,7 +737,7 @@ auto makeNdarray(T, Allocator, Iterator, size_t N, SliceKind kind)(auto ref Allo
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @nogc unittest
 {
     import std.experimental.allocator;
@@ -797,7 +797,7 @@ L:
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure unittest
 {
     int err;
@@ -810,7 +810,7 @@ version(mir_test)
 }
 
 /// Slice from ndarray
-version(mir_test)
+version(mir_ndslice_test)
 unittest
 {
     import mir.ndslice.allocation: slice, shape;
@@ -821,7 +821,7 @@ unittest
     assert(s == array);
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure unittest
 {
     int err;
@@ -830,7 +830,7 @@ version(mir_test)
     assert(shape[1] == 0);
 }
 
-version(mir_test)
+version(mir_ndslice_test)
 nothrow unittest
 {
     import mir.ndslice.allocation;
@@ -915,7 +915,7 @@ void stdcFreeSlice(T, size_t N)(Slice!(T*, N) slice)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 unittest
 {
     import mir.ndslice.topology: iota;
@@ -953,7 +953,7 @@ auto stdcUninitAlignedSlice(T, size_t N)(size_t[N] lengths, uint alignment) @sys
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @system pure nothrow unittest
 {
     import mir.ndslice.slice: Slice;

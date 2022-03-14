@@ -170,6 +170,7 @@ jobs:
         run: |
           dub test --arch=$ARCH --build=unittest-ci -c ci-bignum-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
+          dub test --arch=$ARCH --build=unittest-ci -c ci-ndslice-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-test
           dub test --arch=$ARCH --combined
         shell: bash
