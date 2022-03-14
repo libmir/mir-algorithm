@@ -125,7 +125,9 @@ jobs:
             windows-latest-build-
       - name: Build / test
         run: |
-          dub test --arch=$ARCH --build=unittest-cov
+          dub test --arch=$ARCH --build=unittest-ci -c ci-bignum-test
+          dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
+          dub test --arch=$ARCH --build=unittest-ci -c ci-test
           dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data

@@ -27,6 +27,10 @@ buildType "unittest-cov" {
     versions "mir_bignum_test" "mir_test"
     dflags "-lowmem"
 }
+buildType "unittest-ci" {
+    buildOptions "unittests" "coverage" "debugMode" "debugInfo"
+    dflags "-lowmem"
+}
 buildType "unittest-release" {
     buildOptions "unittests" "releaseMode" "optimize" "inline" "noBoundsCheck"
     versions "mir_bignum_test" "mir_test"
@@ -46,4 +50,16 @@ configuration "dip1008" {
 
 configuration "dips" {
     dflags "-preview=dip1000" "-preview=dip1008"
+}
+
+configuration "ci-bignum-test" {
+    versions "mir_bignum_test"
+}
+
+configuration "ci-core-test" {
+    versions "mir_core_test"
+}
+
+configuration "ci-test" {
+    versions "mir_test"
 }
