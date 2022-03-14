@@ -172,7 +172,6 @@ jobs:
           dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-ndslice-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-test
-          dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data
         uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
