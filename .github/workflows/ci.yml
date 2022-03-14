@@ -10,6 +10,10 @@ on:
   workflow_dispatch:
     # allow this workflow to be triggered manually
 
+concurrency:
+  group: gh-actions-${{ github.actor }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   setup:
     name: 'Load job configuration'
@@ -19,20 +23,57 @@ jobs:
     steps:
     - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
     - id: load-config
-      run: |
-        echo "::set-output name=compilers::$(cat .github/workflows/compilers.json | jq -c -M)"
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const base_compiler_config = require("./.github/workflows/compilers.json");
+          const compilers = {"windows": [], "macos": [], "ubuntu": []};
+          const {owner, repo} = context.repo;
+          let commit_sha = context.sha;
+          if (context.eventName == "pull_request") 
+          {
+            commit_sha = context.payload.pull_request.head.sha;
+          }
+
+          const commit = await github.rest.git.getCommit({
+            owner,
+            repo,
+            commit_sha
+          });
+          const head_commit_message = commit.data.message;
+
+          if (head_commit_message.includes("[windows-only]"))
+          {
+            compilers.windows = base_compiler_config;
+          }
+          else if (head_commit_message.includes("[macos-only]"))
+          {
+            compilers.macos = base_compiler_config;
+          }
+          else if (head_commit_message.includes("[ubuntu-only]"))
+          {
+            compilers.ubuntu = base_compiler_config;
+          }
+          else if (!head_commit_message.includes("[skip-ci]"))
+          {
+            compilers.windows = base_compiler_config;
+            compilers.macos = base_compiler_config;
+            compilers.ubuntu = base_compiler_config;
+          }
+          core.setOutput("compilers", JSON.stringify(compilers));
 
   macos:
     name: '[macos] x86_64/${{ matrix.dc }}'
     runs-on: macos-latest
     needs: setup
     continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
+    if: ${{ fromJSON(needs.setup.outputs.compilers).macos != '' && fromJSON(needs.setup.outputs.compilers).macos != '[]' }}
     env:
       ARCH: x86_64
     strategy:
       fail-fast: false
       matrix:
-        dc: ${{ fromJSON(needs.setup.outputs.compilers) }}
+        dc: ${{ fromJSON(needs.setup.outputs.compilers).macos }}
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
@@ -61,13 +102,14 @@ jobs:
     name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
     runs-on: ubuntu-latest
     needs: setup
+    if: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu != '' && fromJSON(needs.setup.outputs.compilers).ubuntu != '[]' }}
     continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     env:
       ARCH: ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
-        dc: ${{ fromJSON(needs.setup.outputs.compilers) }}
+        dc: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu }}
         arch: [x86, x86_64]
     steps:
       - name: Checkout repo 
@@ -100,13 +142,14 @@ jobs:
     name: '[windows] x86_64/${{ matrix.dc }}'
     runs-on: windows-latest
     needs: setup
+    if: ${{ fromJSON(needs.setup.outputs.compilers).windows != '' && fromJSON(needs.setup.outputs.compilers).windows != '[]' }}
     continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     env:
       ARCH: x86_64
     strategy:
       fail-fast: false
       matrix:
-        dc: ${{ fromJSON(needs.setup.outputs.compilers) }}
+        dc: ${{ fromJSON(needs.setup.outputs.compilers).windows }}
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
