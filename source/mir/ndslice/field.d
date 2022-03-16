@@ -392,7 +392,7 @@ struct BitField(Field, I = typeof(cast()Field.init[size_t.init]))
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.iterator: FieldIterator;
     ushort[10] data;

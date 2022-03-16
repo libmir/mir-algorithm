@@ -265,7 +265,7 @@ bool isPermutation(size_t N)(auto ref const scope size_t[N] perm)
     return isValidPartialPermutationImpl(perm, mask);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     assert(isPermutation([0, 1]));
     // all numbers 0..N-1 need to be part of the permutation
@@ -336,7 +336,7 @@ size_t lengthsProduct(size_t N)(auto ref const scope size_t[N] lengths)
     return length;
 }
 
-pure nothrow version(mir_test) unittest
+pure nothrow version(mir_ndslice_test) unittest
 {
     const size_t[3] lengths = [3, 4, 5];
     assert(lengthsProduct(lengths) == 60);

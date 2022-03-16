@@ -151,7 +151,7 @@ pure:
 }
 
 ///
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     IotaIterator!int iota;
     assert(*iota == 0);
@@ -177,7 +177,7 @@ pure:
 }
 
 ///
-pure nothrow @nogc version(mir_test) unittest
+pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     int[32] data;
     auto iota = IotaIterator!(int*)(data.ptr);
@@ -209,7 +209,7 @@ auto RetroIterator__map(Iterator, alias fun)(ref RetroIterator!Iterator it)
     return RetroIterator!(typeof(iterator))(iterator);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -286,7 +286,7 @@ struct RetroIterator(Iterator)
 }
 
 ///
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     IotaIterator!int iota;
     RetroIterator!(IotaIterator!int) retro;
@@ -326,7 +326,7 @@ auto StrideIterator__map(Iterator, alias fun)(StrideIterator!Iterator it)
     return StrideIterator!(typeof(iterator))(it._stride, iterator);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -402,7 +402,7 @@ struct StrideIterator(Iterator)
 }
 
 ///
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     IotaIterator!int iota;
     StrideIterator!(IotaIterator!int) stride;
@@ -511,7 +511,7 @@ struct StrideIterator(Iterator, ptrdiff_t factor)
 }
 
 ///
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     IotaIterator!int iota;
     StrideIterator!(IotaIterator!int, -3) stride;
@@ -697,7 +697,7 @@ struct ZipIterator(Iterators...)
 }
 
 ///
-pure nothrow @nogc version(mir_test) unittest
+pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     import mir.ndslice.traits: isIterator;
 
@@ -1149,7 +1149,7 @@ auto _vmapIterator(Iterator, Fun)(Iterator iterator, Fun fun)
        return MapIterator!(Iterator, fun)(iterator);
 }
 
-@safe pure nothrow @nogc version(mir_test) unittest
+@safe pure nothrow @nogc version(mir_ndslice_test) unittest
 {
     // https://github.com/libmir/mir-algorithm/issues/111
     import mir.ndslice.topology : iota, map;
@@ -1482,7 +1482,7 @@ struct SlideIterator(Iterator, size_t params, alias fun)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.functional: naryFun;
     auto data = [1, 3, 8, 18];
@@ -1498,7 +1498,7 @@ auto IndexIterator__map(Iterator, Field, alias fun)(ref IndexIterator!(Iterator,
     return IndexIterator!(Iterator, typeof(field))(it._iterator, field);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -1733,7 +1733,7 @@ public auto FieldIterator__map(Field, alias fun)(FieldIterator!(Field) it)
     return FieldIterator!(typeof(field))(it._index, field);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -1854,7 +1854,7 @@ auto FlattenedIterator__map(Iterator, size_t N, SliceKind kind, alias fun)(Flatt
     return FlattenedIterator!(TemplateArgsOf!(typeof(slice)))(it._indices, slice);
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.allocation;
@@ -2029,7 +2029,7 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
     }
 }
 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.topology;
     import mir.ndslice.slice;
@@ -2208,7 +2208,7 @@ struct StairsIterator(Iterator, string direction)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     // 0
     // 1 2
@@ -2233,7 +2233,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     // [0, 1, 2, 3, 4],
     //    [5, 6, 7, 8],

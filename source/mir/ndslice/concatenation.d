@@ -121,7 +121,7 @@ auto concatenation(size_t dim = 0, Slices...)(Slices slices)
 }
 
 /// Concatenation of slices with different dimmensions. 
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: repeat, iota;
@@ -147,7 +147,7 @@ version(mir_test) unittest
 }
 
 /// Multidimensional
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -195,7 +195,7 @@ version(mir_test) unittest
 }
 
 /// 1D
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -416,7 +416,7 @@ auto pad(string direction = "both", S, T, size_t N)(S s, T value, size_t[N] leng
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -429,7 +429,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -510,7 +510,7 @@ template pad(size_t[] dimensions, string[] directions)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -525,7 +525,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -562,7 +562,7 @@ auto padWrap(string direction = "both", Iterator, size_t N, SliceKind kind)(Slic
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -575,7 +575,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -678,7 +678,7 @@ template padWrap(size_t[] dimensions, string[] directions)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -693,7 +693,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -730,7 +730,7 @@ auto padSymmetric(string direction = "both", Iterator, size_t N, SliceKind kind)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -743,7 +743,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -864,7 +864,7 @@ template padSymmetric(size_t[] dimensions, string[] directions)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -879,7 +879,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -916,7 +916,7 @@ auto padEdge(string direction = "both", Iterator, size_t N, SliceKind kind)(Slic
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -929,7 +929,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -1040,7 +1040,7 @@ template padEdge(size_t[] dimensions, string[] directions)
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;
@@ -1058,7 +1058,7 @@ version(mir_test) unittest
 }
 
 ///
-version(mir_test) unittest
+version(mir_ndslice_test) unittest
 {
     import mir.ndslice.allocation: slice;
     import mir.ndslice.topology: iota;

@@ -43,7 +43,7 @@ do {
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow
 unittest
 {
@@ -68,7 +68,7 @@ void reverseInPlace(Iterator)(Slice!Iterator slice)
 }
 
 ///
-version(mir_test)
+version(mir_ndslice_test)
 @safe pure nothrow
 unittest
 {

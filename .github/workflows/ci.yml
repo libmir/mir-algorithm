@@ -10,41 +10,176 @@ on:
   workflow_dispatch:
     # allow this workflow to be triggered manually
 
+# Only allow for one job to run at a time, and cancel any jobs currently in progress.
+concurrency:
+  group: gh-actions-${{ github.actor }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
-  builder:
-    name: 'Build and test on ${{ matrix.arch }}-${{ matrix.os }}/${{ matrix.dc }}'
-    runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ contains(matrix.dc, 'beta') }}
+  setup:
+    name: 'Load job configuration'
+    runs-on: ubuntu-20.04
+    outputs:
+      compilers: ${{ steps.load-config.outputs.compilers }}
+    steps:
+    - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+    # This step checks if we want to only run tests on a specific platform or
+    # if we want to skip CI entirely, then outputs the compilers to be used for
+    # each job.
+    - id: load-config
+      uses: actions/github-script@9ac08808f993958e9de277fe43a64532a609130e
+      with:
+        script: |
+          const base_compiler_config = require("./.github/workflows/compilers.json");
+          const compilers = {"windows": [], "macos": [], "ubuntu": []};
+          const {owner, repo} = context.repo;
+          let commit_sha = context.sha;
+          if (context.eventName == "pull_request") 
+          {
+            commit_sha = context.payload.pull_request.head.sha;
+          }
+
+          const commit = await github.rest.git.getCommit({
+            owner,
+            repo,
+            commit_sha
+          });
+          const head_commit_message = commit.data.message;
+
+          if (head_commit_message.startsWith("[windows-only]"))
+          {
+            compilers.windows = base_compiler_config;
+          }
+          else if (head_commit_message.startsWith("[macos-only]"))
+          {
+            compilers.macos = base_compiler_config;
+          }
+          else if (head_commit_message.startsWith("[ubuntu-only]"))
+          {
+            compilers.ubuntu = base_compiler_config;
+          }
+          else if (!head_commit_message.startsWith("[skip-ci]"))
+          {
+            compilers.windows = base_compiler_config;
+            compilers.macos = base_compiler_config;
+            compilers.ubuntu = base_compiler_config;
+          }
+          core.setOutput("compilers", JSON.stringify(compilers));
+
+  macos:
+    name: '[macos] x86_64/${{ matrix.dc }}'
+    runs-on: macos-11
+    needs: setup
+    # Only run if the setup phase explicitly defined compilers to be used
+    if: ${{ fromJSON(needs.setup.outputs.compilers).macos != '' && fromJSON(needs.setup.outputs.compilers).macos != '[]' }}
+    # Beta / master versions of any compiler are allowed to fail
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
+    env:
+      ARCH: x86_64
+    strategy:
+      fail-fast: false
+      matrix:
+        dc: ${{ fromJSON(needs.setup.outputs.compilers).macos }}
+    steps:
+      - name: Checkout repo 
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - name: Setup D compiler 
+        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        with:
+          compiler: ${{ matrix.dc }}
+      - name: Cache dub dependencies
+        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        with:
+          path: ~/.dub/packages
+          key: macos-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          restore-keys: |
+            macos-latest-build-
+      - name: Build / test
+        run: |
+          dub test --arch=$ARCH --build=unittest-cov
+          dub test --arch=$ARCH --combined
+        shell: bash
+      - name: Upload coverage data
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+
+  ubuntu:
+    name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
+    runs-on: ubuntu-20.04
+    needs: setup
+    # Only run if the setup phase explicitly defined compilers to be used
+    if: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu != '' && fromJSON(needs.setup.outputs.compilers).ubuntu != '[]' }}
+    # Beta / master versions of any compiler are allowed to fail
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     env:
       ARCH: ${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
-        dc: [ldc-latest, ldc-beta, dmd-latest, dmd-beta]
-        os: [ubuntu-latest, windows-latest]
+        dc: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu }}
         arch: [x86, x86_64]
-        include:
-          - dc: ldc-latest
-            os: macos-latest
-            arch: x86_64
-          - dc: dmd-latest
-            os: macos-latest
-            arch: x86_64
     steps:
-      - uses: actions/checkout@v2
-      - uses: dlang-community/setup-dlang@v1.1.0
+      - name: Checkout repo 
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - name: Setup D compiler 
+        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
           compiler: ${{ matrix.dc }}
       - name: Install multi-lib for 32-bit systems
-        if: matrix.arch == 'x86' && matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install gcc-multilib
-      - id: build
-        name: Test building
+        if: matrix.arch == 'x86'
+        run: sudo apt-get update && sudo apt-get install gcc-multilib
+      - name: Cache dub dependencies
+        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        with:
+          path: ~/.dub/packages
+          key: ubuntu-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          restore-keys: |
+            ubuntu-latest-build-
+      - name: Build / test 
         run: |
           dub test --arch=$ARCH --build=unittest-cov
-          dub test --arch=$ARCH --combined
+          dub test --arch=$ARCH --combined 
         shell: bash
-      - id: coverage
-        uses: codecov/codecov-action@v2
+      - name: Upload coverage data
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+  
+  windows:
+    name: '[windows] x86_64/${{ matrix.dc }}'
+    runs-on: windows-2022
+    needs: setup
+    # Only run if the setup phase explicitly defined compilers to be used
+    if: ${{ fromJSON(needs.setup.outputs.compilers).windows != '' && fromJSON(needs.setup.outputs.compilers).windows != '[]' }}
+    # Beta / master versions of any compiler are allowed to fail
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
+    env:
+      ARCH: x86_64
+    strategy:
+      fail-fast: false
+      matrix:
+        dc: ${{ fromJSON(needs.setup.outputs.compilers).windows }}
+    steps:
+      - name: Checkout repo 
+        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - name: Setup D compiler 
+        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        with:
+          compiler: ${{ matrix.dc }}
+      - name: Cache dub dependencies
+        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        with:
+          path: ~\AppData\Local\dub
+          key: windows-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          restore-keys: |
+            windows-latest-build-
+      # Tests are split up to work around OOM errors -- no combined testing is done
+      # as it's simply too big for the compiler to handle on Windows.
+      - name: Build / test
+        run: |
+          dub test --arch=$ARCH --build=unittest-ci -c ci-bignum-test
+          dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
+          dub test --arch=$ARCH --build=unittest-ci -c ci-ndslice-test
+          dub test --arch=$ARCH --build=unittest-ci -c ci-test
+        shell: bash
+      - name: Upload coverage data
+        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
     
         

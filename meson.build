@@ -117,7 +117,7 @@ this_dep = declare_dependency(
     dependencies: required_deps,
 )
 
-test_versions = ['mir_test', 'mir_bignum_test', 'mir_secure_memory']
+test_versions = ['mir_test', 'mir_bignum_test', 'mir_ndslice_test', 'mir_secure_memory']
 
 if has_cpp_headers
     install_subdir('include/',
