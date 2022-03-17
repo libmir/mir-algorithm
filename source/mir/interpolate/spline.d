@@ -29,6 +29,16 @@ import std.meta: AliasSeq, staticMap;
 import std.traits: Unqual;
 public import mir.interpolate: atInterval;
 
+enum msg_min =  "spline interpolant: minimal allowed length for the grid equals 2.";
+enum msg_eq =  "spline interpolant: X and Y values length should be equal.";
+version(D_Exceptions)
+{
+    static immutable exc_min = new Exception(msg_min);
+    static immutable exc_eq = new Exception(msg_eq);
+}
+
+private alias ValueType(T, X) = typeof(T.init.opCall(Repeat!(T.dimensionCount, X.init)));
+
 @fmamath:
 
 ///
@@ -524,8 +534,8 @@ template spline(T, size_t N = 1, X = T)
     Params:
         grid = immutable `x` values for interpolant
         values = `f(x)` values for interpolant
-        rBoundary = $(LREF SplineBoundaryCondition) for left tail.
-        lBoundary = $(LREF SplineBoundaryCondition) for right tail.
+        lBoundary = $(LREF SplineBoundaryCondition) for left tail.
+        rBoundary = $(LREF SplineBoundaryCondition) for right tail.
         kind = $(LREF SplineType) type of cubic spline.
         param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
             Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
@@ -536,15 +546,15 @@ template spline(T, size_t N = 1, X = T)
     Spline!(T, N, X) spline(yIterator, SliceKind ykind)(
         Repeat!(N, Slice!(RCI!(immutable X))) grid,
         Slice!(yIterator, N, ykind) values,
-        SplineBoundaryCondition!T rBoundary,
         SplineBoundaryCondition!T lBoundary,
+        SplineBoundaryCondition!T rBoundary,
         SplineType kind = SplineType.c2,
         in T param = 0,
         )
     {
         auto ret = typeof(return)(forward!grid);
         ret._values = values;
-        ret._computeDerivatives(kind, param, rBoundary, lBoundary);
+        ret._computeDerivatives(kind, param, lBoundary, rBoundary);
         return ret;
     }
 }
@@ -597,6 +607,7 @@ See_also: $(LREF SplineBoundaryType)
 +/
 extern(C++, "mir", "interpolate")
 struct SplineBoundaryCondition(T)
+    if (__traits(isFloating, T))
 {
     /// type (default is $(LREF SplineBoundaryType.notAKnot))
     SplineBoundaryType type = SplineBoundaryType.notAKnot;
@@ -617,6 +628,8 @@ struct Spline(F, size_t N = 1, X = F)
     /// Grid iterators. $(RED For internal use.)
     Repeat!(N, RCI!(immutable X)) _grid;
 
+    enum dimensionCount = N;
+
 @fmamath extern(D):
 
     bool opEquals()(auto ref scope const typeof(this) rhs) scope const @trusted pure nothrow @nogc
@@ -635,15 +648,12 @@ struct Spline(F, size_t N = 1, X = F)
     {
         size_t length = 1;
         size_t[N] shape;
-        enum  msg =  "spline interpolant: minimal allowed length for the grid equals 2.";
-        version(D_Exceptions)
-            static immutable exc = new Exception(msg);
         foreach(i, ref x; grid)
         {
             if (x.length < 2)
             {
-                version(D_Exceptions) throw exc;
-                else assert(0, msg);
+                version(D_Exceptions) throw exc_min;
+                else assert(0, msg_min);
             }
             length *= shape[i] = x.length;
             this._grid[i] = x._iterator.move;
@@ -674,24 +684,24 @@ struct Spline(F, size_t N = 1, X = F)
     Computes derivatives and stores them in `_data`.
     `_data` is assumed to be preinitialized with function values filled in `F[2 ^^ N][0]`.
     Params:
-        lbc = left boundary condition
-        rbc = right boundary condition
+        lBoundary = left boundary condition
+        rBoundary = right boundary condition
         temp = temporal buffer length points count (optional)
 
     $(RED For internal use.)
     +/
-    void _computeDerivatives(SplineType kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc) scope @trusted nothrow @nogc
+    void _computeDerivatives(SplineType kind, F param, SplineBoundaryCondition!F lBoundary, SplineBoundaryCondition!F rBoundary) scope @trusted nothrow @nogc
     {
         import mir.algorithm.iteration: maxLength;
         auto ml = this._data.maxLength;
         auto temp = RCArray!F(ml);
         auto tempSlice = temp[].sliced;
-        _computeDerivativesTemp(kind, param, lbc, rbc, tempSlice);
+        _computeDerivativesTemp(kind, param, lBoundary, rBoundary, tempSlice);
     }
 
     /// ditto
     pragma(inline, false)
-    void _computeDerivativesTemp(SplineType kind, F param, SplineBoundaryCondition!F lbc, SplineBoundaryCondition!F rbc, Slice!(F*) temp) scope @system nothrow @nogc
+    void _computeDerivativesTemp(SplineType kind, F param, SplineBoundaryCondition!F lBoundary, SplineBoundaryCondition!F rBoundary, Slice!(F*) temp) scope @system nothrow @nogc
     {
         import mir.algorithm.iteration: maxLength, each;
         import mir.ndslice.topology: map, byDim, evertPack;
@@ -700,7 +710,7 @@ struct Spline(F, size_t N = 1, X = F)
 
         static if (N == 1)
         {
-            splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data.lightScope, 0), pickDataSubslice(_data.lightScope, 1), temp[0 .. _data._lengths[0]], kind, param, lbc, rbc);
+            splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data.lightScope, 0), pickDataSubslice(_data.lightScope, 1), temp[0 .. _data._lengths[0]], kind, param, lBoundary, rBoundary);
         }
         else
         foreach_reverse(i; Iota!N)
@@ -717,7 +727,7 @@ struct Spline(F, size_t N = 1, X = F)
                         auto y = pickDataSubslice(d, l);
                         auto s = pickDataSubslice(d, L + l);
                         // debug printf("ptr = %ld, stride = %ld, stride = %ld, d = %ld i = %ld l = %ld\n", d.iterator, d._stride!0, y._stride!0, d.length, i, l);
-                        splineSlopes!(F, F)(_grid[i].sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lbc, rbc);
+                        splineSlopes!(F, F)(_grid[i].sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lBoundary, rBoundary);
                         // debug{
                         //     (cast(void delegate() @nogc)(){
                         //     writeln("y = ", y);
@@ -941,8 +951,8 @@ Params:
     kind = $(LREF SplineType) type of cubic spline.
     param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
         Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
-    lbc = left boundary condition
-    rbc = right boundary condition
+    lBoundary = left boundary condition
+    rBoundary = right boundary condition
 Constraints:
     `points`, `values`, and `slopes`, must have the same length > 3;
     `temp` must have length greater or equal to points less minus one.
@@ -954,8 +964,8 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
     Slice!(T*) temp,
     SplineType kind,
     F param,
-    SplineBoundaryCondition!F lbc,
-    SplineBoundaryCondition!F rbc,
+    SplineBoundaryCondition!F lBoundary,
+    SplineBoundaryCondition!F rBoundary,
     ) @trusted
 {
     import mir.ndslice.topology: diff, zip, slide;
@@ -979,50 +989,50 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         case c2:
             break;
         case cardinal:
-            if (lbc.type == SplineBoundaryType.notAKnot)
-                lbc.type = SplineBoundaryType.parabolic;
-            if (rbc.type == SplineBoundaryType.notAKnot)
-                rbc.type = SplineBoundaryType.parabolic;
+            if (lBoundary.type == SplineBoundaryType.notAKnot)
+                lBoundary.type = SplineBoundaryType.parabolic;
+            if (rBoundary.type == SplineBoundaryType.notAKnot)
+                rBoundary.type = SplineBoundaryType.parabolic;
             break;
         case monotone:
-            if (lbc.type == SplineBoundaryType.notAKnot)
-                lbc.type = SplineBoundaryType.monotone;
-            if (rbc.type == SplineBoundaryType.notAKnot)
-                rbc.type = SplineBoundaryType.monotone;
+            if (lBoundary.type == SplineBoundaryType.notAKnot)
+                lBoundary.type = SplineBoundaryType.monotone;
+            if (rBoundary.type == SplineBoundaryType.notAKnot)
+                rBoundary.type = SplineBoundaryType.monotone;
             break;
         case doubleQuadratic:
-            if (lbc.type == SplineBoundaryType.notAKnot)
-                lbc.type = SplineBoundaryType.parabolic;
-            if (rbc.type == SplineBoundaryType.notAKnot)
-                rbc.type = SplineBoundaryType.parabolic;
+            if (lBoundary.type == SplineBoundaryType.notAKnot)
+                lBoundary.type = SplineBoundaryType.parabolic;
+            if (rBoundary.type == SplineBoundaryType.notAKnot)
+                rBoundary.type = SplineBoundaryType.parabolic;
             break;
         case akima:
-            if (lbc.type == SplineBoundaryType.notAKnot)
-                lbc.type = SplineBoundaryType.akima;
-            if (rbc.type == SplineBoundaryType.notAKnot)
-                rbc.type = SplineBoundaryType.akima;
+            if (lBoundary.type == SplineBoundaryType.notAKnot)
+                lBoundary.type = SplineBoundaryType.akima;
+            if (rBoundary.type == SplineBoundaryType.notAKnot)
+                rBoundary.type = SplineBoundaryType.akima;
             break;
     }
 
     if (n <= 3)
     {
-        if (lbc.type == SplineBoundaryType.notAKnot)
-            lbc.type = SplineBoundaryType.parabolic;
-        if (rbc.type == SplineBoundaryType.notAKnot)
-            rbc.type = SplineBoundaryType.parabolic;
+        if (lBoundary.type == SplineBoundaryType.notAKnot)
+            lBoundary.type = SplineBoundaryType.parabolic;
+        if (rBoundary.type == SplineBoundaryType.notAKnot)
+            rBoundary.type = SplineBoundaryType.parabolic;
 
         if (n == 2)
         {
-            if (lbc.type == SplineBoundaryType.monotone
-             || lbc.type == SplineBoundaryType.akima)
-                lbc.type = SplineBoundaryType.parabolic;
-            if (rbc.type == SplineBoundaryType.monotone
-             || rbc.type == SplineBoundaryType.akima)
-                rbc.type = SplineBoundaryType.parabolic;
+            if (lBoundary.type == SplineBoundaryType.monotone
+             || lBoundary.type == SplineBoundaryType.akima)
+                lBoundary.type = SplineBoundaryType.parabolic;
+            if (rBoundary.type == SplineBoundaryType.monotone
+             || rBoundary.type == SplineBoundaryType.akima)
+                rBoundary.type = SplineBoundaryType.parabolic;
         }
         /// special case
-        if (rbc.type == SplineBoundaryType.parabolic
-         && lbc.type == SplineBoundaryType.parabolic)
+        if (rBoundary.type == SplineBoundaryType.parabolic
+         && lBoundary.type == SplineBoundaryType.parabolic)
         {
             import mir.interpolate.utility;
             if (n == 3)
@@ -1041,7 +1051,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
         }
     }
 
-    with(SplineBoundaryType) final switch(lbc.type)
+    with(SplineBoundaryType) final switch(lBoundary.type)
     {
     case periodic:
 
@@ -1065,14 +1075,14 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
         slopes.front = 1;
         first = 0;
-        temp.front = lbc.value;
+        temp.front = lBoundary.value;
         break;
 
     case secondDerivative:
 
         slopes.front = 2;
         first = 1;
-        temp.front = 3 * dd.front - 0.5 * lbc.value * xd.front;
+        temp.front = 3 * dd.front - 0.5 * lBoundary.value * xd.front;
         break;
 
     case parabolic:
@@ -1098,7 +1108,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     }
 
-    with(SplineBoundaryType) final switch(rbc.type)
+    with(SplineBoundaryType) final switch(rBoundary.type)
     {
     case periodic:
         assert(0);
@@ -1120,14 +1130,14 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
         slopes.back = 1;
         last = 0;
-        temp.back = rbc.value;
+        temp.back = rBoundary.value;
         break;
 
     case secondDerivative:
 
         slopes.back = 2;
         last = 1;
-        temp.back = 3 * dd.back + 0.5 * rbc.value * xd.back;
+        temp.back = 3 * dd.back + 0.5 * rBoundary.value * xd.back;
         break;
 
     case parabolic:
@@ -1292,6 +1302,8 @@ struct SplineKernel(X)
     X w1 = 0;
     X wq = 0;
 
+@fmamath:
+
     ///
     this(X x0, X x1, X x)
     {
@@ -1308,7 +1320,7 @@ struct SplineKernel(X)
         if (derivative <= 3)
     {
         ///
-        auto opCall(Y)(in Y y0, in Y y1, in Y s0, in Y s1) const
+        auto opCall(Y)(const Y y0, const Y y1, const Y s0, const Y s1) const
         {
             auto diff = y1 - y0;
             auto z0 = s0 * step - diff;
@@ -1341,6 +1353,20 @@ struct SplineKernel(X)
                 return y;
             }
         }
+
+        static if (derivative)
+        auto opCall(Y, size_t N)(scope ref const Y[N] y0, scope ref const Y[N] y1, scope ref const Y[N] s0, scope ref const Y[N] s1)
+        {
+            Y[N][derivative + 1] ret = void;
+            Y[derivative + 1][N] temp = void;
+
+            static foreach(i; 0 .. N)
+                temp[i] = this.opCall!derivative(y0[i], y1[i], s0[i], s1[i]);
+            static foreach(i; 0 .. N)
+            static foreach(d; 0 .. derivative + 1)
+                ret[d][i] = temp[i][d];
+            return ret;
+        }
     }
 
     ///
@@ -1366,4 +1392,285 @@ package T pchipTail(T)(in T step0, in T step1, in T diff0, in T diff1)
         return diff0 * 3;
     }
     return slope;
+}
+
+/++
+Spline interpolator used for non-rectiliner trapezoid-like greeds.
+Params:
+    grid = rc-array of interpolation grid
+    data = rc-array of interpolator-like structures
+    typeOfBoundaries = $(LREF SplineBoundaryType) for both tails (optional).
+    valueOfBoundaryConditions = value of the boundary type (optional). 
+Constraints:
+    `grid` and `values` must have the same length >= 3
+Returns: $(LREF Spline)
++/
+MetaSpline!(T, X) metaSpline(F, X, T)(
+    RCArray!(immutable X) grid,
+    RCArray!(const T) data,
+    SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
+    const F valueOfBoundaryConditions = 0,
+    )
+{
+    return metaSpline!(F, X, T)(grid, data, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
+}
+
+/++
+Spline interpolator used for non-rectiliner trapezoid-like greeds.
+Params:
+    grid = rc-array of interpolation grid
+    data = rc-array of interpolator-like structures
+    kind = $(LREF SplineType) type of cubic spline.
+    param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+        Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
+    typeOfBoundaries = $(LREF SplineBoundaryType) for both tails (optional).
+    valueOfBoundaryConditions = value of the boundary type (optional). 
+Constraints:
+    `grid` and `values` must have the same length >= 3
+Returns: $(LREF Spline)
++/
+MetaSpline!(T, X) metaSpline(F, X, T)(
+    RCArray!(immutable X) grid,
+    RCArray!(const T) data,
+    SplineType kind,
+    const F param = 0,
+    SplineBoundaryType typeOfBoundaries = SplineBoundaryType.notAKnot,
+    const F valueOfBoundaryConditions = 0,
+    )
+{
+    return metaSpline!(F, X, T)(grid, data, SplineBoundaryCondition!F(typeOfBoundaries, valueOfBoundaryConditions), kind, param);
+}
+
+/++
+Spline interpolator used for non-rectiliner trapezoid-like greeds.
+Params:
+    grid = rc-array of interpolation grid
+    data = rc-array of interpolator-like structures
+    boundaries = $(LREF SplineBoundaryCondition) for both tails.
+    kind = $(LREF SplineType) type of cubic spline.
+    param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+        Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
+Constraints:
+    `grid` and `values` must have the same length >= 3
+Returns: $(LREF Spline)
++/
+MetaSpline!(T, X) metaSpline(F, X, T)(
+    RCArray!(immutable X) grid,
+    RCArray!(const T) data,
+    SplineBoundaryCondition!F boundaries,
+    SplineType kind = SplineType.c2,
+    const F param = 0,
+    )
+{
+    return metaSpline!(F, X, T)(grid, data, boundaries, boundaries, kind, param);
+}
+
+/++
+Spline interpolator used for non-rectiliner trapezoid-like greeds.
+Params:
+    grid = rc-array of interpolation grid
+    data = rc-array of interpolator-like structures
+    lBoundary = $(LREF SplineBoundaryCondition) for left tail.
+    rBoundary = $(LREF SplineBoundaryCondition) for right tail.
+    kind = $(LREF SplineType) type of cubic spline.
+    param = tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+        Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
+Constraints:
+    `grid` and `values` must have the same length >= 3
+Returns: $(LREF Spline)
++/
+MetaSpline!(T, X) metaSpline(F, X, T)(
+    RCArray!(immutable X) grid,
+    RCArray!(const T) data,
+    SplineBoundaryCondition!F lBoundary,
+    SplineBoundaryCondition!F rBoundary,
+    SplineType kind = SplineType.c2,
+    in F param = 0,
+    )
+{
+    import core.lifetime: move;
+    return MetaSpline!(T, X)(grid.move, data.move, kind, param, lBoundary, rBoundary);
+}
+
+/// ditto
+struct MetaSpline(T, X)
+    if (T.derivativeOrder >= 3)
+{
+    import mir.interpolate.utility: DeepType;
+    // alias ElementInterpolator = Linear!(F, N, X);
+    alias F = ValueType!(T, X);
+    ///
+    Spline!F spline;
+    ///
+    RCArray!(const T) data;
+    //
+    private RCArray!F _temp;
+    ///
+    SplineType splineType;
+    ///
+    F splineParam;
+    ///
+    SplineBoundaryCondition!F lBoundary;
+    ///
+    SplineBoundaryCondition!F rBoundary;
+
+
+    ///
+    this(
+        RCArray!(immutable X) grid,
+        RCArray!(const T) data,
+        SplineType splineType,
+        F splineParam,
+        SplineBoundaryCondition!F lBoundary,
+        SplineBoundaryCondition!F rBoundary,
+    )
+    {
+        import core.lifetime: move;
+
+        if (grid.length < 2)
+        {
+            version(D_Exceptions) throw exc_min;
+            else assert(0, msg_min);
+        }
+
+        if (grid.length != data.length)
+        {
+            version(D_Exceptions) throw exc_eq;
+            else assert(0, msg_eq);
+        }
+
+        this.data = data.move;
+        this._temp = grid.length;
+        this.spline = grid.moveToSlice;
+        this.splineType = splineType;
+        this.splineParam = splineParam;
+        this.lBoundary = lBoundary;
+        this.rBoundary = rBoundary;
+    }
+
+    ///
+    MetaLinear lightConst()() const @property { return *cast(MetaLinear*)&this; }
+
+    ///
+    immutable(X)[] gridScopeView(size_t dimension = 0)() scope return const @property @trusted
+        if (dimension == 0)
+    {
+        return spline.gridScopeView;
+    }
+
+    /++
+    Returns: intervals count.
+    +/
+    size_t intervalCount(size_t dimension = 0)() scope const @property
+        if (dimension == 0)
+    {
+        assert(data.length > 1);
+        return data.length - 1;
+    }
+
+    ///
+    enum uint derivativeOrder = 3;
+
+    ///
+    enum dimensionCount = T.dimensionCount + 1;
+
+    ///
+    template opCall(uint derivative = 0)
+        // if (derivative <= derivativeOrder)
+        if (derivative <= 0) // doesn't support derivatives for now
+    {
+        /++
+        `(x)` operator.
+        Complexity:
+            `O(log(grid.length))`
+        +/
+        auto opCall(X...)(const X xs) scope const @trusted
+            if (X.length == dimensionCount)
+        {
+            auto mutable = cast(F[2][]) spline._data.lightScope.field;
+            assert(mutable.length == data.length);
+            foreach (i, ref d; data)
+                mutable[i][0] = d(xs[1 .. $]);
+            (*cast(Spline!F*)&spline)._computeDerivativesTemp(
+                splineType,
+                splineParam,
+                lBoundary,
+                rBoundary,
+                (cast(F[])_temp[]).sliced);
+            return spline(xs[0]);
+        }
+    }
+
+    // ///
+    // alias withDerivative = opCall!1;
+}
+
+/// 2D trapezoid-like (not rectilinear) linear interpolation
+unittest
+{
+    auto x = [
+        [0.0, 1, 2, 3, 5],
+        [-4.0, 3, 4],
+        [0.0, 10],
+    ];
+    auto y = [
+        [4.0, 0, 9, 23, 40],
+        [9.0, 0, 3],
+        [4.0, 40],
+    ];
+
+    auto g = [7.0, 10, 15];
+
+    import mir.rc.array: RCArray;
+    import mir.ndslice.allocation: rcslice;
+
+    auto d = RCArray!(Spline!double)(3);
+
+    foreach (i; 0 .. x.length)
+        d[i] = spline!double(x[i].rcslice!(immutable double), y[i].rcslice!(const double));
+
+    auto trapezoidInterpolator = metaSpline!double(g.rcarray!(immutable double), d.lightConst);
+
+    auto val = trapezoidInterpolator(9.0, 1.8);
+
+}
+
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice;
+    alias appreq = (a, b) => approxEqual(a, b, 10e-10, 10e-10);
+
+    //// set test function ////
+    enum y_x0 = 2;
+    enum y_x1 = -7;
+    enum y_x0x1 = 3;
+
+    // this function should be approximated very well
+    alias f = (x0, x1) => y_x0 * x0 + y_x1 * x1 + y_x0x1 * x0 * x1 - 11;
+
+    ///// set interpolant ////
+    static immutable x0 = [-1.0, 2, 8, 15];
+    static immutable x1 = [-4.0, 2, 5, 10, 13];
+
+    auto grid = cartesian(x0, x1)
+        .map!f
+        .rcslice
+        .lightConst;
+    
+    auto int0 = spline!double(x1.rcslice!(immutable double), grid[0]);
+    auto int1 = spline!double(x1.rcslice!(immutable double), grid[1]);
+    auto int2 = spline!double(x1.rcslice!(immutable double), grid[2]);
+    auto int3 = spline!double(x1.rcslice!(immutable double), grid[3]);
+
+    auto interpolant = metaSpline!double(x0.rcarray!(immutable double), rcarray(int0, int1, int2, int3).lightConst);
+
+    ///// compute test data ////
+    auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23);
+    // auto test_grid = cartesian(x0 + 0, x1 + 0);
+    auto real_data = test_grid.map!f;
+    auto interp_data = test_grid.vmap(interpolant);
+
+    ///// verify result ////
+    assert(all!appreq(interp_data, real_data));
 }
