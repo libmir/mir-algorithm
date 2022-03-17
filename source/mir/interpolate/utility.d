@@ -4,6 +4,14 @@ import mir.ndslice.slice;
 import std.traits;
 import mir.math.common: optmath;
 
+package template DeepType(T)
+{
+    static if (is(T : E[N], E, size_t N))
+        alias DeepType = DeepType!E;
+    else
+        alias DeepType = T;
+}
+
 /++
 Quadratic function structure
 +/
@@ -86,7 +94,7 @@ struct ParabolaKernel(T)
 }
 
 /// ditto
-ParabolaKernel!(Unqual!(typeof(X.init - Y.init))) parabolaKernel(X, Y)(in X x0, in X x1, in X x2, in Y y0, in Y y1, in Y y2)
+ParabolaKernel!(Unqual!(typeof(X.init - Y.init))) parabolaKernel(X, Y)(in X x0, in X x1, in X x2, const Y y0, const Y y1, const Y y2)
 {
     return typeof(return)(x0, x1, x2, y0, y1, y2);
 }
@@ -94,7 +102,7 @@ ParabolaKernel!(Unqual!(typeof(X.init - Y.init))) parabolaKernel(X, Y)(in X x0, 
 /++
 Returns: `[f'(x0), f'(x1), f'(x2)]`
 +/
-Unqual!(typeof(X.init - Y.init))[3] parabolaDerivatives(X, Y)(in X x0, in X x1, in X x2, in Y y0, in Y y1, in Y y2)
+Unqual!(typeof(X.init - Y.init))[3] parabolaDerivatives(X, Y)(in X x0, in X x1, in X x2, const Y y0, const Y y1, const Y y2)
 {
     auto d0 = (y2 - y1) / (x2 - x1);
     auto d1 = (y0 - y2) / (x0 - x2);
