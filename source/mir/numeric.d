@@ -1430,6 +1430,9 @@ struct FindSmileRootsResult(T)
     Right result if any
     +/
     Nullable!(FindRootResult!T) rightResult;
+    /++
+    +/
+    Nullable!(FindLocalMinResult!T) localMinResult;
 
 @safe pure @nogc scope const @property:
 
@@ -1518,9 +1521,9 @@ if (__traits(isFloating, T))
     else
     if (res.status == FindRootStatus.badBounds)
     {
-        auto min = findLocalMin!f(ax, bx, relTolerance, absTolerance);
-        ret.leftResult = findRoot!(f, tolerance)(ax, min.x, T.nan, min.y, T.nan, T.nan, maxIterations);
-        ret.rightResult = findRoot!(f, tolerance)(min.x, bx, min.y, T.nan, T.nan, T.nan, maxIterations);
+        ret.localMinResult = findLocalMin!f(ax, bx, relTolerance, absTolerance);
+        ret.leftResult = findRoot!(f, tolerance)(ax, ret.localMinResult.x, T.nan, ret.localMinResult.y, T.nan, T.nan, maxIterations);
+        ret.rightResult = findRoot!(f, tolerance)(ret.localMinResult.x, bx, ret.localMinResult.y, T.nan, T.nan, T.nan, maxIterations);
     }
     return ret;
 }
@@ -1529,18 +1532,23 @@ if (__traits(isFloating, T))
 version(mir_test)
 unittest
 {
+    import mir.math.common: approxEqual;
     auto result = findSmileRoots!(x => x ^^ 2 - 1)(-10.0, 10.0);
     assert(result.roots.length == 2);
     assert(result.roots[0].approxEqual(-1));
     assert(result.roots[1].approxEqual(+1));
     assert(result.leftResult);
     assert(result.rightResult);
+    assert(result.localMinResult);
+    assert(result.localMinResult.get.x.approxEqual(0));
+    assert(result.localMinResult.get.y.approxEqual(-1));
 }
 
 /// Skew
 version(mir_test)
 unittest
 {
+    import mir.math.common: approxEqual;
     auto result = findSmileRoots!(x => x ^^ 2 - 1)(0.5, 10.0);
     assert(result.roots.length == 1);
     assert(result.roots[0].approxEqual(+1));
