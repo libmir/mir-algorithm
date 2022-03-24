@@ -75,6 +75,7 @@ sources_list = [
     'mir/small_array',
     'mir/small_string',
     'mir/string_map',
+    'mir/test',
     'mir/timestamp',
     'mir/type_info',
 ]

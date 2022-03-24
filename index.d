@@ -24,6 +24,7 @@ $(BOOKTABLE ,
     $(TR $(TDNW $(MREF mir,small_array)) $(TD Generic Small Arrays))
     $(TR $(TDNW $(MREF mir,small_string)) $(TD Generic Small Strings))
     $(TR $(TDNW $(MREF mir,string_map)) $(TD Ordered string-value associative array with fast lookup))
+    $(TR $(TDNW $(MREF mir,test)) $(TD Testing utilities))
     $(LEADINGROW Date and time)
     $(TR $(TDNW $(MREF mir,date)) $(TD Fast BetterC Date type with Boost ABI and mangling compatability))
     $(TR $(TDNW $(MREF mir,timestamp)) $(TD General purpose timestamp implementation with arbitrary precision ))
