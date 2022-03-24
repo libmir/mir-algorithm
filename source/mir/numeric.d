@@ -14,7 +14,7 @@ import mir.math.ieee;
 
 version(D_Exceptions)
 {
-    private static immutable findRoot_badBounds = new Exception("findRoot/findLocalMin: f(ax) and f(bx) must have opposite signs to bracket the root.");
+    private static immutable findRoot_badBounds = new Exception("findRoot: f(ax) and f(bx) must have opposite signs to bracket the root.");
     private static immutable findRoot_nanX = new Exception("findRoot/findLocalMin: ax or bx is NaN.");
     private static immutable findRoot_nanY = new Exception("findRoot/findLocalMin: f(x) returned NaN.");
 }
@@ -1413,6 +1413,149 @@ version(mir_test) @safe unittest
             assert(ret.error.approxEqual(T(0)));
         }
     }
+}
+
+/++
++/
+struct FindSmileRootsResult(T)
+    if (__traits(isFloating, T))
+{
+    import mir.algebraic: Nullable;
+
+    /++
+    Left result if any
+    +/
+    Nullable!(FindRootResult!T) leftResult;
+    /++
+    Right result if any
+    +/
+    Nullable!(FindRootResult!T) rightResult;
+
+@safe pure @nogc scope const @property:
+
+    /++
+    Returns: $(LREF mir_find_root_status)
+    +/
+    FindRootStatus status()
+    {
+        if (leftResult && leftResult.get.status)
+            return leftResult.get.status;
+        if (rightResult && rightResult.get.status)
+            return rightResult.get.status;
+        if (!leftResult && !rightResult)
+            return FindRootStatus.badBounds;
+        return FindRootStatus.success;
+    }
+
+    ///
+    version(D_Exceptions)
+    ref validate() inout return
+    {
+        with(FindRootStatus) final switch(status)
+        {
+            case success: return this;
+            case badBounds: throw findRoot_badBounds;
+            case nanX: throw findRoot_nanX;
+            case nanY: throw findRoot_nanY;
+        }
+    }
+
+    /++
+    Returns: `SmallArray!(T, 2)` of roots if any.
+    +/
+    auto roots()()
+    {
+        import mir.small_array;
+        SmallArray!(T, 2) ret;
+        if (leftResult)
+            ret.append(leftResult.get.x);
+        if (rightResult)
+            ret.append(rightResult.get.x);
+        return ret;
+    }
+}
+
+/++
+Find one or two roots of a real function f(x) using combination of $(LREF FindRoot) and $(LREF FindLocalMin).
+
+Params:
+    f = Function to be analyzed. If `f(ax)` and `f(bx)` have opposite signs one root is returned,
+        otherwise the implementation tries to find a local minimum and returns two roots.
+        At least one of `f(ax)` and `f(bx)` should be greater or equal to zero.
+    tolerance = Defines an early termination condition. Receives the
+        current upper and lower bounds on the root. The delegate must return `true` when these bounds are
+        acceptable. If this function always returns `false` or it is null, full machine precision will be achieved.
+    ax = Left inner bound of initial range of `f` known to contain the roots.
+    bx = Right inner bound of initial range of `f` known to contain the roots. Can be equal to `ax`.
+    fax = Value of `f(ax)` (optional).
+    fbx = Value of `f(bx)` (optional).
+    relTolerance = Relative tolerance used by $(LREF findLocalMin).
+    absTolerance = Absolute tolerance used by $(LREF findLocalMin).
+    maxIterations = Appr. maximum allowed number of function calls for each $(LREF findRoot) call.
+
+Returns: $(LREF FindSmileRootsResult)
++/
+FindSmileRootsResult!T findSmileRoots(alias f, alias tolerance = null, T)(
+    const T ax,
+    const T bx,
+    const T fax = T.nan,
+    const T fbx = T.nan,
+    const T relTolerance = sqrt(T.epsilon),
+    const T absTolerance = sqrt(T.epsilon),
+    const T lowerBound = T.nan,
+    const T upperBound = T.nan,
+    uint maxIterations = T.sizeof * 16,
+    uint steps = 0,
+    )
+if (__traits(isFloating, T))
+{
+    FindSmileRootsResult!T ret;
+    auto res = findRoot!(f, tolerance)(ax, bx, fax, fbx, T.nan, T.nan, maxIterations);
+    if (res.status == FindRootStatus.success)
+    {
+        (res.bx.signbit ? ret.leftResult : ret.rightResult) = res;
+    }
+    else
+    if (res.status == FindRootStatus.badBounds)
+    {
+        auto min = findLocalMin!f(ax, bx, relTolerance, absTolerance);
+        ret.leftResult = findRoot!(f, tolerance)(ax, min.x, T.nan, min.y, T.nan, T.nan, maxIterations);
+        ret.rightResult = findRoot!(f, tolerance)(min.x, bx, min.y, T.nan, T.nan, T.nan, maxIterations);
+    }
+    return ret;
+}
+
+/// Smile
+version(mir_test)
+unittest
+{
+    auto result = findSmileRoots!(x => x ^^ 2 - 1)(-10.0, 10.0);
+    assert(result.roots.length == 2);
+    assert(result.roots[0].approxEqual(-1));
+    assert(result.roots[1].approxEqual(+1));
+    assert(result.leftResult);
+    assert(result.rightResult);
+}
+
+/// Skew
+version(mir_test)
+unittest
+{
+    auto result = findSmileRoots!(x => x ^^ 2 - 1)(0.5, 10.0);
+    assert(result.roots.length == 1);
+    assert(result.roots[0].approxEqual(+1));
+    assert(!result.leftResult);
+    assert(result.rightResult);
+}
+
+version(mir_test)
+unittest
+{
+    auto result = findSmileRoots!(x => x ^^ 2 - 1)(-10.0, -0.5);
+    assert(result.roots.length == 1);
+    assert(result.roots[0].approxEqual(-1));
+    assert(result.leftResult);
+    assert(!result.rightResult);
 }
 
 // force disabled FMA math

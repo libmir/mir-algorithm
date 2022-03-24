@@ -43,6 +43,7 @@ ShouldApprox!T shouldApprox(T)(const T value, const T maxRelDiff = T(0x1p-20f), 
 }
 
 ///
+version(mir_test)
 unittest
 {
     1.0.shouldApprox == 1 + 9e-7;
@@ -76,6 +77,7 @@ Should!T should(T)(T value)
 }
 
 ///
+version(mir_test)
 unittest
 {
     1.0.should == 1;
@@ -98,6 +100,7 @@ bool should(alias fun, T, R)(const T value, const R expected, string file = __FI
 }
 
 ///
+version(mir_test)
 unittest
 {
     1.0.should!"a < b"(1.3);
