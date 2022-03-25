@@ -1881,7 +1881,54 @@ template sum(string summation)
     mixin("alias sum = .sum!(Summation." ~ summation ~ ");");
 }
 
+private static immutable jaggedMsg = "sum: each slice should have the same length";
+version(D_Exceptions)
+    static immutable jaggedException = new Exception(jaggedMsg);
 
+/++
+Sum slices with a naive algorithm.
++/
+template sumSlices()
+{
+    import mir.primitives: DeepElementType;
+    import mir.ndslice.slice: Slice, SliceKind, isSlice;
+    ///
+    auto sumSlices(Iterator, SliceKind kind)(Slice!(Iterator, 1, kind) sliceOfSlices)
+        if (isSlice!(DeepElementType!(Slice!(Iterator, 1, kind))))
+    {
+        import mir.ndslice.topology: as;
+        import mir.ndslice.allocation: slice;
+        alias T = Unqual!(DeepElementType!(DeepElementType!(Slice!(Iterator, 1, kind))));
+        import mir.ndslice: slice;
+        if (sliceOfSlices.length == 0)
+            return Slice!(T*).init;
+        auto ret = slice(as!T(sliceOfSlices.front));
+        sliceOfSlices.popFront;
+        foreach (sl; sliceOfSlices)
+        {
+            if (sl.length != ret.length)
+            {
+                version (D_Exceptions)
+                    throw jaggedException;
+                else
+                    assert(0);
+            }
+            ret[] += sl[];
+        }
+        return ret;
+    }
+}
+
+///
+version(mir_test)
+unittest
+{
+    import mir.ndslice.topology: map;
+    import mir.ndslice.slice: sliced;
+
+    auto ar = [[1, 2, 3], [10, 20, 30]];
+    assert(ar.map!sliced.sumSlices == [11, 22, 33]);
+}
 
 version(mir_test)
 @safe pure nothrow unittest
