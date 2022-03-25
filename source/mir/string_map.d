@@ -37,6 +37,15 @@ struct StringMap(T, U = uint)
     import mir.conv: emplaceRef;
 
     ///
+    static struct KeyValue
+    {
+        ///
+        string key;
+        ///
+        T value;
+    }
+
+    ///
     alias serdeKeysProxy = Unqual!T;
 
     ///
@@ -242,6 +251,8 @@ struct StringMap(T, U = uint)
     {
         return implementation ? implementation.keys : null;
     }
+    ///
+    alias byKey = keys;
 
     version(mir_test) static if (is(T == int))
     ///
@@ -270,6 +281,27 @@ struct StringMap(T, U = uint)
     inout(T)[] values()() @safe pure nothrow @nogc inout @property
     {
         return implementation ? implementation.values : null;
+    }
+
+    /// ditto
+    alias byValue = values;
+
+    version(mir_test) static if (is(T == int))
+    ///
+    @safe pure unittest
+    {
+        StringMap!double map;
+        assert(map.byKeyValue == StringMap!double.KeyValue[].init);
+        map["c"] = 4.0;
+        map["a"] = 3.0;
+        assert(map.byKeyValue == [StringMap!double.KeyValue("c", 4.0), StringMap!double.KeyValue("a", 3.0)]);
+    }
+
+    ///
+    auto byKeyValue(this This)() @trusted pure nothrow @nogc
+    {
+        import mir.ndslice.topology: zip, map;
+        return keys.zip(values).map!KeyValue;
     }
 
     version(mir_test) static if (is(T == int))
