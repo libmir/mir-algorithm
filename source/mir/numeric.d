@@ -1416,6 +1416,63 @@ version(mir_test) @safe unittest
 }
 
 /++
+A set of one or two smile roots.
+
+Because we assume that volatility smile is convex the equantion above can have no more then two roots.
+
+The `left` and `right` members are equal if the smile has only one root.
++/
+struct SmileRoots(T)
+    if (__traits(isFloating, T))
+{
+    import mir.small_array: SmallArray;
+
+    ///
+    T left;
+    ///
+    T right;
+
+@safe pure nothrow @nogc:
+
+    ///
+    this(T value)
+    {
+        left = right = value;
+    }
+
+    ///
+    this(T left, T right)
+    {
+        this.left = left;
+        this.right = right;
+    }
+
+    ///
+    this(SmallArray!(T, 2) array)
+    {
+        if (array.length == 2)
+            this(array[0], array[1]);
+        else
+        if (array.length == 1)
+            this(array[0]);
+        else
+            this(T.nan, T.nan);
+    }
+
+    ///
+    inout(T)[] opIndex() @trusted inout
+    {
+        return (&left)[0 .. 2];
+    }
+
+    ///
+    size_t count() const
+    {
+        return 1 + (left != right);
+    }
+}
+
+/++
 +/
 struct FindSmileRootsResult(T)
     if (__traits(isFloating, T))
@@ -1475,6 +1532,14 @@ struct FindSmileRootsResult(T)
         if (rightResult)
             ret.append(rightResult.get.x);
         return ret;
+    }
+
+    /++
+    Returns: $(LREF SmileRoots).
+    +/
+    SmileRoots!double smileRoots()()
+    {
+        return typeof(return)(roots);
     }
 }
 
@@ -1537,6 +1602,8 @@ unittest
     assert(result.roots.length == 2);
     assert(result.roots[0].approxEqual(-1));
     assert(result.roots[1].approxEqual(+1));
+    assert(result.smileRoots.left.approxEqual(-1));
+    assert(result.smileRoots.right.approxEqual(+1));
     assert(result.leftResult);
     assert(result.rightResult);
     assert(result.localMinResult);
@@ -1552,6 +1619,8 @@ unittest
     auto result = findSmileRoots!(x => x ^^ 2 - 1)(0.5, 10.0);
     assert(result.roots.length == 1);
     assert(result.roots[0].approxEqual(+1));
+    assert(result.smileRoots.left.approxEqual(+1));
+    assert(result.smileRoots.right.approxEqual(+1));
     assert(!result.leftResult);
     assert(result.rightResult);
 }
@@ -1562,6 +1631,8 @@ unittest
     auto result = findSmileRoots!(x => x ^^ 2 - 1)(-10.0, -0.5);
     assert(result.roots.length == 1);
     assert(result.roots[0].approxEqual(-1));
+    assert(result.smileRoots.left.approxEqual(-1));
+    assert(result.smileRoots.right.approxEqual(-1));
     assert(result.leftResult);
     assert(!result.rightResult);
 }
