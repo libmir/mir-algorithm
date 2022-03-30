@@ -882,51 +882,10 @@ alias serdeGetTransformOut(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value
 
 /++
 +/
-bool serdeParseEnum(E)(const char[] str, ref E res)
+bool serdeParseEnum(E)(scope const char[] str, ref E res)
     @safe pure nothrow @nogc
+    if (is(E == enum))
 {
-    static if (__VERSION__ < 2093)
-    {
-        static if (hasUDA!(E, serdeIgnoreCase))
-        {
-            import mir.format: stringBuf;
-            stringBuf buf;
-            buf << str;
-            auto ustr = buf.data.fastToUpperInPlace;
-        }
-        else
-        {
-            alias ustr = str;
-        }
-        switch(ustr)
-        {
-            foreach(i, member; EnumMembers!E)
-            {{
-                enum initKeys = serdeGetKeysIn(EnumMembers!E[i]);
-                static if (hasUDA!(E, serdeIgnoreCase))
-                {
-                    import mir.ndslice.topology: map;
-                    import mir.array.allocation: array;
-                    enum keys = initKeys.map!fastLazyToUpper.map!array.array;
-                }
-                else
-                {
-                    enum keys = initKeys;
-                }
-                static assert (keys.length, "At least one input enum key is required");
-                static foreach (key; keys)
-                {
-                    case key:
-                }
-                res = member;
-                return true;
-            }}
-            default:
-                return false;
-        }
-    }
-    else
-    {
     import mir.enums: getEnumIndexFromKey, unsafeEnumFromIndex;
     import mir.utility: _expect;
 
@@ -937,7 +896,20 @@ bool serdeParseEnum(E)(const char[] str, ref E res)
         return true;
     }
     return false;
-    }
+}
+
+version(D_Exceptions)
+/// ditto
+auto serdeParseEnum(E)(scope const char[] str)
+    @safe pure
+    if (is(E == enum))
+{
+    import mir.utility: max;
+    E ret;
+    if (.serdeParseEnum(str, ret))
+        return ret;
+    import mir.exception: MirException;
+    throw new MirException("Can't deserialzie ", E.stringof, " from string", str[0 .. max($, 128u)]);
 }
 
 ///
@@ -959,10 +931,8 @@ version(mir_test) unittest
     assert(e == E.a);
     assert(serdeParseEnum("beta", e));
     assert(e == E.b);
-    assert(serdeParseEnum("B", e));
-    assert(e == E.b);
-    assert(serdeParseEnum("c", e));
-    assert(e == E.c);
+    assert("B".serdeParseEnum!E == E.b);
+    assert("c".serdeParseEnum!E == E.c);
 
     assert(!serdeParseEnum("C", e));
     assert(!serdeParseEnum("Alpha", e));
