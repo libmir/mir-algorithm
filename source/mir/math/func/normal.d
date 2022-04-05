@@ -25,6 +25,7 @@ import mir.math.common;
 @safe pure nothrow @nogc:
 
 ///
+deprecated("normalProbabilityDensity renamed, use normalPDF instead")
 T normalProbabilityDensity(T)(const T z)
  if (isFloatingPoint!T)
 {
@@ -33,10 +34,26 @@ T normalProbabilityDensity(T)(const T z)
 }
 
 /// ditto
+deprecated("normalProbabilityDensity renamed, use normalPDF instead")
 T normalProbabilityDensity(T)(const T x, const T mean, const T stdDev)
 if (isFloatingPoint!T)
 {
     return normalProbabilityDensity((x - mean) / stdDev) / stdDev;
+}
+
+///
+T normalPDF(T)(const T z)
+ if (isFloatingPoint!T)
+{
+    import mir.math.common: sqrt, exp;
+    return T(SQRT2PIINV) * exp(z * z * -0.5);
+}
+
+/// ditto
+T normalPDF(T)(const T x, const T mean, const T stdDev)
+if (isFloatingPoint!T)
+{
+    return normalPDF((x - mean) / stdDev) / stdDev;
 }
 
 /++
@@ -56,6 +73,7 @@ $(LINK http://www.netlib.org/cephes/ldoubdoc.html),
 G. Marsaglia, "Evaluating the Normal Distribution",
 Journal of Statistical Software <b>11</b>, (July 2004).
 +/
+deprecated("normalDistribution renamed, use normalCDF instead")
 T normalDistribution(T)(const T a)
     if (isFloatingPoint!T)
 {
@@ -82,19 +100,76 @@ T normalDistribution(T)(const T a)
 }
 
 /// ditto
+deprecated("normalDistribution renamed, use normalCDF instead")
 T normalDistribution(T)(const T x, const T mean, const T stdDev)
     if (isFloatingPoint!T)
 {
     return normalDistribution((x - mean) / stdDev);
 }
 
-version(mir_test)
+version(mir_test_deprecated)
 @safe unittest
 {
     assert(fabs(normalDistribution(1.0L) - (0.841344746068543))< 0.0000000000000005);
 }
 
+/++
+Computes the normal distribution cumulative distribution function (CDF).
+The normal (or Gaussian, or bell-shaped) distribution is
+defined as:
+normalDist(x) = 1/$(SQRT) &pi; $(INTEGRAL -$(INFINITY), x) exp( - $(POWER t, 2)/2) dt
+    = 0.5 + 0.5 * erf(x/sqrt(2))
+    = 0.5 * erfc(- x/sqrt(2))
+To maintain accuracy at high values of x, use
+normalCDF(x) = 1 - normalCDF(-x).
+Accuracy:
+Within a few bits of machine resolution over the entire
+range.
+References:
+$(LINK http://www.netlib.org/cephes/ldoubdoc.html),
+G. Marsaglia, "Evaluating the Normal Distribution",
+Journal of Statistical Software <b>11</b>, (July 2004).
++/
+T normalCDF(T)(const T a)
+    if (isFloatingPoint!T)
+{
+    pragma(inline, false);
+    import mir.math.constant: SQRT1_2;
+
+    T x = a * T(SQRT1_2);
+    T z = fabs(x);
+
+    if (z < 1)
+    {
+        return 0.5f + 0.5f * erf(x);
+    }
+    else
+    {
+        T y = 0.5f * erfce(z);
+        /* Multiply by exp(-x^2 / 2)  */
+        z = expx2(a, -1);
+        y = y * sqrt(z);
+        if (x > 0)
+            y = 1 - y;
+        return y;
+    }
+}
+
+/// ditto
+T normalCDF(T)(const T x, const T mean, const T stdDev)
+    if (isFloatingPoint!T)
+{
+    return normalCDF((x - mean) / stdDev);
+}
+
+version(mir_test)
+@safe unittest
+{
+    assert(fabs(normalCDF(1.0L) - (0.841344746068543))< 0.0000000000000005);
+}
+
 ///
+deprecated("normalDistributionInverse renamed, use normalInvCDF instead")
 T normalDistributionInverse(T)(const T p)
 in {
   assert(p >= 0 && p <= 1, "Domain error");
@@ -152,6 +227,7 @@ do
 }
 
 /// ditto
+deprecated("normalDistributionInverse renamed, use normalInvCDF instead")
 T normalDistributionInverse(T)(const T p, const T mean, const T stdDev)
     if (isFloatingPoint!T)
 {
@@ -159,7 +235,7 @@ T normalDistributionInverse(T)(const T p, const T mean, const T stdDev)
 }
 
 ///
-version(mir_test)
+version(mir_test_deprecated)
 @safe unittest
 {
     import std.math: feqrel;
@@ -176,6 +252,91 @@ version(mir_test)
     // (Excel 2003 returns norminv(p) = -30 for all p < 1e-200).
     // The value tested here is the one the function returned in Jan 2006.
     real unknown1 = normalDistributionInverse(1e-250L);
+    assert( fabs(unknown1 -(-33.79958617269L) ) < 0.00000005);
+}
+
+///
+T normalInvCDF(T)(const T p)
+in {
+  assert(p >= 0 && p <= 1, "Domain error");
+}
+do
+{
+    pragma(inline, false);
+    if (p <= 0 || p >= 1)
+    {
+        if (p == 0)
+            return -T.infinity;
+        if ( p == 1 )
+            return T.infinity;
+        return T.nan; // domain error
+    }
+    int code = 1;
+    T y = p;
+    if ( y > (1 - T(EXP_2)) )
+    {
+        y = 1 - y;
+        code = 0;
+    }
+
+    T x, z, y2, x0, x1;
+
+    if ( y > T(EXP_2) )
+    {
+        y = y - 0.5L;
+        y2 = y * y;
+        x = y + y * (y2 * rationalPoly!(P0, Q0)(y2));
+        return x * double(SQRT2PI);
+    }
+
+    x = sqrt( -2 * log(y) );
+    x0 = x - log(x)/x;
+    z = 1/x;
+    if ( x < 8 )
+    {
+        x1 = z * rationalPoly!(P1, Q1)(z);
+    }
+    else if ( x < 32 )
+    {
+        x1 = z * rationalPoly!(P2, Q2)(z);
+    }
+    else
+    {
+        x1 = z * rationalPoly!(P3, Q3)(z);
+    }
+    x = x0 - x1;
+    if ( code != 0 )
+    {
+        x = -x;
+    }
+    return x;
+}
+
+/// ditto
+T normalInvCDF(T)(const T p, const T mean, const T stdDev)
+    if (isFloatingPoint!T)
+{
+    return normalInvCDF(p) * stdDev + mean;
+}
+
+///
+version(mir_test)
+@safe unittest
+{
+    import std.math: feqrel;
+    // TODO: Use verified test points.
+    // The values below are from Excel 2003.
+    assert(fabs(normalInvCDF(0.001) - (-3.09023230616779))< 0.00000000000005);
+    assert(fabs(normalInvCDF(1e-50) - (-14.9333375347885))< 0.00000000000005);
+    assert(feqrel(normalInvCDF(0.999L), -normalInvCDF(0.001L)) > real.mant_dig-6);
+
+    // Excel 2003 gets all the following values wrong!
+    assert(normalInvCDF(0.0) == -real.infinity);
+    assert(normalInvCDF(1.0) == real.infinity);
+    assert(normalInvCDF(0.5) == 0);
+    // (Excel 2003 returns norminv(p) = -30 for all p < 1e-200).
+    // The value tested here is the one the function returned in Jan 2006.
+    real unknown1 = normalInvCDF(1e-250L);
     assert( fabs(unknown1 -(-33.79958617269L) ) < 0.00000005);
 }
 

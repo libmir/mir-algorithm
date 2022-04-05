@@ -169,9 +169,17 @@ unittest
         f2.getDerivative!(["strike"]) * fc.getDerivative!(["strike", "barrier"]));
 
     /// normalDistribution
-    import mir.math.func.normal: constantNormalDistribution = normalDistribution, normalProbabilityDensity;
-    assert(barrier.powi!2.normalDistribution.getFunctionValue == constantNormalDistribution(13.0 ^^ 2));
-    assert(barrier.powi!2.normalDistribution.getDerivative!(["barrier"]) == normalProbabilityDensity(13.0 ^^ 2) * (2 * 13));
+    import mir.math.func.normal: constantNormalCDF = normalCDF, normalPDF;
+    assert(barrier.powi!2.normalCDF.getFunctionValue == constantNormalCDF(13.0 ^^ 2));
+    assert(barrier.powi!2.normalCDF.getDerivative!(["barrier"]) == normalPDF(13.0 ^^ 2) * (2 * 13));
+}
+    
+version(mir_test_deprecated)
+unittest
+{
+    import mir.math.func.normal: constantNormalCDF = normalCDF, normalPDF;
+    assert(barrier.powi!2.normalDistribution.getFunctionValue == constantNormalCDF(13.0 ^^ 2));
+    assert(barrier.powi!2.normalDistribution.getDerivative!(["barrier"]) == normalPDF(13.0 ^^ 2) * (2 * 13));
 }
 
 import mir.algorithm.iteration: uniq;
@@ -897,10 +905,10 @@ auto sqrt(T)(const T value)
     return Sqrt!T(value);
 }
 
-private template NormalDistribution(T)
+private template NormalCDF(T)
 {
     @Dependencies!T
-    struct NormalDistribution
+    struct NormalCDF
     {
         /// Square root argument function
         T value;
@@ -911,9 +919,9 @@ private template NormalDistribution(T)
             static if (Dependencies!(typeof(this)).containsAll(variables))
                 auto getDerivative() const @property
                 {
-                    import mir.math.func.normal: normalDistribution, SQRT2PIINV;
+                    import mir.math.func.normal: normalCDF, SQRT2PIINV;
                     static if (variables.length == 0)
-                        return normalDistribution(value.getFunctionValue!strict);
+                        return normalCDF(value.getFunctionValue!strict);
                     else
                         return (SQRT2PIINV.Const * Powi!(2, T)(value, -0.5).exp * value.derivativeOf!(variables[0])).getDerivative!(variables[1 .. $], strict);
                 }
@@ -931,8 +939,21 @@ Constructs the cumulative normal distribution function of the expression
 Params:
     value = expression
 +/
+deprecated("normalDistribution renamed, use normalCDF instead")
 auto normalDistribution(T)(const T value)
     if (is(T == struct))
 {
-    return NormalDistribution!T(value);
+    return NormalCDF!T(value);
+}
+
+/++
+Constructs the cumulative normal distribution function of the expression
+
+Params:
+    value = expression
++/
+auto normalCDF(T)(const T value)
+    if (is(T == struct))
+{
+    return NormalCDF!T(value);
 }
