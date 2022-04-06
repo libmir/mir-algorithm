@@ -38,6 +38,8 @@ unittest
     assert(ar.sum!"kbn" == 0.7000000000000455);
     assert(ar.sum!"kb2" == 0.7000000000000455);
     assert(ar.sum!"precise" == 0.7000000000000455);
+
+    assert([1e-20, 1].sum!"decimal" == 1);
 }
 
 ///

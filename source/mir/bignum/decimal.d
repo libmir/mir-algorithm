@@ -981,7 +981,8 @@ struct Decimal(size_t maxSize64)
     ref opOpAssign(string op, size_t rhsMaxSize64)(ref const Decimal!rhsMaxSize64 rhs) @safe pure return
         if (op == "+" || op == "-")
     {
-        BigInt!rhsMaxSize64 rhsCopy;
+        import mir.utility: max;
+        BigInt!(max(rhsMaxSize64, maxSize64, 256u)) rhsCopy = void;
         BigIntView!(const size_t) rhsView;
         auto expDiff = exponent - rhs.exponent;
         if (expDiff >= 0)
