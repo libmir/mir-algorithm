@@ -173,14 +173,6 @@ unittest
     assert(barrier.powi!2.normalCDF.getFunctionValue == constantNormalCDF(13.0 ^^ 2));
     assert(barrier.powi!2.normalCDF.getDerivative!(["barrier"]) == normalPDF(13.0 ^^ 2) * (2 * 13));
 }
-    
-version(mir_test_deprecated)
-unittest
-{
-    import mir.math.func.normal: constantNormalCDF = normalCDF, normalPDF;
-    assert(barrier.powi!2.normalDistribution.getFunctionValue == constantNormalCDF(13.0 ^^ 2));
-    assert(barrier.powi!2.normalDistribution.getDerivative!(["barrier"]) == normalPDF(13.0 ^^ 2) * (2 * 13));
-}
 
 import mir.algorithm.iteration: uniq;
 import mir.array.allocation;
@@ -940,11 +932,7 @@ Params:
     value = expression
 +/
 deprecated("normalDistribution renamed, use normalCDF instead")
-auto normalDistribution(T)(const T value)
-    if (is(T == struct))
-{
-    return NormalCDF!T(value);
-}
+alias normalDistribution = normalCDF;
 
 /++
 Constructs the cumulative normal distribution function of the expression
