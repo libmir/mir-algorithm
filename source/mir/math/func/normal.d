@@ -25,7 +25,11 @@ import mir.math.common;
 @safe pure nothrow @nogc:
 
 ///
-T normalProbabilityDensity(T)(const T z)
+deprecated("normalProbabilityDensity renamed, use normalPDF instead")
+alias normalProbabilityDensity = normalPDF;
+
+///
+T normalPDF(T)(const T z)
  if (isFloatingPoint!T)
 {
     import mir.math.common: sqrt, exp;
@@ -33,10 +37,10 @@ T normalProbabilityDensity(T)(const T z)
 }
 
 /// ditto
-T normalProbabilityDensity(T)(const T x, const T mean, const T stdDev)
+T normalPDF(T)(const T x, const T mean, const T stdDev)
 if (isFloatingPoint!T)
 {
-    return normalProbabilityDensity((x - mean) / stdDev) / stdDev;
+    return normalPDF((x - mean) / stdDev) / stdDev;
 }
 
 /++
@@ -56,7 +60,27 @@ $(LINK http://www.netlib.org/cephes/ldoubdoc.html),
 G. Marsaglia, "Evaluating the Normal Distribution",
 Journal of Statistical Software <b>11</b>, (July 2004).
 +/
-T normalDistribution(T)(const T a)
+deprecated("normalDistribution renamed, use normalCDF instead")
+alias normalDistribution = normalCDF;
+
+/++
+Computes the normal distribution cumulative distribution function (CDF).
+The normal (or Gaussian, or bell-shaped) distribution is
+defined as:
+normalDist(x) = 1/$(SQRT) &pi; $(INTEGRAL -$(INFINITY), x) exp( - $(POWER t, 2)/2) dt
+    = 0.5 + 0.5 * erf(x/sqrt(2))
+    = 0.5 * erfc(- x/sqrt(2))
+To maintain accuracy at high values of x, use
+normalCDF(x) = 1 - normalCDF(-x).
+Accuracy:
+Within a few bits of machine resolution over the entire
+range.
+References:
+$(LINK http://www.netlib.org/cephes/ldoubdoc.html),
+G. Marsaglia, "Evaluating the Normal Distribution",
+Journal of Statistical Software <b>11</b>, (July 2004).
++/
+T normalCDF(T)(const T a)
     if (isFloatingPoint!T)
 {
     pragma(inline, false);
@@ -82,20 +106,24 @@ T normalDistribution(T)(const T a)
 }
 
 /// ditto
-T normalDistribution(T)(const T x, const T mean, const T stdDev)
+T normalCDF(T)(const T x, const T mean, const T stdDev)
     if (isFloatingPoint!T)
 {
-    return normalDistribution((x - mean) / stdDev);
+    return normalCDF((x - mean) / stdDev);
 }
 
 version(mir_test)
 @safe unittest
 {
-    assert(fabs(normalDistribution(1.0L) - (0.841344746068543))< 0.0000000000000005);
+    assert(fabs(normalCDF(1.0L) - (0.841344746068543))< 0.0000000000000005);
 }
 
 ///
-T normalDistributionInverse(T)(const T p)
+deprecated("normalDistributionInverse renamed, use normalInvCDF instead")
+alias normalDistributionInverse = normalInvCDF;
+
+///
+T normalInvCDF(T)(const T p)
 in {
   assert(p >= 0 && p <= 1, "Domain error");
 }
@@ -152,10 +180,10 @@ do
 }
 
 /// ditto
-T normalDistributionInverse(T)(const T p, const T mean, const T stdDev)
+T normalInvCDF(T)(const T p, const T mean, const T stdDev)
     if (isFloatingPoint!T)
 {
-    return normalDistributionInverse(p) * stdDev + mean;
+    return normalInvCDF(p) * stdDev + mean;
 }
 
 ///
@@ -165,17 +193,17 @@ version(mir_test)
     import std.math: feqrel;
     // TODO: Use verified test points.
     // The values below are from Excel 2003.
-    assert(fabs(normalDistributionInverse(0.001) - (-3.09023230616779))< 0.00000000000005);
-    assert(fabs(normalDistributionInverse(1e-50) - (-14.9333375347885))< 0.00000000000005);
-    assert(feqrel(normalDistributionInverse(0.999L), -normalDistributionInverse(0.001L)) > real.mant_dig-6);
+    assert(fabs(normalInvCDF(0.001) - (-3.09023230616779))< 0.00000000000005);
+    assert(fabs(normalInvCDF(1e-50) - (-14.9333375347885))< 0.00000000000005);
+    assert(feqrel(normalInvCDF(0.999L), -normalInvCDF(0.001L)) > real.mant_dig-6);
 
     // Excel 2003 gets all the following values wrong!
-    assert(normalDistributionInverse(0.0) == -real.infinity);
-    assert(normalDistributionInverse(1.0) == real.infinity);
-    assert(normalDistributionInverse(0.5) == 0);
+    assert(normalInvCDF(0.0) == -real.infinity);
+    assert(normalInvCDF(1.0) == real.infinity);
+    assert(normalInvCDF(0.5) == 0);
     // (Excel 2003 returns norminv(p) = -30 for all p < 1e-200).
     // The value tested here is the one the function returned in Jan 2006.
-    real unknown1 = normalDistributionInverse(1e-250L);
+    real unknown1 = normalInvCDF(1e-250L);
     assert( fabs(unknown1 -(-33.79958617269L) ) < 0.00000005);
 }
 
