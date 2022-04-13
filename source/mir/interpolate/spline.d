@@ -29,12 +29,15 @@ import std.meta: AliasSeq, staticMap;
 import std.traits: Unqual;
 public import mir.interpolate: atInterval;
 
-enum msg_min =  "spline interpolant: minimal allowed length for the grid equals 2.";
-enum msg_eq =  "spline interpolant: X and Y values length should be equal.";
+static immutable msg_min =  "spline interpolant: minimal allowed length for the grid equals 2.";
+static immutable msg_eq =  "spline interpolant: X and Y values length should be equal.";
+static immutable splineConfigurationMsg = "spline configuration: .boundary method requires equal left and right boundaries";
+
 version(D_Exceptions)
 {
     static immutable exc_min = new Exception(msg_min);
     static immutable exc_eq = new Exception(msg_eq);
+    static immutable splineConfigurationException = new Exception(splineConfigurationMsg);
 }
 
 private alias ValueType(T, X) = typeof(T.init.opCall(Repeat!(T.dimensionCount, X.init)));
@@ -55,7 +58,7 @@ private alias ValueType(T, X) = typeof(T.init.opCall(Repeat!(T.dimensionCount, X
     static immutable ydata = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
     auto y = ydata.sliced;
 
-    auto interpolant = spline!double(x, y); // constructs Spline
+    auto interpolant = spline!double(x, y, SplineConfiguration!double()); // constructs Spline
     auto xs = x + 0.5;                     // input X values for cubic spline
 
     static immutable test_data0 = [
@@ -557,6 +560,28 @@ template spline(T, size_t N = 1, X = T)
         ret._computeDerivatives(kind, param, lBoundary, rBoundary);
         return ret;
     }
+
+    /++
+    Params:
+        grid = immutable `x` values for interpolant
+        values = `f(x)` values for interpolant
+        configuration = $(LREF SplineConfiguration)
+    Constraints:
+        `grid` and `values` must have the same length >= 3
+    Returns: $(LREF Spline)
+    +/
+    Spline!(T, N, X) spline(yIterator, SliceKind ykind)(
+        Repeat!(N, Slice!(RCI!(immutable X))) grid,
+        Slice!(yIterator, N, ykind) values,
+        SplineConfiguration!T configuration,
+        )
+    {
+        auto ret = typeof(return)(forward!grid);
+        ret._values = values;
+        with(configuration)
+            ret._computeDerivatives(kind, param, leftBoundary, rightBoundary);
+        return ret;
+    }
 }
 
 /++
@@ -567,10 +592,6 @@ See_also: $(LREF SplineBoundaryCondition) $(LREF SplineType)
 extern(C++, "mir", "interpolate")
 enum SplineBoundaryType
 {
-    /++
-    Not implemented.
-    +/
-    periodic = -1,
     /++
     Not-a-knot (or cubic) boundary condition.
     It is an aggresive boundary condition that is used only for C2 splines and is default for all API calls.
@@ -598,6 +619,10 @@ enum SplineBoundaryType
     Default for Akima splines.
     +/
     akima,
+    /++
+    Not implemented.
+    +/
+    periodic = -1,
 }
 
 /++
@@ -609,10 +634,83 @@ extern(C++, "mir", "interpolate")
 struct SplineBoundaryCondition(T)
     if (__traits(isFloating, T))
 {
+    import mir.serde: serdeOptional, serdeIgnoreDefault;
+
     /// type (default is $(LREF SplineBoundaryType.notAKnot))
-    SplineBoundaryType type = SplineBoundaryType.notAKnot;
+    SplineBoundaryType type;
+
+@serdeOptional @serdeIgnoreDefault:
+
     /// value (default is 0)
     T value = 0;
+}
+
+/// Spline configuration
+struct SplineConfiguration(T)
+    if (__traits(isFloating, T))
+{
+    import mir.serde: serdeOptional, serdeIgnoreDefault, serdeIgnoreOutIfAggregate, serdeIgnore;
+
+    ///
+    @serdeOptional @serdeIgnoreDefault
+    SplineType kind;
+    ///
+    @serdeOptional @serdeIgnoreOutIfAggregate!"a.symmetric"
+    SplineBoundaryCondition!T leftBoundary;
+    ///
+    @serdeOptional @serdeIgnoreOutIfAggregate!"a.symmetric"
+    SplineBoundaryCondition!T rightBoundary;
+
+    /++
+    Returns:
+        true of `leftBoundary` equals `rightBoundary`.
+    +/
+    @serdeIgnore
+    bool symmetric() const @property
+    {
+        return leftBoundary == rightBoundary;
+    }
+
+    ///
+    @serdeOptional
+    void boundary(SplineBoundaryCondition!T boundary) @property
+    {
+        leftBoundary = rightBoundary = boundary;
+    }
+
+    ///
+    @serdeIgnoreOutIfAggregate!"!a.symmetric"
+    SplineBoundaryCondition!T boundary() const @property
+    {
+        assert(!symmetric, splineConfigurationMsg);
+        return leftBoundary;
+    }
+
+    /++
+    Tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+    Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
+    +/
+    @serdeOptional @serdeIgnoreDefault
+    T param = 0;
+}
+
+/// Spline configuration with two boundaries
+struct SplineSymmetricConfiguration(T)
+    if (__traits(isFloating, T))
+{
+    import mir.serde: serdeOptional, serdeIgnoreDefault;
+
+@serdeOptional @serdeIgnoreDefault:
+
+    ///
+    SplineType type;
+    ///
+    SplineBoundaryCondition!T boundary;
+    /++
+    Tangent power parameter for cardinal $(LREF SplineType) (ignored by other spline types).
+    Use `1` for zero derivatives at knots and `0` for Catmull–Rom spline.
+    +/
+    T param = 0;
 }
 
 /++
@@ -1485,11 +1583,32 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
     SplineBoundaryCondition!F lBoundary,
     SplineBoundaryCondition!F rBoundary,
     SplineType kind = SplineType.c2,
-    in F param = 0,
+    const F param = 0,
     )
 {
     import core.lifetime: move;
     return MetaSpline!(T, X)(grid.move, data.move, kind, param, lBoundary, rBoundary);
+}
+
+/++
+Spline interpolator used for non-rectiliner trapezoid-like greeds.
+Params:
+    grid = rc-array of interpolation grid
+    data = rc-array of interpolator-like structures
+    configuration = $(LREF SplineConfiguration)
+Constraints:
+    `grid` and `values` must have the same length >= 3
+Returns: $(LREF Spline)
++/
+MetaSpline!(T, X) metaSpline(F, X, T)(
+    RCArray!(immutable X) grid,
+    RCArray!(const T) data,
+    SplineConfiguration!F configuration,
+    )
+{
+    import core.lifetime: move;
+    with(configuration)
+        return metaSpline!(F, X, T)(grid.move, data.move, leftBoundary, rightBoundary, kind, param);
 }
 
 /// ditto
@@ -1663,7 +1782,7 @@ unittest
     auto int2 = spline!double(x1.rcslice!(immutable double), grid[2]);
     auto int3 = spline!double(x1.rcslice!(immutable double), grid[3]);
 
-    auto interpolant = metaSpline!double(x0.rcarray!(immutable double), rcarray(int0, int1, int2, int3).lightConst);
+    auto interpolant = metaSpline(x0.rcarray!(immutable double), rcarray(int0, int1, int2, int3).lightConst, SplineConfiguration!double.init);
 
     ///// compute test data ////
     auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23);
