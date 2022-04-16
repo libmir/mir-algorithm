@@ -1560,7 +1560,7 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
     const F param = 0,
     )
 {
-    return metaSpline!(F, X, T)(grid, data, boundaries, boundaries, kind, param);
+    return metaSpline!(F, X, T)(grid, data, SplineConfiguration!F(kind, boundaries, boundaries, param));
 }
 
 /++
@@ -1587,7 +1587,7 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
     )
 {
     import core.lifetime: move;
-    return MetaSpline!(T, X)(grid.move, data.move, kind, param, lBoundary, rBoundary);
+    return metaSpline(grid.move, data.move, SplineConfiguration!F(kind, lBoundary, rBoundary, param));
 }
 
 /++
@@ -1607,8 +1607,7 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
     )
 {
     import core.lifetime: move;
-    with(configuration)
-        return metaSpline!(F, X, T)(grid.move, data.move, leftBoundary, rightBoundary, kind, param);
+    return MetaSpline!(T, X)(grid.move, data.move, configuration);
 }
 
 /// ditto
@@ -1619,29 +1618,19 @@ struct MetaSpline(T, X)
     // alias ElementInterpolator = Linear!(F, N, X);
     alias F = ValueType!(T, X);
     ///
-    Spline!F spline;
+    private Spline!F spline;
     ///
     RCArray!(const T) data;
     //
     private RCArray!F _temp;
     ///
-    SplineType splineType;
-    ///
-    F splineParam;
-    ///
-    SplineBoundaryCondition!F lBoundary;
-    ///
-    SplineBoundaryCondition!F rBoundary;
-
+    SplineConfiguration!F configuration;
 
     ///
     this(
         RCArray!(immutable X) grid,
         RCArray!(const T) data,
-        SplineType splineType,
-        F splineParam,
-        SplineBoundaryCondition!F lBoundary,
-        SplineBoundaryCondition!F rBoundary,
+        SplineConfiguration!F configuration,
     )
     {
         import core.lifetime: move;
@@ -1661,10 +1650,15 @@ struct MetaSpline(T, X)
         this.data = data.move;
         this._temp = grid.length;
         this.spline = grid.moveToSlice;
-        this.splineType = splineType;
-        this.splineParam = splineParam;
-        this.lBoundary = lBoundary;
-        this.rBoundary = rBoundary;
+        this.configuration = configuration;
+    }
+
+    ///
+    bool opEquals()(auto ref scope const typeof(this) rhs) scope const @trusted pure nothrow @nogc
+    {
+        return this.gridScopeView == rhs.gridScopeView
+            && this.data == rhsthis.data
+            && this.configuration == rhs.configuration;
     }
 
     ///
@@ -1711,10 +1705,10 @@ struct MetaSpline(T, X)
             foreach (i, ref d; data)
                 mutable[i][0] = d(xs[1 .. $]);
             (*cast(Spline!F*)&spline)._computeDerivativesTemp(
-                splineType,
-                splineParam,
-                lBoundary,
-                rBoundary,
+                configuration.kind,
+                configuration.param,
+                configuration.leftBoundary,
+                configuration.rightBoundary,
                 (cast(F[])_temp[]).sliced);
             return spline(xs[0]);
         }
