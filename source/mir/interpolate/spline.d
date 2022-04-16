@@ -1777,6 +1777,7 @@ unittest
     auto int3 = spline!double(x1.rcslice!(immutable double), grid[3]);
 
     auto interpolant = metaSpline(x0.rcarray!(immutable double), rcarray(int0, int1, int2, int3).lightConst, SplineConfiguration!double.init);
+    assert(interpolant == interpolant);
 
     ///// compute test data ////
     auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23);
