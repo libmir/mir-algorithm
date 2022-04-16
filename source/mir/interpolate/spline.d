@@ -1657,7 +1657,7 @@ struct MetaSpline(T, X)
     bool opEquals()(auto ref scope const typeof(this) rhs) scope const @trusted pure nothrow @nogc
     {
         return this.gridScopeView == rhs.gridScopeView
-            && this.data == rhsthis.data
+            && this.data == rhs.data
             && this.configuration == rhs.configuration;
     }
 
