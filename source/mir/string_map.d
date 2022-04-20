@@ -1,5 +1,5 @@
 /++
-$(H1 Ordered string-value associtaive array)
+$(H1 Ordered string-value associative array)
 Macros:
 AlgebraicREF = $(GREF_ALTTEXT mir-core, $(TT $1), $1, mir, algebraic)$(NBSP)
 +/
@@ -23,7 +23,7 @@ unittest
 }
 
 /++
-Ordered string-value associtaive array with extremely fast lookup.
+Ordered string-value associative array with extremely fast lookup.
 
 Params:
     T = mutable value type, can be instance of $(AlgebraicREF Algebraic) for example.
@@ -113,7 +113,7 @@ struct StringMap(T, U = uint)
     // }
 
     /++
-    Reset the associtave array
+    Reset the associative array
     +/
     ref opAssign()(typeof(null)) return @safe pure nothrow @nogc
     {
@@ -130,7 +130,7 @@ struct StringMap(T, U = uint)
     }
 
     /++
-    Initialize the associtave array with default value.
+    Initialize the associative array with default value.
     +/
     this()(typeof(null) aa) @safe pure nothrow @nogc
     {
