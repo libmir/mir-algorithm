@@ -1,5 +1,5 @@
 /++
-$(H1 Ordered string-value associtaive array)
+$(H1 Ordered string-value associative array)
 Macros:
 AlgebraicREF = $(GREF_ALTTEXT mir-core, $(TT $1), $1, mir, algebraic)$(NBSP)
 +/
@@ -23,7 +23,7 @@ unittest
 }
 
 /++
-Ordered string-value associtaive array with extremely fast lookup.
+Ordered string-value associative array with extremely fast lookup.
 
 Params:
     T = mutable value type, can be instance of $(AlgebraicREF Algebraic) for example.
@@ -113,7 +113,7 @@ struct StringMap(T, U = uint)
     // }
 
     /++
-    Reset the associtave array
+    Reset the associative array
     +/
     ref opAssign()(typeof(null)) return @safe pure nothrow @nogc
     {
@@ -130,7 +130,7 @@ struct StringMap(T, U = uint)
     }
 
     /++
-    Initialize the associtave array with default value.
+    Initialize the associative array with default value.
     +/
     this()(typeof(null) aa) @safe pure nothrow @nogc
     {
@@ -245,6 +245,9 @@ struct StringMap(T, U = uint)
     Returns a dynamic array, the elements of which are the keys in the associative array.
     Doesn't allocate a new copy.
 
+    The keys returned are guaranteed to be in the ordered inserted as long as no
+    key removals followed by at least one key insertion has been performed.
+
     Complexity: `O(1)`
     +/
     const(string)[] keys()() @safe pure nothrow @nogc const @property
@@ -276,6 +279,9 @@ struct StringMap(T, U = uint)
     Returns a dynamic array, the elements of which are the values in the associative array.
     Doesn't allocate a new copy.
 
+    The values returned are guaranteed to be in the ordered inserted as long as no
+    key removals followed by at least one key insertion has been performed.
+
     Complexity: `O(1)`
     +/
     inout(T)[] values()() @safe pure nothrow @nogc inout @property
@@ -297,7 +303,11 @@ struct StringMap(T, U = uint)
         assert(map.byKeyValue == [StringMap!double.KeyValue("c", 4.0), StringMap!double.KeyValue("a", 3.0)]);
     }
 
-    ///
+    /** Return a range over all elements (key-values pairs) currently stored in the associative array.
+
+        The elements returned are guaranteed to be in the ordered inserted as
+        long as no key removals nor no value mutations has been performed.
+    */
     auto byKeyValue(this This)() @trusted pure nothrow @nogc
     {
         import mir.ndslice.topology: zip, map;
