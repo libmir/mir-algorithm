@@ -318,7 +318,7 @@ package template LikeArray(Range)
     static if (__traits(identifier, Range) == "mir_slice")
     {
         import mir.ndslice.slice;
-        enum LikeArray = is(Range : Slice!(T*, N, kind), T, size_t N, SliceKind kind);
+        enum LikeArray = is(Range : Slice!(T*, N), T, size_t N);
     }
     else
     {
