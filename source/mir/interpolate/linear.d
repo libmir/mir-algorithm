@@ -386,7 +386,7 @@ struct LinearKernel(X)
 
     ///
     template opCall(uint derivative = 0)
-        if (derivative <= 1)
+        // if (derivative <= 1)
     {
         ///
         auto opCall(Y)(const Y y0, const Y y1)
@@ -509,37 +509,30 @@ struct MetaLinear(T, X)
         auto opCall(X...)(const X xs) scope const @trusted
             if (X.length == dimensionCount)
         {
-            static if (derivative > derivativeOrder)
+            static if (isInterval!(typeof(xs[0])))
             {
-                auto res = this.opCall!derivativeOrder(xs);
-                typeof(res[0])[derivative + 1] ret = 0;
-                ret[0 .. derivativeOrder + 1] = res;
-                return ret;
+                size_t index = xs[0][1];
+                auto x = xs[0][0];
             }
             else
-            {
-                static if (isInterval!(typeof(xs[0])))
-                {
-                    size_t index = xs[0][1];
-                    auto x = xs[0][0];
-                }
-                else
-                { 
-                    alias x = xs[0];
-                    size_t index = this.findInterval(x);
-                }
-                auto lhs = data[index + 0].opCall!derivative(xs[1 .. $]);
-                auto rhs = data[index + 1].opCall!derivative(xs[1 .. $]);
-                alias E = typeof(lhs);
-                alias F = DeepType!E;
-                auto kernel = LinearKernel!F(grid[index], grid[index + 1], x);
-                return kernel.opCall!derivative(lhs, rhs);
+            { 
+                alias x = xs[0];
+                size_t index = this.findInterval(x);
             }
+            auto lhs = data[index + 0].opCall!derivative(xs[1 .. $]);
+            auto rhs = data[index + 1].opCall!derivative(xs[1 .. $]);
+            alias E = typeof(lhs);
+            alias F = DeepType!E;
+            auto kernel = LinearKernel!F(grid[index], grid[index + 1], x);
+            return kernel.opCall!derivative(lhs, rhs);
         }
     }
 
     ///
     alias withDerivative = opCall!1;
+
+    ///
+    alias withTwoDerivatives = opCall!2;
 }
 
 /// 2D trapezoid-like (not rectilinear) linear interpolation

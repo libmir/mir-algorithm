@@ -19,7 +19,6 @@ import core.lifetime: move;
 import mir.functional;
 import mir.internal.utility;
 import mir.interpolate;
-import mir.interpolate: Repeat;
 import mir.math.common;
 import mir.ndslice.slice;
 import mir.primitives;
@@ -1618,7 +1617,7 @@ struct MetaSpline(T, X)
     // alias ElementInterpolator = Linear!(F, N, X);
     alias F = ValueType!(T, X);
     ///
-    private Spline!F spline;
+    private Repeat!(3, Spline!F) splines;
     ///
     RCArray!(const T) data;
     //
@@ -1649,7 +1648,9 @@ struct MetaSpline(T, X)
 
         this.data = data.move;
         this._temp = grid.length;
-        this.spline = grid.moveToSlice;
+        this.splines[0] = grid.asSlice;
+        this.splines[1] = grid.asSlice;
+        this.splines[2] = grid.moveToSlice;
         this.configuration = configuration;
     }
 
@@ -1668,7 +1669,7 @@ struct MetaSpline(T, X)
     immutable(X)[] gridScopeView(size_t dimension = 0)() scope return const @property @trusted
         if (dimension == 0)
     {
-        return spline.gridScopeView;
+        return splines[0].gridScopeView;
     }
 
     /++
@@ -1689,8 +1690,7 @@ struct MetaSpline(T, X)
 
     ///
     template opCall(uint derivative = 0)
-        // if (derivative <= derivativeOrder)
-        if (derivative <= 0) // doesn't support derivatives for now
+        if (derivative <= derivativeOrder)
     {
         /++
         `(x)` operator.
@@ -1700,25 +1700,61 @@ struct MetaSpline(T, X)
         auto opCall(X...)(const X xs) scope const @trusted
             if (X.length == dimensionCount)
         {
-            auto mutable = cast(F[2][]) spline._data.lightScope.field;
-            assert(mutable.length == data.length);
-            foreach (i, ref d; data)
-                mutable[i][0] = d(xs[1 .. $]);
-            (*cast(Spline!F*)&spline)._computeDerivativesTemp(
-                configuration.kind,
-                configuration.param,
-                configuration.leftBoundary,
-                configuration.rightBoundary,
-                (cast(F[])_temp[]).sliced);
-            return spline(xs[0]);
+            F[2][][derivative + 1] mutable;
+
+            static foreach (o; 0 .. derivative + 1)
+            {
+                mutable[o] = cast(F[2][]) splines[o]._data.lightScope.field;
+                assert(mutable[o].length == data.length);
+            }
+
+            static if (!derivative)
+            {
+                foreach (i, ref d; data)
+                    mutable[0][i][0] = d(xs[1 .. $]);
+            }
+            else
+            {
+                foreach (i, ref d; data)
+                {
+                    auto node = d.opCall!derivative(xs[1 .. $]);
+                    static foreach (o; 0 .. derivative + 1)
+                        mutable[o][i][0] = node[o];
+                }
+            }
+
+            static foreach (o; 0 .. derivative + 1)
+            {
+                (*cast(Spline!F*)&splines[o])._computeDerivativesTemp(
+                    configuration.kind,
+                    configuration.param,
+                    configuration.leftBoundary,
+                    configuration.rightBoundary,
+                    (cast(F[])_temp[]).sliced);
+            }
+
+            static if (!derivative)
+            {
+                return splines[0](xs[0]);
+            }
+            else
+            {
+                typeof(splines[0].opCall!derivative(xs[0]))[derivative + 1] ret = void;
+                static foreach (o; 0 .. derivative + 1)
+                    ret[o] = splines[o].opCall!derivative(xs[0]);
+                return ret;
+            }
         }
     }
 
-    // ///
-    // alias withDerivative = opCall!1;
+    ///
+    alias withDerivative = opCall!1;
+    ///
+    alias withTwoDerivatives = opCall!2;
 }
 
 /// 2D trapezoid-like (not rectilinear) linear interpolation
+version(mir_test)
 unittest
 {
     auto x = [
@@ -1745,9 +1781,15 @@ unittest
     auto trapezoidInterpolator = metaSpline!double(g.rcarray!(immutable double), d.lightConst);
 
     auto val = trapezoidInterpolator(9.0, 1.8);
-
+    auto ext = trapezoidInterpolator.opCall!2(9.0, 1.8);
+    assert(ext[0][0] == val);
+    assert(ext == [
+        [-0.6323361344537806, -2.2344649859943977, 1.362173669467787],
+        [3.6676610644257703, -2.984652194211018, 0.9911251167133525],
+        [2.4365546218487393, -1.556932773109244, 0.3836134453781514]]);
 }
 
+version(mir_test)
 unittest
 {
     import mir.math.common: approxEqual;
