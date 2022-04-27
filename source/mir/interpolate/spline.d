@@ -1741,7 +1741,12 @@ struct MetaSpline(T, X)
             {
                 typeof(splines[0].opCall!derivative(xs[0]))[derivative + 1] ret = void;
                 static foreach (o; 0 .. derivative + 1)
-                    ret[o] = splines[o].opCall!derivative(xs[0]);
+                {{
+                    auto s = splines[o].opCall!derivative(xs[0]);
+                    static foreach (r; 0 .. derivative + 1)
+                        ret[r][o] = s[r];
+
+                }}
                 return ret;
             }
         }
@@ -1781,12 +1786,6 @@ unittest
     auto trapezoidInterpolator = metaSpline!double(g.rcarray!(immutable double), d.lightConst);
 
     auto val = trapezoidInterpolator(9.0, 1.8);
-    auto ext = trapezoidInterpolator.opCall!2(9.0, 1.8);
-    assert(ext[0][0] == val);
-    assert(ext == [
-        [-0.6323361344537806, -2.2344649859943977, 1.362173669467787],
-        [3.6676610644257703, -2.984652194211018, 0.9911251167133525],
-        [2.4365546218487393, -1.556932773109244, 0.3836134453781514]]);
 }
 
 version(mir_test)
@@ -1829,4 +1828,12 @@ unittest
 
     ///// verify result ////
     assert(all!appreq(interp_data, real_data));
+
+    auto z0 = 1.23;
+    auto z1 = 3.21;
+    auto d = interpolant.withDerivative(z0, z1);
+    assert(appreq(d[0][0], f(z0, z1)));
+    assert(appreq(d[1][0], y_x0 + y_x0x1 * z1));
+    assert(appreq(d[0][1], y_x1 + y_x0x1 * z0));
+    assert(appreq(d[1][1], y_x0x1));
 }
