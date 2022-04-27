@@ -71,6 +71,11 @@ version(mir_test)
     static immutable data = [0.0011, 0.0030, 0.0064, 0.0104, 0.0144, 0.0176, 0.0207, 0.0225, 0.0243, 0.0261, 0.0268, 0.0274, 0.0281, 0.0288, 0.0295, 0.0302, 0.0309, 0.0316, 0.0322, 0.0329, 0.0332, 0.0335, 0.0337, 0.0340, 0.0342, 0.0345, 0.0348, 0.0350, 0.0353, 0.0356];
 
     assert(xs.sliced.vmap(interpolant).all!((a, b) => approxEqual(a, b, 1e-4, 1e-4))(data));
+
+    auto d = interpolant.withDerivative(9.0);
+    auto de = interpolant.opCall!2(9.0);
+    assert(de[0 .. 2] == d);
+    assert(de[2] == 0);
 }
 
 /// R^2 -> R: Bilinear interpolation
@@ -265,7 +270,6 @@ struct Linear(F, size_t N = 1, X = F)
 
     ///
     template opCall(uint derivative = 0)
-        if (derivative <= derivativeOrder)
     {
         /++
         `(x)` operator.
@@ -275,62 +279,72 @@ struct Linear(F, size_t N = 1, X = F)
         auto opCall(X...)(const X xs) scope const @trusted
             if (X.length == N)
         {
-            import mir.functional: AliasCall;
-            import mir.ndslice.topology: iota;
-            alias Kernel = AliasCall!(LinearKernel!F, "opCall", derivative);
-
-            size_t[N] indices;
-            Kernel[N] kernels;
-
-            enum rp2d = derivative;
-
-            foreach(i; Iota!N)
+            static if (derivative > derivativeOrder)
             {
-                static if (isInterval!(typeof(xs[i])))
-                {
-                    indices[i] = xs[i][1];
-                    auto x = xs[i][0];
-                }
-                else
-                { 
-                    alias x = xs[i];
-                    indices[i] = this.findInterval!i(x);
-                }
-                kernels[i] = LinearKernel!F(_grid[i][indices[i]], _grid[i][indices[i] + 1], x);
+                auto res = this.opCall!derivativeOrder(xs);
+                typeof(res[0])[derivative + 1] ret = 0;
+                ret[0 .. derivativeOrder + 1] = res;
+                return ret;
             }
-
-            align(64) F[2 ^^ N][derivative + 1] local;
-            immutable strides = _data._lengths.iota.strides;
-
-            void load(sizediff_t i)(F* from, F* to)
+            else
             {
-                version(LDC) pragma(inline, true);
-                static if (i == -1)
-                {
-                    *to = *from;
-                }
-                else
-                {
-                    from += strides[i] * indices[i];
-                    load!(i - 1)(from, to);
-                    from += strides[i];
-                    enum s = 2 ^^ (N - 1 - i);
-                    to += s;
-                    load!(i - 1)(from, to);
-                }
-            }
+                import mir.functional: AliasCall;
+                import mir.ndslice.topology: iota;
+                alias Kernel = AliasCall!(LinearKernel!F, "opCall", derivative);
 
-            load!(N - 1)(cast(F*) _data.ptr, cast(F*)local[0].ptr);
+                size_t[N] indices;
+                Kernel[N] kernels;
 
-            foreach(i; Iota!N)
-            {
-                enum P = 2 ^^ (N - 1 - i);
-                enum L = 2 ^^ (N - i * (1 - rp2d)) / 2;
-                vectorize(kernels[i], local[0][0 * L .. 1 * L], local[0][1 * L .. 2 * L], *cast(F[L][2 ^^ rp2d]*)local[rp2d].ptr);
-                static if (rp2d == 1)
-                    shuffle3!1(local[1][0 .. L], local[1][L .. 2 * L], local[0][0 .. L], local[0][L .. 2 * L]);
-                static if (i + 1 == N)
-                    return *cast(SplineReturnType!(F, N, 2 ^^ rp2d)*) local[0].ptr;
+                enum rp2d = derivative;
+
+                foreach(i; Iota!N)
+                {
+                    static if (isInterval!(typeof(xs[i])))
+                    {
+                        indices[i] = xs[i][1];
+                        auto x = xs[i][0];
+                    }
+                    else
+                    { 
+                        alias x = xs[i];
+                        indices[i] = this.findInterval!i(x);
+                    }
+                    kernels[i] = LinearKernel!F(_grid[i][indices[i]], _grid[i][indices[i] + 1], x);
+                }
+
+                align(64) F[2 ^^ N][derivative + 1] local;
+                immutable strides = _data._lengths.iota.strides;
+
+                void load(sizediff_t i)(F* from, F* to)
+                {
+                    version(LDC) pragma(inline, true);
+                    static if (i == -1)
+                    {
+                        *to = *from;
+                    }
+                    else
+                    {
+                        from += strides[i] * indices[i];
+                        load!(i - 1)(from, to);
+                        from += strides[i];
+                        enum s = 2 ^^ (N - 1 - i);
+                        to += s;
+                        load!(i - 1)(from, to);
+                    }
+                }
+
+                load!(N - 1)(cast(F*) _data.ptr, cast(F*)local[0].ptr);
+
+                foreach(i; Iota!N)
+                {
+                    enum P = 2 ^^ (N - 1 - i);
+                    enum L = 2 ^^ (N - i * (1 - rp2d)) / 2;
+                    vectorize(kernels[i], local[0][0 * L .. 1 * L], local[0][1 * L .. 2 * L], *cast(F[L][2 ^^ rp2d]*)local[rp2d].ptr);
+                    static if (rp2d == 1)
+                        shuffle3!1(local[1][0 .. L], local[1][L .. 2 * L], local[0][0 .. L], local[0][L .. 2 * L]);
+                    static if (i + 1 == N)
+                        return *cast(SplineReturnType!(F, N, 2 ^^ rp2d)*) local[0].ptr;
+                }
             }
         }
     }
@@ -486,7 +500,6 @@ struct MetaLinear(T, X)
 
     ///
     template opCall(uint derivative = 0)
-        if (derivative <= derivativeOrder)
     {
         /++
         `(x)` operator.
@@ -496,22 +509,32 @@ struct MetaLinear(T, X)
         auto opCall(X...)(const X xs) scope const @trusted
             if (X.length == dimensionCount)
         {
-            static if (isInterval!(typeof(xs[0])))
+            static if (derivative > derivativeOrder)
             {
-                size_t index = xs[0][1];
-                auto x = xs[0][0];
+                auto res = this.opCall!derivativeOrder(xs);
+                typeof(res[0])[derivative + 1] ret = 0;
+                ret[0 .. derivativeOrder + 1] = res;
+                return ret;
             }
             else
-            { 
-                alias x = xs[0];
-                size_t index = this.findInterval(x);
+            {
+                static if (isInterval!(typeof(xs[0])))
+                {
+                    size_t index = xs[0][1];
+                    auto x = xs[0][0];
+                }
+                else
+                { 
+                    alias x = xs[0];
+                    size_t index = this.findInterval(x);
+                }
+                auto lhs = data[index + 0].opCall!derivative(xs[1 .. $]);
+                auto rhs = data[index + 1].opCall!derivative(xs[1 .. $]);
+                alias E = typeof(lhs);
+                alias F = DeepType!E;
+                auto kernel = LinearKernel!F(grid[index], grid[index + 1], x);
+                return kernel.opCall!derivative(lhs, rhs);
             }
-            auto lhs = data[index + 0].opCall!derivative(xs[1 .. $]);
-            auto rhs = data[index + 1].opCall!derivative(xs[1 .. $]);
-            alias E = typeof(lhs);
-            alias F = DeepType!E;
-            auto kernel = LinearKernel!F(grid[index], grid[index + 1], x);
-            return kernel.opCall!derivative(lhs, rhs);
         }
     }
 
@@ -520,6 +543,7 @@ struct MetaLinear(T, X)
 }
 
 /// 2D trapezoid-like (not rectilinear) linear interpolation
+version(mir_test)
 unittest
 {
     auto x = [
@@ -549,6 +573,7 @@ unittest
     auto valWithDerivative = trapezoidInterpolator.withDerivative(9.0, 1.8);
 }
 
+version(mir_test)
 unittest
 {
     import mir.math.common: approxEqual;
