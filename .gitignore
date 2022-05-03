@@ -37,3 +37,4 @@ _build_dir_
 .VSCodeCounter
 builddir/
 mir-algorithm-test-secure
+*.pdb
