@@ -763,5 +763,5 @@ unittest
 
     assert(combine1[0, 0] == 1);
     assert(combine2[0, 0] == 1);
-    static assert(is(typeof(combine2[0, 0]) == long));
+    static assert(is(typeof(combine2[0, 0]) == sizediff_t));
 }
