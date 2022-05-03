@@ -751,3 +751,17 @@ pure nothrow version(mir_ndslice_test) unittest
     assert(matrix[0, 2] == tensor[0, 1, 2]);
     assert(&matrix[0, 2] is &tensor[0, 1, 2]);
 }
+
+version(mir_ndslice_test)
+pure nothrow
+unittest
+{
+    auto x = iota(2, 3);
+    auto y = iota([2, 3], 1);
+    auto combine1 = x.zip(y).map!"b";
+    auto combine2 = x.zip(y).map!("b", "a * b").map!(a => a[0]);
+
+    assert(combine1[0, 0] == 1);
+    assert(combine2[0, 0] == 1);
+    static assert(is(typeof(combine2[0, 0]) == long));
+}

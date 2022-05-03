@@ -860,14 +860,14 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
 
 private enum map_primitives = q{
 
-    import mir.functional: RefTuple, unref;
+    import mir.functional: RefTuple, autoExpandAndForward;
 
     auto ref opUnary(string op : "*")()
     {
         static if (is(typeof(*_iterator) : RefTuple!T, T...))
         {
             auto t = *_iterator;
-            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return _fun(autoExpandAndForward!t);
         }
         else
             return _fun(*_iterator);
@@ -878,7 +878,7 @@ private enum map_primitives = q{
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
             auto t = _iterator[index];
-            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return _fun(autoExpandAndForward!t);
         }
         else
             return _fun(_iterator[index]);
@@ -891,7 +891,7 @@ private enum map_primitives = q{
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ") = value");
+                return _fun(autoExpandAndForward!t) = value;
             }
             else
                 return _fun(_iterator[index]) = value;
@@ -902,7 +902,7 @@ private enum map_primitives = q{
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin(op ~ "_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+                return _fun(autoExpandAndForward!t);
             }
             else
                 return mixin(op ~ "_fun(_iterator[index])");
@@ -913,7 +913,7 @@ private enum map_primitives = q{
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")" ~ op ~ "= value");
+                return mixin("_fun(autoExpandAndForward!t)" ~ op ~ "= value");
             }
             else
                 return mixin("_fun(_iterator[index])" ~ op ~ "= value");
@@ -945,14 +945,14 @@ struct VmapIterator(Iterator, Fun)
         return VmapIterator!(LightImmutableOf!Iterator, LightImmutableOf!Fun)(.lightImmutable(_iterator), .lightImmutable(_fun));
     }
 
-    import mir.functional: RefTuple, unref;
+    import mir.functional: RefTuple, autoExpandAndForward;
 
     auto ref opUnary(string op : "*")()
     {
         static if (is(typeof(*_iterator) : RefTuple!T, T...))
         {
             auto t = *_iterator;
-            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return _fun(autoExpandAndForward!t);
         }
         else
             return _fun(*_iterator);
@@ -963,7 +963,7 @@ struct VmapIterator(Iterator, Fun)
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
             auto t = _iterator[index];
-            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return _fun(autoExpandAndForward!t);
         }
         else
             return _fun(_iterator[index]);
@@ -976,7 +976,7 @@ struct VmapIterator(Iterator, Fun)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ") = value");
+                return _fun(autoExpandAndForward!t) = value;
             }
             else
                 return _fun(_iterator[index]) = value;
@@ -987,7 +987,7 @@ struct VmapIterator(Iterator, Fun)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin(op ~ "_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+                return mixin(op ~ "_fun(autoExpandAndForward!t)");
             }
             else
                 return mixin(op ~ "_fun(_iterator[index])");
@@ -998,7 +998,7 @@ struct VmapIterator(Iterator, Fun)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")" ~ op ~ "= value");
+                return mixin("_fun(autoExpandAndForward!t)" ~ op ~ "= value");
             }
             else
                 return mixin("_fun(_iterator[index])" ~ op ~ "= value");
@@ -1041,18 +1041,18 @@ struct MapIterator(Iterator, alias _fun)
         return MapIterator!(LightImmutableOf!Iterator, _fun)(.lightImmutable(_iterator));
     }
 
-    import mir.functional: pipe;
+    import mir.functional: pipe, autoExpandAndForward;
     ///
     static alias __map(alias fun1) = MapIterator__map!(Iterator, _fun, pipe!(_fun, fun1));
 
-    import mir.functional: RefTuple, unref;
+    import mir.functional: RefTuple, autoExpandAndForward;
 
     auto ref opUnary(string op : "*")()
     {
         static if (is(typeof(*_iterator) : RefTuple!T, T...))
         {
             auto t = *_iterator;
-            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return _fun(autoExpandAndForward!t);
         }
         else
             return _fun(*_iterator);
@@ -1063,7 +1063,7 @@ struct MapIterator(Iterator, alias _fun)
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
             auto t = _iterator[index];
-            return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+            return _fun(autoExpandAndForward!t);
         }
         else
             return _fun(_iterator[index]);
@@ -1076,7 +1076,7 @@ struct MapIterator(Iterator, alias _fun)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ") = value");
+                return _fun(autoExpandAndForward!t) = value;
             }
             else
                 return _fun(_iterator[index]) = value;
@@ -1087,7 +1087,7 @@ struct MapIterator(Iterator, alias _fun)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin(op ~ "_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")");
+                return mixin(op ~ "_fun(autoExpandAndForward!t)");
             }
             else
                 return mixin(op ~ "_fun(_iterator[index])");
@@ -1098,7 +1098,7 @@ struct MapIterator(Iterator, alias _fun)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_fun(" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ ")" ~ op ~ "= value");
+                return mixin("_fun(autoExpandAndForward!t)" ~ op ~ "= value");
             }
             else
                 return mixin("_fun(_iterator[index])" ~ op ~ "= value");
@@ -1516,7 +1516,7 @@ Iterates a field using an iterator.
 +/
 struct IndexIterator(Iterator, Field)
 {
-    import mir.functional: RefTuple, unref;
+    import mir.functional: RefTuple, autoExpandAndForward;
 
 @optmath:
     ///
@@ -1544,7 +1544,7 @@ struct IndexIterator(Iterator, Field)
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
             auto t = *_iterator;
-            return mixin("_field[" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ "]");
+            return _field[autoExpandAndForward!t];
         }
         else
             return _field[*_iterator];
@@ -1555,7 +1555,7 @@ struct IndexIterator(Iterator, Field)
         static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
         {
             auto t = _iterator[index];
-            return mixin("_field[" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ "]");
+            return _field[autoExpandAndForward!t];
         }
         else
             return _field[_iterator[index]];
@@ -1568,7 +1568,7 @@ struct IndexIterator(Iterator, Field)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_field[" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ "] = value");
+                return _field[autoExpandAndForward!t] = value;
             }
             else
                 return _field[_iterator[index]] = value;
@@ -1579,7 +1579,7 @@ struct IndexIterator(Iterator, Field)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin(op ~ "_field[" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ "]");
+                return mixin(op ~ "_field[autoExpandAndForward!t]");
             }
             else
                 return mixin(op ~ "_field[_iterator[index]]");
@@ -1590,7 +1590,7 @@ struct IndexIterator(Iterator, Field)
             static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
             {
                 auto t = _iterator[index];
-                return mixin("_field[" ~ _iotaArgs!(T.length, "t.expand[", "].unref, ") ~ "]" ~ op ~ "= value");
+                return mixin("_field[autoExpandAndForward!t]" ~ op ~ "= value");
             }
             else
                 return mixin("_field[_iterator[index]]" ~ op ~ "= value");
