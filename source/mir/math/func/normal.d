@@ -99,6 +99,8 @@ T normalCDF(T)(const T a)
         /* Multiply by exp(-x^2 / 2)  */
         z = expx2(a, -1);
         y = y * sqrt(z);
+        if (y != y)
+            y = 0;
         if (x > 0)
             y = 1 - y;
         return y;
@@ -113,9 +115,16 @@ T normalCDF(T)(const T x, const T mean, const T stdDev)
 }
 
 version(mir_test)
-@safe unittest
+@safe
+unittest
 {
     assert(fabs(normalCDF(1.0L) - (0.841344746068543))< 0.0000000000000005);
+    assert(normalCDF(double.infinity) == 1);
+    assert(normalCDF(100.0) == 1);
+    assert(normalCDF(8.0) < 1);
+    assert(normalCDF(-double.infinity) == 0);
+    assert(normalCDF(-100.0) == 0);
+    assert(normalCDF(-8.0) > 0);
 }
 
 ///
