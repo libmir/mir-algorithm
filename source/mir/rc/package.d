@@ -20,8 +20,11 @@ See_also: $(MREF mir,ndslice).
 +/
 module mir.rc;
 
+///
 public import mir.rc.array;
+///
 public import mir.rc.ptr;
+///
 public import mir.rc.slim_ptr;
 
 import mir.ndslice.slice;

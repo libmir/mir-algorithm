@@ -49,6 +49,8 @@ import mir.rc.array;
 import mir.utility: min, max;
 import std.meta: AliasSeq, staticMap;
 import std.traits;
+
+///
 public import mir.interpolate: atInterval;
 
 /++

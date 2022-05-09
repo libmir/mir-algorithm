@@ -20,7 +20,9 @@ import mir.ndslice.sorting: transitionIndex;
 import mir.qualifier;
 import mir.serde: serdeIgnore, serdeFields;
 import std.traits;
+///
 public import mir.ndslice.slice;
+///
 public import mir.ndslice.sorting: sort;
 
 /++

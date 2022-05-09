@@ -26,6 +26,8 @@ import mir.rc.array;
 import mir.utility: min, max;
 import std.meta: AliasSeq, staticMap;
 import std.traits: Unqual;
+
+///
 public import mir.interpolate: atInterval;
 
 static immutable msg_min =  "spline interpolant: minimal allowed length for the grid equals 2.";

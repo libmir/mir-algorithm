@@ -8,6 +8,7 @@ module mir.bignum.decimal;
 
 import mir.serde: serdeProxy, serdeScoped;
 import std.traits: isSomeChar;
+///
 public import mir.bignum.low_level_view: DecimalExponentKey;
 import mir.bignum.low_level_view: ceilLog10Exp2;
 

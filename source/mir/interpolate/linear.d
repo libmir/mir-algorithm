@@ -24,6 +24,8 @@ import mir.rc.array;
 import mir.utility: min, max;
 import std.meta: AliasSeq, staticMap;
 import std.traits;
+
+///
 public import mir.interpolate: atInterval;
 
 enum  msg_min =  "linear interpolant: minimal allowed length for the grid equals 2.";
