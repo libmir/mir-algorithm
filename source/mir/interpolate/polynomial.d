@@ -13,6 +13,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.polynomial;
 
+///
 public import mir.interpolate: atInterval;
 import core.lifetime: move;
 import mir.functional: RefTuple;

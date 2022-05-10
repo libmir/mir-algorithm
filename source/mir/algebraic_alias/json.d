@@ -12,6 +12,7 @@ Macros:
 module mir.algebraic_alias.json;
 
 import mir.algebraic: TaggedVariant, This;
+///
 public import mir.string_map: StringMap;
 
 /++
