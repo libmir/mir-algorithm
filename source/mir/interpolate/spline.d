@@ -846,14 +846,14 @@ struct Spline(F, size_t N = 1, X = F)
     Spline lightImmutable() immutable @property { return *cast(Spline*)&this; }
 
     ///
-    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() scope return const @property
+    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() return scope const @property
         if (dimension < N)
     {
         return _grid[dimension].lightConst.sliced(_data._lengths[dimension]);
     }
 
     ///
-    immutable(X)[] gridScopeView(size_t dimension = 0)() scope return const @property @trusted
+    immutable(X)[] gridScopeView(size_t dimension = 0)() return scope const @property @trusted
         if (dimension < N)
     {
         return _grid[dimension]._iterator[0 .. _data._lengths[dimension]];
@@ -1668,7 +1668,7 @@ struct MetaSpline(T, X)
     MetaLinear lightConst()() const @property { return *cast(MetaLinear*)&this; }
 
     ///
-    immutable(X)[] gridScopeView(size_t dimension = 0)() scope return const @property @trusted
+    immutable(X)[] gridScopeView(size_t dimension = 0)() return scope const @property @trusted
         if (dimension == 0)
     {
         return splines[0].gridScopeView;

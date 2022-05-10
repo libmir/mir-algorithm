@@ -176,15 +176,15 @@ mir_rc_context* mir_rc_create(
 package mixin template CommonRCImpl()
 {
     ///
-    ThisTemplate!(const T) lightConst()() scope return const @nogc nothrow @trusted @property
+    ThisTemplate!(const T) lightConst()() return scope const @nogc nothrow @trusted @property
     { return *cast(typeof(return)*) &this; }
 
     /// ditto
-    ThisTemplate!(immutable T) lightImmutable()() scope return immutable @nogc nothrow @trusted @property
+    ThisTemplate!(immutable T) lightImmutable()() return scope immutable @nogc nothrow @trusted @property
     { return *cast(typeof(return)*) &this; }
 
     ///
-    ThisTemplate!(const Unqual!T) moveToConst()() scope return @nogc nothrow @trusted @property
+    ThisTemplate!(const Unqual!T) moveToConst()() return scope @nogc nothrow @trusted @property
     {
         import core.lifetime: move;
         return move(*cast(typeof(return)*) &this);

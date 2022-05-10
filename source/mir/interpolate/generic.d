@@ -149,14 +149,14 @@ extern(D):
     Generic lightConst()() const @property { return *cast(Generic*)&this; }
 
     ///
-    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() scope return const @property
+    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() return scope const @property
         if (dimension == 0)
     {
         return _grid.lightConst.sliced(_data._lengths[0]);
     }
 
     ///
-    immutable(X)[] gridScopeView(size_t dimension = 0)() scope return const @property @trusted
+    immutable(X)[] gridScopeView(size_t dimension = 0)() return scope const @property @trusted
         if (dimension == 0)
     {
         return _grid._iterator[0 .. _data._lengths[0]];

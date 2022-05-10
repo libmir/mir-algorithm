@@ -1958,7 +1958,7 @@ struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
 
     static if (isMutable!(_slice.DeepElement) && !_slice.hasAccessByRef)
     ///
-    auto ref opIndexAssign(E)(scope ref E elem, size_t index) scope return
+    auto ref opIndexAssign(E)(scope ref E elem, size_t index) return scope
     {
         return _slice._iterator[getShift(index)] = elem;
     }

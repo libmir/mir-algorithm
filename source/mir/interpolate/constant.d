@@ -130,14 +130,14 @@ extern(D):
     Constant lightConst()() const @property { return *cast(Constant*)&this; }
 
     ///
-    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() scope return const @property
+    Slice!(RCI!(immutable X)) grid(size_t dimension = 0)() return scope const @property
         if (dimension < N)
     {
         return _grid[dimension].lightConst.sliced(_data._lengths[dimension]);
     }
 
     ///
-    immutable(X)[] gridScopeView(size_t dimension = 0)() scope return const @property @trusted
+    immutable(X)[] gridScopeView(size_t dimension = 0)() return scope const @property @trusted
         if (dimension < N)
     {
         return _grid[dimension]._iterator[0 .. _data._lengths[dimension]];

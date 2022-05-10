@@ -945,7 +945,7 @@ public:
     Returns: View with stripped out reference counted context.
     The lifetime of the result mustn't be longer then the lifetime of the original slice.
     +/
-    auto lightScope()() scope return @property
+    auto lightScope()() return scope @property
     {
         auto ret = Slice!(LightScopeOf!Iterator, N, kind, staticMap!(LightScopeOf, Labels))
             (_structure, .lightScope(_iterator));
@@ -955,7 +955,7 @@ public:
     }
 
     /// ditto
-    auto lightScope()() scope const return @property
+    auto lightScope()() return const scope @property
     {
         auto ret = Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightConstOfLightScopeOf, Labels))
             (_structure, .lightScope(_iterator));
@@ -965,7 +965,7 @@ public:
     }
 
     /// ditto
-    auto lightScope()() scope immutable return @property
+    auto lightScope()() return immutable scope @property
     {
         auto ret =  Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightImmutableOfLightConstOf(Labels)))
             (_structure, .lightScope(_iterator));
@@ -975,7 +975,7 @@ public:
     }
 
     /// Returns: Mutable slice over immutable data.
-    Slice!(LightImmutableOf!Iterator, N, kind, staticMap!(LightImmutableOf, Labels)) lightImmutable()() scope return immutable @property
+    Slice!(LightImmutableOf!Iterator, N, kind, staticMap!(LightImmutableOf, Labels)) lightImmutable()() return scope immutable @property
     {
         auto ret = typeof(return)(_structure, .lightImmutable(_iterator));
         foreach(i; Iota!L)
@@ -984,7 +984,7 @@ public:
     }
 
     /// Returns: Mutable slice over const data.
-    Slice!(LightConstOf!Iterator, N, kind, staticMap!(LightConstOf, Labels)) lightConst()() scope return const @property @trusted
+    Slice!(LightConstOf!Iterator, N, kind, staticMap!(LightConstOf, Labels)) lightConst()() return scope const @property @trusted
     {
         auto ret = typeof(return)(_structure, .lightConst(_iterator));
         foreach(i; Iota!L)
@@ -993,7 +993,7 @@ public:
     }
 
     /// ditto
-    Slice!(LightImmutableOf!Iterator, N, kind, staticMap!(LightImmutableOf, Labels)) lightConst()() scope return immutable @property
+    Slice!(LightImmutableOf!Iterator, N, kind, staticMap!(LightImmutableOf, Labels)) lightConst()() return scope immutable @property
     {
         return this.lightImmutable;
     }
@@ -1070,14 +1070,14 @@ public:
         /++
         Cast to const and immutable slices in case of underlying range is a pointer.
         +/
-        auto toImmutable()() scope return immutable @trusted pure nothrow @nogc
+        auto toImmutable()() return scope immutable @trusted pure nothrow @nogc
         {
             return Slice!(ImmutableOfUnqualOfPointerTarget!Iterator, N, kind, staticMap!(ImmutableOfUnqualOfPointerTarget, Labels))
                 (_structure, _iterator, _labels);
         }
 
         /// ditto
-        auto toConst()() scope return const @trusted pure nothrow @nogc
+        auto toConst()() return scope const @trusted pure nothrow @nogc
         {
             version(LDC) pragma(inline, true);
             return Slice!(ConstOfUnqualOfPointerTarget!Iterator, N, kind, staticMap!(ConstOfUnqualOfPointerTarget, Labels))
@@ -1162,7 +1162,7 @@ public:
     Returns:
         Iterator (pointer) to the $(LREF .Slice.first) element.
     +/
-    auto iterator()() inout scope return @property
+    auto iterator()() inout return scope @property
     {
         return _iterator;
     }
@@ -1176,7 +1176,7 @@ public:
     {
         import mir.rc.array: mir_rci;
         static if (kind == Contiguous && is(Iterator : mir_rci!ET, ET))
-        auto ptr() scope return inout @property
+        auto ptr() return scope inout @property
         {
             return _iterator._iterator;
         }
@@ -1189,7 +1189,7 @@ public:
     Constraints:
         Field is defined only for contiguous slices.
     +/
-    auto field()() scope return @trusted @property
+    auto field()() return scope @trusted @property
     {
         static assert(kind == Contiguous, "Slice.field is defined only for contiguous slices. Slice kind is " ~ kind.stringof);
         static if (is(typeof(_iterator[size_t(0) .. elementCount])))
@@ -1204,13 +1204,13 @@ public:
     }
 
     /// ditto
-    auto field()() scope const return @trusted @property
+    auto field()() return const scope @trusted @property
     {
         return this.lightConst.field;
     }
 
     /// ditto
-    auto field()() scope immutable return @trusted @property
+    auto field()() return immutable scope @trusted @property
     {
         return this.lightImmutable.field;
     }
@@ -1482,7 +1482,7 @@ public:
     static if (N == 1)
     {
         ///ditto
-        auto ref front(size_t dimension = 0)() scope return @trusted @property
+        auto ref front(size_t dimension = 0)() return scope @trusted @property
             if (dimension == 0)
         {
             assert(!empty!dimension);
@@ -1490,7 +1490,7 @@ public:
         }
 
         ///ditto
-        auto ref front(size_t dimension = 0)() scope return @trusted @property const
+        auto ref front(size_t dimension = 0)() return scope @trusted @property const
             if (dimension == 0)
         {
             assert(!empty!dimension);
@@ -1498,7 +1498,7 @@ public:
         }
 
         ///ditto
-        auto ref front(size_t dimension = 0)() scope return @trusted @property immutable
+        auto ref front(size_t dimension = 0)() return scope @trusted @property immutable
             if (dimension == 0)
         {
             assert(!empty!dimension);
@@ -1508,7 +1508,7 @@ public:
     else
     {
         /// ditto
-        Element!dimension front(size_t dimension = 0)() scope return @property
+        Element!dimension front(size_t dimension = 0)() return scope @property
             if (dimension < N)
         {
             typeof(return)._Structure structure_ = typeof(return)._Structure.init;
@@ -1534,7 +1534,7 @@ public:
         }
 
         ///ditto
-        auto front(size_t dimension = 0)() scope return @trusted @property const
+        auto front(size_t dimension = 0)() return scope @trusted @property const
             if (dimension < N)
         {
             assert(!empty!dimension);
@@ -1542,7 +1542,7 @@ public:
         }
 
         ///ditto
-        auto front(size_t dimension = 0)() scope return @trusted @property immutable
+        auto front(size_t dimension = 0)() return scope @trusted @property immutable
             if (dimension < N)
         {
             assert(!empty!dimension);
@@ -1553,7 +1553,7 @@ public:
     static if (N == 1 && isMutable!DeepElement && !hasAccessByRef)
     {
         ///ditto
-        auto ref front(size_t dimension = 0, T)(T value) scope return @trusted @property
+        auto ref front(size_t dimension = 0, T)(T value) return scope @trusted @property
             if (dimension == 0)
         {
             // check assign safety
@@ -1572,7 +1572,7 @@ public:
     ///ditto
     static if (N == 1)
     auto ref Element!dimension
-    back(size_t dimension = 0)() scope return @trusted @property
+    back(size_t dimension = 0)() return scope @trusted @property
         if (dimension < N)
     {
         assert(!empty!dimension);
@@ -1580,7 +1580,7 @@ public:
     }
     else
     auto ref Element!dimension
-    back(size_t dimension = 0)() scope return @trusted @property
+    back(size_t dimension = 0)() return scope @trusted @property
         if (dimension < N)
     {
         assert(!empty!dimension);
@@ -1609,7 +1609,7 @@ public:
     static if (N == 1 && isMutable!DeepElement && !hasAccessByRef)
     {
         ///ditto
-        auto ref back(size_t dimension = 0, T)(T value) scope return @trusted @property
+        auto ref back(size_t dimension = 0, T)(T value) return scope @trusted @property
             if (dimension == 0)
         {
             // check assign safety
@@ -1734,7 +1734,7 @@ public:
     static if (N > 1)
     {
         /// Accesses the first deep element of the slice.
-        auto ref first()() scope return @trusted @property
+        auto ref first()() return scope @trusted @property
         {
             assert(!anyEmpty);
             return *_iterator;
@@ -1742,7 +1742,7 @@ public:
 
         static if (isMutable!DeepElement && !hasAccessByRef)
         ///ditto
-        auto ref first(T)(T value) scope return @trusted @property
+        auto ref first(T)(T value) return scope @trusted @property
         {
             assert(!anyEmpty);
             static if (__traits(compiles, *_iterator = value))
@@ -1761,7 +1761,7 @@ public:
         }
 
         /// Accesses the last deep element of the slice.
-        auto ref last()() @trusted scope return @property
+        auto ref last()() @trusted return scope @property
         {
             assert(!anyEmpty);
             return _iterator[lastIndex];
@@ -1769,7 +1769,7 @@ public:
 
         static if (isMutable!DeepElement && !hasAccessByRef)
         ///ditto
-        auto ref last(T)(T value) @trusted scope return @property
+        auto ref last(T)(T value) @trusted return scope @property
         {
             assert(!anyEmpty);
             return _iterator[lastIndex] = value;
@@ -1869,7 +1869,7 @@ public:
 
     Returns: `this[$-index[0], $-index[1], ..., $-index[N-1]]`
     +/
-    auto ref backward()(size_t[N] index) scope return
+    auto ref backward()(size_t[N] index) return scope
     {
         foreach (i; Iota!N)
             index[i] = _lengths[i] - index[i];
@@ -1877,13 +1877,13 @@ public:
     }
 
     /// ditto
-    auto ref backward()(size_t[N] index) scope return const
+    auto ref backward()(size_t[N] index) return scope const
     {
         return this.lightConst.backward(index);
     }
 
     /// ditto
-    auto ref backward()(size_t[N] index) scope return const
+    auto ref backward()(size_t[N] index) return scope const
     {
         return this.lightConst.backward(index);
     }
@@ -1970,7 +1970,7 @@ public:
         n = count of elements for the dimension
     Returns: ndslice with `length!dimension` equal to `n`.
     +/
-    auto selectFront(size_t dimension)(size_t n) scope return
+    auto selectFront(size_t dimension)(size_t n) return scope
     {
         static if (kind == Contiguous && dimension)
         {
@@ -2002,7 +2002,7 @@ public:
         n = count of elements for the dimension
     Returns: ndslice with `length!dimension` equal to `n`.
     +/
-    auto selectBack(size_t dimension)(size_t n) scope return
+    auto selectBack(size_t dimension)(size_t n) return scope
     {
         static if (kind == Contiguous && dimension)
         {
@@ -2129,13 +2129,13 @@ public:
     /++
     $(BOLD Fully defined index)
     +/
-    auto ref opIndex()(size_t[N] _indices...) scope return @trusted
+    auto ref opIndex()(size_t[N] _indices...) return scope @trusted
     {
         return _iterator[indexStride(_indices)];
     }
 
     /// ditto
-    auto ref opIndex()(size_t[N] _indices...) scope return const @trusted
+    auto ref opIndex()(size_t[N] _indices...) return scope const @trusted
     {
         static if (is(typeof(_iterator[indexStride(_indices)])))
             return _iterator[indexStride(_indices)];
@@ -2144,7 +2144,7 @@ public:
     }
 
     /// ditto
-    auto ref opIndex()(size_t[N] _indices...) scope return immutable @trusted
+    auto ref opIndex()(size_t[N] _indices...) return scope immutable @trusted
     {
         static if (is(typeof(_iterator[indexStride(_indices)])))
             return _iterator[indexStride(_indices)];
@@ -2155,7 +2155,7 @@ public:
     /++
     $(BOLD Partially defined index)
     +/
-    auto opIndex(size_t I)(size_t[I] _indices...) scope return @trusted
+    auto opIndex(size_t I)(size_t[I] _indices...) return scope @trusted
         if (I && I < N)
     {
         enum size_t diff = N - I;
@@ -2167,14 +2167,14 @@ public:
     }
 
     /// ditto
-    auto opIndex(size_t I)(size_t[I] _indices...) scope return const
+    auto opIndex(size_t I)(size_t[I] _indices...) return scope const
         if (I && I < N)
     {
         return this.lightConst.opIndex(_indices);
     }
 
     /// ditto
-    auto opIndex(size_t I)(size_t[I] _indices...) scope return immutable
+    auto opIndex(size_t I)(size_t[I] _indices...) return scope immutable
         if (I && I < N)
     {
         return this.lightImmutable.opIndex(_indices);
@@ -2183,7 +2183,7 @@ public:
     /++
     $(BOLD Partially or fully defined slice.)
     +/
-    auto opIndex(Slices...)(Slices slices) scope return @trusted
+    auto opIndex(Slices...)(Slices slices) return scope @trusted
         if (isPureSlice!Slices)
     {
         static if (Slices.length)
@@ -2295,7 +2295,7 @@ public:
     /++
     $(BOLD Indexed slice.)
     +/
-    auto opIndex(Slices...)(scope return Slices slices) scope return
+    auto opIndex(Slices...)(return scope Slices slices) return scope
         if (isIndexedSlice!Slices)
     {
         import mir.ndslice.topology: indexed, cartesian;
@@ -2376,7 +2376,7 @@ public:
     Note:
         Does not allocate neither new slice nor a closure.
     +/
-    auto opUnary(string op)() scope return
+    auto opUnary(string op)() return scope
         if (op == "*" || op == "~" || op == "-" || op == "+")
     {
         import mir.ndslice.topology: map;
@@ -2412,7 +2412,7 @@ public:
     Note:
         Does not allocate neither new slice nor a closure.
     +/
-    auto opBinary(string op, T)(scope return T value) scope return
+    auto opBinary(string op, T)(scope return T value) return scope
         if(!isSlice!T)
     {
         import mir.ndslice.topology: vmap;
@@ -2420,7 +2420,7 @@ public:
     }
 
     /// ditto
-    auto opBinaryRight(string op, T)(scope return T value) scope return
+    auto opBinaryRight(string op, T)(scope return T value) return scope
         if(!isSlice!T)
     {
         import mir.ndslice.topology: vmap;
@@ -2465,7 +2465,7 @@ public:
         Does not allocate neither new slice nor a closure.
     +/
     auto opBinary(string op, RIterator, size_t RN, SliceKind rkind)
-        (scope return Slice!(RIterator, RN, rkind) rhs) scope return
+        (scope return Slice!(RIterator, RN, rkind) rhs) return scope
         if(N == RN && (kind == Contiguous && rkind == Contiguous || N == 1) && op != "~")
     {
         import mir.ndslice.topology: zip, map;
@@ -2641,7 +2641,7 @@ public:
         value of flattened slice at `index`
     See_also: $(SUBREF topology, flattened)
     +/
-    auto ref accessFlat(size_t index) scope return @trusted
+    auto ref accessFlat(size_t index) return scope @trusted
     {
         return _iterator[indexStrideValue(index)];
     }
@@ -2716,7 +2716,7 @@ public:
         Assignment of a value of `Slice` type to a $(B fully defined slice).
         +/
         void opIndexAssign(RIterator, size_t RN, SliceKind rkind, Slices...)
-            (Slice!(RIterator, RN, rkind) value, Slices slices) scope return
+            (Slice!(RIterator, RN, rkind) value, Slices slices) return scope
             if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
             auto sl = this.lightScope.opIndex(slices);
@@ -2840,7 +2840,7 @@ public:
         /++
         Assignment of a regular multidimensional array to a $(B fully defined slice).
         +/
-        void opIndexAssign(T, Slices...)(T[] value, Slices slices) scope return
+        void opIndexAssign(T, Slices...)(T[] value, Slices slices) return scope
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!DeepElement || isDynamicArray!T)
                 && DynamicArrayDimensionsCount!(T[]) - DynamicArrayDimensionsCount!DeepElement <= typeof(this.opIndex(slices)).N)
@@ -2922,7 +2922,7 @@ public:
         }
 
         ///
-        void opIndexAssign(T, Slices...)(T concatenation, Slices slices) scope return
+        void opIndexAssign(T, Slices...)(T concatenation, Slices slices) return scope
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices) && isConcatenation!T)
         {
             auto sl = this.lightScope.opIndex(slices);
@@ -2997,7 +2997,7 @@ public:
         /++
         Assignment of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexAssign(T)(T value, size_t[N] _indices...) scope return @trusted
+        auto ref opIndexAssign(T)(T value, size_t[N] _indices...) return scope @trusted
         {
             // check assign safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
@@ -3007,7 +3007,7 @@ public:
             return _iterator[indexStride(_indices)] = value;
         }
         ///ditto
-        auto ref opIndexAssign()(DeepElement value, size_t[N] _indices...) scope return @trusted
+        auto ref opIndexAssign()(DeepElement value, size_t[N] _indices...) return scope @trusted
         {
             import mir.functional: forward;
             // check assign safety
@@ -3041,7 +3041,7 @@ public:
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined index).
         +/
-        auto ref opIndexOpAssign(string op, T)(T value, size_t[N] _indices...) scope return @trusted
+        auto ref opIndexOpAssign(string op, T)(T value, size_t[N] _indices...) return scope @trusted
         {
             // check op safety
             static auto ref fun(ref DeepElement t, ref T v) @safe
@@ -3082,7 +3082,7 @@ public:
         Op Assignment `op=` of a value of `Slice` type to a $(B fully defined slice).
         +/
         void opIndexOpAssign(string op, RIterator, SliceKind rkind, size_t RN, Slices...)
-            (Slice!(RIterator, RN, rkind) value, Slices slices) scope return
+            (Slice!(RIterator, RN, rkind) value, Slices slices) return scope
             if (isFullPureSlice!Slices || isIndexedSlice!Slices)
         {
             auto sl = this.lightScope.opIndex(slices);
@@ -3147,7 +3147,7 @@ public:
         /++
         Op Assignment `op=` of a regular multidimensional array to a $(B fully defined slice).
         +/
-        void opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices) scope return
+        void opIndexOpAssign(string op, T, Slices...)(T[] value, Slices slices) return scope
             if (isFullPureSlice!Slices
                 && (!isDynamicArray!DeepElement || isDynamicArray!T)
                 && DynamicArrayDimensionsCount!(T[]) - DynamicArrayDimensionsCount!DeepElement <= typeof(this.opIndex(slices)).N)
@@ -3193,7 +3193,7 @@ public:
                      [2, 2, 3, 3]]);
         }
 
-        private void opIndexOpAssignImplValue(string op, T)(T value) scope return
+        private void opIndexOpAssignImplValue(string op, T)(T value) return scope
         {
             static if (N > 1 && kind == Contiguous)
             {
@@ -3223,7 +3223,7 @@ public:
         /++
         Op Assignment `op=` of a value (e.g. a number) to a $(B fully defined slice).
        +/
-        void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices) scope return
+        void opIndexOpAssign(string op, T, Slices...)(T value, Slices slices) return scope
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices)
                 && (!isDynamicArray!T || isDynamicArray!DeepElement)
                 && DynamicArrayDimensionsCount!T == DynamicArrayDimensionsCount!DeepElement
@@ -3253,7 +3253,7 @@ public:
         }
 
         ///
-        void opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices) scope return
+        void opIndexOpAssign(string op,T, Slices...)(T concatenation, Slices slices) return scope
             if ((isFullPureSlice!Slices || isIndexedSlice!Slices) && isConcatenation!T)
         {
             auto sl = this.lightScope.opIndex(slices);
@@ -3277,7 +3277,7 @@ public:
         /++
         Increment `++` and Decrement `--` operators for a $(B fully defined index).
         +/
-        auto ref opIndexUnary(string op)(size_t[N] _indices...) scope return
+        auto ref opIndexUnary(string op)(size_t[N] _indices...) return scope
             @trusted
             // @@@workaround@@@ for Issue 16473
             //if (op == `++` || op == `--`)
@@ -3341,7 +3341,7 @@ public:
         /++
         Increment `++` and Decrement `--` operators for a $(B fully defined slice).
         +/
-        void opIndexUnary(string op, Slices...)(Slices slices) scope return
+        void opIndexUnary(string op, Slices...)(Slices slices) return scope
             if (isFullPureSlice!Slices && (op == `++` || op == `--`))
         {
             auto sl = this.lightScope.opIndex(slices);

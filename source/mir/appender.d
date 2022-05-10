@@ -214,7 +214,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
-    inout(T)[] data() inout @property @safe scope
+    inout(T)[] data() inout @property @safe scope return
     {
         return _buffer.length ? _buffer[0 .. _currentLength] : _scopeBuffer[0 .. _currentLength];
     }

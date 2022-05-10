@@ -39,7 +39,7 @@ struct mir_rcptr(T)
         package T* _value;
     package mir_rc_context* _context;
 
-    package ref mir_rc_context context() inout scope return @trusted @property
+    package ref mir_rc_context context() inout return scope @trusted @property
     {
         return *cast(mir_rc_context*)_context;
     }
@@ -50,7 +50,7 @@ struct mir_rcptr(T)
         _context = null;
     }
 
-    inout(void)* _thisPtr() inout scope return @trusted @property
+    inout(void)* _thisPtr() inout return scope @trusted @property
     {
         return cast(inout(void)*) _value;
     }
