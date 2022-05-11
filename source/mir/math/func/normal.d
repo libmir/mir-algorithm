@@ -221,7 +221,7 @@ enum real SQRT2PI = 2.50662827463100050241576528481104525L; // sqrt(2pi)
 ///
 enum real SQRT2PIINV = 1 / SQRT2PI; // 1 / sqrt(2pi)
 
-private:
+package(mir) {
 
 enum real EXP_2  = 0.135335283236612691893999494972484403L; /* exp(-2) */
 
@@ -229,6 +229,7 @@ enum real EXP_2  = 0.135335283236612691893999494972484403L; /* exp(-2) */
 enum T MAXLOG(T) = log(T.max);
 ///
 enum T MINLOG(T) = log(T.min_normal * T.epsilon); // log(smallest denormal);
+}
 
 /**
  *  Exponential of squared argument
@@ -244,6 +245,7 @@ enum T MINLOG(T) = log(T.min_normal * T.epsilon); // log(smallest denormal);
  * arithmetic      domain        # trials      peak         rms
  *   IEEE     -106.566, 106.566    10^5       1.6e-19     4.4e-20
  */
+package(mir)
 T expx2(T)(const T x_, int sign)
 {
     /*
@@ -285,7 +287,7 @@ T expx2(T)(const T x_, int sign)
    exp(x^2) erfc(x)
    valid for x > 1.
    Use with ndtrl and expx2l.  */
-
+package(mir)
 T erfce(T)(const T x)
 {
     T y = 1 / x;
@@ -316,6 +318,8 @@ private T poly(alias vec, T)(const T x)
     }
     return y;
 }
+
+private {
 
 /* erfc(x) = exp(-x^2) P(1/x)/Q(1/x)
    1/8 <= 1/x <= 1
@@ -357,6 +361,9 @@ immutable real[7] U = [ 0x1.dde6025c395ae34ep+19, 0x1.c4bc8b6235df35aap+18,
     0x1.6a0fed103f1c68a6p+5, 1.0
 ];
 
+}
+
+package(mir)
 F erf(F)(const F x)
  if(isFloatingPoint!F)
 {
@@ -389,6 +396,7 @@ F erf(F)(const F x)
  * A special function expx2(x) is used to suppress error amplification
  * in computing exp(-x^2).
  */
+package(mir)
 T erfc(T)(const T a)
 {
     if (a == T.infinity)
@@ -429,6 +437,8 @@ T erfc(T)(const T a)
 
     return y;
 }
+
+private:
 
 static immutable real[8] P0 =
 [ -0x1.758f4d969484bfdcp-7, 0x1.53cee17a59259dd2p-3,
