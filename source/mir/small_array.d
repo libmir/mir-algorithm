@@ -238,7 +238,7 @@ template SmallArray(T, uint maxLength)
         }
 
         ///
-        ref inout(T) opIndex(size_t index) inout scope return
+        ref inout(T) opIndex(size_t index) inout return scope
         {
             return opIndex[index];
         }

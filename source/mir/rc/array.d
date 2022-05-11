@@ -27,7 +27,7 @@ struct mir_rcarray(T)
     import mir.internal.utility: isComplex, realType;
     ///
     package T* _payload;
-    package ref mir_rc_context context() inout scope return pure nothrow @nogc @trusted @property
+    package ref mir_rc_context context() inout return scope pure nothrow @nogc @trusted @property
     {
         assert(_payload);
         return (cast(mir_rc_context*)_payload)[-1];
@@ -577,7 +577,7 @@ struct mir_rci(T)
     }
 
     ///
-    inout(T)* lightScope()() scope return inout @property @trusted
+    inout(T)* lightScope()() return scope inout @property @trusted
     {
         debug
         {
@@ -615,15 +615,15 @@ struct mir_rci(T)
     }
 
     ///
-    mir_rci!(const T) lightConst()() scope return const nothrow @property
+    mir_rci!(const T) lightConst()() return scope const nothrow @property
     { return typeof(return)(_iterator, _array.lightConst); }
 
     ///
-    mir_rci!(immutable T) lightImmutable()() scope return immutable nothrow @property
+    mir_rci!(immutable T) lightImmutable()() return scope immutable nothrow @property
     { return typeof(return)(_iterator, _array.lightImmutable); }
 
     ///
-    ref inout(T) opUnary(string op : "*")() inout scope return
+    ref inout(T) opUnary(string op : "*")() inout return scope
     {
         debug
         {
@@ -636,7 +636,7 @@ struct mir_rci(T)
     }
 
     ///
-    ref inout(T) opIndex(ptrdiff_t index) inout scope return @trusted
+    ref inout(T) opIndex(ptrdiff_t index) inout return scope @trusted
     {
         debug
         {

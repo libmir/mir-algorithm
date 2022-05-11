@@ -161,7 +161,7 @@ scope const:
         ///
         ref const(Slice!(RCI!(immutable X))) grid() { return _grid; }
         ///
-        immutable(X)[] gridScopeView() scope return const @property @trusted { return _grid.lightScope.field; }
+        immutable(X)[] gridScopeView() return scope const @property @trusted { return _grid.lightScope.field; }
         ///
         ref const(RCArray!(immutable T)) inversedBarycentricWeights() { return _inversedBarycentricWeights; }
         ///

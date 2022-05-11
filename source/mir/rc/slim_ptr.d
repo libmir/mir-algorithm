@@ -36,7 +36,7 @@ struct mir_slim_rcptr(T)
     else
         package T* _value;
 
-    package ref mir_rc_context context() inout scope return pure nothrow @nogc @trusted @property
+    package ref mir_rc_context context() inout return scope pure nothrow @nogc @trusted @property
     {
         assert(_value);
         return (cast(mir_rc_context*)_value)[-1];
@@ -47,7 +47,7 @@ struct mir_slim_rcptr(T)
         _value = null;
     }
 
-    inout(void)* _thisPtr() inout scope return @trusted @property
+    inout(void)* _thisPtr() inout return scope @trusted @property
     {
         return cast(inout(void)*) _value;
     }

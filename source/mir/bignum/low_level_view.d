@@ -414,7 +414,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     static if (endian == TargetEndian)
     ///
     @trusted pure nothrow @nogc
-    BigUIntView!V opCast(T : BigUIntView!V, V)() scope return
+    BigUIntView!V opCast(T : BigUIntView!V, V)() return scope
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(cast(V[])this.coefficients);
@@ -422,7 +422,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     ///
     BigUIntView!(const W, endian) lightConst()()
-        const @safe pure nothrow @nogc @property scope return
+        const @safe pure nothrow @nogc @property return scope
     {
         return typeof(return)(coefficients);
     }
@@ -451,7 +451,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    ref inout(W) mostSignificant() inout @property scope return
+    ref inout(W) mostSignificant() inout @property return scope
     {
         static if (endian == WordEndian.big)
             return coefficients[0];
@@ -461,7 +461,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    ref inout(W) leastSignificant() inout @property scope return
+    ref inout(W) leastSignificant() inout @property return scope
     {
         static if (endian == WordEndian.little)
             return coefficients[0];
@@ -491,7 +491,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    BigUIntView topMostSignificantPart(size_t length) scope return
+    BigUIntView topMostSignificantPart(size_t length) return scope
     {
         static if (endian == WordEndian.big)
             return BigUIntView(coefficients[0 .. length]);
@@ -501,7 +501,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    BigUIntView topLeastSignificantPart(size_t length) scope return
+    BigUIntView topLeastSignificantPart(size_t length) return scope
     {
         static if (endian == WordEndian.little)
             return BigUIntView(coefficients[0 .. length]);
@@ -1128,7 +1128,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Returns: the same intger view with inversed sign
     +/
-    BigIntView!(W, endian) opUnary(string op : "-")() scope return
+    BigIntView!(W, endian) opUnary(string op : "-")() return scope
     {
         return typeof(return)(this, true);
     }
@@ -1160,7 +1160,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Returns: a slice of coefficients starting from the least significant.
     +/
     auto leastSignificantFirst()
-        @safe pure nothrow @nogc @property scope return
+        @safe pure nothrow @nogc @property return scope
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.little)
@@ -1176,7 +1176,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     ///
     auto leastSignificantFirst()
-        const @safe pure nothrow @nogc @property scope return
+        const @safe pure nothrow @nogc @property return scope
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.little)
@@ -1194,7 +1194,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Returns: a slice of coefficients starting from the most significant.
     +/
     auto mostSignificantFirst()
-        @safe pure nothrow @nogc @property scope return
+        @safe pure nothrow @nogc @property return scope
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.big)
@@ -1210,7 +1210,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     ///
     auto mostSignificantFirst()
-        const @safe pure nothrow @nogc @property scope return
+        const @safe pure nothrow @nogc @property return scope
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.big)
@@ -1227,7 +1227,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Strips most significant zero coefficients.
     +/
-    BigUIntView normalized() scope return
+    BigUIntView normalized() return scope
     {
         auto number = this;
         if (number.coefficients.length) do
@@ -1549,7 +1549,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     bool sign;
 
     ///
-    inout(W)[] coefficients() inout @property scope return
+    inout(W)[] coefficients() inout @property return scope
     {
         return unsigned.coefficients;
     }
@@ -1912,14 +1912,14 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     static if (endian == TargetEndian)
     ///
-    BigIntView!V opCast(T : BigIntView!V, V)() scope return
+    BigIntView!V opCast(T : BigIntView!V, V)() return scope
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(this.unsigned.opCast!(BigUIntView!V), sign);
     }
 
     ///
-    BigIntView!(const W, endian) lightConst()() scope return
+    BigIntView!(const W, endian) lightConst()() return scope
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(unsigned.lightConst, sign);

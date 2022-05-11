@@ -180,7 +180,7 @@ public:
     Returns a _front of the heap, which is the largest element
     according to `less`.
     +/
-    @property auto ref ElementType!Store front() scope return
+    @property auto ref ElementType!Store front() return scope
     {
         assert(!empty, "Cannot call front on an empty heap.");
         return _store.front;

@@ -3871,7 +3871,7 @@ struct Uniq(alias pred, Range)
             while (!_input.empty && pred(last, _input.back));
         }
 
-        auto ref back() scope return @property
+        auto ref back() return scope @property
         {
             assert(!empty, "Attempting to fetch the back of an empty uniq.");
             return _input.back;
@@ -3891,7 +3891,7 @@ struct Uniq(alias pred, Range)
 
     static if (isForwardRange!Range)
     {
-        @property typeof(this) save() scope return
+        @property typeof(this) save() return scope
         {
             return typeof(this)(_input.save);
         }
@@ -4028,7 +4028,7 @@ struct Filter(alias pred, Range)
     import std.range.primitives: isForwardRange;
     static if (isForwardRange!Range)
     {
-        @property typeof(this) save() scope return
+        @property typeof(this) save() return scope
         {
             return typeof(this)(_input.save);
         }
