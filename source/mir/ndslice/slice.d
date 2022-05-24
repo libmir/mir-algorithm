@@ -477,15 +477,15 @@ package(mir) template allLightScope(args...)
         static if(!isDynamicArray!Arg)
         {
             static if(!is(LightScopeOf!Arg == Arg))
-            @optmath @property ls()()
+            @optmath @property allLightScopeMod()()
             {
                 import mir.qualifier: lightScope;
                 return lightScope(arg);
             }
-            else alias ls = arg;
+            else alias allLightScopeMod = arg;
         }
-        else alias ls = arg;
-        alias allLightScope = AliasSeq!(ls, allLightScope!(args[1..$]));
+        else alias allLightScopeMod = arg;
+        alias allLightScope = AliasSeq!(allLightScopeMod, allLightScope!(args[1..$]));
     }
     else
         alias allLightScope = AliasSeq!();

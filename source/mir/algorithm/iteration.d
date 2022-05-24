@@ -603,12 +603,12 @@ package(mir) template allFlattened(args...)
     static if (args.length)
     {
         alias arg = args[0];
-        @optmath @property ls()()
+        @optmath @property allFlattenedMod()()
         {
             import mir.ndslice.topology: flattened;
             return flattened(arg);
         }
-        alias allFlattened = AliasSeq!(ls, allFlattened!(args[1..$]));
+        alias allFlattened = AliasSeq!(allFlattenedMod, allFlattened!(args[1..$]));
     }
     else
         alias allFlattened = AliasSeq!();
@@ -697,7 +697,7 @@ else
     private enum Mir_disable_inlining_in_reduce = false;
 }
 
-S reduceImpl(alias fun, S, Slices...)(S seed, scope Slices slices)
+S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
 {
     do
     {
@@ -744,7 +744,7 @@ template reduce(alias fun)
     Returns:
         the accumulated `result`
     +/
-    @optmath auto reduce(S, Slices...)(S seed, scope Slices slices)
+    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -767,7 +767,7 @@ template reduce(alias fun)
     }
     else version(Mir_disable_inlining_in_reduce)
     //As above, but with inlining disabled.
-    @optmath auto reduce(S, Slices...)(S seed, scope Slices slices)
+    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -952,7 +952,7 @@ version(mir_test) unittest
     assert(a == 7);
 }
 
-void eachImpl(alias fun, Slices...)(scope Slices slices)
+void eachImpl(alias fun, Slices...)(Slices slices)
 {
     foreach(ref slice; slices)
         assert(!slice.empty);
@@ -961,14 +961,14 @@ void eachImpl(alias fun, Slices...)(scope Slices slices)
         static if (DimensionCount!(Slices[0]) == 1)
             fun(frontOf!slices);
         else
-            .eachImpl!fun(frontOf!slices);
+            .eachImpl!fun(frontOf2!slices);
         foreach_reverse(i; Iota!(Slices.length))
             slices[i].popFront;
     }
     while(!slices[0].empty);
 }
 
-void chequerEachImpl(alias fun, Slices...)(Chequer color, scope Slices slices)
+void chequerEachImpl(alias fun, Slices...)(Chequer color, Slices slices)
 {
     foreach(ref slice; slices)
         assert(!slice.empty);
@@ -1116,7 +1116,7 @@ template each(alias fun)
         Params:
             slices = One or more slices, ranges, and arrays.
         +/
-        @optmath auto each(Slices...)(scope Slices slices)
+        @optmath auto each(Slices...)(Slices slices)
             if (Slices.length && !is(Slices[0] : Chequer))
         {
             static if (Slices.length > 1)
@@ -1140,7 +1140,7 @@ template each(alias fun)
             color = $(LREF Chequer).
             slices = One or more slices.
         +/
-        @optmath auto each(Slices...)(Chequer color, scope Slices slices)
+        @optmath auto each(Slices...)(Chequer color, Slices slices)
             if (Slices.length && allSatisfy!(isSlice, Slices))
         {
             static if (Slices.length > 1)
@@ -2139,7 +2139,7 @@ version(mir_test) unittest
     assert(bi == [0, 0]);
 }
 
-size_t anyImpl(alias fun, Slices...)(scope Slices slices)
+size_t anyImpl(alias fun, Slices...)(Slices slices)
     if (Slices.length)
 {
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
@@ -2164,7 +2164,7 @@ size_t anyImpl(alias fun, Slices...)(scope Slices slices)
             }
             else
             {
-                if (anyImpl!fun(frontOf!slices))
+                if (anyImpl!fun(frontOf2!slices))
                     return true;
             }
             foreach_reverse(ref slice; slices)
@@ -2195,7 +2195,7 @@ template any(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath bool any(Slices...)(scope Slices slices)
+    @optmath bool any(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         static if (Slices.length > 1)
@@ -2299,7 +2299,7 @@ version(mir_test) unittest
                   [8, 8, 5]]);
 }
 
-size_t allImpl(alias fun, Slices...)(scope Slices slices)
+size_t allImpl(alias fun, Slices...)(Slices slices)
     if (Slices.length)
 {
     static if (__traits(isSame, fun, naryFun!"a") && is(S : Slice!(FieldIterator!(BitField!(Field, I))), Field, I))
@@ -2324,7 +2324,7 @@ size_t allImpl(alias fun, Slices...)(scope Slices slices)
             }
             else
             {
-                if (!allImpl!fun(frontOf!slices))
+                if (!allImpl!fun(frontOf2!slices))
                     return false;
             }
             foreach_reverse(ref slice; slices)
@@ -2355,7 +2355,7 @@ template all(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath bool all(Slices...)(scope Slices slices)
+    @optmath bool all(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         static if (Slices.length > 1)
@@ -2485,7 +2485,7 @@ template count(alias fun)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath size_t count(Slices...)(scope Slices slices)
+    @optmath size_t count(Slices...)(Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -2605,7 +2605,7 @@ template equal(alias pred = "a == b")
         Returns:
             `true` any of the elements verify `pred` and `false` otherwise.
         +/
-        bool equal(Slices...)(scope Slices slices)
+        bool equal(Slices...)(Slices slices)
             if (Slices.length >= 2)
         {
             import mir.internal.utility;
@@ -2823,7 +2823,7 @@ version(mir_test) unittest
     assert(cmp(sl1[0 .. $ - 1, 0 .. $ - 3], sl1[0 .. $, 0 .. $ - 3]) < 0);
 }
 
-size_t countImpl(alias fun, Slices...)(scope Slices slices)
+size_t countImpl(alias fun, Slices...)(Slices slices)
 {
     size_t ret;
     alias S = Slices[0];
@@ -2850,7 +2850,7 @@ size_t countImpl(alias fun, Slices...)(scope Slices slices)
                 ret++;
         }
         else
-            ret += .countImpl!fun(frontOf!slices);
+            ret += .countImpl!fun(frontOf2!slices);
         foreach_reverse(ref slice; slices)
             slice.popFront;
     }

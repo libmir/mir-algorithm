@@ -365,11 +365,25 @@ package(mir) template frontOf(args...)
         enum frontOf = args;
     else
     {
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref frontOfMod()()
         {
             return args[0].front;
         }
-        alias frontOf = AliasSeq!(ls, frontOf!(args[1..$]));
+        alias frontOf = AliasSeq!(frontOfMod, frontOf!(args[1..$]));
+    }
+}
+
+package(mir) template frontOf2(args...)
+{
+    static if (args.length == 0)
+        enum frontOf2 = args;
+    else
+    {
+        @optmath @property auto frontOf2Mod()()
+        {
+            return args[0].front;
+        }
+        alias frontOf2 = AliasSeq!(frontOf2Mod, frontOf2!(args[1..$]));
     }
 }
 
@@ -379,11 +393,11 @@ package(mir) template backOf(args...)
         enum backOf = args;
     else
     {
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref backOfMod()()
         {
             return args[0].back;
         }
-        alias backOf = AliasSeq!(ls, backOf!(args[1..$]));
+        alias backOf = AliasSeq!(backOfMod, backOf!(args[1..$]));
     }
 }
 
@@ -393,11 +407,11 @@ package(mir) template frontOfD(size_t dimension, args...)
         enum frontOfD = args;
     else
     {
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref frontOfDMod()()
         {
             return args[0].front!dimension;
         }
-        alias frontOfD = AliasSeq!(ls, frontOfD!(dimension, args[1..$]));
+        alias frontOfD = AliasSeq!(frontOfDMod, frontOfD!(dimension, args[1..$]));
     }
 }
 
@@ -407,11 +421,11 @@ package(mir) template backOfD(size_t dimension, args...)
         enum backOfD = args;
     else
     {
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref backOfDMod()()
         {
             return args[0].back!dimension;
         }
-        alias backOfD = AliasSeq!(ls, backOfD!(dimension, args[1..$]));
+        alias backOfD = AliasSeq!(backOfDMod, backOfD!(dimension, args[1..$]));
     }
 }
 
@@ -422,11 +436,11 @@ package(mir) template frontOfDim(size_t dim, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref ls()
+        @optmath @property auto ref frontOfDimMod()
         {
             return arg.front!dim;
         }
-        alias frontOfDim = AliasSeq!(ls, frontOfDim!(dim, args[1..$]));
+        alias frontOfDim = AliasSeq!(frontOfDimMod, frontOfDim!(dim, args[1..$]));
     }
 }
 
@@ -437,11 +451,11 @@ package(mir) template selectFrontOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref selectFrontOfMod()()
         {
             return arg.lightScope.selectFront!0(input);
         }
-        alias selectFrontOf = AliasSeq!(ls, selectFrontOf!(input, args[1..$]));
+        alias selectFrontOf = AliasSeq!(selectFrontOfMod, selectFrontOf!(input, args[1..$]));
     }
 }
 
@@ -452,11 +466,11 @@ package(mir) template selectBackOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref selectBackOfMod()()
         {
             return arg.selectBack!0(input);
         }
-        alias selectBackOf = AliasSeq!(ls, selectBackOf!(input, args[1..$]));
+        alias selectBackOf = AliasSeq!(selectBackOfMod, selectBackOf!(input, args[1..$]));
     }
 }
 
@@ -467,11 +481,11 @@ package(mir) template frontSelectFrontOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref frontSelectFrontOfMod()()
         {
             return arg.lightScope.front.selectFront!0(input);
         }
-        alias frontSelectFrontOf = AliasSeq!(ls, frontSelectFrontOf!(input, args[1..$]));
+        alias frontSelectFrontOf = AliasSeq!(frontSelectFrontOfMod, frontSelectFrontOf!(input, args[1..$]));
     }
 }
 
@@ -482,10 +496,12 @@ package(mir) template frontSelectBackOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref ls()()
+        @optmath @property auto ref frontSelectBackOfMod
+        ()()
         {
             return arg.lightScope.front.selectBack!0(input);
         }
-        alias frontSelectBackOf = AliasSeq!(ls, frontSelectBackOf!(input, args[1..$]));
+        alias frontSelectBackOf = AliasSeq!(frontSelectBackOfMod
+        , frontSelectBackOf!(input, args[1..$]));
     }
 }
