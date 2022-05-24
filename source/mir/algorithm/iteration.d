@@ -576,7 +576,7 @@ private void checkShapesMatch(
     string fun = __FUNCTION__,
     string pfun = __PRETTY_FUNCTION__,
     Slices...)
-    (scope ref const Slices slices)
+    (Slices slices)
     if (Slices.length > 1)
 {
     enum msgShape = "all slices must have the same shape"  ~ tailErrorMessage!(fun, pfun);
