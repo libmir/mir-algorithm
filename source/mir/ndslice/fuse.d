@@ -277,10 +277,7 @@ template fuseImpl(bool RC, T_, Dimensions...)
 private template fuseDimensionCount(R)
 {
     static if (is(typeof(R.init.shape) : size_t[N], size_t N) && (isDynamicArray!R || __traits(hasMember, R, "front")))
-    {
-        import mir.ndslice.topology: repeat;
         enum size_t fuseDimensionCount = N + fuseDimensionCount!(DeepElementType!R);
-    }
     else
         enum size_t fuseDimensionCount = 0;
 }
@@ -309,16 +306,24 @@ size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
         import mir.ndslice.topology: repeat;
         typeof(return) ret;
         ret[0 .. N] = r.shape;
-        if (!ret[0 .. N].anyEmptyShape)
+        bool next;
+        if (!ret[0 .. N].anyEmptyShape) foreach (ref elem; r)
         {
-            ret[N .. $] = fuseShape(mixin("r" ~ ".front".repeat(N).fuseCells.field));
-            import mir.algorithm.iteration: all;
-            if (!all!((a) => cast(size_t[M]) ret[N .. $] == .fuseShape(a))(r))
+            auto elemShape = fuseShape(elem);
+            if (next)
             {
-                version (D_Exceptions)
-                    throw shapeException;
-                else
-                    assert(0, shapeExceptionMsg);
+                if (elemShape != ret[N .. $])
+                {
+                    version (D_Exceptions)
+                        throw shapeException;
+                    else
+                        assert(0, shapeExceptionMsg);
+                }
+                next = true;
+            }
+            else
+            {
+                ret[N .. $] = elemShape;
             }
         }
         return ret;
@@ -326,9 +331,12 @@ size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
 }
 
 private template FuseElementType(NDRange)
+    if (fuseDimensionCount!NDRange >= 1)
 {
-    import mir.ndslice.topology: repeat;
-    alias FuseElementType = typeof(mixin("NDRange.init" ~ ".front".repeat(fuseDimensionCount!NDRange).fuseCells.field));
+    static if (fuseDimensionCount!NDRange == 1)
+        alias FuseElementType = typeof(NDRange.init.front);
+    else
+        alias FuseElementType = FuseElementType!(typeof(NDRange.init.front));
 }
 
 /++
