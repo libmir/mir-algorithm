@@ -180,7 +180,7 @@ template fuseImpl(bool RC, T_, Dimensions...)
     Params:
         r = parallelotope (ndrange) with length/shape and input range primitives.
     +/
-    auto fuseImpl(NDRange)(NDRange r) @safe
+    auto fuseImpl(NDRange)(NDRange r)
         if (hasShape!NDRange)
     {
         import mir.conv: emplaceRef;
