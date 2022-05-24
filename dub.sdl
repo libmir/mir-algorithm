@@ -9,7 +9,7 @@ dependency "mir-core" version=">=1.1.106"
 
 buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
-    // versions "mir_bignum_test" "mir_ndslice_test" "mir_test"
+    versions "mir_bignum_test" "mir_ndslice_test" "mir_test"
     dflags "-lowmem"
 }
 buildType "unittest-dip1008" {

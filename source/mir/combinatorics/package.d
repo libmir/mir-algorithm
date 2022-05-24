@@ -7,6 +7,7 @@ License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 */
 module mir.combinatorics;
 
+import mir.math.sum: ResolveSummationType, Summation, Summator;
 import mir.primitives: hasLength;
 import mir.qualifier;
 import std.traits;
@@ -1473,4 +1474,457 @@ void dispose(T, Allocator)(auto ref Allocator alloc, auto ref CombinationsRepeat
 {
     import std.experimental.allocator: dispose;
     dispose(alloc, perm.state);
+}
+
+/++
+Computes the log of the factorial of the input.
+
+The log of the factorial is computed directly if the input is less than 1,000.
+For values 1,000 or larger, the log of the gamma function is used.
+
+Params:
+    F = controls type of output
+    summation = algorithm for calculating sums (default: Summation.appropriate)
+
+Returns:
+    The log of the factorial of the input, must be floating point type
+
+See_also: 
+    $(SUBREF sum, Summation)
++/
+template logFactorial(F, Summation summation = Summation.appropriate)
+    if (isFloatingPoint!F)
+{
+    /++
+    Params:
+        n = arbitrary arithmetic type
+    +/
+    F logFactorial(T)(const T n)
+        if (isArithmetic!T &&
+            ((is(typeof(T.min < 0)) && is(typeof(T.init & 1))) || !is(typeof(T.min < 0))) )
+        in(n >= 0, "n must be bigger than or equal to zero")
+    {
+        import mir.math.common: log;
+
+        return .logFactorialPartial!(F, ResolveSummationType!(summation, const(F)[], F), T)(n);
+    }
+}
+
+/// ditto
+template logFactorial(Summation summation = Summation.appropriate)
+{
+    double logFactorial(T)(const T n)
+        if (isArithmetic!T &&
+            ((is(typeof(T.min < 0)) && is(typeof(T.init & 1))) || !is(typeof(T.min < 0))) )
+        in(n >= 0, "n must be bigger than or equal to zero")
+    {
+        return .logFactorial!(double, summation)(n);
+    }
+}
+
+///
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+    assert(logFactorial(0) == 0);
+    assert(logFactorial(1) == 0);
+    assert(logFactorial(2).approxEqual(log(1.0 * 2)));
+    assert(logFactorial(3).approxEqual(log(1.0 * 2 * 3)));
+    assert(logFactorial(4).approxEqual(log(1.0 * 2 * 3 * 4)));
+    assert(logFactorial(5).approxEqual(log(1.0 * 2 * 3 * 4 * 5)));
+}
+
+/// Can also set algorithm or output type
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    static assert(is(typeof(logFactorial!real(5)) == real));
+    static assert(is(typeof(logFactorial!float(5)) == float));
+
+    assert(logFactorial!(double, Summation.precise)(5).approxEqual(log(1.0 * 2 * 3 * 4 * 5)));
+    assert(logFactorial!(Summation.precise)(5).approxEqual(log(1.0 * 2 * 3 * 4 * 5)));
+}
+
+// test larger value
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual;
+    import std.mathspecial: logGamma;
+
+    size_t x = logFactorialGammaAlternative + 500;
+    assert(logFactorial(x).approxEqual(logGamma(cast(double) x + 1)));
+    assert(logFactorial(cast(double) x).approxEqual(logGamma(cast(double) x + 1)));
+}
+
+// test BigInt
+@safe pure nothrow
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+    import std.mathspecial: logGamma;
+    import std.bigint: BigInt;
+
+    size_t x = logFactorialGammaAlternative + 500;
+    assert(logFactorial(BigInt(5)).approxEqual(log(1.0 * 2 * 3 * 4 * 5)));
+    assert(logFactorial(BigInt(x)).approxEqual(logGamma(cast(double) x + 1)));
+}
+
+// Controls when to switch from a direct calculation to using the Gamma function
+// value selected based on performance comparison of logBinomial(x - 1, (x - 1) / 2)
+// and logBinomial(x + 1, (x + 1) / 2)
+private enum size_t logFactorialGammaAlternative = 2500;
+
+@trusted
+package(mir)
+F logFactorialPartial(F = double, Summation summation = Summation.appropriate, T)(const T n, const T k = 0)
+    if (isFloatingPoint!F && 
+        isArithmetic!T &&
+        ((is(typeof(T.min < 0)) && is(typeof(T.init & 1))) || !is(typeof(T.min < 0))) )
+    in(k <= n, "k must be less than or equal to n")
+    in(n >= 0, "n must be bigger than or equal to zero")
+    in(k >= 0, "k must be bigger than or equal to zero")
+{
+    import mir.math.common: log;
+    import std.bigint: BigInt;
+
+    alias summationResolved = ResolveSummationType!(summation, const(F)[], F);
+    Summator!(F, summationResolved) summator;
+
+    if (n > 1 && n < logFactorialPartialSimpleTableLength) {
+        static if (!is(T == BigInt)) {
+            summator.put(cast(F) logFactorialPartialSimpleTable[cast(size_t) n]);
+            summator.put(cast(F) -logFactorialPartialSimpleTable[cast(size_t) k]);
+        } else {
+            summator.put(logFactorialPartialSimple!(F, summation)(n, k));
+        }
+    } else if (n < logFactorialGammaAlternative) {
+        summator.put(logFactorialPartialSimple!(F, summation)(n, k));
+    } else {
+        import std.mathspecial: logGamma;
+
+        // logGamma is defined on real types, this ensures that the input is 
+        // cast correctly, if needed
+        static if (is(typeof(n) : real)) {
+            alias V = typeof(n);
+        } else {
+            static if (__traits(hasMember, T, "max") && T.max < F.max) {
+                // Handles fixed width custom data types that are not impicitly
+                // convertible to real
+                alias V = F;
+            } else {
+                assert(n <= real.max, "n must be less than or equal to real.max to be compatible with logGamma");
+                alias V = real;
+            }
+        }
+
+        // Add in n! and then subtract out k!
+        summator.put(cast(F) logGamma(cast(V) n + 1));
+        if (k > 1) {
+            if (k < logFactorialPartialSimpleTableLength) {
+                static if (!is(T == BigInt)) {
+                    summator.put(cast(F) -logFactorialPartialSimpleTable[cast(size_t) k]);
+                } else {
+                    summator.put(-logFactorialPartialSimple!(F, summation)(k, T(1)));
+                }
+            } else if (k < logFactorialGammaAlternative) {
+                summator.put(-logFactorialPartialSimple!(F, summation)(k, T(1)));
+            } else if (k >= logFactorialGammaAlternative) {
+                summator.put(cast(F) -logGamma(cast(V) k + 1));
+            }
+        }
+    }
+    return summator.sum;
+}
+
+// test values
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    assert(logFactorialPartial(0) == 0);
+    assert(logFactorialPartial(1) == 0);
+    assert(logFactorialPartial(1, 1) == 0);
+    assert(logFactorialPartial(2).approxEqual(log(1.0 * 2)));
+    assert(logFactorialPartial(2, 1).approxEqual(log(1.0 * 2)));
+    assert(logFactorialPartial(2, 2) == 0);
+    assert(logFactorialPartial(3).approxEqual(log(1.0 * 2 * 3)));
+    assert(logFactorialPartial(3, 1).approxEqual(log(1.0 * 2 * 3)));
+    assert(logFactorialPartial(3, 2).approxEqual(log(3.0)));
+    assert(logFactorialPartial(3, 3) == 0);
+    assert(logFactorialPartial(4).approxEqual(log(1.0 * 2 * 3 * 4)));
+    assert(logFactorialPartial(4, 1).approxEqual(log(1.0 * 2 * 3 * 4)));
+    assert(logFactorialPartial(4, 2).approxEqual(log(3.0 * 4)));
+    assert(logFactorialPartial(4, 3).approxEqual(log(4.0)));
+    assert(logFactorialPartial(4, 4) == 0);
+}
+
+// test large values
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual;
+    import std.mathspecial: logGamma;
+
+    size_t x = logFactorialGammaAlternative + 500;
+
+    assert(logFactorialPartial(x).approxEqual(logGamma(cast(double) x + 1)));
+    assert(logFactorialPartial(x, 250).approxEqual(logGamma(cast(double) x + 1) - logGamma(251.0)));
+    assert(logFactorialPartial(x, x - 250).approxEqual(logGamma(cast(double) x + 1) - logGamma(cast(double) x - 250 + 1)));
+
+    assert(logFactorialPartial(cast(double) x).approxEqual(logGamma(cast(double) x + 1)));
+    assert(logFactorialPartial(cast(double) x, 250).approxEqual(logGamma(cast(double) x + 1) - logGamma(251.0)));
+    assert(logFactorialPartial(cast(double) x, x - 250).approxEqual(logGamma(cast(double) x + 1) - logGamma(cast(double) x - 250 + 1)));
+}
+
+private
+F logFactorialPartialSimple(F = double, Summation summation = Summation.appropriate, T)(const T n, const T k)
+    if (isFloatingPoint!F && 
+        isArithmetic!T &&
+        ((is(typeof(T.min < 0)) && is(typeof(T.init & 1))) || !is(typeof(T.min < 0))) )
+    in(k <= n, "k must be less than or equal to n")
+    in(n >= 0, "n must be bigger than or equal to zero")
+    in(k >= 0, "k must be bigger than or equal to zero")
+{
+    import mir.math.common: log;
+
+    Summator!(F, ResolveSummationType!(summation, const(F)[], F)) summator;
+    for (T i = T(k + 1); i < n + 1; i++) {
+        summator.put(log(cast(F) i));
+    }
+    return summator.sum;
+}
+
+enum size_t logFactorialPartialSimpleTableLength = 256;
+static assert(logFactorialPartialSimpleTableLength < logFactorialGammaAlternative, 
+    "logFactorialPartialSimpleTableLength is assumed to be smaller than logFactorialGammaAlternative");
+static immutable real[logFactorialPartialSimpleTableLength] logFactorialPartialSimpleTable;
+
+shared static this()
+{
+    logFactorialPartialSimpleTable[0] = 0;
+    logFactorialPartialSimpleTable[1] = 0;
+    for (size_t i = 2; i < logFactorialPartialSimpleTableLength; i++) {
+        logFactorialPartialSimpleTable[i] = logFactorialPartialSimple!(real, Summation.precise)(i, 1);
+    }
+}
+
+/++
+Computes the log of the $(WEB en.wikipedia.org/wiki/Binomial_coefficient, binomial coefficient)
+of n and k.
+
+The binomial coefficient is also known as "n choose k" or more formally as `_n!/_k!(_n-_k)`. The
+log of the binomial coefficient is less likely to overflow than the raw binomial coefficient.
+
+Params:
+    F = controls type of output
+    summation = algorithm for calculating sums (default: Summation.appropriate)
+
+Returns:
+    The log of binomial coefficient, must be a floating point type
+
+See_also: 
+    $(SUBREF sum, Summation)
++/
+template logBinomial(F, Summation summation = Summation.appropriate)
+    if (isFloatingPoint!F)
+{
+    /++
+    Params:
+        n = arbitrary arithmetic type
+        k = arbitrary arithmetic type
+    +/
+    F logBinomial(T)(const T n, const T k)
+        if (isArithmetic!T &&
+            ((is(typeof(T.min < 0)) && is(typeof(T.init & 1))) || !is(typeof(T.min < 0))) )
+        in(k <= n, "k must be less than or equal to n")
+        in(n >= 0, "n must be bigger than or equal to zero")
+        in(k >= 0, "k must be bigger than or equal to zero")
+    {
+        import mir.math.common: log;
+
+        if ((k == 0) || (n == k) || (n == 1)) {
+            return F(0);
+        } else if (k == 1 || (n - k) == 1) {
+            return log(cast(F) n);
+        } else {
+            alias summationResolved = ResolveSummationType!(summation, const(F)[], F);
+            Summator!(F, summationResolved) summator;
+            F logFactorial_k = 0;
+            F logFactorial_n_k = 0;
+            F logFactorial_n = 0;
+            if ((n - k) > k) {
+                logFactorial_k = logFactorialPartial!(F, summationResolved)(k);
+                logFactorial_n = logFactorialPartial!(F, summationResolved)(n, n - k);
+            } else if ((n - k) < k) {
+                logFactorial_n_k = logFactorialPartial!(F, summationResolved)(n - k);
+                logFactorial_n = logFactorialPartial!(F, summationResolved)(n, k);
+            } else {
+                logFactorial_k = logFactorialPartial!(F, summationResolved)(k);
+                logFactorial_n = logFactorialPartial!(F, summationResolved)(n, k);
+            }
+            summator.put(logFactorial_n);
+            summator.put(-logFactorial_k);
+            summator.put(-logFactorial_n_k);
+            return summator.sum;
+        }
+    }
+}
+
+/// ditto
+template logBinomial(Summation summation = Summation.appropriate) {
+    /// ditto
+    double logBinomial(T)(const T n, const T k)
+        if (isArithmetic!T && 
+            ((is(typeof(T.min < 0)) && is(typeof(T.init & 1))) || !is(typeof(T.min < 0))) )
+        in(k <= n, "k must be less than or equal to n")
+        in(n >= 0, "n must be bigger than or equal to zero")
+        in(k >= 0, "k must be bigger than or equal to zero")
+    {
+        return .logBinomial!(double, summation)(n, k);
+    }
+}
+
+/// ditto
+template logBinomial(F, string summation)
+{
+    mixin("alias logBinomial = .logBinomial!(F, Summation." ~ summation ~ ");");
+}
+
+/// ditto
+template logBinomial(string summation)
+{
+    mixin("alias logBinomial = .logBinomial!(Summation." ~ summation ~ ");");
+}
+
+///
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    assert(logBinomial(5, 1).approxEqual(log(5.0)));
+    assert(logBinomial(5, 2).approxEqual(log(cast(double) binomial(5, 2))));
+    assert(logBinomial(5, 3).approxEqual(log(cast(double) binomial(5, 3))));
+    assert(logBinomial(5, 4).approxEqual(log(cast(double) binomial(5, 4))));
+}
+
+/// Can also set algorithm or output type
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    static assert(is(typeof(logBinomial!real(5, 1)) == real));
+    static assert(is(typeof(logBinomial!float(5, 1)) == float));
+
+    assert(logBinomial!(double, "precise")(25, 12).approxEqual(log(cast(double) binomial(25, 12))));
+    assert(logBinomial!"precise"(25, 12).approxEqual(log(cast(double) binomial(25, 12))));
+}
+
+// test n = 6
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    assert(logBinomial(6, 1).approxEqual(log(cast(double) binomial(6, 1))));
+    assert(logBinomial(6, 2).approxEqual(log(cast(double) binomial(6, 2))));
+    assert(logBinomial(6, 3).approxEqual(log(cast(double) binomial(6, 3))));
+    assert(logBinomial(6, 4).approxEqual(log(cast(double) binomial(6, 4))));
+    assert(logBinomial(6, 5).approxEqual(log(cast(double) binomial(6, 5))));
+}
+
+// test n = 7
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    assert(logBinomial(7, 1).approxEqual(log(cast(double) binomial(7, 1))));
+    assert(logBinomial(7, 2).approxEqual(log(cast(double) binomial(7, 2))));
+    assert(logBinomial(7, 3).approxEqual(log(cast(double) binomial(7, 3))));
+    assert(logBinomial(7, 4).approxEqual(log(cast(double) binomial(7, 4))));
+    assert(logBinomial(7, 5).approxEqual(log(cast(double) binomial(7, 5))));
+    assert(logBinomial(7, 6).approxEqual(log(cast(double) binomial(7, 6))));
+}
+
+// test n = 8
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    assert(logBinomial(8, 1).approxEqual(log(cast(double) binomial(8, 1))));
+    assert(logBinomial(8, 2).approxEqual(log(cast(double) binomial(8, 2))));
+    assert(logBinomial(8, 3).approxEqual(log(cast(double) binomial(8, 3))));
+    assert(logBinomial(8, 4).approxEqual(log(cast(double) binomial(8, 4))));
+    assert(logBinomial(8, 5).approxEqual(log(cast(double) binomial(8, 5))));
+    assert(logBinomial(8, 6).approxEqual(log(cast(double) binomial(8, 6))));
+    assert(logBinomial(8, 7).approxEqual(log(cast(double) binomial(8, 7))));
+}
+
+// test k = 0, n = k
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    assert(logBinomial(5, 0) == 0);
+    assert(logBinomial(5, 5) == 0);
+    assert(logBinomial(1, 1) == 0);
+    assert(logBinomial(1, 0) == 0);
+}
+
+// Test large values
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    size_t x = logFactorialGammaAlternative + 500;
+
+    assert(logBinomial(x, 1).approxEqual(log(cast(double) x)));
+    assert(logBinomial(x, 250).approxEqual(logFactorial(x) - logFactorial(250) - logFactorial(x - 250)));
+    assert(logBinomial(x, x - 250).approxEqual(logBinomial(x, 250)));
+
+    assert(logBinomial(cast(double) x, 1).approxEqual(log(cast(double) x)));
+    assert(logBinomial(cast(double) x, 250).approxEqual(logFactorial(x) - logFactorial(250) - logFactorial(x - 250)));
+    assert(logBinomial(cast(double) x, x - 250).approxEqual(logBinomial(x, 250)));
+}
+
+// additional check on providing summation
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    assert(logBinomial!(double, Summation.precise)(5, 3).approxEqual(log(cast(double) binomial(5, 3))));
+    assert(logBinomial!(Summation.precise)(5, 3).approxEqual(log(cast(double) binomial(5, 3))));
+}
+
+// test BigInt
+@safe pure nothrow
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+    import std.mathspecial: logGamma;
+    import std.bigint: BigInt;
+
+    size_t x = logFactorialGammaAlternative + 500;
+    assert(logBinomial(BigInt(5), BigInt(2)).approxEqual(log(cast(double) binomial(5, 2))));
+    assert(logBinomial(BigInt(x), BigInt(1)).approxEqual(log(cast(double) x)));
+    assert(logBinomial(BigInt(x), BigInt(250)).approxEqual(logFactorial(x) - logFactorial(250) - logFactorial(x - 250)));
+    assert(logBinomial(BigInt(x), BigInt(x - 250)).approxEqual(logBinomial(x, 250)));
+}
+
+// check use of doubles
+@safe pure nothrow @nogc
+version(mir_test)
+unittest {
+    import mir.math.common: approxEqual, log;
+
+    assert(logBinomial(5.0, 3.0).approxEqual(log(cast(double) binomial(5, 3))));
 }
