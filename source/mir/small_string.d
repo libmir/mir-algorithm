@@ -311,13 +311,13 @@ const:
     assert(s16.empty);
 
     auto s8 = SmallString!8("Hellow!!");
-    assert(s8 == "Hellow!!", s8[]);
+    assert(s8 == "Hellow!!");
     assert(s8[] == "Hellow!!");
     assert(s8[0 .. $] == "Hellow!!");
     assert(s8[1 .. 4] == "ell");
 
     s16 = s8;
-    assert(s16 == "Hellow!!", s16[]);
+    assert(s16 == "Hellow!!");
     s16[7] = '@';
     s8 = null;
     assert(s8.empty);

@@ -424,46 +424,15 @@ template rcarray(T)
     }
 
     /// ditto
-    RCArray!T rcarray(V)(V[] values...)
-        if (hasIndirections!V)
-    {
-        return .rcarray!T(values, true);
-    }
-
-    /// ditto
     RCArray!T rcarray(V)(scope V[] values...)
-        if (!hasIndirections!V)
     {
         return .rcarray!T(values, true);
-    }
-
-    /// ditto
-    RCArray!T rcarray(V)(V[] values, bool deallocate)
-        if (hasIndirections!V)
-    {
-        auto ret = mir_rcarray!T(values.length, false, deallocate);
-        static if (!hasElaborateAssign!(Unqual!T) && is(Unqual!V == Unqual!T))
-        {
-            ()@trusted {
-                import core.stdc.string: memcpy;
-                memcpy(cast(void*)ret.ptr, cast(const void*)values.ptr, values.length * T.sizeof);
-            }();
-        }
-        else
-        {
-            import  mir.conv: emplaceRef;
-            auto lhs = ret[];
-            foreach (i, ref e; values)
-                lhs[i].emplaceRef!T(e);
-        }
-        return ret;
     }
 
     /// ditto
     RCArray!T rcarray(V)(scope V[] values, bool deallocate)
-        if (!hasIndirections!V)
     {
-        auto ret = mir_rcarray!T(values.length, false);
+        auto ret = mir_rcarray!T(values.length, hasElaborateDestructor!T, deallocate);
         static if (!hasElaborateAssign!(Unqual!T) && is(Unqual!V == Unqual!T))
         {
             ()@trusted {

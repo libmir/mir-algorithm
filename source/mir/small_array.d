@@ -309,10 +309,10 @@ template SmallArray(T, uint maxLength)
 
     auto s8 = SmallArray!(char, 8)("Hellow!!");
     assert(!s8.empty);
-    assert(s8 == "Hellow!!", s8[]);
+    assert(s8 == "Hellow!!");
 
     s16 = s8;
-    assert(s16 == "Hellow!!", s16[]);
+    assert(s16 == "Hellow!!");
     s16[7] = '@';
     s8 = null;
     assert(s8.empty);
