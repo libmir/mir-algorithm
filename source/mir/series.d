@@ -348,7 +348,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     private static immutable defaultExc() = new Exception(defaultMsg!() ~ " required key");
 
     ///
-    void serdeFinalize()() @trusted
+    void serdeFinalize()() @trusted scope
     {
         import mir.algorithm.iteration: any;
         import mir.ndslice.topology: pairwise;
