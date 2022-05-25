@@ -423,7 +423,7 @@ version (mir_test) unittest
     stringBuf w;
     assert(w.printEscaped("Hi \a\v\0\f\t\b \\\r\n" ~ `"@nogc"`).data == `Hi \a\v\0\f\t\b \\\r\n\"@nogc\"`);
     w.reset;
-    assert(w.printEscaped("\x03").data == `\x03`, w.data);
+    assert(w.printEscaped("\x03").data == `\x03`);
 }
 
 /++
@@ -548,7 +548,7 @@ version (mir_test) unittest
     import mir.appender: scopedBuffer;
     auto w = scopedBuffer!char;
     w.print(Flag.yes);
-    assert(w.data == "yes", w.data);
+    assert(w.data == "yes");
 }
 
 /// Prints boolean
@@ -575,9 +575,9 @@ version (mir_test) unittest
 {
     import mir.appender: scopedBuffer;
     auto w = scopedBuffer!char;
-    assert(w.print(true).data == `true`, w.data);
+    assert(w.print(true).data == `true`);
     w.reset;
-    assert(w.print(false).data == `false`, w.data);
+    assert(w.print(false).data == `false`);
 }
 
 /// Prints associative array
@@ -612,7 +612,7 @@ version (mir_test) unittest
     import mir.appender: scopedBuffer;
     auto w = scopedBuffer!char;
     w.print(["a": 1, "b": 2]);
-    assert(w.data == `["a": 1, "b": 2]` || w.data == `["b": 2, "a": 1]`, w.data);
+    assert(w.data == `["a": 1, "b": 2]` || w.data == `["b": 2, "a": 1]`);
 }
 
 /// Prints null
@@ -661,7 +661,7 @@ version (mir_test) unittest
     import mir.appender: scopedBuffer;
     auto w = scopedBuffer!char;
     string[2] array = ["a\na", "b"];
-    assert(w.print(array[]).data == `["a\na", "b"]`, w.data);
+    assert(w.print(array[]).data == `["a\na", "b"]`);
 }
 
 /// Prints escaped character in the form `'c'`.
@@ -1099,7 +1099,7 @@ version (mir_test) unittest
     w.put(' ');
     w.printZeroPad(123, 5);
 
-    assert(w.data == "-0123 00123", w.data);
+    assert(w.data == "-0123 00123");
 }
 
 ///
