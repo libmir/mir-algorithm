@@ -348,29 +348,15 @@ auto rcarray(T = void, Range)(Range range)
 }
 
 /// ditto
-RCArray!V rcarray(T = void, V)(V[] values...)
-    if (is(T == void) && hasIndirections!V)
-{
-    return .rcarray(values, true);
-}
-
-/// ditto
 RCArray!V rcarray(T = void, V)(scope V[] values...)
-    if (is(T == void) && !hasIndirections!V)
+    if (is(T == void))
 {
     return .rcarray(values, true);
-}
-
-/// ditto
-RCArray!V rcarray(T = void, V)(V[] values, bool deallocate)
-    if (is(T == void) && hasIndirections!V)
-{
-    return .rcarray!V(values, deallocate);
 }
 
 /// ditto
 RCArray!V rcarray(T = void, V)(scope V[] values, bool deallocate)
-    if (is(T == void) && !hasIndirections!V)
+    if (is(T == void))
 {
     return .rcarray!V(values, deallocate);
 }

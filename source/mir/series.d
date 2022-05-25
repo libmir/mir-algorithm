@@ -406,7 +406,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    auto opBinary(string op : "~")(const typeof(this) rhs) const
+    auto opBinary(string op : "~")(const typeof(this) rhs) const @trusted
     {
         return unionSeries(this.lightScope, rhs.lightScope);
     }
