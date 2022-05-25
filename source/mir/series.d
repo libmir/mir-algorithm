@@ -402,13 +402,15 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     typeof(this) opBinary(string op : "~")(typeof(this) rhs)
     {
-        return unionSeries(this.lightScope, rhs.lightScope);
+        typeof(this.lightScope)[2] lhsAndRhs = [this.lightScope, rhs.lightScope];
+        return unionSeriesImplPrivate!false(lhsAndRhs);
     }
 
     /// ditto
     auto opBinary(string op : "~")(const typeof(this) rhs) const @trusted
     {
-        return unionSeries(this.lightScope, rhs.lightScope);
+        typeof(this.lightScope)[2] lhsAndRhs = [this.lightScope, rhs.lightScope];
+        return unionSeriesImplPrivate!false(lhsAndRhs);
     }
 
     static if (doUnittest)
