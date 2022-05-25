@@ -591,37 +591,22 @@ Params:
 Returns: n choose k
 Complexity: O(min(k, n - k))
 +/
-template binomialCoefficient(DivisionType = void)
-    if (is(DivisionType == void) || __traits(isFloating, DivisionType))
+auto binomialCoefficient
+    (size_t coefficientSize = 128, Exp = sizediff_t)
+    (ulong n, uint k)
+    if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
+    in (k <= n)
 {
-    auto binomialCoefficient
-        (size_t coefficientSize = 128, Exp = sizediff_t)
-        (ulong n, uint k)
-        if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
-        in (k <= n)
-    {
-        import mir.bignum.fp: Fp;
-    
-        alias R = Fp!(coefficientSize, Exp);
+    import mir.bignum.fp: Fp;
 
-        // TODO: For DivisionType == void
-        //       use full precision division for void when Fp division is ready
-        static if (is(DivisionType == void))
-            alias T = real;
-        else
-            alias T = DivisionType;
+    alias R = Fp!(coefficientSize, Exp);
 
-        if (k > n - k)
-            k = cast(uint)(n - k);
+    if (k > n - k)
+        k = cast(uint)(n - k);
 
-        auto a = factorial!(coefficientSize, Exp)(k, n - k + 1);
-        auto b = factorial!(coefficientSize, Exp)(k);
-        auto exponent = a.exponent - b.exponent;
-        a.exponent = b.exponent = -coefficientSize;
-        auto ret = R(cast(T) a / cast(T) b);
-        ret.exponent += exponent;
-        return ret;
-    }
+    auto a = factorial!(coefficientSize, Exp)(k, n - k + 1);
+    auto b = factorial!(coefficientSize, Exp)(k);
+    return a / b;
 }
 
 ///
@@ -632,7 +617,7 @@ unittest
     import mir.bignum.fp: Fp;
     import mir.math.common: approxEqual;
 
-    static assert(is(typeof(binomialCoefficient!double(30, 18)) == Fp!128), typeof(binomialCoefficient!double(30, 18)).stringof);
+    static assert(is(typeof(binomialCoefficient(30, 18)) == Fp!128), typeof(binomialCoefficient(30, 18)).stringof);
     static assert(cast(double) binomialCoefficient(30, 18) == 86493225);
 
     assert(approxEqual(cast(double) binomialCoefficient(100, 40), 1.374623414580281150126736972e+28));

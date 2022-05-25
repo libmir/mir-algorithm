@@ -277,7 +277,8 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
     }
 
     ///
-    ref Fp opOpAssign(string op : "*")(Fp rhs) nothrow scope return
+    ref Fp opOpAssign(string op)(Fp rhs) nothrow scope return
+        if (op == "*" || op == "/")
     {
         this = this.opBinary!op(rhs);
         return this;
@@ -303,6 +304,19 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         assert(fp.sign);
         assert(fp.exponent == 100 - 13 + 128);
         assert(fp.coefficient == UInt!128.fromHexString("c6841dd302415d785373ab6d93712988"));
+    }
+
+    /// Uses approximate division for now
+    /// TODO: use full precision division for void when Fp division is ready
+    Fp opBinary(string op : "/")(Fp rhs) nothrow const
+    {
+        Fp a = this;
+        alias b = rhs;
+        auto exponent = a.exponent - b.exponent;
+        a.exponent = b.exponent = -coefficientSize;
+        auto ret = Fp(cast(real) a / cast(real) b);
+        ret.exponent += exponent;
+        return ret;
     }
 
     ///
