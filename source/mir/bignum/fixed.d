@@ -173,7 +173,7 @@ struct UInt(size_t size)
         auto integer = UInt!256(str);
         stringBuf buffer;
         buffer << integer;
-        assert(buffer.data == str, buffer.data);
+        assert(buffer.data == str);
     }
 
     ///

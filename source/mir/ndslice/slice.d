@@ -1369,7 +1369,7 @@ public:
     /++
     Save primitive.
     +/
-    auto save()() scope return inout @property
+    auto save()() inout @property
     {
         return this;
     }

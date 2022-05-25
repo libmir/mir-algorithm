@@ -2205,7 +2205,8 @@ See_also $(LREF Series.opBinary) $(LREF makeUnionSeries)
 auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
     if (C > 1)
 {
-    return unionSeriesImplPrivate!false(seriesTuple);
+    import core.lifetime: move;
+    return unionSeriesImplPrivate!false(move(seriesTuple));
 }
 
 ///
@@ -2411,7 +2412,7 @@ auto unionSeriesImpl(I, E,
     }
 }
 
-private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(ref Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
+private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
     if (C > 1 && Allocator.length <= 1)
 {
     import mir.algorithm.setops: unionLength;

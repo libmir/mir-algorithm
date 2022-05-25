@@ -874,7 +874,7 @@ struct Decimal(size_t maxSize64)
         auto decimal = Decimal!1(str);
         stringBuf buffer;
         buffer << decimal;
-        assert(buffer.data == str, buffer.data);
+        assert(buffer.data == str);
     }
 
     /++

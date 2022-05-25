@@ -642,7 +642,7 @@ struct BigInt(size_t maxSize64)
         auto integer = BigInt!4(str);
         stringBuf buffer;
         buffer << integer;
-        assert(buffer.data == str, buffer.data);
+        assert(buffer.data == str);
     }
 }
 
