@@ -520,6 +520,7 @@ Params:
     count = number of product members
     start = initial member value (optional)
 Returns: `(count + start - 1)! / (start - 1)!`
+Complexity: O(count)
 +/
 auto factorial
     (size_t coefficientSize = 128, Exp = sizediff_t)
