@@ -527,11 +527,12 @@ auto factorial
     if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
     in (start)
 {
-    import mir.utility: _expect;
     import mir.bignum.fp: Fp;
+    import mir.checkedint: mulu;
+    import mir.utility: _expect;
+
     alias R = Fp!(coefficientSize, Exp);
     R prod = 1LU;
-    import mir.checkedint: addu, mulu;
 
     if (count)
     {
