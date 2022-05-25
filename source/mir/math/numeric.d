@@ -511,3 +511,68 @@ unittest
     assert(isNaN(sumOfLog2s([-real.infinity])));
     assert(sumOfLog2s([ 0.25, 0.25, 0.25, 0.125 ]) == -9);
 }
+
+/++
+Quickly computes factorial using extended
+precision floating point type $(MREF mir,bignum,fp).
+
+Params:
+    count = number of product members
+    start = initial member value (optional)
+Returns: `(count + start - 1)! / (start - 1)!`
++/
+auto factorial
+    (size_t coefficientSize = 128, Exp = sizediff_t)
+    (ulong count, ulong start = 1)
+    if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
+    in (start)
+{
+    import mir.utility: _expect;
+    import mir.bignum.fp: Fp;
+    alias R = Fp!(coefficientSize, Exp);
+    R prod = 1LU;
+    import mir.checkedint: addu, mulu;
+
+    if (count)
+    {
+        ulong tempProd = start;
+        while(--count)
+        {
+            bool overflow;
+            ulong nextTempProd = mulu(tempProd, ++start, overflow);
+            if (_expect(!overflow, true))
+            {
+                tempProd = nextTempProd;
+                continue;
+            }
+            else
+            {
+                prod *= R(tempProd);
+                tempProd = start;
+            }
+        }
+        prod *= R(tempProd);
+    }
+
+    return prod;
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.bignum.fp: Fp;
+    import mir.math.common: approxEqual;
+    import mir.math.numeric: prod;
+    import mir.ndslice.topology: iota;
+
+    static assert(is(typeof(factorial(33)) == Fp!128));
+    static assert(is(typeof(factorial!256(33)) == Fp!256));
+    static assert(cast(double) factorial(33) == 8.68331761881188649551819440128e+36);
+
+    assert(cast(double) factorial(0) == 1);
+    assert(cast(double) factorial(0, 100) == 1);
+    assert(cast(double) factorial(1, 100) == 100);
+    assert(approxEqual(cast(double) factorial(100, 1000), iota([100], 1000).prod!double));
+}

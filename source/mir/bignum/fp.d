@@ -263,8 +263,21 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         assert(fp.coefficient == UInt!128.fromHexString("ffffffffffffffffffffffffffffffff"));
     }
 
+    /// ditto
+    this(ulong value)
+    {
+        this(UInt!64(value));
+    }
+
     ///
-    ref Fp opOpAssign(string op : "*")(Fp rhs) nothrow return
+    this(long value)
+    {
+        this(ulong(value >= 0 ? value : -value));
+        this.sign = !(value >= 0);
+    }
+
+    ///
+    ref Fp opOpAssign(string op : "*")(Fp rhs) nothrow scope return
     {
         this = this.opBinary!op(rhs);
         return this;
