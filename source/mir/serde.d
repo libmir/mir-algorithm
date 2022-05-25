@@ -882,7 +882,7 @@ alias serdeGetTransformOut(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value
 
 /++
 +/
-bool serdeParseEnum(E)(scope const char[] str, ref E res)
+bool serdeParseEnum(E)(scope const char[] str, scope ref E res)
     @safe pure nothrow @nogc
     if (is(E == enum))
 {
@@ -2316,7 +2316,7 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
 
 private:
 
-auto fastLazyToUpper()(const(char)[] name)
+auto fastLazyToUpper()(return scope const(char)[] name)
 {
     import mir.ndslice.topology: map;
     return name.map!fastToUpper;
