@@ -460,3 +460,53 @@ Fp!(coefficientizeA + coefficientizeB) extendedMul(size_t coefficientizeA, size_
     }
     return typeof(return)(sign, exponent, coefficient);
 }
+
+///
+template fp_log2(T)
+    if (__traits(isFloating, T))
+{
+    ///
+    double fp_log2(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
+    {
+        import mir.math.common: log2;
+        auto exponent = x.exponent + coefficientSize;
+        x.exponent = -coefficientSize;
+        return log2(cast(double)x) + exponent;
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: log2, approxEqual;
+    import mir.bignum.fp: fp_log2;
+
+    double x = 123456789.0e+123;
+    assert(approxEqual(x.Fp!128.fp_log2!double, x.log2));
+}
+
+///
+template fp_log(T)
+    if (__traits(isFloating, T))
+{
+    ///
+    double fp_log(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
+    {
+        import mir.math.constant: LN2;
+        return T(LN2) * fp_log2!T(x);
+    }
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.math.common: log, approxEqual;
+    import mir.bignum.fp: fp_log;
+
+    double x = 123456789.0e+123;
+    assert(approxEqual(x.Fp!128.fp_log!double, x.log));
+}
