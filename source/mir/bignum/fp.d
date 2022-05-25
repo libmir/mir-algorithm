@@ -466,12 +466,12 @@ template fp_log2(T)
     if (__traits(isFloating, T))
 {
     ///
-    double fp_log2(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
+    T fp_log2(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
     {
         import mir.math.common: log2;
         auto exponent = x.exponent + coefficientSize;
         x.exponent = -coefficientSize;
-        return log2(cast(double)x) + exponent;
+        return log2(cast(T)x) + exponent;
     }
 }
 
@@ -492,7 +492,7 @@ template fp_log(T)
     if (__traits(isFloating, T))
 {
     ///
-    double fp_log(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
+    T fp_log(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
     {
         import mir.math.constant: LN2;
         return T(LN2) * fp_log2!T(x);
