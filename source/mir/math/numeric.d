@@ -599,8 +599,6 @@ auto binomialCoefficient
 {
     import mir.bignum.fp: Fp;
 
-    alias R = Fp!(coefficientSize, Exp);
-
     if (k > n - k)
         k = cast(uint)(n - k);
 
