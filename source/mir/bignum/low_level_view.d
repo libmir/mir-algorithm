@@ -2460,13 +2460,13 @@ enum DecimalExponentKey
 
 /++
 +/
-struct DecimalView(W, WordEndian endian = TargetEndian, Exp = long)
+struct DecimalView(W, WordEndian endian = TargetEndian)
     if (isUnsigned!W)
 {
     ///
     bool sign;
     ///
-    Exp exponent;
+    long exponent;
     ///
     BigUIntView!(W, endian) coefficient;
 
@@ -2745,7 +2745,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = long)
     }
 
     ///
-    DecimalView!(const W, endian, Exp) lightConst()()
+    DecimalView!(const W, endian) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(sign, exponent, coefficient.lightConst);
@@ -2799,7 +2799,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = long)
 
         static if (T.mant_dig < 64)
         {
-            Fp!64 load(Exp e)
+            Fp!64 load(long e)
             {
                 auto p10coeff = p10_coefficients[cast(sizediff_t)e - min_p10_e][0];
                 auto p10exp = p10_exponents[cast(sizediff_t)e - min_p10_e];
@@ -2840,7 +2840,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = long)
             enum P = 1 << S;
             static assert(min_p10_e <= -P);
             static assert(max_p10_e >= P);
-            Fp!128 load(Exp e)
+            Fp!128 load(long e)
             {
                 auto idx = cast(sizediff_t)e - min_p10_e;
                 ulong h = p10_coefficients[idx][0];
@@ -2857,14 +2857,14 @@ struct DecimalView(W, WordEndian endian = TargetEndian, Exp = long)
 
             {
                 auto expSign = exponent < 0;
-                Unsigned!Exp exp = exponent;
+                ulong exp = exponent;
                 exp = expSign ? -exp : exp;
                 if (exp >= 5000)
                 {
                     ret = expSign ? 0 : T.infinity;
                     goto R;
                 }
-                Exp index = exp & 0x1FF;
+                long index = exp & 0x1FF;
                 bool gotoAlgoR;
                 auto c = load(expSign ? -index : index);
                 {
@@ -3301,17 +3301,17 @@ unittest
 
 /++
 +/
-struct BinaryView(W, WordEndian endian = TargetEndian, Exp = int)
+struct BinaryView(W, WordEndian endian = TargetEndian)
 {
     ///
     bool sign;
     ///
-    Exp exponent;
+    long exponent;
     ///
     BigUIntView!(W, endian) coefficient;
 
     ///
-    DecimalView!(const W, endian, Exp) lightConst()()
+    DecimalView!(const W, endian) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(sign, exponent, coefficient.lightConst);
