@@ -683,7 +683,6 @@ struct StringMap(T, U = uint)
     +/
     ref T require()(string key, lazy T value = T.init)
     {
-        import std.stdio;
         size_t index;
         if (_expect(!implementation, false))
         {

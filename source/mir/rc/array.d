@@ -799,8 +799,6 @@ unittest
 version(mir_test)
 @safe unittest
 {
-    import core.stdc.stdio;
-
     struct S
     {
         uint s;

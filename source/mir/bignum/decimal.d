@@ -1014,7 +1014,6 @@ struct Decimal(uint maxSize64)
     ///
     version(mir_bignum_test) @safe pure @nogc unittest
     {
-        import std.stdio;
         auto a = Decimal!1("777.7");
         auto b = Decimal!1("777");
         import mir.format;

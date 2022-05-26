@@ -1074,7 +1074,6 @@ Slice!(Iterator, 1, Universal)
     //->
     // | 1 2 |
     static immutable c = [1, 2];
-    import std.stdio;
     assert(iota(2, 2).antidiagonal == c);
 }
 
@@ -1969,7 +1968,6 @@ auto linspace(T, size_t N)(size_t[N] lengths, T[2][N] intervals...)
 version(mir_ndslice_test) unittest
 {
     import mir.ndslice;
-    // import std.stdio: writefln;
 
     enum fmt = "%(%(%.2f %)\n%)\n";
 
@@ -4321,7 +4319,6 @@ version(mir_ndslice_test) unittest
     // 4 5  6  7
     // 8 9 10 11
     auto s = iota(3, 4);
-    import std.stdio;
     assert(iota(3, 4).byDim!0.diff == [
         [4, 4, 4, 4],
         [4, 4, 4, 4]]);
