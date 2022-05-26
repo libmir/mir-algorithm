@@ -781,7 +781,7 @@ struct Decimal(uint maxSize64)
                 {
                     if (addSign)
                         w.put(sign[]);
-                    w.put(zeros[0 .. -s + 2]);
+                    w.put(zeros[0 .. cast(sizediff_t)(-s + 2)]);
                     w.put(buffer[$ - coefficientLength .. $]);
                     return;
                 }
@@ -796,7 +796,7 @@ struct Decimal(uint maxSize64)
                     {
                         buffer[$ - coefficientLength - 1] = sign[0];
                         w.put(buffer[$ - coefficientLength - addSign .. $]);
-                        w.put(zeros[$ - (this.exponent + 2) .. $]);
+                        w.put(zeros[($ - (cast(sizediff_t)this.exponent + 2)) .. $]);
                         return;
                     }
                 }
@@ -805,7 +805,7 @@ struct Decimal(uint maxSize64)
                     if (s <= 12)
                     {
                         buffer0[$ - 16 .. $] = '0';
-                        putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + this.exponent]);
+                        putL(buffer0[$ - coefficientLength - 16 .. $ - 16 + cast(sizediff_t)this.exponent]);
                         w.put(zeros[$ - 2 .. $]);
                         return;
                     }
@@ -822,8 +822,8 @@ struct Decimal(uint maxSize64)
                         buffer[$ - coefficientLength - 1] = sign[0];
                         w.put(buffer[$ - coefficientLength  - addSign .. $ - coefficientLength + s]);
                     T2:
-                        buffer[$ - coefficientLength + s - 1] = '.';
-                        w.put(buffer[$ - coefficientLength + s - 1 .. $]);
+                        buffer[$ - coefficientLength + cast(sizediff_t)s - 1] = '.';
+                        w.put(buffer[$ - coefficientLength + cast(sizediff_t)s - 1 .. $]);
                         return;
                     }
                 }
@@ -831,7 +831,7 @@ struct Decimal(uint maxSize64)
                 {
                     if (s <= 12 || coefficientLength <= 12)
                     {
-                        putL(buffer[$ - coefficientLength .. $ - coefficientLength + s]);
+                        putL(buffer[$ - coefficientLength .. $ - coefficientLength + cast(sizediff_t)s]);
                         goto T2;
                     }
                 }
@@ -991,7 +991,7 @@ struct Decimal(uint maxSize64)
         import mir.utility: max;
         BigInt!(max(rhsMaxSize64, maxSize64, 256u)) rhsCopy = void;
         BigIntView!(const size_t) rhsView;
-        auto expDiff = exponent - rhs.exponent;
+        auto expDiff = cast(sizediff_t) (exponent - rhs.exponent);
         if (expDiff >= 0)
         {
             exponent = rhs.exponent;

@@ -380,7 +380,7 @@ struct Fp(uint size)
     ///
     Fp!(max(size, rhsSize)) opBinary(string op : "*", uint rhsSize)(Fp!rhsSize rhs) nothrow const
     {
-        return cast(Fp) .extendedMul!(size, rhsSize)(this, rhs);
+        return cast(Fp) .extendedMul!(size, rhsSize)(cast()this, rhs);
     }
 
     static if (size == 128)
@@ -591,7 +591,7 @@ struct Fp(uint size)
             // underflow
             else
             {
-                ret.coefficient >>= ret.exponent - exponent.min;
+                ret.coefficient >>= cast(uint)(ret.exponent - exponent.min);
                 ret.exponent = ret.coefficient ? ret.exponent.min : 0;
             }
         }
