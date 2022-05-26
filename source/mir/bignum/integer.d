@@ -329,7 +329,7 @@ struct BigInt(uint maxSize64)
     {
         import mir.bignum.low_level_view : divm, BigUIntView;
 
-        enum m = ((data.length * (size_t.sizeof * 8)) / (uint.sizeof * 8));
+        enum m = maxSize64 * 2;
 
         if (length)
         {
@@ -352,44 +352,36 @@ struct BigInt(uint maxSize64)
     ref opOpAssign(string op : "/")(ulong rhs)
         @safe pure nothrow @nogc return
     {
-        if (length)
-        {
-            return this.opOpAssign!"/"(UInt!64(rhs));
-        }
-        return this;
+        return this.opOpAssign!"/"(UInt!64(rhs));
     }
 
     /// ditto
     ref opOpAssign(string op : "/")(long rhs)
         @safe pure nothrow @nogc return
     {
-        if (length)
-        {
-            ulong div = rhs < 0 ? rhs * -1 : rhs;
-            auto result = this.opOpAssign!"/"(div);
-            // If this is a negative number, then we should keep the negative sign if rhs > 0.
-            // If it is not, then we should check if we're dividing by a negative number (rhs < 0),
-            // and apply the negative sign as such.
-            this.sign = result.sign ? rhs > 0 : rhs < 0; 
-        }
-        return this;
+        this.sign ^= rhs < 0; 
+        ulong div = rhs < 0 ? -rhs : rhs;
+        return this.opOpAssign!"/"(div);
     }
 
     /// ditto
-    ref opOpAssign(string op : "/", size_t rhsMaxSize64)(const ref BigInt!rhsMaxSize64 rhs)
+    ref opOpAssign(string op : "/", size_t rhsMaxSize64)(scope ref const BigInt!rhsMaxSize64 rhs)
         @safe pure nothrow @nogc return
     {
         import mir.bignum.low_level_view : divm, BigUIntView;
 
-        enum m = (data.length * (size_t.sizeof * 8)), n = (rhsMaxSize64 / (uint.sizeof * 8));
+        enum m = maxSize64 * 2;
+        enum n = rhsMaxSize64 / uint.sizeof;
 
         if (length)
         {
-            UInt!(m + (size_t.sizeof * 8)) _div;
-            // shouldn't be unaligned here -- maybe a possibility though
-            _div.data[0 .. $ - 1] = data;
 
-            BigUIntView!uint dividend = cast(BigUIntView!uint)_div.view;
+            uint[m + 1] _div = void;
+            // shouldn't be unaligned here -- maybe a possibility though
+            _div[0 .. $ - 1] = cast(uint[m])data;
+            _div[$ - 1] = 0;
+
+            BigUIntView!uint dividend = BigUIntView!uint(_div);
             BigUIntView!uint divisor = cast(BigUIntView!uint)rhs.view.unsigned;
             BigUIntView!uint quotient = cast(BigUIntView!uint)view.unsigned;
             data = 0;
@@ -416,11 +408,11 @@ struct BigInt(uint maxSize64)
     {
         import mir.bignum.low_level_view : divm, BigUIntView;
 
-        enum m = ((data.length * (size_t.sizeof * 8)) / (uint.sizeof * 8));
+        enum m = maxSize64 * 2;
 
         if (length)
         {
-            uint[m+1] _div = void;
+            uint[m + 1] _div = void;
             // We don't necessarily care about the quotient,
             // so we should avoid an expensive 0-initialization here.
             uint[m] q = void;
@@ -451,14 +443,11 @@ struct BigInt(uint maxSize64)
     ref opOpAssign(string op : "%")(ulong rhs)
         @safe pure nothrow @nogc return
     {
-        if (length)
-        {
-            return this.opOpAssign!"%"(UInt!64(rhs));
-        }
-        return this;
+        return this.opOpAssign!"%"(UInt!64(rhs));
     }
 
     /// ditto
+    // TODO: check
     ref opOpAssign(string op : "%")(long rhs)
         @safe pure nothrow @nogc return
     {
@@ -481,11 +470,11 @@ struct BigInt(uint maxSize64)
     {
         import mir.bignum.low_level_view : divm, BigUIntView;
 
-        enum m = ((data.length * (size_t.sizeof * 8)) / (uint.sizeof * 8));
+        enum m = maxSize64 * 2;
 
         if (length)
         {
-            uint[m+1] _div = void;
+            uint[m + 1] _div = void;
             // We don't necessarily care about the quotient,
             // so we should avoid an expensive 0-initialization here.
             uint[m] q = void;
@@ -509,6 +498,7 @@ struct BigInt(uint maxSize64)
                 normLen += (normLen % (size_t.sizeof / uint.sizeof));
             } 
             length = (normLen * (uint.sizeof * 8)) / (size_t.sizeof * 8);
+            // TODO: check
             // Add back if it is necessary (XXX: is this even correct??) 
             if ((this.sign && !rhs.sign) || (!this.sign && rhs.sign))
             {
