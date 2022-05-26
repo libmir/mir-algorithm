@@ -24,7 +24,7 @@ import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 import mir.primitives;
-import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonType;
+import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonType, isNumeric;
 
 ///
 public import mir.math.sum: Summation;
@@ -939,46 +939,49 @@ Output range for gmean.
 struct GMeanAccumulator(T) 
     if (isMutable!T && isFloatingPoint!T)
 {
-    import mir.math.numeric: ProdAccumulator;
+    import mir.bignum.fp: Fp;
 
     ///
     size_t count;
     ///
-    ProdAccumulator!T prodAccumulator;
+    Fp!128 prodAccumulator = 1u;
 
     ///
-    F gmean(F = T)() @property
+    F gmean(F = T)() const @property
         if (isFloatingPoint!F)
     {
         import mir.math.common: exp2;
 
-        return nthroot(cast(F) prodAccumulator.mantissa, count) * exp2(cast(F) prodAccumulator.exp / count);
+        if (count == 0)
+            return 0;
+
+        long exponent;
+        Fp!128 value = prodAccumulator;
+
+        if (!value.isSpecial)
+        {
+            exponent = value.exponent + 128;
+            value.exponent = -128;
+        }
+
+        return nthroot(cast(F) value, count) * exp2(cast(F) exponent / count);
     }
 
     ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
-        static if (hasShape!Range)
-        {
-            count += r.elementCount;
-            prodAccumulator.put(r);
-        }
-        else
-        {
-            foreach(x; r)
-            {
-                count++;
-                prodAccumulator.put(x);
-            }
-        }
+        import core.lifetime: move;
+        import mir.algorithm.iteration: each;
+        each!(e => this.put(e))(move(r));
     }
 
     ///
-    void put()(T x)
+    void put()(const T x)
+        if (isNumeric!T)
     {
         count++;
-        prodAccumulator.put(x);
+        prodAccumulator *= Fp!128(x);
     }
 }
 
@@ -1910,7 +1913,7 @@ struct MapSummator(alias fun, T, Summation summation)
     Summator!(T, summation) summator;
 
     ///
-    F sum(F = T)() @property
+    F sum(F = T)() const @property
     {
         return cast(F) summator.sum;
     }
@@ -2052,13 +2055,13 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() @property
+    size_t count() const @property
     {
         return meanAccumulator.count;
     }
 
     ///
-    F mean(F = T)() @property
+    F mean(F = T)() const @property
     {
         return meanAccumulator.mean;
     }
@@ -2084,7 +2087,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     }
 
     ///
-    F variance(F = T)(bool isPopulation) @property
+    F variance(F = T)(bool isPopulation) const @property
     {
         if (isPopulation == false)
             return cast(F) sumOfSquares.sum / cast(F) (count - 1) - 
@@ -2148,13 +2151,13 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() @property
+    size_t count() const @property
     {
         return meanAccumulator.count;
     }
 
     ///
-    F mean(F = T)() @property
+    F mean(F = T)() const @property
     {
         return meanAccumulator.mean;
     }
@@ -2362,13 +2365,13 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() @property
+    size_t count() const @property
     {
         return meanAccumulator.count;
     }
 
     ///
-    F mean(F = T)() @property
+    F mean(F = T)() const @property
     {
         return meanAccumulator.mean;
     }
@@ -2485,13 +2488,13 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     private size_t _count;
     
     ///
-    size_t count() @property
+    size_t count() const @property
     {
         return _count;
     }
     
     ///
-    F mean(F = T)() @property
+    F mean(F = T)() const @property
     {
         return cast(F) 0;
     }
