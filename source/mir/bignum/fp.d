@@ -4,9 +4,9 @@ Note:
 +/
 module mir.bignum.fp;
 
-import std.traits;
 import mir.bitop;
 import mir.utility;
+import std.traits;
 
 package enum half(uint hs) = (){
     import mir.bignum.fixed: UInt;
@@ -17,23 +17,23 @@ package enum half(uint hs) = (){
 Software floating point number.
 
 Params:
-    coefficientSize = coefficient size in bits
+    size = coefficient size in bits
 
 Note: the implementation doesn't support NaN and Infinity values.
 +/
-struct Fp(uint coefficientSize, Exp = long)
-    if ((is(Exp == int) || is(Exp == long)) && coefficientSize % (uint.sizeof * 8) == 0 && coefficientSize >= (uint.sizeof * 8))
+struct Fp(uint size)
+    if (size % (uint.sizeof * 8) == 0 && size >= (uint.sizeof * 8))
 {
     import mir.bignum.fixed: UInt;
 
     bool sign;
-    Exp exponent;
-    UInt!coefficientSize coefficient;
+    long exponent;
+    UInt!size coefficient;
 
     /++
     +/
     nothrow
-    this(bool sign, Exp exponent, UInt!coefficientSize normalizedCoefficient)
+    this(bool sign, long exponent, UInt!size normalizedCoefficient)
     {
         this.coefficient = normalizedCoefficient;
         this.exponent = exponent;
@@ -48,30 +48,48 @@ struct Fp(uint coefficientSize, Exp = long)
     +/
     this(T)(const T value, bool normalize = true)
         @safe pure nothrow @nogc
-        if (isFloatingPoint!T && T.mant_dig <= coefficientSize)
+        if (isFloatingPoint!T && T.mant_dig <= size)
     {
         import mir.math.common : fabs;
         import mir.math.ieee : frexp, signbit, ldexp;
-        assert(value == value);
-        assert(value.fabs < T.infinity);
         this.sign = value.signbit != 0;
         if (value == 0)
             return;
         T x = value.fabs;
+        if (_expect(!(x < T.infinity), false))
+        {
+            this.exponent = this.exponent.max;
+            this.coefficient = x != T.infinity;
+            return;
+        }
         int exp;
         {
             enum scale = T(2) ^^ T.mant_dig;
             x = frexp(x, exp) * scale;
-            exp -= T.mant_dig;
         }
+        auto dd = this.coefficient.view.leastSignificantFirst;
         static if (T.mant_dig < 64)
         {
-            this.coefficient = UInt!coefficientSize(cast(ulong)cast(long)x);
+            auto xx = cast(ulong)cast(long)x;
+            if (normalize)
+            {
+                auto shift = ctlz(xx);
+                exp -= shift + T.mant_dig + size - 64;
+                xx <<= shift;
+            }
+            dd[normalize ? $ - 1 : 0] = xx;
         }
         else
         static if (T.mant_dig == 64)
         {
-            this.coefficient = UInt!coefficientSize(cast(ulong)x);
+            auto xx = cast(ulong)x;
+            if (normalize)
+            {
+                auto shift = ctlz(xx);
+                exp -= shift + T.mant_dig + size - 64;
+                xx <<= shift;
+            }
+            dd[normalize ? $ - 1 : 0] = xx;
         }
         else
         {
@@ -83,16 +101,21 @@ struct Fp(uint coefficientSize, Exp = long)
                 --high;
             x -= high;
             x *= scale;
-            this.coefficient = (UInt!coefficientSize(ulong(high)) << 64) | cast(ulong)x;
+            auto most = ulong(high);
+            auto least = cast(ulong)x;
+
+            dd[normalize ? $ - 1 : 1] = most;
+            dd[normalize ? $ - 2 : 0] = least;
+            if (normalize)
+            {
+                auto shift = most ? ctlz(most) : ctlz(least) + 64;
+                exp -= shift + T.mant_dig + size - 64 * (1 + (T.mant_dig > 64));
+                this.coefficient <<= shift;
+            }
         }
-        if (normalize)
+        if (!normalize)
         {
-            auto shift = cast(int)this.coefficient.ctlz;
-            exp -= shift;
-            this.coefficient <<= shift;
-        }
-        else
-        {
+            exp -= T.mant_dig;
             int shift = T.min_exp - T.mant_dig - exp;
             if (shift > 0)
             {
@@ -103,7 +126,7 @@ struct Fp(uint coefficientSize, Exp = long)
         this.exponent = exp;
     }
 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc nothrow
@@ -145,47 +168,58 @@ struct Fp(uint coefficientSize, Exp = long)
         // subnormals
         static assert(cast(real) Fp!64(real.min_normal / 2, false) == real.min_normal / 2);
         static assert(cast(real) Fp!64(real.min_normal * real.epsilon, false) == real.min_normal * real.epsilon);
+
+        import mir.bignum.fixed: UInt;
+
+        assert(cast(double)Fp!128(+double.infinity) == +double.infinity);
+        assert(cast(double)Fp!128(-double.infinity) == -double.infinity);
+
+        import mir.math.ieee : signbit;
+        auto r = cast(double)Fp!128(-double.nan);
+        assert(r != r && r.signbit);
     }
 
-    static if (coefficientSize == 128)
-    /// Without normalization
-    version(mir_bignum_test)
-    @safe pure @nogc nothrow
-    unittest
-    {
-        auto f = Fp!64(-33.0 * 2.0 ^^ -10, false);
-        assert(f.sign);
-        assert(f.exponent == -10 - (double.mant_dig - 6));
-        assert(f.coefficient == 33UL << (double.mant_dig - 6));
-    }
+    // static if (size == 128)
+    // /// Without normalization
+    // version(mir_bignum_test)
+    // @safe pure @nogc nothrow
+    // unittest
+    // {
+    //     auto f = Fp!64(-33.0 * 2.0 ^^ -10, false);
+    //     assert(f.sign);
+    //     assert(f.exponent == -10 - (double.mant_dig - 6));
+    //     assert(f.coefficient == 33UL << (double.mant_dig - 6));
+    // }
 
     /++
     +/
-    this(uint size)(UInt!size integer, bool normalizedInteger = false)
+    this(uint isize)(UInt!isize integer, bool normalizedInteger = false)
         nothrow
     {
         import mir.bignum.fixed: UInt;
-        static if (size < coefficientSize)
+        static if (isize < size)
         {
             if (normalizedInteger)
             {
-                this(false, Exp(size) - coefficientSize, integer.rightExtend!(coefficientSize - size));
+                this(false, long(isize) - size, integer.rightExtend!(size - isize));
             }
             else
             {
-                this(integer.toSize!coefficientSize, false);
+                this(integer.toSize!size, false);
             }
         }
         else
         {
-            this.exponent = size - coefficientSize;
+            if (integer == integer.init)
+                return;
+            this.exponent = isize - size;
             if (!normalizedInteger)
             {
                 auto c = integer.ctlz;
                 integer <<= c;
                 this.exponent -= c;
             }
-            static if (size == coefficientSize)
+            static if (isize == size)
             {
                 coefficient = integer;
             }
@@ -196,13 +230,13 @@ struct Fp(uint coefficientSize, Exp = long)
                     coefficient.data = integer.data[$ - N .. $];
                 else
                     coefficient.data = integer.data[0 .. N];
-                enum tailSize = size - coefficientSize;
+                enum tailSize = isize - size;
                 auto cr = integer.toSize!tailSize.opCmp(half!tailSize);
                 if (cr > 0 || cr == 0 && coefficient.bt(0))
                 {
                     if (auto overflow = coefficient += 1)
                     {
-                        coefficient = half!coefficientSize;
+                        coefficient = half!size;
                         exponent++;
                     }
                 }
@@ -210,7 +244,7 @@ struct Fp(uint coefficientSize, Exp = long)
         }
     }
 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc
@@ -277,6 +311,50 @@ struct Fp(uint coefficientSize, Exp = long)
     }
 
     ///
+    this(int value)
+    {
+        this(long(value));
+    }
+
+    ///
+    this(uint value)
+    {
+        this(ulong(value));
+    }
+
+    ///
+    bool isNaN() scope const @property
+    {
+        return this.exponent == this.exponent.max && this.coefficient != this.coefficient.init;
+    }
+
+    ///
+    bool isInfinity() scope const @property
+    {
+        return this.exponent == this.exponent.max && this.coefficient == coefficient.init;
+    }
+
+    ///
+    bool isSpecial() scope const @property
+    {
+        return this.exponent == this.exponent.max;
+    }
+
+    ///
+    bool opEquals(const Fp rhs) scope const
+    {
+        if (this.exponent != rhs.exponent)
+            return false;
+        if (this.coefficient != rhs.coefficient)
+            return false;
+        if (this.coefficient == 0)
+            return !this.isSpecial || this.sign == rhs.sign;
+        if (this.sign != rhs.sign)
+            return false;
+        return !this.isSpecial;
+    }
+
+    ///
     ref Fp opOpAssign(string op)(Fp rhs) nothrow scope return
         if (op == "*" || op == "/")
     {
@@ -285,12 +363,12 @@ struct Fp(uint coefficientSize, Exp = long)
     }
 
     ///
-    Fp opBinary(string op : "*")(Fp rhs) nothrow const
+    Fp!(max(size, rhsSize)) opBinary(string op : "*", uint rhsSize)(Fp!rhsSize rhs) nothrow const
     {
-        return cast(Fp) .extendedMul(this, rhs);
+        return cast(Fp) .extendedMul!(size, rhsSize)(this, rhs);
     }
 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc
@@ -300,7 +378,7 @@ struct Fp(uint coefficientSize, Exp = long)
 
         auto a = Fp!128(0, -13, UInt!128.fromHexString("dfbbfae3cd0aff2714a1de7022b0029d"));
         auto b = Fp!128(1, 100, UInt!128.fromHexString("e3251bacb112c88b71ad3f85a970a314"));
-        auto fp = a * b;
+        auto fp = a.opBinary!"*"(b);
         assert(fp.sign);
         assert(fp.exponent == 100 - 13 + 128);
         assert(fp.coefficient == UInt!128.fromHexString("c6841dd302415d785373ab6d93712988"));
@@ -308,13 +386,13 @@ struct Fp(uint coefficientSize, Exp = long)
 
     /// Uses approximate division for now
     /// TODO: use full precision division for void when Fp division is ready
-    Fp opBinary(string op : "/")(Fp rhs) nothrow const
+    Fp!(max(size, rhsSize)) opBinary(string op : "/", uint rhsSize)(Fp!rhsSize rhs) nothrow const
     {
         Fp a = this;
         alias b = rhs;
         auto exponent = a.exponent - b.exponent;
-        a.exponent = b.exponent = -Exp(coefficientSize);
-        auto ret = Fp(cast(real) a / cast(real) b);
+        a.exponent = b.exponent = -long(size);
+        auto ret = typeof(return)(cast(real) a / cast(real) b);
         ret.exponent += exponent;
         return ret;
     }
@@ -328,48 +406,55 @@ struct Fp(uint coefficientSize, Exp = long)
     
     ///
     T opCast(T, bool noHalf = false)() nothrow const
-        if (isFloatingPoint!T)
+        if (is(T == float) || is(T == double) || is(T == real))
     {
         import mir.math.ieee: ldexp;
-        auto exp = cast()exponent;
-        static if (coefficientSize == 32)
+        if (_expect(this.isSpecial, false))
         {
-            Unqual!T c = cast(uint) coefficient;
+            T ret = this.coefficient ? T.nan : T.infinity;
+            if (this.sign)
+                ret = -ret;
+            return ret;
+        }
+        auto exp = cast()this.exponent;
+        static if (size == 32)
+        {
+            T c = cast(uint) coefficient;
         }
         else
-        static if (coefficientSize == 64)
+        static if (size == 64)
         {
-            Unqual!T c = cast(ulong) coefficient;
+            T c = cast(ulong) coefficient;
         }
         else
         {
-            enum shift = coefficientSize - T.mant_dig;
-            enum rMask = (UInt!coefficientSize(1) << shift) - UInt!coefficientSize(1);
-            enum rHalf = UInt!coefficientSize(1) << (shift - 1);
-            enum rInc = UInt!coefficientSize(1) << shift;
-            UInt!coefficientSize adC = coefficient;
+            enum shift = size - T.mant_dig;
+            enum rMask = (UInt!size(1) << shift) - UInt!size(1);
+            enum rHalf = UInt!size(1) << (shift - 1);
+            enum rInc = UInt!size(1) << shift;
+            UInt!size adC = this.coefficient;
             static if (!noHalf)
             {
-                auto cr = (coefficient & rMask).opCmp(rHalf);
-                if ((cr > 0) | (cr == 0) & coefficient.bt(shift))
+                auto cr = (this.coefficient & rMask).opCmp(rHalf);
+                if ((cr > 0) | (cr == 0) & this.coefficient.bt(shift))
                 {
                     if (auto overflow = adC += rInc)
                     {
-                        adC = half!coefficientSize;
+                        adC = half!size;
                         exp++;
                     }
                 }
             }
             adC >>= shift;
             exp += shift;
-            Unqual!T c = cast(ulong) adC;
+            T c = cast(ulong) adC;
             static if (T.mant_dig > 64) //
             {
                 static assert (T.mant_dig <= 128);
                 c += ldexp(cast(T) cast(ulong) (adC >> 64), 64);
             }
         }
-        if (sign)
+        if (this.sign)
             c = -c;
         static if (exp.sizeof > int.sizeof)
         {
@@ -379,7 +464,7 @@ struct Fp(uint coefficientSize, Exp = long)
         return ldexp(c, cast(int)exp);
     }
 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc
@@ -388,9 +473,17 @@ struct Fp(uint coefficientSize, Exp = long)
         import mir.bignum.fixed: UInt;
         auto fp = Fp!128(1, 100, UInt!128.fromHexString("e3251bacb112cb8b71ad3f85a970a314"));
         assert(cast(double)fp == -0xE3251BACB112C8p+172);
+
+        fp = Fp!128(1, long.max, UInt!128.init);
+        assert(cast(double)fp == -double.infinity);
+
+        import mir.math.ieee : signbit;
+        fp = Fp!128(1, long.max, UInt!128(123));
+        auto r = cast(double)fp;
+        assert(r != r && r.signbit);
     }
 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc
@@ -402,7 +495,7 @@ struct Fp(uint coefficientSize, Exp = long)
             assert(cast(real)fp == -0xe3251bacb112cb8bp+164L);
     }
 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc
@@ -425,7 +518,7 @@ struct Fp(uint coefficientSize, Exp = long)
 // -0xe.3251bacb112cb8bp+160 = 
 // -0x1.c64a37596225ap+163 = 
 // -0xe.3251bacb112cb8bp+160 = 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc
@@ -439,14 +532,26 @@ struct Fp(uint coefficientSize, Exp = long)
 
     ///
     T opCast(T : Fp!newCoefficientSize, size_t newCoefficientSize)() nothrow const
+        if (newCoefficientSize != size)
     {
-        auto ret = Fp!newCoefficientSize(coefficient, true);
-        ret.exponent += exponent;
-        ret.sign = sign;
+        Fp!newCoefficientSize ret = void;
+        if (_expect(isSpecial, false))
+        {
+            ret.exponent = ret.exponent.max;
+            ret.coefficient = !!this.coefficient;
+        }
+        else
+        {
+            ret = Fp!newCoefficientSize(this.coefficient, true);
+            // TODO: exponent overflow / underflow
+            // with care of special values
+            ret.exponent = ret.exponent + this.exponent;
+        }
+        ret.sign = this.sign;
         return ret;
     }
 
-    static if (coefficientSize == 128)
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     @safe pure @nogc
@@ -456,35 +561,74 @@ struct Fp(uint coefficientSize, Exp = long)
         auto fp = cast(Fp!64) Fp!128(UInt!128.fromHexString("afbbfae3cd0aff2784a1de7022b0029d"));
         assert(fp.exponent == 64);
         assert(fp.coefficient == UInt!64.fromHexString("afbbfae3cd0aff28"));
+
+        assert(Fp!128(-double.infinity) * Fp!128(1) == Fp!128(-double.infinity));
     }
 }
 
 ///
-Fp!(coefficientizeA + coefficientizeB) extendedMul(uint coefficientizeA, size_t coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
+Fp!(coefficientizeA + coefficientizeB) extendedMul(uint coefficientizeA, uint coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
     @safe pure nothrow @nogc
 {
     import mir.bignum.fixed: extendedMul;
-    auto coefficient = extendedMul(a.coefficient, b.coefficient);
-    auto exponent = a.exponent + b.exponent;
-    auto sign = a.sign ^ b.sign;
-    if (!coefficient.signBit)
-    {
-        --exponent;
-        coefficient = coefficient.smallLeftShift(1);
+    import mir.checkedint: adds;
+
+    typeof(return) ret = void;
+    // nan * any -> nan
+    // inf * fin -> inf
+    ret.coefficient = extendedMul(a.coefficient, b.coefficient);
+    if (_expect(a.isSpecial | b.isSpecial, false))
+    {   // set nan
+        ret.exponent = ret.exponent.max;
+        // nan inf case
+        if (a.isSpecial & b.isSpecial)
+            ret.coefficient = a.coefficient | b.coefficient;
     }
-    return typeof(return)(sign, exponent, coefficient);
+    else
+    {
+        bool overflow;
+        ret.exponent = adds(a.exponent, b.exponent, overflow);
+        // exponent underflow -> 0 or subnormal
+        // overflow -> inf
+        if (_expect(overflow, false))
+        {
+            // overflow
+            if (a.exponent > 0) //  && b.exponent > 0 is always true
+            {
+                ret.exponent = ret.exponent.max;
+                ret.coefficient = 0;
+            }
+            //  underflow
+            else // a.exponent < 0 and b.exponent < 0
+            {
+                // TODO: subnormal
+                ret.exponent = 0;
+                ret.coefficient = 0;
+            }
+        }
+        else
+        if (!ret.coefficient.signBit)
+        {
+            auto normal = ret.exponent != ret.exponent.min;
+            ret.exponent -= normal; // check overflow
+            ret.coefficient = ret.coefficient.smallLeftShift(normal);
+        }
+    }
+    ret.sign = a.sign ^ b.sign;
+    return ret;
 }
 
 ///
 template fp_log2(T)
-    if (__traits(isFloating, T))
+    if (is(T == float) || is(T == double) || is(T == real))
 {
     ///
-    T fp_log2(uint coefficientSize, Exp = long)(Fp!(coefficientSize, Exp) x)
+    T fp_log2(uint size)(Fp!size x)
     {
         import mir.math.common: log2;
-        auto exponent = x.exponent + coefficientSize;
-        x.exponent = -Exp(coefficientSize);
+        auto exponent = x.exponent + size;
+        if (!x.isSpecial)
+            x.exponent = -long(size);
         return log2(cast(T)x) + exponent;
     }
 }
@@ -503,10 +647,10 @@ unittest
 
 ///
 template fp_log(T)
-    if (__traits(isFloating, T))
+    if (is(T == float) || is(T == double) || is(T == real))
 {
     ///
-    T fp_log(uint coefficientSize, Exp = long)(Fp!(coefficientSize, Exp) x)
+    T fp_log(uint size)(Fp!size x)
     {
         import mir.math.constant: LN2;
         return T(LN2) * fp_log2!T(x);
