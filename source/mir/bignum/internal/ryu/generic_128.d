@@ -142,7 +142,7 @@ else
 
 enum baseDiv5 = UInt!128([0x3333333333333333, 0x3333333333333333]);
 
-uint divRem5(size_t size)(ref UInt!size value)
+uint divRem5(uint size)(ref UInt!size value)
 {
     auto q = div5(value);
     auto r = cast(uint)(value - q * 5);
@@ -150,7 +150,7 @@ uint divRem5(size_t size)(ref UInt!size value)
     return r;
 }
 
-uint divRem10(size_t size)(ref UInt!size value)
+uint divRem10(uint size)(ref UInt!size value)
 {
     auto q = div10(value);
     auto r = cast(uint)(value - q * 10);
@@ -158,28 +158,28 @@ uint divRem10(size_t size)(ref UInt!size value)
     return r;
 }
 
-uint rem5(size_t size)(UInt!size value)
+uint rem5(uint size)(UInt!size value)
 {
     return divRem5(value);
 }
 
-uint rem10(size_t size)(UInt!size value)
+uint rem10(uint size)(UInt!size value)
 {
     return divRem10(value);
 }
 
-UInt!size div5(size_t size)(UInt!size value)
+UInt!size div5(uint size)(UInt!size value)
 {
     return extendedMulHigh(value, fiveReciprocal.toSize!size) >> 2;
 }
 
-UInt!size div10(size_t size)(UInt!size value)
+UInt!size div10(uint size)(UInt!size value)
 {
     return extendedMulHigh(value, fiveReciprocal.toSize!size) >> 3;
 }
 
 // Returns true if value is divisible by 5^p.
-bool multipleOfPowerOf5(size_t size)(UInt!size value, const uint p)
+bool multipleOfPowerOf5(uint size)(UInt!size value, const uint p)
 {
     enum fiveReciprocal = .fiveReciprocal.toSize!size;
     enum baseDiv5 = .baseDiv5.toSize!size;
@@ -206,7 +206,7 @@ version(mir_bignum_test) unittest
 }
 
 // Returns true if value is divisible by 2^p.
-bool multipleOfPowerOf2(size_t size)(const UInt!size value, const uint p)
+bool multipleOfPowerOf2(uint size)(const UInt!size value, const uint p)
 {
     version(LDC) pragma(inline, true);
     return (value & ((UInt!size(1) << p) - 1)) == 0;
@@ -224,7 +224,7 @@ version(mir_bignum_test) unittest
     assert(multipleOfPowerOf2(UInt!128(8), 4) == false);
 }
 
-UInt!size mulShift(size_t size)(const UInt!size m, const UInt!256 mul, const uint j)
+UInt!size mulShift(uint size)(const UInt!size m, const UInt!256 mul, const uint j)
 {
     version(LDC) pragma(inline, true);
     assert(j > 128);

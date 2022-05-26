@@ -15,7 +15,7 @@ Params:
     maxSize64 = count of 64bit words in coefficient
 +/
 @serdeScoped @serdeProxy!(const(char)[])
-struct BigInt(size_t maxSize64)
+struct BigInt(uint maxSize64)
     if (maxSize64 && maxSize64 <= ushort.max)
 {
     import mir.bignum.low_level_view;
@@ -29,13 +29,13 @@ struct BigInt(size_t maxSize64)
     size_t[ulong.sizeof / size_t.sizeof * maxSize64] data = void;
 
     ///
-    this(size_t size)(UInt!size fixedInt)
+    this(uint size)(UInt!size fixedInt)
     {
         this(fixedInt.data);
     }
 
     ///
-    this(size_t N)(size_t[N] data)
+    this(uint N)(size_t[N] data)
         if (N <= this.data.length)
     {
         sign = false;
@@ -115,7 +115,7 @@ struct BigInt(size_t maxSize64)
     }
 
     ///
-    ref opAssign(size_t rhsMaxSize64)(auto ref scope const BigInt!rhsMaxSize64 rhs) return
+    ref opAssign(uint rhsMaxSize64)(auto ref scope const BigInt!rhsMaxSize64 rhs) return
         if (rhsMaxSize64 < maxSize64)
     {
         this.sign = rhs.sign;

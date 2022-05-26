@@ -2460,7 +2460,7 @@ enum DecimalExponentKey
 
 /++
 +/
-struct DecimalView(W, WordEndian endian = TargetEndian, Exp = sizediff_t)
+struct DecimalView(W, WordEndian endian = TargetEndian, Exp = long)
     if (isUnsigned!W)
 {
     ///

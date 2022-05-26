@@ -334,7 +334,7 @@ struct UInt(size_t size)
     }
 
     /// ditto
-    bool opOpAssign(string op, size_t rsize)(UInt!rsize rhs, bool overflow = false)
+    bool opOpAssign(string op, uint rsize)(UInt!rsize rhs, bool overflow = false)
         @safe pure nothrow @nogc scope
         if ((op == "+" || op == "-") && rsize < size)
     {

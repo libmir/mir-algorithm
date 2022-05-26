@@ -8,7 +8,7 @@ import std.traits;
 import mir.bitop;
 import mir.utility;
 
-package enum half(size_t hs) = (){
+package enum half(uint hs) = (){
     import mir.bignum.fixed: UInt;
     UInt!hs ret; ret.signBit = true; return ret;
 }();
@@ -21,8 +21,8 @@ Params:
 
 Note: the implementation doesn't support NaN and Infinity values.
 +/
-struct Fp(size_t coefficientSize, Exp = sizediff_t)
-    if ((is(Exp == int) || is(Exp == long)) && coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
+struct Fp(uint coefficientSize, Exp = long)
+    if ((is(Exp == int) || is(Exp == long)) && coefficientSize % (uint.sizeof * 8) == 0 && coefficientSize >= (uint.sizeof * 8))
 {
     import mir.bignum.fixed: UInt;
 
@@ -161,7 +161,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
 
     /++
     +/
-    this(size_t size)(UInt!size integer, bool normalizedInteger = false)
+    this(uint size)(UInt!size integer, bool normalizedInteger = false)
         nothrow
     {
         import mir.bignum.fixed: UInt;
@@ -313,7 +313,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
         Fp a = this;
         alias b = rhs;
         auto exponent = a.exponent - b.exponent;
-        a.exponent = b.exponent = -coefficientSize;
+        a.exponent = b.exponent = -Exp(coefficientSize);
         auto ret = Fp(cast(real) a / cast(real) b);
         ret.exponent += exponent;
         return ret;
@@ -460,7 +460,7 @@ struct Fp(size_t coefficientSize, Exp = sizediff_t)
 }
 
 ///
-Fp!(coefficientizeA + coefficientizeB) extendedMul(size_t coefficientizeA, size_t coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
+Fp!(coefficientizeA + coefficientizeB) extendedMul(uint coefficientizeA, size_t coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
     @safe pure nothrow @nogc
 {
     import mir.bignum.fixed: extendedMul;
@@ -480,11 +480,11 @@ template fp_log2(T)
     if (__traits(isFloating, T))
 {
     ///
-    T fp_log2(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
+    T fp_log2(uint coefficientSize, Exp = long)(Fp!(coefficientSize, Exp) x)
     {
         import mir.math.common: log2;
         auto exponent = x.exponent + coefficientSize;
-        x.exponent = -coefficientSize;
+        x.exponent = -Exp(coefficientSize);
         return log2(cast(T)x) + exponent;
     }
 }
@@ -506,7 +506,7 @@ template fp_log(T)
     if (__traits(isFloating, T))
 {
     ///
-    T fp_log(size_t coefficientSize, Exp = sizediff_t)(Fp!(coefficientSize, Exp) x)
+    T fp_log(uint coefficientSize, Exp = long)(Fp!(coefficientSize, Exp) x)
     {
         import mir.math.constant: LN2;
         return T(LN2) * fp_log2!T(x);

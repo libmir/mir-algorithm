@@ -523,7 +523,7 @@ Returns: `(count + start - 1)! / (start - 1)!`
 Complexity: O(count)
 +/
 auto factorial
-    (size_t coefficientSize = 128, Exp = sizediff_t)
+    (uint coefficientSize = 128, Exp = long)
     (ulong count, ulong start = 1)
     if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
     in (start)
@@ -592,7 +592,7 @@ Returns: n choose k
 Complexity: O(min(k, n - k))
 +/
 auto binomialCoefficient
-    (size_t coefficientSize = 128, Exp = sizediff_t)
+    (uint coefficientSize = 128, Exp = long)
     (ulong n, uint k)
     if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
     in (k <= n)

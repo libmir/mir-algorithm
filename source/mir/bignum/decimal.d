@@ -12,7 +12,7 @@ import std.traits: isSomeChar;
 public import mir.bignum.low_level_view: DecimalExponentKey;
 import mir.bignum.low_level_view: ceilLog10Exp2;
 
-private enum expBufferLength = 2 + ceilLog10Exp2(size_t.sizeof * 8);
+private enum expBufferLength = 2 + ceilLog10Exp2(ulong.sizeof * 8);
 private static immutable C[9] zerosImpl(C) = "0.00000.0";
 
 /++
@@ -21,7 +21,7 @@ Params:
     maxSize64 = count of 64bit words in coefficient
 +/
 @serdeScoped @serdeProxy!(const(char)[])
-struct Decimal(size_t maxSize64)
+struct Decimal(uint maxSize64)
     if (maxSize64 && maxSize64 <= ushort.max)
 {
     import mir.format: NumericSpec;
@@ -30,7 +30,7 @@ struct Decimal(size_t maxSize64)
     import std.traits: isMutable, isFloatingPoint;
 
     ///
-    sizediff_t exponent;
+    long exponent;
     ///
     BigInt!maxSize64 coefficient;
 
@@ -108,7 +108,7 @@ struct Decimal(size_t maxSize64)
     }
 
     ///
-    ref opAssign(size_t rhsMaxSize64)(auto ref scope const Decimal!rhsMaxSize64 rhs) return
+    ref opAssign(uint rhsMaxSize64)(auto ref scope const Decimal!rhsMaxSize64 rhs) return
         if (rhsMaxSize64 < maxSize64)
     {
         this.exponent = rhs.exponent;
@@ -737,7 +737,7 @@ struct Decimal(size_t maxSize64)
 
         C[1] sign = coefficient.sign ? "-" : "+";
         bool addSign = coefficient.sign || spec.plus;
-        sizediff_t s = this.exponent + coefficientLength;
+        long s = this.exponent + coefficientLength;
 
         alias zeros = zerosImpl!C;
 
@@ -840,7 +840,7 @@ struct Decimal(size_t maxSize64)
 
         assert(coefficientLength);
 
-        sizediff_t exponent = s - 1;
+        long exponent = s - 1;
 
         if (coefficientLength > 1)
         {
@@ -854,7 +854,7 @@ struct Decimal(size_t maxSize64)
 
         import mir.format_impl: printSignedToTail;
 
-        static if (sizediff_t.sizeof == 8)
+        static if (exponent.sizeof == 8)
             enum N = 21;
         else
             enum N = 11;
@@ -1081,7 +1081,7 @@ unittest
 
 deprecated("use decimal.fromStringImpl insteade")
 @trusted @nogc pure nothrow
-bool parseDecimal(size_t maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize64 decimal, out DecimalExponentKey key)
+bool parseDecimal(uint maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize64 decimal, out DecimalExponentKey key)
     if (isSomeChar!C)
 {
     return decimal.fromStringImpl(str, key);
