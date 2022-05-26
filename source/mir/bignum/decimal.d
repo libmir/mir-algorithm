@@ -967,15 +967,21 @@ struct Decimal(uint maxSize64)
     }
 
     ///
-    bool isNaN() const @property
+    bool isNaN() scope const @property
     {
         return exponent == exponent.max && coefficient.length;
     }
 
     ///
-    bool isInfinity() const @property
+    bool isInfinity() scope const @property
     {
-        return exponent == exponent.max && !coefficient.length;
+        return exponent == exponent.max && coefficient.length == 0;
+    }
+
+    ///
+    bool isSpecial() scope const @property
+    {
+        return exponent == exponent.max;
     }
 
     ///
