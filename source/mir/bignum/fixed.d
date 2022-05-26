@@ -718,14 +718,20 @@ struct UInt(size_t size)
     ///
     UInt!(size + additionalRightBits) rightExtend(size_t additionalRightBits)()
         const @safe pure @nogc nothrow
-        if (additionalRightBits)
     {
-        typeof(return) ret;
-        version (BigEndian)
-            ret.data[0 .. data.length] = data;
+        static if (additionalRightBits)
+        {
+            typeof(return) ret;
+            version (BigEndian)
+                ret.data[0 .. data.length] = data;
+            else
+                ret.data[$ - data.length .. $] = data;
+            return ret;
+        }
         else
-            ret.data[$ - data.length .. $] = data;
-        return ret;
+        {
+            return this;
+        }
     }
 
     /++

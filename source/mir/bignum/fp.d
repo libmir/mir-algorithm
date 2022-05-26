@@ -67,7 +67,7 @@ struct Fp(uint size)
             enum scale = T(2) ^^ T.mant_dig;
             x = frexp(x, exp) * scale;
         }
-        auto dd = this.coefficient.view.leastSignificantFirst;
+
         static if (T.mant_dig < 64)
         {
             auto xx = cast(ulong)cast(long)x;
@@ -76,8 +76,12 @@ struct Fp(uint size)
                 auto shift = ctlz(xx);
                 exp -= shift + T.mant_dig + size - 64;
                 xx <<= shift;
+                this.coefficient = UInt!64(xx).rightExtend!(size - 64);
             }
-            dd[normalize ? $ - 1 : 0] = xx;
+            else
+            {
+                this.coefficient = xx;
+            }
         }
         else
         static if (T.mant_dig == 64)
@@ -88,8 +92,12 @@ struct Fp(uint size)
                 auto shift = ctlz(xx);
                 exp -= shift + T.mant_dig + size - 64;
                 xx <<= shift;
+                this.coefficient = UInt!64(xx).rightExtend!(size - 64);
             }
-            dd[normalize ? $ - 1 : 0] = xx;
+            else
+            {
+                this.coefficient = xx;
+            }
         }
         else
         {
@@ -103,14 +111,21 @@ struct Fp(uint size)
             x *= scale;
             auto most = ulong(high);
             auto least = cast(ulong)x;
+            version(LittleEndian)
+                ulong[2] pair = [most, least];
+            else
+                ulong[2] pair = [least, most];
 
-            dd[normalize ? $ - 1 : 1] = most;
-            dd[normalize ? $ - 2 : 0] = least;
             if (normalize)
             {
+                this.coefficient = UInt!128(pair).rightExtend!(size - 128);
                 auto shift = most ? ctlz(most) : ctlz(least) + 64;
                 exp -= shift + T.mant_dig + size - 64 * (1 + (T.mant_dig > 64));
                 this.coefficient <<= shift;
+            }
+            else
+            {
+                this.coefficient = pair;
             }
         }
         if (!normalize)
