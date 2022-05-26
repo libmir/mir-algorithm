@@ -571,7 +571,8 @@ unittest
 
     static assert(is(typeof(factorial(33)) == Fp!128));
     static assert(is(typeof(factorial!256(33)) == Fp!256));
-    static assert(cast(double) factorial(33) == 8.68331761881188649551819440128e+36);
+    static immutable double f33 = 8.68331761881188649551819440128e+36;
+    static assert(cast(double) factorial(33) == f33);
 
     assert(cast(double) factorial(0) == 1);
     assert(cast(double) factorial(0, 100) == 1);
@@ -597,11 +598,8 @@ auto binomialCoefficient
     if (coefficientSize % (size_t.sizeof * 8) == 0 && coefficientSize >= (size_t.sizeof * 8))
     in (k <= n)
 {
-    import mir.bignum.fp: Fp;
-
     if (k > n - k)
         k = cast(uint)(n - k);
-
     auto a = factorial!(coefficientSize, Exp)(k, n - k + 1);
     auto b = factorial!(coefficientSize, Exp)(k);
     return a / b;
