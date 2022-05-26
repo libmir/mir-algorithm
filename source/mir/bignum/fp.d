@@ -547,17 +547,19 @@ struct Fp(uint size)
             return ret;
         }
 
-        ret = Fp!newSize(this.coefficient, true);
-        ret.sign = this.sign;
-        static if (newSize < size)
+        UInt!size coefficient = this.coefficient;
+        int shift;
+        // subnormal
+
+        if (this.exponent == this.exponent.min)
         {
-            // underflow
-            if (this.exponent == this.exponent.min && !ret.coefficient)
-            {
-                ret.exponent = 0;
-                return ret;
-            }
+            shift = cast(int)coefficient.ctlz;
+            coefficient <<= shift;
         }
+
+        ret = Fp!newSize(coefficient, true);
+        ret.exponent -= shift;
+        ret.sign = this.sign;
 
         import mir.checkedint: adds;
         /// overflow
@@ -566,14 +568,16 @@ struct Fp(uint size)
         if (_expect(overflow, false))
         {
             // overflow
-            static if (newSize < size)
+            if (this.exponent > 0)
             {
-                assert(this.exponent > 0);
+                ret.exponent = ret.exponent.max;
+                ret.coefficient = 0u;
             }
             // underflow
             else
             {
-                assert(this.exponent < 0);
+                ret.coefficient >>= ret.exponent - exponent.min;
+                ret.exponent = ret.coefficient ? ret.exponent.min : 0;
             }
         }
         return ret;

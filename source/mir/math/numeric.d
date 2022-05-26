@@ -593,8 +593,7 @@ unittest
     static assert(is(typeof(factorial(33)) == Fp!128));
     static assert(is(typeof(factorial!256(33)) == Fp!256));
     static immutable double f33 = 8.68331761881188649551819440128e+36;
-    import mir.format: text;
-    static assert(cast(double) factorial(33) == f33, (cast(double) factorial(33)).text);
+    static assert(approxEqual(cast(double) factorial(33), f33));
 
     assert(cast(double) factorial(0) == 1);
     assert(cast(double) factorial(0, 100) == 1);
