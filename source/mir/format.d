@@ -769,7 +769,7 @@ unittest
 
     void check(double num, string value)
     {
-        assert(buffer.print(num, spec).data == value);
+        assert(buffer.print(num, spec).data == value, value);
         buffer.reset;
     }
 

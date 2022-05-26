@@ -820,7 +820,7 @@ struct Decimal(uint maxSize64)
                     if (s <= 6 || coefficientLength <= 6)
                     {
                         buffer[$ - coefficientLength - 1] = sign[0];
-                        w.put(buffer[$ - coefficientLength  - addSign .. $ - coefficientLength + s]);
+                        w.put(buffer[$ - coefficientLength  - addSign .. $ - coefficientLength + cast(sizediff_t)s]);
                     T2:
                         buffer[$ - coefficientLength + cast(sizediff_t)s - 1] = '.';
                         w.put(buffer[$ - coefficientLength + cast(sizediff_t)s - 1 .. $]);
