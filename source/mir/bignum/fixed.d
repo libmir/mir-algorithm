@@ -15,7 +15,7 @@ Params:
     size = size in bits
 +/
 struct UInt(size_t size)
-    if (size % (size_t.sizeof * 8) == 0 && size >= (size_t.sizeof * 8))
+    if (size % (size_t.sizeof * 8) == 0 && size >= size_t.sizeof * 8)
 {
     import mir.bignum.fixed: UInt;
     /++
@@ -25,7 +25,7 @@ struct UInt(size_t size)
 
     ///
     this(size_t N)(auto ref const size_t[N] data)
-        if (N <= this.data.length)
+        if (N && N <= this.data.length)
     {
         version(LittleEndian)
             this.data[0 .. N] = data;
@@ -300,6 +300,15 @@ struct UInt(size_t size)
     /++
     +/
     ref UInt!size opAssign(ulong rhs) scope return
+        @safe pure nothrow @nogc
+    {
+        this.data = UInt!size(rhs).data;
+        return this;
+    }
+
+    /++
+    +/
+    ref UInt!size opAssign(uint rhsSize)(UInt!rhsSize rhs) scope return
         @safe pure nothrow @nogc
     {
         this.data = UInt!size(rhs).data;
