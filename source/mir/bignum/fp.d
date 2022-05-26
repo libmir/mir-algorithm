@@ -210,7 +210,7 @@ struct Fp(uint size)
         }
         else
         {
-            if (integer == integer.init)
+            if (!integer)
                 return;
             this.exponent = isize - size;
             if (!normalizedInteger)
@@ -401,7 +401,7 @@ struct Fp(uint size)
     T opCast(T)() nothrow const
         if (is(Unqual!T == bool))
     {
-        return coefficient != 0;
+        return exponent || coefficient;
     }
     
     ///
@@ -531,23 +531,51 @@ struct Fp(uint size)
     }
 
     ///
-    T opCast(T : Fp!newCoefficientSize, size_t newCoefficientSize)() nothrow const
-        if (newCoefficientSize != size)
+    T opCast(T : Fp!newSize, size_t newSize)() nothrow const
+        if (newSize != size)
     {
-        Fp!newCoefficientSize ret = void;
-        if (_expect(isSpecial, false))
+        Fp!newSize ret;
+        ret.sign = this.sign;
+        if (_expect(this.isSpecial, false))
         {
             ret.exponent = ret.exponent.max;
             ret.coefficient = !!this.coefficient;
+            return ret;
         }
-        else
+        if (!this)
         {
-            ret = Fp!newCoefficientSize(this.coefficient, true);
-            // TODO: exponent overflow / underflow
-            // with care of special values
-            ret.exponent = ret.exponent + this.exponent;
+            return ret;
         }
+
+        ret = Fp!newSize(this.coefficient, true);
         ret.sign = this.sign;
+        static if (newSize < size)
+        {
+            // underflow
+            if (this.exponent == this.exponent.min && !ret.coefficient)
+            {
+                ret.exponent = 0;
+                return ret;
+            }
+        }
+
+        import mir.checkedint: adds;
+        /// overflow
+        bool overflow;
+        ret.exponent = adds(ret.exponent, this.exponent, overflow);
+        if (_expect(overflow, false))
+        {
+            // overflow
+            static if (newSize < size)
+            {
+                assert(this.exponent > 0);
+            }
+            // underflow
+            else
+            {
+                assert(this.exponent < 0);
+            }
+        }
         return ret;
     }
 
