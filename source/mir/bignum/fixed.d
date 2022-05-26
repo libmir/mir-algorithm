@@ -397,6 +397,105 @@ struct UInt(size_t size)
         return overflow;
     }
 
+    /++
+    Performs division & extracts the remainder.
+    Params:
+        rhs = unsigned value to divide by
+    Returns:
+        unsigned remainder value
+    +/ 
+    auto divRem(size_t rhsSize)(const UInt!rhsSize rhs)
+        @safe pure nothrow @nogc scope const
+    {
+        import mir.bignum.low_level_view : divm, BigUIntView;
+
+        enum m = (size / (uint.sizeof * 8)), n = (rhsSize / (uint.sizeof * 8));
+
+        static struct QuotientAndRemainder
+        {
+            // XXX: we have to assume the quotient size here,
+            // checking at runtime would be more accurate for better space savings
+            UInt!size quotient;
+            UInt!rhsSize remainder;
+        }
+
+        QuotientAndRemainder val;
+
+        uint[m + 1] _div = void;
+        // shouldn't be unaligned here -- maybe a possibility though
+        _div[$ - 1] = 0;
+        _div[0 .. $ - 1] = (cast(uint[data.sizeof / 4])data);
+
+        BigUIntView!uint dividend = BigUIntView!uint(_div);
+        BigUIntView!uint divisor = cast(BigUIntView!uint)rhs.view;
+        BigUIntView!uint quotient = cast(BigUIntView!uint)val.quotient.view;
+        divm(dividend, divisor, quotient);
+
+        BigUIntView!uint remainder = cast(BigUIntView!uint)val.remainder.view;
+        remainder.coefficients[0 .. $] = (cast(uint[])_div)[0 .. remainder.coefficients.length];
+
+        return val;
+    }
+
+    /++
+    Performs `big /= rhs` operation.
+    Params:
+        rhs = unsigned value to divide by
+    Returns:
+        quotient from division 
+    +/
+    ref opOpAssign(string op : "/", size_t rhsSize)(UInt!rhsSize rhs)
+        @safe pure nothrow @nogc scope return
+    {
+        auto result = divRem(rhs);
+        // XXX: fix this if we manage to calculate the quotient size better
+        this.data = result.quotient.data;
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "/")(ulong rhs)
+        @safe pure nothrow @nogc scope return
+    {
+        return opOpAssign!(op, ulong.sizeof * 8)(UInt!(ulong.sizeof * 8)(rhs));
+    }
+
+    /++
+    Performs `big %= rhs` operation.
+    Params:
+        rhs = unsigned value to divide by
+    Returns:
+        remainder from division
+    +/
+    ref opOpAssign(string op : "%", size_t rhsSize)(UInt!rhsSize rhs)
+        @safe pure nothrow @nogc scope return
+    {
+        auto result = divRem(rhs);
+        this.data = 0;
+        // We ensure that size >= rhsSize, so this is fine
+        this.data[0 .. result.remainder.data.length] = result.remainder.data;
+        return this;
+    }
+
+    /// ditto
+    ref opOpAssign(string op : "%")(ulong rhs)
+        @safe pure nothrow @nogc scope
+    {
+        return opOpAssign!(op, ulong.sizeof * 8)(UInt!(ulong.sizeof * 8)(rhs));
+    }
+
+    static if (size == 128)
+    ///
+    version(mir_bignum_test)
+    @safe pure @nogc
+    unittest
+    {
+        auto a = UInt!128.fromHexString("e3251bacb112c88b71ad3f85a970a314");
+        auto b = UInt!128.fromHexString("dfbbfae3cd0aff2714a1de7022b0029d");
+        assert(a / b == UInt!128.fromHexString("1"));
+        assert(a % b == UInt!128.fromHexString("36920c8e407c9645d0b611586c0a077"));
+    }
+
     ///
     ref UInt!size opOpAssign(string op)(UInt!size rhs) nothrow return
         if (op == "^" || op == "|" || op == "&")
@@ -524,7 +623,7 @@ struct UInt(size_t size)
     Binary operations
     +/
     template opBinary(string op)
-        if (op == "^" || op == "|" || op == "&" || op == "+" || op == "-" || op == "*") //  || op == "/" || op == "%"
+        if (op == "^" || op == "|" || op == "&" || op == "+" || op == "-" || op == "*" || op == "/" || op == "%")
     {
         ///
         UInt!size opBinary(size_t rsize)(UInt!rsize rhs)
@@ -544,6 +643,23 @@ struct UInt(size_t size)
             ret.opOpAssign!op(rhs);
             return ret;
         }
+    }
+
+    static if (size == 128)
+    ///
+    version(mir_bignum_test)
+    @safe pure @nogc
+    unittest
+    {
+        auto a = UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+        assert(a / UInt!128.fromHexString("5") == UInt!128.fromHexString("23259893f5ceffd49db9f949a0899a1f"));
+        assert(a == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
+        assert(a % UInt!128.fromHexString("5") == UInt!128.fromHexString("2"));
+        assert(a == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
+
+        assert(a / 5 == UInt!128.fromHexString("23259893f5ceffd49db9f949a0899a1f"));
+        assert(a % 5 == UInt!64.fromHexString("2"));
+        assert(a % 5 == 2);
     }
 
     /// ditto
