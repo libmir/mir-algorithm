@@ -10,19 +10,23 @@ module mir.math.numeric;
 import mir.math.common;
 import mir.primitives;
 import mir.primitives: isInputRange;
-import std.traits: CommonType, Unqual, isIterable, ForeachType, isPointer, isNumeric;
+import std.traits: CommonType, Unqual, isIterable, ForeachType, isPointer;
 import mir.internal.utility: isFloatingPoint;
 
-deprecated("Use mir.bignum.fp.Fp!128 instead.")
+///
 struct ProdAccumulator(T)
     if (isFloatingPoint!T)
 {
     alias F = Unqual!T;
 
+    ///
     long exp = 1L;
+    ///
     F x = cast(F) 0.5;
+    ///
     alias mantissa = x;
 
+    ///
     @safe pure @nogc nothrow
     this(F value)
     {
@@ -33,6 +37,7 @@ struct ProdAccumulator(T)
         this.exp = lexp;
     }
 
+    ///
     @safe pure @nogc nothrow
     this(long exp, F x)
     {
@@ -40,6 +45,7 @@ struct ProdAccumulator(T)
         this.x = x;
     }
 
+    ///
     @safe pure @nogc nothrow
     void put(U)(U e)
         if (is(U : T))
@@ -60,6 +66,7 @@ struct ProdAccumulator(T)
         }
     }
 
+    ///
     @safe pure @nogc nothrow
     void put(ProdAccumulator!T value)
     {
@@ -72,6 +79,7 @@ struct ProdAccumulator(T)
         }
     }
 
+    ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
@@ -101,6 +109,7 @@ struct ProdAccumulator(T)
         }
     }
 
+    ///
     @safe pure @nogc nothrow
     T prod() const scope @property
     {
@@ -112,25 +121,72 @@ struct ProdAccumulator(T)
         return ldexp(mantissa, e);
     }
 
+    ///
     @safe pure @nogc nothrow
     ProdAccumulator!T ldexp(long exp) const
     {
         return typeof(return)(this.exp + exp, mantissa);
     }
 
+    // ///
     alias opOpAssign(string op : "*") = put;
 
+    ///
     @safe pure @nogc nothrow
     ProdAccumulator!T opUnary(string op : "-")() const
     {
         return typeof(return)(exp, -mantissa);
     }
 
+    ///
     @safe pure @nogc nothrow
     ProdAccumulator!T opUnary(string op : "+")() const
     {
         return typeof(return)(exp, +mantissa);
     }
+}
+
+///
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    ProdAccumulator!float x;
+    x.put([1, 2, 3].sliced);
+    assert(x.prod == 6f);
+    x.put(4);
+    assert(x.prod == 24f);
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    static immutable a = [1, 2, 3];
+    ProdAccumulator!float x;
+    x.put(a);
+    assert(x.prod == 6f);
+    x.put(4);
+    assert(x.prod == 24f);
+    static assert(is(typeof(x.prod) == float));
+}
+
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+
+    ProdAccumulator!double x;
+    x.put([1.0, 2.0, 3.0]);
+    assert(x.prod == 6.0);
+    x.put(4.0);
+    assert(x.prod == 24.0);
+    static assert(is(typeof(x.prod) == double));
 }
 
 package template prodType(T)
@@ -171,48 +227,30 @@ See_also:
 $(MREF mir, algorithm, iteration, reduce)
 $(MREF mir, algorithm, iteration, fold)
 +/
-template prod(uint size)
+F prod(F, Range)(Range r)
+    if (isFloatingPoint!F && isIterable!Range)
 {
-    import mir.bignum.fp: Fp;
+    import core.lifetime: move;
 
-    Fp!size prod(Range)(Range r)
-        if (isIterable!Range)
-    {
-        import core.lifetime: move;
-        import mir.algorithm.iteration: each;
-        Fp!size prod = 1LU;
-        each!((e) {
-            prod *= Fp!128(e);
-        })(move(r));
-        return prod;
-    }
+    ProdAccumulator!F prod;
+    prod.put(r.move);
+    return prod.prod;
 }
 
-/// ditto
-template prod(F)
-    if (isFloatingPoint!F)
-{
-    F prod(Range)(Range r)
-        if (isFloatingPoint!F && isIterable!Range)
-    {
-        import core.lifetime: move;
-        return cast(F) .prod!128(r);
-    }
-}
-
-
-deprecated("Use prod!128 instead.")
+/++
+Params:
+    r = finite iterable range
+    exp = value of exponent
+Returns:
+    The mantissa, such that the product equals the mantissa times 2^^exp
++/
 F prod(F, Range)(Range r, ref long exp)
     if (isFloatingPoint!F && isIterable!Range)
 {
     import core.lifetime: move;
 
-    import core.lifetime: move;
-    
-    auto p = .prod!128(r.move);
-
     ProdAccumulator!F prod;
-    prod.put(cast(F) p);
+    prod.put(r.move);
     exp = prod.exp;
     return prod.x;
 }
@@ -228,10 +266,17 @@ prodType!Range prod(Range)(Range r)
 {
     import core.lifetime: move;
     
-    return cast(typeof(return)) .prod!128(r.move);
+    alias F = typeof(return);
+    return .prod!(F, Range)(r.move);
 }
 
-deprecated("Use prod!128 instead.")
+/++
+Params:
+    r = finite iterable range
+    exp = value of exponent
+Returns:
+    The mantissa, such that the product equals the mantissa times 2^^exp
++/
 prodType!Range prod(Range)(Range r, ref long exp)
     if (isIterable!Range)
 {
@@ -249,7 +294,10 @@ Returns:
 +/
 prodType!T prod(T)(scope const T[] ar...)
 {
-    return cast(typeof(return)) .prod!128(ar);
+    alias F = typeof(return);
+    ProdAccumulator!F prod;
+    prod.put(ar);
+    return prod.prod;
 }
 
 /// Product of arbitrary inputs
@@ -273,6 +321,11 @@ unittest
     auto r = [l, l, l, s, s, s, 0.8 * 2.0 ^^ 10];
     
     assert(r.prod == 0.8 * 2.0 ^^ 10);
+    
+    // Can get the mantissa and exponent
+    long e;
+    assert(r.prod(e).approxEqual(0.8));
+    assert(e == 10);
 }
 
 /// Product of vector
@@ -291,6 +344,10 @@ unittest
     auto r = [l, l, l, s, s, s, u, u, u].sliced;
               
     assert(r.prod == reduce!"a * b"(1.0, [u, u, u]));
+
+    long e;
+    assert(r.prod(e).approxEqual(reduce!"a * b"(1.0, [c, c, c])));
+    assert(e == 30);
 }
 
 /// Product of matrix
@@ -312,6 +369,10 @@ unittest
     ].fuse;
               
     assert(r.prod == reduce!"a * b"(1.0, [u, u, u]));
+
+    long e;
+    assert(r.prod(e) == reduce!"a * b"(1.0, [c, c, c]));
+    assert(e == 30);
 }
 
 /// Column prod of matrix
@@ -391,6 +452,10 @@ unittest
     static immutable result2 = [c, c, c];
               
     assert(r.sliced.prod.approxEqual(reduce!"a * b"(1.0, result1)));
+
+    long e;
+    assert(r.sliced.prod(e).approxEqual(reduce!"a * b"(1.0, result2)));
+    assert(e == 30);
 }
 
 version(mir_test)
@@ -410,6 +475,10 @@ unittest
     static immutable result2 = [c, c, c];
               
     assert(r.sliced.prod!double.approxEqual(reduce!"a * b"(1.0, result1)));
+
+    long e;
+    assert(r.sliced.prod!double(e).approxEqual(reduce!"a * b"(1.0, result2)));
+    assert(e == 30);
 }
 
 /++
@@ -417,11 +486,11 @@ Compute the sum of binary logarithms of the input range $(D r).
 The error of this method is much smaller than with a naive sum of log2.
 +/
 Unqual!(DeepElementType!Range) sumOfLog2s(Range)(Range r)
-    if (isNumeric!(DeepElementType!Range))
+    if (isFloatingPoint!(DeepElementType!Range))
 {
-    import mir.bignum.fp: fp_log2;
-    import core.lifetime: move;
-    return prod!128(move(r)).fp_log2!(typeof(return));
+    long exp = 0;
+    auto x = .prod(r, exp);
+    return exp + log2(x);
 }
 
 ///
@@ -429,8 +498,6 @@ version(mir_test)
 @safe pure
 unittest
 {
-    import mir.format: text;
-    import mir.bignum.fp;
     alias isNaN = x => x != x;
 
     assert(sumOfLog2s(new double[0]) == 0);
@@ -450,7 +517,7 @@ Compute the sum of binary logarithms of the input range $(D r).
 The error of this method is much smaller than with a naive sum of log.
 +/
 Unqual!(DeepElementType!Range) sumOfLogs(Range)(Range r)
-    if (isNumeric!(DeepElementType!Range))
+    if (isFloatingPoint!(DeepElementType!Range))
 {
     import core.lifetime: move;
     import mir.math.constant: LN2;

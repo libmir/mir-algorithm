@@ -24,7 +24,7 @@ import mir.math.common: fmamath;
 import mir.math.sum;
 import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 import mir.primitives;
-import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonType, isNumeric;
+import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonType;
 
 ///
 public import mir.math.sum: Summation;
@@ -939,12 +939,12 @@ Output range for gmean.
 struct GMeanAccumulator(T) 
     if (isMutable!T && isFloatingPoint!T)
 {
-    import mir.bignum.fp: Fp;
+    import mir.math.numeric: ProdAccumulator;
 
     ///
     size_t count;
     ///
-    Fp!128 prodAccumulator = 1u;
+    ProdAccumulator!T prodAccumulator;
 
     ///
     F gmean(F = T)() const @property
@@ -952,36 +952,33 @@ struct GMeanAccumulator(T)
     {
         import mir.math.common: exp2;
 
-        if (count == 0)
-            return 0;
-
-        long exponent;
-        Fp!128 value = prodAccumulator;
-
-        if (!value.isSpecial)
-        {
-            exponent = value.exponent + 128;
-            value.exponent = -128;
-        }
-
-        return nthroot(cast(F) value, count) * exp2(cast(F) exponent / count);
+        return nthroot(cast(F) prodAccumulator.mantissa, count) * exp2(cast(F) prodAccumulator.exp / count);
     }
 
     ///
     void put(Range)(Range r)
         if (isIterable!Range)
     {
-        import core.lifetime: move;
-        import mir.algorithm.iteration: each;
-        each!(e => this.put(e))(move(r));
+        static if (hasShape!Range)
+        {
+            count += r.elementCount;
+            prodAccumulator.put(r);
+        }
+        else
+        {
+            foreach(x; r)
+            {
+                count++;
+                prodAccumulator.put(x);
+            }
+        }
     }
 
     ///
-    void put()(const T x)
-        if (isNumeric!T)
+    void put()(T x)
     {
         count++;
-        prodAccumulator *= Fp!128(x);
+        prodAccumulator.put(x);
     }
 }
 
@@ -2055,7 +2052,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() const @property
+    size_t count() @property
     {
         return meanAccumulator.count;
     }
@@ -2087,7 +2084,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     }
 
     ///
-    F variance(F = T)(bool isPopulation) const @property
+    F variance(F = T)(bool isPopulation) @property
     {
         if (isPopulation == false)
             return cast(F) sumOfSquares.sum / cast(F) (count - 1) - 
@@ -2151,7 +2148,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() const @property
+    size_t count() @property
     {
         return meanAccumulator.count;
     }
@@ -2365,7 +2362,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() const @property
+    size_t count() @property
     {
         return meanAccumulator.count;
     }
@@ -2488,7 +2485,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     private size_t _count;
     
     ///
-    size_t count() const @property
+    size_t count() @property
     {
         return _count;
     }
