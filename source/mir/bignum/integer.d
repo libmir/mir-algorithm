@@ -392,7 +392,7 @@ struct BigInt(uint maxSize64)
 
 
     // TODO
-    ref modPow(scope BigUIntView!(const size_t) exponent, scope ref const BigInt modulus)
+    ref modPow()(scope BigUIntView!(const size_t) exponent, scope ref const BigInt modulus)
         @safe pure nothrow @nogc return scope
     {
         pragma(inline, false);
@@ -406,9 +406,9 @@ struct BigInt(uint maxSize64)
             return this;
         }
 
-        BigInt!256 bas = void;
+        BigInt!(maxSize64 * 2) bas = void;
         bas = this;
-        BigInt!256 res = void;
+        BigInt!(maxSize64 * 2) res = void;
         res = 1u;
 
         auto expBits = exponent.leastSignificantFirst.bitwise;
@@ -870,7 +870,7 @@ unittest
         assert((a %= b) == 0xDEADBEEF);
     }
 
-    void test(const long av, const long bv)
+    void test(const int av, const int bv)
     {
         auto a = BigInt!4(av);
         const b = BigInt!4(bv);

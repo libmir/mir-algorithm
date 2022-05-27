@@ -370,7 +370,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() scope const
+    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
         import mir.bignum.fp;
@@ -394,7 +394,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     ///
     @safe
-    T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() scope const
+    T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() const
         if (internalRoundLastBits < size_t.sizeof * 8 && (size_t.sizeof >= W.sizeof || endian == TargetEndian))
     {
         static if (isMutable!W)
@@ -1481,7 +1481,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///ditto
-    BigUIntView!(const W, endian) normalized() scope const
+    BigUIntView!(const W, endian) normalized() const
     {
         return lightConst.normalized;
     }
@@ -1497,7 +1497,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    size_t ctlz()() scope const @property
+    size_t ctlz()() const @property
         @safe pure nothrow @nogc
     {
         import mir.bitop: ctlz;
@@ -1520,7 +1520,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    size_t cttz()() scope const @property
+    size_t cttz()() const @property
         @safe pure nothrow @nogc
     {
         import mir.bitop: cttz;
@@ -1553,7 +1553,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Returns: true on success
     +/
     bool get(U)(scope out U value)
-        @safe pure nothrow @nogc scope const
+        @safe pure nothrow @nogc const
         if (isUnsigned!U)
     {
         auto d = lightConst.mostSignificantFirst;
@@ -1921,7 +1921,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() scope const
+    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
         auto ret = this.unsigned.opCast!(T, wordNormalized, nonZero);
@@ -1971,7 +1971,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    T opCast(T, bool nonZero = false)() scope const
+    T opCast(T, bool nonZero = false)() const
         if (is(T == long) || is(T == int))
     {
         auto ret = this.unsigned.opCast!(Unsigned!T, nonZero);
@@ -2104,7 +2104,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() scope const
+    T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() const
         if (internalRoundLastBits < size_t.sizeof * 8 && (size_t.sizeof >= W.sizeof || endian == TargetEndian))
     {
         auto ret = unsigned.opCast!(Fp!coefficientSize, internalRoundLastBits, wordNormalized, nonZero);
@@ -3003,7 +3003,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
     Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.
     +/
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() scope const
+    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
         version(LDC)
