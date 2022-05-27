@@ -444,7 +444,8 @@ struct BigInt(uint maxSize64)
         BigInt!3 m = 100;
 
         x.powMod(e, m);
-        assert(x == 24);
+        import mir.format;
+        assert(x == 24, x.text);
     }
 
     ///

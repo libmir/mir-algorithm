@@ -201,10 +201,10 @@ private U addKernel(string op, U, C, A)(
     return overflow;
 }
 
-void multiply(
-    BigUIntView!size_t _c,
-    BigUIntView!(const size_t) _a,
-    BigUIntView!(const size_t) _b,
+void multiply(U)(
+    BigUIntView!U _c,
+    BigUIntView!(const U) _a,
+    BigUIntView!(const U) _b,
 )
     @trusted pure nothrow @nogc
 {
@@ -240,11 +240,10 @@ void multiply(
         size_t j;
         import mir.utility: min;
         auto length = min(a.length, c.length);
-        auto overflow = multiplyAddKernel!("+", size_t)(c[0 .. length], a[0 .. length], b.front);
+        auto overflow = multiplyAddKernel!("+", U)(c[0 .. length], a[0 .. length], b.front);
         if (length < c.length)
-            c[a.length] = overflow;
+            c[length] = overflow;
 
-    skipOverflow:
         c.popFront;
         b.popFront;
     }
