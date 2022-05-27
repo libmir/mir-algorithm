@@ -403,10 +403,10 @@ struct UInt(size_t size)
         rhs = unsigned value to divide by
     Returns: quotient, sets `rhs` to remainder
     +/ 
-    ref divRem(size_t rhsSize)(scope ref UInt!rhsSize rhs)
+    ref divMod(size_t rhsSize)(scope ref UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        import mir.bignum.low_level_view : divm, BigUIntView;
+        import mir.bignum.low_level_view : divMod, BigUIntView;
 
         UInt!size quotient;
 
@@ -416,7 +416,7 @@ struct UInt(size_t size)
         divisorV = divisorV.normalized;
         dividendV = dividendV.normalized;
 
-        divm(dividendV, divisorV, quotientV);
+        divMod(dividendV, divisorV, quotientV);
         rhs = cast(UInt!rhsSize) this;
         this = quotient;
 
@@ -433,7 +433,7 @@ struct UInt(size_t size)
     ref opOpAssign(string op : "/", size_t rhsSize)(UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        return divRem(rhs);
+        return this.divMod(rhs);
     }
 
     /// ditto
@@ -453,7 +453,7 @@ struct UInt(size_t size)
     ref opOpAssign(string op : "%", size_t rhsSize)(UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        divRem(rhs);
+        this.divMod(rhs);
         this = cast(UInt!size)rhs;
     }
 

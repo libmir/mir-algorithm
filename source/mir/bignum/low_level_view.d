@@ -122,16 +122,136 @@ version(mir_bignum_test)
     assert(ceilLog10Exp2(10UL) == 4); // ulong
 }
 
-// size_t mulm(scope BigUIntView!size_t _c, scope BigUIntView!(const size_t) _a, scope BigUIntView!(const size_t) _b)
-//     @trusted pure nothrow @nogc
-//     in (_c.length >= _a.length * _b.length)
-// {
-//     if (_a.length == 0 || _b.length == 0)
-//         return 0;
-//     auto a = _a.leastSignificantFirst;
-//     auto b = _b.leastSignificantFirst;
-//     auto c = _c.leastSignificantFirst;
-// }
+private U multiplyAddKernel(string op, U, C, A)(
+    scope C c,
+    scope A a,
+    U b,
+    U overflow = 0,
+)
+    @trusted pure nothrow @nogc
+    if (op == "+" || op == "-")
+    in (a.length == c.length)
+{
+    size_t j;
+    do
+    {
+        import mir.checkedint: addu;
+        import mir.utility: extMul;
+
+        //(n - 1) ^ 2 + overflow + n - 1 <= n ^ 2 - 1
+        // n ^ 2 - 2n + 1 + n - 1 + overflow <= n ^ 2 - 1
+        // - n + overflow <= - 1
+        // overflow <= n - 1
+        auto ext = a.front.extMul(b);
+        {
+            bool bit;
+            ext.low = ext.low.addu(overflow, bit);
+            assert(ext.high < ext.high.max);
+            ext.high += bit;
+        }
+        {
+            bool bit;
+            c.front = c.front.cop!op(ext.low, bit);
+            assert(bit == 0 || ext.high < ext.high.max);
+            overflow = ext.high + bit;
+        }
+
+        a.popFront;
+        c.popFront;
+    }
+    while(c.length);
+    return overflow;
+}
+
+private U addKernel(string op, U, C, A)(
+    scope C c,
+    scope A a,
+    U overflow = 0,
+)
+    @trusted pure nothrow @nogc
+    if (op == "+" || op == "-")
+    in (a.length == c.length)
+{
+    size_t j;
+    do
+    {
+        import mir.checkedint: addu;
+        import mir.utility: extMul;
+
+        //(n - 1) ^ 2 + overflow + n - 1 <= n ^ 2 - 1
+        // n ^ 2 - 2n + 1 + n - 1 + overflow <= n ^ 2 - 1
+        // - n + overflow <= - 1
+        // overflow <= n - 1
+        auto ext = a.front;
+        {
+            bool bit;
+            ext = ext.addu(overflow, bit);
+            overflow = bit;
+        }
+        {
+            bool bit;
+            c.front = c.front.cop!op(ext, bit);
+            overflow += bit;
+        }
+
+        a.popFront;
+        c.popFront;
+    }
+    while(c.length);
+    return overflow;
+}
+
+void multiply(
+    BigUIntView!size_t _c,
+    BigUIntView!(const size_t) _a,
+    BigUIntView!(const size_t) _b,
+)
+    @trusted pure nothrow @nogc
+{
+    pragma (inline, false);
+
+    auto a = _a.leastSignificantFirst;
+    auto b = _b.leastSignificantFirst;
+    auto c = _c.leastSignificantFirst;
+
+    if (a.length < b.length)
+    {
+        auto t = a;
+        a = b;
+        b = t;
+    }
+
+    if (a.length > c.length)
+        a = a[0 .. c.length];
+
+    if (b.length > c.length)
+        b = b[0 .. c.length];
+
+    if (b.length == 0)
+        return;
+
+    assert(a.length);
+    assert(b.length);
+    assert(c.length);
+    c[0 .. a.length] = 0;
+
+    do
+    {
+        size_t j;
+        import mir.utility: min;
+        auto length = min(a.length, c.length);
+        auto overflow = multiplyAddKernel!("+", size_t)(c[0 .. length], a[0 .. length], b.front);
+        if (length < c.length)
+            c[a.length] = overflow;
+
+    skipOverflow:
+        c.popFront;
+        b.popFront;
+    }
+    while(b.length);
+}
+
+
 
 /++
 Performs `q = u / v, u = u % v` (unsigned)
@@ -142,55 +262,41 @@ Params:
 Preconditions:
     * non-empty coefficients
     * little-endian order
-    * _u.coefficients.length >= _u.normalized.coefficients.length
-    * _q.coefficients.length >= (_u.normalized.coefficients.length - _v.normalized.coefficients.length) + 1
+    * _u.length >= _u.normalized.length
+    * _q.length >= (_u.normalized.length - _v.normalized.length) + 1
 +/
-size_t divm(scope BigUIntView!uint _u, scope BigUIntView!uint _v, scope BigUIntView!uint _q)
+size_t divMod(
+    BigUIntView!uint _u,
+    BigUIntView!uint _v,
+    BigUIntView!uint _q,
+)
     @trusted pure nothrow @nogc
-    in (_u.coefficients.length == 0 || _u.mostSignificant)
-    in (_v.coefficients.length)
+    in (_u.length == 0 || _u.mostSignificant)
+    in (_v.length)
     in (_v.mostSignificant)
-    in (sizediff_t(_q.coefficients.length) >= sizediff_t(_u.coefficients.length - _v.coefficients.length + 1))
+    in (sizediff_t(_q.length) >= sizediff_t(_u.length - _v.length + 1))
 {
-    // Adopted from Hacker's Delight (2nd Edition), 4-2
-    // License permits inclusion:
-    // You are free to use, copy, and distribute any of the code on this web site, whether modified by you or not.
-    // You need not give attribution. This includes the algorithms (some of which appear in Hacker's Delight), the Hacker's Assistant, and any code submitted by readers. Submitters implicitly agree to this.
-    // The textural material and pictures are copyright by the author, and the usual copyright rules apply. E.g., you may store the material on your computer and make hard or soft copies for your own use.
-    // However, you may not incorporate this material into another publication without written permission from the author (which the author may give by email).
-    // The author has taken care in the preparation of this material, but makes no expressed or implied warranty of any kind and assumes no responsibility for errors or omissions.
-    // No liability is assumed for incidental or consequential damages in connection with or arising out of the use of the information or programs contained herein. 
+    pragma (inline, false);
+
     import mir.bitop: ctlz;
     import mir.utility: _expect;
 
-    // Convert all of our input arguments to little-endian
     size_t m = _u.coefficients.length;
     size_t n = _v.coefficients.length;
     auto u = _u.leastSignificantFirst();
     auto v = _v.leastSignificantFirst();
     auto q = _q.leastSignificantFirst();
 
-
-    // Handle a common edge case with division (where the dividend is smaller then the divisor)
-    // We don't care about how big the quotient array is here (and in fact, our math will fail)
-    // since we just dump the dividend into the remainder 
-    if (_expect(m < n, false))
-    {
+    if (m < n)
         return 0;
-    }
 
-    // From this point on, now we care if the quotient array is appropriately sized
-
-    // According to Knuth, when the divisor length is equal to one,
-    // we should fall back to a simplified algorithm
     sizediff_t lastQ = -1;
-    if (_expect(n == 1, false))
+    if (n == 1)
     {
         uint k = 0;
         uint d = v[0];
         foreach_reverse(j; 0 .. m)
         {
-            // Same optimization as down below (left-shifting / ORing in place of multiplication / addition)
             auto ut = (cast(ulong)k << 32) | u[j]; 
             q[j] = cast(uint)(ut / d);
             k = ut % d;
@@ -203,88 +309,60 @@ size_t divm(scope BigUIntView!uint _u, scope BigUIntView!uint _v, scope BigUIntV
     }
     else
     {
-        // pre-condition for this algorithm to succeed.
-        // assert(m >= n, "failed algorithm pre-condition");
-
-        // D1: Normalize
-        // In TAOCP, this is specified as b/(v[n - 1] + 1)
         auto s = cast(uint)ctlz(v[n - 1]);
         assert(s <= 31 && s >= 0);
 
-        // This normally uses a for loop, but we just use
-        // a LLV primitive here instead.
         uint umn = s ? _u.mostSignificant >> (32 - s) : 0;
         _u.smallLeftShiftInPlace(s);
         _v.smallLeftShiftInPlace(s);
+
+        uint vhi = v[$ - 1];
+        uint vlo = v[$ - 2];
 
         uint* ujnp = &umn;
         ref uint ujn() @property { return *ujnp; }
         size_t j = m - n;
         do
         {
-            // D3: Calculate qhat, rhat == remainder
-            // In TOACP, this is specified as ujn*b + u[j + n - 1] / v[n - 1]
-            // but, since we assume b is a power of 2, we can rewrite it to just
-            // use left-shifting (as left-shifting effectively multiples by powers of 2)
-            // and use an OR in place of the addition (as we've cleared the bottom 32 bits)
-
-            auto ut = ((cast(ulong) ujn << 32) | u[j + n - 1]); 
-            ulong qhat = ut / v[n - 1];
-            ulong rhat = ut % v[n - 1];
-
-            // Similarly here, this is specified as qhat*v[n - 2] > rhat*b + u[j + n - 2]
-            // but we can just get away with a shift instead.
-            while (qhat >= uint.max || qhat * v[n - 2] > (rhat << 32) + u[j + n - 2])
+            uint qhat;
+            if (ujn == vhi)
             {
-                qhat -= 1;
-                rhat += v[n - 1];
+                qhat = uint.max;
+            }
+            else
+            {
+                uint ulo = u[j + n - 2];
 
-                if (rhat > uint.max)
+                ulong uu = (cast(ulong) ujn << 32) | u[j + n - 1];
+                immutable bigqhat = uu / vhi;
+                ulong rhat =  uu - bigqhat * vhi;
+                qhat = cast(uint) bigqhat;
+    again:
+                if (cast(ulong) qhat * vlo > ((rhat << 32) + ulo))
                 {
-                    break;
+                    --qhat;
+                    rhat += vhi;
+                    if (!(rhat & 0xFFFF_FFFF_0000_0000L))
+                        goto again;
                 }
             }
-
-            long t = 0, k = 0;
-            // D4: Multiply and subtract
-            size_t i;
-            do
-            {
-                ulong p = qhat * v[i];
-                // t = u[i + j] - k - (p & cast(uint)((ulong(1) << 32) - 1));
-                t = u[i + j] - k - cast(uint) p;
-                u[i + j] = cast(uint) t;
-                k = (p >> 32) - (t >> 32);
-            }
-            while(++i < n);
             
-            t = ujn - k;
-            // These are admittedly super sketchy casts, but
-            // we really are only interested in the bottom 32-bits here.
-            ujn = cast(uint) t;
-            q[j] = cast(uint) qhat;
-            // D5: Test remainder
-            if (_expect(t < 0, false))
+            uint overflow = multiplyAddKernel!("-", uint)(u[j .. j + n], v, qhat);
+
+            if (ujn < overflow)
             {
-                q[j] -= 1;
-                k = 0;
-                i = 0;
-                do
-                {
-                    t = cast(ulong) u[i + j] + v[i] + k;
-                    u[i + j] = cast(uint) t;
-                    k = t >> 32;
-                }
-                while(++i < n);
-                ujn = cast(uint) (ujn + k);
+                --qhat;
+                overflow -= addKernel!("+", uint)(u[j .. j + n], v);
             }
-            if (lastQ == -1 && q[j])
+
+            if (lastQ == -1 && qhat)
                 lastQ = j;
+            q[j] = cast(uint) qhat;
+            ujn -= overflow;
             ujnp = &u[j - 1 + n];
         }
         while(j--);
 
-        // D8: Un-normalize (obtain the remainder)
         _u.smallRightShiftInPlace(s);
         _u.mostSignificant |= s ? umn << (32 - s) : 0;
         // _v.smallRightShiftInPlace(s);
@@ -307,7 +385,7 @@ unittest
         auto quotient = BigUIntView!uint.fromHexString("0");
         // auto remainder = BigUIntView!uint.fromHexString("0");
 
-        divm(dividend, divisor, quotient);
+        divMod(dividend, divisor, quotient);
         assert(quotient == BigUIntView!uint.fromHexString("1"));
     }
 
@@ -316,7 +394,7 @@ unittest
         auto dividend = BigUIntView!uint.fromHexString("55a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf");
         auto divisor = BigUIntView!uint.fromHexString("5");
         auto quotient = BigUIntView!uint.fromHexString("0000000000000000000000000000000000000000000000000000000000000000");
-        divm(dividend, divisor, quotient);
+        divMod(dividend, divisor, quotient);
         assert(dividend.normalized == BigUIntView!uint.fromHexString("3"));
         assert(quotient == BigUIntView!uint.fromHexString("1120a1229e8a217d0691b02b819107174a4b677088ef0df874259b283c1d588c"));
     }
@@ -328,7 +406,7 @@ unittest
         auto quotient = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000");
         // auto remainder = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
 
-        divm(dividend, divisor, quotient);
+        divMod(dividend, divisor, quotient);
         assert(quotient.normalized == BigUIntView!uint.fromHexString("ff3a8aa4da35237811a0ffbf007fe938630dee8a810f2f82ae01f80c033291f6"));
         assert(dividend.normalized == BigUIntView!uint.fromHexString("27926263cf248bef1c2cd63ea004d9f7041bffc8568560ec30fc9a9548057857"));
     }
@@ -339,7 +417,7 @@ unittest
         auto divisor = BigUIntView!uint.fromHexString("200000000000000000000001");
         auto quotient = BigUIntView!uint.fromHexString("0");
         // auto remainder = BigUIntView!uint.fromHexString("000000000000000000000000");
-        divm(dividend, divisor, quotient);
+        divMod(dividend, divisor, quotient);
         assert(quotient == BigUIntView!uint.fromHexString("3"));
         assert(dividend == BigUIntView!uint.fromHexString("200000000000000000000000"));
     }
@@ -364,9 +442,17 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Retrurns: signed integer view using the same data payload
     +/
-    BigIntView!(W, endian) signed()() @safe pure nothrow @nogc scope @property
+    size_t length()() @safe pure nothrow @nogc const @property
     {
-        return typeof(return)(this);
+        return coefficients.length;
+    }
+
+    /++
+    Retrurns: signed integer view using the same data payload
+    +/
+    BigIntView!(W, endian) signed()(bool sign = false) @safe pure nothrow @nogc scope @property
+    {
+        return typeof(return)(this, sign);
     }
 
     ///
@@ -661,7 +747,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    sizediff_t opCmp(scope BigUIntView!(const W, endian) rhs)
+    sizediff_t opCmp(BigUIntView!(const W, endian) rhs)
         const @safe pure nothrow @nogc scope
     {
         import mir.algorithm.iteration: cmp;
@@ -673,7 +759,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    bool opEquals(scope BigUIntView!(const W, endian) rhs)
+    bool opEquals(BigUIntView!(const W, endian) rhs)
         const @safe pure nothrow @nogc scope
     {
         return this.coefficients == rhs.coefficients;
@@ -1181,7 +1267,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Returns:
         true in case of unsigned overflow
     +/
-    bool opOpAssign(string op)(scope BigUIntView!(const W, endian) rhs, bool overflow = false)
+    bool opOpAssign(string op)(BigUIntView!(const W, endian) rhs, bool overflow = false)
     @safe pure nothrow @nogc scope
         if (op == "+" || op == "-")
     {
@@ -1459,7 +1545,6 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     +/
     BigUIntView normalized()
     {
-        pragma(inline, false);
         auto number = this;
         if (number.coefficients.length) do
         {
@@ -2254,7 +2339,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     static if (isMutable!W && W.sizeof >= 4)
     /// ditto
-    bool opOpAssign(string op)(scope BigUIntView!(const W, endian) rhs, bool overflow = false)
+    bool opOpAssign(string op)(BigUIntView!(const W, endian) rhs, bool overflow = false)
     @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {

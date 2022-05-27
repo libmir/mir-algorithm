@@ -26,7 +26,7 @@ struct BigInt(uint maxSize64)
     ///
     uint length;
     ///
-    size_t[ulong.sizeof / size_t.sizeof * maxSize64] data = void;
+    size_t[ulong.sizeof / size_t.sizeof * maxSize64] data;// = void;
 
     ///
     this(uint size)(UInt!size fixedInt)
@@ -86,7 +86,6 @@ struct BigInt(uint maxSize64)
 
     ///
     this()(scope const(char)[] str) @safe pure @nogc
-        // if (isSomeChar!C)
     {
         if (fromStringImpl(str))
             return;
@@ -105,6 +104,7 @@ struct BigInt(uint maxSize64)
     ///
     ref opAssign(ulong data) return
     {
+        this.sign = 0;
         static if (size_t.sizeof == ulong.sizeof)
         {
             length = 1;
@@ -390,9 +390,17 @@ struct BigInt(uint maxSize64)
         }
     }
 
+    /++
+    +/
+    ref powMod(uint expSize)(scope ref const BigInt!expSize exponent, scope ref const BigInt modulus)
+        @safe pure nothrow @nogc return scope
+        in(!exponent.sign)
+    {
+        return this.powMod(exponent.view.unsigned, modulus);
+    }
 
-    // TODO
-    ref modPow()(scope BigUIntView!(const size_t) exponent, scope ref const BigInt modulus)
+    ///ditto
+    ref powMod()(scope BigUIntView!(const size_t) exponent, scope ref const BigInt modulus)
         @safe pure nothrow @nogc return scope
     {
         pragma(inline, false);
@@ -411,32 +419,75 @@ struct BigInt(uint maxSize64)
         BigInt!(maxSize64 * 2) res = void;
         res = 1u;
 
-        auto expBits = exponent.leastSignificantFirst.bitwise;
-        expBits.popBackN(exponent.ctlz);
-
-        while (expBits.length)
+        foreach (b; exponent.leastSignificantFirst.bitwise[0 .. $ - exponent.ctlz])
         {
             bas %= modulus;
-            if (expBits.front)
+            if (b)
             {
-                // res *= bas;
+                res *= bas;
                 res %= modulus;
             }
-            expBits.popBack;
-            // bas *= bas;
+            bas *= bas;
         }
+
         this = res;
         return this;
     }
 
+    ///
+    static if (maxSize64 == 3)
+    version (mir_bignum_test)
+    unittest
+    {
+        BigInt!3 x = 2;
+        BigInt!3 e = 10;
+        BigInt!3 m = 100;
+
+        x.powMod(e, m);
+        assert(x == 24);
+    }
+
+    ///
+    static if (maxSize64 == 3)
+    version (mir_bignum_test)
+    unittest
+    {
+        BigInt!3 x = 564321;
+        BigInt!3 e = "13763753091226345046315979581580902400000310";
+        BigInt!3 m = "13763753091226345046315979581580902400000311";
+
+        x.powMod(e, m);
+        assert(x == 1);
+    }
+
     /++
     +/
-    ref divRem(uint rhsSize64)(
-        scope ref const BigInt!rhsSize64 divisor,
-        scope ref BigInt quotient)
-        @trusted pure nothrow @nogc
+    ref multiply(uint aSize64, uint bSize64)
+    (
+        scope ref const BigInt!aSize64 a,
+        scope ref const BigInt!bSize64 b,
+    )
+        @safe pure nothrow @nogc scope return
     {
-        import mir.bignum.low_level_view : divm, BigUIntView;
+        import mir.utility: max;
+        import mir.bignum.low_level_view : multiply;
+
+        this.length = this.data.length;
+        multiply(this.view.unsigned, a.view.unsigned, b.view.unsigned);
+        this.length = this.length.min(a.length + b.length);
+        this.length -= this.length && !this.view.unsigned.mostSignificant;
+        this.sign = (this.length != 0) & (a.sign ^ b.sign);
+        return this;
+    }
+
+    ref divMod(uint rhsSize64)
+    (
+        scope ref const BigInt!rhsSize64 divisor,
+        scope ref BigInt quotient
+    )
+        @trusted pure nothrow @nogc scope return
+    {
+        import mir.bignum.low_level_view : divMod, BigUIntView;
 
         pragma(inline, false);
 
@@ -455,7 +506,7 @@ struct BigInt(uint maxSize64)
         BigInt!(min(rhsSize64, maxSize64)) _divisor = void;
         _divisor = divisor;
 
-        quotient.length = cast(uint) divm(
+        quotient.length = cast(uint) divMod(
             this.divmView,
             _divisor.divmView,
             cast(BigUIntView!uint) quotient.view.unsigned,
@@ -480,7 +531,7 @@ struct BigInt(uint maxSize64)
     }
 
     /++
-    Performs `this %= rhs` and `this /= rhs` operation.
+    Performs `this %= rhs` and `this /= rhs` operations.
     Params:
         rhs = value to divide by
     Returns:
@@ -490,12 +541,39 @@ struct BigInt(uint maxSize64)
         @safe pure nothrow @nogc return
         if (op == "/" || op == "%")
     {
-        import mir.bignum.low_level_view : divm, BigUIntView;
         BigInt quotient = void;
-        divRem(rhs, quotient);
+        this.divMod(rhs, quotient);
         static if (op == "/")
             this = quotient;
         return this;
+    }
+
+    /++
+    Performs `this %= rhs` and `this /= rhs` operations.
+    Params:
+        rhs = value to divide by
+    Returns:
+        remainder or quotient from the truncated division
+    +/
+    ref opOpAssign(string op : "*", size_t rhsSize64)(scope const ref BigInt!rhsSize64 rhs)
+        @safe pure nothrow @nogc return
+    {
+        BigInt c = void;
+        c.multiply(this, rhs);
+        this = c;
+        return this;
+    }
+
+    ///
+    static if (maxSize64 == 3)
+    version (mir_bignum_test)
+    unittest
+    {
+        BigInt!32 x = "236089459999051800787306800176765276560685597708945239133346035689205694959466543423391020917332149321603397284295007899190053323478336179162578944";
+        BigInt!32 y = "19095614279677503764429420557677401943131308638097701560446870251856566051181587499424174939645900335127490246389509326965738171086235365599977209919032320327138167362675030414072140005376";
+        BigInt!32 z = "4508273263639244391466225874448166762388283627989411942887789415132291146444880491003321910228134369483394456858712486391978856464207606191606690798518090459546799016472580324664149788791167494389789813815605288815981925073283892089331019170542792502117265455020551819803771537458327634120582677504637693661973404860326560198184402944";
+        x *= y;
+        assert(x == z);
     }
 
     /++
@@ -544,6 +622,43 @@ struct BigInt(uint maxSize64)
         }
         return overflow;
     }
+
+    /// ditto
+    bool opOpAssign(string op)(ulong rhs)
+        @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        import mir.ndslice.bignum.fixed: UInt;
+        return this.opOpAssign!op(rhs.UInt!64.view.signed);
+    }
+
+    /// ditto
+    bool opOpAssign(string op)(uint rhs)
+        @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        return this.opOpAssign!op(ulong(rhs));
+    }
+
+    /// ditto
+    bool opOpAssign(string op)(long rhs)
+        @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        import mir.bignum.fixed: UInt;
+        auto sign = rhs < 0;
+        rhs = sign ? -rhs : rhs;
+        return this.opOpAssign!op(rhs.UInt!64.view.normalized.signed(sign));
+    }
+
+    /// ditto
+    bool opOpAssign(string op)(int rhs)
+        @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        return this.opOpAssign!op(long(rhs));
+    }
+
     /++
     +/
     static BigInt fromHexString(bool allowUnderscores = false)(scope const(char)[] str)
