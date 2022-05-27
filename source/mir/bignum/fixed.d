@@ -401,40 +401,26 @@ struct UInt(size_t size)
     Performs division & extracts the remainder.
     Params:
         rhs = unsigned value to divide by
-    Returns:
-        unsigned remainder value
+    Returns: quotient, sets `rhs` to remainder
     +/ 
-    auto divRem(size_t rhsSize)(const UInt!rhsSize rhs)
-        @safe pure nothrow @nogc scope const
+    ref divRem(size_t rhsSize)(scope ref UInt!rhsSize rhs)
+        @safe pure nothrow @nogc scope return
     {
         import mir.bignum.low_level_view : divm, BigUIntView;
 
-        enum m = (size / (uint.sizeof * 8)), n = (rhsSize / (uint.sizeof * 8));
+        UInt!size quotient;
 
-        static struct QuotientAndRemainder
-        {
-            // XXX: we have to assume the quotient size here,
-            // checking at runtime would be more accurate for better space savings
-            UInt!size quotient;
-            UInt!rhsSize remainder;
-        }
+        BigUIntView!uint dividendV = cast(BigUIntView!uint) this.view;
+        BigUIntView!uint divisorV = cast(BigUIntView!uint) rhs.view;
+        BigUIntView!uint quotientV = cast(BigUIntView!uint) quotient.view;
+        divisorV = divisorV.normalized;
+        dividendV = dividendV.normalized;
 
-        QuotientAndRemainder val;
+        divm(dividendV, divisorV, quotientV);
+        rhs = cast(UInt!rhsSize) this;
+        this = quotient;
 
-        uint[m + 1] _div = void;
-        // shouldn't be unaligned here -- maybe a possibility though
-        _div[$ - 1] = 0;
-        _div[0 .. $ - 1] = (cast(uint[data.sizeof / 4])data);
-
-        BigUIntView!uint dividend = BigUIntView!uint(_div);
-        BigUIntView!uint divisor = cast(BigUIntView!uint)rhs.view;
-        BigUIntView!uint quotient = cast(BigUIntView!uint)val.quotient.view;
-        divm(dividend, divisor, quotient);
-
-        BigUIntView!uint remainder = cast(BigUIntView!uint)val.remainder.view;
-        remainder.coefficients[0 .. $] = (cast(uint[])_div)[0 .. remainder.coefficients.length];
-
-        return val;
+        return this;
     }
 
     /++
@@ -447,10 +433,7 @@ struct UInt(size_t size)
     ref opOpAssign(string op : "/", size_t rhsSize)(UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        auto result = divRem(rhs);
-        // XXX: fix this if we manage to calculate the quotient size better
-        this.data = result.quotient.data;
-        return this;
+        return divRem(rhs);
     }
 
     /// ditto
@@ -470,11 +453,8 @@ struct UInt(size_t size)
     ref opOpAssign(string op : "%", size_t rhsSize)(UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        auto result = divRem(rhs);
-        this.data = 0;
-        // We ensure that size >= rhsSize, so this is fine
-        this.data[0 .. result.remainder.data.length] = result.remainder.data;
-        return this;
+        divRem(rhs);
+        this = cast(UInt!size)rhs;
     }
 
     /// ditto
@@ -792,6 +772,30 @@ struct UInt(size_t size)
         else
         {
             return d.front | (ulong(d[1]) << 32);
+        }
+    }
+
+    /++
+    +/
+    T opCast(T)() const @safe pure nothrow @nogc
+        if (is(T == UInt!newSize, uint newSize))
+    {
+        enum newLength = typeof(return).data.length;
+        static if (newLength <= data.length)
+        {
+            version (LittleEndian)
+                return typeof(return)(data[0 .. newLength]);
+            else
+                return typeof(return)(data[$ - newLength .. $]);
+        }
+        else
+        {
+            typeof(return) ret;
+            version (LittleEndian)
+                ret.data[0 .. data.length] = data;
+            else
+                ret.data[$ - data.length .. $] = data;
+            return ret;
         }
     }
 

@@ -122,6 +122,17 @@ version(mir_bignum_test)
     assert(ceilLog10Exp2(10UL) == 4); // ulong
 }
 
+// size_t mulm(scope BigUIntView!size_t _c, scope BigUIntView!(const size_t) _a, scope BigUIntView!(const size_t) _b)
+//     @trusted pure nothrow @nogc
+//     in (_c.length >= _a.length * _b.length)
+// {
+//     if (_a.length == 0 || _b.length == 0)
+//         return 0;
+//     auto a = _a.leastSignificantFirst;
+//     auto b = _b.leastSignificantFirst;
+//     auto c = _c.leastSignificantFirst;
+// }
+
 /++
 Performs `q = u / v, u = u % v` (unsigned)
 Params:
@@ -131,12 +142,15 @@ Params:
 Preconditions:
     * non-empty coefficients
     * little-endian order
-    * _u.coefficients.length >= _u.normalized.coefficients.length + 1
-    * _v.coefficients.length >= _v.normalized.coefficients.length
+    * _u.coefficients.length >= _u.normalized.coefficients.length
     * _q.coefficients.length >= (_u.normalized.coefficients.length - _v.normalized.coefficients.length) + 1
 +/
-void divm(scope ref BigUIntView!uint _u, scope BigUIntView!uint _v, scope ref BigUIntView!uint _q)
+size_t divm(scope BigUIntView!uint _u, scope BigUIntView!uint _v, scope BigUIntView!uint _q)
     @trusted pure nothrow @nogc
+    in (_u.coefficients.length == 0 || _u.mostSignificant)
+    in (_v.coefficients.length)
+    in (_v.mostSignificant)
+    in (sizediff_t(_q.coefficients.length) >= sizediff_t(_u.coefficients.length - _v.coefficients.length + 1))
 {
     // Adopted from Hacker's Delight (2nd Edition), 4-2
     // License permits inclusion:
@@ -149,45 +163,43 @@ void divm(scope ref BigUIntView!uint _u, scope BigUIntView!uint _v, scope ref Bi
     import mir.bitop: ctlz;
     import mir.utility: _expect;
 
-    enum shift = (uint.sizeof * 8);
-
     // Convert all of our input arguments to little-endian
+    size_t m = _u.coefficients.length;
+    size_t n = _v.coefficients.length;
     auto u = _u.leastSignificantFirst();
     auto v = _v.leastSignificantFirst();
     auto q = _q.leastSignificantFirst();
-    size_t m = _u.normalized.coefficients.length, n = _v.normalized.coefficients.length;
 
-    assert(m != 0 && n != 0);
-    assert(_u.coefficients.length >= m + 1, "Dividend array is too small (should be m+1)");
-    assert(_v.coefficients.length >= n, "Divisor array is too small");
-    assert(v[n - 1] != 0);
 
     // Handle a common edge case with division (where the dividend is smaller then the divisor)
     // We don't care about how big the quotient array is here (and in fact, our math will fail)
     // since we just dump the dividend into the remainder 
     if (_expect(m < n, false))
     {
-        _u.coefficients = _u.normalized.coefficients;
-        return;
+        return 0;
     }
 
     // From this point on, now we care if the quotient array is appropriately sized
-    assert(_q.coefficients.length >= (m - n) + 1, "Quotient array is too small");
 
     // According to Knuth, when the divisor length is equal to one,
     // we should fall back to a simplified algorithm
+    sizediff_t lastQ = -1;
     if (_expect(n == 1, false))
     {
         uint k = 0;
+        uint d = v[0];
         foreach_reverse(j; 0 .. m)
         {
             // Same optimization as down below (left-shifting / ORing in place of multiplication / addition)
-            auto ut = ((cast(ulong)(k) << shift) | u[j]); 
-            q[j] = cast(uint)(ut / v[0]);
-            k = cast(uint)(ut % v[0]);
+            auto ut = (cast(ulong)k << 32) | u[j]; 
+            q[j] = cast(uint)(ut / d);
+            k = ut % d;
             u[j] = 0;
+            if (lastQ == -1 && q[j])
+                lastQ = j;
         }
-        _u.leastSignificant = k;
+        u[0] = k;
+        _u = _u.topLeastSignificantPart(k != 0);
     }
     else
     {
@@ -201,23 +213,28 @@ void divm(scope ref BigUIntView!uint _u, scope BigUIntView!uint _v, scope ref Bi
 
         // This normally uses a for loop, but we just use
         // a LLV primitive here instead.
-        _v.smallLeftShiftInPlace(s);
+        uint umn = s ? _u.mostSignificant >> (32 - s) : 0;
         _u.smallLeftShiftInPlace(s);
+        _v.smallLeftShiftInPlace(s);
 
-        foreach_reverse(j; 0 .. (m - n) + 1)
+        uint* ujnp = &umn;
+        ref uint ujn() @property { return *ujnp; }
+        size_t j = m - n;
+        do
         {
             // D3: Calculate qhat, rhat == remainder
-            // In TOACP, this is specified as u[j+n]*b + u[j+n-1] / v[n - 1]
+            // In TOACP, this is specified as ujn*b + u[j + n - 1] / v[n - 1]
             // but, since we assume b is a power of 2, we can rewrite it to just
             // use left-shifting (as left-shifting effectively multiples by powers of 2)
             // and use an OR in place of the addition (as we've cleared the bottom 32 bits)
-            auto ut = ((cast(ulong)(u[j+n]) << shift) | u[j + n - 1]); 
+
+            auto ut = ((cast(ulong) ujn << 32) | u[j + n - 1]); 
             ulong qhat = ut / v[n - 1];
             ulong rhat = ut % v[n - 1];
 
-            // Similarly here, this is specified as qhat*v[n-2] > rhat*b + u[j+n-2]
+            // Similarly here, this is specified as qhat*v[n - 2] > rhat*b + u[j + n - 2]
             // but we can just get away with a shift instead.
-            while (qhat >= uint.max || qhat*v[n-2] > (rhat << shift) + u[j+n-2])
+            while (qhat >= uint.max || qhat * v[n - 2] > (rhat << 32) + u[j + n - 2])
             {
                 qhat -= 1;
                 rhat += v[n - 1];
@@ -230,43 +247,50 @@ void divm(scope ref BigUIntView!uint _u, scope BigUIntView!uint _v, scope ref Bi
 
             long t = 0, k = 0;
             // D4: Multiply and subtract
-            foreach(i; 0 .. n)
+            size_t i;
+            do
             {
                 ulong p = qhat * v[i];
-                // t = u[i + j] - k - (p & cast(uint)((ulong(1) << shift) - 1));
-                t = u[i + j] - k - (cast(uint)p);
-                u[i + j] = cast(uint)t;
-                k = (p >> shift) - (t >> shift);
+                // t = u[i + j] - k - (p & cast(uint)((ulong(1) << 32) - 1));
+                t = u[i + j] - k - cast(uint) p;
+                u[i + j] = cast(uint) t;
+                k = (p >> 32) - (t >> 32);
             }
+            while(++i < n);
             
-            t = u[j + n] - k;
+            t = ujn - k;
             // These are admittedly super sketchy casts, but
             // we really are only interested in the bottom 32-bits here.
-            u[j + n] = cast(uint)t;
-            q[j] = cast(uint)(qhat);
+            ujn = cast(uint) t;
+            q[j] = cast(uint) qhat;
             // D5: Test remainder
             if (_expect(t < 0, false))
             {
                 q[j] -= 1;
                 k = 0;
-                foreach(i; 0 .. n)
+                i = 0;
+                do
                 {
-                    t = cast(ulong)(u[i + j]) + v[i] + k;
-                    u[i + j] = cast(uint)t;
-                    k = t >> shift;
+                    t = cast(ulong) u[i + j] + v[i] + k;
+                    u[i + j] = cast(uint) t;
+                    k = t >> 32;
                 }
-                u[j + n] = cast(uint)(u[j + n] + k);
+                while(++i < n);
+                ujn = cast(uint) (ujn + k);
             }
+            if (lastQ == -1 && q[j])
+                lastQ = j;
+            ujnp = &u[j - 1 + n];
         }
+        while(j--);
 
         // D8: Un-normalize (obtain the remainder)
         _u.smallRightShiftInPlace(s);
-        _v.smallRightShiftInPlace(s);
+        _u.mostSignificant |= s ? umn << (32 - s) : 0;
+        // _v.smallRightShiftInPlace(s);
     }
 
-    // Finally, normalize these when they're "headed out the door"
-    _u.coefficients = _u.normalized.coefficients;
-    _q.coefficients = _q.normalized.coefficients;
+    return lastQ + 1;
 }
 
 ///
@@ -278,19 +302,18 @@ unittest
 
     {
         // Test division by a single-digit divisor here.
-        auto dividend = BigUIntView!uint.fromHexString("000000005");
+        auto dividend = BigUIntView!uint.fromHexString("5");
         auto divisor = BigUIntView!uint.fromHexString("5");
         auto quotient = BigUIntView!uint.fromHexString("0");
         // auto remainder = BigUIntView!uint.fromHexString("0");
 
         divm(dividend, divisor, quotient);
         assert(quotient == BigUIntView!uint.fromHexString("1"));
-        assert(dividend.coefficients.length == 0);
     }
 
     {
         // Test division by a single-digit divisor here.
-        auto dividend = BigUIntView!uint.fromHexString("055a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf");
+        auto dividend = BigUIntView!uint.fromHexString("55a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf");
         auto divisor = BigUIntView!uint.fromHexString("5");
         auto quotient = BigUIntView!uint.fromHexString("0000000000000000000000000000000000000000000000000000000000000000");
         divm(dividend, divisor, quotient);
@@ -300,7 +323,7 @@ unittest
 
     // Test big number division
     {
-        auto dividend = BigUIntView!uint.fromHexString("055a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf0b5e2e2c7771cd472ae5d7acdb159a56fbf74f851a058ae341f69d1eb750d7e3");
+        auto dividend = BigUIntView!uint.fromHexString("55a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf0b5e2e2c7771cd472ae5d7acdb159a56fbf74f851a058ae341f69d1eb750d7e3");
         auto divisor = BigUIntView!uint.fromHexString("55e5669576d31726f4a9b58a90159de5923adc6c762ebd3c4ba518d495229072");
         auto quotient = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000");
         // auto remainder = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
@@ -312,7 +335,7 @@ unittest
 
     // Trigger the adding back sequence
     {
-        auto dividend = BigUIntView!uint.fromHexString("0800000000000000000000003");
+        auto dividend = BigUIntView!uint.fromHexString("800000000000000000000003");
         auto divisor = BigUIntView!uint.fromHexString("200000000000000000000001");
         auto quotient = BigUIntView!uint.fromHexString("0");
         // auto remainder = BigUIntView!uint.fromHexString("000000000000000000000000");
@@ -320,7 +343,6 @@ unittest
         assert(quotient == BigUIntView!uint.fromHexString("3"));
         assert(dividend == BigUIntView!uint.fromHexString("200000000000000000000000"));
     }
-    
 }
 
 /++
@@ -614,8 +636,15 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (endian == TargetEndian)
     ///
-    @trusted pure nothrow @nogc
-    BigUIntView!V opCast(T : BigUIntView!V, V)() return scope
+    pure nothrow @nogc
+    BigUIntView!V opCast(T : BigUIntView!V, V)()
+        if (V.sizeof <= W.sizeof)
+    {
+        return typeof(return)(cast(V[])this.coefficients);
+    }
+
+    pure nothrow @nogc
+    BigUIntView!V opCast(T : BigUIntView!V, V)() const
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(cast(V[])this.coefficients);
@@ -623,7 +652,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     ///
     BigUIntView!(const W, endian) lightConst()()
-        const @safe pure nothrow @nogc @property return scope
+        const @safe pure nothrow @nogc @property
     {
         return typeof(return)(coefficients);
     }
@@ -652,7 +681,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    ref inout(W) mostSignificant() inout @property return scope
+    ref inout(W) mostSignificant() inout @property
     {
         static if (endian == WordEndian.big)
             return coefficients[0];
@@ -662,7 +691,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    ref inout(W) leastSignificant() inout @property return scope
+    ref inout(W) leastSignificant() inout @property
     {
         static if (endian == WordEndian.little)
             return coefficients[0];
@@ -692,7 +721,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    BigUIntView topMostSignificantPart(size_t length) return scope
+    BigUIntView topMostSignificantPart(size_t length)
     {
         static if (endian == WordEndian.big)
             return BigUIntView(coefficients[0 .. length]);
@@ -702,7 +731,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    BigUIntView topLeastSignificantPart(size_t length) return scope
+    BigUIntView topLeastSignificantPart(size_t length)
     {
         static if (endian == WordEndian.little)
             return BigUIntView(coefficients[0 .. length]);
@@ -1329,7 +1358,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Returns: the same intger view with inversed sign
     +/
-    BigIntView!(W, endian) opUnary(string op : "-")() return scope
+    BigIntView!(W, endian) opUnary(string op : "-")()
     {
         return typeof(return)(this, true);
     }
@@ -1361,7 +1390,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Returns: a slice of coefficients starting from the least significant.
     +/
     auto leastSignificantFirst()
-        @safe pure nothrow @nogc @property return scope
+        @safe pure nothrow @nogc @property
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.little)
@@ -1377,7 +1406,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     ///
     auto leastSignificantFirst()
-        const @safe pure nothrow @nogc @property return scope
+        const @safe pure nothrow @nogc @property
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.little)
@@ -1395,7 +1424,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Returns: a slice of coefficients starting from the most significant.
     +/
     auto mostSignificantFirst()
-        @safe pure nothrow @nogc @property return scope
+        @safe pure nothrow @nogc @property
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.big)
@@ -1411,7 +1440,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     ///
     auto mostSignificantFirst()
-        const @safe pure nothrow @nogc @property return scope
+        const @safe pure nothrow @nogc @property
     {
         import mir.ndslice.slice: sliced;
         static if (endian == WordEndian.big)
@@ -1428,8 +1457,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Strips most significant zero coefficients.
     +/
-    BigUIntView normalized() return scope
+    BigUIntView normalized()
     {
+        pragma(inline, false);
         auto number = this;
         if (number.coefficients.length) do
         {
@@ -1750,7 +1780,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     bool sign;
 
     ///
-    inout(W)[] coefficients() inout @property return scope
+    inout(W)[] coefficients() inout @property
     {
         return unsigned.coefficients;
     }
@@ -2113,14 +2143,22 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     static if (endian == TargetEndian)
     ///
-    BigIntView!V opCast(T : BigIntView!V, V)() return scope
+    BigIntView!V opCast(T : BigIntView!V, V)()
+        if (V.sizeof <= W.sizeof)
+    {
+        return typeof(return)(this.unsigned.opCast!(BigUIntView!V), sign);
+    }
+
+    static if (endian == TargetEndian)
+    ///
+    BigIntView!V opCast(T : BigIntView!V, V)() const
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(this.unsigned.opCast!(BigUIntView!V), sign);
     }
 
     ///
-    BigIntView!(const W, endian) lightConst()() return scope
+    BigIntView!(const W, endian) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(unsigned.lightConst, sign);
