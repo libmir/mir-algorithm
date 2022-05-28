@@ -37,7 +37,7 @@ Idioms:
   'func(Tulong)(Tulong x) if (is(Tulong == ulong))' rather than 'func(ulong x)'
   in order to disable implicit conversion.
 */
-module mir.bignum.phobos_kernel;
+module mir.bignum.internal.phobos_kernel;
 
 version (D_InlineAsm_X86)
 {
@@ -81,7 +81,7 @@ enum KARATSUBASQUARELIMIT = 32; // Minimum value for which square Karatsuba is w
 import std.ascii: LetterCase;
 
 pure nothrow @nogc:
-package:
+package(mir.bignum):
 
 // dipatchers to the right low-level primitives. Added to allow BigInt CTFE for
 // 32 bit systems (https://issues.dlang.org/show_bug.cgi?id=14767) although it's

@@ -397,7 +397,7 @@ struct UInt(size_t size)
     ref divMod(size_t rhsSize)(scope ref UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        import mir.bignum.kernel: divMod, divisionRequiredBuffSize;
+        import mir.bignum.internal.kernel: divMod, divisionRequiredBuffSize;
 
         UInt!size quotient;
 

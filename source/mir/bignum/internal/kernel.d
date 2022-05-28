@@ -1,7 +1,7 @@
-module mir.bignum.kernel;
+module mir.bignum.internal.kernel;
 
-import mir.bignum.phobos_kernel;
-public import mir.bignum.phobos_kernel: karatsubaRequiredBuffSize, divisionRequiredBuffSize;
+import mir.bignum.internal.phobos_kernel;
+public import mir.bignum.internal.phobos_kernel: karatsubaRequiredBuffSize, divisionRequiredBuffSize;
 
 private inout(uint)[] toUints()(inout ulong[] data)
     @trusted pure nothrow @nogc

@@ -442,7 +442,7 @@ struct BigInt(uint maxSize64)
         if (maxSize64 >= aSize64 + bSize64)
     {
         import mir.utility: max;
-        import mir.bignum.kernel : multiply, karatsubaRequiredBuffSize;
+        import mir.bignum.internal.kernel : multiply, karatsubaRequiredBuffSize;
         enum sizeM = ulong.sizeof / size_t.sizeof;
         size_t[max(aSize64 * sizeM, bSize64 * sizeM).karatsubaRequiredBuffSize] buffer = void;
         this.length = cast(uint) multiply(data, a.coefficients, b.coefficients, buffer);
@@ -458,7 +458,7 @@ struct BigInt(uint maxSize64)
         @trusted pure nothrow @nogc scope return
         if (remainderSize >= divisorSize64)
     {
-        import mir.bignum.kernel : divMod, divisionRequiredBuffSize;
+        import mir.bignum.internal.kernel : divMod, divisionRequiredBuffSize;
 
         pragma(inline, false);
 

@@ -22,6 +22,8 @@ sources_list = [
     'mir/bignum/fp',
     'mir/bignum/integer',
     'mir/bignum/internal/dec2flt_table',
+    'mir/bignum/internal/kernel',
+    'mir/bignum/internal/phobos_kernel',
     'mir/bignum/internal/ryu/generic_128',
     'mir/bignum/low_level_view',
     'mir/combinatorics/package',
