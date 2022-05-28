@@ -6,10 +6,11 @@ copyright "2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry 
 license "Apache-2.0"
 
 dependency "mir-core" version=">=1.1.106"
+// dependency "silly" version="~>1.1.1"
 
 buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
-    versions "mir_bignum_test_llv" "mir_bignum_test" "mir_ndslice_test" "mir_test"
+    versions "mir_bignum_test" "mir_bignum_test_llv" //"mir_ndslice_test" "mir_test"
     dflags "-lowmem"
 }
 buildType "unittest-dip1008" {

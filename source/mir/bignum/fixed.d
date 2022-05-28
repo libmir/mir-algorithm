@@ -397,7 +397,7 @@ struct UInt(size_t size)
     ref divMod(size_t rhsSize)(scope ref UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        import mir.bignum.kernel: divMod;
+        import mir.bignum.kernel: divMod, divisionRequiredBuffSize;
 
         UInt!size quotient;
 
@@ -406,10 +406,17 @@ struct UInt(size_t size)
         divisorV = divisorV.normalized;
         dividendV = dividendV.normalized;
 
-        divMod(dividendV.coefficients, divisorV.coefficients, quotient.data);
-        rhs = cast(UInt!rhsSize) this;
-        this = quotient;
+        import mir.utility: min;
+        enum vlen = min(rhs.data.length, data.length);
+        size_t[divisionRequiredBuffSize(data.length, vlen)] buffer = void;
 
+        divMod(
+            quotient.data,
+            divisorV.coefficients,
+            dividendV.coefficients,
+            divisorV.coefficients,
+            buffer);
+        this = quotient;
         return this;
     }
 
@@ -892,6 +899,7 @@ struct UInt(size_t size)
             data[$ - 1] = (data[$ - 1] & ptrdiff_t.max) | (size_t(value) << (size_t.sizeof * 8 - 1));
     }
 
+    static if (size == 128)
     ///
     version(mir_bignum_test)
     unittest
@@ -940,17 +948,14 @@ UInt!(size + size_t.sizeof * 8)
 }
 
 /// ditto
-UInt!128 extendedMul()(ulong a, ulong b)
+auto extendedMul()(ulong a, ulong b)
     @safe pure nothrow @nogc
 {
     static if (size_t.sizeof == ulong.sizeof)
     {
         import mir.utility: extMul;
         auto e = extMul(a, b);
-        version(LittleEndian)
-            return typeof(return)([e.low, e.high]);
-        else
-            return typeof(return)([e.high, e.low]);
+        return UInt!128([e.low, e.high]);
     }
     else
     {
@@ -959,7 +964,7 @@ UInt!128 extendedMul()(ulong a, ulong b)
 }
 
 /// ditto
-UInt!64 extendedMul()(uint a, uint b)
+auto extendedMul()(uint a, uint b)
     @safe pure nothrow @nogc
 {
     static if (size_t.sizeof == uint.sizeof)
@@ -967,13 +972,13 @@ UInt!64 extendedMul()(uint a, uint b)
         import mir.utility: extMul;
         auto e = extMul(a, b);
         version(LittleEndian)
-            return typeof(return)([e.low, e.high]);
+            return UInt!64([e.low, e.high]);
         else
-            return typeof(return)([e.high, e.low]);
+            return UInt!64([e.high, e.low]);
     }
     else
     {
-        return typeof(return)([ulong(a) * b]);
+        return UInt!64([ulong(a) * b]);
     }
 }
 

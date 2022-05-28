@@ -1,133 +1,7 @@
 module mir.bignum.kernel;
 
-import mir.bignum.phobos_kernel: multibyteShl, multibyteShr;
-
-import mir.checkedint;
-private alias cop(string op : "-") = subu;
-private alias cop(string op : "+") = addu;
-
-U multiplyAddKernel(string op, U)(
-    scope U[] c,
-    scope const(U)[] a,
-    U b,
-    U overflow = 0,
-)
-    @trusted pure nothrow @nogc
-    if (op == "+" || op == "-")
-    in (a.length == c.length)
-{
-    size_t j;
-    do
-    {
-        import mir.utility: extMul;
-
-        //(n - 1) ^ 2 + overflow + n - 1 <= n ^ 2 - 1
-        // n ^ 2 - 2n + 1 + n - 1 + overflow <= n ^ 2 - 1
-        // - n + overflow <= - 1
-        // overflow <= n - 1
-        auto ext = a[0].extMul(b);
-        {
-            bool bit;
-            ext.low = ext.low.addu(overflow, bit);
-            assert(ext.high < ext.high.max);
-            ext.high += bit;
-        }
-        {
-            bool bit;
-            c[0] = c[0].cop!op(ext.low, bit);
-            assert(bit == 0 || ext.high < ext.high.max);
-            overflow = ext.high + bit;
-        }
-
-        a = a[1 .. $];
-        c = c[1 .. $];
-    }
-    while(c.length);
-    return overflow;
-}
-
-U addKernel(string op, U)(
-    scope U[] c,
-    scope const(U)[] a,
-    U overflow = 0,
-)
-    @trusted pure nothrow @nogc
-    if (op == "+" || op == "-")
-    in (a.length == c.length)
-{
-    size_t j;
-    do
-    {
-        import mir.checkedint: addu;
-        import mir.utility: extMul;
-
-        //(n - 1) ^ 2 + overflow + n - 1 <= n ^ 2 - 1
-        // n ^ 2 - 2n + 1 + n - 1 + overflow <= n ^ 2 - 1
-        // - n + overflow <= - 1
-        // overflow <= n - 1
-        U ext = a[0];
-        {
-            bool bit;
-            ext = ext.addu(overflow, bit);
-            overflow = bit;
-        }
-        {
-            bool bit;
-            c[0] = c[0].cop!op(ext, bit);
-            overflow += bit;
-        }
-
-        a = a[1 .. $];
-        c = c[1 .. $];
-    }
-    while(c.length);
-    return overflow;
-}
-
-void multiply(U)(
-    scope U[] c,
-    scope const(U)[] a,
-    scope const(U)[] b,
-)
-    @trusted pure nothrow @nogc
-{
-    pragma (inline, false);
-
-    if (a.length < b.length)
-    {
-        auto t = a;
-        a = b;
-        b = t;
-    }
-
-    if (a.length > c.length)
-        a = a[0 .. c.length];
-
-    if (b.length > c.length)
-        b = b[0 .. c.length];
-
-    if (b.length == 0)
-        return;
-
-    assert(a.length);
-    assert(b.length);
-    assert(c.length);
-    c[0 .. a.length] = 0;
-
-    do
-    {
-        size_t j;
-        import mir.utility: min;
-        auto length = min(a.length, c.length);
-        auto overflow = multiplyAddKernel!("+", U)(c[0 .. length], a[0 .. length], b[0]);
-        if (length < c.length)
-            c[length] = overflow;
-
-        c = c[1 .. $];
-        b = b[1 .. $];
-    }
-    while(b.length);
-}
+import mir.bignum.phobos_kernel;
+public import mir.bignum.phobos_kernel: karatsubaRequiredBuffSize, divisionRequiredBuffSize;
 
 private inout(uint)[] toUints()(inout ulong[] data)
     @trusted pure nothrow @nogc
@@ -138,10 +12,75 @@ private inout(uint)[] toUints()(inout ulong[] data)
     return ret;
 }
 
+static if (is(size_t == ulong))
+size_t multiply(
+    scope ulong[] c,
+    scope const(ulong)[] a,
+    scope const(ulong)[] b,
+    scope ulong[] buffer,
+)
+    @safe pure nothrow @nogc
+    in (c.length >= a.length + b.length)
+{
+    pragma (inline, false);
+
+    c[a.length + b.length - 1] = 0;
+
+    auto length = multiply(
+        cast(uint[]) c,
+        a.toUints,
+        b.toUints,
+        cast(uint[]) buffer,
+    );
+
+    return length / 2 + length % 2;
+}
+
+size_t multiply(
+    scope uint[] c,
+    scope const(uint)[] a,
+    scope const(uint)[] b,
+    scope uint[] buffer,
+)
+    @trusted pure nothrow @nogc
+    in (c.length >= a.length + b.length)
+{
+    pragma (inline, false);
+
+    if (a.length < b.length)
+    {
+        auto t = a;
+        a = b;
+        b = t;
+    }
+
+    if (b.length == 0)
+        return 0;
+
+    assert(a.length);
+    assert(b.length);
+    assert(c.length);
+
+    c = c[0 .. a.length + b.length];
+
+    if (a is b)
+        squareInternal(c, a, buffer);
+    else
+        mulInternal(c, a, b, buffer);
+
+    auto ret = a.length + b.length;
+    ret -= ret && !c[ret - 1];
+    return ret;
+}
+
+
+static if (is(size_t == ulong))
 size_t divMod(
-    scope ulong[] u,
-    scope ulong[] v,
     scope ulong[] q,
+    scope ulong[] r,
+    scope const(ulong)[] u,
+    scope const(ulong)[] v,
+    scope ulong[] buffer,
 )
     @trusted pure nothrow @nogc
     in (u.length == 0 || u[$ - 1])
@@ -149,23 +88,41 @@ size_t divMod(
     in (v[$ - 1])
     in (q.length + v.length >= u.length + 1)
 {
+    pragma (inline, false);
+
+    sizediff_t idx = u.length - v.length;
+    if (idx < 0)
+        return 0;
+
+    auto ui = u.toUints;
+    auto vi = v.toUints;
+
     auto length = divMod(
-        u.toUints,
-        v.toUints,
         cast(uint[])q,
+        cast(uint[])r,
+        ui,
+        vi,
+        cast(uint[]) buffer,
     );
 
-    bool fillTail = length % 2;
-    length = length / 2;
-    if (fillTail)
-        q[length] &= uint.max;
-    return length + fillTail;
+    if (r.length && vi.length % 2)
+        r[vi.length / 2] &= uint.max;
+
+    if (q.ptr is r.ptr)
+        return 0;
+
+    auto ret = length / 2;
+        if (length % 2)
+            q[ret++] &= uint.max;
+    return ret;
 }
 
 size_t divMod(
-    scope uint[] u,
-    scope uint[] v,
     scope uint[] q,
+    scope uint[] r,
+    scope const(uint)[] u,
+    scope const(uint)[] v,
+    scope uint[] buffer,
 )
     @trusted pure nothrow @nogc
     in (u.length == 0 || u[$ - 1])
@@ -178,109 +135,48 @@ size_t divMod(
     import mir.bitop: ctlz;
     import mir.utility: _expect;
 
-    size_t m = u.length;
-    size_t n = v.length;
-
-    if (m < n)
+    if (u.length < v.length)
         return 0;
 
-    sizediff_t lastQ = -1;
-    if (n == 1)
+    q = q[0 .. u.length - v.length + 1];
+    if (v.length == 1)
     {
-        uint k = 0;
-        uint d = v[0];
-        foreach_reverse(j; 0 .. m)
+        if (q !is u)
+            q[] = u;
+        auto rem = multibyteDivAssign(q, v[0], 0);
+        if (r)
         {
-            auto ut = (cast(ulong)k << 32) | u[j]; 
-            q[j] = cast(uint)(ut / d);
-            k = ut % d;
-            u[j] = 0;
-            if (lastQ == -1 && q[j])
-                lastQ = j;
+            r[0] = rem;
+            r[1 .. $] = 0;
         }
-        u[0] = k;
     }
     else
     {
-        auto s = cast(uint)ctlz(v[n - 1]);
-        assert(s <= 31 && s >= 0);
-
-        uint umn = s ? u[$ - 1] >> (32 - s) : 0;
-        u.multibyteShl(u, s);
-        v.multibyteShl(v, s);
-
-        uint vhi = v[$ - 1];
-        uint vlo = v[$ - 2];
-
-        uint* ujnp = &umn;
-        ref uint ujn() @property { return *ujnp; }
-        size_t j = m - n;
-        do
-        {
-            uint qhat;
-            if (ujn == vhi)
-            {
-                qhat = uint.max;
-            }
-            else
-            {
-                uint ulo = u[j + n - 2];
-
-                ulong uu = (cast(ulong) ujn << 32) | u[j + n - 1];
-                immutable bigqhat = uu / vhi;
-                ulong rhat =  uu - bigqhat * vhi;
-                qhat = cast(uint) bigqhat;
-    again:
-                if (cast(ulong) qhat * vlo > ((rhat << 32) + ulo))
-                {
-                    --qhat;
-                    rhat += vhi;
-                    if (!(rhat & 0xFFFF_FFFF_0000_0000L))
-                        goto again;
-                }
-            }
-            
-            uint overflow = multiplyAddKernel!("-", uint)(u[j .. j + n], v, qhat);
-
-            if (ujn < overflow)
-            {
-                --qhat;
-                overflow -= addKernel!("+", uint)(u[j .. j + n], v);
-            }
-
-            if (lastQ == -1 && qhat)
-                lastQ = j;
-            q[j] = cast(uint) qhat;
-            ujn -= overflow;
-            ujnp = &u[j - 1 + n];
-        }
-        while(j--);
-
-        if (s)
-        {
-            u.multibyteShr(u, s);
-            // v.multibyteShr(v, s);
-            u[$ - 1] |= umn << (32 - s);
-        }
+        divModInternal(q[], r ? r[0 .. v.length] : null, u, v, buffer);
     }
 
-    return lastQ + 1;
+    auto length = u.length - v.length;
+    return length + (q[length] != 0);
 }
 
 ///
-version(mir_bignum_test_llv)
+version(mir_bignum_test)
 unittest
 {
     import mir.bignum.fixed: UInt;
     import mir.bignum.low_level_view: BigUIntView;
 
+    uint[100] buffer = void;
     auto divMod(BigUIntView!uint a, BigUIntView!uint b, BigUIntView!uint c)
     {
-        return .divMod(
+        .divMod(
+            c.coefficients,
+            a.coefficients,
             a.coefficients,
             b.coefficients,
-            c.coefficients,
+            buffer,
         );
+        a.coefficients[b.coefficients.length .. $] = 0;
     }
 
     {
