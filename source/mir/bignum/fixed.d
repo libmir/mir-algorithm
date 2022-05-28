@@ -397,17 +397,16 @@ struct UInt(size_t size)
     ref divMod(size_t rhsSize)(scope ref UInt!rhsSize rhs)
         @safe pure nothrow @nogc scope return
     {
-        import mir.bignum.low_level_view : divMod, BigUIntView;
+        import mir.bignum.kernel: divMod;
 
         UInt!size quotient;
 
-        BigUIntView!uint dividendV = cast(BigUIntView!uint) this.view;
-        BigUIntView!uint divisorV = cast(BigUIntView!uint) rhs.view;
-        BigUIntView!uint quotientV = cast(BigUIntView!uint) quotient.view;
+        auto dividendV = this.view;
+        auto divisorV = rhs.view;
         divisorV = divisorV.normalized;
         dividendV = dividendV.normalized;
 
-        divMod(dividendV, divisorV, quotientV);
+        divMod(dividendV.coefficients, divisorV.coefficients, quotient.data);
         rhs = cast(UInt!rhsSize) this;
         this = quotient;
 

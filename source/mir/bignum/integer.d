@@ -102,6 +102,12 @@ struct BigInt(uint maxSize64)
     }
 
     ///
+    inout(size_t)[] coefficients()() inout @property scope return
+    {
+        return data[0 .. length];
+    }
+
+    ///
     ref opAssign(ulong data) return
     {
         this.sign = 0;
@@ -355,32 +361,6 @@ struct BigInt(uint maxSize64)
         return this.opOpAssign!op(bigRhs);
     }
 
-    private BigUIntView!uint divmView()() scope @property
-    {
-        static if (size_t.sizeof == 4)
-            return view.unsigned;
-        else
-        {
-            auto view = this.view.unsigned.opCast!(BigUIntView!(uint));
-            if (view.coefficients.length && view.coefficients[$ - 1] == 0)
-                view.popMostSignificant;
-            return view;
-        }
-    }
-
-    private BigUIntView!(const uint) divmView()() const scope @property
-    {
-        static if (size_t.sizeof == 4)
-            return view.unsigned;
-        else
-        {
-            auto view = this.view.unsigned.opCast!(BigUIntView!(const uint));
-            if (view.coefficients.length && view.coefficients[$ - 1] == 0)
-                view.popMostSignificant;
-            return view;
-        }
-    }
-
     /++
     +/
     ref powMod(uint expSize)(scope ref const BigInt!expSize exponent, scope ref const BigInt modulus)
@@ -462,10 +442,10 @@ struct BigInt(uint maxSize64)
         @safe pure nothrow @nogc scope return
     {
         import mir.utility: max;
-        import mir.bignum.low_level_view : multiply;
+        import mir.bignum.kernel : multiply;
 
         this.length = this.data.length;
-        multiply(this.view.unsigned, a.view.unsigned, b.view.unsigned);
+        multiply(this.coefficients, a.coefficients, b.coefficients);
         this.length = this.length.min(a.length + b.length);
         this.length -= this.length && !this.view.unsigned.coefficients[$ - 1];
         this.sign = (this.length != 0) & (a.sign ^ b.sign);
@@ -479,7 +459,7 @@ struct BigInt(uint maxSize64)
     )
         @trusted pure nothrow @nogc scope return
     {
-        import mir.bignum.low_level_view : divMod, BigUIntView;
+        import mir.bignum.kernel : divMod;
 
         pragma(inline, false);
 
@@ -499,20 +479,10 @@ struct BigInt(uint maxSize64)
         _divisor = divisor;
 
         quotient.length = cast(uint) divMod(
-            this.divmView,
-            _divisor.divmView,
-            cast(BigUIntView!uint) quotient.view.unsigned,
+            this.coefficients,
+            _divisor.coefficients,
+            quotient.data,
         );
-
-        static if (size_t.sizeof == 8)
-        {
-            bool half = quotient.length & 1;
-            quotient.length >>= 1;
-            if (half)
-            {
-                quotient.data[quotient.length++] &= uint.max;
-            }
-        }
 
         quotient.sign = (this.sign ^ divisor.sign) && quotient.length;
 
