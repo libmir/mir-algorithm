@@ -93,6 +93,7 @@ string text(string separator = "", Args...)(auto ref Args args)
 }
 
 ///
+version(mir_test)
 @safe pure nothrow unittest
 {
     const i = 100;

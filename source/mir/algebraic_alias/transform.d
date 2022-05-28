@@ -22,6 +22,7 @@ Recursion is done for `This[]`, `StringMap!This`, `This[string]`, and `Annotated
 alias transformLeafs(visitors...) = transformLeafsImpl!(visit, naryFun!visitors);
 
 ///
+version(mir_test)
 unittest
 {
     import mir.format: text;
@@ -51,6 +52,7 @@ Throws: Exception if `naryFun!visitors` can't be called with provided arguments
 alias tryTransformLeafs(visitors...) = transformLeafsImpl!(tryVisit, naryFun!visitors);
 
 ///
+version(mir_test)
 unittest
 {
     import mir.format: text;

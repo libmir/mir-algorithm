@@ -1,7 +1,7 @@
 /++
 Low-level betterC utilities for big integer arithmetic libraries.
 
-The module provides $(REF BigUIntAccumulator), $(REF BigUIntView), and $(LREF BigIntView),  $(REF DecimalView).
+The module provides $(REF BigUIntView), and $(LREF BigIntView),  $(REF DecimalView).
 
 Note:
     The module doesn't provide full arithmetic API for now.
@@ -24,29 +24,6 @@ version (D_Exceptions)
 {
     package immutable hexStringException = new Exception(hexStringErrorMsg);
     package immutable binaryStringException = new Exception(binaryStringErrorMsg);
-}
-
-/++
-+/
-enum WordEndian
-{
-    ///
-    little,
-    ///
-    big,
-}
-
-version(LittleEndian)
-{
-    /++
-    +/
-    enum TargetEndian = WordEndian.little;
-}
-else
-{
-    /++
-    +/
-    enum TargetEndian = WordEndian.big;
 }
 
 package template MaxWordPow10(T)
@@ -114,7 +91,7 @@ T ceilLog10Exp2(T)(const T e)
 }
 
 ///
-version(mir_bignum_test)
+version(mir_bignum_test_llv)
 @safe pure nothrow @nogc unittest
 {
     assert(ceilLog10Exp2(ubyte(10)) == 4); // ubyte
@@ -142,7 +119,7 @@ private U multiplyAddKernel(string op, U, C, A)(
         // n ^ 2 - 2n + 1 + n - 1 + overflow <= n ^ 2 - 1
         // - n + overflow <= - 1
         // overflow <= n - 1
-        auto ext = a.front.extMul(b);
+        auto ext = a[0].extMul(b);
         {
             bool bit;
             ext.low = ext.low.addu(overflow, bit);
@@ -151,13 +128,13 @@ private U multiplyAddKernel(string op, U, C, A)(
         }
         {
             bool bit;
-            c.front = c.front.cop!op(ext.low, bit);
+            c[0] = c[0].cop!op(ext.low, bit);
             assert(bit == 0 || ext.high < ext.high.max);
             overflow = ext.high + bit;
         }
 
-        a.popFront;
-        c.popFront;
+        a = a[1 .. $];
+        c = c[1 .. $];
     }
     while(c.length);
     return overflow;
@@ -182,7 +159,7 @@ private U addKernel(string op, U, C, A)(
         // n ^ 2 - 2n + 1 + n - 1 + overflow <= n ^ 2 - 1
         // - n + overflow <= - 1
         // overflow <= n - 1
-        auto ext = a.front;
+        auto ext = a[0];
         {
             bool bit;
             ext = ext.addu(overflow, bit);
@@ -190,12 +167,12 @@ private U addKernel(string op, U, C, A)(
         }
         {
             bool bit;
-            c.front = c.front.cop!op(ext, bit);
+            c[0] = c[0].cop!op(ext, bit);
             overflow += bit;
         }
 
-        a.popFront;
-        c.popFront;
+        a = a[1 .. $];
+        c = c[1 .. $];
     }
     while(c.length);
     return overflow;
@@ -210,9 +187,9 @@ void multiply(U)(
 {
     pragma (inline, false);
 
-    auto a = _a.leastSignificantFirst;
-    auto b = _b.leastSignificantFirst;
-    auto c = _c.leastSignificantFirst;
+    auto a = _a.coefficients;
+    auto b = _b.coefficients;
+    auto c = _c.coefficients;
 
     if (a.length < b.length)
     {
@@ -240,12 +217,12 @@ void multiply(U)(
         size_t j;
         import mir.utility: min;
         auto length = min(a.length, c.length);
-        auto overflow = multiplyAddKernel!("+", U)(c[0 .. length], a[0 .. length], b.front);
+        auto overflow = multiplyAddKernel!("+", U)(c[0 .. length], a[0 .. length], b[0]);
         if (length < c.length)
             c[length] = overflow;
 
-        c.popFront;
-        b.popFront;
+        c = c[1 .. $];
+        b = b[1 .. $];
     }
     while(b.length);
 }
@@ -270,9 +247,9 @@ size_t divMod(
     BigUIntView!uint _q,
 )
     @trusted pure nothrow @nogc
-    in (_u.length == 0 || _u.mostSignificant)
+    in (_u.length == 0 || _u.coefficients[$ - 1])
     in (_v.length)
-    in (_v.mostSignificant)
+    in (_v.coefficients[$ - 1])
     in (sizediff_t(_q.length) >= sizediff_t(_u.length - _v.length + 1))
 {
     pragma (inline, false);
@@ -282,9 +259,9 @@ size_t divMod(
 
     size_t m = _u.coefficients.length;
     size_t n = _v.coefficients.length;
-    auto u = _u.leastSignificantFirst();
-    auto v = _v.leastSignificantFirst();
-    auto q = _q.leastSignificantFirst();
+    auto u = _u.coefficients[];
+    auto v = _v.coefficients[];
+    auto q = _q.coefficients[];
 
     if (m < n)
         return 0;
@@ -311,7 +288,7 @@ size_t divMod(
         auto s = cast(uint)ctlz(v[n - 1]);
         assert(s <= 31 && s >= 0);
 
-        uint umn = s ? _u.mostSignificant >> (32 - s) : 0;
+        uint umn = s ? _u.coefficients[$ - 1] >> (32 - s) : 0;
         _u.smallLeftShiftInPlace(s);
         _v.smallLeftShiftInPlace(s);
 
@@ -363,7 +340,7 @@ size_t divMod(
         while(j--);
 
         _u.smallRightShiftInPlace(s);
-        _u.mostSignificant |= s ? umn << (32 - s) : 0;
+        _u.coefficients[$ - 1] |= s ? umn << (32 - s) : 0;
         // _v.smallRightShiftInPlace(s);
     }
 
@@ -371,7 +348,7 @@ size_t divMod(
 }
 
 ///
-version(mir_bignum_test)
+version(mir_bignum_test_llv)
 unittest
 {
     import mir.bignum.fixed: UInt;
@@ -425,7 +402,7 @@ unittest
 /++
 Arbitrary length unsigned integer view.
 +/
-struct BigUIntView(W, WordEndian endian = TargetEndian)
+struct BigUIntView(W)
     if (__traits(isUnsigned, W))
 {
     import mir.bignum.fp: Fp, half;
@@ -449,7 +426,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Retrurns: signed integer view using the same data payload
     +/
-    BigIntView!(W, endian) signed()(bool sign = false) @safe pure nothrow @nogc scope @property
+    BigIntView!W signed()(bool sign = false) @safe pure nothrow @nogc scope @property
     {
         return typeof(return)(this, sign);
     }
@@ -466,9 +443,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return this.opCast!(Fp!s, s - md, wordNormalized, nonZero).opCast!(T, true);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     unittest
     {
         auto a = cast(double) BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
@@ -480,7 +457,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     ///
     @safe
     T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() const
-        if (internalRoundLastBits < size_t.sizeof * 8 && (size_t.sizeof >= W.sizeof || endian == TargetEndian))
+        if (internalRoundLastBits < size_t.sizeof * 8)
     {
         static if (isMutable!W)
         {
@@ -512,16 +489,16 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                 {
                     static if (N == 1 && W.sizeof == size_t.sizeof)
                     {
-                        ret.coefficient.data[0] = integer.mostSignificant;
+                        ret.coefficient.data[0] = integer.coefficients[$ - 1];
                     }
                     else
                     {
                         BigUIntView!size_t(ret.coefficient.data)
                             .opCast!(BigUIntView!(Unqual!W))
-                            .leastSignificantFirst
-                                [$ - integer.coefficients.length .. $] = integer.leastSignificantFirst;
+                            .coefficients
+                                [$ - integer.coefficients.length .. $] = integer.coefficients;
                     }
-                    auto c = cast(uint) ctlz(ret.coefficient.view.mostSignificant);
+                    auto c = cast(uint) ctlz(ret.coefficient.view.coefficients[$ - 1]);
                     ret.exponent -= c;
                     ret.coefficient = ret.coefficient.smallLeftShift(c);
                 }
@@ -532,37 +509,29 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
                     static if (N == 1 && W.sizeof == size_t.sizeof)
                     {
-                        version (BigEndian)
-                        {
-                            holder.data[0] = integer.mostSignificantFirst[0];
-                            holder.data[1] = integer.mostSignificantFirst[1];
-                        }
-                        else
-                        {
-                            holder.data[0] = integer.mostSignificantFirst[1];
-                            holder.data[1] = integer.mostSignificantFirst[0];
-                        }
+                        holder.data[0] = integer.mostSignificantFirst[1];
+                        holder.data[1] = integer.mostSignificantFirst[0];
                     }
                     else
                     {
                         auto holderView = holder
                             .view
                             .opCast!(BigUIntView!(Unqual!W))
-                            .leastSignificantFirst;
+                            .coefficients;
                         import mir.utility: min;
                         auto minLength = min(integer.coefficients.length, holderView.length);
-                        holderView[$ - minLength .. $] = integer.leastSignificantFirst[$ - minLength .. $];
+                        holderView[$ - minLength .. $] = integer.coefficients[$ - minLength .. $];
                     }
 
-                    auto c = cast(uint) ctlz(holder.view.mostSignificant);
+                    auto c = cast(uint) ctlz(holder.view.coefficients[$ - 1]);
                     ret.exponent -= c;
                     holder = holder.smallLeftShift(c);
                     ret.coefficient = holder.toSize!(coefficientSize, false);
-                    auto tail = BigUIntView!size_t(holder.data).leastSignificant;
+                    auto tail = BigUIntView!size_t(holder.data).coefficients[0];
 
                     bool nonZeroTail()
                     {
-                        while(_expect(integer.leastSignificant == 0, false))
+                        while(_expect(integer.coefficients[0] == 0, false))
                         {
                             integer.popLeastSignificant;
                             assert(integer.coefficients.length);
@@ -574,12 +543,12 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                     {
                         enum half = size_t(1) << (internalRoundLastBits - 1);
                         enum mask0 = (size_t(1) << internalRoundLastBits) - 1;
-                        auto tail0 = BigUIntView!size_t(ret.coefficient.data).leastSignificant & mask0;
-                        BigUIntView!size_t(ret.coefficient.data).leastSignificant &= ~mask0;
+                        auto tail0 = BigUIntView!size_t(ret.coefficient.data).coefficients[0] & mask0;
+                        BigUIntView!size_t(ret.coefficient.data).coefficients[0] &= ~mask0;
                         auto condInc = tail0 >= half
                             && (   tail0 > half
                                 || tail
-                                || (BigUIntView!size_t(ret.coefficient.data).leastSignificant & 1)
+                                || (BigUIntView!size_t(ret.coefficient.data).coefficients[0] & 1)
                                 || nonZeroTail);
                     }
                     else
@@ -587,7 +556,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                         enum half = cast(size_t)Signed!size_t.min;
                         auto condInc = tail >= half
                             && (    tail > half
-                                || (BigUIntView!size_t(ret.coefficient.data).leastSignificant & 1)
+                                || (BigUIntView!size_t(ret.coefficient.data).coefficients[0] & 1)
                                 || nonZeroTail);
                     }
 
@@ -608,9 +577,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         }
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -669,7 +638,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         }
         static if (T.sizeof <= W.sizeof)
         {
-            return cast(T) work.leastSignificant;
+            return cast(T) work.coefficients[0];
         }
         else
         {
@@ -677,7 +646,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
             do
             {
                 ret <<= W.sizeof * 8;
-                ret |= work.mostSignificant;
+                ret |= work.coefficients[$ - 1];
                 work.popMostSignificant;
             }
             while(work.coefficients.length);
@@ -685,9 +654,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         }
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -697,8 +666,8 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         assert(cast(ubyte) view == 0x9d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -708,8 +677,8 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         assert(cast(ubyte) view == 0x9d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -719,7 +688,6 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         assert(cast(ubyte) view == 0x9d);
     }
 
-    static if (endian == TargetEndian)
     ///
     pure nothrow @nogc
     BigUIntView!V opCast(T : BigUIntView!V, V)()
@@ -736,7 +704,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    BigUIntView!(const W, endian) lightConst()()
+    BigUIntView!(const W) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(coefficients);
@@ -746,7 +714,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    sizediff_t opCmp(BigUIntView!(const W, endian) rhs)
+    sizediff_t opCmp(BigUIntView!(const W) rhs)
         const @safe pure nothrow @nogc scope
     {
         import mir.algorithm.iteration: cmp;
@@ -758,7 +726,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    bool opEquals(BigUIntView!(const W, endian) rhs)
+    bool opEquals(BigUIntView!(const W) rhs)
         const @safe pure nothrow @nogc scope
     {
         return this.coefficients == rhs.coefficients;
@@ -766,62 +734,30 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    ref inout(W) mostSignificant() inout @property
-    {
-        static if (endian == WordEndian.big)
-            return coefficients[0];
-        else
-            return coefficients[$ - 1];
-    }
-
-    /++
-    +/
-    ref inout(W) leastSignificant() inout @property
-    {
-        static if (endian == WordEndian.little)
-            return coefficients[0];
-        else
-            return coefficients[$ - 1];
-    }
-
-    /++
-    +/
     void popMostSignificant() scope
     {
-        static if (endian == WordEndian.big)
-            coefficients = coefficients[1 .. $];
-        else
-            coefficients = coefficients[0 .. $ - 1];
+        coefficients = coefficients[0 .. $ - 1];
     }
 
     /++
     +/
     void popLeastSignificant() scope
     {
-        static if (endian == WordEndian.little)
-            coefficients = coefficients[1 .. $];
-        else
-            coefficients = coefficients[0 .. $ - 1];
+        coefficients = coefficients[1 .. $];
     }
 
     /++
     +/
     BigUIntView topMostSignificantPart(size_t length)
     {
-        static if (endian == WordEndian.big)
-            return BigUIntView(coefficients[0 .. length]);
-        else
-            return BigUIntView(coefficients[$ - length .. $]);
+        return BigUIntView(coefficients[$ - length .. $]);
     }
 
     /++
     +/
     BigUIntView topLeastSignificantPart(size_t length)
     {
-        static if (endian == WordEndian.little)
-            return BigUIntView(coefficients[0 .. length]);
-        else
-            return BigUIntView(coefficients[$ - length .. $]);
+        return BigUIntView(coefficients[0 .. length]);
     }
 
     /++
@@ -833,16 +769,16 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if (shift == 0)
             return;
         auto csh = W.sizeof * 8 - shift;
-        auto d = leastSignificantFirst;
+        auto d = coefficients[];
         assert(d.length);
         foreach_reverse (i; 1 .. d.length)
             d[i] = (d[i] << shift) | (d[i - 1] >>> csh);
-        d.front <<= shift;
+        d[0] <<= shift;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -862,16 +798,16 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if (shift == 0)
             return;
         auto csh = W.sizeof * 8 - shift;
-        auto d = leastSignificantFirst;
+        auto d = coefficients[];
         assert(d.length);
         foreach (i; 0 .. d.length - 1)
             d[i] = (d[i] >>> shift) | (d[i + 1] << csh);
-        d.back >>>= shift;
+        d[$ - 1] >>>= shift;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -888,7 +824,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     {
         auto length = str.length / (W.sizeof * 2) + (str.length % (W.sizeof * 2) != 0);
         auto data = new Unqual!W[length];
-        auto view = BigUIntView!(Unqual!W, endian)(data);
+        auto view = BigUIntView!(Unqual!W)(data);
         if (view.fromHexStringImpl!(C, allowUnderscores)(str))
             return BigUIntView(cast(W[])view.coefficients);
         version(D_Exceptions)
@@ -914,7 +850,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                 return false;
         }
 
-        leastSignificant = 0;
+        coefficients[0] = 0;
         auto work = topLeastSignificantPart(1);
         W current;
         size_t i, j;
@@ -968,7 +904,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
             current |= cc;
             if (j % (W.sizeof * 2) == 0) // is this packed var full? 
             {
-                work.mostSignificant = current;
+                work.coefficients[$ - 1] = current;
                 current = 0;
                 if (_expect(work.coefficients.length < coefficients.length, true))
                 {
@@ -991,7 +927,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if (current)
         {
             current >>>= 4 * (W.sizeof * 2 - j % (W.sizeof * 2));
-            work.mostSignificant = current;
+            work.coefficients[$ - 1] = current;
         }
 
         coefficients = coefficients[0 .. (j / (W.sizeof * 2) + (j % (W.sizeof * 2) != 0))];
@@ -999,9 +935,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return true;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -1009,9 +945,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         assert(cast(ulong)view == 0xabcd_efab_cdef);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -1047,7 +983,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     {
         auto length = str.length / (W.sizeof * 8) + (str.length % (W.sizeof * 8) != 0);
         auto data = new Unqual!W[length];
-        auto view = BigUIntView!(Unqual!W, endian)(data);
+        auto view = BigUIntView!(Unqual!W)(data);
         if (view.fromBinaryStringImpl!(C, allowUnderscores)(str))
             return BigUIntView(cast(W[])view.coefficients);
         version(D_Exceptions)
@@ -1073,7 +1009,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                 return false;
         }
 
-        leastSignificant = 0;
+        coefficients[0] = 0;
         auto work = topLeastSignificantPart(1);
         W current;
         size_t i, j;
@@ -1107,7 +1043,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
             current |= cc;
             if (j % (W.sizeof * 8) == 0) // is this packed var full? 
             {
-                work.mostSignificant = current;
+                work.coefficients[$ - 1] = current;
                 current = 0;
                 if (_expect(work.coefficients.length < coefficients.length, true))
                 {
@@ -1130,7 +1066,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if (current)
         {
             current >>>= (W.sizeof * 8 - j % (W.sizeof * 8));
-            work.mostSignificant = current;
+            work.coefficients[$ - 1] = current;
         }
 
         coefficients = coefficients[0 .. (j / (W.sizeof * 8) + (j % (W.sizeof * 8) != 0))];
@@ -1138,9 +1074,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return true;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -1148,9 +1084,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         assert(cast(ulong)view == 0b1111_0000_0101);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -1194,7 +1130,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if (_expect(str.length == 0, false))
             return false;
 
-        leastSignificant = 0;
+        coefficients[0] = 0;
         uint d = str[0] - '0';
         str = str[1 .. $];
 
@@ -1237,7 +1173,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                     if (_expect(work.coefficients.length < coefficients.length, true))
                     {
                         work = topLeastSignificantPart(work.coefficients.length + 1);
-                        work.mostSignificant = overflow;
+                        work.coefficients[$ - 1] = overflow;
                     }
                     else
                     {
@@ -1266,21 +1202,21 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     Returns:
         true in case of unsigned overflow
     +/
-    bool opOpAssign(string op)(BigUIntView!(const W, endian) rhs, bool overflow = false)
+    bool opOpAssign(string op)(BigUIntView!(const W) rhs, bool overflow = false)
     @safe pure nothrow @nogc scope
         if (op == "+" || op == "-")
     {
         assert(this.coefficients.length > 0);
         assert(rhs.coefficients.length <= this.coefficients.length);
-        auto ls = this.leastSignificantFirst;
-        auto rs = rhs.leastSignificantFirst;
+        auto ls = this.coefficients;
+        auto rs = rhs.coefficients;
         do
         {
             bool overflowM, overflowG;
-            ls.front = ls.front.cop!op(rs.front, overflowM).cop!op(overflow, overflowG);
+            ls[0] = ls[0].cop!op(rs[0], overflowM).cop!op(overflow, overflowG);
             overflow = overflowG | overflowM;
-            ls.popFront;
-            rs.popFront;
+            ls = ls[1 .. $];
+            rs = rs[1 .. $];
         }
         while(rs.length);
         if (overflow && ls.length)
@@ -1290,7 +1226,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 
     static if (isMutable!W && W.sizeof >= 4)
     /// ditto
-    bool opOpAssign(string op)(scope BigIntView!(const W, endian) rhs, bool overflow = false)
+    bool opOpAssign(string op)(scope BigIntView!(const W) rhs, bool overflow = false)
     @safe pure nothrow @nogc scope
         if (op == "+" || op == "-")
     {
@@ -1313,16 +1249,16 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         if ((op == "+" || op == "-") && is(T == W))
     {
         assert(this.coefficients.length > 0);
-        auto ns = this.leastSignificantFirst;
+        auto ns = this.coefficients;
         W additive = rhs;
         do
         {
             bool overflow;
-            ns.front = ns.front.cop!op(additive, overflow);
+            ns[0] = ns[0].cop!op(additive, overflow);
             if (!overflow)
                 return overflow;
             additive = overflow;
-            ns.popFront;
+            ns = ns[1 .. $];
         }
         while (ns.length);
         return true;
@@ -1353,21 +1289,21 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         @safe pure nothrow @nogc scope
     {
         assert(coefficients.length);
-        auto ns = this.leastSignificantFirst;
+        auto ns = this.coefficients;
         do
         {
             import mir.utility: extMul;
-            auto ext = ns.front.extMul(rhs);
+            auto ext = ns[0].extMul(rhs);
             bool overflowM;
-            ns.front = ext.low.cop!"+"(overflow, overflowM);
+            ns[0] = ext.low.cop!"+"(overflow, overflowM);
             overflow = ext.high + overflowM;
-            ns.popFront;
+            ns = ns[1 .. $];
         }
         while (ns.length);
         return overflow;
     }
 
-    static if (isMutable!W && W.sizeof == 4 || W.sizeof == 8 && endian == TargetEndian)
+    static if (isMutable!W && W.sizeof == 4 || W.sizeof == 8)
     /++
     Performs `uint remainder = (overflow$big) /= scalar` operatrion, where `$` denotes big-endian concatenation.
     Precondition: non-empty coefficients, `overflow < rhs`
@@ -1393,14 +1329,14 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
                 overflow = ext % rhs;
             }
             while (++i < ns.length);
-            if (mostSignificant == 0)
+            if (coefficients[$ - 1] == 0)
                 popMostSignificant;
             return overflow;
         }
         else
         {
             auto work = opCast!(BigUIntView!uint);
-            if (work.mostSignificant == 0)
+            if (work.coefficients[$ - 1] == 0)
                 work.popMostSignificant;
             auto remainder = work.opOpAssign!op(rhs, overflow);
             coefficients = coefficients[0 .. work.coefficients.length / 2 + work.coefficients.length % 2];
@@ -1423,18 +1359,18 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         @safe pure nothrow @nogc scope
     {
         assert(coefficients.length);
-        auto ns = this.leastSignificantFirst;
+        auto ns = this.coefficients;
         do
         {
             auto t = rhs;
-            auto overflowW = t.view *= ns.front;
+            auto overflowW = t.view *= ns[0];
             auto overflowM = t += overflow;
             overflowW += overflowM;
-            ns.front = cast(size_t) t;
+            ns[0] = cast(size_t) t;
             static if (size > size_t.sizeof * 8)
                 overflow = t.toSize!(size - size_t.sizeof * 8, false).toSize!size;
-            BigUIntView!size_t(overflow.data).mostSignificant = overflowW;
-            ns.popFront;
+            BigUIntView!size_t(overflow.data).coefficients[$ - 1] = overflowW;
+            ns = ns[1 .. $];
         }
         while (ns.length);
         return overflow;
@@ -1443,7 +1379,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     /++
     Returns: the same intger view with inversed sign
     +/
-    BigIntView!(W, endian) opUnary(string op : "-")()
+    BigIntView!W opUnary(string op : "-")()
     {
         return typeof(return)(this, true);
     }
@@ -1472,55 +1408,14 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     }
 
     /++
-    Returns: a slice of coefficients starting from the least significant.
-    +/
-    auto leastSignificantFirst()
-        @safe pure nothrow @nogc @property
-    {
-        import mir.ndslice.slice: sliced;
-        static if (endian == WordEndian.little)
-        {
-            return coefficients.sliced;
-        }
-        else
-        {
-            import mir.ndslice.topology: retro;
-            return coefficients.sliced.retro;
-        }
-    }
-
-    ///
-    auto leastSignificantFirst()
-        const @safe pure nothrow @nogc @property
-    {
-        import mir.ndslice.slice: sliced;
-        static if (endian == WordEndian.little)
-        {
-            return coefficients.sliced;
-        }
-        else
-        {
-            import mir.ndslice.topology: retro;
-            return coefficients.sliced.retro;
-        }
-    }
-
-    /++
     Returns: a slice of coefficients starting from the most significant.
     +/
     auto mostSignificantFirst()
         @safe pure nothrow @nogc @property
     {
         import mir.ndslice.slice: sliced;
-        static if (endian == WordEndian.big)
-        {
-            return coefficients.sliced;
-        }
-        else
-        {
-            import mir.ndslice.topology: retro;
-            return coefficients.sliced.retro;
-        }
+        import mir.ndslice.topology: retro;
+        return coefficients.sliced.retro;
     }
 
     ///
@@ -1528,15 +1423,8 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         const @safe pure nothrow @nogc @property
     {
         import mir.ndslice.slice: sliced;
-        static if (endian == WordEndian.big)
-        {
-            return coefficients.sliced;
-        }
-        else
-        {
-            import mir.ndslice.topology: retro;
-            return coefficients.sliced.retro;
-        }
+        import mir.ndslice.topology: retro;
+        return coefficients.sliced.retro;
     }
 
     /++
@@ -1547,25 +1435,16 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         auto number = this;
         if (number.coefficients.length) do
         {
-            static if (endian == WordEndian.big)
-            {
-                if (number.coefficients[0])
-                    break;
-                number.coefficients = number.coefficients[1 .. $];
-            }
-            else
-            {
-                if (number.coefficients[$ - 1])
-                    break;
-                number.coefficients = number.coefficients[0 .. $ - 1];
-            }
+            if (number.coefficients[$ - 1])
+                break;
+            number.coefficients = number.coefficients[0 .. $ - 1];
         }
         while (number.coefficients.length);
         return number;
     }
 
     ///ditto
-    BigUIntView!(const W, endian) normalized() const
+    BigUIntView!(const W) normalized() const
     {
         return lightConst.normalized;
     }
@@ -1576,7 +1455,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     {
         import mir.ndslice.topology: bitwise;
         assert(position < coefficients.length * W.sizeof * 8);
-        return leastSignificantFirst.bitwise[position];
+        return coefficients.bitwise[position];
     }
 
     /++
@@ -1590,13 +1469,13 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         size_t ret;
         do
         {
-            if (auto c = d.front)
+            if (auto c = d[0])
             {
                 ret += ctlz(c);
                 break;
             }
             ret += W.sizeof * 8;
-            d.popFront;
+            d = d[1 .. $];
         }
         while(d.length);
         return ret;
@@ -1609,24 +1488,24 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     {
         import mir.bitop: cttz;
         assert(coefficients.length);
-        auto d = leastSignificantFirst;
+        auto d = coefficients[];
         size_t ret;
         do
         {
-            if (auto c = d.front)
+            if (auto c = d[0])
             {
                 ret += cttz(c);
                 break;
             }
             ret += W.sizeof * 8;
-            d.popFront;
+            d = d[1 .. $];
         }
         while(d.length);
         return ret;
     }
 
     ///
-    BigIntView!(W, endian) withSign()(bool sign)
+    BigIntView!W withSign()(bool sign)
     {
         return typeof(return)(this, sign);
     }
@@ -1687,7 +1566,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
     bool opEquals(ulong rhs)
         @safe pure nothrow @nogc const scope
     {
-        foreach (d; lightConst.leastSignificantFirst)
+        foreach (d; lightConst.coefficients)
         {
             static if (W.sizeof >= ulong.sizeof)
             {
@@ -1705,19 +1584,6 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return rhs == 0;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    ///
-    version(mir_bignum_test)
-    @safe pure
-    unittest
-    {
-        auto view2 = BigUIntView!(const(ubyte), WordEndian.big)([1, 0]);
-        assert(view2 == 256); // false
-        assert(cast(ulong)view2 == 256); // true
-        auto view = BigUIntView!(const(ubyte), WordEndian.big)([15, 255, 255]);
-        assert(view == 1048575); // false
-        assert(cast(ulong)view == 1048575); // true
-    }
 
     static if (isMutable!W && W.sizeof >= 4)
     /++
@@ -1756,9 +1622,9 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
         return str.length - i;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure @nogc
     unittest
     {
@@ -1772,7 +1638,7 @@ struct BigUIntView(W, WordEndian endian = TargetEndian)
 }
 
 ///
-version(mir_bignum_test)
+version(mir_bignum_test_llv)
 @safe pure nothrow
 unittest
 {
@@ -1780,63 +1646,54 @@ unittest
     alias AliasSeq(T...) = T;
 
     foreach (T; AliasSeq!(ubyte, ushort, uint, ulong))
-    foreach (endian; AliasSeq!(WordEndian.little, WordEndian.big))
     {
-        static if (endian == WordEndian.little)
-        {
-            T[3] lhsData = [1, T.max-1, 0];
-            T[3] rhsData = [T.max, T.max, 0];
-        }
-        else
-        {
-            T[3] lhsData = [0, T.max-1, 1];
-            T[3] rhsData = [0, T.max, T.max];
-        }
+        T[3] lhsData = [1, T.max-1, 0];
+        T[3] rhsData = [T.max, T.max, 0];
 
-        auto lhs = BigUIntView!(T, endian)(lhsData).normalized;
+        auto lhs = BigUIntView!T(lhsData).normalized;
 
         /// bool overflow = bigUInt op= scalar
-        assert(lhs.leastSignificantFirst == [1, T.max-1]);
+        assert(lhs.coefficients == [1, T.max-1]);
         assert(lhs.mostSignificantFirst == [T.max-1, 1]);
         static if (T.sizeof >= 4)
         {
             assert((lhs += T.max) == false);
-            assert(lhs.leastSignificantFirst == [0, T.max]);
+            assert(lhs.coefficients == [0, T.max]);
             assert((lhs += T.max) == false);
             assert((lhs += T.max) == true); // overflow bit
-            assert(lhs.leastSignificantFirst == [T.max-1, 0]);
+            assert(lhs.coefficients == [T.max-1, 0]);
             assert((lhs -= T(1)) == false);
-            assert(lhs.leastSignificantFirst == [T.max-2, 0]);
+            assert(lhs.coefficients == [T.max-2, 0]);
             assert((lhs -= T.max) == true); // underflow bit
-            assert(lhs.leastSignificantFirst == [T.max-1, T.max]);
+            assert(lhs.coefficients == [T.max-1, T.max]);
             assert((lhs -= Signed!T(-4)) == true); // overflow bit
-            assert(lhs.leastSignificantFirst == [2, 0]);
+            assert(lhs.coefficients == [2, 0]);
             assert((lhs += Signed!T.max) == false); // overflow bit
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0]);
+            assert(lhs.coefficients == [Signed!T.max + 2, 0]);
 
             ///  bool overflow = bigUInt op= bigUInt/bigInt
-            lhs = BigUIntView!(T, endian)(lhsData);
-            auto rhs = BigUIntView!(T, endian)(rhsData).normalized;
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0, 0]);
-            assert(rhs.leastSignificantFirst == [T.max, T.max]);
+            lhs = BigUIntView!T(lhsData);
+            auto rhs = BigUIntView!T(rhsData).normalized;
+            assert(lhs.coefficients == [Signed!T.max + 2, 0, 0]);
+            assert(rhs.coefficients == [T.max, T.max]);
             assert((lhs += rhs) == false);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 1, 0, 1]);
+            assert(lhs.coefficients == [Signed!T.max + 1, 0, 1]);
             assert((lhs -= rhs) == false);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0, 0]);
+            assert(lhs.coefficients == [Signed!T.max + 2, 0, 0]);
             assert((lhs += -rhs) == true);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 3, 0, T.max]);
+            assert(lhs.coefficients == [Signed!T.max + 3, 0, T.max]);
             assert((lhs += -(-rhs)) == true);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0, 0]);
+            assert(lhs.coefficients == [Signed!T.max + 2, 0, 0]);
 
             /// W overflow = bigUInt *= scalar
             assert((lhs *= T.max) == 0);
             assert((lhs += T(Signed!T.max + 2)) == false);
-            assert(lhs.leastSignificantFirst == [0, Signed!T.max + 2, 0]);
+            assert(lhs.coefficients == [0, Signed!T.max + 2, 0]);
             lhs = lhs.normalized;
-            lhs.leastSignificantFirst[1] = T.max / 2 + 3;
-            assert(lhs.leastSignificantFirst == [0, T.max / 2 + 3]);
+            lhs.coefficients[1] = T.max / 2 + 3;
+            assert(lhs.coefficients == [0, T.max / 2 + 3]);
             assert((lhs *= 8u) == 4);
-            assert(lhs.leastSignificantFirst == [0, 16]);
+            assert(lhs.coefficients == [0, 16]);
         }
     }
 }
@@ -1844,7 +1701,7 @@ unittest
 /++
 Arbitrary length signed integer view.
 +/
-struct BigIntView(W, WordEndian endian = TargetEndian)
+struct BigIntView(W)
     if (is(Unqual!W == ubyte) || is(Unqual!W == ushort) || is(Unqual!W == uint) || is(Unqual!W == ulong))
 {
     import mir.bignum.fp: Fp;
@@ -1856,7 +1713,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     The number is encoded as pair of `unsigned` and `sign`.
     +/
-    BigUIntView!(W, endian) unsigned;
+    BigUIntView!W unsigned;
 
     /++
     Sign bit
@@ -1872,11 +1729,11 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     ///
     this(W[] coefficients, bool sign = false)
     {
-        this(BigUIntView!(W, endian)(coefficients), sign);
+        this(BigUIntView!W(coefficients), sign);
     }
 
     ///
-    this(BigUIntView!(W, endian) unsigned, bool sign = false)
+    this(BigUIntView!W unsigned, bool sign = false)
     {
         this.unsigned = unsigned;
         this.sign = sign;
@@ -1917,7 +1774,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         if (isSomeChar!C)
     {
         auto length = str.length / (W.sizeof * 2) + (str.length % (W.sizeof * 2) != 0);
-        auto ret = BigIntView!(Unqual!W, endian)(new Unqual!W[length]);
+        auto ret = BigIntView!(Unqual!W)(new Unqual!W[length]);
         if (ret.fromHexStringImpl!(C, allowUnderscores)(str))
             return  cast(BigIntView) ret;
         version(D_Exceptions)
@@ -1964,7 +1821,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         if (isSomeChar!C)
     {
         auto length = str.length / (W.sizeof * 8) + (str.length % (W.sizeof * 8) != 0);
-        auto ret = BigIntView!(Unqual!W, endian)(new Unqual!W[length]);
+        auto ret = BigIntView!(Unqual!W)(new Unqual!W[length]);
         if (ret.fromBinaryStringImpl!(C, allowUnderscores)(str))
             return cast(BigIntView) ret;
         version(D_Exceptions)
@@ -2014,9 +1871,9 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         return ret;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2024,9 +1881,9 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(a == -0xa.fbbfae3cd0bp+124);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2034,9 +1891,9 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(a == -0xa.fbbfae3cd0bp+124);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2044,9 +1901,9 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(a == -0xa.fbbfae3cd0bp+124);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2064,9 +1921,9 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         return ret;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2075,9 +1932,9 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2086,8 +1943,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2096,8 +1953,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
     
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2106,8 +1963,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2116,8 +1973,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2126,8 +1983,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2136,8 +1993,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2146,8 +2003,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2156,8 +2013,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2166,8 +2023,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2176,8 +2033,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(cast(int) view == -0x22b0021d);
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2189,16 +2046,16 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     /++
     +/
     T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() const
-        if (internalRoundLastBits < size_t.sizeof * 8 && (size_t.sizeof >= W.sizeof || endian == TargetEndian))
+        if (internalRoundLastBits < size_t.sizeof * 8)
     {
         auto ret = unsigned.opCast!(Fp!coefficientSize, internalRoundLastBits, wordNormalized, nonZero);
         ret.sign = sign;
         return ret;
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
+    static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2211,8 +2068,8 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
     }
 
-    static if (W.sizeof == size_t.sizeof && endian == TargetEndian)
-    version(mir_bignum_test)
+    static if (W.sizeof == size_t.sizeof)
+    version(mir_bignum_test_llv)
     @safe pure
     unittest
     {
@@ -2225,7 +2082,6 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
     }
 
-    static if (endian == TargetEndian)
     ///
     BigIntView!V opCast(T : BigIntView!V, V)()
         if (V.sizeof <= W.sizeof)
@@ -2233,7 +2089,6 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
         return typeof(return)(this.unsigned.opCast!(BigUIntView!V), sign);
     }
 
-    static if (endian == TargetEndian)
     ///
     BigIntView!V opCast(T : BigIntView!V, V)() const
         if (V.sizeof <= W.sizeof)
@@ -2242,7 +2097,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    BigIntView!(const W, endian) lightConst()()
+    BigIntView!(const W) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(unsigned.lightConst, sign);
@@ -2253,7 +2108,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    sizediff_t opCmp(BigIntView!(const W, endian) rhs) 
+    sizediff_t opCmp(BigIntView!(const W) rhs) 
         const @safe pure nothrow @nogc scope
     {
         import mir.algorithm.iteration: cmp;
@@ -2267,7 +2122,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    bool opEquals(BigIntView!(const W, endian) rhs)
+    bool opEquals(BigIntView!(const W) rhs)
         const @safe pure nothrow @nogc scope
     {
         return (this.sign == rhs.sign || unsigned.coefficients.length == 0) && this.unsigned == rhs.unsigned;
@@ -2310,7 +2165,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     Returns:
         true in case of unsigned overflow
     +/
-    bool opOpAssign(string op)(scope BigIntView!(const W, endian) rhs, bool overflow = false)
+    bool opOpAssign(string op)(scope BigIntView!(const W) rhs, bool overflow = false)
     @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
@@ -2338,7 +2193,7 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
 
     static if (isMutable!W && W.sizeof >= 4)
     /// ditto
-    bool opOpAssign(string op)(BigUIntView!(const W, endian) rhs, bool overflow = false)
+    bool opOpAssign(string op)(BigUIntView!(const W) rhs, bool overflow = false)
     @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
@@ -2428,10 +2283,10 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     /++
     Returns: a slice of coefficients starting from the least significant.
     +/
-    auto leastSignificantFirst()
+    auto coefficients()
         @safe pure nothrow @nogc @property
     {
-        return unsigned.leastSignificantFirst;
+        return unsigned.coefficients;
     }
 
     /++
@@ -2457,14 +2312,14 @@ struct BigIntView(W, WordEndian endian = TargetEndian)
     }
 
     ///ditto
-    BigIntView!(const W, endian) normalized() const
+    BigIntView!(const W) normalized() const
     {
         return lightConst.normalized;
     }
 }
 
 ///
-version(mir_bignum_test)
+version(mir_bignum_test_llv)
 @safe pure nothrow
 unittest
 {
@@ -2472,66 +2327,57 @@ unittest
     alias AliasSeq(T...) = T;
 
     foreach (T; AliasSeq!(ubyte, ushort, uint, ulong))
-    foreach (endian; AliasSeq!(WordEndian.little, WordEndian.big))
     {
-        static if (endian == WordEndian.little)
-        {
-            T[3] lhsData = [1, T.max-1, 0];
-            T[3] rhsData = [T.max, T.max, 0];
-        }
-        else
-        {
-            T[3] lhsData = [0, T.max-1, 1];
-            T[3] rhsData = [0, T.max, T.max];
-        }
+        T[3] lhsData = [1, T.max-1, 0];
+        T[3] rhsData = [T.max, T.max, 0];
 
-        auto lhs = BigIntView!(T, endian)(lhsData).normalized;
+        auto lhs = BigIntView!T(lhsData).normalized;
 
         ///  bool overflow = bigUInt op= scalar
-        assert(lhs.leastSignificantFirst == [1, T.max-1]);
+        assert(lhs.coefficients == [1, T.max-1]);
         assert(lhs.mostSignificantFirst == [T.max-1, 1]);
 
         static if (T.sizeof >= 4)
         {
 
             assert((lhs += T.max) == false);
-            assert(lhs.leastSignificantFirst == [0, T.max]);
+            assert(lhs.coefficients == [0, T.max]);
             assert((lhs += T.max) == false);
             assert((lhs += T.max) == true); // overflow bit
-            assert(lhs.leastSignificantFirst == [T.max-1, 0]);
+            assert(lhs.coefficients == [T.max-1, 0]);
             assert((lhs -= T(1)) == false);
-            assert(lhs.leastSignificantFirst == [T.max-2, 0]);
+            assert(lhs.coefficients == [T.max-2, 0]);
             assert((lhs -= T.max) == false);
-            assert(lhs.leastSignificantFirst == [2, 0]);
+            assert(lhs.coefficients == [2, 0]);
             assert(lhs.sign);
             assert((lhs -= Signed!T(-4)) == false);
-            assert(lhs.leastSignificantFirst == [2, 0]);
+            assert(lhs.coefficients == [2, 0]);
             assert(lhs.sign == false);
             assert((lhs += Signed!T.max) == false);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0]);
+            assert(lhs.coefficients == [Signed!T.max + 2, 0]);
 
             ///  bool overflow = bigUInt op= bigUInt/bigInt
-            lhs = BigIntView!(T, endian)(lhsData);
-            auto rhs = BigUIntView!(T, endian)(rhsData).normalized;
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0, 0]);
-            assert(rhs.leastSignificantFirst == [T.max, T.max]);
+            lhs = BigIntView!T(lhsData);
+            auto rhs = BigUIntView!T(rhsData).normalized;
+            assert(lhs.coefficients == [Signed!T.max + 2, 0, 0]);
+            assert(rhs.coefficients == [T.max, T.max]);
             assert((lhs += rhs) == false);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 1, 0, 1]);
+            assert(lhs.coefficients == [Signed!T.max + 1, 0, 1]);
             assert((lhs -= rhs) == false);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0, 0]);
+            assert(lhs.coefficients == [Signed!T.max + 2, 0, 0]);
             assert((lhs += -rhs) == false);
             assert(lhs.sign);
-            assert(lhs.leastSignificantFirst == [T.max - (Signed!T.max + 2), T.max, 0]);
+            assert(lhs.coefficients == [T.max - (Signed!T.max + 2), T.max, 0]);
             assert(lhs.sign);
             assert((lhs -= -rhs) == false);
-            assert(lhs.leastSignificantFirst == [Signed!T.max + 2, 0, 0]);
+            assert(lhs.coefficients == [Signed!T.max + 2, 0, 0]);
             assert(lhs.sign == false);
         }
     }
 }
 
 ///
-version(mir_bignum_test)
+version(mir_bignum_test_llv)
 unittest
 {
     import mir.bignum.fixed: UInt;
@@ -2545,7 +2391,7 @@ unittest
 }
 
 ///
-version(mir_bignum_test)
+version(mir_bignum_test_llv)
 unittest
 {
     import mir.bignum.fixed: UInt;
@@ -2556,208 +2402,6 @@ unittest
     auto overflow = bigView *= fixed;
     assert(overflow == UInt!256.fromHexString("1cbbe8c42dc21f936e4ce5b2f52ac404439857f174084012fcd1b71fdec2a398"));
     assert(bigView == BigUIntView!size_t.fromHexString("c73fd2b26f2514c103c324943b6c90a05d2732118d5f0099c36a69a8051bb0573adc825b5c9295896c70280faa4c4d369df8e92f82bfffafe078b52ae695d316"));
-}
-
-/++
-An utility type to wrap a local buffer to accumulate unsigned numbers.
-+/
-struct BigUIntAccumulator(W, WordEndian endian = TargetEndian)
-    if (is(Unqual!W == uint) || is(Unqual!W == ulong))
-{
-    /++
-    A group of coefficients for a $(MREF DecimalRadix)`!W`.
-
-    The order corresponds to endianness.
-
-    The unused part can be uninitialized.
-    +/
-    W[] coefficients;
-
-    /++
-    Current length of initialized coefficients.
-
-    The initialization order corresponds to endianness.
-
-    The `view` method may return a view with empty coefficients, which isn't usable.
-    Put `0` or another number first to make the accumulator maintain a non-empty view.
-    +/
-    size_t length;
-
-    /++
-    Returns:
-        Current unsigned integer view.
-    Note:
-        The method may return a view with empty coefficients, which isn't usable.
-        Put `0` or another number first to make the accumulator maintain a non-empty view.
-    +/
-    BigUIntView!(W, endian) view() @safe pure nothrow @nogc @property
-    {
-        static if (endian == WordEndian.little)
-            return typeof(return)(coefficients[0 .. length]);
-        else
-            return typeof(return)(coefficients[$ - length .. $]);
-    }
-
-    /++
-    Returns:
-        True if the accumulator can accept next most significant coefficient 
-    +/
-    bool canPut() @property
-    {
-        return length < coefficients.length;
-    }
-
-    /++
-    Places coefficient to the next most significant position.
-    +/
-    void put(W coeffecient)
-    in {
-        assert(length < coefficients.length);
-    }
-    do {
-        static if (endian == WordEndian.little)
-            coefficients[length++] = coeffecient;
-        else
-            coefficients[$ - ++length] = coeffecient;
-    }
-
-    /++
-    Strips most significant zero coefficients from the current `view`.
-    Note:
-        The `view` method may return a view with empty coefficients, which isn't usable.
-        Put `0` or another number first to make the accumulator maintain a non-empty view.
-    +/
-    void normalize()
-    {
-        length = view.normalized.coefficients.length;
-    }
-
-    ///
-    bool canPutN(size_t n)
-    {
-        return length + n <= coefficients.length;
-    }
-
-    ///
-    bool approxCanMulPow5(size_t degree)
-    {
-        // TODO: more precise result
-        enum n = MaxWordPow5!W;
-        return canPutN(degree / n + (degree % n != 0));
-    }
-
-    ///
-    bool canMulPow2(size_t degree)
-    {
-        import mir.bitop: ctlz;
-        enum n = W.sizeof * 8;
-        return canPutN(degree / n + (degree % n > ctlz(view.mostSignificant)));
-    }
-
-    ///
-    void mulPow5(size_t degree)
-    {
-        // assert(approxCanMulPow5(degree));
-        enum n = MaxWordPow5!W;
-        enum wordInit = W(5) ^^ n;
-        W word = wordInit;
-        while(degree)
-        {
-            if (degree >= n)
-            {
-                degree -= n;
-            }
-            else
-            {
-                word = 1;
-                do word *= 5;
-                while(--degree);
-            }
-            if (auto overflow = view *= word)
-            {
-                put(overflow);
-            }
-        }
-    }
-
-    ///
-    void mulPow2(size_t degree) scope @safe
-    {
-        import mir.bitop: ctlz;
-        assert(canMulPow2(degree));
-        enum n = W.sizeof * 8;
-        auto ws = degree / n;
-        auto oldLength = length;
-        length += ws;
-        if (ws)
-        {
-            auto v = view.leastSignificantFirst;
-            foreach_reverse (i; 0 .. oldLength)
-            {
-                v[i + ws] = v[i];
-            }
-            do v[--ws] = 0;
-            while(ws);
-        }
-
-        if (auto tail = cast(uint)(degree % n))
-        {
-            if (tail > ctlz(view.mostSignificant))
-            {
-                put(0);
-                oldLength++;
-            }
-            view.topMostSignificantPart(oldLength).smallLeftShiftInPlace(tail);
-        }
-    }
-}
-
-///
-version(mir_bignum_test)
-@safe pure
-unittest
-{
-    import std.traits;
-    alias AliasSeq(T...) = T;
-
-    foreach (T; AliasSeq!(uint, ulong))
-    foreach (endian; AliasSeq!(WordEndian.little, WordEndian.big))
-    {
-        T[16 / T.sizeof] buffer;
-        auto accumulator = BigUIntAccumulator!(T, endian)(buffer);
-        assert(accumulator.length == 0);
-        assert(accumulator.coefficients.length == buffer.length);
-        assert(accumulator.view.coefficients.length == 0);
-        // needs to put a number before any operations on `.view`
-        accumulator.put(1);
-        // compute N factorial
-        auto N = 30;
-        foreach(i; 1 .. N + 1)
-        {
-            if (auto overflow = accumulator.view *= i)
-            {
-                if (!accumulator.canPut)
-                    throw new Exception("Factorial buffer overflow");
-                accumulator.put(overflow);
-            }
-        }
-        assert(accumulator.view == BigUIntView!(T, endian).fromHexString("D13F6370F96865DF5DD54000000"));
-    }
-}
-
-/// Computes `13 * 10^^60`
-version(mir_bignum_test)
-@safe pure
-unittest
-{
-    uint[7] buffer;
-    auto accumulator = BigUIntAccumulator!uint(buffer);
-    accumulator.put(13); // initial value
-    assert(accumulator.approxCanMulPow5(60));
-    accumulator.mulPow5(60);
-    assert(accumulator.canMulPow2(60));
-    accumulator.mulPow2(60);
-    assert(accumulator.view == BigUIntView!uint.fromHexString("81704fcef32d3bd8117effd5c4389285b05d000000000000000"));
 }
 
 ///
@@ -2783,7 +2427,7 @@ enum DecimalExponentKey
 
 /++
 +/
-struct DecimalView(W, WordEndian endian = TargetEndian)
+struct DecimalView(W)
     if (isUnsigned!W)
 {
     ///
@@ -2791,7 +2435,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
     ///
     long exponent;
     ///
-    BigUIntView!(W, endian) coefficient;
+    BigUIntView!W coefficient;
 
     static if (isMutable!W && W.sizeof >= 4)
     /++
@@ -2822,7 +2466,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
 
         assert(coefficient.coefficients.length);
 
-        coefficient.leastSignificant = 0;
+        coefficient.coefficients[0] = 0;
         auto work = coefficient.topLeastSignificantPart(1);
 
         static if (checkEmpty)
@@ -2933,7 +2577,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
                         if (_expect(work.coefficients.length < coefficient.coefficients.length, true))
                         {
                             work = coefficient.topLeastSignificantPart(work.coefficients.length + 1);
-                            work.mostSignificant = overflow;
+                            work.coefficients[$ - 1] = overflow;
                         }
                         else
                         {
@@ -2947,7 +2591,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
                     {
                     M:
                         exponent += exponentShift;
-                        coefficient = work.mostSignificant == 0 ? coefficient.init : work;
+                        coefficient = work.coefficients[$ - 1] == 0 ? coefficient.init : work;
                         static if (allowUnderscores)
                         {
                             // If we have no characters, then we should return true IF
@@ -3057,7 +2701,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
                 }
                 if (d == 'n' - '0' && stail == cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
                 {
-                    coefficient.leastSignificant = 1;
+                    coefficient.coefficients[0] = 1;
                     coefficient = coefficient.topLeastSignificantPart(1);
                     key = DecimalExponentKey.nan;
                     return true;
@@ -3068,7 +2712,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
     }
 
     ///
-    DecimalView!(const W, endian) lightConst()()
+    DecimalView!(const W) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(sign, exponent, coefficient.lightConst);
@@ -3078,7 +2722,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    BigIntView!(W, endian) signedCoefficient()
+    BigIntView!W signedCoefficient()
     {
         return typeof(return)(coefficient, sign);
     }
@@ -3244,7 +2888,7 @@ struct DecimalView(W, WordEndian endian = TargetEndian)
 }
 
 @optStrategy("minsize")
-package T algoR(T, W, WordEndian endian)(T ret, scope BigUIntView!(const W, endian) coeff, int exponent)
+package T algoR(T, W)(T ret, scope BigUIntView!(const W) coeff, int exponent)
 {
     pragma(inline, false);
 
@@ -3326,7 +2970,7 @@ package T algoR(T, W, WordEndian endian)(T ret, scope BigUIntView!(const W, endi
 }
 
 ///
-version(mir_bignum_test)
+version(mir_bignum_test_llv)
 unittest
 {
     alias AliasSeq(T...) = T;
@@ -3337,284 +2981,280 @@ unittest
         
     }}
 
-    foreach(E; AliasSeq!(WordEndian.little, WordEndian.big))
     foreach(W; AliasSeq!(ulong, uint, ushort, ubyte))
-    static if (!(E != TargetEndian && (W.sizeof > size_t.sizeof || W.sizeof == 1)))
     {{
-        alias Args = AliasSeq!(W, E);
-
-        auto view = DecimalView!Args(false, -8, BigUIntView!Args.fromHexString("BEBC2000000011E1A3"));
+        auto view = DecimalView!W(false, -8, BigUIntView!W.fromHexString("BEBC2000000011E1A3"));
 
         assert (cast(float)view == 3.518437208883201171875E+013f);
         assert (cast(double)view == 3.518437208883201171875E+013);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 3.518437208883201171875E+013L);
 
-        view = DecimalView!Args(true, -169, BigUIntView!Args.fromHexString("5A174AEDA65CC"));
+        view = DecimalView!W(true, -169, BigUIntView!W.fromHexString("5A174AEDA65CC"));
         assert (cast(float)view == -0);
         assert (cast(double)view == -0x1.1p-511);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == -0x8.80000000000019fp-514L);
 
-        view = DecimalView!Args(true, 293, BigUIntView!Args.fromHexString("36496F6C4ED38"));
+        view = DecimalView!W(true, 293, BigUIntView!W.fromHexString("36496F6C4ED38"));
         assert (cast(float)view == -float.infinity);
         assert (cast(double)view == -9.55024478104888e+307);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == -9.55024478104888e+307L);
 
-        view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 1);
         assert (cast(double)view == 1);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 1L);
 
-        view = DecimalView!Args(false, -5, BigUIntView!Args.fromHexString("3"));
+        view = DecimalView!W(false, -5, BigUIntView!W.fromHexString("3"));
         assert (cast(float)view == 3e-5f);
         assert (cast(double)view == 3e-5);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 3e-5L);
 
-        view = DecimalView!Args(false, -1, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -1, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0.1f);
         assert (cast(double)view == 0.1);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0.1L);
 
-        view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("3039"));
+        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("3039"));
         assert (cast(float)view == 12345.0f);
         assert (cast(double)view == 12345.0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 12345.0L);
 
-        view = DecimalView!Args(false, -7, BigUIntView!Args.fromHexString("98967F"));
+        view = DecimalView!W(false, -7, BigUIntView!W.fromHexString("98967F"));
         assert (cast(float)view == 0.9999999f);
         assert (cast(double)view == 0.9999999);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0.9999999L);
 
-        view = DecimalView!Args(false, -324, BigUIntView!Args.fromHexString("4F0CEDC95A718E"));
+        view = DecimalView!W(false, -324, BigUIntView!W.fromHexString("4F0CEDC95A718E"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 2.2250738585072014e-308);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 2.2250738585072014e-308L);
 
-        view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("1FFFFFFFFFFFFFFFD"));
+        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("1FFFFFFFFFFFFFFFD"));
         assert (cast(float)view == 36893488147419103229f);
         assert (cast(double)view == 36893488147419103229.0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x1FFFFFFFFFFFFFFFDp0L);
 
-        view = DecimalView!Args(false, -33, BigUIntView!Args.fromHexString("65"));
+        view = DecimalView!W(false, -33, BigUIntView!W.fromHexString("65"));
         assert (cast(float)view == 101e-33f);
         assert (cast(double)view == 101e-33);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 101e-33L);
 
-        view = DecimalView!Args(false, 23, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, 23, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 1e23f);
         assert (cast(double)view == 1e23);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 1e23L);
 
-        view = DecimalView!Args(false, 23, BigUIntView!Args.fromHexString("81B"));
+        view = DecimalView!W(false, 23, BigUIntView!W.fromHexString("81B"));
         assert (cast(float)view == 2075e23f);
         assert (cast(double)view == 0xaba3d58a1f1a98p+32);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xaba3d58a1f1a9cp+32L);
     
-        view = DecimalView!Args(false, -23, BigUIntView!Args.fromHexString("2209"));
+        view = DecimalView!W(false, -23, BigUIntView!W.fromHexString("2209"));
         assert (cast(float)view == 8713e-23f);
         assert (cast(double)view == 0x1.9b75b4e7de2b9p-64);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xc.dbada73ef15c401p-67L);
 
-        view = DecimalView!Args(false, 300, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, 300, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == 0x1.7e43c8800759cp+996);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xb.f21e44003acdd2dp+993L);
 
-        view = DecimalView!Args(false, 245, BigUIntView!Args.fromHexString("B3A73CEB227"));
+        view = DecimalView!W(false, 245, BigUIntView!W.fromHexString("B3A73CEB227"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == 0x1.48e3735333cb6p+857);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xa.471b9a999e5b01ep+854L);
 
-        view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("88BF4748507FB9900ADB624CCFF8D78897DC900FB0460327D4D86D327219"));
+        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("88BF4748507FB9900ADB624CCFF8D78897DC900FB0460327D4D86D327219"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == 0x1.117e8e90a0ff7p+239);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.8bf4748507fb99p+236L);
 
-        view = DecimalView!Args(false, -324, BigUIntView!Args.fromHexString("5"));
+        view = DecimalView!W(false, -324, BigUIntView!W.fromHexString("5"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x0.0000000000001p-1022);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.18995ce7aa0e1b2p-1077L);
 
-        view = DecimalView!Args(false, -324, BigUIntView!Args.fromHexString("5B"));
+        view = DecimalView!W(false, -324, BigUIntView!W.fromHexString("5B"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x0.0000000000012p-1022);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x9.3594d9adeb09a55p-1073L);
 
-        view = DecimalView!Args(false, -322, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -322, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x0.0000000000014p-1022);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xa.1ebfb4219491a1fp-1073L);
 
-        view = DecimalView!Args(false, -320, BigUIntView!Args.fromHexString("CA1CCB"));
+        view = DecimalView!W(false, -320, BigUIntView!W.fromHexString("CA1CCB"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x0.000063df832d9p-1022);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xc.7bf065b215888c7p-1043L);
 
-        view = DecimalView!Args(false, -319, BigUIntView!Args.fromHexString("33CE7943FB"));
+        view = DecimalView!W(false, -319, BigUIntView!W.fromHexString("33CE7943FB"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x1.000000000162p-1022);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.000000000b103b6p-1025L);
 
-        view = DecimalView!Args(false, -309, BigUIntView!Args.fromHexString("15"));
+        view = DecimalView!W(false, -309, BigUIntView!W.fromHexString("15"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x0.f19c2629ccf53p-1022);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xf.19c2629ccf52fc4p-1026L);
 
-        view = DecimalView!Args(false, -340, BigUIntView!Args.fromHexString("AF87023B9BF0EE"));
+        view = DecimalView!W(false, -340, BigUIntView!W.fromHexString("AF87023B9BF0EE"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0x0.0000000000001p-1022);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xf.fffffffffffff64p-1078L);
 
-        view = DecimalView!Args(false, 400, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, 400, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xd.a763fc8cb9ff9e6p+1325L);
 
-        view = DecimalView!Args(false, 309, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, 309, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xb.201833b35d63f73p+1023L);
 
-        view = DecimalView!Args(false, 308, BigUIntView!Args.fromHexString("2"));
+        view = DecimalView!W(false, 308, BigUIntView!W.fromHexString("2"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
 
-        view = DecimalView!Args(false, 308, BigUIntView!Args.fromHexString("2"));
+        view = DecimalView!W(false, 308, BigUIntView!W.fromHexString("2"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
 
-        view = DecimalView!Args(false, 295, BigUIntView!Args.fromHexString("1059949B7090"));
+        view = DecimalView!W(false, 295, BigUIntView!W.fromHexString("1059949B7090"));
         assert (cast(float)view == float.infinity);
         assert (cast(double)view == double.infinity);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.00000000006955ap+1021L);
 
-        view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("0"));
+        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("0"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0L);
 
-        view = DecimalView!Args(false, 0, BigUIntView!Args.init);
+        view = DecimalView!W(false, 0, BigUIntView!W.init);
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0L);
 
-        view = DecimalView!Args(false, -325, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -325, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
 
-        view = DecimalView!Args(false, -326, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -326, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
 
-        view = DecimalView!Args(false, -500, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -500, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.33ada2003db9a8p-1664L);
 
-        view = DecimalView!Args(false, -1000, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -1000, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.68a9188a89e1467p-3325L);
 
-        view = DecimalView!Args(false, -4999, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -4999, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0L);
 
-        view = DecimalView!Args(false, -10000, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -10000, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0L);
 
-        view = DecimalView!Args(false, -4969, BigUIntView!Args.fromHexString("329659A941466C6B"));
+        view = DecimalView!W(false, -4969, BigUIntView!W.fromHexString("329659A941466C6B"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == real.min_normal * real.epsilon);
 
-        view = DecimalView!Args(false, -15, BigUIntView!Args.fromHexString("525DB0200FFAB"));
+        view = DecimalView!W(false, -15, BigUIntView!W.fromHexString("525DB0200FFAB"));
         assert (cast(float)view == 1.448997445238699f);
         assert (cast(double)view == 0x1.72f17f1f49aadp+0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
 
-        view = DecimalView!Args(false, -15, BigUIntView!Args.fromHexString("525DB0200FFAB"));
+        view = DecimalView!W(false, -15, BigUIntView!W.fromHexString("525DB0200FFAB"));
         assert (cast(float)view == 1.448997445238699f);
         assert (cast(double)view == 0x1.72f17f1f49aadp+0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
 
-        view = DecimalView!Args(false, -325, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -325, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
 
-        view = DecimalView!Args(false, -326, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -326, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0);
         assert (cast(double)view == 0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
 
-        view = DecimalView!Args(false, 0, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 1);
         assert (cast(double)view == 0x1p+0);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0x8p-3L);
 
-        view = DecimalView!Args(false, -5, BigUIntView!Args.fromHexString("3"));
+        view = DecimalView!W(false, -5, BigUIntView!W.fromHexString("3"));
         assert (cast(float)view == 3e-5f);
         assert (cast(double)view == 0x1.f75104d551d69p-16);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xf.ba8826aa8eb4635p-19L);
 
-        view = DecimalView!Args(false, -1, BigUIntView!Args.fromHexString("1"));
+        view = DecimalView!W(false, -1, BigUIntView!W.fromHexString("1"));
         assert (cast(float)view == 0.1f);
         assert (cast(double)view == 0x1.999999999999ap-4);
         static if (real.mant_dig >= 64)
             assert (cast(real)view == 0xc.ccccccccccccccdp-7L);
 
-        view = DecimalView!Args(false, -7, BigUIntView!Args.fromHexString("98967F"));
+        view = DecimalView!W(false, -7, BigUIntView!W.fromHexString("98967F"));
         assert (cast(float)view == 0.9999999f);
         assert (cast(double)view == 0x1.fffffca501acbp-1);
         static if (real.mant_dig >= 64)
@@ -3624,17 +3264,17 @@ unittest
 
 /++
 +/
-struct BinaryView(W, WordEndian endian = TargetEndian)
+struct BinaryView(W)
 {
     ///
     bool sign;
     ///
     long exponent;
     ///
-    BigUIntView!(W, endian) coefficient;
+    BigUIntView!W coefficient;
 
     ///
-    DecimalView!(const W, endian) lightConst()()
+    DecimalView!(const W) lightConst()()
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(sign, exponent, coefficient.lightConst);
@@ -3644,7 +3284,7 @@ struct BinaryView(W, WordEndian endian = TargetEndian)
 
     /++
     +/
-    BigIntView!(W, endian) signedCoefficient()
+    BigIntView!W signedCoefficient()
     {
         return typeof(return)(sign, coefficients);
     }

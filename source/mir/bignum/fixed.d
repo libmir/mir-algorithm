@@ -42,7 +42,7 @@ struct UInt(size_t size)
 
     static if (size_t.sizeof == uint.sizeof && data.length % 2 == 0)
     ///
-    this()(auto ref const ulong[data.length / 2] data)
+    this(auto ref const ulong[data.length / 2] data)
     {
         if (!__ctfe)
         {
@@ -72,15 +72,14 @@ struct UInt(size_t size)
     ///
     this(ulong data)
     {
-        auto d = view.leastSignificantFirst;
         static if (size_t.sizeof == ulong.sizeof)
         {
-            d.front = data;
+            this.data[0] = data;
         }
         else
         {
-            d.front = cast(uint) data;
-            d[1] = cast(uint) (data >> 32);
+            this.data[0] = cast(uint) data;
+            this.data[1] = cast(uint) (data >> 32);
         }
     }
 
@@ -88,7 +87,7 @@ struct UInt(size_t size)
     ///
     this(uint data)
     {
-        view.leastSignificant = data;
+        data[0] = data;
     }
 
     ///
@@ -185,13 +184,13 @@ struct UInt(size_t size)
     import mir.bignum.low_level_view: BigUIntView;
 
     ///
-    BigUIntView!size_t view()() @property pure nothrow @nogc scope @safe
+    BigUIntView!size_t view() @property pure nothrow @nogc scope @safe
     {
         return BigUIntView!size_t(data);
     }
 
     ///
-    BigUIntView!(const size_t) view()() const @property pure nothrow @nogc scope @safe
+    BigUIntView!(const size_t) view() const @property pure nothrow @nogc scope @safe
     {
         return BigUIntView!(const size_t)(data);
     }
@@ -273,22 +272,14 @@ struct UInt(size_t size)
     +/
     auto opCmp(UInt!size rhs) const
     {
-        version (LittleEndian) // workaround for CTFE bug
+        foreach_reverse(i; 0 .. data.length)
         {
-            foreach_reverse(i; 0 .. data.length)
-            {
-                if (this.data[i] < rhs.data[i])
-                    return -1;
-                if (this.data[i] > rhs.data[i])
-                    return +1;
-            }
-            return 0;
+            if (this.data[i] < rhs.data[i])
+                return -1;
+            if (this.data[i] > rhs.data[i])
+                return +1;
         }
-        else
-        {
-            import mir.algorithm.iteration: cmp;
-            return cmp(this.view.mostSignificantFirst, rhs.view.mostSignificantFirst);
-        }
+        return 0;
     }
 
     /// ditto
@@ -500,7 +491,7 @@ struct UInt(size_t size)
     ref UInt!size opOpAssign(string op)(size_t rhs) nothrow return scope
         if (op == "^" || op == "|" || op == "&")
     {
-        mixin(`view.leastSignificantFirst[0] ` ~ op ~ `= rhs;`);
+        mixin(`view.coefficients[0] ` ~ op ~ `= rhs;`);
         return this;
     }
 
@@ -518,7 +509,7 @@ struct UInt(size_t size)
         @safe pure nothrow @nogc return
         if (op == "<<" || op == ">>")
     {
-        auto d = view.leastSignificantFirst;
+        auto d = view.coefficients;
         assert(shift < size);
         auto index = shift / (size_t.sizeof * 8);
         auto bs = shift % (size_t.sizeof * 8);
@@ -539,7 +530,7 @@ struct UInt(size_t size)
                     d[j] = d[j + index];
                 }
             }
-            d[$ - (index + 1)] = d.back >>> bs;
+            d[$ - (index + 1)] = d[$ - 1] >>> bs;
             foreach (j; data.length - index .. data.length)
             {
                 d[j] = 0;
@@ -561,7 +552,7 @@ struct UInt(size_t size)
                     d[j] = d[j - index];
                 }
             }
-            d[index] = d.front << bs;
+            d[index] = d[0] << bs;
             foreach_reverse (j; 0 .. index)
             {
                 d[j] = 0;
@@ -669,29 +660,18 @@ struct UInt(size_t size)
     /++
     Shifts left using at most `size_t.sizeof * 8 - 1` bits
     +/
-    UInt!size smallLeftShift()(uint shift) const
+    UInt!size smallLeftShift(uint shift) const
     {
         assert(shift < size_t.sizeof * 8);
         UInt!size ret = this;
         if (shift)
         {
             auto csh = size_t.sizeof * 8 - shift;
-            version (LittleEndian)
+            static foreach_reverse (i; 1 .. data.length)
             {
-                static foreach_reverse (i; 1 .. data.length)
-                {
-                    ret.data[i] = (ret.data[i] << shift) | (ret.data[i - 1] >>> csh);
-                }
-                ret.data[0] = ret.data[0] << shift;
+                ret.data[i] = (ret.data[i] << shift) | (ret.data[i - 1] >>> csh);
             }
-            else
-            {
-                static foreach (i; 0 .. data.length - 1)
-                {
-                    ret.data[i] = (ret.data[i] << shift) | (ret.data[i + 1] >>> csh);
-                }
-                ret.data[$ - 1] = ret.data[$ - 1] << shift;
-            }
+            ret.data[0] = ret.data[0] << shift;
         }
         return ret;
     }
@@ -709,29 +689,18 @@ struct UInt(size_t size)
     /++
     Shifts right using at most `size_t.sizeof * 8 - 1` bits
     +/
-    UInt!size smallRightShift()(uint shift) const
+    UInt!size smallRightShift(uint shift) const
     {
         assert(shift < size_t.sizeof * 8);
         UInt!size ret = this;
         if (shift)
         {
             auto csh = size_t.sizeof * 8 - shift;
-            version (LittleEndian)
+            static foreach (i; 0 .. data.length - 1)
             {
-                static foreach (i; 0 .. data.length - 1)
-                {
-                    ret.data[i] = (ret.data[i] >>> shift) | (ret.data[i + 1] << csh);
-                }
-                ret.data[$ - 1] = ret.data[$ - 1] >>> shift;
+                ret.data[i] = (ret.data[i] >>> shift) | (ret.data[i + 1] << csh);
             }
-            else
-            {
-                static foreach_reverse (i; 1 .. data.length)
-                {
-                    ret.data[i] = (ret.data[i] >>> shift) | (ret.data[i - 1] << csh);
-                }
-                ret.data[0] = ret.data[0] >>> shift;
-            }
+            ret.data[$ - 1] = ret.data[$ - 1] >>> shift;
         }
         return ret;
     }
@@ -764,14 +733,13 @@ struct UInt(size_t size)
     T opCast(T)() const
         if (is(Unqual!T == ulong))
     {
-        auto d = view.leastSignificantFirst;
         static if (size_t.sizeof == ulong.sizeof)
         {
-            return d.front;
+            return data[0];
         }
         else
         {
-            return d.front | (ulong(d[1]) << 32);
+            return data[0] | (ulong(data[1]) << 32);
         }
     }
 
@@ -783,18 +751,12 @@ struct UInt(size_t size)
         enum newLength = typeof(return).data.length;
         static if (newLength <= data.length)
         {
-            version (LittleEndian)
-                return typeof(return)(data[0 .. newLength]);
-            else
-                return typeof(return)(data[$ - newLength .. $]);
+            return typeof(return)(data[0 .. newLength]);
         }
         else
         {
             typeof(return) ret;
-            version (LittleEndian)
-                ret.data[0 .. data.length] = data;
-            else
-                ret.data[$ - data.length .. $] = data;
+            ret.data[0 .. data.length] = data;
             return ret;
         }
     }
@@ -804,8 +766,7 @@ struct UInt(size_t size)
     T opCast(T)() const
         if (is(Unqual!T == uint))
     {
-        auto d = view.leastSignificantFirst;
-        return cast(uint) d.front;
+        return cast(uint) data[0];
     }
 
     /++
@@ -820,17 +781,11 @@ struct UInt(size_t size)
         enum N = min(ret.data.length, data.length);
         static if (lowerBits)
         {
-            version (LittleEndian)
                 ret.data[0 .. N] = data[0 .. N];
-            else
-                ret.data[$ - N .. $] = data[$ - N .. $];
         }
         else
         {
-            version (LittleEndian)
                 ret.data[0 .. N] = data[$ - N .. $];
-            else
-                ret.data[$ - N .. $] = data[0 .. N];
         }
         return ret;
     }
@@ -856,7 +811,7 @@ struct UInt(size_t size)
 
     /++
     +/
-    bool bt()(size_t position) const
+    bool bt(size_t position) const
         @safe pure nothrow @nogc
     {
         assert(position < data.sizeof * 8);
@@ -882,7 +837,7 @@ struct UInt(size_t size)
 
     /++
     +/
-    size_t ctlz()() const @property
+    size_t ctlz() const @property
         @safe pure nothrow @nogc
     {
         return view.ctlz;
@@ -904,7 +859,7 @@ struct UInt(size_t size)
 
     /++
     +/
-    size_t cttz()() const @property
+    size_t cttz() const @property
         @safe pure nothrow @nogc
     {
         return view.cttz;
@@ -926,22 +881,16 @@ struct UInt(size_t size)
 
     /++
     +/
-    bool signBit()() const @property
+    bool signBit() const @property
     {
-        version (LittleEndian)
             return data[$ - 1] >> (size_t.sizeof * 8 - 1);
-        else
-            return data[0] >> (size_t.sizeof * 8 - 1);
     }
 
     /// ditto
-    void signBit()(bool value) @property
+    void signBit(bool value) @property
     {
         enum signMask = ptrdiff_t.max;
-        version (LittleEndian)
             data[$ - 1] = (data[$ - 1] & ptrdiff_t.max) | (size_t(value) << (size_t.sizeof * 8 - 1));
-        else
-            data[    0] = (data[    0] & ptrdiff_t.max) | (size_t(value) << (size_t.sizeof * 8 - 1));
     }
 
     ///
@@ -961,44 +910,39 @@ struct UInt(size_t size)
 /++
 +/
 UInt!sizeB extendedMulHigh(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!sizeB b)
+    @safe pure nothrow @nogc
 {
     return (extendedMul(a, b) >> sizeA).toSize!sizeB;
 }
 
 /++
 +/
-UInt!(sizeA + sizeB) extendedMul(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!sizeB b) @safe
+UInt!(sizeA + sizeB) extendedMul(size_t sizeA, size_t sizeB)(UInt!sizeA a, UInt!sizeB b)
+    @safe pure nothrow @nogc
 {
     UInt!(sizeA + sizeB) ret;
     enum al = a.data.length;
     enum alp1 = a.data.length + 1;
-    version (LittleEndian)
-    {
         ret.data[0 .. alp1] = extendedMul(a, b.data[0]).data;
         static foreach ( i; 1 .. b.data.length)
             ret.data[i .. i + alp1] = extendedMulAdd(a, b.data[i], UInt!sizeA(ret.data[i .. i + al])).data;
-    }
-    else
-    {
-        ret.data[$ - alp1 .. $] = extendedMul(a, b.data[$ - 1]).data;
-        static foreach_reverse ( i; 0 .. b.data.length - 1)
-            ret.data[i .. i + alp1] = extendedMulAdd(a, b.data[i], UInt!sizeA(ret.data[i .. i + al])).data;
-    }
     return ret;
 }
 
 /// ditto
 UInt!(size + size_t.sizeof * 8)
-    extendedMul(size_t size)(UInt!size a, size_t b) @safe
+    extendedMul(size_t size)(UInt!size a, size_t b)
+    @safe pure nothrow @nogc
 {
     size_t overflow = a.view *= b;
     auto ret = a.toSize!(size + size_t.sizeof * 8);
-    ret.view.mostSignificant = overflow;
+    ret.data[$ - 1] = overflow;
     return ret;
 }
 
 /// ditto
 UInt!128 extendedMul()(ulong a, ulong b)
+    @safe pure nothrow @nogc
 {
     static if (size_t.sizeof == ulong.sizeof)
     {
@@ -1017,6 +961,7 @@ UInt!128 extendedMul()(ulong a, ulong b)
 
 /// ditto
 UInt!64 extendedMul()(uint a, uint b)
+    @safe pure nothrow @nogc
 {
     static if (size_t.sizeof == uint.sizeof)
     {
@@ -1089,6 +1034,6 @@ UInt!(size + size_t.sizeof * 8)
 {
     auto ret = extendedMul(a, b);
     auto view = ret.view;
-    view.mostSignificant += view.topLeastSignificantPart(a.data.length) += c.view;
+    view.coefficients[$ - 1] += view.topLeastSignificantPart(a.data.length) += c.view;
     return ret;
 }

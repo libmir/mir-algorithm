@@ -54,11 +54,11 @@ struct BigInt(uint maxSize64)
         static if (size_t.sizeof == ulong.sizeof)
         {
             length = data != 0;
-            view.leastSignificantFirst[0] = data;
+            view.coefficients[0] = data;
         }
         else
         {
-            auto d = view.leastSignificantFirst;
+            auto d = view.coefficients;
             d[0] = cast(uint) data;
             d[1] = cast(uint) (data >> 32);
             length = data && (data >> 32);
@@ -108,12 +108,12 @@ struct BigInt(uint maxSize64)
         static if (size_t.sizeof == ulong.sizeof)
         {
             length = 1;
-            view.leastSignificantFirst[0] = data;
+            view.coefficients[0] = data;
         }
         else
         {
             length = 2;
-            auto d = view.leastSignificantFirst;
+            auto d = view.coefficients;
             d[0] = cast(uint) data;
             d[1] = cast(uint) (data >> 32);
         }
@@ -189,7 +189,7 @@ struct BigInt(uint maxSize64)
     bool opEquals()(size_t rhs, bool rhsSign = false)
         const @safe pure nothrow @nogc
     {
-        return rhs == 0 && this.length == 0 || this.length == 1 && this.sign == rhsSign && view.unsigned.leastSignificant == rhs;
+        return rhs == 0 && this.length == 0 || this.length == 1 && this.sign == rhsSign && this.data[0] == rhs;
     }
 
     ///
@@ -197,7 +197,7 @@ struct BigInt(uint maxSize64)
         const @safe pure nothrow @nogc
     {
         auto sign = rhs < 0;
-        return opEquals(sign ? ulong(-rhs) : ulong(rhs), sign);
+        return this.opEquals(sign ? ulong(-rhs) : ulong(rhs), sign);
     }
 
     /++
@@ -211,19 +211,13 @@ struct BigInt(uint maxSize64)
     ///
     BigIntView!size_t view()() scope return @property
     {
-        version (LittleEndian)
             return typeof(return)(this.data[0 .. this.length], this.sign);
-        else
-            return typeof(return)(this.data[$ - this.length .. $], this.sign);
     }
 
     ///
     BigIntView!(const size_t) view()() const scope return @property
     {
-        version (LittleEndian)
             return typeof(return)(this.data[0 .. this.length], this.sign);
-        else
-            return typeof(return)(this.data[$ - this.length .. $], this.sign);
     }
 
     ///
@@ -240,10 +234,7 @@ struct BigInt(uint maxSize64)
     void putCoefficient(size_t value)
     {
         assert(length < data.length);
-        version (LittleEndian)
             data[length++] = value;
-        else
-            data[$ - ++length] = value;
     }
 
     /++
@@ -371,7 +362,7 @@ struct BigInt(uint maxSize64)
         else
         {
             auto view = this.view.unsigned.opCast!(BigUIntView!(uint));
-            if (view.coefficients.length && view.mostSignificant == 0)
+            if (view.coefficients.length && view.coefficients[$ - 1] == 0)
                 view.popMostSignificant;
             return view;
         }
@@ -384,7 +375,7 @@ struct BigInt(uint maxSize64)
         else
         {
             auto view = this.view.unsigned.opCast!(BigUIntView!(const uint));
-            if (view.coefficients.length && view.mostSignificant == 0)
+            if (view.coefficients.length && view.coefficients[$ - 1] == 0)
                 view.popMostSignificant;
             return view;
         }
@@ -419,7 +410,7 @@ struct BigInt(uint maxSize64)
         BigInt!(maxSize64 * 2) res = void;
         res = 1u;
 
-        foreach (b; exponent.leastSignificantFirst.bitwise[0 .. $ - exponent.ctlz])
+        foreach (b; exponent.coefficients.bitwise[0 .. $ - exponent.ctlz])
         {
             bas %= modulus;
             if (b)
@@ -476,7 +467,7 @@ struct BigInt(uint maxSize64)
         this.length = this.data.length;
         multiply(this.view.unsigned, a.view.unsigned, b.view.unsigned);
         this.length = this.length.min(a.length + b.length);
-        this.length -= this.length && !this.view.unsigned.mostSignificant;
+        this.length -= this.length && !this.view.unsigned.coefficients[$ - 1];
         this.sign = (this.length != 0) & (a.sign ^ b.sign);
         return this;
     }
@@ -492,7 +483,7 @@ struct BigInt(uint maxSize64)
 
         pragma(inline, false);
 
-        if (divisor.length == 0 || divisor.view.unsigned.mostSignificant == 0)
+        if (divisor.length == 0 || divisor.view.unsigned.coefficients[$ - 1] == 0)
             assert(0, "Zero or denormalized BigInt divizor");
 
         if (this.length < divisor.length)
@@ -601,7 +592,7 @@ struct BigInt(uint maxSize64)
         {
             auto oldLength = length;
             length = cast(int)rhs.coefficients.length;
-            view.unsigned.leastSignificantFirst[oldLength .. $] = 0;
+            view.unsigned.coefficients[oldLength .. $] = 0;
         }
         else
         if (rhs.coefficients.length == 0)
@@ -775,7 +766,7 @@ struct BigInt(uint maxSize64)
                 length = 0;
                 return this;
             }
-            auto d = view.leastSignificantFirst;
+            auto d = view.coefficients;
             if (bs)
             {
                 foreach (j; 0 .. d.length - (index + 1))
@@ -790,7 +781,7 @@ struct BigInt(uint maxSize64)
                     d[j] = d[j + index];
                 }
             }
-            auto most = d[$ - (index + 1)] = d.back >>> bs;
+            auto most = d[$ - (index + 1)] = d[$ - 1] >>> bs;
             length -= index + (most == 0);
         }
         else
@@ -803,14 +794,14 @@ struct BigInt(uint maxSize64)
 
             if (bs)
             {
-                auto most = view.unsigned.mostSignificant >> ss;
+                auto most = view.unsigned.coefficients[$ - 1] >> ss;
                 length += index;
                 if (length < data.length)
                 {
                     if (most)
                     {
                         length++;
-                        view.unsigned.mostSignificant = most;
+                        view.unsigned.coefficients[$ - 1] = most;
                         length--;
                     }
                 }
@@ -819,25 +810,25 @@ struct BigInt(uint maxSize64)
                     length = data.length;
                 }
 
-                auto d = view.leastSignificantFirst;
+                auto d = view.coefficients;
                 foreach_reverse (j; index + 1 .. length)
                 {
                     d[j] = (d[j - index] << bs) | (d[j - (index + 1)] >> ss);
                 }
-                d[index] = d.front << bs;
+                d[index] = d[0] << bs;
                 if (length < data.length)
                     length += most != 0;
             }
             else
             {
                 length = cast(uint) min(length + index, cast(uint)data.length);
-                auto d = view.leastSignificantFirst;
+                auto d = view.coefficients;
                 foreach_reverse (j; index .. length)
                 {
                     d[j] = d[j - index];
                 }
             }
-            view.leastSignificantFirst[0 .. index] = 0;
+            view.coefficients[0 .. index] = 0;
         }
         return this;
     }
@@ -859,9 +850,9 @@ struct BigInt(uint maxSize64)
     /++
     Returns: overflow flag
     +/
-    bool copyFrom(W, WordEndian endian)(BigIntView!(const W, endian) view)
+    bool copyFrom(W)(BigIntView!(const W) view)
     {
-        static if (W.sizeof > size_t.sizeof && endian == TargetEndian)
+        static if (W.sizeof > size_t.sizeof)
         {
             return this.copyFrom(cast(BigIntView!(const size_t))view);
         }
@@ -872,25 +863,25 @@ struct BigInt(uint maxSize64)
             auto rhs = view;
             auto overflow = lhs.coefficients.length < rhs.coefficients.length;
             auto n = overflow ? lhs.coefficients.length : rhs.coefficients.length;
-            lhs.leastSignificantFirst[0 .. n] = rhs.leastSignificantFirst[0 .. n];
+            lhs.coefficients[0 .. n] = rhs.coefficients[0 .. n];
             this.length = cast(uint)(n / (size_t.sizeof / W.sizeof));
             if (auto tail = n % (size_t.sizeof / W.sizeof))
             {
                 this.length++;
                 auto shift = ((size_t.sizeof / W.sizeof) - tail) * (W.sizeof * 8);
-                auto value = this.view.unsigned.mostSignificant;
+                auto value = this.view.unsigned.coefficients[$ - 1];
                 value <<= shift;
                 value >>= shift;
-                this.view.unsigned.mostSignificant = value;
+                this.view.unsigned.coefficients[$ - 1] = value;
             }
             return overflow;
         }
     }
 
     /// ditto
-    bool copyFrom(W, WordEndian endian)(BigUIntView!(const W, endian) view)
+    bool copyFrom(W)(BigUIntView!(const W) view)
     {
-        return this.copyFrom(BigIntView!(const W, endian)(view));
+        return this.copyFrom(BigIntView!(const W)(view));
     }
 
     ///

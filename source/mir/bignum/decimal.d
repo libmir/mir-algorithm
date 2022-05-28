@@ -708,16 +708,8 @@ struct Decimal(uint maxSize64)
                 {
                     auto l = cast(uint)coefficient.data[i];
                     auto h = cast(uint)(coefficient.data[i] >> 32);
-                    version (LittleEndian)
-                    {
-                        data[i * 2 + 0] = l;
-                        data[i * 2 + 1] = h;
-                    }
-                    else
-                    {
-                        data[$ - 1 - (i * 2 + 0)] = l;
-                        data[$ - 1 - (i * 2 + 1)] = h;
-                    }
+                    data[i * 2 + 0] = l;
+                    data[i * 2 + 1] = h;
                 }
                 auto work = BigUIntView!uint(data);
                 work = work.topLeastSignificantPart(coefficient.length * 2).normalized;
