@@ -159,7 +159,6 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
     if ((is(T == float) || is(T == double) || is(T == real)))
     in (coefficients.length == 0 || coefficients[$ - 1])
 {
-    import mir.bignum.low_level_view: BigUIntView;
     import mir.bignum.fixed: UInt;
     import mir.bignum.fp: Fp, extendedMul;
     import mir.math.common: floor;
@@ -200,7 +199,7 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
     else
     {
         if (exponent == 0)
-            return decimalTo!T(coeff);
+            return decimalTo!T(coefficients);
 
         if (coefficients.length == 0)
             return exponent == exponent.max ? T.infinity : 0;
@@ -241,7 +240,7 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
                 enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
             else
                 enum ulong mask = ulong.max;
-            enum ulong half = (1UL << (128 - T.mant_dig - 1));
+            enum ulong half = 3;//(1UL << (128 - T.mant_dig - 1));
             enum UInt!128 bound = UInt!128(1) << T.mant_dig;
 
             auto slop = (coefficients.length > (ulong.sizeof * 2 / size_t.sizeof)) + 3 * expSign;

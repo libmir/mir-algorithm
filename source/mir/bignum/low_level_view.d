@@ -94,6 +94,7 @@ struct BigUIntView(W)
         return typeof(return)(this, sign);
     }
 
+    static if (W.sizeof >= size_t.sizeof)
     ///
     T opCast(T)() const
         if (isFloatingPoint!T && isMutable!T)
@@ -102,6 +103,7 @@ struct BigUIntView(W)
         return normalized.coefficients.decimalTo!T;
     }
 
+    static if (W.sizeof >= size_t.sizeof)
     ///
     @safe
     T opCast(T : Fp!coefficientSize, uint coefficientSize)() const
@@ -1120,15 +1122,15 @@ unittest
     assert(fp.exponent == 0);
     assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
 
-    fp = cast(Fp!128) BigUIntView!uint.fromHexString("ae3cd0aff2714a1de7022b0029d");
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("ae3cd0aff2714a1de7022b0029d");
     assert(fp.exponent == -20);
     assert(fp.coefficient == UInt!128.fromHexString("ae3cd0aff2714a1de7022b0029d00000"));
 
-    fp = cast(Fp!128) BigUIntView!ushort.fromHexString("e7022b0029d");
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("e7022b0029d");
     assert(fp.exponent == -84);
     assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
 
-    fp = cast(Fp!128) BigUIntView!ubyte.fromHexString("e7022b0029d");
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("e7022b0029d");
     assert(fp.exponent == -84);
     assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
 
@@ -2270,6 +2272,7 @@ struct DecimalView(W)
         return typeof(return)(coefficient, sign);
     }
 
+    static if (W.sizeof >= size_t.sizeof)
     /++
     Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.
