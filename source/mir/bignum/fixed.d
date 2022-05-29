@@ -295,9 +295,18 @@ struct UInt(size_t size)
         return opCmp(UInt!size(rhs));
     }
 
+    static if (size >= 64)
     /++
     +/
     ref UInt!size opAssign(ulong rhs) scope return
+        @safe pure nothrow @nogc
+    {
+        this.data = UInt!size(rhs).data;
+        return this;
+    }
+    else
+    ///
+    ref UInt!size opAssign(uint rhs) scope return
         @safe pure nothrow @nogc
     {
         this.data = UInt!size(rhs).data;
