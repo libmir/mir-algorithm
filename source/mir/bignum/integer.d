@@ -38,13 +38,29 @@ struct BigInt(uint maxSize64)
     this(uint N)(size_t[N] data)
         if (N <= this.data.length)
     {
-        sign = false;
-        version(LittleEndian)
-            this.data[0 .. N] = data;
+        static if (data.length == 0)
+        {
+            sign = false;
+            length = 0;
+        }
+        static if (data.length == 1)
+        {
+            this(data[0]);
+        }
         else
-            this.data[$ - N .. $] = data;
-        length = data.length;
-        normalize;
+        static if (data.length == 2)
+        {
+            this.data[0] = data[0];
+            this.data[1] = data[1];
+            this.length = data[1] ? 2 : data[0] != 0;
+        }
+        else
+        {
+            sign = false;
+            this.data[0 .. N] = data;
+            length = data.length;
+            normalize;
+        }
     }
 
     ///
@@ -108,22 +124,37 @@ struct BigInt(uint maxSize64)
     }
 
     ///
-    ref opAssign(ulong data) return
+    ref opAssign(ulong data) return scope
     {
-        this.sign = 0;
-        static if (size_t.sizeof == ulong.sizeof)
-        {
-            length = 1;
-            view.coefficients[0] = data;
-        }
-        else
-        {
-            length = 2;
-            auto d = view.coefficients;
-            d[0] = cast(uint) data;
-            d[1] = cast(uint) (data >> 32);
-        }
-        normalize;
+        __ctor(data);
+        return this;
+    }
+
+    ///
+    ref opAssign(long data) return scope
+    {
+        __ctor(data);
+        return this;
+    }
+
+    ///
+    ref opAssign(uint data) return scope
+    {
+        __ctor(data);
+        return this;
+    }
+
+    ///
+    ref opAssign(int data) return scope
+    {
+        __ctor(data);
+        return this;
+    }
+
+    ///
+    ref opAssign(uint rhsSize)(UInt!rhsSize data) return scope
+    {
+        __ctor(data);
         return this;
     }
 
@@ -164,7 +195,7 @@ struct BigInt(uint maxSize64)
         scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
-        auto work = BigIntView!size_t(data[]); 
+        auto work = data[].BigIntView!size_t; 
         if (work.fromStringImpl(str))
         {
             length = cast(uint) work.coefficients.length;
@@ -703,6 +734,7 @@ struct BigInt(uint maxSize64)
     ///
     bool mulPow5(size_t degree)
     {
+        import mir.bignum.internal.dec2float: MaxWordPow5;
         // assert(approxCanMulPow5(degree));
         if (length == 0)
             return false;
@@ -815,10 +847,10 @@ struct BigInt(uint maxSize64)
     }
 
     ///
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
+    T opCast(T)() const
         if (isFloatingPoint!T && isMutable!T)
     {
-        return view.opCast!(T, wordNormalized, nonZero);
+        return view.opCast!T;
     }
 
     ///
@@ -831,38 +863,35 @@ struct BigInt(uint maxSize64)
     /++
     Returns: overflow flag
     +/
-    bool copyFrom(W)(BigIntView!(const W) view)
+    bool copyFrom(W)(scope const(W)[] coefficients, bool sign = false)
+        if (__traits(isUnsigned, W))
     {
         static if (W.sizeof > size_t.sizeof)
         {
-            return this.copyFrom(cast(BigIntView!(const size_t))view);
+            return this.copyFrom(cast(BigIntView!(const size_t))view, sign);
         }
         else
         {
-            this.sign = view.sign;
-            auto lhs = BigUIntView!W(cast(W[])data);
-            auto rhs = view;
-            auto overflow = lhs.coefficients.length < rhs.coefficients.length;
-            auto n = overflow ? lhs.coefficients.length : rhs.coefficients.length;
-            lhs.coefficients[0 .. n] = rhs.coefficients[0 .. n];
+            this.sign = sign;
+            auto dest = cast(W[])data;
+            auto overflow = dest.length < coefficients.length;
+            auto n = overflow ? dest.length : coefficients.length;
             this.length = cast(uint)(n / (size_t.sizeof / W.sizeof));
-            if (auto tail = n % (size_t.sizeof / W.sizeof))
+            dest[0 .. n] = coefficients[0 .. n];
+            static if (size_t.sizeof / W.sizeof > 1)
             {
-                this.length++;
-                auto shift = ((size_t.sizeof / W.sizeof) - tail) * (W.sizeof * 8);
-                auto value = this.coefficients[$ - 1];
-                value <<= shift;
-                value >>= shift;
-                this.coefficients[$ - 1] = value;
+                if (auto tail = n % (size_t.sizeof / W.sizeof))
+                {
+                    this.length++;
+                    auto shift = ((size_t.sizeof / W.sizeof) - tail) * (W.sizeof * 8);
+                    auto value = this.coefficients[$ - 1];
+                    value <<= shift;
+                    value >>= shift;
+                    this.coefficients[$ - 1] = value;
+                }
             }
             return overflow;
         }
-    }
-
-    /// ditto
-    bool copyFrom(W)(BigUIntView!(const W) view)
-    {
-        return this.copyFrom(BigIntView!(const W)(view));
     }
 
     ///
@@ -908,7 +937,7 @@ struct BigInt(uint maxSize64)
         import mir.format;
         auto str = "-34010447314490204552169750449563978034784726557588085989975288830070948234680";
         auto integer = BigInt!4(str);
-        stringBuf buffer;
+        auto buffer = stringBuf;
         buffer << integer;
         assert(buffer.data == str);
     }
@@ -1027,11 +1056,11 @@ unittest
     assert(d == c);
     assert(c != b);
     b.sign = true;
-    assert(!c.copyFrom(b.view));
+    assert(!c.copyFrom(b.coefficients, b.sign));
     assert(c == b);
     b >>= 18;
     auto bView = cast(BigIntView!ushort)b.view;
-    assert(!c.copyFrom(bView.topLeastSignificantPart(bView.unsigned.coefficients.length - 1)));
+    assert(!c.copyFrom(bView.coefficients[0 .. $ - 1], bView.sign));
     assert(c == b);
 }
 
@@ -1039,6 +1068,7 @@ version(mir_bignum_test)
 @safe pure @nogc unittest
 {
     BigInt!4 i = "-0";
-    assert(i.view.coefficients.length == 0);
+    assert(i.coefficients.length == 0);
+    assert(!i.sign);
     assert(cast(long) i == 0);
 }

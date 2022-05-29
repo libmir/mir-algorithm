@@ -21,11 +21,10 @@ private static immutable errorMsg = "Cannot create SmallString: input string exc
 version(D_Exceptions)
     private static immutable exception = new Exception(errorMsg);
 
-extern(C++, "mir"):
-
 /++
 Self-contained generic Small String implementaton.
 +/
+extern(C++, "mir")
 @serdeScoped @serdeProxy!(const(char)[])
 struct SmallString(uint maxLength)
     if (maxLength)

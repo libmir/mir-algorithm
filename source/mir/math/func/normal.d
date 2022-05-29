@@ -25,10 +25,6 @@ import mir.math.common;
 @safe pure nothrow @nogc:
 
 ///
-deprecated("normalProbabilityDensity renamed, use normalPDF instead")
-alias normalProbabilityDensity = normalPDF;
-
-///
 T normalPDF(T)(const T z)
  if (isFloatingPoint!T)
 {
@@ -42,26 +38,6 @@ if (isFloatingPoint!T)
 {
     return normalPDF((x - mean) / stdDev) / stdDev;
 }
-
-/++
-Computes the normal distribution function.
-The normal (or Gaussian, or bell-shaped) distribution is
-defined as:
-normalDist(x) = 1/$(SQRT) &pi; $(INTEGRAL -$(INFINITY), x) exp( - $(POWER t, 2)/2) dt
-    = 0.5 + 0.5 * erf(x/sqrt(2))
-    = 0.5 * erfc(- x/sqrt(2))
-To maintain accuracy at high values of x, use
-normalDistribution(x) = 1 - normalDistribution(-x).
-Accuracy:
-Within a few bits of machine resolution over the entire
-range.
-References:
-$(LINK http://www.netlib.org/cephes/ldoubdoc.html),
-G. Marsaglia, "Evaluating the Normal Distribution",
-Journal of Statistical Software <b>11</b>, (July 2004).
-+/
-deprecated("normalDistribution renamed, use normalCDF instead")
-alias normalDistribution = normalCDF;
 
 /++
 Computes the normal distribution cumulative distribution function (CDF).
@@ -126,10 +102,6 @@ unittest
     assert(normalCDF(-100.0) == 0);
     assert(normalCDF(-8.0) > 0);
 }
-
-///
-deprecated("normalDistributionInverse renamed, use normalInvCDF instead")
-alias normalDistributionInverse = normalInvCDF;
 
 ///
 T normalInvCDF(T)(const T p)

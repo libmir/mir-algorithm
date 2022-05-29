@@ -558,6 +558,7 @@ sizediff_t nBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!
 }
 
 ///
+version(mir_test)
 pure unittest
 {
     import mir.ndslice.allocation: bitSlice;
@@ -2568,6 +2569,7 @@ unittest
     assert(sl2[41 .. $ - 1].count!"a" == 1);
 }
 
+version(mir_test)
 unittest
 {
     import mir.ndslice.allocation: slice;
@@ -4285,6 +4287,7 @@ unittest
     assert(arr.length == 1);
 }
 
+version(mir_test)
 unittest
 {
     import mir.rc.array: RCArray;

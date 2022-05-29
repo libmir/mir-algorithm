@@ -931,15 +931,6 @@ Constructs the cumulative normal distribution function of the expression
 Params:
     value = expression
 +/
-deprecated("normalDistribution renamed, use normalCDF instead")
-alias normalDistribution = normalCDF;
-
-/++
-Constructs the cumulative normal distribution function of the expression
-
-Params:
-    value = expression
-+/
 auto normalCDF(T)(const T value)
     if (is(T == struct))
 {

@@ -209,6 +209,7 @@ void decodeBase64(Appender)(scope const(char)[] data,
 
 /// Test decoding of data which has a length which can be
 /// cleanly decoded.
+version(mir_test)
 @safe pure unittest
 {
     {
@@ -253,6 +254,7 @@ void decodeBase64(Appender)(scope const(char)[] data,
 }
 
 /// Test decoding invalid data
+version(mir_test)
 @safe pure unittest
 {
     void testFail(const(char)[] input) @safe pure
@@ -358,6 +360,7 @@ void encodeBase64(Appender)(scope const(ubyte)[] input,
 
 /// Test encoding of data which has a length that can be cleanly
 /// encoded.
+version(mir_test)
 @safe pure unittest
 {
     // 3 bytes
@@ -387,6 +390,7 @@ void encodeBase64(Appender)(scope const(ubyte)[] input,
 
 /// Test encoding of data which has a length which CANNOT be cleanly encoded.
 /// This typically means that there's padding.
+version(mir_test)
 @safe pure unittest
 {
     // 1 byte 
@@ -417,6 +421,7 @@ void encodeBase64(Appender)(scope const(ubyte)[] input,
 }
 
 /// Test nogc encoding
+version(mir_test)
 @safe pure @nogc unittest
 {
     import mir.appender : scopedBuffer;
@@ -437,6 +442,7 @@ void encodeBase64(Appender)(scope const(ubyte)[] input,
 }
 
 /// Make sure we can decode what we encode.
+version(mir_test)
 @safe pure unittest
 {
     // Test an example string

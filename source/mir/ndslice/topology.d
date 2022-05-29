@@ -5641,6 +5641,7 @@ template squeeze(sizediff_t axis = 0)
 }
 
 ///
+version(mir_ndslice_test)
 unittest
 {
     import mir.ndslice.topology : iota;

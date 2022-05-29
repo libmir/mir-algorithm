@@ -45,6 +45,7 @@ See also $(MREF mir,string_map) - ordered string-value associative array.
 alias JsonAlgebraic = TaggedVariant!JsonAlgebraicUnion;
 
 ///
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology: map;

@@ -18,8 +18,6 @@ Software floating point number.
 
 Params:
     size = coefficient size in bits
-
-Note: the implementation doesn't support NaN and Infinity values.
 +/
 struct Fp(uint size)
     if (size % (uint.sizeof * 8) == 0 && size >= (uint.sizeof * 8))
@@ -681,7 +679,7 @@ template fp_log2(T)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 @safe pure nothrow @nogc
 unittest
 {
@@ -705,7 +703,7 @@ template fp_log(T)
 }
 
 ///
-version(mir_test)
+version(mir_bignum_test)
 @safe pure nothrow @nogc
 unittest
 {

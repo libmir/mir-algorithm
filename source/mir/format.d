@@ -112,12 +112,13 @@ enum getData = GetData();
 
 /++
 +/
-struct _stringBuf(C)
+struct StringBuf(C, uint scopeSize = 256)
+    if (is(C == char) || is(C == wchar) || is(C == dchar))
 {
     import mir.appender: ScopedBuffer;
 
     ///
-    ScopedBuffer!(C, 256) buffer;
+    ScopedBuffer!(C, scopeSize) buffer;
 
     ///
     alias buffer this;
@@ -127,11 +128,14 @@ struct _stringBuf(C)
 }
 
 ///ditto
-alias stringBuf = _stringBuf!char;
-///ditto
-alias wstringBuf = _stringBuf!wchar;
-///ditto
-alias dstringBuf = _stringBuf!dchar;
+auto stringBuf(C = char, uint scopeSize = 256)()
+    @trusted pure nothrow @nogc @property
+    if (is(C == char) || is(C == wchar) || is(C == dchar))
+{
+    StringBuf!(C, scopeSize) buffer = void;
+    buffer.initialize;
+    return buffer;
+}
 
 /++
 +/
@@ -162,7 +166,7 @@ version (mir_test) unittest
 {
     auto name = "D";
     auto ver = 2.0;
-    assert(stringBuf() << "Hi " << name << ver << "!\n" << getData == "Hi D2.0!\n");
+    assert(stringBuf << "Hi " << name << ver << "!\n" << getData == "Hi D2.0!\n");
 }
 
 ///
@@ -171,7 +175,7 @@ version (mir_test) unittest
 {
     auto name = "D"w;
     auto ver = 2;
-    assert(wstringBuf() << "Hi "w << name << ver << "!\n"w << getData == "Hi D2!\n"w);
+    assert(stringBuf!wchar << "Hi "w << name << ver << "!\n"w << getData == "Hi D2!\n"w);
 }
 
 ///
@@ -180,13 +184,13 @@ version (mir_test) unittest
 {
     auto name = "D"d;
     auto ver = 2UL;
-    assert(dstringBuf() << "Hi "d  << name << ver << "!\n"d << getData == "Hi D2!\n");
+    assert(stringBuf!dchar << "Hi "d  << name << ver << "!\n"d << getData == "Hi D2!\n"d);
 }
 
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
-    assert(stringBuf() << -1234567890 << getData == "-1234567890");
+    assert(stringBuf << -1234567890 << getData == "-1234567890");
 }
 
 /++
@@ -421,7 +425,7 @@ ref W printEscaped(C, EscapeFormat escapeFormat = EscapeFormat.ion, W)(scope ret
 version (mir_test) unittest
 {
     import mir.format: stringBuf;
-    stringBuf w;
+    auto w = stringBuf;
     assert(w.printEscaped("Hi \a\v\0\f\t\b \\\r\n" ~ `"@nogc"`).data == `Hi \a\v\0\f\t\b \\\r\n\"@nogc\"`);
     w.reset;
     assert(w.printEscaped("\x03").data == `\x03`);
@@ -766,7 +770,7 @@ version(mir_bignum_test)
 unittest
 {
     auto spec = NumericSpec.human;
-    stringBuf buffer;
+    auto buffer = stringBuf;
 
     void check(double num, string value)
     {
@@ -926,7 +930,7 @@ version (mir_test) unittest
 
     import mir.appender: scopedBuffer;
     auto w = scopedBuffer!char;
-    assert(stringBuf() << A() << S() << D() << F() << G() << getData == "asdfg");
+    assert(stringBuf << A() << S() << D() << F() << G() << getData == "asdfg");
 }
 
 /// Prints classes and interfaces
@@ -1005,7 +1009,7 @@ version (mir_test) unittest
     static class F { const(char)[] toString()() const return { return "f"; } }
     static class G { const(char)[] s = "g"; alias s this; }
 
-    assert(stringBuf() << new A() << new S() << new D() << new F() << new G() << getData == "asdfg");
+    assert(stringBuf << new A() << new S() << new D() << new F() << new G() << getData == "asdfg");
 }
 
 ///

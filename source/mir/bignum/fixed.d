@@ -170,7 +170,7 @@ struct UInt(size_t size)
         import mir.format: stringBuf;
         auto str = "34010447314490204552169750449563978034784726557588085989975288830070948234680";
         auto integer = UInt!256(str);
-        stringBuf buffer;
+        auto buffer = stringBuf;
         buffer << integer;
         assert(buffer.data == str);
     }

@@ -110,6 +110,7 @@ Unqual!(typeof(X.init - Y.init))[3] parabolaDerivatives(X, Y)(in X x0, in X x1, 
     return [d1 + d2 - d0, d0 + d2 - d1, d0 + d1 - d2];
 }
 
+version(mir_test)
 ///
 unittest
 {
@@ -128,6 +129,7 @@ unittest
 }
 
 
+version(mir_test)
 ///
 unittest
 {
@@ -219,6 +221,7 @@ struct CubicKernel(T)
     alias withTwoDerivatives = opCall!2;
 }
 
+version(mir_test)
 ///
 unittest
 {

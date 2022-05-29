@@ -495,6 +495,7 @@ RCArray!T mininitRcarray(T)(size_t length, bool deallocate = true)
 }
 
 ///
+version(mir_test)
 @safe pure nothrow @nogc unittest
 {
     auto a = mininitRcarray!double(5);

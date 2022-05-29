@@ -244,6 +244,7 @@ version(mir_test) @safe unittest
 }
 
 /// ditto
+version(mir_test)
 unittest
 {
     import core.stdc.tgmath: atan;
@@ -311,6 +312,7 @@ With adaptive bounds and single initial point.
 Reverse outer bound order controls first step direction
 in case of `f(a) == f(b)`.
 +/
+version(mir_test)
 unittest
 {
 	enum root = 1.0;
@@ -1761,6 +1763,7 @@ do {
 }
 
 ///
+version(mir_test)
 unittest
 {
     import mir.math.common;
@@ -1991,6 +1994,7 @@ do {
 }
 
 ///
+version(mir_test)
 unittest
 {
     import mir.math.common;

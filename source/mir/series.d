@@ -154,6 +154,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
 }
 
 ///
+version(mir_test)
 unittest{
 
     import mir.series;
@@ -208,10 +209,6 @@ struct mir_observation(Index, Data)
     Index index;
     /// Value or ndslice.
     Data data;
-@serdeIgnore:
-    deprecated ("use `index` instead") alias time = index;
-    deprecated ("use `index` instead") alias key = index;
-    deprecated ("use `data` instead") alias value = data;
 }
 
 /// ditto
@@ -335,14 +332,6 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     alias Index = typeof(typeof(this).init.index.front);
     /// Data / Value type aliases
     alias Data = typeof(typeof(this).init.data.front);
-
-    deprecated ("use `Index` instead") alias Key = Index;
-    deprecated ("use `Index` instead") alias Time = Index;
-    deprecated ("use `Data` instead") alias Value = Data;
-
-    deprecated ("use `index` instead") alias time = index;
-    deprecated ("use `index` instead") alias key = index;
-    deprecated ("use `data` instead") alias value = data;
 
     private enum defaultMsg() = "Series " ~ Unqual!(this.Data).stringof ~ "[" ~ Unqual!(this.Index).stringof ~ "]: Missing";
     private static immutable defaultExc() = new Exception(defaultMsg!() ~ " required key");
@@ -1747,8 +1736,8 @@ then the result will contain the value of the last pair for that key in r.
 auto assocArray(IndexIterator, Iterator, size_t N, SliceKind kind)
     (Series!(IndexIterator, Iterator, N, kind) series)
 {
-    alias SK = series.Key;
-    alias SV = series.Value;
+    alias SK = series.Index;
+    alias SV = series.Data;
     alias UK = Unqual!SK;
     alias UV = Unqual!SV;
     static if (isImplicitlyConvertible!(SK, UK))

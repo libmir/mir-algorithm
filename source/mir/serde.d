@@ -321,6 +321,7 @@ template serdeDynamicAlgebraic(alias getAlgebraicDeserializerByAnnotation)
 }
 
 ///
+version(mir_test)
 unittest
 {
     static struct _global
@@ -651,13 +652,6 @@ version(mir_test) unittest
 /++
 +/
 alias serdeGetProxy(alias symbol) = TemplateArgsOf!(getUDA!(symbol, serdeProxy))[0];
-
-/++
-Can be applied only to fields that can be constructed from strings.
-Does not allocate new data when deserializeing. Raw data is used for strings instead of new memory allocation.
-Use this attributes only for strings that would not be used after the input data deallocation.
-+/
-deprecated("use @serdeScoped @serdeProxy!(const(char)[]) instead") enum serdeScopeStringProxy;
 
 /++
 Attributes to conditional ignore field during serialization.

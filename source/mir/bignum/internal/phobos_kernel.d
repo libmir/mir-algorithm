@@ -380,6 +380,7 @@ private int slowHighestPowerBelowUintMax(uint x) pure nothrow @safe
      return pwr;
 }
 
+version(mir_bignum_test)
 @safe pure unittest
 {
     assert(highestPowerBelowUintMax(10)==9);
@@ -536,6 +537,7 @@ void mulInternal(BigDigit[] result, const(BigDigit)[] x, const(BigDigit)[] y, Bi
 }
 
 // https://issues.dlang.org/show_bug.cgi?id=20493
+version(mir_bignum_test)
 @safe unittest
 {
     // the bug report has a testcase with very large numbers (~10^3800 and ~10^2300)
@@ -640,19 +642,20 @@ void divModInternal(BigDigit [] quotient, BigDigit[] remainder, const BigDigit [
     }
 }
 
-version(none)
+version(mir_bignum_test)
 pure @safe unittest
 {   //7fff_00007fff_ffffffff_00020000
-    immutable(uint) [3] u = [0, 0xFFFF_FFFE, 0x8000_0000];
-    immutable(uint) [2] v = [0xFFFF_FFFF, 0x8000_0000];
+    uint[3] u = [0, 0xFFFF_FFFE, 0x8000_0000];
+    uint[2] v = [0xFFFF_FFFF, 0x8000_0000];
+    uint[10] buffer = void;
     uint[u.length - v.length + 1] q;
     uint[2] r;
-    divModInternal(q, r, u, v);
+    divModInternal(q, r, u, v, buffer);
     assert(q[]==[0xFFFF_FFFFu, 0]);
     assert(r[]==[0xFFFF_FFFFu, 0x7FFF_FFFF]);
     u = [0, 0xFFFF_FFFE, 0x8000_0001];
     v = [0xFFFF_FFFF, 0x8000_0000];
-    divModInternal(q, r, u, v);
+    divModInternal(q, r, u, v, buffer);
 }
 
 
@@ -1598,7 +1601,7 @@ pure nothrow @safe
             u[m + v.length] = 0;
             saveq = q[m];
         }
-        import std.stdio;
+
         recursiveDivMod(
             q[n - v.length .. m + mayOverflow],
             u[n - v.length .. m + mayOverflow + v.length],
@@ -1614,6 +1617,7 @@ pure nothrow @safe
     while(n);
 }
 
+version(mir_bignum_test)
 @system unittest
 {
     version (none)
@@ -1653,6 +1657,7 @@ pure nothrow @safe
 }
 
 // biguintToOctal
+version(mir_bignum_test)
 @safe unittest
 {
     enum bufSize = 5 * BigDigitBits / 3 + 1;

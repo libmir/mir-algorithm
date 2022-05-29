@@ -72,6 +72,7 @@ The function ignores leafs that can't be handled by the visiting functions.
 alias optionalTransformLeafs(visitors...) = transformLeafsImpl!(optionalVisit, naryFun!visitors);
 
 ///
+version(mir_test)
 unittest
 {
     import mir.format: text;

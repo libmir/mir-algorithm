@@ -25,7 +25,7 @@ struct ShouldApprox(T)
         import mir.math.common: approxEqual;
         if (value.approxEqual(expected, maxRelDiff, maxAbsDiff))
             return true;
-        stringBuf buf;
+        auto buf = stringBuf;
         throw new MirException(buf
             << "expected approximately " << expected
             << ", got " << value
@@ -62,7 +62,7 @@ struct Should(T)
         import mir.format: stringBuf, getData;
         if (value == expected)
             return true;
-        stringBuf buf;
+        auto buf = stringBuf;
         throw new MirException(buf
             << "expected " << expected
             << ", got " << value
@@ -91,7 +91,7 @@ bool should(alias fun, T, R)(const T value, const R expected, string file = __FI
     import mir.format: stringBuf, getData;
     if (naryFun!fun(value, expected))
         return true;
-    stringBuf buf;
+    auto buf = stringBuf;
     buf << fun.stringof
         << " returns false"
         << " for a = " << value

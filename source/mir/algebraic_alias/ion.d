@@ -60,6 +60,7 @@ See also $(MREF mir,string_map) - ordered string-value associative array.
 alias IonAlgebraic = TaggedVariant!IonAlgebraicUnion;
 
 ///
+version(mir_test)
 unittest
 {
     import mir.ndslice.topology: map;

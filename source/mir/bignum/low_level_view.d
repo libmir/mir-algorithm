@@ -11,9 +11,6 @@ module mir.bignum.low_level_view;
 import mir.checkedint;
 import std.traits;
 
-version(LDC) import ldc.attributes: optStrategy;
-else struct optStrategy { string opt; }
-
 private alias cop(string op : "-") = subu;
 private alias cop(string op : "+") = addu;
 private enum inverseSign(string op) = op == "+" ? "-" : "+";
@@ -41,40 +38,6 @@ package template MaxWordPow10(T)
         enum MaxWordPow10 = 19;
     else
         static assert(0);
-}
-
-package template MaxWordPow5(T)
-{
-    static if (is(T == ubyte))
-        enum MaxWordPow5 = 3;
-    else
-    static if (is(T == ushort))
-        enum MaxWordPow5 = 6;
-    else
-    static if (is(T == uint))
-        enum MaxWordPow5 = 13;
-    else
-    static if (is(T == ulong))
-        enum MaxWordPow5 = 27;
-    else
-        static assert(0);
-}
-
-package template MaxFpPow5(T)
-{
-    static if (T.mant_dig == 24)
-        enum MaxFpPow5 = 6;
-    else
-    static if (T.mant_dig == 53)
-        enum MaxFpPow5 = 10;
-    else
-    static if (T.mant_dig == 64)
-        enum MaxFpPow5 = 27;
-    else
-    static if (T.mant_dig == 113)
-        enum MaxFpPow5 = 48;
-    else
-        static assert(0, "floating point format isn't supported");
 }
 
 /++
@@ -132,197 +95,35 @@ struct BigUIntView(W)
     }
 
     ///
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
+    T opCast(T)() const
         if (isFloatingPoint!T && isMutable!T)
     {
-        import mir.bignum.fp;
-        enum md = T.mant_dig;
-        enum b = size_t.sizeof * 8;
-        enum n = md / b + (md % b != 0);
-        enum s = n * b;
-        return this.opCast!(Fp!s, s - md, wordNormalized, nonZero).opCast!(T, true);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    unittest
-    {
-        auto a = cast(double) BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
-        assert(a == 0xa.fbbfae3cd0bp+124);
-        assert(cast(double) BigUIntView!size_t.init == 0);
-        assert(cast(double) BigUIntView!size_t([0]) == 0);
+        import mir.bignum.internal.dec2float: decimalTo;
+        return normalized.coefficients.decimalTo!T;
     }
 
     ///
     @safe
-    T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() const
-        if (internalRoundLastBits < size_t.sizeof * 8)
+    T opCast(T : Fp!coefficientSize, uint coefficientSize)() const
     {
         static if (isMutable!W)
         {
-            return lightConst.opCast!(T, internalRoundLastBits, wordNormalized, nonZero);
+            return lightConst.opCast!T;
         }
         else
         static if (W.sizeof > size_t.sizeof)
         {
-            return lightConst.opCast!(BigUIntView!size_t).opCast!(T, internalRoundLastBits, false, nonZero);
+            return lightConst.opCast!(BigUIntView!size_t).opCast!T;
         }
         else
         {
-            import mir.utility: _expect;
-            import mir.bitop: ctlz;
-            Fp!coefficientSize ret;
-            auto integer = lightConst;
-            static if (!wordNormalized)
-                integer = integer.normalized;
-            static if (!nonZero)
-                if (integer.coefficients.length == 0)
-                    goto R;
-            {
-                assert(integer.coefficients.length);
-                enum N = ret.coefficient.data.length;
-                sizediff_t size = integer.coefficients.length * (W.sizeof * 8);
-                sizediff_t expShift = size - coefficientSize;
-                ret.exponent = expShift;
-                if (_expect(expShift <= 0, true))
-                {
-                    static if (N == 1 && W.sizeof == size_t.sizeof)
-                    {
-                        ret.coefficient.data[0] = integer.coefficients[$ - 1];
-                    }
-                    else
-                    {
-                        BigUIntView!size_t(ret.coefficient.data)
-                            .opCast!(BigUIntView!(Unqual!W))
-                            .coefficients
-                                [$ - integer.coefficients.length .. $] = integer.coefficients;
-                    }
-                    auto c = cast(uint) ctlz(ret.coefficient.view.coefficients[$ - 1]);
-                    ret.exponent -= c;
-                    ret.coefficient = ret.coefficient.smallLeftShift(c);
-                }
-                else
-                {
-                    UInt!(coefficientSize + size_t.sizeof * 8) holder;
-
-
-                    static if (N == 1 && W.sizeof == size_t.sizeof)
-                    {
-                        holder.data[0] = integer.mostSignificantFirst[1];
-                        holder.data[1] = integer.mostSignificantFirst[0];
-                    }
-                    else
-                    {
-                        auto holderView = holder
-                            .view
-                            .opCast!(BigUIntView!(Unqual!W))
-                            .coefficients;
-                        import mir.utility: min;
-                        auto minLength = min(integer.coefficients.length, holderView.length);
-                        holderView[$ - minLength .. $] = integer.coefficients[$ - minLength .. $];
-                    }
-
-                    auto c = cast(uint) ctlz(holder.view.coefficients[$ - 1]);
-                    ret.exponent -= c;
-                    holder = holder.smallLeftShift(c);
-                    ret.coefficient = holder.toSize!(coefficientSize, false);
-                    auto tail = BigUIntView!size_t(holder.data).coefficients[0];
-
-                    bool nonZeroTail()
-                    {
-                        while(_expect(integer.coefficients[0] == 0, false))
-                        {
-                            integer.popLeastSignificant;
-                            assert(integer.coefficients.length);
-                        }
-                        return integer.coefficients.length > (N + 1) * (size_t.sizeof / W.sizeof);
-                    }
-
-                    static if (internalRoundLastBits)
-                    {
-                        enum half = size_t(1) << (internalRoundLastBits - 1);
-                        enum mask0 = (size_t(1) << internalRoundLastBits) - 1;
-                        auto tail0 = BigUIntView!size_t(ret.coefficient.data).coefficients[0] & mask0;
-                        BigUIntView!size_t(ret.coefficient.data).coefficients[0] &= ~mask0;
-                        auto condInc = tail0 >= half
-                            && (   tail0 > half
-                                || tail
-                                || (BigUIntView!size_t(ret.coefficient.data).coefficients[0] & 1)
-                                || nonZeroTail);
-                    }
-                    else
-                    {
-                        enum half = cast(size_t)Signed!size_t.min;
-                        auto condInc = tail >= half
-                            && (    tail > half
-                                || (BigUIntView!size_t(ret.coefficient.data).coefficients[0] & 1)
-                                || nonZeroTail);
-                    }
-
-                    if (condInc)
-                    {
-                        enum inc = size_t(1) << internalRoundLastBits;
-                        if (auto overflow = ret.coefficient += inc)
-                        {
-                            import mir.bignum.fp: half;
-                            ret.coefficient = half!coefficientSize;
-                            ret.exponent++;
-                        }
-                    }
-                }
-            }
-        R:
-            return ret;
+            import mir.bignum.internal.dec2float: decimalToFp;
+            auto coefficients = normalized.coefficients;
+            return coefficients.length
+                ? coefficients.decimalToFp!coefficientSize
+                : Fp!coefficientSize.init;
         }
     }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        import mir.bignum.fp: Fp;
-        import mir.bignum.fixed: UInt;
-
-        auto fp = cast(Fp!128) BigUIntView!ulong.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
-        assert(fp.exponent == 0);
-        assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
-
-        fp = cast(Fp!128) BigUIntView!uint.fromHexString("ae3cd0aff2714a1de7022b0029d");
-        assert(fp.exponent == -20);
-        assert(fp.coefficient == UInt!128.fromHexString("ae3cd0aff2714a1de7022b0029d00000"));
-
-        fp = cast(Fp!128) BigUIntView!ushort.fromHexString("e7022b0029d");
-        assert(fp.exponent == -84);
-        assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
-
-        fp = cast(Fp!128) BigUIntView!ubyte.fromHexString("e7022b0029d");
-        assert(fp.exponent == -84);
-        assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
-
-        fp = cast(Fp!128) BigUIntView!size_t.fromHexString("e7022b0029d");
-        assert(fp.exponent == -84);
-        assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
-    
-        fp = cast(Fp!128) BigUIntView!size_t.fromHexString("ffffffffffffffffffffffffffffffff1000000000000000");
-        assert(fp.exponent == 64);
-        assert(fp.coefficient == UInt!128.fromHexString("ffffffffffffffffffffffffffffffff"));
-
-        fp = cast(Fp!128) BigUIntView!size_t.fromHexString("ffffffffffffffffffffffffffffffff8000000000000000");
-        assert(fp.exponent == 65);
-        assert(fp.coefficient == UInt!128.fromHexString("80000000000000000000000000000000"));
-
-        fp = cast(Fp!128) BigUIntView!size_t.fromHexString("fffffffffffffffffffffffffffffffe8000000000000000");
-        assert(fp.exponent == 64);
-        assert(fp.coefficient == UInt!128.fromHexString("fffffffffffffffffffffffffffffffe"));
-
-        fp = cast(Fp!128) BigUIntView!size_t.fromHexString("fffffffffffffffffffffffffffffffe8000000000000001");
-        assert(fp.exponent == 64);
-        assert(fp.coefficient == UInt!128.fromHexString("ffffffffffffffffffffffffffffffff"));
-    }
-
 
     ///
     T opCast(T, bool nonZero = false)() const scope
@@ -352,40 +153,6 @@ struct BigUIntView(W)
             while(work.coefficients.length);
             return ret;
         }
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto view = BigUIntView!ulong.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
-        assert(cast(ulong) view == 0x14a1de7022b0029d);
-        assert(cast(uint) view == 0x22b0029d);
-        assert(cast(ubyte) view == 0x9d);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto view = BigUIntView!ushort.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
-        assert(cast(ulong) view == 0x14a1de7022b0029d);
-        assert(cast(uint) view == 0x22b0029d);
-        assert(cast(ubyte) view == 0x9d);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto view = BigUIntView!uint.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
-        assert(cast(ulong) view == 0x14a1de7022b0029d);
-        assert(cast(uint) view == 0x22b0029d);
-        assert(cast(ubyte) view == 0x9d);
     }
 
     ///
@@ -476,19 +243,6 @@ struct BigUIntView(W)
         d[0] <<= shift;
     }
 
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto a = BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
-        a.smallLeftShiftInPlace(4);
-        assert(a == BigUIntView!size_t.fromHexString("fbbfae3cd0aff2714a1de7022b0029d0"));
-        a.smallLeftShiftInPlace(0);
-        assert(a == BigUIntView!size_t.fromHexString("fbbfae3cd0aff2714a1de7022b0029d0"));
-    }
-
     /++
     Shifts right using at most `size_t.sizeof * 8 - 1` bits
     +/
@@ -503,17 +257,6 @@ struct BigUIntView(W)
         foreach (i; 0 .. d.length - 1)
             d[i] = (d[i] >>> shift) | (d[i + 1] << csh);
         d[$ - 1] >>>= shift;
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto a = BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
-        a.smallRightShiftInPlace(4);
-        assert(a == BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029"));
     }
 
     /++
@@ -635,46 +378,6 @@ struct BigUIntView(W)
         return true;
     }
 
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd_efab_cdef");
-        assert(cast(ulong)view == 0xabcd_efab_cdef);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        // Check that invalid underscores in hex literals throw an error.
-        void expectThrow(const(char)[] input) {
-            bool caught = false;
-            try { 
-                auto view = BigUIntView!size_t.fromHexString!(char, true)(input);
-            } catch (Exception e) {
-                caught = true;
-            }
-
-            assert(caught);
-        }
-
-        expectThrow("abcd_efab_cef_");
-        expectThrow("abcd__efab__cef");
-        expectThrow("_abcd_efab_cdef");
-        expectThrow("_abcd_efab_cdef_");
-        expectThrow("_abcd_efab_cdef__");
-        expectThrow("__abcd_efab_cdef");
-        expectThrow("__abcd_efab_cdef_");
-        expectThrow("__abcd_efab_cdef__");
-        expectThrow("__abcd__efab_cdef__");
-        expectThrow("__abcd__efab__cdef__");
-    }
- 
     /++
     +/
     static BigUIntView fromBinaryString(C, bool allowUnderscores = false)(scope const(C)[] str)
@@ -774,45 +477,6 @@ struct BigUIntView(W)
         return true;
     }
 
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto view = BigUIntView!size_t.fromBinaryString!(char, true)("1111_0000_0101");
-        assert(cast(ulong)view == 0b1111_0000_0101);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        // Check that invalid underscores in hex literals throw an error.
-        void expectThrow(const(char)[] input) {
-            bool caught = false;
-            try { 
-                auto view = BigUIntView!size_t.fromBinaryString!(char, true)(input);
-            } catch (Exception e) {
-                caught = true;
-            }
-
-            assert(caught);
-        }
-
-        expectThrow("abcd");
-        expectThrow("0101__1011__0111");
-        expectThrow("_0101_1011_0111");
-        expectThrow("_0101_1011_0111_");
-        expectThrow("_0101_1011_0111__");
-        expectThrow("__0101_1011_0111_");
-        expectThrow("__0101_1011_0111__");
-        expectThrow("__0101__1011_0111__");
-        expectThrow("__1011__0111__1011__");
-    }
-
     static if (isMutable!W && W.sizeof >= 4)
     /++
     Returns: false in case of overflow or incorrect string.
@@ -850,7 +514,7 @@ struct BigUIntView(W)
         if (d >= 10)
             return false;
 
-        auto work = topLeastSignificantPart(1);
+        size_t len = 1;
         goto S;
 
         for(;;)
@@ -868,12 +532,11 @@ struct BigUIntView(W)
             if (_expect(t == mp10 || str.length == 0, false))
             {
             L:
-                if (auto overflow = work.opOpAssign!"*"(t, v))
+                if (auto overflow = topLeastSignificantPart(len).opOpAssign!"*"(t, v))
                 {
-                    if (_expect(work.coefficients.length < coefficients.length, true))
+                    if (_expect(len < coefficients.length, true))
                     {
-                        work = topLeastSignificantPart(work.coefficients.length + 1);
-                        work.coefficients[$ - 1] = overflow;
+                        coefficients[len++] = overflow;
                     }
                     else
                     {
@@ -884,7 +547,7 @@ struct BigUIntView(W)
                 t = 1;
                 if (str.length == 0)
                 {
-                    this = work;
+                    this = topLeastSignificantPart(len);
                     return true;
                 }
             }
@@ -1322,20 +985,204 @@ struct BigUIntView(W)
         return str.length - i;
     }
 
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure @nogc
-    unittest
-    {
-        import mir.bignum.integer;
-
-        auto a = BigInt!2("123456789098765432123456789098765432100");
-        char[ceilLog10Exp2(a.data.length * (size_t.sizeof * 8))] buffer;
-        auto len = a.view.unsigned.toStringImpl(buffer);
-        assert(buffer[$ - len .. $] == "123456789098765432123456789098765432100");
-    }
 }
+
+///
+version(mir_bignum_test_llv)
+@safe pure @nogc
+unittest
+{
+    import mir.bignum.integer;
+
+    auto a = BigInt!2("123456789098765432123456789098765432100");
+    char[ceilLog10Exp2(a.data.length * (size_t.sizeof * 8))] buffer;
+    auto len = a.view.unsigned.toStringImpl(buffer);
+    assert(buffer[$ - len .. $] == "123456789098765432123456789098765432100");
+}
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd_efab_cdef");
+    assert(cast(ulong)view == 0xabcd_efab_cdef);
+}
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    auto a = BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+    a.smallLeftShiftInPlace(4);
+    assert(a == BigUIntView!size_t.fromHexString("fbbfae3cd0aff2714a1de7022b0029d0"));
+    a.smallLeftShiftInPlace(0);
+    assert(a == BigUIntView!size_t.fromHexString("fbbfae3cd0aff2714a1de7022b0029d0"));
+}
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    auto a = BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+    a.smallRightShiftInPlace(4);
+    assert(a == BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029"));
+}
+
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    // Check that invalid underscores in hex literals throw an error.
+    void expectThrow(const(char)[] input) {
+        bool caught = false;
+        try { 
+            auto view = BigUIntView!size_t.fromHexString!(char, true)(input);
+        } catch (Exception e) {
+            caught = true;
+        }
+
+        assert(caught);
+    }
+
+    expectThrow("abcd_efab_cef_");
+    expectThrow("abcd__efab__cef");
+    expectThrow("_abcd_efab_cdef");
+    expectThrow("_abcd_efab_cdef_");
+    expectThrow("_abcd_efab_cdef__");
+    expectThrow("__abcd_efab_cdef");
+    expectThrow("__abcd_efab_cdef_");
+    expectThrow("__abcd_efab_cdef__");
+    expectThrow("__abcd__efab_cdef__");
+    expectThrow("__abcd__efab__cdef__");
+}
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    auto view = BigUIntView!size_t.fromBinaryString!(char, true)("1111_0000_0101");
+    assert(cast(ulong)view == 0b1111_0000_0101);
+}
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    // Check that invalid underscores in hex literals throw an error.
+    void expectThrow(const(char)[] input) {
+        bool caught = false;
+        try { 
+            auto view = BigUIntView!size_t.fromBinaryString!(char, true)(input);
+        } catch (Exception e) {
+            caught = true;
+        }
+
+        assert(caught);
+    }
+
+    expectThrow("abcd");
+    expectThrow("0101__1011__0111");
+    expectThrow("_0101_1011_0111");
+    expectThrow("_0101_1011_0111_");
+    expectThrow("_0101_1011_0111__");
+    expectThrow("__0101_1011_0111_");
+    expectThrow("__0101_1011_0111__");
+    expectThrow("__0101__1011_0111__");
+    expectThrow("__1011__0111__1011__");
+}
+
+///
+version(mir_bignum_test_llv)
+unittest
+{
+    auto a = cast(double) BigUIntView!size_t.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+    assert(a == 0xa.fbbfae3cd0bp+124);
+    assert(cast(double) BigUIntView!size_t.init == 0);
+    assert(cast(double) BigUIntView!size_t([0]) == 0);
+}
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    import mir.bignum.fp: Fp;
+    import mir.bignum.fixed: UInt;
+
+    auto fp = cast(Fp!128) BigUIntView!ulong.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+    assert(fp.exponent == 0);
+    assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
+
+    fp = cast(Fp!128) BigUIntView!uint.fromHexString("ae3cd0aff2714a1de7022b0029d");
+    assert(fp.exponent == -20);
+    assert(fp.coefficient == UInt!128.fromHexString("ae3cd0aff2714a1de7022b0029d00000"));
+
+    fp = cast(Fp!128) BigUIntView!ushort.fromHexString("e7022b0029d");
+    assert(fp.exponent == -84);
+    assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
+
+    fp = cast(Fp!128) BigUIntView!ubyte.fromHexString("e7022b0029d");
+    assert(fp.exponent == -84);
+    assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
+
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("e7022b0029d");
+    assert(fp.exponent == -84);
+    assert(fp.coefficient == UInt!128.fromHexString("e7022b0029d000000000000000000000"));
+
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("ffffffffffffffffffffffffffffffff1000000000000000");
+    assert(fp.exponent == 64);
+    assert(fp.coefficient == UInt!128.fromHexString("ffffffffffffffffffffffffffffffff"));
+
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("ffffffffffffffffffffffffffffffff8000000000000000");
+    assert(fp.exponent == 65);
+    assert(fp.coefficient == UInt!128.fromHexString("80000000000000000000000000000000"));
+
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("fffffffffffffffffffffffffffffffe8000000000000000");
+    assert(fp.exponent == 64);
+    assert(fp.coefficient == UInt!128.fromHexString("fffffffffffffffffffffffffffffffe"));
+
+    fp = cast(Fp!128) BigUIntView!size_t.fromHexString("fffffffffffffffffffffffffffffffe8000000000000001");
+    assert(fp.exponent == 64);
+    assert(fp.coefficient == UInt!128.fromHexString("ffffffffffffffffffffffffffffffff"));
+}
+
+///
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    auto view = BigUIntView!ulong.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+    assert(cast(ulong) view == 0x14a1de7022b0029d);
+    assert(cast(uint) view == 0x22b0029d);
+    assert(cast(ubyte) view == 0x9d);
+}
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    auto view = BigUIntView!ushort.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+    assert(cast(ulong) view == 0x14a1de7022b0029d);
+    assert(cast(uint) view == 0x22b0029d);
+    assert(cast(ubyte) view == 0x9d);
+}
+
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    auto view = BigUIntView!uint.fromHexString("afbbfae3cd0aff2714a1de7022b0029d");
+    assert(cast(ulong) view == 0x14a1de7022b0029d);
+    assert(cast(uint) view == 0x22b0029d);
+    assert(cast(ubyte) view == 0x9d);
+}
+
 
 ///
 version(mir_bignum_test_llv)
@@ -1464,7 +1311,10 @@ struct BigIntView(W)
             str = str[1 .. $];
         }
 
-        return unsigned.fromStringImpl(str);
+        if (!unsigned.fromStringImpl(str))
+            return false;
+        sign &= unsigned.coefficients.length != 0;
+        return true;
     }
 
     /++
@@ -1562,53 +1412,13 @@ struct BigIntView(W)
     }
 
     ///
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
+    T opCast(T)() const
         if (isFloatingPoint!T && isMutable!T)
     {
-        auto ret = this.unsigned.opCast!(T, wordNormalized, nonZero);
+        auto ret = this.unsigned.opCast!T;
         if (sign)
             ret = -ret;
         return ret;
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto a = cast(double) BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0029d");
-        assert(a == -0xa.fbbfae3cd0bp+124);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto a = cast(double) BigIntView!size_t.fromBinaryString("-10101111101110111111101011100011110011010000101011111111001001110001010010100001110111100111000000100010101100000000001010011101");
-        assert(a == -0xa.fbbfae3cd0bp+124);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto a = cast(double) BigIntView!size_t.fromHexString!(char, true)("-afbb_fae3_cd0a_ff27_14a1_de70_22b0_029d");
-        assert(a == -0xa.fbbfae3cd0bp+124);
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        auto a = cast(double) BigIntView!size_t.fromBinaryString!(char, true)("-1010_1111_1011_1011_1111_1010_1110_0011_1100_1101_0000_1010_1111_1111_0010_0111_0001_0100_1010_0001_1101_1110_0111_0000_0010_0010_1011_0000_0000_0010_1001_1101");
-        assert(a == -0xa.fbbfae3cd0bp+124);
     }
 
     ///
@@ -1623,7 +1433,7 @@ struct BigIntView(W)
 
     static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1634,7 +1444,7 @@ struct BigIntView(W)
 
     static if (W.sizeof == size_t.sizeof)
     ///
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1644,7 +1454,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1664,7 +1474,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1674,7 +1484,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1684,7 +1494,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1694,7 +1504,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1704,7 +1514,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1714,7 +1524,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1724,7 +1534,7 @@ struct BigIntView(W)
     }
 
     static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
+    version(mir_bignum_test)
     @safe pure
     unittest
     {
@@ -1745,41 +1555,11 @@ struct BigIntView(W)
 
     /++
     +/
-    T opCast(T : Fp!coefficientSize, size_t internalRoundLastBits = 0, bool wordNormalized = false, bool nonZero = false, size_t coefficientSize)() const
-        if (internalRoundLastBits < size_t.sizeof * 8)
+    T opCast(T : Fp!coefficientSize, uint coefficientSize)() const
     {
-        auto ret = unsigned.opCast!(Fp!coefficientSize, internalRoundLastBits, wordNormalized, nonZero);
+        auto ret = unsigned.opCast!(Fp!coefficientSize);
         ret.sign = sign;
         return ret;
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    ///
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        import mir.bignum.fixed: UInt;
-        import mir.bignum.fp: Fp;
-
-        auto fp = cast(Fp!128) BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0029d");
-        assert(fp.sign);
-        assert(fp.exponent == 0);
-        assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
-    }
-
-    static if (W.sizeof == size_t.sizeof)
-    version(mir_bignum_test_llv)
-    @safe pure
-    unittest
-    {
-        import mir.bignum.fixed: UInt;
-        import mir.bignum.fp: Fp;
-
-        auto fp = cast(Fp!128) BigIntView!size_t.fromHexString!(char, true)("-afbb_fae3_cd0a_ff27_14a1_de70_22b0_029d");
-        assert(fp.sign);
-        assert(fp.exponent == 0);
-        assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
     }
 
     ///
@@ -2019,6 +1799,69 @@ struct BigIntView(W)
 }
 
 ///
+version(mir_bignum_test)
+@safe pure
+unittest
+{
+    import mir.bignum.fixed: UInt;
+    import mir.bignum.fp: Fp;
+
+    auto fp = cast(Fp!128) BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0029d");
+    assert(fp.sign);
+    assert(fp.exponent == 0);
+    assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
+}
+
+///
+version(mir_bignum_test)
+@safe pure
+unittest
+{
+    auto a = cast(double) BigIntView!size_t.fromHexString("-afbbfae3cd0aff2714a1de7022b0029d");
+    assert(a == -0xa.fbbfae3cd0bp+124);
+}
+
+///
+version(mir_bignum_test)
+@safe pure
+unittest
+{
+    auto a = cast(double) BigIntView!size_t.fromBinaryString("-10101111101110111111101011100011110011010000101011111111001001110001010010100001110111100111000000100010101100000000001010011101");
+    assert(a == -0xa.fbbfae3cd0bp+124);
+}
+
+///
+version(mir_bignum_test)
+@safe pure
+unittest
+{
+    auto a = cast(double) BigIntView!size_t.fromHexString!(char, true)("-afbb_fae3_cd0a_ff27_14a1_de70_22b0_029d");
+    assert(a == -0xa.fbbfae3cd0bp+124);
+}
+
+///
+version(mir_bignum_test)
+@safe pure
+unittest
+{
+    auto a = cast(double) BigIntView!size_t.fromBinaryString!(char, true)("-1010_1111_1011_1011_1111_1010_1110_0011_1100_1101_0000_1010_1111_1111_0010_0111_0001_0100_1010_0001_1101_1110_0111_0000_0010_0010_1011_0000_0000_0010_1001_1101");
+    assert(a == -0xa.fbbfae3cd0bp+124);
+}
+
+version(mir_bignum_test_llv)
+@safe pure
+unittest
+{
+    import mir.bignum.fixed: UInt;
+    import mir.bignum.fp: Fp;
+
+    auto fp = cast(Fp!128) BigIntView!size_t.fromHexString!(char, true)("-afbb_fae3_cd0a_ff27_14a1_de70_22b0_029d");
+    assert(fp.sign);
+    assert(fp.exponent == 0);
+    assert(fp.coefficient == UInt!128.fromHexString("afbbfae3cd0aff2714a1de7022b0029d"));
+}
+
+///
 version(mir_bignum_test_llv)
 @safe pure nothrow
 unittest
@@ -2128,7 +1971,7 @@ enum DecimalExponentKey
 /++
 +/
 struct DecimalView(W)
-    if (isUnsigned!W)
+    if (is(Unqual!W == size_t))
 {
     ///
     bool sign;
@@ -2431,156 +2274,16 @@ struct DecimalView(W)
     Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.
     +/
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
+    T opCast(T, bool wordNormalized = false)() const
         if (isFloatingPoint!T && isMutable!T)
     {
-        version(LDC)
-        {
-            static if (wordNormalized)
-                pragma(inline, true);
-        }
-
-        import mir.bignum.fixed: UInt;
-        import mir.bignum.fp: Fp, extendedMul;
-        import mir.bignum.internal.dec2flt_table;
-        import mir.math.common: floor;
-        import mir.utility: _expect;
+        import mir.bignum.internal.dec2float;
 
         auto coeff = coefficient.lightConst;
-        T ret = 0;
 
         static if (!wordNormalized)
             coeff = coeff.normalized;
-
-        if (_expect(exponent == exponent.max, false))
-        {
-            ret = coeff.coefficients.length ? T.nan : T.infinity;
-            goto R;
-        }
-
-        static if (!nonZero)
-            if (coeff.coefficients.length == 0)
-                goto R;
-
-        enum S = 9;
-
-        static if (T.mant_dig < 64)
-        {
-            Fp!64 load(long e)
-            {
-                auto p10coeff = p10_coefficients[cast(sizediff_t)e - min_p10_e][0];
-                auto p10exp = p10_exponents[cast(sizediff_t)e - min_p10_e];
-                return Fp!64(false, p10exp, UInt!64(p10coeff));
-            }
-            {
-                auto expSign = exponent < 0;
-                if (_expect((expSign ? -exponent : exponent) >>> S == 0, true))
-                {
-                    enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
-                    enum ulong half = (1UL << (64 - T.mant_dig - 1));
-                    enum ulong bound = ulong(1) << T.mant_dig;
-
-                    auto c = coeff.opCast!(Fp!64, 0, true, true);
-                    auto z = c.extendedMul(load(exponent));
-                    ret = cast(T) z;
-                    auto slop = (coeff.coefficients.length > (ulong.sizeof / W.sizeof)) + 3 * expSign;
-                    long bitsDiff = (cast(ulong) z.opCast!(Fp!64).coefficient & mask) - half;
-                    if (_expect((bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
-                        goto R;
-                    if (slop == 0 && exponent <= MaxWordPow5!ulong || exponent == 0)
-                        goto R;
-                    if (slop == 3 && MaxFpPow5!T >= -exponent && cast(ulong)c.coefficient < bound)
-                    {
-                        auto e = load(-exponent);
-                        ret =  c.opCast!(T, true) / cast(T) (cast(ulong)e.coefficient >> e.exponent);
-                        goto R;
-                    }
-                    ret = algoR!T(ret, coeff, cast(int) exponent);
-                    goto R;
-                }
-                ret = expSign ? 0 : T.infinity;
-                goto R;
-            }
-        }
-        else
-        {
-            enum P = 1 << S;
-            static assert(min_p10_e <= -P);
-            static assert(max_p10_e >= P);
-            Fp!128 load(long e)
-            {
-                auto idx = cast(sizediff_t)e - min_p10_e;
-                ulong h = p10_coefficients[idx][0];
-                ulong l = p10_coefficients[idx][1];
-                if (l >= cast(ulong)long.min)
-                    h--;
-                version(BigEndian)
-                    auto p10coeff = UInt!128(cast(ulong[2])[h, l]);
-                else
-                    auto p10coeff = UInt!128(cast(ulong[2])[l, h]);
-                auto p10exp = p10_exponents[idx] - 64;
-                return Fp!128(false, p10exp, p10coeff);
-            }
-
-            {
-                auto expSign = exponent < 0;
-                ulong exp = exponent;
-                exp = expSign ? -exp : exp;
-                if (exp >= 5000)
-                {
-                    ret = expSign ? 0 : T.infinity;
-                    goto R;
-                }
-                long index = exp & 0x1FF;
-                bool gotoAlgoR;
-                auto c = load(expSign ? -index : index);
-                {
-                    exp >>= S;
-                    gotoAlgoR = exp != 0;
-                    if (_expect(gotoAlgoR, false))
-                    {
-                        auto v = load(expSign ? -P : P);
-                        do
-                        {
-                            if (exp & 1)
-                                c *= v;
-                            exp >>>= 1;
-                            if (exp == 0)
-                                break;
-                            v *= v;
-                        }
-                        while(true);
-                    }
-                }
-                auto z = coeff.opCast!(Fp!128, 0, true, true).extendedMul(c);
-                ret = cast(T) z;
-                if (!gotoAlgoR)
-                {
-                    static if (T.mant_dig == 64)
-                        enum ulong mask = ulong.max;
-                    else
-                        enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
-                    enum ulong half = (1UL << (128 - T.mant_dig - 1));
-                    enum UInt!128 bound = UInt!128(1) << T.mant_dig;
-
-                    auto slop = (coeff.coefficients.length > (ulong.sizeof * 2 / W.sizeof)) + 3 * expSign;
-                    long bitsDiff = (cast(ulong) z.opCast!(Fp!128).coefficient & mask) - half;
-                    if (_expect((bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
-                        goto R;
-                    if (slop == 0 && exponent <= 55 || exponent == 0)
-                        goto R;
-                    if (slop == 3 && MaxFpPow5!T >= -exponent && c.coefficient < bound)
-                    {
-                        auto e = load(-exponent);
-                        ret =  c.opCast!(T, true) / cast(T) e;
-                        goto R;
-                    }
-                }
-                ret = algoR!T(ret, coeff, cast(int) exponent);
-                goto R;
-            }
-        }
-    R:
+        auto ret = decimalTo!T(coeff.coefficients, exponent);
         if (sign)
             ret = -ret;
         return ret;
@@ -2589,7 +2292,6 @@ struct DecimalView(W)
 
 version(none)
 ///
-version(mir_bignum_test)
 unittest
 {
     {
@@ -2619,379 +2321,286 @@ unittest
     }
 }
 
-@optStrategy("minsize")
-package T algoR(T, W)(T ret, scope BigUIntView!(const W) coeff, int exponent)
-{
-    pragma(inline, false);
-
-    import mir.bignum.fixed: UInt;
-    import mir.bignum.integer: BigInt;
-    import mir.math.common: floor;
-    import mir.math.ieee: ldexp, frexp, nextDown, nextUp;
-    import mir.utility: _expect;
-
-    BigInt!256 x = void, y = void; // max value is 2^(2^14)-1
-    if (exponent >= 0)
-    {
-        if (!x.copyFrom(coeff) && !x.mulPow5(exponent)) // if no overflow
-            ret = ldexp(cast(T) x, exponent);
-    }
-    else do
-    {
-        if (ret < ret.min_normal)
-            break;
-        int k;
-        auto m0 = frexp(ret, k);
-        k -= T.mant_dig;
-        static if (T.mant_dig <= 64)
-        {
-            enum p2 = T(2) ^^ T.mant_dig;
-            auto m = UInt!64(cast(ulong) (m0 * p2));
-        }
-        else
-        {
-            enum p2h = T(2) ^^ (T.mant_dig - 64);
-            enum p2l = T(2) ^^ 64;
-            m0 *= p2h;
-            auto mhf = floor(m0);
-            auto mh = cast(ulong) mhf;
-            m0 -= mhf;
-            m0 *= p2l;
-            auto ml = cast(ulong) m0;
-            auto m = UInt!128(mh);
-            m <<= 64;
-            m |= UInt!128(ml);
-        }
-        auto mtz = m.cttz;
-        if (mtz != m.sizeof * 8)
-        {
-            m >>= mtz;
-            k += mtz;
-        }
-
-        if (x.copyFrom(coeff)) // if overflow
-            break;
-        y.__ctor(m);
-        y.mulPow5(-exponent);
-        auto shift = k - exponent;
-        (shift >= 0  ? y : x) <<= shift >= 0 ? shift : -shift;
-        x -= y;
-        if (x.length == 0)
-            break;
-        x <<= 1;
-        x *= m;
-        auto cond = mtz == T.mant_dig - 1 && x.sign;
-        auto cmp = x.view.unsigned.opCmp(y.view.unsigned);
-        if (cmp < 0)
-        {
-            if (!cond)
-                break;
-            x <<= 1;
-            if (x.view.unsigned <= y.view.unsigned)
-                break;
-        }
-        else
-        if (!cmp && !cond && !mtz)
-            break;
-        ret = x.sign ? nextDown(ret) : nextUp(ret);
-        if (ret == 0)
-            break;
-    }
-    while (T.mant_dig >= 64 && exponent < -512);
-    return ret;
-}
-
 ///
 version(mir_bignum_test_llv)
 unittest
 {
-    alias AliasSeq(T...) = T;
+    auto view = DecimalView!size_t(false, -8, BigUIntView!size_t.fromHexString("BEBC2000000011E1A3"));
 
-    foreach (T; AliasSeq!(float, double, real))
-    {{
-        T value = 3.518437208883201171875E+013;
-        
-    }}
+    assert (cast(float)view == 3.518437208883201171875E+013f);
+    assert (cast(double)view == 3.518437208883201171875E+013);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 3.518437208883201171875E+013L);
 
-    foreach(W; AliasSeq!(ulong, uint, ushort, ubyte))
-    {{
-        auto view = DecimalView!W(false, -8, BigUIntView!W.fromHexString("BEBC2000000011E1A3"));
+    view = DecimalView!size_t(true, -169, BigUIntView!size_t.fromHexString("5A174AEDA65CC"));
+    assert (cast(float)view == -0);
+    assert (cast(double)view == -0x1.1p-511);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == -0x8.80000000000019fp-514L);
 
-        assert (cast(float)view == 3.518437208883201171875E+013f);
-        assert (cast(double)view == 3.518437208883201171875E+013);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 3.518437208883201171875E+013L);
+    view = DecimalView!size_t(true, 293, BigUIntView!size_t.fromHexString("36496F6C4ED38"));
+    assert (cast(float)view == -float.infinity);
+    assert (cast(double)view == -9.55024478104888e+307);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == -9.55024478104888e+307L);
 
-        view = DecimalView!W(true, -169, BigUIntView!W.fromHexString("5A174AEDA65CC"));
-        assert (cast(float)view == -0);
-        assert (cast(double)view == -0x1.1p-511);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == -0x8.80000000000019fp-514L);
+    view = DecimalView!size_t(false, 0, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 1);
+    assert (cast(double)view == 1);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 1L);
 
-        view = DecimalView!W(true, 293, BigUIntView!W.fromHexString("36496F6C4ED38"));
-        assert (cast(float)view == -float.infinity);
-        assert (cast(double)view == -9.55024478104888e+307);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == -9.55024478104888e+307L);
+    view = DecimalView!size_t(false, -5, BigUIntView!size_t.fromHexString("3"));
+    assert (cast(float)view == 3e-5f);
+    assert (cast(double)view == 3e-5);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 3e-5L);
 
-        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 1);
-        assert (cast(double)view == 1);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1L);
+    view = DecimalView!size_t(false, -1, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0.1f);
+    assert (cast(double)view == 0.1);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0.1L);
 
-        view = DecimalView!W(false, -5, BigUIntView!W.fromHexString("3"));
-        assert (cast(float)view == 3e-5f);
-        assert (cast(double)view == 3e-5);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 3e-5L);
+    view = DecimalView!size_t(false, 0, BigUIntView!size_t.fromHexString("3039"));
+    assert (cast(float)view == 12345.0f);
+    assert (cast(double)view == 12345.0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 12345.0L);
 
-        view = DecimalView!W(false, -1, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0.1f);
-        assert (cast(double)view == 0.1);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0.1L);
+    view = DecimalView!size_t(false, -7, BigUIntView!size_t.fromHexString("98967F"));
+    assert (cast(float)view == 0.9999999f);
+    assert (cast(double)view == 0.9999999);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0.9999999L);
 
-        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("3039"));
-        assert (cast(float)view == 12345.0f);
-        assert (cast(double)view == 12345.0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 12345.0L);
+    view = DecimalView!size_t(false, -324, BigUIntView!size_t.fromHexString("4F0CEDC95A718E"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 2.2250738585072014e-308);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 2.2250738585072014e-308L);
 
-        view = DecimalView!W(false, -7, BigUIntView!W.fromHexString("98967F"));
-        assert (cast(float)view == 0.9999999f);
-        assert (cast(double)view == 0.9999999);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0.9999999L);
+    view = DecimalView!size_t(false, 0, BigUIntView!size_t.fromHexString("1FFFFFFFFFFFFFFFD"));
+    assert (cast(float)view == 36893488147419103229f);
+    assert (cast(double)view == 36893488147419103229.0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x1FFFFFFFFFFFFFFFDp0L);
 
-        view = DecimalView!W(false, -324, BigUIntView!W.fromHexString("4F0CEDC95A718E"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 2.2250738585072014e-308);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 2.2250738585072014e-308L);
+    view = DecimalView!size_t(false, -33, BigUIntView!size_t.fromHexString("65"));
+    assert (cast(float)view == 101e-33f);
+    assert (cast(double)view == 101e-33);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 101e-33L);
 
-        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("1FFFFFFFFFFFFFFFD"));
-        assert (cast(float)view == 36893488147419103229f);
-        assert (cast(double)view == 36893488147419103229.0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x1FFFFFFFFFFFFFFFDp0L);
+    view = DecimalView!size_t(false, 23, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 1e23f);
+    assert (cast(double)view == 1e23);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 1e23L);
 
-        view = DecimalView!W(false, -33, BigUIntView!W.fromHexString("65"));
-        assert (cast(float)view == 101e-33f);
-        assert (cast(double)view == 101e-33);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 101e-33L);
+    view = DecimalView!size_t(false, 23, BigUIntView!size_t.fromHexString("81B"));
+    assert (cast(float)view == 2075e23f);
+    assert (cast(double)view == 0xaba3d58a1f1a98p+32);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xaba3d58a1f1a9cp+32L);
 
-        view = DecimalView!W(false, 23, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 1e23f);
-        assert (cast(double)view == 1e23);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 1e23L);
+    view = DecimalView!size_t(false, -23, BigUIntView!size_t.fromHexString("2209"));
+    assert (cast(float)view == 8713e-23f);
+    assert (cast(double)view == 0x1.9b75b4e7de2b9p-64);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xc.dbada73ef15c401p-67L);
 
-        view = DecimalView!W(false, 23, BigUIntView!W.fromHexString("81B"));
-        assert (cast(float)view == 2075e23f);
-        assert (cast(double)view == 0xaba3d58a1f1a98p+32);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xaba3d58a1f1a9cp+32L);
-    
-        view = DecimalView!W(false, -23, BigUIntView!W.fromHexString("2209"));
-        assert (cast(float)view == 8713e-23f);
-        assert (cast(double)view == 0x1.9b75b4e7de2b9p-64);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xc.dbada73ef15c401p-67L);
+    view = DecimalView!size_t(false, 300, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == 0x1.7e43c8800759cp+996);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xb.f21e44003acdd2dp+993L);
 
-        view = DecimalView!W(false, 300, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == 0x1.7e43c8800759cp+996);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xb.f21e44003acdd2dp+993L);
+    view = DecimalView!size_t(false, 245, BigUIntView!size_t.fromHexString("B3A73CEB227"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == 0x1.48e3735333cb6p+857);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xa.471b9a999e5b01ep+854L);
 
-        view = DecimalView!W(false, 245, BigUIntView!W.fromHexString("B3A73CEB227"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == 0x1.48e3735333cb6p+857);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xa.471b9a999e5b01ep+854L);
+    view = DecimalView!size_t(false, 0, BigUIntView!size_t.fromHexString("88BF4748507FB9900ADB624CCFF8D78897DC900FB0460327D4D86D327219"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == 0x1.117e8e90a0ff7p+239);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.8bf4748507fb99p+236L);
 
-        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("88BF4748507FB9900ADB624CCFF8D78897DC900FB0460327D4D86D327219"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == 0x1.117e8e90a0ff7p+239);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.8bf4748507fb99p+236L);
+    view = DecimalView!size_t(false, -324, BigUIntView!size_t.fromHexString("5"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0x0.0000000000001p-1022);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.18995ce7aa0e1b2p-1077L);
 
-        view = DecimalView!W(false, -324, BigUIntView!W.fromHexString("5"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0x0.0000000000001p-1022);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.18995ce7aa0e1b2p-1077L);
+    view = DecimalView!size_t(false, -324, BigUIntView!size_t.fromHexString("5B"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0x0.0000000000012p-1022);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x9.3594d9adeb09a55p-1073L);
 
-        view = DecimalView!W(false, -324, BigUIntView!W.fromHexString("5B"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0x0.0000000000012p-1022);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x9.3594d9adeb09a55p-1073L);
+    view = DecimalView!size_t(false, -322, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0x0.0000000000014p-1022);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xa.1ebfb4219491a1fp-1073L);
 
-        view = DecimalView!W(false, -322, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0x0.0000000000014p-1022);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xa.1ebfb4219491a1fp-1073L);
+    view = DecimalView!size_t(false, -320, BigUIntView!size_t.fromHexString("CA1CCB"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0x0.000063df832d9p-1022);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xc.7bf065b215888c7p-1043L);
 
-        view = DecimalView!W(false, -320, BigUIntView!W.fromHexString("CA1CCB"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0x0.000063df832d9p-1022);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xc.7bf065b215888c7p-1043L);
+    view = DecimalView!size_t(false, -319, BigUIntView!size_t.fromHexString("33CE7943FB"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0x1.000000000162p-1022);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.000000000b103b6p-1025L);
 
-        view = DecimalView!W(false, -319, BigUIntView!W.fromHexString("33CE7943FB"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0x1.000000000162p-1022);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.000000000b103b6p-1025L);
+    view = DecimalView!size_t(false, -309, BigUIntView!size_t.fromHexString("15"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0x0.f19c2629ccf53p-1022);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xf.19c2629ccf52fc4p-1026L);
 
-        view = DecimalView!W(false, -309, BigUIntView!W.fromHexString("15"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0x0.f19c2629ccf53p-1022);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xf.19c2629ccf52fc4p-1026L);
+    view = DecimalView!size_t(false, -340, BigUIntView!size_t.fromHexString("AF87023B9BF0EE"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0x0.0000000000001p-1022);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xf.fffffffffffff64p-1078L);
 
-        view = DecimalView!W(false, -340, BigUIntView!W.fromHexString("AF87023B9BF0EE"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0x0.0000000000001p-1022);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xf.fffffffffffff64p-1078L);
+    view = DecimalView!size_t(false, 400, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == double.infinity);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xd.a763fc8cb9ff9e6p+1325L);
 
-        view = DecimalView!W(false, 400, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == double.infinity);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xd.a763fc8cb9ff9e6p+1325L);
+    view = DecimalView!size_t(false, 309, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == double.infinity);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xb.201833b35d63f73p+1023L);
 
-        view = DecimalView!W(false, 309, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == double.infinity);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xb.201833b35d63f73p+1023L);
+    view = DecimalView!size_t(false, 308, BigUIntView!size_t.fromHexString("2"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == double.infinity);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
 
-        view = DecimalView!W(false, 308, BigUIntView!W.fromHexString("2"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == double.infinity);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
+    view = DecimalView!size_t(false, 308, BigUIntView!size_t.fromHexString("2"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == double.infinity);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
 
-        view = DecimalView!W(false, 308, BigUIntView!W.fromHexString("2"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == double.infinity);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.e679c2f5e44ff8fp+1021L);
+    view = DecimalView!size_t(false, 295, BigUIntView!size_t.fromHexString("1059949B7090"));
+    assert (cast(float)view == float.infinity);
+    assert (cast(double)view == double.infinity);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.00000000006955ap+1021L);
 
-        view = DecimalView!W(false, 295, BigUIntView!W.fromHexString("1059949B7090"));
-        assert (cast(float)view == float.infinity);
-        assert (cast(double)view == double.infinity);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.00000000006955ap+1021L);
+    view = DecimalView!size_t(false, 0, BigUIntView!size_t.fromHexString("0"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0L);
 
-        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("0"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0L);
+    view = view;
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0L);
 
-        view = DecimalView!W(false, 0, BigUIntView!W.init);
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0L);
+    view = DecimalView!size_t(false, -325, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
 
-        view = DecimalView!W(false, -325, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
+    view = DecimalView!size_t(false, -326, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
 
-        view = DecimalView!W(false, -326, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
+    view = DecimalView!size_t(false, -500, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.33ada2003db9a8p-1664L);
 
-        view = DecimalView!W(false, -500, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.33ada2003db9a8p-1664L);
+    view = DecimalView!size_t(false, -1000, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.68a9188a89e1467p-3325L);
 
-        view = DecimalView!W(false, -1000, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.68a9188a89e1467p-3325L);
+    view = DecimalView!size_t(false, -4999, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0L);
 
-        view = DecimalView!W(false, -4999, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0L);
+    view = DecimalView!size_t(false, -10000, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0L);
 
-        view = DecimalView!W(false, -10000, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0L);
+    view = DecimalView!size_t(false, -4969, BigUIntView!size_t.fromHexString("329659A941466C6B"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == real.min_normal * real.epsilon);
 
-        view = DecimalView!W(false, -4969, BigUIntView!W.fromHexString("329659A941466C6B"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == real.min_normal * real.epsilon);
+    view = DecimalView!size_t(false, -15, BigUIntView!size_t.fromHexString("525DB0200FFAB"));
+    assert (cast(float)view == 1.448997445238699f);
+    assert (cast(double)view == 0x1.72f17f1f49aadp+0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
 
-        view = DecimalView!W(false, -15, BigUIntView!W.fromHexString("525DB0200FFAB"));
-        assert (cast(float)view == 1.448997445238699f);
-        assert (cast(double)view == 0x1.72f17f1f49aadp+0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
+    view = DecimalView!size_t(false, -15, BigUIntView!size_t.fromHexString("525DB0200FFAB"));
+    assert (cast(float)view == 1.448997445238699f);
+    assert (cast(double)view == 0x1.72f17f1f49aadp+0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
 
-        view = DecimalView!W(false, -15, BigUIntView!W.fromHexString("525DB0200FFAB"));
-        assert (cast(float)view == 1.448997445238699f);
-        assert (cast(double)view == 0x1.72f17f1f49aadp+0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xb.978bf8fa4d56cp-3L);
+    view = DecimalView!size_t(false, -325, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
 
-        view = DecimalView!W(false, -325, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xa.5ced43b7e3e9188p-1083L);
+    view = DecimalView!size_t(false, -326, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0);
+    assert (cast(double)view == 0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
 
-        view = DecimalView!W(false, -326, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0);
-        assert (cast(double)view == 0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8.4a57695fe98746dp-1086L);
+    view = DecimalView!size_t(false, 0, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 1);
+    assert (cast(double)view == 0x1p+0);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0x8p-3L);
 
-        view = DecimalView!W(false, 0, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 1);
-        assert (cast(double)view == 0x1p+0);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0x8p-3L);
+    view = DecimalView!size_t(false, -5, BigUIntView!size_t.fromHexString("3"));
+    assert (cast(float)view == 3e-5f);
+    assert (cast(double)view == 0x1.f75104d551d69p-16);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xf.ba8826aa8eb4635p-19L);
 
-        view = DecimalView!W(false, -5, BigUIntView!W.fromHexString("3"));
-        assert (cast(float)view == 3e-5f);
-        assert (cast(double)view == 0x1.f75104d551d69p-16);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xf.ba8826aa8eb4635p-19L);
+    view = DecimalView!size_t(false, -1, BigUIntView!size_t.fromHexString("1"));
+    assert (cast(float)view == 0.1f);
+    assert (cast(double)view == 0x1.999999999999ap-4);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xc.ccccccccccccccdp-7L);
 
-        view = DecimalView!W(false, -1, BigUIntView!W.fromHexString("1"));
-        assert (cast(float)view == 0.1f);
-        assert (cast(double)view == 0x1.999999999999ap-4);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xc.ccccccccccccccdp-7L);
-
-        view = DecimalView!W(false, -7, BigUIntView!W.fromHexString("98967F"));
-        assert (cast(float)view == 0.9999999f);
-        assert (cast(double)view == 0x1.fffffca501acbp-1);
-        static if (real.mant_dig >= 64)
-            assert (cast(real)view == 0xf.ffffe5280d65435p-4L);
-    }}
+    view = DecimalView!size_t(false, -7, BigUIntView!size_t.fromHexString("98967F"));
+    assert (cast(float)view == 0.9999999f);
+    assert (cast(double)view == 0x1.fffffca501acbp-1);
+    static if (real.mant_dig >= 64)
+        assert (cast(real)view == 0xf.ffffe5280d65435p-4L);
 }
 
 /++

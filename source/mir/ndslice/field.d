@@ -486,6 +486,7 @@ struct BitpackField(Field, uint pack, I = typeof(cast()Field.init[size_t.init]))
 }
 
 ///
+version(mir_ndslice_test)
 unittest
 {
     import mir.ndslice.iterator: FieldIterator;
@@ -515,6 +516,7 @@ unittest
     assert(f[11] == 0);
 }
 
+version(mir_ndslice_test)
 unittest
 {
     import mir.ndslice.slice;

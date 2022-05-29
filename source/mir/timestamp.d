@@ -815,6 +815,7 @@ struct Timestamp
     }
 
     ///
+    version(mir_test)
     @safe pure nothrow @nogc unittest
     {
         assert(Timestamp(1970, 1, 1).toUnixTime == 0);
@@ -846,6 +847,7 @@ struct Timestamp
     }
 
     ///
+    version(mir_test)
     @safe pure nothrow @nogc unittest
     {
         import mir.format;

@@ -8,7 +8,7 @@ Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry 
 module mir.parse;
 
 /// `mir.conv: to` extension.
-version(mir_test)
+version(mir_bignum_test)
 @safe pure @nogc
 unittest
 {

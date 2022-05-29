@@ -65,15 +65,6 @@ struct Decimal(uint maxSize64)
         }
     }
 
-    static if (maxSize64 == 3)
-    ///
-    version(mir_test) @safe pure @nogc unittest
-    {
-        import mir.math.constant: PI;
-        Decimal!2 decimal = "3.141592653589793378e-40"; // constructor
-        assert(cast(double) decimal == double(PI) / 1e40);
-    }
-
     /++
     Constructs Decimal from the floating point number using the $(HTTPS github.com/ulfjack/ryu, Ryu algorithm).
 
@@ -84,27 +75,6 @@ struct Decimal(uint maxSize64)
     {
         import mir.bignum.internal.ryu.generic_128: genericBinaryToDecimal;
         this = genericBinaryToDecimal(x);
-    }
-    
-    static if (maxSize64 == 3)
-    ///
-    version(mir_bignum_test)
-    @safe pure nothrow @nogc
-    unittest
-    {
-        // float and double can be used to construct Decimal of any length
-        auto decimal64 = Decimal!1(-1.235e-7);
-        assert(decimal64.exponent == -10);
-        assert(decimal64.coefficient == -1235);
-
-        // real number may need Decimal at least length of 2
-        auto decimal128 = Decimal!2(-1.235e-7L);
-        assert(decimal128.exponent == -10);
-        assert(decimal128.coefficient == -1235);
-
-        decimal128 = Decimal!2(1234e3f);
-        assert(decimal128.exponent == 3);
-        assert(decimal128.coefficient == 1234);
     }
 
     ///
@@ -140,7 +110,7 @@ struct Decimal(uint maxSize64)
         import mir.ndslice.slice: sliced;
         import mir.ndslice.topology: retro;
 
-        stringBuf buffer;
+        auto buffer = stringBuf;
         assert(thousandsSeparator != fractionSeparator);
         if (str.length && (str[0] == '+' || str[0] == '-'))
         {
@@ -193,28 +163,6 @@ struct Decimal(uint maxSize64)
         )(buffer.data, key, exponentShift);
     }
 
-    static if (maxSize64 == 3)
-    ///
-    version(mir_bignum_test) 
-    @safe pure nothrow @nogc
-    unittest
-    {
-        Decimal!3 decimal;
-        DecimalExponentKey key;
-
-        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345.678", ',', '.', key));
-        assert(cast(double) decimal == 12345.678);
-        assert(key == DecimalExponentKey.dot);
-
-        assert(decimal.fromStringWithThousandsSeparatorImpl("12,345,678", ',', '.', key, -3));
-        assert(cast(double) decimal == 12345.678);
-        assert(key == DecimalExponentKey.none);
-
-        assert(decimal.fromStringWithThousandsSeparatorImpl("021 345,678", ' ', ',', key));
-        assert(cast(double) decimal == 21345.678);
-        assert(key == DecimalExponentKey.dot);
-    }
-
     /++
     Returns: false in case of overflow or incorrect string.
     +/
@@ -238,7 +186,7 @@ struct Decimal(uint maxSize64)
             static if (optimize || (allowSpecialValues && allowDExponent && allowStartingPlus && checkEmpty) == false)
                 pragma(inline, true);
         }
-        static if (optimize)
+        static if (optimize && false)
         {
             import mir.utility: _expect;
             static if (checkEmpty)
@@ -468,191 +416,6 @@ struct Decimal(uint maxSize64)
         }
     }
 
-    static if (maxSize64 == 3)
-    ///
-    version(mir_bignum_test) 
-    @safe pure nothrow @nogc
-    unittest
-    {
-        import mir.conv: to;
-        Decimal!3 decimal;
-        DecimalExponentKey key;
-
-        // Check precise percentate parsing
-        assert(decimal.fromStringImpl("71.7", key, -2));
-        assert(key == DecimalExponentKey.dot);
-        // The result is exact value instead of 0.7170000000000001 = 71.7 / 100
-        assert(cast(double) decimal == 0.717);
-
-        assert(decimal.fromStringImpl("+0.334e-5"w, key));
-        assert(key == DecimalExponentKey.e);
-        assert(cast(double) decimal == 0.334e-5);
-
-        assert(decimal.fromStringImpl("100_000_000"w, key));
-        assert(key == DecimalExponentKey.none);
-        assert(cast(double) decimal == 1e8);
-
-        assert(decimal.fromStringImpl("-334D-5"d, key));
-        assert(key == DecimalExponentKey.D);
-        assert(cast(double) decimal == -334e-5);
-
-        assert(decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
-        assert(key == DecimalExponentKey.none);
-        assert(cast(double) decimal == 2482734692817364218734682973648217364981273648923423.0);
-
-        assert(decimal.fromStringImpl(".023", key));
-        assert(key == DecimalExponentKey.dot);
-        assert(cast(double) decimal == .023);
-
-        assert(decimal.fromStringImpl("0E100", key));
-        assert(key == DecimalExponentKey.E);
-        assert(cast(double) decimal == 0);
-
-        foreach (str; ["-nan", "-NaN", "-NAN"])
-        {
-            assert(decimal.fromStringImpl(str, key));
-            assert(decimal.coefficient.length > 0);
-            assert(decimal.exponent == decimal.exponent.max);
-            assert(decimal.coefficient.sign);
-            assert(key == DecimalExponentKey.nan);
-            assert(cast(double) decimal != cast(double) decimal);
-        }
-
-        foreach (str; ["inf", "Inf", "INF"])
-        {
-            assert(decimal.fromStringImpl(str, key));
-            assert(decimal.coefficient.length == 0);
-            assert(decimal.exponent == decimal.exponent.max);
-            assert(key == DecimalExponentKey.infinity);
-            assert(cast(double) decimal == double.infinity);
-        }
-
-        assert(decimal.fromStringImpl("-inf", key));
-        assert(decimal.coefficient.length == 0);
-        assert(decimal.exponent == decimal.exponent.max);
-        assert(key == DecimalExponentKey.infinity);
-        assert(cast(double) decimal == -double.infinity);
-
-        assert(!decimal.fromStringImpl("3.3.4", key));
-        assert(!decimal.fromStringImpl("3.4.", key));
-        assert(decimal.fromStringImpl("4.", key));
-        assert(!decimal.fromStringImpl(".", key));
-        assert(decimal.fromStringImpl("0.", key));
-        assert(decimal.fromStringImpl("00", key));
-        assert(!decimal.fromStringImpl("0d", key));
-    }
-
-    static if (maxSize64 == 3)
-    version(mir_bignum_test)
-    @safe pure nothrow @nogc
-    unittest
-    {
-        import mir.conv: to;
-        Decimal!1 decimal;
-        DecimalExponentKey key;
-
-        assert(decimal.fromStringImpl("1.334", key));
-        assert(key == DecimalExponentKey.dot);
-        assert(cast(double) decimal == 1.334);
-
-        assert(decimal.fromStringImpl("+0.334e-5"w, key));
-        assert(key == DecimalExponentKey.e);
-        assert(cast(double) decimal == 0.334e-5);
-
-        assert(decimal.fromStringImpl("-334D-5"d, key));
-        assert(key == DecimalExponentKey.D);
-        assert(cast(double) decimal == -334e-5);
-
-        assert(!decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
-
-        assert(decimal.fromStringImpl(".023", key));
-        assert(key == DecimalExponentKey.dot);
-        assert(cast(double) decimal == .023);
-
-        assert(decimal.fromStringImpl("0E100", key));
-        assert(key == DecimalExponentKey.E);
-        assert(cast(double) decimal == 0);
-
-        /++ Test that Issue #365 is handled properly +/
-        assert(decimal.fromStringImpl("123456.e0", key));
-        assert(key == DecimalExponentKey.e);
-        assert(cast(double) decimal == 123_456.0);
-
-        assert(decimal.fromStringImpl("123_456.e0", key));
-        assert(key == DecimalExponentKey.e);
-        assert(cast(double) decimal == 123_456.0);
-
-        assert(decimal.fromStringImpl("123456.E0", key));
-        assert(key == DecimalExponentKey.E);
-        assert(cast(double) decimal == 123_456.0);
-
-        assert(decimal.fromStringImpl("123_456.E0", key));
-        assert(key == DecimalExponentKey.E);
-        assert(cast(double) decimal == 123_456.0);
-
-        assert(decimal.fromStringImpl("123456.d0", key));
-        assert(key == DecimalExponentKey.d);
-        assert(cast(double) decimal == 123_456.0);
-
-        assert(decimal.fromStringImpl("123_456.d0", key));
-        assert(key == DecimalExponentKey.d);
-        assert(cast(double) decimal == 123_456.0);
-
-        assert(decimal.fromStringImpl("123456.D0", key));
-        assert(key == DecimalExponentKey.D);
-        assert(cast(double) decimal == 123_456.0);
-
-        assert(decimal.fromStringImpl("123_456.D0", key));
-        assert(key == DecimalExponentKey.D);
-        assert(cast(double) decimal == 123_456.0);
-
-        /++ Test invalid examples with the fix introduced for Issue #365 +/
-        assert(!decimal.fromStringImpl("123_456_.D0", key));
-        assert(!decimal.fromStringImpl("123_456.DD0", key));
-        assert(!decimal.fromStringImpl("123_456_.E0", key));
-        assert(!decimal.fromStringImpl("123_456.EE0", key));
-        assert(!decimal.fromStringImpl("123456.ED0", key));
-        assert(!decimal.fromStringImpl("123456E0D0", key));
-        assert(!decimal.fromStringImpl("123456._D0", key));
-        assert(!decimal.fromStringImpl("123456_.D0", key));
-        assert(!decimal.fromStringImpl("123456.E0D0", key));
-        assert(!decimal.fromStringImpl("123456.D0_", key));
-        assert(!decimal.fromStringImpl("123456_", key));
-
-        foreach (str; ["-nan", "-NaN", "-NAN"])
-        {
-            assert(decimal.fromStringImpl(str, key));
-            assert(decimal.coefficient.length > 0);
-            assert(decimal.exponent == decimal.exponent.max);
-            assert(decimal.coefficient.sign);
-            assert(key == DecimalExponentKey.nan);
-            assert(cast(double) decimal != cast(double) decimal);
-        }
-
-        foreach (str; ["inf", "Inf", "INF"])
-        {
-            assert(decimal.fromStringImpl(str, key));
-            assert(decimal.coefficient.length == 0);
-            assert(decimal.exponent == decimal.exponent.max);
-            assert(key == DecimalExponentKey.infinity);
-            assert(cast(double) decimal == double.infinity);
-        }
-
-        assert(decimal.fromStringImpl("-inf", key));
-        assert(decimal.coefficient.length == 0);
-        assert(decimal.exponent == decimal.exponent.max);
-        assert(key == DecimalExponentKey.infinity);
-        assert(cast(double) decimal == -double.infinity);
-
-        assert(!decimal.fromStringImpl("3.3.4", key));
-        assert(!decimal.fromStringImpl("3.4.", key));
-        assert(decimal.fromStringImpl("4.", key));
-        assert(!decimal.fromStringImpl(".", key));
-        assert(decimal.fromStringImpl("0.", key));
-        assert(decimal.fromStringImpl("00", key));
-        assert(!decimal.fromStringImpl("0d", key));
-    }
-
     private enum coefficientBufferLength = 2 + ceilLog10Exp2(coefficient.data.length * (size_t.sizeof * 8)); // including dot and sign
     private enum eDecimalLength = coefficientBufferLength + expBufferLength;
 
@@ -665,18 +428,6 @@ struct Decimal(uint maxSize64)
         auto buffer = UnsafeArrayBuffer!C(data);
         toString(buffer, spec);
         return buffer.data.idup;
-    }
-
-    static if (maxSize64 == 3)
-    ///
-    version(mir_bignum_test) @safe pure unittest
-    {
-        auto str = "-3.4010447314490204552169750449563978034784726557588085989975288830070948234680e-13245";
-        auto decimal = Decimal!4(str);
-        assert(decimal.toString == str, decimal.toString);
-
-        decimal = Decimal!4.init;
-        assert(decimal.toString == "0.0");
     }
 
     ///
@@ -857,105 +608,13 @@ struct Decimal(uint maxSize64)
         w.put(buffer[$ - expLength .. $]);
     }
 
-    static if (maxSize64 == 3)
-    /// Check @nogc toString impl
-    version(mir_bignum_test) @safe pure @nogc unittest
-    {
-        import mir.format: stringBuf;
-        auto str = "5.28238923728e-876543210";
-        auto decimal = Decimal!1(str);
-        stringBuf buffer;
-        buffer << decimal;
-        assert(buffer.data == str);
-    }
-
     /++
     Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
-    T opCast(T, bool wordNormalized = false, bool nonZero = false)() const
+    T opCast(T, bool wordNormalized = true)() const
         if (isFloatingPoint!T && isMutable!T)
     {
-
-        enum optimize = maxSize64 == 1 && size_t.sizeof == 8 && T.mant_dig < 64;
-
-        version(LDC)
-        {
-            static if (optimize || wordNormalized)
-                pragma(inline, true);
-        }
-
-        static if (optimize)
-        {
-            import mir.bignum.fixed: UInt;
-            import mir.bignum.fp: Fp, extendedMul;
-            import mir.bignum.internal.dec2flt_table;
-            import mir.bignum.low_level_view: MaxWordPow5, MaxFpPow5;
-            import mir.math.common: floor;
-            import mir.utility: _expect;
-
-            T ret = 0;
-            size_t length = coefficient.length;
-
-
-            static if (!wordNormalized)
-            {
-                if (coefficient.data[0] == 0)
-                    length = 0;
-            }
-
-            if (_expect(exponent == exponent.max, false))
-            {
-                ret = length ? T.nan : T.infinity;
-                goto R;
-            }
-
-            static if (!nonZero)
-                if (length == 0)
-                    goto R;
-            enum S = 9;
-
-            Fp!64 load(typeof(exponent) e)
-            {
-                auto p10coeff = p10_coefficients[cast(sizediff_t)e - min_p10_e][0];
-                auto p10exp = p10_exponents[cast(sizediff_t)e - min_p10_e];
-                return Fp!64(false, p10exp, UInt!64(p10coeff));
-            }
-            {
-                auto expSign = exponent < 0;
-                if (_expect((expSign ? -exponent : exponent) >>> S == 0, true))
-                {
-                    enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
-                    enum ulong half = (1UL << (64 - T.mant_dig - 1));
-                    enum ulong bound = ulong(1) << T.mant_dig;
-
-                    auto c = Fp!64(UInt!64(coefficient.data[0]));
-                    auto z = c.extendedMul(load(exponent));
-                    ret = cast(T) z;
-                    long bitsDiff = (cast(ulong) z.opCast!(Fp!64).coefficient & mask) - half;
-                    if (_expect((bitsDiff < 0 ? -bitsDiff : bitsDiff) > 3 * expSign, true))
-                        goto R;
-                    if (!expSign && exponent <= MaxWordPow5!ulong || exponent == 0)
-                        goto R;
-                    if (expSign && MaxFpPow5!T >= -exponent && cast(ulong)c.coefficient < bound)
-                    {
-                        auto e = load(-exponent);
-                        ret =  c.opCast!(T, true) / cast(T) (cast(ulong)e.coefficient >> e.exponent);
-                        goto R;
-                    }
-                    ret = algoR!T(ret, view.coefficient, cast(int) exponent);
-                    goto R;
-                }
-                ret = expSign ? 0 : T.infinity;
-            }
-        R:
-            if (coefficient.sign)
-                ret = -ret;
-            return ret;
-        }
-        else
-        {
-            return view.opCast!(T, wordNormalized, nonZero);
-        }
+        return view.opCast!(T, wordNormalized);
     }
 
     ///
@@ -993,40 +652,13 @@ struct Decimal(uint maxSize64)
         }
         else
         {
-            rhsCopy.copyFrom(rhs.coefficient.view);
+            rhsCopy.copyFrom(rhs.coefficient.coefficients, rhs.coefficient.sign);
             rhsCopy.mulPow5(-expDiff);
             rhsCopy.opOpAssign!"<<"(-expDiff);
             rhsView = rhsCopy.view;
         }
         coefficient.opOpAssign!op(rhsView);
         return this;
-    }
-
-    static if (maxSize64 == 3)
-    ///
-    version(mir_bignum_test) @safe pure @nogc unittest
-    {
-        auto a = Decimal!1("777.7");
-        auto b = Decimal!1("777");
-        import mir.format;
-        assert(stringBuf() << cast(double)a - cast(double)b << getData == "0.7000000000000455");
-        a -= b;
-        assert(stringBuf() << a << getData == "0.7");
-
-        a = Decimal!1("-777.7");
-        b = Decimal!1("777");
-        a += b;
-        assert(stringBuf() << a << getData == "-0.7");
-
-        a = Decimal!1("777.7");
-        b = Decimal!1("-777");
-        a += b;
-        assert(stringBuf() << a << getData == "0.7");
-
-        a = Decimal!1("777");
-        b = Decimal!1("777.7");
-        a -= b;
-        assert(stringBuf() << a << getData == "-0.7");
     }
 }
 
@@ -1036,14 +668,13 @@ version(mir_bignum_test)
 unittest
 {
     import mir.conv: to;
-    Decimal!3 decimal;
+    Decimal!256 decimal = void;
     DecimalExponentKey key;
 
     assert(decimal.fromStringImpl("3.141592653589793378e-10", key));
     assert(cast(double) decimal == 0x1.596bf8ce7631ep-32);
     assert(key == DecimalExponentKey.e);
 }
-
 
 ///
 version(mir_bignum_test) 
@@ -1076,15 +707,44 @@ unittest
     assert(cast(double) decimal.coefficient == 0);
 }
 
-deprecated("use decimal.fromStringImpl insteade")
-@trusted @nogc pure nothrow
-bool parseDecimal(uint maxSize64, C)(scope const(C)[] str, ref Decimal!maxSize64 decimal, out DecimalExponentKey key)
-    if (isSomeChar!C)
+///
+version(mir_bignum_test) @safe pure @nogc unittest
 {
-    return decimal.fromStringImpl(str, key);
+    auto a = Decimal!1("777.7");
+    auto b = Decimal!1("777");
+    import mir.format;
+    assert(stringBuf() << cast(double)a - cast(double)b << getData == "0.7000000000000455");
+    a -= b;
+    assert(stringBuf() << a << getData == "0.7");
+
+    a = Decimal!1("-777.7");
+    b = Decimal!1("777");
+    a += b;
+    assert(stringBuf() << a << getData == "-0.7");
+
+    a = Decimal!1("777.7");
+    b = Decimal!1("-777");
+    a += b;
+    assert(stringBuf() << a << getData == "0.7");
+
+    a = Decimal!1("777");
+    b = Decimal!1("777.7");
+    a -= b;
+    assert(stringBuf() << a << getData == "-0.7");
 }
 
+/// Check @nogc toString impl
+version(mir_bignum_test) @safe pure @nogc unittest
+{
+    import mir.format: stringBuf;
+    auto str = "5.28238923728e-876543210";
+    auto decimal = Decimal!1(str);
+    auto buffer = stringBuf;
+    buffer << decimal;
+    assert(buffer.data == str);
+}
 
+///
 version(mir_bignum_test)
 @safe pure @nogc unittest
 {
@@ -1094,4 +754,250 @@ version(mir_bignum_test)
     assert(i.coefficient.view.unsigned.coefficients.length == 0);
     assert(i.coefficient.view == 0L);
     assert(cast(long) i.coefficient == 0);
+    assert(i.coefficient.sign);
+}
+
+///
+version(mir_bignum_test) @safe pure unittest
+{
+    auto str = "-3.4010447314490204552169750449563978034784726557588085989975288830070948234680e-13245";
+    auto decimal = Decimal!4(str);
+    assert(decimal.toString == str, decimal.toString);
+
+    decimal = Decimal!4.init;
+    assert(decimal.toString == "0.0");
+}
+
+///
+version(mir_bignum_test) 
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.conv: to;
+    Decimal!3 decimal;
+    DecimalExponentKey key;
+
+    // Check precise percentate parsing
+    assert(decimal.fromStringImpl("71.7", key, -2));
+    assert(key == DecimalExponentKey.dot);
+    // The result is exact value instead of 0.7170000000000001 = 71.7 / 100
+    assert(cast(double) decimal == 0.717);
+
+    assert(decimal.fromStringImpl("+0.334e-5"w, key));
+    assert(key == DecimalExponentKey.e);
+    assert(cast(double) decimal == 0.334e-5);
+
+    assert(decimal.fromStringImpl("100_000_000"w, key));
+    assert(key == DecimalExponentKey.none);
+    assert(cast(double) decimal == 1e8);
+
+    assert(decimal.fromStringImpl("-334D-5"d, key));
+    assert(key == DecimalExponentKey.D);
+    assert(cast(double) decimal == -334e-5);
+
+    assert(decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
+    assert(key == DecimalExponentKey.none);
+    assert(cast(double) decimal == 2482734692817364218734682973648217364981273648923423.0);
+
+    assert(decimal.fromStringImpl(".023", key));
+    assert(key == DecimalExponentKey.dot);
+    assert(cast(double) decimal == .023);
+
+    assert(decimal.fromStringImpl("0E100", key));
+    assert(key == DecimalExponentKey.E);
+    assert(cast(double) decimal == 0);
+
+    foreach (str; ["-nan", "-NaN", "-NAN"])
+    {
+        assert(decimal.fromStringImpl(str, key));
+        assert(decimal.coefficient.length > 0);
+        assert(decimal.exponent == decimal.exponent.max);
+        assert(decimal.coefficient.sign);
+        assert(key == DecimalExponentKey.nan);
+        assert(cast(double) decimal != cast(double) decimal);
+    }
+
+    foreach (str; ["inf", "Inf", "INF"])
+    {
+        assert(decimal.fromStringImpl(str, key));
+        assert(decimal.coefficient.length == 0);
+        assert(decimal.exponent == decimal.exponent.max);
+        assert(key == DecimalExponentKey.infinity);
+        assert(cast(double) decimal == double.infinity);
+    }
+
+    assert(decimal.fromStringImpl("-inf", key));
+    assert(decimal.coefficient.length == 0);
+    assert(decimal.exponent == decimal.exponent.max);
+    assert(key == DecimalExponentKey.infinity);
+    assert(cast(double) decimal == -double.infinity);
+
+    assert(!decimal.fromStringImpl("3.3.4", key));
+    assert(!decimal.fromStringImpl("3.4.", key));
+    assert(decimal.fromStringImpl("4.", key));
+    assert(!decimal.fromStringImpl(".", key));
+    assert(decimal.fromStringImpl("0.", key));
+    assert(decimal.fromStringImpl("00", key));
+    assert(!decimal.fromStringImpl("0d", key));
+}
+
+version(mir_bignum_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.conv: to;
+    Decimal!1 decimal;
+    DecimalExponentKey key;
+
+    assert(decimal.fromStringImpl("1.334", key));
+    assert(key == DecimalExponentKey.dot);
+    assert(cast(double) decimal == 1.334);
+
+    assert(decimal.fromStringImpl("+0.334e-5"w, key));
+    assert(key == DecimalExponentKey.e);
+    assert(cast(double) decimal == 0.334e-5);
+
+    assert(decimal.fromStringImpl("-334D-5"d, key));
+    assert(key == DecimalExponentKey.D);
+    assert(cast(double) decimal == -334e-5);
+
+    assert(!decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
+
+    assert(decimal.fromStringImpl(".023", key));
+    assert(key == DecimalExponentKey.dot);
+    assert(cast(double) decimal == .023);
+
+    assert(decimal.fromStringImpl("0E100", key));
+    assert(key == DecimalExponentKey.E);
+    assert(cast(double) decimal == 0);
+
+    /++ Test that Issue #365 is handled properly +/
+    assert(decimal.fromStringImpl("123456.e0", key));
+    assert(key == DecimalExponentKey.e);
+    assert(cast(double) decimal == 123_456.0);
+
+    assert(decimal.fromStringImpl("123_456.e0", key));
+    assert(key == DecimalExponentKey.e);
+    assert(cast(double) decimal == 123_456.0);
+
+    assert(decimal.fromStringImpl("123456.E0", key));
+    assert(key == DecimalExponentKey.E);
+    assert(cast(double) decimal == 123_456.0);
+
+    assert(decimal.fromStringImpl("123_456.E0", key));
+    assert(key == DecimalExponentKey.E);
+    assert(cast(double) decimal == 123_456.0);
+
+    assert(decimal.fromStringImpl("123456.d0", key));
+    assert(key == DecimalExponentKey.d);
+    assert(cast(double) decimal == 123_456.0);
+
+    assert(decimal.fromStringImpl("123_456.d0", key));
+    assert(key == DecimalExponentKey.d);
+    assert(cast(double) decimal == 123_456.0);
+
+    assert(decimal.fromStringImpl("123456.D0", key));
+    assert(key == DecimalExponentKey.D);
+    assert(cast(double) decimal == 123_456.0);
+
+    assert(decimal.fromStringImpl("123_456.D0", key));
+    assert(key == DecimalExponentKey.D);
+    assert(cast(double) decimal == 123_456.0);
+
+    /++ Test invalid examples with the fix introduced for Issue #365 +/
+    assert(!decimal.fromStringImpl("123_456_.D0", key));
+    assert(!decimal.fromStringImpl("123_456.DD0", key));
+    assert(!decimal.fromStringImpl("123_456_.E0", key));
+    assert(!decimal.fromStringImpl("123_456.EE0", key));
+    assert(!decimal.fromStringImpl("123456.ED0", key));
+    assert(!decimal.fromStringImpl("123456E0D0", key));
+    assert(!decimal.fromStringImpl("123456._D0", key));
+    assert(!decimal.fromStringImpl("123456_.D0", key));
+    assert(!decimal.fromStringImpl("123456.E0D0", key));
+    assert(!decimal.fromStringImpl("123456.D0_", key));
+    assert(!decimal.fromStringImpl("123456_", key));
+
+    foreach (str; ["-nan", "-NaN", "-NAN"])
+    {
+        assert(decimal.fromStringImpl(str, key));
+        assert(decimal.coefficient.length > 0);
+        assert(decimal.exponent == decimal.exponent.max);
+        assert(decimal.coefficient.sign);
+        assert(key == DecimalExponentKey.nan);
+        assert(cast(double) decimal != cast(double) decimal);
+    }
+
+    foreach (str; ["inf", "Inf", "INF"])
+    {
+        assert(decimal.fromStringImpl(str, key));
+        assert(decimal.coefficient.length == 0);
+        assert(decimal.exponent == decimal.exponent.max);
+        assert(key == DecimalExponentKey.infinity);
+        assert(cast(double) decimal == double.infinity);
+    }
+
+    assert(decimal.fromStringImpl("-inf", key));
+    assert(decimal.coefficient.length == 0);
+    assert(decimal.exponent == decimal.exponent.max);
+    assert(key == DecimalExponentKey.infinity);
+    assert(cast(double) decimal == -double.infinity);
+
+    assert(!decimal.fromStringImpl("3.3.4", key));
+    assert(!decimal.fromStringImpl("3.4.", key));
+    assert(decimal.fromStringImpl("4.", key));
+    assert(!decimal.fromStringImpl(".", key));
+    assert(decimal.fromStringImpl("0.", key));
+    assert(decimal.fromStringImpl("00", key));
+    assert(!decimal.fromStringImpl("0d", key));
+}
+
+///
+version(mir_bignum_test)
+@safe pure @nogc unittest
+{
+    import mir.math.constant: PI;
+    Decimal!2 decimal = "3.141592653589793378e-40"; // constructor
+    assert(cast(double) decimal == double(PI) / 1e40);
+}
+
+
+///
+version(mir_bignum_test)
+@safe pure nothrow @nogc
+unittest
+{
+    // float and double can be used to construct Decimal of any length
+    auto decimal64 = Decimal!1(-1.235e-7);
+    assert(decimal64.exponent == -10);
+    assert(decimal64.coefficient == -1235);
+
+    // real number may need Decimal at least length of 2
+    auto decimal128 = Decimal!2(-1.235e-7L);
+    assert(decimal128.exponent == -10);
+    assert(decimal128.coefficient == -1235);
+
+    decimal128 = Decimal!2(1234e3f);
+    assert(decimal128.exponent == 3);
+    assert(decimal128.coefficient == 1234);
+}
+
+///
+version(mir_bignum_test) 
+@safe pure nothrow @nogc
+unittest
+{
+    Decimal!3 decimal;
+    DecimalExponentKey key;
+
+    assert(decimal.fromStringWithThousandsSeparatorImpl("12,345.678", ',', '.', key));
+    assert(cast(double) decimal == 12345.678);
+    assert(key == DecimalExponentKey.dot);
+
+    assert(decimal.fromStringWithThousandsSeparatorImpl("12,345,678", ',', '.', key, -3));
+    assert(cast(double) decimal == 12345.678);
+    assert(key == DecimalExponentKey.none);
+
+    assert(decimal.fromStringWithThousandsSeparatorImpl("021 345,678", ' ', ',', key));
+    assert(cast(double) decimal == 21345.678);
+    assert(key == DecimalExponentKey.dot);
 }

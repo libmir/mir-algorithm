@@ -103,6 +103,7 @@ struct Annotated(T) {
 }
 
 ///
+version(mir_test)
 unittest
 {
     auto annotations = ["annotation"];
@@ -118,6 +119,7 @@ unittest
 }
 
 ///
+version(mir_test)
 unittest
 {
     import mir.algebraic;

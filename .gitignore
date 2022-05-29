@@ -40,3 +40,4 @@ mir-algorithm-test-secure
 *.pdb
 bigint_benchmark/bigint_benchmark
 bigint_benchmark/temp.d
+mir-algorithm-test-silly
