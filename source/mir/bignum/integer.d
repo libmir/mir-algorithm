@@ -987,7 +987,7 @@ unittest
         assert((a %= b) == 0xDEADBEEF);
     }
 
-    void test(const long av, const long bv)
+    void test(const int av, const int bv)
     {
         auto a = BigInt!4(av);
         const b = BigInt!4(bv);
