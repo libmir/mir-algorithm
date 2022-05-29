@@ -75,7 +75,7 @@ struct BigInt(uint maxSize64)
         }
         else
         {
-            this.length = data && (data >> 32);
+            this.length = !!data + !!(data >> 32);
             this.data[0] = cast(uint) data;
             this.data[1] = cast(uint) (data >> 32);
         }
