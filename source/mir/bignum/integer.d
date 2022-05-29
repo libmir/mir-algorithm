@@ -172,19 +172,17 @@ struct BigInt(uint maxSize64)
 
     ///
     ref opAssign(uint rhsSize64)(auto ref scope const BigInt!rhsSize64 rhs) return
-        @safe pure nothrow @nogc
-        in (rhs.length <= maxSize64)
+        @trusted pure nothrow @nogc
+        in (rhs.length <= this.data.length)
     {
+        static if (maxSize64 == rhsSize64)
+        {
+            if (&this is &rhs)
+                return this;
+        }
         this.sign = rhs.sign;
         this.length = rhs.length;
-        version(LittleEndian)
-        {
-            data[0 .. length] = rhs.data[0 .. length];
-        }
-        else
-        {
-            data[$ - length .. $] = rhs.data[$ - length .. $];
-        }
+        this.data[0 .. length] = rhs.data[0 .. length];
         return this;
     }
 
