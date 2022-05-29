@@ -283,8 +283,14 @@ struct UInt(size_t size)
         return 0;
     }
 
+    static if (size >= 64)
     /// ditto
     auto opCmp(ulong rhs) const scope
+    {
+        return opCmp(UInt!size(rhs));
+    }
+    else
+    auto opCmp(uint rhs) const scope
     {
         return opCmp(UInt!size(rhs));
     }
