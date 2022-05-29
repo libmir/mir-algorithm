@@ -223,18 +223,37 @@ struct BigInt(uint maxSize64)
     }
 
     ///
-    bool opEquals()(size_t rhs, bool rhsSign = false)
+    bool opEquals(ulong rhs, bool rhsSign = false)
         const @safe pure nothrow @nogc
     {
-        return rhs == 0 && this.length == 0 || this.length == 1 && this.sign == rhsSign && this.data[0] == rhs;
+        if (rhs == 0 && this.length == 0 || this.length == 1 && this.sign == rhsSign && this.data[0] == rhs)
+            return true;
+        static if (is(size_t == ulong) || maxSize64 == 1)
+            return false;    
+        else
+            return this.length == 2 && this.data[0] == cast(uint) rhs && this.data[1] == cast(uint) (rhs >> 32);
     }
 
     ///
-    bool opEquals()(sizediff_t rhs)
+    bool opEquals(long rhs)
         const @safe pure nothrow @nogc
     {
         auto sign = rhs < 0;
         return this.opEquals(sign ? ulong(-rhs) : ulong(rhs), sign);
+    }
+
+    ///
+    bool opEquals(uint rhs)
+        const @safe pure nothrow @nogc
+    {
+        return opEquals(ulong(rhs), false);
+    }
+
+    ///
+    bool opEquals(int rhs)
+        const @safe pure nothrow @nogc
+    {
+        return opEquals(long(rhs));
     }
 
     /++
@@ -987,7 +1006,7 @@ unittest
         assert((a %= b) == 0xDEADBEEF);
     }
 
-    void test(const int av, const int bv)
+    void test(const long av, const long bv)
     {
         auto a = BigInt!4(av);
         const b = BigInt!4(bv);
