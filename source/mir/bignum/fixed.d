@@ -69,6 +69,7 @@ struct UInt(size_t size)
         }
     }
 
+    static if (size >= 64)
     ///
     this(ulong data)
     {
