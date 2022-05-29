@@ -263,8 +263,14 @@ struct UInt(size_t size)
             return this.data == rhs.toSize!size.data;
     }
 
+    static if (size >= 64)
     /// ditto
     auto opEquals(ulong rhs) const
+    {
+        return opEquals(UInt!size(rhs));
+    }
+    else
+    auto opEquals(uint rhs) const
     {
         return opEquals(UInt!size(rhs));
     }
