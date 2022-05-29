@@ -42,7 +42,7 @@ struct UInt(size_t size)
 
     static if (size_t.sizeof == uint.sizeof && data.length % 2 == 0)
     ///
-    this(auto ref const ulong[data.length / 2] data)
+    this()(auto ref const ulong[data.length / 2] data)
     {
         if (!__ctfe)
         {
