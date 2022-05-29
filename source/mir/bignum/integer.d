@@ -510,8 +510,10 @@ struct BigInt(uint maxSize64)
 
         pragma(inline, false);
 
-        if (divisor.length == 0 || divisor.coefficients[$ - 1] == 0)
-            assert(0, "Zero or denormalized BigInt divizor");
+        if (divisor.length == 0)
+            assert(0, "Zero BigInt divizor");
+        if (divisor.coefficients[$ - 1] == 0)
+            assert(0, "Denormalized BigInt divizor");
 
         if (this.length < divisor.length)
         {
