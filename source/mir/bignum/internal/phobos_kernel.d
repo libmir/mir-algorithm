@@ -1328,7 +1328,7 @@ void schoolbookDivMod(BigDigit [] quotient, BigDigit [] u, in BigDigit [] v)
             {
                 // Note: On DMD, this is only ~10% faster than the non-asm code.
                 uint *p = &u[j + v.length - 1];
-                asm pure nothrow @trusted
+                asm pure nothrow @trusted @nogc
                 {
                     mov EAX, p;
                     mov EDX, [EAX+4];
