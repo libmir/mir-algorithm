@@ -50,6 +50,7 @@ struct BigInt(uint maxSize64)
         else
         static if (data.length == 2)
         {
+            sign = false;
             this.data[0] = data[0];
             this.data[1] = data[1];
             this.length = data[1] ? 2 : data[0] != 0;
@@ -267,7 +268,7 @@ struct BigInt(uint maxSize64)
     ///
     BigIntView!size_t view()() scope return @property
     {
-            return typeof(return)(this.data[0 .. this.length], this.sign);
+        return typeof(return)(this.data[0 .. this.length], this.sign);
     }
 
     ///
