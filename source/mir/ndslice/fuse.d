@@ -282,6 +282,21 @@ private template fuseDimensionCount(R)
         enum size_t fuseDimensionCount = 0;
 }
 
+///
+@safe pure version(mir_ndslice_test) unittest
+{
+    import mir.ndslice;
+
+    auto m = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].sliced(2, 3, 2);
+    static assert(fuseDimensionCount!(typeof(m)) == 3);
+
+    auto p = m.pack!1;
+    static assert(fuseDimensionCount!(typeof(p)) == 3);
+    
+    auto q = m.pack!2;
+    static assert(fuseDimensionCount!(typeof(q)) == 3);
+}
+
 private static immutable shapeExceptionMsg = "fuseShape Exception: elements have different shapes/lengths";
 
 version(D_Exceptions)
@@ -293,41 +308,82 @@ TODO docs
 size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
     if (hasShape!Range)
 {
-    // auto outerShape = r.shape;
     enum N = r.shape.length;
     enum RN = typeof(return).length;
-    enum M = RN - N;
-    static if (M == 0)
+    static if (RN == N)
     {
         return r.shape;
     }
     else
     {
-        import mir.ndslice.topology: repeat;
         typeof(return) ret;
         ret[0 .. N] = r.shape;
-        bool next;
-        if (!ret[0 .. N].anyEmptyShape) foreach (ref elem; r)
+        if (!ret[0 .. N].anyEmptyShape)
         {
-            auto elemShape = fuseShape(elem);
-            if (next)
+            static if (isSlice!Range)
             {
-                if (elemShape != ret[N .. $])
+                ret[N .. $] = fuseShape(r.first);
+            }
+            else static if (isArray!Range)
+            {
+                bool next;
+                foreach (ref elem; r)
                 {
-                    version (D_Exceptions)
-                        throw shapeException;
+                    const elemShape = fuseShape(elem);
+                    if (next)
+                    {
+                        if (elemShape != ret[N .. $])
+                        {
+                            version (D_Exceptions)
+                                throw shapeException;
+                            else
+                                assert(0, shapeExceptionMsg);
+                        }
+                    }
                     else
-                        assert(0, shapeExceptionMsg);
+                    {
+                        ret[N .. $] = elemShape;
+                        next = true;
+                    }
                 }
-                next = true;
             }
             else
-            {
-                ret[N .. $] = elemShape;
-            }
+                static assert(false);
         }
         return ret;
     }
+}
+
+/// basic
+@safe pure version(mir_ndslice_test) unittest
+{
+    import mir.ndslice;
+
+    auto m = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].sliced(2, 3, 2);
+    auto s = fuseShape(m);
+    assert(s == [2, 3, 2]);
+}
+
+/// pack!1
+@safe pure version(mir_ndslice_test) unittest
+{
+    import mir.ndslice;
+
+    auto m = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].sliced(2, 3, 2);
+    auto p = m.pack!1;
+    auto s = fuseShape(p);
+    assert(s == [2, 3, 2]);
+}
+
+/// pack!2
+@safe pure version(mir_ndslice_test) unittest
+{
+    import mir.ndslice;
+
+    auto m = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].sliced(2, 3, 2);
+    auto p = m.pack!2;
+    auto s = fuseShape(p);
+    assert(s == [2, 3, 2]);
 }
 
 private template FuseElementType(NDRange)
