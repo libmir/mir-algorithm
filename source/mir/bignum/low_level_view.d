@@ -115,7 +115,7 @@ struct BigUIntView(W)
         else
         static if (W.sizeof > size_t.sizeof)
         {
-            return lightConst.opCast!(BigUIntView!size_t).opCast!T;
+            return lightConst.opCast!(BigUIntView!(const size_t)).opCast!T;
         }
         else
         {
