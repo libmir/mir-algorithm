@@ -96,7 +96,7 @@ T decimalToFloat(T)(ulong coefficient, long exponent)
     }
     else
     {
-        ulong[1] coefficients = [coefficient];
+        size_t[1] coefficients = [coefficient];
         return decimalTo!real(approx, coefficients[0 .. !!coefficient], exponent);
     }
 }
@@ -132,7 +132,7 @@ T decimalToFloat(T)(ulong coefficient, long exponent)
             auto e = load64(-exponent);
             return c.opCast!(T, true) / cast(T) (cast(ulong)e.coefficient >> e.exponent);
         }
-        ulong[1] coefficients = [coefficient];
+        size_t[1] coefficients = [coefficient];
         return decimalToFloatFallback(approx, coefficients, cast(int) exponent);
     }
     return expSign ? 0 : exponent != exponent.max ? T.infinity : coefficient ? T.nan : T.infinity;

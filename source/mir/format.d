@@ -865,7 +865,36 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
         else
         static if (is(typeof(w.put(c.toString))))
             w.put(c.toString);
-        else static assert(0, T.stringof ~ ".toString definition is wrong: 'const' qualifier may be missing.");
+        else
+        {
+            import std.format: FormatSpec;
+            FormatSpec!char fmt;
+
+            static if (is(typeof(c.toString(w, fmt))))
+                c.toString(w, fmt);
+            else
+            static if (is(typeof(c.toString((scope const(C)[] s) { w.put(s); }, fmt))))
+                c.toString((scope const(C)[] s) { w.put(s); }, fmt);
+            else
+            // workaround for types with mutable toString
+            static if (is(typeof((*cast(T*)&c).toString(w, fmt))))
+                (*cast(T*)&c).toString(w, fmt);
+            else
+            static if (is(typeof((*cast(T*)&c).toString((scope const(C)[] s) { w.put(s); }, fmt))))
+                (*cast(T*)&c).toString((scope const(C)[] s) { w.put(s); }, fmt);
+            else
+            static if (is(typeof((*cast(T*)&c).toString(w))))
+                (*cast(T*)&c).toString(w);
+            else
+            static if (is(typeof((*cast(T*)&c).toString((scope const(C)[] s) { w.put(s); }))))
+                (*cast(T*)&c).toString((scope const(C)[] s) { w.put(s); });
+            else
+            static if (is(typeof(w.put((*cast(T*)&c).toString))))
+                w.put((*cast(T*)&c).toString);
+            else
+                static assert(0, T.stringof ~ ".toString definition is wrong: 'const' qualifier may be missing.");
+        }
+
         return w;
     }
     else
