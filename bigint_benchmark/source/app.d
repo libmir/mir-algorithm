@@ -59,11 +59,16 @@ void main()
     }
     else
     {
+        import std.system: os;
         auto res = 10.benchmark!(testStd, testMir);
-        dout << "std = " <<  res[0] << endl;
-        dout << "mir = " <<  res[1] << endl;
-        dout << "speedup = "
-            << (double(res[0].total!"usecs") / res[1].total!"usecs" -  1) * 100
-            << " %" << endl;
+        auto ratio = double(res[0].total!"usecs") / res[1].total!"usecs";
+        dout
+            << "--------------------------------------------" << endl
+            << "mir speedup = " << cast(int)((ratio -  1) * 100_0) / 10.0 << "%" << endl
+            << "std = " <<  res[0] << endl
+            << "mir = " <<  res[1] << endl
+            << " ............... " << size_t.sizeof * 8 << "bit " << os << " ............... " << endl
+            << "--------------------------------------------"
+            << endl;
     }
 }

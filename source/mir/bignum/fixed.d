@@ -88,7 +88,7 @@ struct UInt(size_t size)
     ///
     this(uint data)
     {
-        data[0] = data;
+        this.data[0] = data;
     }
 
     ///
