@@ -232,7 +232,7 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
                 while(true);
             }
         }
-        auto z = coefficients.decimalToFp!64.extendedMul(c);
+        auto z = coefficients.decimalToFp!128.extendedMul(c);
         auto ret = cast(T) z;
         if (!gotoAlgoR)
         {
@@ -240,7 +240,7 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
                 enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
             else
                 enum ulong mask = ulong.max;
-            enum ulong half = 3;//(1UL << (128 - T.mant_dig - 1));
+            enum ulong half = (1UL << (128 - T.mant_dig - 1));
             enum UInt!128 bound = UInt!128(1) << T.mant_dig;
 
             auto slop = (coefficients.length > (ulong.sizeof * 2 / size_t.sizeof)) + 3 * expSign;
