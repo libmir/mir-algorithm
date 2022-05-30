@@ -186,7 +186,7 @@ struct Decimal(uint maxSize64)
             static if (optimize || (allowSpecialValues && allowDExponent && allowStartingPlus && checkEmpty) == false)
                 pragma(inline, true);
         }
-        static if (optimize && false)
+        static if (optimize)
         {
             import mir.utility: _expect;
             static if (checkEmpty)
@@ -218,161 +218,196 @@ struct Decimal(uint maxSize64)
             exponent = 0;
 
             ulong v;
-            bool dot;
-            static if (allowUnderscores)
+
+            if (_expect(d >= 10, false))
             {
-                bool recentUnderscore;
+                static if (allowDotOnBounds)
+                {
+                    if (d == '.' - '0')
+                    {
+                        if (str.length == 0)
+                            return false;
+                        key = DecimalExponentKey.dot;
+                        d = str[0] - '0';
+                        str = str[1 .. $];
+                        if (_expect(d < 10, true))
+                            goto FI;
+                        return false;
+                    }
+                }
+                static if (allowSpecialValues)
+                    goto NI;
+                else
+                    return false;
             }
-            // Was there a recent character within the set: ['.', 'e', 'E', 'd', 'D']?
-            bool recentModifier;
+
             static if (!allowLeadingZeros)
             {
-                if (d == 0)
+                if (_expect(d == 0, false))
                 {
                     if (str.length == 0)
                         goto R;
-                    if (str[0] >= '0' && str[0] <= '9')
+                    d = str[0] - '0';
+                    str = str[1 .. $];
+                    if (d < 10)
                         return false;
-                    goto S;
+                    goto DOT;
                 }
             }
+
+            v = d;
+
+        S:
+            if (str.length == 0)
+                goto R;
+            d = str[0] - '0';
+            str = str[1 .. $];
 
             if (d < 10)
             {
+        F0:
+                import mir.checkedint: mulu, addu;
+                bool overflow;
+                v = mulu(v, cast(uint)10, overflow);
+                if (overflow)
+                    return false;
+                v = addu(v, d, overflow);
+                if (overflow)
+                    return false;
                 goto S;
             }
 
-            static if (allowDotOnBounds)
+            static if (allowUnderscores)
             {
-                if (d == '.' - '0')
+                if (d == '_' - '0')
                 {
                     if (str.length == 0)
                         return false;
-                    key = DecimalExponentKey.dot;
-                    dot = true;
-                    recentModifier = true;
-                    goto F;
+                    d = str[0] - '0';
+                    str = str[1 .. $];
+                    if (_expect(d < 10, true))
+                        goto F0;
+                    return false;
                 }
             }
+        DOT:
+            if (d == DecimalExponentKey.dot)
+            {
+                // The dot modifier CANNOT be preceded by any modifiers. 
+                if (key != DecimalExponentKey.none)
+                    return false;
 
-            static if (allowSpecialValues)
-            {
-                goto NI;
-            }
-            else
-            {
-                return false;
-            }
+                key = DecimalExponentKey.dot;
 
-            F: for(;;)
-            {
+                if (str.length == 0)
+                {
+                    static if (allowDotOnBounds)
+                        goto R;
+                    else
+                        return false;
+                }
+
+            IF:
+
+                static if (is(C == char))
+                {
+                    import mir.bignum.internal.parse: isMadeOfEightDigits, parseEightDigits;
+                    if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
+                    {
+                        ulong multplier = 100000000;
+                        ulong value = parseEightDigits(str[0 .. 8]);
+                        str = str[8 .. $];
+                        exponentShift -= 8;
+                        if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
+                        {
+                            multplier = 100000000 * 100000000;
+                            value *= 100000000;
+                            value += parseEightDigits(str[0 .. 8]);
+                            str = str[8 .. $];
+                            exponentShift -= 8;
+                        }
+
+                        {
+                            import mir.checkedint: mulu, addu;
+                            bool overflow;
+                            v = mulu(v, multplier, overflow);
+                            if (overflow)
+                                return false;
+                            v = addu(v, value, overflow);;
+                            if (overflow)
+                                return false;
+                        }
+                    }
+                }
+
                 d = str[0] - '0';
                 str = str[1 .. $];
-
-                if (_expect(d <= 10, true))
+                if (_expect(d >= 10, false))
+                    goto DOB;
+            FI:
                 {
-                    static if (allowUnderscores)
+                    import mir.checkedint: mulu, addu;
+                    bool overflow;
+                    v = mulu(v, cast(uint)10, overflow);
+                    if (overflow)
+                        return false;
+                    v = addu(v, d, overflow);;
+                    if (overflow)
+                        return false;
+                }
+                exponentShift--;
+                if (str.length == 0)
+                    goto E;
+                d = str[0] - '0';
+                str = str[1 .. $];
+                if (d < 10)
+                    goto FI;
+
+                static if (allowUnderscores)
+                {
+                    if (d == '_' - '0')
                     {
-                        recentUnderscore = false;
-                    }
-                    recentModifier = false;
-                    {
-                        import mir.checkedint: mulu;
-                        bool overflow;
-                        v = mulu(v, cast(uint)10, overflow);
-                        if (overflow)
-                            break;
-                    }
-                S:
-                    v += d;
-                    exponentShift -= dot;
-                    if (str.length)
-                        continue;
-                E:
-                    exponent += exponentShift;
-                R:
-                    coefficient.data[0] = v;
-                    coefficient.length = v != 0;
-                    static if (allowUnderscores)
-                    {
-                        return !recentUnderscore && !recentModifier;
-                    }
-                    else
-                    {
-                        return !recentModifier;
+                        if (str.length == 0)
+                            return false;
+                        d = str[0] - '0';
+                        str = str[1 .. $];
+                        if (_expect(d < 10, true))
+                            goto FI;
+                        return false;
                     }
                 }
-
-                switch (d)
+            DOB:
+                static if (!allowDotOnBounds)
                 {
-                    case DecimalExponentKey.dot:
-                        // The dot modifier CANNOT be preceded by any modifiers. 
-                        if (recentModifier || key != DecimalExponentKey.none)
-                            break;
-
-                        static if (allowUnderscores)
-                        {
-                            // If we allow underscores, the dot also CANNOT be preceded by any underscores.
-                            // It must be preceded by a number.
-                            if (recentUnderscore)
-                                break;
-                        }
-                        key = DecimalExponentKey.dot;
-                        if (_expect(dot, false))
-                            break;
-                        dot = true;
-                        if (str.length)
-                        {
-                            recentModifier = true;
-                            continue;
-                        }
-                        static if (allowDotOnBounds)
-                        {
-                            goto R;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    static if (allowExponent)
-                    {
-                        static if (allowDExponent)
-                        {
-                            case DecimalExponentKey.d:
-                            case DecimalExponentKey.D:
-                                goto case DecimalExponentKey.e;
-                        }
-                        case DecimalExponentKey.e:
-                        case DecimalExponentKey.E:
-                            import mir.parse: parse;
-                            // We don't really care if the e/E/d/D modifiers are preceded by a modifier,
-                            // so as long as they are a dot or a regular number.
-                            if (key != DecimalExponentKey.dot && key != DecimalExponentKey.none)
-                                break; 
-                            key = cast(DecimalExponentKey)d;
-                            if (parse(str, exponent) && str.length == 0) {
-                                recentModifier = false;
-                                goto E;
-                            }
-                            break;
-                    }
-                    static if (allowUnderscores)
-                    {
-                        case '_' - '0':
-                            // A underscore cannot be preceded by an underscore or a modifier.
-                            if (recentUnderscore || recentModifier)
-                                break;
-
-                            recentUnderscore = true;
-                            if (str.length)
-                                continue;
-                            break;
-                    }
-                    default:
+                    if (exponentShift == 0)
+                        return false;
                 }
-                break;
+
+            }
+
+            static if (allowExponent)
+            {
+                if (d == DecimalExponentKey.e
+                 || d == DecimalExponentKey.E
+                 || d == DecimalExponentKey.d && allowDExponent
+                 || d == DecimalExponentKey.D && allowDExponent
+                )
+                {
+                    import mir.parse: parse;
+                    key = cast(DecimalExponentKey)d;
+                    if (parse(str, exponent) && str.length == 0)
+                        goto E;
+                }
             }
             return false;
+
+        E:
+            exponent += exponentShift;
+        R:
+            coefficient.data[0] = v;
+            coefficient.length = v != 0;
+            return true;
+
             static if (allowSpecialValues)
             {
             NI:
