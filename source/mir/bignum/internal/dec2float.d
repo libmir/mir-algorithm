@@ -129,6 +129,9 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
         enum ulong mask = ulong.max;
     else
         enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
+    
+    if (coefficient == 0)
+        return 0;
 
     version(TeslAlgoM){} else
     if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
