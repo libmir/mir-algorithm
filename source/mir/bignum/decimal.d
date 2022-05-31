@@ -18,11 +18,11 @@ private static immutable C[9] zerosImpl(C) = "0.00000.0";
 /++
 Stack-allocated decimal type.
 Params:
-    maxSize64 = count of 64bit words in coefficient
+    size64 = count of 64bit words in coefficient
 +/
 @serdeScoped @serdeProxy!(const(char)[])
-struct Decimal(uint maxSize64)
-    if (maxSize64 && maxSize64 <= ushort.max)
+struct Decimal(uint size64)
+    if (size64 && size64 <= ushort.max)
 {
     import mir.format: NumericSpec;
     import mir.bignum.integer;
@@ -32,7 +32,7 @@ struct Decimal(uint maxSize64)
     ///
     long exponent;
     ///
-    BigInt!maxSize64 coefficient;
+    BigInt!size64 coefficient;
 
     ///
     DecimalView!size_t view()
@@ -56,11 +56,11 @@ struct Decimal(uint maxSize64)
         static if (__traits(compiles, () @nogc { throw new Exception("Can't parse Decimal."); }))
         {
             import mir.exception: MirException;
-            throw new MirException("Can't parse Decimal!" ~ maxSize64.stringof ~ " from string `", str , "`");
+            throw new MirException("Can't parse Decimal!" ~ size64.stringof ~ " from string `", str , "`");
         }
         else
         {
-            static immutable exception = new Exception("Can't parse Decimal!" ~ maxSize64.stringof ~ ".");
+            static immutable exception = new Exception("Can't parse Decimal!" ~ size64.stringof ~ ".");
             throw exception;
         }
     }
@@ -71,7 +71,7 @@ struct Decimal(uint maxSize64)
     The number is the shortest decimal representation that being converted back would result the same floating-point number.
     +/
     this(T)(const T x)
-        if (isFloatingPoint!T && maxSize64 >= 1 + (T.mant_dig >= 64))
+        if (isFloatingPoint!T && size64 >= 1 + (T.mant_dig >= 64))
     {
         import mir.bignum.internal.ryu.generic_128: genericBinaryToDecimal;
         this = genericBinaryToDecimal(x);
@@ -79,7 +79,7 @@ struct Decimal(uint maxSize64)
 
     ///
     ref opAssign(uint rhsMaxSize64)(auto ref scope const Decimal!rhsMaxSize64 rhs) return
-        if (rhsMaxSize64 < maxSize64)
+        if (rhsMaxSize64 < size64)
     {
         this.exponent = rhs.exponent;
         this.coefficient = rhs.coefficient;
@@ -180,7 +180,7 @@ struct Decimal(uint maxSize64)
         scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
-        enum optimize = size_t.sizeof == 8 && maxSize64 == 1;
+        enum optimize = size_t.sizeof == 8 && size64 == 1;
         version(LDC)
         {
             static if (optimize || (allowSpecialValues && allowDExponent && allowStartingPlus && checkEmpty) == false)
@@ -333,7 +333,7 @@ struct Decimal(uint maxSize64)
                             v = mulu(v, multplier, overflow);
                             if (overflow)
                                 return false;
-                            v = addu(v, value, overflow);;
+                            v = addu(v, value, overflow);
                             if (overflow)
                                 return false;
                         }
@@ -351,7 +351,7 @@ struct Decimal(uint maxSize64)
                     v = mulu(v, cast(uint)10, overflow);
                     if (overflow)
                         return false;
-                    v = addu(v, d, overflow);;
+                    v = addu(v, d, overflow);
                     if (overflow)
                         return false;
                 }
@@ -503,13 +503,13 @@ struct Decimal(uint maxSize64)
             }
             else
             {
-                BigInt!maxSize64 work = coefficient;
+                BigInt!size64 work = coefficient;
                 coefficientLength = work.view.unsigned.toStringImpl(buffer);
             }
         }
         else
         {
-            BigInt!maxSize64 work = coefficient;
+            BigInt!size64 work = coefficient;
             coefficientLength = work.view.unsigned.toStringImpl(buffer);
         }
 
@@ -675,7 +675,7 @@ struct Decimal(uint maxSize64)
         if (op == "+" || op == "-")
     {
         import mir.utility: max;
-        BigInt!(max(rhsMaxSize64, maxSize64, 256u)) rhsCopy = void;
+        BigInt!(max(rhsMaxSize64, size64, 256u)) rhsCopy = void;
         BigIntView!(const size_t) rhsView;
         auto expDiff = cast(sizediff_t) (exponent - rhs.exponent);
         if (expDiff >= 0)
@@ -702,13 +702,14 @@ version(mir_bignum_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.test: should;
     import mir.conv: to;
     Decimal!256 decimal = void;
     DecimalExponentKey key;
 
     assert(decimal.fromStringImpl("3.141592653589793378e-10", key));
-    assert(cast(double) decimal == 0x1.596bf8ce7631ep-32);
-    assert(key == DecimalExponentKey.e);
+    decimal.to!double.should == 0x1.596bf8ce7631ep-32;
+    key.should == DecimalExponentKey.e;
 }
 
 ///
@@ -808,6 +809,8 @@ version(mir_bignum_test)
 @safe pure nothrow @nogc
 unittest
 {
+    import mir.test: should;
+
     import mir.conv: to;
     Decimal!3 decimal;
     DecimalExponentKey key;
@@ -865,7 +868,7 @@ unittest
     assert(decimal.coefficient.length == 0);
     assert(decimal.exponent == decimal.exponent.max);
     assert(key == DecimalExponentKey.infinity);
-    assert(cast(double) decimal == -double.infinity);
+    should(cast(double) decimal) == -double.infinity;
 
     assert(!decimal.fromStringImpl("3.3.4", key));
     assert(!decimal.fromStringImpl("3.4.", key));

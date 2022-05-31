@@ -1160,3 +1160,14 @@ size_t printBoolean(C)(bool c, ref C[5] buf)
         return 5;
     }
 }
+
+
+/// Prints pointers
+ref W print(C = char, W, T)(scope return ref W w, scope const T* c)
+{
+    import mir.enums: getEnumIndex, enumStrings;
+    import mir.utility: _expect;
+    if (c is null)
+        return w.print!C(null);
+    return w.print!C(HexAddress!size_t((()@trusted=>cast(size_t)cast(const void*)c)()));
+}

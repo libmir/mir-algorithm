@@ -12,11 +12,11 @@ import std.traits;
 /++
 Stack-allocated big signed integer.
 Params:
-    maxSize64 = count of 64bit words in coefficient
+    size64 = count of 64bit words in coefficient
 +/
 @serdeScoped @serdeProxy!(const(char)[])
-struct BigInt(uint maxSize64)
-    if (maxSize64 && maxSize64 <= ushort.max)
+struct BigInt(uint size64)
+    if (size64 && size64 <= ushort.max)
 {
     import mir.bignum.low_level_view;
     import mir.bignum.fixed;
@@ -26,7 +26,7 @@ struct BigInt(uint maxSize64)
     ///
     uint length;
     ///
-    size_t[ulong.sizeof / size_t.sizeof * maxSize64] data;// = void;
+    size_t[ulong.sizeof / size_t.sizeof * size64] data;// = void;
 
     ///
     this(uint size)(UInt!size fixedInt)
@@ -108,11 +108,11 @@ struct BigInt(uint maxSize64)
         static if (__traits(compiles, () @nogc { throw new Exception("Can't parse BigInt."); }))
         {
             import mir.exception: MirException;
-            throw new MirException("Can't parse BigInt!" ~ maxSize64.stringof ~ " from string `", str , "`.");
+            throw new MirException("Can't parse BigInt!" ~ size64.stringof ~ " from string `", str , "`.");
         }
         else
         {
-            static immutable exception = new Exception("Can't parse BigInt!" ~ maxSize64.stringof ~ ".");
+            static immutable exception = new Exception("Can't parse BigInt!" ~ size64.stringof ~ ".");
             throw exception;
         }
     }
@@ -158,7 +158,7 @@ struct BigInt(uint maxSize64)
         return this;
     }
 
-    static if (maxSize64 == 3)
+    static if (size64 == 3)
     ///
     version(mir_bignum_test) @safe pure @nogc unittest
     {
@@ -174,7 +174,7 @@ struct BigInt(uint maxSize64)
         @trusted pure nothrow @nogc
         in (rhs.length <= this.data.length)
     {
-        static if (maxSize64 == rhsSize64)
+        static if (size64 == rhsSize64)
         {
             if (&this is &rhs)
                 return this;
@@ -226,7 +226,7 @@ struct BigInt(uint maxSize64)
     {
         if (rhs == 0 && this.length == 0 || this.length == 1 && this.sign == rhsSign && this.data[0] == rhs)
             return true;
-        static if (is(size_t == ulong) || maxSize64 == 1)
+        static if (is(size_t == ulong) || size64 == 1)
             return false;    
         else
             return this.length == 2 && this.data[0] == cast(uint) rhs && this.data[1] == cast(uint) (rhs >> 32);
@@ -433,9 +433,9 @@ struct BigInt(uint maxSize64)
             return this;
         }
 
-        BigInt!(maxSize64 * 2) bas = void;
+        BigInt!(size64 * 2) bas = void;
         bas = this;
-        BigInt!(maxSize64 * 2) res = void;
+        BigInt!(size64 * 2) res = void;
         res = 1u;
 
         foreach (b; exponent.coefficients.bitwise[0 .. $ - exponent.ctlz])
@@ -454,7 +454,7 @@ struct BigInt(uint maxSize64)
     }
 
     ///
-    static if (maxSize64 == 3)
+    static if (size64 == 3)
     version (mir_bignum_test)
     unittest
     {
@@ -467,7 +467,7 @@ struct BigInt(uint maxSize64)
     }
 
     ///
-    static if (maxSize64 == 3)
+    static if (size64 == 3)
     version (mir_bignum_test)
     unittest
     {
@@ -487,7 +487,7 @@ struct BigInt(uint maxSize64)
         scope ref const BigInt!bSize64 b,
     )
         @safe pure nothrow @nogc scope return
-        if (maxSize64 >= aSize64 + bSize64)
+        if (size64 >= aSize64 + bSize64)
     {
         import mir.utility: max;
         import mir.bignum.internal.kernel : multiply, karatsubaRequiredBuffSize;
@@ -498,12 +498,26 @@ struct BigInt(uint maxSize64)
         return this;
     }
 
-    ref divMod(uint divisorSize64, uint remainderSize = maxSize64)
+    ///
+    ref divMod(uint divisorSize64, uint remainderSize = size64)
     (
         scope ref const BigInt!divisorSize64 divisor,
+        scope ref BigInt!size64 quotient,
+        scope ref BigInt!remainderSize remainder,
+    )
+        const @trusted pure nothrow @nogc scope return
+        if (remainderSize >= divisorSize64)
+    {
+        return this.divMod(divisor, quotient, &remainder);
+    }
+
+    private ref divMod(uint divisorSize64, uint remainderSize = size64)
+    (
+        scope ref const BigInt!divisorSize64 divisor,
+        scope ref BigInt!size64 quotient,
         scope BigInt!remainderSize* remainder = null,
     )
-        @trusted pure nothrow @nogc scope return
+        const @trusted pure nothrow @nogc scope return
         if (remainderSize >= divisorSize64)
     {
         import mir.bignum.internal.kernel : divMod, divisionRequiredBuffSize;
@@ -523,28 +537,30 @@ struct BigInt(uint maxSize64)
                     *remainder = this;
                 remainder.sign = 0;
             }
-            if (&this !is remainder)
-            {
-                this.sign = 0;
-                this.length = 0;
-            }
+
+            static if (size64 == remainderSize)
+                if (&quotient is remainder)
+                    return this;
+
+            quotient.sign = 0;
+            quotient.length = 0;
 
             return this;
         }
 
         enum sizeM = ulong.sizeof / size_t.sizeof;
-        enum vlen = min(divisorSize64, maxSize64);
-        size_t[divisionRequiredBuffSize(maxSize64 * sizeM, vlen * sizeM)] buffer = void;
+        enum vlen = min(divisorSize64, size64);
+        size_t[divisionRequiredBuffSize(size64 * sizeM, vlen * sizeM)] buffer = void;
 
-        this.length = cast(uint) divMod(
-            this.coefficients,
+        quotient.length = cast(uint) divMod(
+            quotient.data,
             remainder !is null ? remainder.data[] : null,
             this.coefficients,
             divisor.coefficients,
             buffer,
         );
 
-        this.sign = (this.sign ^ divisor.sign) && this.length;
+        quotient.sign = (this.sign ^ divisor.sign) && quotient.length;
 
         if (remainder !is null)
         {
@@ -568,7 +584,7 @@ struct BigInt(uint maxSize64)
         if (op == "/" || op == "%")
     {
         enum isRem = op == "%";
-        return this.divMod(rhs, isRem ? &this : null);
+        return this.divMod(rhs, this, isRem ? &this : null);
     }
 
     /++
@@ -581,14 +597,14 @@ struct BigInt(uint maxSize64)
     ref opOpAssign(string op : "*", size_t rhsSize64)(scope const ref BigInt!rhsSize64 rhs)
         @safe pure nothrow @nogc return
     {
-        BigInt!(maxSize64 + rhsSize64) c = void;
+        BigInt!(size64 + rhsSize64) c = void;
         c.multiply(this, rhs);
         this = c;
         return this;
     }
 
     ///
-    static if (maxSize64 == 3)
+    static if (size64 == 3)
     version (mir_bignum_test)
     unittest
     {
@@ -726,7 +742,7 @@ struct BigInt(uint maxSize64)
             assert(0, binaryStringErrorMsg);
     }
 
-    static if (maxSize64 == 3)
+    static if (size64 == 3)
     ///
     version(mir_bignum_test) @safe pure @nogc unittest
     {
@@ -751,7 +767,24 @@ struct BigInt(uint maxSize64)
     }
 
     ///
-    bool mulPow5(size_t degree)
+    ref pow()(ulong degree)
+    {
+        BigInt!size64 bas = void;
+        bas = this;
+        this = 1u;
+
+        while (degree)
+        {
+            if (degree & 1)
+                this *= bas;
+            bas *= bas;
+            degree >>= 1;
+        }
+        return this;
+    }
+
+    ///
+    bool mulPow5()(ulong degree)
     {
         import mir.bignum.internal.dec2float: MaxWordPow5;
         // assert(approxCanMulPow5(degree));
@@ -760,7 +793,8 @@ struct BigInt(uint maxSize64)
         enum n = MaxWordPow5!size_t;
         enum wordInit = size_t(5) ^^ n;
         size_t word = wordInit;
-        bool of;
+        size_t overflow;
+
         while(degree)
         {
             if (degree >= n)
@@ -773,14 +807,9 @@ struct BigInt(uint maxSize64)
                 do word *= 5;
                 while(--degree);
             }
-            if (auto overflow = view *= word)
-            {
-                of = length >= data.length;
-                if (!of)
-                    putCoefficient(overflow);
-            }
+            overflow |= this *= word;
         }
-        return of;
+        return overflow != 0;
     }
 
     ///
@@ -925,7 +954,7 @@ struct BigInt(uint maxSize64)
         return buffer[$ - len .. $].idup;
     }
 
-    static if (maxSize64 == 3)
+    static if (size64 == 3)
     ///
     version(mir_bignum_test) @safe pure unittest
     {
@@ -949,17 +978,28 @@ struct BigInt(uint maxSize64)
         w.put(buffer[$ - len .. $]);
     }
 
-    static if (maxSize64 == 3)
-    /// Check @nogc toString impl
-    version(mir_bignum_test) @safe pure @nogc unittest
+    ///
+    size_t bitLength()() const @property
     {
-        import mir.format;
-        auto str = "-34010447314490204552169750449563978034784726557588085989975288830070948234680";
-        auto integer = BigInt!4(str);
-        auto buffer = stringBuf;
-        buffer << integer;
-        assert(buffer.data == str);
+        return length == 0 ? 0 : length * size_t.sizeof * 8 - data[length - 1].ctlz;
     }
+
+    ///
+    size_t ctlz()() const @property
+    {
+        return data.sizeof * 8 - bitLength;
+    }
+}
+
+/// Check @nogc toString impl
+version(mir_bignum_test) @safe pure @nogc unittest
+{
+    import mir.format;
+    auto str = "-34010447314490204552169750449563978034784726557588085989975288830070948234680";
+    auto integer = BigInt!4(str);
+    auto buffer = stringBuf;
+    buffer << integer;
+    assert(buffer.data == str);
 }
 
 ///
@@ -974,9 +1014,11 @@ unittest
         auto b = UInt!128.fromHexString("f79a222050aaeaaa417fa25a2ac93291");
 
         // ca3d7e25aebe687b 168dcef32d0bb2f0
-        assert((a /= b) == BigInt!4.fromHexString("ca3d7e25aebe687b7cc1b250b44690fb"));
-        a = BigInt!4.fromHexString("c39b18a9f06fd8e962d99935cea0707f79a222050aaeaaaed17feb7aa76999d7");
+        import mir.format;
         assert((a %= b) == BigInt!4.fromHexString("bf4c87424431d21563f23b1fc00d75ac"));
+        a = BigInt!4.fromHexString("c39b18a9f06fd8e962d99935cea0707f79a222050aaeaaaed17feb7aa76999d7");
+        a /= b;
+        assert(a == BigInt!4.fromHexString("ca3d7e25aebe687b7cc1b250b44690fb"), a.data.text);
     }
 
     {

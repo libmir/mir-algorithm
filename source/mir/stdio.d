@@ -7,6 +7,29 @@ module mir.stdio;
 
 static import core.stdc.stdio;
 
+/// Writes values in a text form
+void writeln(string separator = "", Args...)(auto ref const Args args)
+    if (Args.length > 0)
+{
+    dout.write!separator(args);
+    dout << endl;
+}
+
+/// ditto
+void write(string separator = "", Args...)(auto ref const Args args)
+    if (Args.length > 0)
+{
+    dout.write!separator(args);
+}
+
+/// Writes values in a text form using nothrow $(LREF tout)
+void dump(string separator = " ", Args...)(auto ref const Args args)
+    if (Args.length > 0)
+{
+    tout.write!separator(args);
+    tout << endl;
+}
+
 /// Standart output
 File dout()() @trusted nothrow @nogc @property
 {
@@ -174,8 +197,10 @@ mixin template FileMemembers()
     template opBinary(string op : "<<")
     {
         ///
-        ref opBinary(T)(auto ref T value) return scope
+        ref opBinary(T)(auto ref const T value) return scope
         {
+            if (__ctfe)
+                return this;
             import mir.format: print;
             return print!char(this, value);
         }
@@ -183,10 +208,38 @@ mixin template FileMemembers()
         /// Prints new line and flushes the stream
         ref opBinary(NewLine endl) return scope
         {
+            if (__ctfe)
+                return this;
             import mir.format: print;
             this.put(endl);
             this.flush;
             return this;
+        }
+    }
+
+    /// Writes values in a text form
+    void writeln(string separator = "", Args...)(auto ref const Args args)
+        if (Args.length > 0)
+    {
+        write(args);
+        this << endl;
+    }
+
+    /// ditto
+    void write(string separator = "", Args...)(auto ref const Args args)
+        if (Args.length > 0)
+    {
+        pragma(inline, false);
+        if (__ctfe)
+            return;
+        import mir.format: print, printStaticString;
+        foreach (i, ref arg; args)
+        {
+            print!char(this, arg);
+            static if (separator.length && i + 1 < args.length)
+            {
+                printStaticString!char(this, separator);
+            }
         }
     }
 }

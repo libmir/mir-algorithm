@@ -5,7 +5,13 @@ Authors: Ilya Yaroshenko
 +/
 module mir.test;
 
-import mir.exception: MirException;
+import mir.exception: MirError;
+
+private noreturn assumeAllAttrAndCall(scope const void delegate() t)
+    @nogc pure nothrow @trusted {
+    (cast(const void delegate() @safe pure nothrow @nogc) t)();
+    assert(0);
+}
 
 ///
 struct ShouldApprox(T)
@@ -19,19 +25,22 @@ struct ShouldApprox(T)
     T maxAbsDiff = 0x1p-20f;
 
     ///
-    bool opEquals(T expected, string file = __FILE__, int line = __LINE__) const
+    void opEquals(T expected, string file = __FILE__, int line = __LINE__) @safe pure nothrow @nogc
     {
         import mir.format: stringBuf, getData;
         import mir.math.common: approxEqual;
         if (value.approxEqual(expected, maxRelDiff, maxAbsDiff))
-            return true;
+            return;
         auto buf = stringBuf;
-        throw new MirException(buf
-            << "expected approximately " << expected
-            << ", got " << value
-            << ", maxRelDiff = " << maxRelDiff
-            << ", maxAbsDiff = " << maxAbsDiff
-            << getData, file, line);
+        assumeAllAttrAndCall({
+            throw new MirError(buf
+                << "expected approximately " << expected
+                << ", got " << value
+                << ", maxRelDiff = " << maxRelDiff
+                << ", maxAbsDiff = " << maxAbsDiff
+                << getData, file, line);
+        });
+        assert(0);
     }
 }
 
@@ -57,16 +66,18 @@ struct Should(T)
     T value;
 
     ///
-    bool opEquals(R)(const R expected, string file = __FILE__, int line = __LINE__) const
+    void opEquals(R)(const R expected, string file = __FILE__, int line = __LINE__)
     {
         import mir.format: stringBuf, getData;
         if (value == expected)
-            return true;
+            return;
         auto buf = stringBuf;
-        throw new MirException(buf
-            << "expected " << expected
-            << ", got " << value
-            << getData, file, line);
+        assumeAllAttrAndCall({
+            throw new MirError(buf
+                << "expected " << expected
+                << ", got " << value
+                << getData, file, line);
+        });
     }
 }
 
@@ -85,18 +96,18 @@ unittest
 }
 
 ///
-bool should(alias fun, T, R)(const T value, const R expected, string file = __FILE__, int line = __LINE__)
+void should(alias fun, T, R)(const T value, const R expected, string file = __FILE__, int line = __LINE__)
 {
     import mir.functional;
     import mir.format: stringBuf, getData;
     if (naryFun!fun(value, expected))
-        return true;
+        return;
     auto buf = stringBuf;
     buf << fun.stringof
         << " returns false"
         << " for a = " << value
         << ", b = " << expected;
-    throw new MirException(buf << getData, file, line);
+    throw new MirError(buf << getData, file, line);
 }
 
 ///
