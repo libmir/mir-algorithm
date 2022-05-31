@@ -118,7 +118,7 @@ version(mir_bignum_test)
     "0000e10".fromString!double.should == 0;
 
     version(all) {} else
-    version(TeslAlgoM) {} else
+    version (TeslAlgoM) {} else
     {
         /// Test CTFE support  
         static assert("-123".fromString!int == -123);
