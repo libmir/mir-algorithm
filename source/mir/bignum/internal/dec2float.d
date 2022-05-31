@@ -130,13 +130,12 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
     else
         enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
 
-    T approx = void;
     version(TeslAlgoM){} else
     if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
     {
         auto c = coefficient.Fp!64;
         auto z = c.extendedMul!true(_load!T(exponent));
-        approx = z.opCast!(T, true);
+        auto approx = z.opCast!(T, true);
         long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
         int slop = 3 * (exponent < 0);
         if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
@@ -156,16 +155,14 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
             }
         }
     }
-    if (coefficient == 0)
-        return 0;
     size_t[ulong.sizeof / size_t.sizeof] coefficients;
     coefficients[0] = cast(size_t) coefficient;
     static if (coefficients.length == 2)
         coefficients[1] = cast(size_t) (coefficient >> 32);
     static if (coefficients.length == 1)
-        return fallbackAlgorithm(approx, coefficients, exponent);
+        return algorithmM!T(coefficients, exponent);
     else
-        return fallbackAlgorithm(approx, coefficients[0 .. 1 + (coefficient > uint.max)], exponent);
+        return algorithmM!T(coefficients[0 .. 1 + (coefficient > uint.max)], exponent);
 }
 
 unittest
@@ -222,109 +219,10 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
             if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
                 return approx;
 
-            debug dump("approx =", approx);
-
-            return fallbackAlgorithm(approx, coefficients, exponent);
+            return algorithmM!T(coefficients, exponent);
         }
         return exponent < 0 ? 0 : T.infinity;
     }
-}
-import mir.stdio;
-
-private T fallbackAlgorithm(T)(T approx, scope const size_t[] coefficients, long exponent)
-    if ((is(T == float) || is(T == double) || is(T == real)))
-    // in (0 <= approx && approx <= T.infinity)
-{
-    version(LDC)
-        pragma(inline, true);
-    if (exponent >= 0 || exponent < -ExponentM || approx <= approx.min_normal)
-        return algorithmM!T(coefficients, exponent);
-    return algorithmR(approx, coefficients, cast(int) exponent);
-}
-
-@optStrategy("minsize")
-private T algorithmR(T)(T ret, scope const size_t[] coefficient, int exponent)
-    if ((is(T == float) || is(T == double) || is(T == real)))
-    in (T.min_normal < ret)
-    in (ret < T.infinity)
-    in (-512 < exponent)
-    in (exponent < 0)
-{
-    pragma(inline, false);
-
-    import mir.bignum.fixed: UInt;
-    import mir.bignum.integer: BigInt;
-    import mir.math.common: floor;
-    import mir.math.ieee: ldexp, frexp, nextDown, nextUp;
-    import mir.utility: _expect;
-
-    BigInt!(bigSize!T) x = void, y = void;
-
-        int k;
-        auto m0 = frexp(ret, k);
-        k -= T.mant_dig;
-        static if (T.mant_dig < 64)
-        {
-            enum p2 = T(2) ^^ T.mant_dig;
-            auto m = UInt!64(cast(ulong) (m0 * p2));
-        }
-        else
-        {
-            enum p2h = T(2) ^^ (T.mant_dig - 64);
-            enum p2l = T(2) ^^ 64;
-            m0 *= p2h;
-            auto mhf = floor(m0);
-            auto mh = cast(ulong) mhf;
-            m0 -= mhf;
-            m0 *= p2l;
-            auto ml = cast(ulong) m0;
-            auto m = UInt!128(mh);
-            m <<= 64;
-            m |= UInt!128(ml);
-        }
-        debug dump("m = ", m);
-        auto mtz = m.cttz;
-        debug dump("mtz = ", mtz);
-        if (mtz != m.sizeof * 8)
-        {
-            m >>= mtz;
-            k += mtz;
-        }
-        debug dump("m = ", m);
-
-        if (x.copyFrom(coefficient))
-            return T.nan;
-        y = m;
-        y.mulPow5(-exponent);
-        debug dump("y = ", y);
-        auto shift = k - exponent;
-        debug dump("shift = ", shift);
-        (shift >= 0  ? y : x) <<= shift >= 0 ? shift : -shift;
-        x -= y;
-        debug dump("x = ", x);
-        if (x.length == 0)
-            return ret;
-        if (x.ctlz < 1 + m.sizeof * 8)
-            return T.nan;
-        x <<= 1;
-        x *= m;
-        debug dump("x = ", x);
-        auto cond = mtz == T.mant_dig - 1 && x.sign;
-        auto cmp = x.view.unsigned.opCmp(y.view.unsigned);
-        debug dump("cond = ", cond);
-        debug dump("cmp = ", cmp);
-        if (cmp < 0)
-        {
-            if (!cond)
-                return ret;
-            x <<= 1;
-            if (x.view.unsigned <= y.view.unsigned)
-                return ret;
-        }
-        else
-        if (!cmp && !cond && !mtz)
-            return ret;
-    return x.sign ? nextDown(ret) : nextUp(ret);
 }
 
 private enum LOG2_10 = 0x3.5269e12f346e2bf924afdbfd36bf6p0;
@@ -363,9 +261,9 @@ private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
     BigInt!(bigSize!T) q = void;
     BigInt!(bigSize!T) r = void;
     import mir.stdio;
-    debug dump("-----------");
-    debug dump("c = ", coefficients);
-    debug dump("e = ", exponent);
+
+    if (coefficients.length == 0)
+        return 0;
 
     // if no overflow
     if (exponent >= 0)
@@ -382,8 +280,6 @@ private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
     auto log2_u = coefficients.binaryTo!T.log2;
     auto log2_v = cast(T)(-LOG2_10) * exponent;
     sizediff_t k = cast(sizediff_t) ceil(log2_u - log2_v);
-
-    debug dump("k =", k);
 
     k -= T.mant_dig;
 
@@ -410,8 +306,6 @@ private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
         u <<= -k;
     }
 
-    debug dump("k =", k);
-
     if (log2_v >= bigSize!T * 64)
             return T.nan;
 
@@ -420,16 +314,11 @@ private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
     v <<= cast(int)-exponent + (k > 0 ? k : 0);
 
     sizediff_t s;
-    debug dump("u =", u);
-    debug dump("v =", v);
     for(;;)
     {
         u.divMod(v, q, r);
-        debug dump("q =", q);
-        debug dump("r =", r);
 
         s = cast(int) q.bitLength - T.mant_dig;
-        debug dump("s =", s);
         assert(k >= T.min_exp - T.mant_dig);
         if (s == 0)
             break;
