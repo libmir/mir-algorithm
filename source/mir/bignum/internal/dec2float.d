@@ -282,28 +282,37 @@ private T algorithmR(T)(T ret, scope const size_t[] coefficient, int exponent)
             m <<= 64;
             m |= UInt!128(ml);
         }
+        debug dump("m = ", m);
         auto mtz = m.cttz;
+        debug dump("mtz = ", mtz);
         if (mtz != m.sizeof * 8)
         {
             m >>= mtz;
             k += mtz;
         }
+        debug dump("m = ", m);
 
         if (x.copyFrom(coefficient))
             return T.nan;
         y = m;
         y.mulPow5(-exponent);
+        debug dump("y = ", y);
         auto shift = k - exponent;
+        debug dump("shift = ", shift);
         (shift >= 0  ? y : x) <<= shift >= 0 ? shift : -shift;
         x -= y;
+        debug dump("x = ", x);
         if (x.length == 0)
             return ret;
         if (x.ctlz < 1 + m.sizeof * 8)
             return T.nan;
         x <<= 1;
         x *= m;
+        debug dump("x = ", x);
         auto cond = mtz == T.mant_dig - 1 && x.sign;
         auto cmp = x.view.unsigned.opCmp(y.view.unsigned);
+        debug dump("cond = ", cond);
+        debug dump("cmp = ", cmp);
         if (cmp < 0)
         {
             if (!cond)
