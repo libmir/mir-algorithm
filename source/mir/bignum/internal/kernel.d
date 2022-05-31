@@ -27,10 +27,10 @@ size_t multiply(
     c[a.length + b.length - 1] = 0;
 
     auto length = multiply(
-        cast(uint[]) c,
+        cast(uint[]) c[],
         a.toUints,
         b.toUints,
-        cast(uint[]) buffer,
+        cast(uint[]) buffer[],
     );
 
     return length / 2 + length % 2;

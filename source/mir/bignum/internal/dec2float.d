@@ -43,6 +43,52 @@ alias decimalTo(T : float) = decimalToFloat32;
 alias decimalTo(T : double) = decimalToFloat64;
 alias decimalTo(T : real) = decimalToReal;
 
+alias binaryTo(T : float) = binaryToFloat32;
+alias binaryTo(T : double) = binaryToFloat64;
+alias binaryTo(T : real) = binaryToReal;
+
+private float binaryToFloat32(scope const size_t[] coefficients, long exponent = 0)
+{
+    pragma(inline, false);
+    return binaryToFloatImpl!float(coefficients, exponent);
+}
+
+private double binaryToFloat64(scope const size_t[] coefficients, long exponent = 0)
+{
+    pragma(inline, false);
+    return binaryToFloatImpl!double(coefficients, exponent);
+}
+
+private real binaryToReal(scope const size_t[] coefficients, long exponent = 0)
+{
+    pragma(inline, real.mant_dig == double.mant_dig);
+    static if (real.mant_dig == double.mant_dig)
+        return binaryToFloat64(coefficients, exponent);
+    else
+        return binaryToFloatImpl!real(coefficients, exponent);
+}
+
+private float decimalToFloat32(scope const ulong coefficient, long exponent)
+{
+    pragma(inline, false);
+    return decimalToFloatImpl!float(coefficient, exponent);
+}
+
+private double decimalToFloat64(scope const ulong coefficient, long exponent)
+{
+    pragma(inline, false);
+    return decimalToFloatImpl!double(coefficient, exponent);
+}
+
+private real decimalToReal(scope const ulong coefficient, long exponent)
+{
+    pragma(inline, real.mant_dig == double.mant_dig);
+    static if (real.mant_dig == double.mant_dig)
+        return decimalToFloat64(coefficient, exponent);
+    else
+        return decimalToFloatImpl!real(coefficient, exponent);
+}
+
 private float decimalToFloat32(scope const size_t[] coefficients, long exponent)
 {
     pragma(inline, false);
@@ -64,100 +110,67 @@ private real decimalToReal(scope const size_t[] coefficients, long exponent)
         return decimalToFloatImpl!real(coefficients, exponent);
 }
 
-private float decimalToFloat32(scope const size_t[] coefficients)
-{
-    pragma(inline, false);
-    return decimalToFloatImpl!float(coefficients);
-}
-
-private double decimalToFloat64(scope const size_t[] coefficients)
-{
-    pragma(inline, false);
-    return decimalToFloatImpl!double(coefficients);
-}
-
-private real decimalToReal(scope const size_t[] coefficients)
-{
-    pragma(inline, real.mant_dig == double.mant_dig);
-    static if (real.mant_dig == double.mant_dig)
-        return decimalToFloat64(coefficients);
-    else
-        return decimalToFloatImpl!real(coefficients);
-}
-
-T decimalToFloat(T)(ulong coefficient, long exponent)
-    if (is(T == real))
+T decimalToFloatImpl(T)(ulong coefficient, long exponent)
+    if (is(T == float) || is(T == double) || is(T == real))
 {
     version(LDC)
         pragma(inline, true);
-    static if (T.mant_dig < 64)
-    {
-        return decimalToFloat!double(coefficient, exponent);
-    }
-    else
-    {
-        auto coefficients = cast(size_t[ulong.sizeof / size_t.sizeof]) cast(ulong[1])[coefficient];
-        static if (coefficients.length == 1)
-            return decimalTo!real(approx, coefficients[0 .. !!coefficient], exponent);
-        else
-            return decimalTo!real(approx, coefficients[0 .. !!coefficient + (coefficient > uint.max)], exponent);
-    }
-}
 
-T decimalToFloat(T)(ulong coefficient, long exponent)
-    if (is(T == float) || is(T == double))
-{
     import mir.bignum.fixed: UInt;
     import mir.bignum.fp: Fp, extendedMul;
     import mir.utility: _expect;
 
-    version(LDC)
-        pragma(inline, true);
+    enum wordBits = T.mant_dig < 64 ? 64 : 128;
+    enum ulong half = (1UL << (wordBits - T.mant_dig - 1));
+    static if (T.mant_dig > 64)
+        enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
+    else
+    static if (T.mant_dig == 64)
+        enum ulong mask = ulong.max;
+    else
+        enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
 
-    enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
-    enum ulong half = (1UL << (64 - T.mant_dig - 1));
-    enum ulong bound = ulong(1) << T.mant_dig;
-
-    auto expSign = exponent < 0;
-    if (_expect((expSign ? -exponent : exponent) >>> dec_S == 0, true))
+    T approx = void;
+    version(TeslAlgoM){} else
+    if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
     {
-        auto c = Fp!64(UInt!64(coefficient));
-        auto z = c.extendedMul(load64(exponent));
-        auto approx = cast(T) z;
-        long bitsDiff = (cast(ulong) z.opCast!(Fp!64).coefficient & mask) - half;
-        if (_expect((bitsDiff < 0 ? -bitsDiff : bitsDiff) > 3 * expSign, true))
+        auto c = coefficient.Fp!64;
+        auto z = c.extendedMul!true(_load!T(exponent));
+        approx = z.opCast!(T, true);
+        long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
+        int slop = 3 * (exponent < 0);
+        if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
             return approx;
-        assert(coefficient);
-        if (!expSign && exponent <= MaxWordPow5!ulong || exponent == 0)
-            return approx;
-        if (expSign && MaxFpPow5!T >= -exponent && cast(ulong)c.coefficient < bound)
+
+        if (0 <= exponent)
         {
-            auto e = load64(-exponent);
-            return c.opCast!(T, true) / cast(T) (cast(ulong)e.coefficient >> e.exponent);
+            if (exponent <= MaxWordPow5!ulong)
+                return approx;
         }
-        auto coefficients = cast(size_t[ulong.sizeof / size_t.sizeof]) cast(ulong[1])[coefficient];
-        static if (coefficients.length == 1)
-            return decimalToFloatFallback(approx, coefficients, cast(int) exponent);
         else
-            return decimalToFloatFallback(approx, coefficients[0 .. 1 + (coefficient > uint.max)], cast(int) exponent);
+        {
+            if (-exponent <= MaxFpPow5!T)
+            {
+                auto e = _load!T(-exponent);
+                return coefficient / e.opCast!(T, true);
+            }
+        }
     }
-    return expSign ? 0 : exponent != exponent.max ? T.infinity : coefficient ? T.nan : T.infinity;
+    if (coefficient == 0)
+        return 0;
+    size_t[ulong.sizeof / size_t.sizeof] coefficients;
+    coefficients[0] = cast(size_t) coefficient;
+    static if (coefficients.length == 2)
+        coefficients[1] = cast(size_t) (coefficient >> 32);
+    static if (coefficients.length == 1)
+        return fallbackAlgorithm(approx, coefficients, exponent);
+    else
+        return fallbackAlgorithm(approx, coefficients[0 .. 1 + (coefficient > uint.max)], exponent);
 }
 
-private T decimalToFloatImpl(T)(scope const size_t[] coefficients)
-    @safe
-    if ((is(T == float) || is(T == double) || is(T == real)))
-    in (coefficients.length == 0 || coefficients[$ - 1])
+unittest
 {
-    version(LDC)
-        pragma(inline, true);
 
-    enum md = T.mant_dig;
-    enum b = size_t.sizeof * 8;
-    enum n = md / b + (md % b != 0);
-    enum s = n * b;
-
-    return coefficients.length ? coefficients.decimalToFp!(s, s - md).opCast!(T, true) : 0;
 }
 
 private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent)
@@ -165,110 +178,77 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
     if ((is(T == float) || is(T == double) || is(T == real)))
     in (coefficients.length == 0 || coefficients[$ - 1])
 {
+    version(LDC)
+        pragma(inline, true);
+
     import mir.bignum.fixed: UInt;
     import mir.bignum.fp: Fp, extendedMul;
-    import mir.math.common: floor;
     import mir.utility: _expect;
 
-    static if (T.mant_dig < 64)
-    {
-        enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
-        enum ulong half = (1UL << (64 - T.mant_dig - 1));
-        enum ulong bound = ulong(1) << T.mant_dig;
+    if (coefficients.length < 1)
+        return 0;
 
-        if (coefficients.length == 1)
-            return decimalToFloat!T(coefficients[0], exponent);
-        if (coefficients.length < 1)
-            return exponent == exponent.max ? T.infinity : 0;
-        auto expSign = exponent < 0;
-        if (_expect((expSign ? -exponent : exponent) >>> dec_S == 0, true))
-        {
-            auto c = coefficients.decimalToFp!64;
-            auto z = c.extendedMul(load64(exponent));
-            auto approx = cast(T) z;
-            auto slop = (coefficients.length > (ulong.sizeof / size_t.sizeof)) + 3 * expSign;
-            long bitsDiff = (cast(ulong) z.opCast!(Fp!64).coefficient & mask) - half;
-            if (_expect((bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
-                return approx;
-            if (slop == 0 && exponent <= MaxWordPow5!ulong || exponent == 0)
-                return approx;
-            if (slop == 3 && MaxFpPow5!T >= -exponent && cast(ulong)c.coefficient < bound)
-            {
-                auto e = load64(-exponent);
-                approx =  c.opCast!(T, true) / cast(T) (cast(ulong)e.coefficient >> e.exponent);
-                return approx;
-            }
-            return decimalToFloatFallback(approx, coefficients, cast(int) exponent);
-        }
-        return expSign ? 0 : exponent != exponent.max ? T.infinity : T.nan;
-    }
+    version(TeslAlgoM)
+        return algorithmM!T(coefficients, exponent);
     else
     {
-        if (exponent == 0)
-            return decimalTo!T(coefficients);
+        enum wordBits = T.mant_dig < 64 ? 64 : 128;
+        enum ulong half = (1UL << (wordBits - T.mant_dig - 1));
+        static if (T.mant_dig > 64)
+            enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
+        else
+        static if (T.mant_dig == 64)
+            enum ulong mask = ulong.max;
+        else
+            enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
 
-        if (coefficients.length == 0)
-            return exponent == exponent.max ? T.infinity : 0;
+        if (coefficients.length == 1)
+            return decimalTo!T(coefficients[0], exponent);
 
-        auto expSign = exponent < 0;
-        ulong exp = exponent;
-        exp = expSign ? -exp : exp;
-        if (exp >= 5000)
+        static if (size_t.sizeof == uint.sizeof)
         {
-            return expSign ? 0 : exponent != exponent.max ? T.infinity : T.nan;
+            if (coefficients.length == 2)
+                return decimalTo!T(coefficients[0] | (ulong(coefficients[1]) << 32), exponent);
         }
-        long index = exp & 0x1FF;
-        bool gotoAlgoR;
-        auto c = load128(expSign ? -index : index);
-        {
-            exp >>= dec_S;
-            gotoAlgoR = exp != 0;
-            if (_expect(gotoAlgoR, false))
-            {
-                auto v = load128(expSign ? -dec_P : dec_P);
-                do
-                {
-                    if (exp & 1)
-                        c *= v;
-                    exp >>>= 1;
-                    if (exp == 0)
-                        break;
-                    v *= v;
-                }
-                while(true);
-            }
-        }
-        auto z = coefficients.decimalToFp!128.extendedMul(c);
-        auto ret = cast(T) z;
-        if (!gotoAlgoR)
-        {
-            static if (T.mant_dig > 64)
-                enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
-            else
-                enum ulong mask = ulong.max;
-            enum ulong half = (1UL << (128 - T.mant_dig - 1));
-            enum UInt!128 bound = UInt!128(1) << T.mant_dig;
 
-            auto slop = (coefficients.length > (ulong.sizeof * 2 / size_t.sizeof)) + 3 * expSign;
-            long bitsDiff = (cast(ulong) z.opCast!(Fp!128).coefficient & mask) - half;
-            if (_expect((bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
-                return ret;
-            if (slop == 0 && exponent <= 55 || exponent == 0)
-                return ret;
-            if (slop == 3 && MaxFpPow5!T >= -exponent && c.coefficient < bound)
-            {
-                auto e = load128(-exponent);
-                return c.opCast!(T, true) / cast(T) e;
-            }
+        if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
+        {
+            auto c = coefficients.binaryToFp!wordBits;
+            auto z = c.extendedMul!true(_load!T(exponent));
+            auto approx = z.opCast!(T, true);
+            auto slop = 1 + 3 * (exponent < 0);
+            long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
+
+            if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
+                return approx;
+
+            debug dump("approx =", approx);
+
+            return fallbackAlgorithm(approx, coefficients, exponent);
         }
-        return decimalToFloatFallback(ret, coefficients, cast(int) exponent);
+        return exponent < 0 ? 0 : T.infinity;
     }
+}
+import mir.stdio;
+
+private T fallbackAlgorithm(T)(T approx, scope const size_t[] coefficients, long exponent)
+    if ((is(T == float) || is(T == double) || is(T == real)))
+    // in (0 <= approx && approx <= T.infinity)
+{
+    version(LDC)
+        pragma(inline, true);
+    if (exponent >= 0 || exponent < -ExponentM || approx <= approx.min_normal)
+        return algorithmM!T(coefficients, exponent);
+    return algorithmR(approx, coefficients, cast(int) exponent);
 }
 
 @optStrategy("minsize")
-private T decimalToFloatFallback(T)(T ret, scope const size_t[] coeff, int exponent)
+private T algorithmR(T)(T ret, scope const size_t[] coefficient, int exponent)
     if ((is(T == float) || is(T == double) || is(T == real)))
-    in (0 <= ret && ret <= T.infinity)
+    in (T.min_normal < ret)
+    in (ret < T.infinity)
+    in (-512 < exponent)
+    in (exponent < 0)
 {
     pragma(inline, false);
 
@@ -278,23 +258,12 @@ private T decimalToFloatFallback(T)(T ret, scope const size_t[] coeff, int expon
     import mir.math.ieee: ldexp, frexp, nextDown, nextUp;
     import mir.utility: _expect;
 
-    BigInt!256 x = void, y = void; // max value is 2^(2^14)-1
+    BigInt!(bigSize!T) x = void, y = void;
 
-    if (exponent == 0)
-        return decimalTo!T(coeff);
-
-    // if no overflow
-    if (exponent > 0 && !x.copyFrom(coeff) && !x.mulPow5(exponent))
-        return x.coefficients.decimalTo!T.ldexp(exponent);
-
-    do
-    {
-        if (ret < ret.min_normal)
-            break;
         int k;
         auto m0 = frexp(ret, k);
         k -= T.mant_dig;
-        static if (T.mant_dig <= 64)
+        static if (T.mant_dig < 64)
         {
             enum p2 = T(2) ^^ T.mant_dig;
             auto m = UInt!64(cast(ulong) (m0 * p2));
@@ -320,15 +289,17 @@ private T decimalToFloatFallback(T)(T ret, scope const size_t[] coeff, int expon
             k += mtz;
         }
 
-        if (x.copyFrom(coeff)) // if overflow
-            break;
+        if (x.copyFrom(coefficient))
+            return T.nan;
         y = m;
         y.mulPow5(-exponent);
         auto shift = k - exponent;
         (shift >= 0  ? y : x) <<= shift >= 0 ? shift : -shift;
         x -= y;
         if (x.length == 0)
-            break;
+            return ret;
+        if (x.ctlz < 1 + m.sizeof * 8)
+            return T.nan;
         x <<= 1;
         x *= m;
         auto cond = mtz == T.mant_dig - 1 && x.sign;
@@ -336,23 +307,187 @@ private T decimalToFloatFallback(T)(T ret, scope const size_t[] coeff, int expon
         if (cmp < 0)
         {
             if (!cond)
-                break;
+                return ret;
             x <<= 1;
             if (x.view.unsigned <= y.view.unsigned)
-                break;
+                return ret;
         }
         else
         if (!cmp && !cond && !mtz)
-            break;
-        ret = x.sign ? nextDown(ret) : nextUp(ret);
-        if (ret == 0)
-            break;
-    }
-    while (T.mant_dig >= 64 && exponent < -512);
-    return ret;
+            return ret;
+    return x.sign ? nextDown(ret) : nextUp(ret);
 }
 
-auto decimalToFp(uint coefficientSize, uint internalRoundLastBits = 0)
+private enum LOG2_10 = 0x3.5269e12f346e2bf924afdbfd36bf6p0;
+
+private template bigSize(T)
+    if ((is(T == float) || is(T == double) || is(T == real)))
+{
+    static if (T.mant_dig < 64)
+    {
+        enum size_t bigSize = 83;
+    }
+    else
+    {
+        enum size_t bits = T.max_exp - T.min_exp + T.mant_dig;
+        enum size_t bigSize = bits / 64 + bits % 64 + 1;
+        pragma(msg, "bigSize = ", bigSize);
+    }
+}
+
+@optStrategy("minsize")
+private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
+    if ((is(T == float) || is(T == double) || is(T == real)))
+    in (coefficients.length)
+{
+    pragma(inline, false);
+
+
+    import mir.bitop: ctlz;
+    import mir.bignum.fp: Fp;
+    import mir.bignum.integer: BigInt;
+    import mir.math.common: log2, ceil;
+    import mir.math.ieee: ldexp, nextUp;
+
+    BigInt!(bigSize!T) u = void;
+    BigInt!(bigSize!T) v = void;
+    BigInt!(bigSize!T) q = void;
+    BigInt!(bigSize!T) r = void;
+    import mir.stdio;
+    debug dump("-----------");
+    debug dump("c = ", coefficients);
+    debug dump("e = ", exponent);
+
+    // if no overflow
+    if (exponent >= 0)
+    {
+        if (3 * exponent + coefficients.length * size_t.sizeof * 8 - ctlz(coefficients[$ - 1]) - 1 > T.max_exp)
+            return T.infinity;
+        if (exponent == 0)
+            return coefficients.binaryTo!T;
+        u.copyFrom(coefficients);
+        u.mulPow5(exponent);
+        return u.coefficients.binaryTo!T(exponent);
+    }
+
+    auto log2_u = coefficients.binaryTo!T.log2;
+    auto log2_v = cast(T)(-LOG2_10) * exponent;
+    sizediff_t k = cast(sizediff_t) ceil(log2_u - log2_v);
+
+    debug dump("k =", k);
+
+    k -= T.mant_dig;
+
+    if (k < T.min_exp - T.mant_dig)
+    {
+        if (k + T.mant_dig + 1 < T.min_exp - T.mant_dig)
+            return 0;
+        k = T.min_exp - T.mant_dig;
+    }
+    else
+    if (k > T.max_exp)
+    {
+        if (k - 2 > T.max_exp)
+            return T.infinity;
+        k = T.max_exp;
+    }
+
+    if(u.copyFrom(coefficients))
+        return T.nan;
+    if (k < 0)
+    {
+        if (u.ctlz < -k)
+            return T.nan;
+        u <<= -k;
+    }
+
+    debug dump("k =", k);
+
+    if (log2_v >= bigSize!T * 64)
+            return T.nan;
+
+    v = 1;
+    v.mulPow5(-exponent);
+    v <<= cast(int)-exponent + (k > 0 ? k : 0);
+
+    sizediff_t s;
+    debug dump("u =", u);
+    debug dump("v =", v);
+    for(;;)
+    {
+        u.divMod(v, q, r);
+        debug dump("q =", q);
+        debug dump("r =", r);
+
+        s = cast(int) q.bitLength - T.mant_dig;
+        debug dump("s =", s);
+        assert(k >= T.min_exp - T.mant_dig);
+        if (s == 0)
+            break;
+
+        if (s < 0)
+        {
+            if (k == T.min_exp - T.mant_dig)
+                break;
+            k--;
+        }
+        else
+        {
+            if (k == T.max_exp)
+                return T.infinity;
+            k++;
+        }
+
+        if ((s < 0 ? u : v).ctlz == 0)
+            return T.nan;
+        (s < 0 ? u : v) <<= 1;
+    }
+
+    sizediff_t cmp;
+    if (s <= 0)
+    {
+        u = v;
+        u -= r;
+        cmp = r.opCmp(u);
+    }
+    else
+    {
+        cmp = s - 1 - q.view.unsigned.cttz;
+        if (cmp == 0) // half
+            cmp += r != 0;
+        q >>= s;
+        k += s;
+    }
+    auto z = q.coefficients.binaryTo!T.ldexp(cast(int)k);
+    return cmp < 0 || cmp == 0 && !q.view.unsigned.bt(0) ? z : nextUp(z);
+}
+
+private T binaryToFloatImpl(T)(scope const size_t[] coefficients, long exponent)
+    @safe
+    if ((is(T == float) || is(T == double) || is(T == real)))
+    in (coefficients.length == 0 || coefficients[$ - 1])
+{
+    version(LDC)
+        pragma(inline, true);
+
+    enum md = T.mant_dig;
+    enum b = size_t.sizeof * 8;
+    enum n = md / b + (md % b != 0);
+    enum s = n * b;
+
+    if (coefficients.length == 0)
+        return 0;
+    
+    if (exponent > T.max_exp)
+        return T.infinity;
+
+    auto fp = coefficients.binaryToFp!(s, s - md);
+    fp.exponent += exponent;
+    return fp.opCast!(T, true, true);
+}
+
+
+package(mir.bignum) auto binaryToFp(uint coefficientSize, uint internalRoundLastBits = 0)
     (scope const(size_t)[] coefficients)
     if (internalRoundLastBits < size_t.sizeof * 8)
     in (coefficients.length)
@@ -364,11 +499,10 @@ auto decimalToFp(uint coefficientSize, uint internalRoundLastBits = 0)
     import mir.utility: _expect;
 
     version (LDC)
-        pragma(inline, internalRoundLastBits != 0);
+        pragma(inline, true);
 
     Fp!coefficientSize ret;
 
-    assert(coefficients.length);
     enum N = ret.coefficient.data.length;
     sizediff_t size = coefficients.length * (size_t.sizeof * 8);
     sizediff_t expShift = size - coefficientSize;
@@ -416,7 +550,7 @@ auto decimalToFp(uint coefficientSize, uint internalRoundLastBits = 0)
                 coefficients = coefficients[1 .. $];
                 assert(coefficients.length);
             }
-            return coefficients.length > (N + 1);
+            return coefficients.length > N + 1;
         }
 
         static if (internalRoundLastBits)
@@ -454,10 +588,11 @@ auto decimalToFp(uint coefficientSize, uint internalRoundLastBits = 0)
     return ret;
 }
 
-private enum dec_S = 9;
-private enum dec_P = 1 << dec_S;
+private enum ExponentM = 512;
 
-private auto load64()(long e)
+private auto _load(T)(long e) @trusted
+    if (T.mant_dig < 64)
+    in (-ExponentM < e && e < ExponentM)
 {
     version(LDC)
         pragma(inline, true);
@@ -466,12 +601,15 @@ private auto load64()(long e)
     import mir.bignum.fp: Fp;
     import mir.bignum.internal.dec2float_table;
 
-    auto p10coeff = p10_coefficients[cast(sizediff_t)e - min_p10_e][0];
-    auto p10exp = p10_exponents[cast(sizediff_t)e - min_p10_e];
+    auto idx = cast(sizediff_t)e - min_p10_e;
+    auto p10coeff = p10_coefficients_h[idx];
+    auto p10exp = p10_exponents[idx];
     return Fp!64(false, p10exp, UInt!64(p10coeff));
 }
 
-private auto load128()(long e)
+private auto _load(T)(long e) @trusted
+    if (T.mant_dig >= 64)
+    in (-ExponentM < e && e < ExponentM)
 {
     version(LDC)
         pragma(inline, true);
@@ -480,14 +618,27 @@ private auto load128()(long e)
     import mir.bignum.fp: Fp;
     import mir.bignum.internal.dec2float_table;
 
-    static assert(min_p10_e <= -dec_P);
-    static assert(max_p10_e >= dec_P);
+    static assert(min_p10_e <= -ExponentM);
+    static assert(max_p10_e >= ExponentM);
     auto idx = cast(sizediff_t)e - min_p10_e;
-    ulong h = p10_coefficients[idx][0];
-    ulong l = p10_coefficients[idx][1];
+    ulong h = p10_coefficients_h[idx];
+    ulong l = p10_coefficients_l[idx];
     if (l >= cast(ulong)long.min)
         h--;
     auto p10coeff = UInt!128(cast(ulong[2])[l, h]);
     auto p10exp = p10_exponents[idx] - 64;
     return Fp!128(false, p10exp, p10coeff);
+}
+
+unittest
+{
+    import mir.bignum.fp;
+    import mir.bignum.fixed;
+    import mir.test;
+    ulong[2] data = [ulong.max - 2, 1];
+    auto coefficients = cast(size_t[])data[];
+    if (coefficients[$ - 1] == 0)
+        coefficients = coefficients[0 .. $ - 1];
+    coefficients.binaryToFp!64.should == Fp!64(false, 1, UInt!64(0xFFFFFFFFFFFFFFFE));
+    coefficients.binaryToFp!128.should == Fp!128(false, -63, UInt!128([0x8000000000000000, 0xFFFFFFFFFFFFFFFE]));
 }

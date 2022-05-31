@@ -41,8 +41,9 @@ void main()
     row[3] = 6;
     assert(matrix[2, 3] == 6); // D & C index order
     
-    import std.stdio;
-    matrix.writeln; // [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 6]]
+    import mir.stdio;
+    matrix.writeln;
+    // prints [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 6.0]]
 }
 ```
 

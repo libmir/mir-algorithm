@@ -38,7 +38,8 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         return *cast(inout(T[_bufferLength])*)&_scopeBufferPayload;
     }
 
-    private T[] prepare(size_t n) @trusted scope
+    ///
+    T[] prepare(size_t n) @trusted scope
     {
         import mir.internal.memory: realloc, malloc;
         _currentLength += n;

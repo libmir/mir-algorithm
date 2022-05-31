@@ -378,7 +378,7 @@ struct Fp(uint size)
     ///
     Fp!(max(size, rhsSize)) opBinary(string op : "*", uint rhsSize)(Fp!rhsSize rhs) nothrow const
     {
-        return cast(Fp) .extendedMul!(size, rhsSize)(cast()this, rhs);
+        return cast(Fp) .extendedMul(cast()this, rhs);
     }
 
     static if (size == 128)
@@ -418,16 +418,19 @@ struct Fp(uint size)
     }
     
     ///
-    T opCast(T, bool noHalf = false)() nothrow const
+    T opCast(T, bool noSpecial = false, bool noHalf = false)() nothrow const
         if (is(T == float) || is(T == double) || is(T == real))
     {
         import mir.math.ieee: ldexp;
-        if (_expect(this.isSpecial, false))
+        static if (!noSpecial)
         {
-            T ret = this.coefficient ? T.nan : T.infinity;
-            if (this.sign)
-                ret = -ret;
-            return ret;
+            if (_expect(this.isSpecial, false))
+            {
+                T ret = this.coefficient ? T.nan : T.infinity;
+                if (this.sign)
+                    ret = -ret;
+                return ret;
+            }
         }
         auto exp = cast()this.exponent;
         static if (size == 32)
@@ -544,30 +547,37 @@ struct Fp(uint size)
     }
 
     ///
-    T opCast(T : Fp!newSize, size_t newSize)() nothrow const
+    T opCast(T : Fp!newSize, bool noSpecial = false, size_t newSize)() nothrow const
         if (newSize != size)
     {
         Fp!newSize ret;
         ret.sign = this.sign;
-        if (_expect(this.isSpecial, false))
+
+        static if (!noSpecial)
         {
-            ret.exponent = ret.exponent.max;
-            ret.coefficient = !!this.coefficient;
-            return ret;
-        }
-        if (!this)
-        {
-            return ret;
+            if (_expect(this.isSpecial, false))
+            {
+                ret.exponent = ret.exponent.max;
+                ret.coefficient = !!this.coefficient;
+                return ret;
+            }
+            if (!this)
+            {
+                return ret;
+            }
         }
 
         UInt!size coefficient = this.coefficient;
         int shift;
         // subnormal
 
-        if (this.exponent == this.exponent.min)
+        static if (!noSpecial)
         {
-            shift = cast(int)coefficient.ctlz;
-            coefficient <<= shift;
+            if (this.exponent == this.exponent.min)
+            {
+                shift = cast(int)coefficient.ctlz;
+                coefficient <<= shift;
+            }
         }
 
         ret = Fp!newSize(coefficient, true);
@@ -576,22 +586,30 @@ struct Fp(uint size)
 
         import mir.checkedint: adds;
         /// overflow
-        bool overflow;
-        ret.exponent = adds(ret.exponent, this.exponent, overflow);
-        if (_expect(overflow, false))
+
+        static if (!noSpecial)
         {
-            // overflow
-            if (this.exponent > 0)
+            bool overflow;
+            ret.exponent = adds(ret.exponent, this.exponent, overflow);
+            if (_expect(overflow, false))
             {
-                ret.exponent = ret.exponent.max;
-                ret.coefficient = 0u;
+                // overflow
+                if (this.exponent > 0)
+                {
+                    ret.exponent = ret.exponent.max;
+                    ret.coefficient = 0u;
+                }
+                // underflow
+                else
+                {
+                    ret.coefficient >>= cast(uint)(ret.exponent - exponent.min);
+                    ret.exponent = ret.coefficient ? ret.exponent.min : 0;
+                }
             }
-            // underflow
-            else
-            {
-                ret.coefficient >>= cast(uint)(ret.exponent - exponent.min);
-                ret.exponent = ret.coefficient ? ret.exponent.min : 0;
-            }
+        }
+        else
+        {
+            ret.exponent += this.exponent;
         }
         return ret;
     }
@@ -612,51 +630,63 @@ struct Fp(uint size)
 }
 
 ///
-Fp!(coefficientizeA + coefficientizeB) extendedMul(uint coefficientizeA, uint coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
+Fp!(coefficientizeA + coefficientizeB) extendedMul(bool noSpecial = false, uint coefficientizeA, uint coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
     @safe pure nothrow @nogc
 {
     import mir.bignum.fixed: extendedMul;
     import mir.checkedint: adds;
 
     typeof(return) ret = void;
-    // nan * any -> nan
-    // inf * fin -> inf
     ret.coefficient = extendedMul(a.coefficient, b.coefficient);
-    if (_expect(a.isSpecial | b.isSpecial, false))
-    {   // set nan
-        ret.exponent = ret.exponent.max;
-        // nan inf case
-        if (a.isSpecial & b.isSpecial)
-            ret.coefficient = a.coefficient | b.coefficient;
+    static if (noSpecial)
+    {
+        ret.exponent = a.exponent + b.exponent;
+        if (!ret.coefficient.signBit)
+        {
+            ret.exponent -= 1; // check overflow
+            ret.coefficient = ret.coefficient.smallLeftShift(1);
+        }
     }
     else
     {
-        bool overflow;
-        ret.exponent = adds(a.exponent, b.exponent, overflow);
-        // exponent underflow -> 0 or subnormal
-        // overflow -> inf
-        if (_expect(overflow, false))
-        {
-            // overflow
-            if (a.exponent > 0) //  && b.exponent > 0 is always true
-            {
-                ret.exponent = ret.exponent.max;
-                ret.coefficient = 0;
-            }
-            //  underflow
-            else // a.exponent < 0 and b.exponent < 0
-            {
-                // TODO: subnormal
-                ret.exponent = 0;
-                ret.coefficient = 0;
-            }
+        // nan * any -> nan
+        // inf * fin -> inf
+        if (_expect(a.isSpecial | b.isSpecial, false))
+        {   // set nan
+            ret.exponent = ret.exponent.max;
+            // nan inf case
+            if (a.isSpecial & b.isSpecial)
+                ret.coefficient = a.coefficient | b.coefficient;
         }
         else
-        if (!ret.coefficient.signBit)
         {
-            auto normal = ret.exponent != ret.exponent.min;
-            ret.exponent -= normal; // check overflow
-            ret.coefficient = ret.coefficient.smallLeftShift(normal);
+            bool overflow;
+            ret.exponent = adds(a.exponent, b.exponent, overflow);
+            // exponent underflow -> 0 or subnormal
+            // overflow -> inf
+            if (_expect(overflow, false))
+            {
+                // overflow
+                if (a.exponent > 0) //  && b.exponent > 0 is always true
+                {
+                    ret.exponent = ret.exponent.max;
+                    ret.coefficient = 0;
+                }
+                //  underflow
+                else // a.exponent < 0 and b.exponent < 0
+                {
+                    // TODO: subnormal
+                    ret.exponent = 0;
+                    ret.coefficient = 0;
+                }
+            }
+            else
+            if (!ret.coefficient.signBit)
+            {
+                auto normal = ret.exponent != ret.exponent.min;
+                ret.exponent -= normal; // check overflow
+                ret.coefficient = ret.coefficient.smallLeftShift(normal);
+            }
         }
     }
     ret.sign = a.sign ^ b.sign;

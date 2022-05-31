@@ -12,18 +12,16 @@ version(mir_bignum_test)
 @safe pure @nogc
 unittest
 {
+    import mir.test: should;
     import mir.conv: to;
 
-    assert("123.0".to!double == 123);
-    assert("123".to!int == 123);
-    assert("123".to!byte == 123);
+    "123.0".to!double.should == 123;
+    "123".to!int.should == 123;
+    "123".to!byte.should == 123;
 
     import mir.small_string;
     alias S = SmallString!32;
-    assert(S("123.0").to!double == 123);
-    assert(S("123.").to!double == 123.);
-    assert(S(".123").to!double == .123);
-    assert(S("123").to!(immutable int) == 123);
+    "123.0".SmallString!32.to!double.should == 123;
 }
 
 import mir.primitives;
@@ -81,42 +79,123 @@ T fromString(T, C)(scope const(C)[] str)
     }
 }
 
+version(unittest)
+{
+    import core.stdc.stdlib: strtof, strtod, strtold;
+    private auto _assumePure(T)(scope return T t) {
+        import std.traits;
+        enum attrs = functionAttributes!T | FunctionAttribute.pure_;
+        return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
+    }
+
+    private static @trusted float _stdc_parse(T : float)(string str){ auto endPtr = str.ptr + str.length; return _assumePure(&strtof)(str.ptr, &endPtr);  }
+    private static @trusted double _stdc_parse(T : double)(string str){ auto endPtr = str.ptr + str.length; return _assumePure(&strtod)(str.ptr, &endPtr);  }
+    private static @trusted real _stdc_parse(T : real)(string str){ auto endPtr = str.ptr + str.length; return _assumePure(&strtold)(str.ptr, &endPtr);  }
+}
+
 ///
 version(mir_bignum_test)
 @safe pure @nogc unittest
 {
-    assert("123".fromString!int == 123);
-    static assert("-123".fromString!int == -123);
+    import mir.test;
+    "123".fromString!int.should == 123;
 
-    assert(".5".fromString!float == .5);
-    assert("12.3".fromString!double == 12.3);
-    assert("12.3".fromString!float == 12.3f);
-    assert("12.3".fromString!real == 12.3L);
-    assert("-12.3e-30".fromString!double == -12.3e-30);
-    assert("2.9802322387695312E-8".fromString!double == 2.9802322387695312E-8);
+    ".5".fromString!float.should == .5;
+    "12.3".fromString!double.should == 12.3;
+    "12.3".fromString!float.should == 12.3f;
+    "12.3".fromString!real.should == 12.3L;
+    "-12.3e-30".fromString!double.should == -12.3e-30;
+    "2.9802322387695312E-8".fromString!double.should == 2.9802322387695312E-8;
 
     // default support of underscores
-    assert("123_456.789_012".fromString!double == 123_456.789_012);
-    assert("12_34_56_78_90_12e-6".fromString!double == 123_456.789_012);
+    "123_456.789_012".fromString!double.should == 123_456.789_012;
+    "12_34_56_78_90_12e-6".fromString!double.should == 123_456.789_012;
 
     // default support of leading zeros
-    assert("010".fromString!double == 10.0);
-    assert("000010".fromString!double == 10.0);
-    assert("0000.10".fromString!double == 0.1);
-    assert("0000e10".fromString!double == 0);
+    "010".fromString!double.should == 10.0;
+    "000010".fromString!double.should == 10.0;
+    "0000.10".fromString!double.should == 0.1;
+    "0000e10".fromString!double.should == 0;
 
-    /// Test CTFE support  
-    static assert("-12.3e-30".fromString!double == -0x1.f2f280b2414d5p-97);
-    static assert("+12.3e+30".fromString!double == 0x1.367ee3119d2bap+103);
+    version(all) {} else
+    version(TeslAlgoM) {} else
+    {
+        /// Test CTFE support  
+        static assert("-123".fromString!int == -123);
 
-    static assert("1.448997445238699".fromString!double == 0x1.72f17f1f49aadp0);
-    static if (real.mant_dig >= 64)
-        static assert("1.448997445238699".fromString!real == 1.448997445238699L);
+        static assert("-12.3e-30".fromString!double == -0x1.f2f280b2414d5p-97);
+        static assert("+12.3e+30".fromString!double == 0x1.367ee3119d2bap+103);
 
-    static assert("3.518437208883201171875".fromString!float == 0x1.c25c26p+1);
-    static assert("3.518437208883201171875".fromString!double == 0x1.c25c268497684p+1);
-    static if (real.mant_dig >= 64)
-        static assert("3.518437208883201171875".fromString!real == 0xe.12e13424bb4232fp-2L);    
+        static assert("1.448997445238699".fromString!double == 0x1.72f17f1f49aadp0);
+        static if (real.mant_dig >= 64)
+            static assert("1.448997445238699".fromString!real == 1.448997445238699L);
+
+        static assert("3.518437208883201171875".fromString!float == 0x1.c25c26p+1);
+        static assert("3.518437208883201171875".fromString!double == 0x1.c25c268497684p+1);
+        static if (real.mant_dig >= 64)
+            static assert("3.518437208883201171875".fromString!real == 0xe.12e13424bb4232fp-2L);    
+    }
+
+    void test(string str)
+    {
+        version(CRuntime_DigitalMars) // No precise parsing at all
+        {
+        }
+        else
+        {
+            str.fromString!float.should == str._stdc_parse!float;
+            str.fromString!double.should == str._stdc_parse!double;
+            version (Windows) // No precise real parsing on windows
+            {
+            }
+            else
+                str.fromString!real.should == str._stdc_parse!real;
+        }
+    }
+
+    test("2.5e-324");
+
+    // large
+    test("1e300");
+    test("123456789.34567e250");
+    test("943794359898089732078308743689303290943794359843568973207830874368930329.");
+
+    // min normal
+    test("2.2250738585072014e-308");
+
+    // subnormals
+    test("5e-324");
+    test("91e-324");
+    test("1e-322");
+    test("13245643e-320");
+    test("2.22507385851e-308");
+    test("2.1e-308");
+    test("4.9406564584124654e-324");
+
+    // infinity
+    test("1e400");
+    test("1e309");
+    test("2e308");
+    test("1.7976931348624e308");
+
+    // zero
+    test("0.0");
+    test("1e-325");
+    test("1e-326");
+    test("1e-500");
+
+    // Triggers the tricky underflow case in AlgorithmM (for f32)
+    test("101e-33");
+    // Triggers AlgorithmR
+    test("1e23");
+    // Triggers another path through AlgorithmR
+    test("2075e23");
+    // ... and yet another.
+    test("8713e-23");
+
+    // 2^65 - 3, triggers half-to-even with even significand
+    test("36893488147419103229.0");
+    test("36893488147419103229");
 
 //  Related DMD Issues:
 // https://issues.dlang.org/show_bug.cgi?id=20951
@@ -124,18 +203,6 @@ version(mir_bignum_test)
 // https://issues.dlang.org/show_bug.cgi?id=20953
 // https://issues.dlang.org/show_bug.cgi?id=20967
 }
-
-// unittest
-// {
-//     import std.stdio;
-//     import mir.conv;
-//     import mir.format;
-//     text(double.min_normal).writeln;
-//     text(double.min_normal * double.epsilon).writeln;
-//     assert("2.2250738585072014e-308".fromString!double == double.min_normal);
-//     assert("5e-324".fromString!double == double.min_normal * double.epsilon);
-//     assert("2.5e-324".fromString!double == double.min_normal * double.epsilon);
-// }
 
 version(mir_bignum_test)
 @safe pure unittest
