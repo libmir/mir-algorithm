@@ -140,26 +140,27 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
     if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
     {
         auto c = coefficient.Fp!64;
+        T approx = void;
         version (all)
         {{
             auto z = c.extendedMul!true(_load!wordBits(exponent));
-            auto approx = z.opCast!(T, true);
+            approx = z.opCast!(T, true);
             long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
             uint slop = 3 * (exponent < 0);
             if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
                 return approx;
         }}
         static if (T.mant_dig < 64)
-        {
+        {{
             auto z = c.extendedMul!true(_load!128(exponent));
-            auto approx = z.opCast!(T, true);
+            approx = z.opCast!(T, true);
             auto bitsDiff = (z.opCast!(Fp!128).coefficient & bigMask) - bigHalf;
             if (bitsDiff.signBit)
                 bitsDiff = UInt!128.init - bitsDiff;
             uint slop = 3 * (exponent < 0);
             if (_expect(approx > T.min_normal && bitsDiff > slop, true))
                 return approx;
-        }
+        }}
 
         if (0 <= exponent)
         {
