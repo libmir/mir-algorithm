@@ -43,10 +43,11 @@ struct SmallDecimalParsingResult
 
 /++
 +/
-SmallDecimalParsingResult parseJsonNumberImpl(scope const(char)[] str)
+SmallDecimalParsingResult parseJsonNumberImpl()(scope const(char)[] str)
+    @trusted pure nothrow @nogc
     in (str.length)
 {
-    pragma(inline, false);
+    pragma(inline, true);
 
     alias W = ulong;
     enum bool allowSpecialValues = false;
