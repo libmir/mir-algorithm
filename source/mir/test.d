@@ -69,6 +69,11 @@ struct Should(T)
     void opEquals(R)(const R expected, string file = __FILE__, int line = __LINE__)
     {
         import mir.format: stringBuf, getData;
+        static if (__traits(isFloating, R))
+        {
+            if (expected != expected && value != value)
+                return;
+        }
         if (value == expected)
             return;
         auto buf = stringBuf;

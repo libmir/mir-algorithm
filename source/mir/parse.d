@@ -24,8 +24,7 @@ unittest
     "123.0".SmallString!32.to!double.should == 123;
 }
 
-import mir.primitives;
-import std.traits: isMutable, isFloatingPoint, isSomeChar;
+import std.traits: isMutable, isFloatingPoint, isSomeChar, isSigned, isUnsigned, Unsigned;
 
 /++
 Performs `nothrow` and `@nogc` string to native type conversion.
@@ -39,42 +38,47 @@ Floating_point:
     Mir parsing supports up-to quadruple precision.
 The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.+/
-T fromString(T, C)(scope const(C)[] str)
+template fromString(T)
     if (isMutable!T)
 {
-    import mir.utility: _expect;
-    static immutable excfp = new Exception("fromString failed to parse " ~ T.stringof);
-
-    static if (isFloatingPoint!T)
+    ///
+    T fromString(C)(scope const(C)[] str)
+        if (isSomeChar!C)
     {
-        T value;
-        if (_expect(fromString(str, value), true))
-            return value;
-        version (D_Exceptions)
-            throw excfp;
-        else
-            assert(0);
-    }
-    else
-    {
-        static immutable excne = new Exception("fromString: remaining input is not empty after parsing " ~ T.stringof);
+        import mir.utility: _expect;
+        static immutable excfp = new Exception("fromString failed to parse " ~ T.stringof);
 
-        T value;
-        if (_expect(parse!T(str, value), true))
+        static if (isFloatingPoint!T)
         {
-            if (_expect(str.empty, true))
+            T value;
+            if (_expect(.fromString(str, value), true))
                 return value;
             version (D_Exceptions)
-                throw excne;
+                throw excfp;
             else
                 assert(0);
         }
         else
         {
-            version (D_Exceptions)
-                throw excfp;
+            static immutable excne = new Exception("fromString: remaining input is not empty after parsing " ~ T.stringof);
+
+            T value;
+            if (_expect(parse!T(str, value), true))
+            {
+                if (_expect(str.length == 0, true))
+                    return value;
+                version (D_Exceptions)
+                    throw excne;
+                else
+                    assert(0);
+            }
             else
-                assert(0);
+            {
+                version (D_Exceptions)
+                    throw excfp;
+                else
+                    assert(0);
+            }
         }
     }
 }
@@ -223,7 +227,7 @@ version(mir_bignum_test)
 /++
 Performs `nothrow` and `@nogc` string to native type conversion.
 
-Returns: true if success and false otherwise.
+Rseturns: true if success and false otherwise.
 +/
 bool fromString(T, C)(scope const(C)[] str, ref T value)
     if (isSomeChar!C)
@@ -249,7 +253,7 @@ bool fromString(T, C)(scope const(C)[] str, ref T value)
     }
     else
     {
-        return parse!T(str, value) && str.empty;
+        return parse!T(str, value) && str.length == 0;
     }
 }
 
@@ -266,13 +270,13 @@ Single character parsing utilities.
 
 Returns: true if success and false otherwise.
 +/
-bool parse(T, Range)(scope ref Range r, scope ref T value)
-    if (isInputRange!Range && isSomeChar!T)
+bool parse(T, C)(ref scope inout(C)[] str, ref scope T value)
+    if (isSomeChar!C && isSomeChar!T && T.sizeof == C.sizeof)
 {
-    if (r.empty)
+    if (str.length == 0)
         return false;
-    value = r.front;
-    r.popFront;
+    value = str[0];
+    str = str[1 .. $];
     return true;
 }
 
@@ -292,188 +296,137 @@ Integer parsing utilities.
 
 Returns: true if success and false otherwise.
 +/
-bool parse(T, Range)(scope ref Range r, scope ref T value)
-    if ((is(T == byte) || is(T == short)) && isInputRange!Range && !__traits(isUnsigned, T))
+bool parse(T, C)(ref scope inout(C)[] str, out scope T value)
+    if ((is(T == byte) || is(T == short)) && isSomeChar!C)
 {
     int lvalue;
-    auto ret = parse!(int, Range)(r, lvalue);
+    auto ret = .parse!(int, C)(str, lvalue);
     value = cast(T) lvalue;
     return ret && value == lvalue;
 }
 
-/// ditto
-bool parse(T, Range)(scope ref Range r, scope ref T value)
-    if (is(T == int) && isInputRange!Range && !__traits(isUnsigned, T))
-{
-    version(LDC) pragma(inline, true);
-    return parseSignedImpl!(int, Range)(r, value);
-}
-
-/// ditto
-bool parse(T, Range)(scope ref Range r, scope ref T value)
-    if (is(T == long) && isInputRange!Range && !__traits(isUnsigned, T))
-{
-    version(LDC) pragma(inline, true);
-    return parseSignedImpl!(long, Range)(r, value);
-}
-
-/// ditto
-bool parse(T, Range)(scope ref Range r, scope ref T value)
-    if ((is(T == ubyte) || is(T == ushort)) && isInputRange!Range && __traits(isUnsigned, T))
+bool parse(T, C)(ref scope inout(C)[] str, out scope T value)
+    if ((is(T == ubyte) || is(T == ushort)) && isSomeChar!C)
 {
     uint lvalue;
-    auto ret = parse!(uint, Range)(r, lvalue);
+    auto ret = .parse!(uint, C)(str, lvalue);
     value = cast(T) lvalue;
     return ret && value == lvalue;
 }
-
-/// ditto
-bool parse(T, Range)(scope ref Range r, scope ref T value)
-    if (is(T == uint) && isInputRange!Range && __traits(isUnsigned, T))
-{
-    version(LDC) pragma(inline, true);
-    return parseUnsignedImpl!(uint, Range)(r, value);
-}
-
-/// ditto
-bool parse(T, Range)(scope ref Range r, scope ref T value)
-    if (is(T == ulong) && isInputRange!Range && __traits(isUnsigned, T))
-{
-    version(LDC) pragma(inline, true);
-    return parseUnsignedImpl!(ulong, Range)(r, value);
-}
-
 
 ///
 version (mir_test) unittest
 {
+    import mir.test: should;
     import std.meta: AliasSeq;
-    foreach (T; AliasSeq!(byte, ubyte, short, ushort, int, uint, long, ulong))
+    foreach (T; AliasSeq!(
+        byte, ubyte, short, ushort,
+        int, uint, long, ulong))
     {
         auto str = "123";
         T val;
         assert(parse(str, val));
-        assert(val == 123);
+        val.should == 123;
         str = "0";
         assert(parse(str, val));
-        assert(val == 0);
+        val.should == 0;
         str = "9";
         assert(parse(str, val));
-        assert(val == 9);
+        val.should == 9;
         str = "";
         assert(!parse(str, val));
-        assert(val == 0);
+        val.should == 0;
         str = "text";
         assert(!parse(str, val));
-        assert(val == 0);
+        val.should == 0;
     }
 }
 
 ///
 version (mir_test) unittest
 {
+    import mir.test: should;
     import std.meta: AliasSeq;
     foreach (T; AliasSeq!(byte, short, int, long))
     {
         auto str = "-123";
         T val;
         assert(parse(str, val));
-        assert(val == -123);
+        val.should == -123;
         str = "-0";
         assert(parse(str, val));
-        assert(val == 0);
+        val.should == 0;
         str = "-9text";
         assert(parse(str, val));
-        assert(val == -9);
+        val.should == -9;
         assert(str == "text");
         enum m = T.min + 0;
         str = m.stringof;
         assert(parse(str, val));
-        assert(val == T.min);
+        val.should == T.min;
     }
 }
 
-private bool parseUnsignedImpl(T, Range)(scope ref Range r, scope ref T value)
-    if(__traits(isUnsigned, T))
+bool parse(T, C)(ref scope inout(C)[] str, scope out T value)
+    if ((isSigned!T || isUnsigned!T) && T.sizeof >= uint.sizeof && isSomeChar!C)
 {
     version(LDC) pragma(inline, true);
     import mir.checkedint: addu, mulu;
 
-    bool sign;
-B:
-    if (!r.empty)
+    if (str.length == 0)
+        return false;
+
+    Unsigned!T x = str[0] - C('0');
+
+    static if (isSigned!T)
+        bool sign;
+
+    if (x >= 10)
     {
-        auto f = r.front + 0u;
-        if (!sign && f == '+')
+        static if (isSigned!T)
         {
-            r.popFront;
-            sign = true;
-            goto B;
+            if (x == C('-') - C('0'))
+            {
+                sign = true;
+                goto S;
+            }
         }
-        uint c = f - '0';
+        
+        if (x != C('+') - C('0'))
+            return false;
+    S:
+        str = str[1 .. $];
+        if (str.length == 0)
+            return false;
+        x = str[0] - C('0');
+        if (x >= 10)
+            return false;
+    }
+
+    str = str[1 .. $];
+
+    while (str.length)
+    {
+        uint c = str[0] - C('0');
         if (c >= 10)
-            goto F;
-        T x = c;
-        for(;;)
-        {
-            r.popFront;
-            if (r.empty)
-                break;
-            c = r.front - '0';
-            if (c >= 10)
-                break;
-            bool overflow;
-            T y = mulu(x, cast(uint)10, overflow);
-            if (overflow)
-                goto R;
-            x = y;
-            T z = addu(x, cast(uint)c, overflow);
-            if (overflow)
-                goto R;
-            x = z;
-        }
-        value = x;
-        return true;
+            break;
+        str = str[1 .. $];
+        bool overflow;
+        x = x.mulu(10u, overflow);
+        if (overflow)
+            return false;
+        x = x.addu(c, overflow);
+        if (overflow)
+            return false;
     }
-F:  value = 0;
-R:  return false;
-}
 
-private bool parseSignedImpl(T, Range)(scope ref Range r, scope ref T value)
-    if(!__traits(isUnsigned, T))
-{
-    version(LDC) pragma(inline, true);
-    import core.checkedint: negs;
-    import std.traits: Unsigned;
-
-    bool sign;
-B:
-    if (!r.empty)
+    static if (isSigned!T)
     {
-        auto f = r.front + 0u;
-        if (!sign && f == '-')
-        {
-            r.popFront;
-            sign = true;
-            goto B;
-        }
-        auto retu = (()@trusted=>parse(r, *cast(Unsigned!T*) &value))();
-        // auto retu = false;
-        if (!retu)
-            goto R;
-        if (!sign)
-        {
-            if (value < 0)
-                goto R;
-        }
-        else
-        {
-            if (value < 0 && value != T.min)
-                goto R;
-            value = -value;
-        }
-        return true;
+        if (x > Unsigned!T(T.max + sign))
+            return false;
+        x = sign ? -x : x;
     }
-F:  value = 0;
-R:  return false;
+
+    value = x;
+    return true;
 }

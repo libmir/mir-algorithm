@@ -213,11 +213,11 @@ struct Decimal(uint size64)
                 }
             }
 
-            uint d = str[0] - '0';
+            ulong d = str[0] - C('0');
             str = str[1 .. $];
             exponent = 0;
 
-            ulong v;
+            ulong v, multplier = void;
 
             if (_expect(d >= 10, false))
             {
@@ -228,7 +228,7 @@ struct Decimal(uint size64)
                         if (str.length == 0)
                             return false;
                         key = DecimalExponentKey.dot;
-                        d = str[0] - '0';
+                        d = str[0] - C('0');
                         str = str[1 .. $];
                         if (_expect(d < 10, true))
                             goto FI;
@@ -247,7 +247,7 @@ struct Decimal(uint size64)
                 {
                     if (str.length == 0)
                         goto R;
-                    d = str[0] - '0';
+                    d = str[0] - C('0');
                     str = str[1 .. $];
                     if (d < 10)
                         return false;
@@ -260,7 +260,7 @@ struct Decimal(uint size64)
         S:
             if (str.length == 0)
                 goto R;
-            d = str[0] - '0';
+            d = str[0] - C('0');
             str = str[1 .. $];
 
             if (d < 10)
@@ -268,7 +268,7 @@ struct Decimal(uint size64)
         F0:
                 import mir.checkedint: mulu, addu;
                 bool overflow;
-                v = mulu(v, cast(uint)10, overflow);
+                v = mulu(v, 10u, overflow);
                 if (overflow)
                     return false;
                 v = addu(v, d, overflow);
@@ -283,7 +283,7 @@ struct Decimal(uint size64)
                 {
                     if (str.length == 0)
                         return false;
-                    d = str[0] - '0';
+                    d = str[0] - C('0');
                     str = str[1 .. $];
                     if (_expect(d < 10, true))
                         goto F0;
@@ -314,51 +314,76 @@ struct Decimal(uint size64)
                     import mir.bignum.internal.parse: isMadeOfEightDigits, parseEightDigits;
                     if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
                     {
-                        ulong multplier = 100000000;
-                        ulong value = parseEightDigits(str[0 .. 8]);
+                        multplier = 100000000;
+                        d = parseEightDigits(str[0 .. 8]);
                         str = str[8 .. $];
                         exponentShift -= 8;
-                        if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
+                        if (str.length >= 7)
                         {
-                            multplier = 100000000 * 100000000;
-                            value *= 100000000;
-                            value += parseEightDigits(str[0 .. 8]);
-                            str = str[8 .. $];
-                            exponentShift -= 8;
+                            if (isMadeOfEightDigits((str.ptr - 1)[0 .. 8]))
+                            {
+                                multplier = 100000000 * 10000000;
+                                d -= str.ptr[-1] - '0';
+                                d *= 10000000;
+                                d += parseEightDigits((str.ptr - 1)[0 .. 8]);
+                                str = str[7 .. $];
+                                exponentShift -= 7;
+                                if (str.length)
+                                {
+                                    auto md = str[0] - C('0');
+                                    if (md < 10)
+                                    {
+                                        d *= 10;
+                                        multplier = 100000000 * 100000000;
+                                        d += md;
+                                        str = str[1 .. $];
+                                    }
+                                }
+                            }
+                            else
+                            {
+                            TrySix:
+                                if (isMadeOfEightDigits((str.ptr - 2)[0 .. 8]))
+                                {
+                                    multplier = 100000000 * 1000000;
+                                    d -= str.ptr[-1] - '0';
+                                    d -= (str.ptr[-2] - '0') * 10;
+                                    d *= 1000000;
+                                    d += parseEightDigits((str.ptr - 2)[0 .. 8]);
+                                    str = str[6 .. $];
+                                    exponentShift -= 6;
+                                }
+                            }
+      
                         }
-
-                        {
-                            import mir.checkedint: mulu, addu;
-                            bool overflow;
-                            v = mulu(v, multplier, overflow);
-                            if (overflow)
-                                return false;
-                            v = addu(v, value, overflow);
-                            if (overflow)
-                                return false;
-                        }
+                        else
+                        if (str.length == 6)
+                            goto TrySix;
+                        goto FIL;
                     }
                 }
 
-                d = str[0] - '0';
+                d = str[0] - C('0');
                 str = str[1 .. $];
                 if (_expect(d >= 10, false))
                     goto DOB;
             FI:
+                exponentShift--;
+                multplier = 10;
+            FIL:
                 {
                     import mir.checkedint: mulu, addu;
                     bool overflow;
-                    v = mulu(v, cast(uint)10, overflow);
+                    v = mulu(v, multplier, overflow);
                     if (overflow)
                         return false;
                     v = addu(v, d, overflow);
                     if (overflow)
                         return false;
                 }
-                exponentShift--;
                 if (str.length == 0)
                     goto E;
-                d = str[0] - '0';
+                d = str[0] - C('0');
                 str = str[1 .. $];
                 if (d < 10)
                     goto FI;
@@ -369,7 +394,7 @@ struct Decimal(uint size64)
                     {
                         if (str.length == 0)
                             return false;
-                        d = str[0] - '0';
+                        d = str[0] - C('0');
                         str = str[1 .. $];
                         if (_expect(d < 10, true))
                             goto FI;
@@ -817,33 +842,33 @@ unittest
 
     // Check precise percentate parsing
     assert(decimal.fromStringImpl("71.7", key, -2));
-    assert(key == DecimalExponentKey.dot);
+    key.should == DecimalExponentKey.dot;
     // The result is exact value instead of 0.7170000000000001 = 71.7 / 100
-    assert(cast(double) decimal == 0.717);
+    (cast(double) decimal).should == 0.717;
 
     assert(decimal.fromStringImpl("+0.334e-5"w, key));
-    assert(key == DecimalExponentKey.e);
-    assert(cast(double) decimal == 0.334e-5);
+    key.should == DecimalExponentKey.e;
+    (cast(double) decimal).should == 0.334e-5;
 
     assert(decimal.fromStringImpl("100_000_000"w, key));
-    assert(key == DecimalExponentKey.none);
-    assert(cast(double) decimal == 1e8);
+    key.should == DecimalExponentKey.none;
+    (cast(double) decimal).should == 1e8;
 
     assert(decimal.fromStringImpl("-334D-5"d, key));
-    assert(key == DecimalExponentKey.D);
-    assert(cast(double) decimal == -334e-5);
+    key.should == DecimalExponentKey.D;
+    (cast(double) decimal).should == -334e-5;
 
     assert(decimal.fromStringImpl("2482734692817364218734682973648217364981273648923423", key));
-    assert(key == DecimalExponentKey.none);
-    assert(cast(double) decimal == 2482734692817364218734682973648217364981273648923423.0);
+    key.should == DecimalExponentKey.none;
+    (cast(double) decimal).should == 2482734692817364218734682973648217364981273648923423.0;
 
     assert(decimal.fromStringImpl(".023", key));
-    assert(key == DecimalExponentKey.dot);
-    assert(cast(double) decimal == .023);
+    key.should == DecimalExponentKey.dot;
+    (cast(double) decimal).should == .023;
 
     assert(decimal.fromStringImpl("0E100", key));
-    assert(key == DecimalExponentKey.E);
-    assert(cast(double) decimal == 0);
+    key.should == DecimalExponentKey.E;
+    (cast(double) decimal).should == 0;
 
     foreach (str; ["-nan", "-NaN", "-NAN"])
     {
@@ -851,8 +876,9 @@ unittest
         assert(decimal.coefficient.length > 0);
         assert(decimal.exponent == decimal.exponent.max);
         assert(decimal.coefficient.sign);
-        assert(key == DecimalExponentKey.nan);
-        assert(cast(double) decimal != cast(double) decimal);
+        key.should == DecimalExponentKey.nan;
+        auto nan = cast(double) decimal;
+        (cast(double) decimal).should == double.nan;
     }
 
     foreach (str; ["inf", "Inf", "INF"])
@@ -861,7 +887,7 @@ unittest
         assert(decimal.coefficient.length == 0);
         assert(decimal.exponent == decimal.exponent.max);
         assert(key == DecimalExponentKey.infinity);
-        assert(cast(double) decimal == double.infinity);
+        (cast(double) decimal).should == double.infinity;
     }
 
     assert(decimal.fromStringImpl("-inf", key));

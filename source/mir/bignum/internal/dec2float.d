@@ -258,9 +258,6 @@ private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
 {
     pragma(inline, false);
 
-    // import mir.stdio;
-    // debug dump("algorithmM", coefficients, exponent);
-
     import mir.bitop: ctlz;
     import mir.bignum.fp: Fp;
     import mir.bignum.integer: BigInt;
