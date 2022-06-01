@@ -2063,7 +2063,6 @@ static immutable align(16) ulong[1025] p10_coefficients_h = [
     0xE319A0AEA60E91C7,
 ];
 
-static if (real.mant_dig >= 64)
 static immutable align(16) ulong[1025] p10_coefficients_l = [
     0x7132D332E3F204D5,
     0x8D7F87FF9CEE860A,
