@@ -139,33 +139,18 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
     version (TeslAlgoM) {} else
     if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
     {
+        auto c = coefficient.Fp!64;
         version (all)
         {{
-            auto c = coefficient.Fp!64;
             auto z = c.extendedMul!true(_load!wordBits(exponent));
             auto approx = z.opCast!(T, true);
             long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
             uint slop = 3 * (exponent < 0);
             if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
                 return approx;
-
-            if (0 <= exponent)
-            {
-                if (exponent <= MaxWordPow5!ulong)
-                    return approx;
-            }
-            else
-            {
-                if (-exponent <= MaxFpPow5!T)
-                {
-                    auto e = _load!wordBits(-exponent);
-                    return coefficient / e.opCast!(T, true);
-                }
-            }
         }}
         static if (T.mant_dig < 64)
         {
-            auto c = coefficient.Fp!64;
             auto z = c.extendedMul!true(_load!128(exponent));
             auto approx = z.opCast!(T, true);
             auto bitsDiff = (z.opCast!(Fp!128).coefficient & bigMask) - bigHalf;
@@ -174,6 +159,20 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
             uint slop = 3 * (exponent < 0);
             if (_expect(approx > T.min_normal && bitsDiff > slop, true))
                 return approx;
+        }
+
+        if (0 <= exponent)
+        {
+            if (exponent <= 55) // exact exponent
+                return approx;
+        }
+        else
+        {
+            if (-exponent <= MaxFpPow5!T)
+            {
+                auto e = _load!wordBits(-exponent);
+                return coefficient / e.opCast!(T, true);
+            }
         }
     }
     size_t[ulong.sizeof / size_t.sizeof] coefficients;
