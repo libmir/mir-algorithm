@@ -222,6 +222,7 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
         IF:
             ulong multplier = 10;
             static if (is(C == char) && is(W == ulong))
+            if (!__ctfe)
             {
                 import mir.bignum.internal.parse: isMadeOfEightDigits, parseEightDigits;
                 if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))

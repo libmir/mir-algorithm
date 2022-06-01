@@ -185,6 +185,59 @@ struct BigInt(uint size64)
         return this;
     }
 
+    ///
+    static BigInt fromBigEndian()(scope const(ubyte)[] data, bool sign = false)
+        @trusted pure @nogc
+    {
+        BigInt ret = void;
+        if (!ret.copyFromBigEndian(data, sign))
+            static immutable bigIntOverflowException = new Exception("BigInt!" ~ size64.stringof ~ ".fromBigEndian: data overflow");
+        return ret;
+    }
+
+    ///
+    bool copyFromBigEndian()(scope const(ubyte)[] data, bool sign = false)
+        @trusted pure @nogc
+    {
+        while(data.length && data[0] == 0)
+            data = data[1 .. $];
+        if (data.length == 0)
+        {
+            this.length = 0;
+            this.sign = false;
+        }
+        else
+        {
+            if (data.length > this.data.sizeof)
+                return false;
+            this.sign = sign;
+            this.length = cast(uint) (data.length / size_t.sizeof);
+            foreach_reverse (ref c; this.coefficients)
+            {
+                size_t value;
+                foreach (j; 0 .. size_t.sizeof)
+                {
+                    value <<= 8;
+                    value |= data[0];
+                    data = data[1 .. $];
+                }
+                c = value;
+            }
+            if (data.length)
+            {
+                this.length++; 
+                size_t value;
+                foreach (b; data)
+                {
+                    value <<= 8;
+                    value |= b;
+                }
+                this.data[length - 1] = value;
+            }
+        }
+        return true;
+    }
+
     /++
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients.
