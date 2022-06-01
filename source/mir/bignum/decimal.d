@@ -9,7 +9,7 @@ module mir.bignum.decimal;
 import mir.serde: serdeProxy, serdeScoped;
 import std.traits: isSomeChar;
 ///
-public import mir.bignum.low_level_view: DecimalExponentKey;
+public import mir.parse: DecimalExponentKey;
 import mir.bignum.low_level_view: ceilLog10Exp2;
 
 private enum expBufferLength = 2 + ceilLog10Exp2(ulong.sizeof * 8);
@@ -180,283 +180,6 @@ struct Decimal(uint size64)
         scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
     {
-        enum optimize = size_t.sizeof == 8 && size64 == 1;
-        version(LDC)
-        {
-            static if (optimize || (allowSpecialValues && allowDExponent && allowStartingPlus && checkEmpty) == false)
-                pragma(inline, true);
-        }
-        static if (optimize)
-        {
-            import mir.utility: _expect;
-            static if (checkEmpty)
-            {
-                if (_expect(str.length == 0, false))
-                    return false;
-            }
-
-            coefficient.sign = str[0] == '-';
-            if (coefficient.sign)
-            {
-                str = str[1 .. $];
-                if (_expect(str.length == 0, false))
-                    return false;
-            }
-            else
-            static if (allowStartingPlus)
-            {
-                if (_expect(str[0] == '+', false))
-                {
-                    str = str[1 .. $];
-                    if (_expect(str.length == 0, false))
-                        return false;
-                }
-            }
-
-            ulong d = str[0] - C('0');
-            str = str[1 .. $];
-            exponent = 0;
-
-            ulong v, multplier = void;
-
-            if (_expect(d >= 10, false))
-            {
-                static if (allowDotOnBounds)
-                {
-                    if (d == '.' - '0')
-                    {
-                        if (str.length == 0)
-                            return false;
-                        key = DecimalExponentKey.dot;
-                        d = str[0] - C('0');
-                        str = str[1 .. $];
-                        if (_expect(d < 10, true))
-                            goto FI;
-                        return false;
-                    }
-                }
-                static if (allowSpecialValues)
-                    goto NI;
-                else
-                    return false;
-            }
-
-            static if (!allowLeadingZeros)
-            {
-                if (_expect(d == 0, false))
-                {
-                    if (str.length == 0)
-                        goto R;
-                    d = str[0] - C('0');
-                    str = str[1 .. $];
-                    if (d < 10)
-                        return false;
-                    goto DOT;
-                }
-            }
-
-            v = d;
-
-        S:
-            if (str.length == 0)
-                goto R;
-            d = str[0] - C('0');
-            str = str[1 .. $];
-
-            if (d < 10)
-            {
-        F0:
-                import mir.checkedint: mulu, addu;
-                bool overflow;
-                v = mulu(v, 10u, overflow);
-                if (overflow)
-                    return false;
-                v = addu(v, d, overflow);
-                if (overflow)
-                    return false;
-                goto S;
-            }
-
-            static if (allowUnderscores)
-            {
-                if (d == '_' - '0')
-                {
-                    if (str.length == 0)
-                        return false;
-                    d = str[0] - C('0');
-                    str = str[1 .. $];
-                    if (_expect(d < 10, true))
-                        goto F0;
-                    return false;
-                }
-            }
-        DOT:
-            if (d == DecimalExponentKey.dot)
-            {
-                // The dot modifier CANNOT be preceded by any modifiers. 
-                if (key != DecimalExponentKey.none)
-                    return false;
-
-                key = DecimalExponentKey.dot;
-
-                if (str.length == 0)
-                {
-                    static if (allowDotOnBounds)
-                        goto R;
-                    else
-                        return false;
-                }
-
-            IF:
-
-                static if (is(C == char))
-                {
-                    import mir.bignum.internal.parse: isMadeOfEightDigits, parseEightDigits;
-                    if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
-                    {
-                        multplier = 100000000;
-                        d = parseEightDigits(str[0 .. 8]);
-                        str = str[8 .. $];
-                        exponentShift -= 8;
-                        if (str.length >= 7)
-                        {
-                            if (isMadeOfEightDigits((str.ptr - 1)[0 .. 8]))
-                            {
-                                multplier = 100000000 * 10000000;
-                                d -= str.ptr[-1] - '0';
-                                d *= 10000000;
-                                d += parseEightDigits((str.ptr - 1)[0 .. 8]);
-                                str = str[7 .. $];
-                                exponentShift -= 7;
-                                if (str.length)
-                                {
-                                    auto md = str[0] - C('0');
-                                    if (md < 10)
-                                    {
-                                        d *= 10;
-                                        multplier = 100000000 * 100000000;
-                                        d += md;
-                                        str = str[1 .. $];
-                                    }
-                                }
-                            }
-                            else
-                            {
-                            TrySix:
-                                if (isMadeOfEightDigits((str.ptr - 2)[0 .. 8]))
-                                {
-                                    multplier = 100000000 * 1000000;
-                                    d -= str.ptr[-1] - '0';
-                                    d -= (str.ptr[-2] - '0') * 10;
-                                    d *= 1000000;
-                                    d += parseEightDigits((str.ptr - 2)[0 .. 8]);
-                                    str = str[6 .. $];
-                                    exponentShift -= 6;
-                                }
-                            }
-      
-                        }
-                        else
-                        if (str.length == 6)
-                            goto TrySix;
-                        goto FIL;
-                    }
-                }
-
-                d = str[0] - C('0');
-                str = str[1 .. $];
-                if (_expect(d >= 10, false))
-                    goto DOB;
-            FI:
-                exponentShift--;
-                multplier = 10;
-            FIL:
-                {
-                    import mir.checkedint: mulu, addu;
-                    bool overflow;
-                    v = mulu(v, multplier, overflow);
-                    if (overflow)
-                        return false;
-                    v = addu(v, d, overflow);
-                    if (overflow)
-                        return false;
-                }
-                if (str.length == 0)
-                    goto E;
-                d = str[0] - C('0');
-                str = str[1 .. $];
-                if (d < 10)
-                    goto FI;
-
-                static if (allowUnderscores)
-                {
-                    if (d == '_' - '0')
-                    {
-                        if (str.length == 0)
-                            return false;
-                        d = str[0] - C('0');
-                        str = str[1 .. $];
-                        if (_expect(d < 10, true))
-                            goto FI;
-                        return false;
-                    }
-                }
-            DOB:
-                static if (!allowDotOnBounds)
-                {
-                    if (exponentShift == 0)
-                        return false;
-                }
-
-            }
-
-            static if (allowExponent)
-            {
-                if (d == DecimalExponentKey.e
-                 || d == DecimalExponentKey.E
-                 || d == DecimalExponentKey.d && allowDExponent
-                 || d == DecimalExponentKey.D && allowDExponent
-                )
-                {
-                    import mir.parse: parse;
-                    key = cast(DecimalExponentKey)d;
-                    if (parse(str, exponent) && str.length == 0)
-                        goto E;
-                }
-            }
-            return false;
-
-        E:
-            exponent += exponentShift;
-        R:
-            coefficient.data[0] = v;
-            coefficient.length = v != 0;
-            return true;
-
-            static if (allowSpecialValues)
-            {
-            NI:
-                exponent = exponent.max;
-                if (str.length == 2)
-                {
-                    auto stail = cast(C[2])str[0 .. 2];
-                    if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
-                    {
-                        key = DecimalExponentKey.infinity;
-                        goto R;
-                    }
-                    if (d == 'n' - '0' && stail == cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
-                    {
-                        v = 1;
-                        key = DecimalExponentKey.nan;
-                        goto R;
-                    }
-                }
-                return false;
-            }
-        }
-        else
-        {
             import mir.bignum.low_level_view: DecimalView, BigUIntView, MaxWordPow10;
             auto work = DecimalView!size_t(false, 0, BigUIntView!size_t(coefficient.data));
             auto ret = work.fromStringImpl!(C,
@@ -473,7 +196,6 @@ struct Decimal(uint size64)
             coefficient.sign = work.sign;
             exponent = work.exponent;
             return ret;
-        }
     }
 
     private enum coefficientBufferLength = 2 + ceilLog10Exp2(coefficient.data.length * (size_t.sizeof * 8)); // including dot and sign
@@ -723,13 +445,13 @@ struct Decimal(uint size64)
 }
 
 ///
-version(mir_bignum_test) 
+version(mir_bignum_test)
 @safe pure nothrow @nogc
 unittest
 {
     import mir.test: should;
     import mir.conv: to;
-    Decimal!256 decimal = void;
+    Decimal!128 decimal = void;
     DecimalExponentKey key;
 
     assert(decimal.fromStringImpl("3.141592653589793378e-10", key));

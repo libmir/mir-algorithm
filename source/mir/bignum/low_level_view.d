@@ -653,9 +653,8 @@ struct BigUIntView(W)
     W opOpAssign(string op : "*")(W rhs, W overflow = 0u)
         @safe pure nothrow @nogc scope
     {
-        assert(coefficients.length);
         auto ns = this.coefficients;
-        do
+        while (ns.length)
         {
             import mir.utility: extMul;
             auto ext = ns[0].extMul(rhs);
@@ -664,7 +663,6 @@ struct BigUIntView(W)
             overflow = ext.high + overflowM;
             ns = ns[1 .. $];
         }
-        while (ns.length);
         return overflow;
     }
 
@@ -1949,32 +1947,13 @@ unittest
     assert(bigView == BigUIntView!size_t.fromHexString("c73fd2b26f2514c103c324943b6c90a05d2732118d5f0099c36a69a8051bb0573adc825b5c9295896c70280faa4c4d369df8e92f82bfffafe078b52ae695d316"));
 }
 
-///
-enum DecimalExponentKey
-{
-    ///
-    none = 0,
-    ///
-    infinity = 1,
-    ///
-    nan = 2,
-    ///
-    dot = '.' - '0',
-    ///
-    d = 'd' - '0',
-    ///
-    e = 'e' - '0',
-    ///
-    D = 'D' - '0',
-    ///
-    E = 'E' - '0',
-}
-
 /++
 +/
 struct DecimalView(W)
     if (is(Unqual!W == size_t))
 {
+    import mir.parse: DecimalExponentKey;
+
     ///
     bool sign;
     ///
@@ -1982,7 +1961,7 @@ struct DecimalView(W)
     ///
     BigUIntView!W coefficient;
 
-    static if (isMutable!W && W.sizeof >= 4)
+    static if (is(W == size_t))
     /++
     Returns: false in case of overflow or incorrect string.
     Precondition: non-empty coefficients
@@ -2000,259 +1979,61 @@ struct DecimalView(W)
         (scope const(C)[] str, out DecimalExponentKey key, int exponentShift = 0)
         scope @trusted pure @nogc nothrow
         if (isSomeChar!C)
+        in (coefficient.length)
     {
+        pragma(inline, false);
+
         import mir.utility: _expect;
 
-        version(LDC)
-        {
-            static if ((allowSpecialValues && allowDExponent && allowStartingPlus && allowDotOnBounds && checkEmpty) == false)
-                pragma(inline, true);
-        }
+        BigUIntView!W work;
 
-        assert(coefficient.coefficients.length);
-
-        coefficient.coefficients[0] = 0;
-        auto work = coefficient.topLeastSignificantPart(1);
-
-        static if (checkEmpty)
+        bool mullAdd(W rhs, W overflow)
         {
-            if (_expect(str.length == 0, false))
-                return false;
-        }
-
-        if (str[0] == '-')
-        {
-            sign = true;
-            str = str[1 .. $];
-            if (_expect(str.length == 0, false))
-                return false;
-        }
-        else
-        static if (allowStartingPlus)
-        {
-            if (_expect(str[0] == '+', false))
+            import mir.stdio;
+            // debug dump(rhs, overflow, work);
+            if ((overflow = work.opOpAssign!"*"(rhs, overflow)) != 0)
             {
-                str = str[1 .. $];
-                if (_expect(str.length == 0, false))
-                    return false;
-            }
-        }
-
-        uint d = str[0] - '0';
-        str = str[1 .. $];
-
-        W v;
-        W t = 1;
-        bool dot;
-
-        static if (allowUnderscores)
-        {
-            bool recentUnderscore;
-        }
-
-        // Was there a recent character within the set: ['.', 'e', 'E', 'd', 'D']?
-        bool recentModifier;
-
-        static if (!allowLeadingZeros)
-        {
-            if (d == 0)
-            {
-                if (str.length == 0)
+                if (_expect(work.coefficients.length < coefficient.coefficients.length, true))
                 {
-                    coefficient = coefficient.init;
-                    return true;
+                    work = coefficient.topLeastSignificantPart(work.coefficients.length + 1);
+                    work.coefficients[$ - 1] = overflow;
+                // debug dump(overflow, work);
+                    return false;
                 }
-                if (str[0] >= '0' && str[0] <= '9')
-                    return false;
-                goto S;
+                return true;
             }
-        }
-
-        if (d < 10)
-        {
-            goto S;
-        }
-
-        static if (allowDotOnBounds)
-        {
-            if (d == '.' - '0')
-            {
-                if (str.length == 0)
-                    return false;
-                key = DecimalExponentKey.dot;
-                dot = true;
-                recentModifier = true;
-                goto F;
-            }
-        }
-
-        static if (allowSpecialValues)
-        {
-            goto NI;
-        }
-        else
-        {
+                // debug dump(overflow, work);
             return false;
         }
 
-        F: for(;;)
+        import mir.bignum.internal.parse: decimalFromStringImpl;
+        alias impl = decimalFromStringImpl!(mullAdd, W);
+        alias specification = impl!(C,
+            allowSpecialValues,
+            allowDotOnBounds,
+            allowDExponent,
+            allowStartingPlus,
+            allowUnderscores,
+            allowLeadingZeros,
+            allowExponent,
+            checkEmpty,
+        );
+        exponent += exponentShift;
+        auto ret = specification(str, key, exponent, sign);
+        switch (key)
         {
-            enum mp10 = W(10) ^^ MaxWordPow10!W;
-            d = str[0] - '0';
-            str = str[1 .. $];
-
-            if (_expect(d <= 10, true))
-            {
-                static if (allowUnderscores)
-                {
-                    recentUnderscore = false;
-                }
-                recentModifier = false;
-                v *= 10;
-        S:
-                t *= 10;
-                v += d;
-                exponentShift -= dot;
-
-                if (_expect(t == mp10 || str.length == 0, false))
-                {
-                L:
-                    if (auto overflow = work.opOpAssign!"*"(t, v))
-                    {
-                        if (_expect(work.coefficients.length < coefficient.coefficients.length, true))
-                        {
-                            work = coefficient.topLeastSignificantPart(work.coefficients.length + 1);
-                            work.coefficients[$ - 1] = overflow;
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
-
-                    v = 0;
-                    t = 1;
-                    if (str.length == 0)
-                    {
-                    M:
-                        exponent += exponentShift;
-                        coefficient = work.coefficients[$ - 1] == 0 ? coefficient.init : work;
-                        static if (allowUnderscores)
-                        {
-                            // If we have no characters, then we should return true IF
-                            // the last character was NOT a underscore OR a modifier
-                            return !recentUnderscore && !recentModifier;
-                        }
-                        else
-                        {
-                            // If we don't allow underscores, and we have no characters,
-                            // then we should return true IF the character was NOT a modifier.
-                            return !recentModifier;
-                        }
-                    }
-                }
-
-                continue;
-            }
-
-            switch (d)
-            {
-                case DecimalExponentKey.dot:
-                    // The dot modifier CANNOT be preceded by any modifiers. 
-                    if (recentModifier || key != DecimalExponentKey.none)
-                        return false;
-
-                    static if (allowUnderscores)
-                    {
-                        // If we allow underscores, the dot also CANNOT be preceded by any underscores.
-                        // It must be preceded by a number.
-                        if (recentUnderscore)
-                            return false;
-                    }
-
-                    key = DecimalExponentKey.dot;
-                    if (_expect(dot, false))
-                        break;
-                    dot = true;
-                    if (str.length)
-                    {
-                        recentModifier = true;
-                        continue;
-                    }
-                    static if (allowDotOnBounds)
-                    {
-                        goto L;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                static if (allowExponent)
-                {
-                    static if (allowDExponent)
-                    {
-                        case DecimalExponentKey.d:
-                        case DecimalExponentKey.D:
-                            goto case DecimalExponentKey.e;
-                    }
-                    case DecimalExponentKey.e:
-                    case DecimalExponentKey.E:
-                        import mir.parse: parse;
-                        // We don't really care if the e/E/d/D modifiers are preceded by a modifier,
-                        // so as long as they are a dot or a regular number.
-                        if (key != DecimalExponentKey.dot && key != DecimalExponentKey.none)
-                            return false;
-                        key = cast(DecimalExponentKey)d;
-                        if (parse(str, exponent) && str.length == 0)
-                        {
-                            recentModifier = false;
-                            if (t != 1)
-                                goto L;
-                            goto M;
-                        }
-                        break;
-                }
-                static if (allowUnderscores)
-                {
-                    case '_' - '0':
-                        // A underscore cannot be preceded by an underscore or a modifier.
-                        if (recentUnderscore || recentModifier)
-                            return false;
-                        
-                        recentUnderscore = true;
-                        if (str.length)
-                            continue;
-                        break;
-                }
-                default:
-            }
-            break;
-        }
-
-        return false;
-
-        static if (allowSpecialValues)
-        {
-        NI:
-            exponent = exponent.max;
-            if (str.length == 2)
-            {
-                auto stail = cast(C[2])str[0 .. 2];
-                if (d == 'i' - '0' && stail == cast(C[2])"nf" || d == 'I' - '0' && (stail == cast(C[2])"nf" || stail == cast(C[2])"NF"))
-                {
-                    coefficient = coefficient.init;
-                    key = DecimalExponentKey.infinity;
-                    return true;
-                }
-                if (d == 'n' - '0' && stail == cast(C[2])"an" || d == 'N' - '0' && (stail == cast(C[2])"aN" || stail == cast(C[2])"AN"))
-                {
-                    coefficient.coefficients[0] = 1;
-                    coefficient = coefficient.topLeastSignificantPart(1);
-                    key = DecimalExponentKey.nan;
-                    return true;
-                }
-            }
-            return false;
+            case DecimalExponentKey.infinity:
+                exponent = exponent.max;
+                coefficient = coefficient.topLeastSignificantPart(0);
+                return ret;
+            case DecimalExponentKey.nan:
+                exponent = exponent.max;
+                coefficient = coefficient.topLeastSignificantPart(1);
+                coefficient.coefficients[0] = 1;
+                return ret;
+            default:
+                coefficient = work;
+                return ret;
         }
     }
 

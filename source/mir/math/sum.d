@@ -651,7 +651,7 @@ struct Summator(T, Summation summation)
     static if (summation == Summation.decimal)
     {
         import mir.bignum.decimal;
-        Decimal!256 s;
+        Decimal!128 s;
         T ss = 0;
     }
     else

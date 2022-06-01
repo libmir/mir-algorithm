@@ -7,6 +7,36 @@ Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry 
 +/
 module mir.parse;
 
+///
+enum DecimalExponentKey
+{
+    ///
+    none = 0,
+    ///
+    infinity = 1,
+    ///
+    nan = 2,
+    ///
+    dot = '.' - '0',
+    ///
+    d = 'd' - '0',
+    ///
+    e = 'e' - '0',
+    ///
+    D = 'D' - '0',
+    ///
+    E = 'E' - '0',
+}
+
+///
+struct DecimalExponentInfo
+{
+    ///
+    long exponent;
+    ///
+    DecimalExponentKey key;
+}
+
 /// `mir.conv: to` extension.
 version(mir_bignum_test)
 @safe pure @nogc
@@ -237,7 +267,7 @@ bool fromString(T, C)(scope const(C)[] str, ref T value)
         import mir.bignum.decimal: Decimal, DecimalExponentKey;
         import mir.utility: _expect;
 
-        Decimal!256 decimal = void;
+        Decimal!128 decimal = void;
         DecimalExponentKey key;
         auto ret = decimal.fromStringImpl(str, key);
         if (_expect(ret, true))

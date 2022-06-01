@@ -241,7 +241,7 @@ private template bigSize(T)
 {
     static if (T.mant_dig < 64)
     {
-        enum size_t bigSize = 83;
+        enum size_t bigSize = 128;
     }
     else
     {
@@ -533,6 +533,7 @@ private auto _load(uint size : 128)(long e) @trusted
     return Fp!128(false, p10exp, p10coeff);
 }
 
+version(mir_test)
 unittest
 {
     import mir.bignum.fp;
