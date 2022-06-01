@@ -231,6 +231,11 @@ version(mir_bignum_test)
     test("36893488147419103229.0");
     test("36893488147419103229");
 
+    test("18446744073709551615.");
+    test("-18446744073709551615.");
+    test("18446744073709551616.");
+    test("-18446744073709551616.");
+
 //  Related DMD Issues:
 // https://issues.dlang.org/show_bug.cgi?id=20951
 // https://issues.dlang.org/show_bug.cgi?id=20952

@@ -212,6 +212,8 @@ struct BigInt(uint size64)
                 return false;
             this.sign = sign;
             this.length = cast(uint) (data.length / size_t.sizeof);
+            auto tail = data[0 .. data.length % size_t.sizeof];
+            data = data[data.length % size_t.sizeof .. $];
             foreach_reverse (ref c; this.coefficients)
             {
                 size_t value;
@@ -223,11 +225,12 @@ struct BigInt(uint size64)
                 }
                 c = value;
             }
-            if (data.length)
+            assert(data.length == 0);
+            if (tail.length)
             {
                 this.length++; 
                 size_t value;
-                foreach (b; data)
+                foreach (b; tail)
                 {
                     value <<= 8;
                     value |= b;
