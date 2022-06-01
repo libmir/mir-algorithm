@@ -136,10 +136,8 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
             }
         }
 
-        ulong d = str[0] - C('0');
+        W d = str[0] - C('0');
         str = str[1 .. $];
-
-        ulong v;
 
         if (_expect(d >= 10, false))
         {
@@ -221,7 +219,7 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
             }
 
         IF:
-            ulong multplier = 10;
+            W multplier = 10;
             static if (is(C == char) && is(W == ulong))
             if (!__ctfe)
             {
