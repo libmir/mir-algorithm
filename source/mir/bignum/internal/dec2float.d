@@ -122,13 +122,16 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
 
     enum wordBits = T.mant_dig < 64 ? 64 : 128;
     enum ulong half = (1UL << (wordBits - T.mant_dig - 1));
+    enum bigHalf = UInt!128([0UL, half]);
+    enum bigMask = (1UL << (64 - T.mant_dig)) - 1;
+
     static if (T.mant_dig > 64)
         enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
     else
     static if (T.mant_dig == 64)
         enum ulong mask = ulong.max;
     else
-        enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
+        enum ulong mask = bigMask;
     
     if (coefficient == 0)
         return 0;
@@ -136,26 +139,41 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
     version (TeslAlgoM) {} else
     if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
     {
-        auto c = coefficient.Fp!64;
-        auto z = c.extendedMul!true(_load!T(exponent));
-        auto approx = z.opCast!(T, true);
-        long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
-        int slop = 3 * (exponent < 0);
-        if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
-            return approx;
-
-        if (0 <= exponent)
-        {
-            if (exponent <= MaxWordPow5!ulong)
+        version (all)
+        {{
+            auto c = coefficient.Fp!64;
+            auto z = c.extendedMul!true(_load!wordBits(exponent));
+            auto approx = z.opCast!(T, true);
+            long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
+            uint slop = 3 * (exponent < 0);
+            if (_expect(approx > T.min_normal && (bitsDiff < 0 ? -bitsDiff : bitsDiff) > slop, true))
                 return approx;
-        }
-        else
-        {
-            if (-exponent <= MaxFpPow5!T)
+
+            if (0 <= exponent)
             {
-                auto e = _load!T(-exponent);
-                return coefficient / e.opCast!(T, true);
+                if (exponent <= MaxWordPow5!ulong)
+                    return approx;
             }
+            else
+            {
+                if (-exponent <= MaxFpPow5!T)
+                {
+                    auto e = _load!wordBits(-exponent);
+                    return coefficient / e.opCast!(T, true);
+                }
+            }
+        }}
+        static if (T.mant_dig < 64)
+        {
+            auto c = coefficient.Fp!64;
+            auto z = c.extendedMul!true(_load!128(exponent));
+            auto approx = z.opCast!(T, true);
+            auto bitsDiff = (z.opCast!(Fp!128).coefficient & bigMask) - bigHalf;
+            if (bitsDiff.signBit)
+                bitsDiff = UInt!128.init - bitsDiff;
+            uint slop = 3 * (exponent < 0);
+            if (_expect(approx > T.min_normal && bitsDiff > slop, true))
+                return approx;
         }
     }
     size_t[ulong.sizeof / size_t.sizeof] coefficients;
@@ -206,7 +224,7 @@ private T decimalToFloatImpl(T)(scope const size_t[] coefficients, long exponent
     if (_expect(-ExponentM <= exponent && exponent <= ExponentM, true))
     {
         auto c = coefficients.binaryToFp!wordBits;
-        auto z = c.extendedMul!true(_load!T(exponent));
+        auto z = c.extendedMul!true(_load!wordBits(exponent));
         auto approx = z.opCast!(T, true);
         auto slop = 1 + 3 * (exponent < 0);
         long bitsDiff = (cast(ulong) z.opCast!(Fp!wordBits).coefficient & mask) - half;
@@ -241,6 +259,8 @@ private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
 {
     pragma(inline, false);
 
+    // import mir.stdio;
+    // debug dump("algorithmM", coefficients, exponent);
 
     import mir.bitop: ctlz;
     import mir.bignum.fp: Fp;
@@ -479,8 +499,7 @@ package(mir.bignum) auto binaryToFp(uint coefficientSize, uint internalRoundLast
 
 private enum ExponentM = 512;
 
-private auto _load(T)(long e) @trusted
-    if (T.mant_dig < 64)
+private auto _load(uint size : 64)(long e) @trusted
     in (-ExponentM < e && e < ExponentM)
 {
     version (LDC)
@@ -496,8 +515,7 @@ private auto _load(T)(long e) @trusted
     return Fp!64(false, p10exp, UInt!64(p10coeff));
 }
 
-private auto _load(T)(long e) @trusted
-    if (T.mant_dig >= 64)
+private auto _load(uint size : 128)(long e) @trusted
     in (-ExponentM < e && e < ExponentM)
 {
     version (LDC)
