@@ -61,11 +61,11 @@ SmallDecimalParsingResult parseJsonNumberImpl()(scope const(char)[] str)
 
     typeof(return) result;
 
-    bool mullAdd(ulong multplier, ulong carry)
+    bool mullAdd(ulong multiplier, ulong carry)
     {
         import mir.checkedint: mulu, addu;
         bool overflow;
-        result.coefficient = mulu(result.coefficient, multplier, overflow);
+        result.coefficient = mulu(result.coefficient, multiplier, overflow);
         if (overflow)
             return overflow;
         result.coefficient = addu(result.coefficient, carry, overflow);
@@ -87,6 +87,26 @@ SmallDecimalParsingResult parseJsonNumberImpl()(scope const(char)[] str)
     with(result)
         success = specialization(str, key, exponent, sign);
     return result;
+}
+
+unittest
+{
+    import mir.test;
+    auto res = "-0.1234567890e-30".parseJsonNumberImpl;
+    res.key.should == DecimalExponentKey.e;
+    res.sign.should == true;
+    res.exponent.should == -40;
+    res.coefficient.should == 1234567890;
+}
+
+unittest
+{
+    import mir.test;
+    auto res = "2.9802322387695312E-8".parseJsonNumberImpl;
+    res.key.should == DecimalExponentKey.E;
+    res.sign.should == false;
+    res.exponent.should == -24;
+    res.coefficient.should == 29802322387695312;
 }
 
 /++
@@ -219,14 +239,13 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
             }
 
         IF:
-            W multplier = 10;
+            W multiplier = 10;
             static if (is(C == char) && is(W == ulong))
             if (!__ctfe)
             {
-                import mir.bignum.internal.parse: isMadeOfEightDigits, parseEightDigits;
                 if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
                 {
-                    multplier = 100000000;
+                    multiplier = 100000000;
                     d = parseEightDigits(str[0 .. 8]);
                     str = str[8 .. $];
                     exponent -= 8;
@@ -234,7 +253,7 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
                     {
                         if (isMadeOfEightDigits((str.ptr - 1)[0 .. 8]))
                         {
-                            multplier = 100000000UL * 10000000;
+                            multiplier = 100000000UL * 10000000;
                             d -= str.ptr[-1] - '0';
                             d *= 10000000;
                             d += parseEightDigits((str.ptr - 1)[0 .. 8]);
@@ -246,7 +265,7 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
                                 if (md < 10)
                                 {
                                     d *= 10;
-                                    multplier = 100000000UL * 100000000;
+                                    multiplier = 100000000UL * 100000000;
                                     d += md;
                                     str = str[1 .. $];
                                     exponent -= 1;
@@ -258,7 +277,7 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
                         TrySix:
                             if (isMadeOfEightDigits((str.ptr - 2)[0 .. 8]))
                             {
-                                multplier = 100000000UL * 1000000;
+                                multiplier = 100000000UL * 1000000;
                                 d -= str.ptr[-1] - '0';
                                 d -= (str.ptr[-2] - '0') * 10;
                                 d *= 1000000;
@@ -282,9 +301,9 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
                 goto DOB;
         FI:
             exponent--;
-            multplier = 10;
+            multiplier = 10;
         FIL:
-            if (_expect(mullAdd(multplier, d), false))
+            if (_expect(mullAdd(multiplier, d), false))
                 return false;
             import mir.stdio;
             // debug dump("str = ", str);
