@@ -104,7 +104,7 @@ struct File
     ///
     core.stdc.stdio.FILE* fp;
 
-    mixin FileMemembers;
+    mixin FileMembers;
 
 @trusted @nogc:
 
@@ -144,7 +144,7 @@ struct AssumeNothrowFile
     ///
     core.stdc.stdio.FILE* fp;
 
-    mixin FileMemembers;
+    mixin FileMembers;
 
 @trusted @nogc nothrow:
 
@@ -176,7 +176,7 @@ struct AssumeNothrowFile
 }
 
 ///
-mixin template FileMemembers()
+mixin template FileMembers()
 {
     ///
     void put(C)(const C data)
