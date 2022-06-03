@@ -104,7 +104,7 @@ struct File
     ///
     core.stdc.stdio.FILE* fp;
 
-    mixin FileMemembers;
+    mixin FileMembers;
 
 @trusted @nogc:
 
@@ -144,7 +144,7 @@ struct AssumeNothrowFile
     ///
     core.stdc.stdio.FILE* fp;
 
-    mixin FileMemembers;
+    mixin FileMembers;
 
 @trusted @nogc nothrow:
 
@@ -176,7 +176,7 @@ struct AssumeNothrowFile
 }
 
 ///
-mixin template FileMemembers()
+mixin template FileMembers()
 {
     ///
     void put(C)(const C data)
@@ -197,7 +197,7 @@ mixin template FileMemembers()
     template opBinary(string op : "<<")
     {
         ///
-        ref opBinary(T)(auto ref const T value) return scope
+        ref opBinary(T)(auto ref const T value) scope return
         {
             if (__ctfe)
                 return this;
@@ -206,7 +206,7 @@ mixin template FileMemembers()
         }
 
         /// Prints new line and flushes the stream
-        ref opBinary(NewLine endl) return scope
+        ref opBinary(NewLine endl) scope return
         {
             if (__ctfe)
                 return this;
@@ -254,7 +254,7 @@ class FileException : Exception
         string msg,
         string file = __FILE__,
         size_t line = __LINE__,
-        Throwable next = null) pure nothrow @nogc @safe 
+        Throwable next = null) pure nothrow @nogc @safe
     {
         super(msg, file, line, next);
     }
@@ -265,7 +265,7 @@ class FileException : Exception
         Throwable next,
         string file = __FILE__,
         size_t line = __LINE__,
-        ) pure nothrow @nogc @safe 
+        ) pure nothrow @nogc @safe
     {
         this(msg, file, line, next);
     }
@@ -288,7 +288,7 @@ class FileError : Error
         string msg,
         string file = __FILE__,
         size_t line = __LINE__,
-        Throwable next = null) pure nothrow @nogc @safe 
+        Throwable next = null) pure nothrow @nogc @safe
     {
         super(msg, file, line, next);
     }
@@ -299,7 +299,7 @@ class FileError : Error
         Throwable next,
         string file = __FILE__,
         size_t line = __LINE__,
-        ) pure nothrow @nogc @safe 
+        ) pure nothrow @nogc @safe
     {
         this(msg, file, line, next);
     }
