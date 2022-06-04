@@ -85,45 +85,49 @@ Params:
 Returns:
     Binomial coefficient
 */
-R binomial(R = ulong, T)(T n, T k)
+R binomial(R = ulong, T)(const T n, const T k)
     if (isArithmetic!(R, T) &&
         ((is(typeof(T.min < 0)) && is(typeof(T.init & 1))) || !is(typeof(T.min < 0))) )
 {
     R result = 1;
 
     enum hasMinProperty = is(typeof(T.min < 0));
+    
+    T n2 = n;
+    T k2 = k;
+
     // only add negative support if possible
     static if ((hasMinProperty && T.min < 0) || !hasMinProperty)
     {
-        if (n < 0)
+        if (n2 < 0)
         {
-            if (k >= 0)
+            if (k2 >= 0)
             {
-                return (k & 1 ? -1 : 1) * binomial!(R, T)(-n + k-1, k);
+                return (k2 & 1 ? -1 : 1) * binomial!(R, T)(-n2 + k2 - 1, k2);
             }
-            else if (k <= n)
+            else if (k2 <= n2)
             {
-                return ((n-k) & 1 ? -1 : 1) * binomial!(R, T)(-k-1, n-k);
+                return ((n2 - k2) & 1 ? -1 : 1) * binomial!(R, T)(-k2 - 1, n2 - k2);
             }
         }
-        if (k < 0)
+        if (k2 < 0)
         {
             result = 0;
             return result;
         }
     }
 
-    if (k > n)
+    if (k2 > n2)
     {
         result = 0;
         return result;
     }
-    if (k > n - k)
+    if (k2 > n2 - k2)
     {
-        k = n - k;
+        k2 = n2 - k2;
     }
     // make a copy of n (could be a custom type)
-    for (T i = 1, m = n; i <= k; i++, m--)
+    for (T i = 1, m = n2; i <= k2; i++, m--)
     {
         // check whether an overflow can happen
         // hasMember!(Result, "max") doesn't work with dmd2.068 and ldc 0.17
@@ -187,6 +191,15 @@ version(mir_test) unittest
     assert(binomial!BigInt(-5, 3) == -35);
     assert(binomial!BigInt(5, -3) == 0);
     assert(binomial!BigInt(-5, -7) == 15);
+}
+
+version(mir_test)
+@safe pure nothrow @nogc 
+unittest
+{
+    const size_t n = 5;
+    const size_t k = 2;
+    assert(binomial(n, k) == 10);
 }
 
 /**
