@@ -3,7 +3,7 @@ module mir.bignum.internal.kernel;
 import mir.bignum.internal.phobos_kernel;
 public import mir.bignum.internal.phobos_kernel: karatsubaRequiredBuffSize, divisionRequiredBuffSize;
 
-private inout(uint)[] toUints()(inout ulong[] data)
+private inout(uint)[] toUints(return scope inout ulong[] data)
     @trusted pure nothrow @nogc
 {
     auto ret = cast(typeof(return)) data;

@@ -34,14 +34,16 @@ struct Decimal(uint size64)
     ///
     BigInt!size64 coefficient;
 
+@safe:
+
     ///
-    DecimalView!size_t view()
+    DecimalView!size_t view() return scope
     {
         return typeof(return)(coefficient.sign, exponent, coefficient.view.unsigned);
     }
 
     /// ditto
-    DecimalView!(const size_t) view() const
+    DecimalView!(const size_t) view() const return scope
     {
         return typeof(return)(coefficient.sign, exponent, coefficient.view.unsigned);
     }
@@ -393,7 +395,7 @@ struct Decimal(uint size64)
     /++
     Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.    +/
-    T opCast(T, bool wordNormalized = true)() const
+    T opCast(T, bool wordNormalized = true)() scope const
         if (isFloatingPoint!T && isMutable!T)
     {
         return view.opCast!(T, wordNormalized);
@@ -455,7 +457,7 @@ unittest
     DecimalExponentKey key;
 
     assert(decimal.fromStringImpl("3.141592653589793378e-10", key));
-    decimal.to!double.should == 0x1.596bf8ce7631ep-32;
+    decimal.opCast!double.should == 0x1.596bf8ce7631ep-32;
     key.should == DecimalExponentKey.e;
 }
 

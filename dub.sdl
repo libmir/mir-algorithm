@@ -9,7 +9,6 @@ dependency "mir-core" version=">=1.1.106"
 
 // versions "TeslAlgoM"
 
-
 buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_bignum_test" "mir_bignum_test_llv"

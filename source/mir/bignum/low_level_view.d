@@ -78,6 +78,8 @@ struct BigUIntView(W)
     +/
     W[] coefficients;
 
+@safe:
+
     /++
     Retrurns: signed integer view using the same data payload
     +/
@@ -89,14 +91,14 @@ struct BigUIntView(W)
     /++
     Retrurns: signed integer view using the same data payload
     +/
-    BigIntView!W signed()(bool sign = false) @safe pure nothrow @nogc scope @property
+    BigIntView!W signed()(bool sign = false) @safe pure nothrow @nogc return @property
     {
         return typeof(return)(this, sign);
     }
 
     static if (W.sizeof >= size_t.sizeof)
     ///
-    T opCast(T)() const
+    T opCast(T)() const scope
         if (isFloatingPoint!T && isMutable!T)
     {
         import mir.bignum.internal.dec2float: binaryTo;
@@ -106,7 +108,7 @@ struct BigUIntView(W)
     static if (W.sizeof >= size_t.sizeof)
     ///
     @safe
-    T opCast(T : Fp!coefficientSize, uint coefficientSize)() const
+    T opCast(T : Fp!coefficientSize, uint coefficientSize)() const scope
     {
         static if (isMutable!W)
         {
@@ -159,21 +161,21 @@ struct BigUIntView(W)
 
     ///
     pure nothrow @nogc
-    BigUIntView!V opCast(T : BigUIntView!V, V)()
+    BigUIntView!V opCast(T : BigUIntView!V, V)() return scope
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(cast(V[])this.coefficients);
     }
 
     pure nothrow @nogc
-    BigUIntView!V opCast(T : BigUIntView!V, V)() const
+    BigUIntView!V opCast(T : BigUIntView!V, V)() const return scope
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(cast(V[])this.coefficients);
     }
 
     ///
-    BigUIntView!(const W) lightConst()()
+    BigUIntView!(const W) lightConst()() return scope
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(coefficients);
@@ -183,7 +185,7 @@ struct BigUIntView(W)
 
     /++
     +/
-    sizediff_t opCmp(BigUIntView!(const W) rhs)
+    sizediff_t opCmp(scope BigUIntView!(const W) rhs)
         const @safe pure nothrow @nogc scope
     {
         import mir.algorithm.iteration: cmp;
@@ -567,7 +569,7 @@ struct BigUIntView(W)
     Returns:
         true in case of unsigned overflow
     +/
-    bool opOpAssign(string op)(BigUIntView!(const W) rhs, bool overflow = false)
+    bool opOpAssign(string op)(scope BigUIntView!(const W) rhs, bool overflow = false)
     @safe pure nothrow @nogc scope
         if (op == "+" || op == "-")
     {
@@ -793,7 +795,7 @@ struct BigUIntView(W)
     /++
     Strips most significant zero coefficients.
     +/
-    BigUIntView normalized()
+    BigUIntView normalized() return scope
     {
         auto number = this;
         if (number.coefficients.length) do
@@ -807,7 +809,7 @@ struct BigUIntView(W)
     }
 
     ///ditto
-    BigUIntView!(const W) normalized() const
+    BigUIntView!(const W) normalized() const return scope
     {
         return lightConst.normalized;
     }
@@ -823,7 +825,7 @@ struct BigUIntView(W)
 
     /++
     +/
-    size_t ctlz()() const @property
+    size_t ctlz()() scope const @property
         @safe pure nothrow @nogc
     {
         import mir.bitop: ctlz;
@@ -846,7 +848,7 @@ struct BigUIntView(W)
 
     /++
     +/
-    size_t cttz()() const @property
+    size_t cttz()() scope const @property
         @safe pure nothrow @nogc
         in (coefficients.length)
     {
@@ -868,7 +870,7 @@ struct BigUIntView(W)
     }
 
     ///
-    BigIntView!W withSign()(bool sign)
+    BigIntView!W withSign()(bool sign) return scope
     {
         return typeof(return)(this, sign);
     }
@@ -1267,6 +1269,8 @@ struct BigIntView(W)
     +/
     bool sign;
 
+@safe:
+
     ///
     inout(W)[] coefficients() inout @property
     {
@@ -1412,7 +1416,7 @@ struct BigIntView(W)
     }
 
     ///
-    T opCast(T)() const
+    T opCast(T)() const scope
         if (isFloatingPoint!T && isMutable!T)
     {
         auto ret = this.unsigned.opCast!T;
@@ -1422,7 +1426,7 @@ struct BigIntView(W)
     }
 
     ///
-    T opCast(T, bool nonZero = false)() const
+    T opCast(T, bool nonZero = false)() const scope
         if (is(T == long) || is(T == int))
     {
         auto ret = this.unsigned.opCast!(Unsigned!T, nonZero);
@@ -1555,7 +1559,7 @@ struct BigIntView(W)
 
     /++
     +/
-    T opCast(T : Fp!coefficientSize, uint coefficientSize)() const
+    T opCast(T : Fp!coefficientSize, uint coefficientSize)() const scope
     {
         auto ret = unsigned.opCast!(Fp!coefficientSize);
         ret.sign = sign;
@@ -1563,21 +1567,21 @@ struct BigIntView(W)
     }
 
     ///
-    BigIntView!V opCast(T : BigIntView!V, V)()
+    BigIntView!V opCast(T : BigIntView!V, V)() return scope
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(this.unsigned.opCast!(BigUIntView!V), sign);
     }
 
     ///
-    BigIntView!V opCast(T : BigIntView!V, V)() const
+    BigIntView!V opCast(T : BigIntView!V, V)() const return scope
         if (V.sizeof <= W.sizeof)
     {
         return typeof(return)(this.unsigned.opCast!(BigUIntView!V), sign);
     }
 
     ///
-    BigIntView!(const W) lightConst()()
+    BigIntView!(const W) lightConst()() return scope
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(unsigned.lightConst, sign);
@@ -1783,7 +1787,7 @@ struct BigIntView(W)
     Strips most significant zero coefficients.
     Sets sign to zero if no coefficients were left.
     +/
-    BigIntView normalized()
+    BigIntView normalized() return scope
     {
         auto number = this;
         number.unsigned = number.unsigned.normalized;
@@ -1792,7 +1796,7 @@ struct BigIntView(W)
     }
 
     ///ditto
-    BigIntView!(const W) normalized() const
+    BigIntView!(const W) normalized() const return scope
     {
         return lightConst.normalized;
     }
@@ -1961,6 +1965,8 @@ struct DecimalView(W)
     ///
     BigUIntView!W coefficient;
 
+@safe:
+
     static if (is(W == size_t))
     /++
     Returns: false in case of overflow or incorrect string.
@@ -2038,7 +2044,7 @@ struct DecimalView(W)
     }
 
     ///
-    DecimalView!(const W) lightConst()()
+    DecimalView!(const W) lightConst()() return scope
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(sign, exponent, coefficient.lightConst);
@@ -2058,7 +2064,7 @@ struct DecimalView(W)
     Mir parsing supports up-to quadruple precision. The conversion error is 0 ULP for normal numbers. 
     Subnormal numbers with an exponent greater than or equal to -512 have upper error bound equal to 1 ULP.
     +/
-    T opCast(T, bool wordNormalized = false)() const
+    T opCast(T, bool wordNormalized = false)() const scope
         if (isFloatingPoint!T && isMutable!T)
     {
         import mir.bignum.internal.dec2float;
@@ -2402,8 +2408,10 @@ struct BinaryView(W)
     ///
     BigUIntView!W coefficient;
 
+@safe:
+
     ///
-    DecimalView!(const W) lightConst()()
+    DecimalView!(const W) lightConst()() return scope
         const @safe pure nothrow @nogc @property
     {
         return typeof(return)(sign, exponent, coefficient.lightConst);

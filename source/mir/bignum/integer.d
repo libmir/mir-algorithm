@@ -28,6 +28,8 @@ struct BigInt(uint size64)
     ///
     size_t[ulong.sizeof / size_t.sizeof * size64] data;// = void;
 
+@safe:
+
     ///
     this(uint size)(UInt!size fixedInt)
     {

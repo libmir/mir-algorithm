@@ -185,13 +185,13 @@ struct UInt(size_t size)
     import mir.bignum.low_level_view: BigUIntView;
 
     ///
-    BigUIntView!size_t view() @property pure nothrow @nogc scope @safe
+    BigUIntView!size_t view() @property pure nothrow @nogc scope return @safe
     {
         return BigUIntView!size_t(data);
     }
 
     ///
-    BigUIntView!(const size_t) view() const @property pure nothrow @nogc scope @safe
+    BigUIntView!(const size_t) view() const @property pure nothrow @nogc scope return @safe
     {
         return BigUIntView!(const size_t)(data);
     }
@@ -865,7 +865,7 @@ struct UInt(size_t size)
 
     /++
     +/
-    size_t ctlz() const @property
+    size_t ctlz() const scope @property
         @safe pure nothrow @nogc
     {
         return view.ctlz;

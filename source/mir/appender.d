@@ -360,7 +360,7 @@ unittest
     Algebraic!(int, string, double) x;
     x = 42;
     auto s = x.to!string;
-    assert(s == "42", s);
+    assert(s == "42");
     x = "abc";
     assert(x.to!string == "abc");
     x = 42.0;
