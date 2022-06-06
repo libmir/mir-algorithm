@@ -954,7 +954,7 @@ public:
     }
 
     /// ditto
-    auto lightScope()() return const scope @property
+    auto lightScope()() return scope const @property
     {
         auto ret = Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightConstOfLightScopeOf, Labels))
             (_structure, .lightScope(_iterator));
@@ -1203,7 +1203,7 @@ public:
     }
 
     /// ditto
-    auto field()() return const scope @trusted @property
+    auto field()() return scope const @trusted @property
     {
         return this.lightConst.field;
     }
@@ -2488,7 +2488,7 @@ public:
     See_also: $(LREF .Slice.idup)
     +/
     Slice!(Unqual!DeepElement*, N)
-    dup()() scope @property
+    dup()() scope @property @safe
     {
         if (__ctfe)
         {

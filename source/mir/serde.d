@@ -2322,7 +2322,7 @@ auto fastToUpper()(char a)
 }
 
 @safe pure nothrow @nogc
-char[] fastToUpperInPlace()(scope return char[] a)
+char[] fastToUpperInPlace()(return scope char[] a)
 {
     foreach(ref char e; a)
         e = e.fastToUpper;
