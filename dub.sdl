@@ -12,8 +12,8 @@ dependency "mir-core" version=">=1.1.106"
 buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_bignum_test" "mir_bignum_test_llv"
-    versions "mir_ndslice_test"
-    versions "mir_test"
+    // versions "mir_ndslice_test"
+    // versions "mir_test"
     dflags "-lowmem"
 }
 buildType "unittest-dip1008" {
@@ -28,7 +28,7 @@ buildType "unittest-dip1000" {
 }
 buildType "unittest-cov" {
     buildOptions "unittests" "coverage" "debugMode" "debugInfo"
-    versions "mir_bignum_test" "mir_ndslice_test" "mir_test"
+    versions "mir_bignum_test" "mir_bignum_test_llv" "mir_ndslice_test" "mir_test"
     dflags "-lowmem"
 }
 buildType "unittest-ci" {
@@ -58,6 +58,7 @@ configuration "dips" {
 
 configuration "ci-bignum-test" {
     versions "mir_bignum_test" "mir_bignum_test_llv"
+    dflags "-lowmem" "-preview=dip1000"
 }
 
 configuration "ci-core-test" {
