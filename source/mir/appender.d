@@ -11,7 +11,6 @@ import mir.conv: _mir_destroy = xdestroy;
 
 private extern(C) @system nothrow @nogc pure void* memcpy(scope void* s1, scope const void* s2, size_t n);
 
-
 /++
 The buffer uses stack memory and C Runtime to allocate temporal memory.
 
@@ -27,6 +26,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     private enum size_t _bufferLength =  bytes / T.sizeof + (bytes % T.sizeof != 0);
     private T[] _buffer;
     size_t _currentLength;
+    bool _heapAllocated;
 
     version (mir_secure_memory)
         private align(T.alignof) ubyte[_bufferLength * T.sizeof] _scopeBufferPayload;
@@ -39,42 +39,46 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
-    T[] prepare(size_t n) @trusted scope
+    T[] reserve(size_t n) @system return scope
     {
         import mir.internal.memory: realloc, malloc;
-        _currentLength += n;
-        if (_buffer.length == 0)
+        auto newLength = _currentLength + n;
+        if (newLength > _buffer.length)
         {
-            if (_currentLength <= _bufferLength)
+            if (!_heapAllocated)
             {
-                return _scopeBuffer[0 .. _currentLength];
+                    auto newLen = newLength << 1;
+                    if (auto p = malloc(T.sizeof * newLen))
+                    {
+                        _heapAllocated = true;
+                        _buffer = (cast(T*)p)[0 .. newLen];
+                    }
+                    else assert(0);
+                    version (mir_secure_memory)
+                    {
+                        (cast(ubyte[])_buffer)[] = 0;
+                    }
+                    memcpy(cast(void*)_buffer.ptr, _scopeBuffer.ptr, T.sizeof * (newLength - n));
             }
             else
             {
-                auto newLen = _currentLength << 1;
-                if (auto p = malloc(T.sizeof * newLen))
-                {
-                    _buffer = (cast(T*)p)[0 .. newLen];
-                }
-                else assert(0);
+                auto newLen = newLength << 1;
+                _buffer = (cast(T*)realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))[0 .. newLen];
                 version (mir_secure_memory)
                 {
-                    (cast(ubyte[])_buffer)[] = 0;
+                    (cast(ubyte[])_buffer[newLength .. $])[] = 0;
                 }
-                memcpy(cast(void*)_buffer.ptr, _scopeBuffer.ptr, T.sizeof * (_currentLength - n));
             }
         }
-        else
-        if (_currentLength > _buffer.length)
-        {
-            auto newLen = _currentLength << 1;
-            _buffer = (cast(T*)realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))[0 .. newLen];
-            version (mir_secure_memory)
-            {
-                (cast(ubyte[])_buffer[_currentLength .. $])[] = 0;
-            }
-        }
-        return _buffer[0 .. _currentLength];
+        return _buffer[_currentLength .. newLength];
+    }
+
+    ///
+    T[] prepare(size_t n) @trusted return scope
+    {
+        reserve(n);
+        _currentLength += n;
+        return data;
     }
 
     static if (isAssignable!(T, const T))
@@ -82,29 +86,38 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     else
         private alias R = T;
 
-    /// Copy constructor is enabled only if `T` is mutable type without eleborate assign.
     static if (isMutable!T && !hasElaborateAssign!T)
-    this(this)
     {
-        import mir.internal.memory: malloc;
-        if (_buffer.ptr)
+        pragma(msg, T, " has copy ");
+        /// Copy constructor is enabled only if `T` is mutable type without eleborate assign.
+        this(this)
         {
-            typeof(_buffer) buffer;
-            if (auto p = malloc(T.sizeof * _buffer.length))
+            import mir.internal.memory: malloc;
+            if (_heapAllocated)
             {
-                buffer = (cast(T*)p)[0 .. T.sizeof * _buffer.length];
+                typeof(_buffer) buffer;
+                if (auto p = malloc(T.sizeof * _buffer.length))
+                {
+                    buffer = (cast(T*)p)[0 .. T.sizeof * _buffer.length];
+                }
+                else assert(0);
+                version (mir_secure_memory)
+                {
+                    (cast(ubyte[])buffer)[] = 0;
+                }
+                buffer[0 .. _currentLength] = _buffer[0 .. _currentLength];
+                _buffer = buffer;
             }
-            else assert(0);
-            version (mir_secure_memory)
-            {
-                (cast(ubyte[])buffer)[] = 0;
-            }
-            buffer[0 .. _currentLength] = _buffer[0 .. _currentLength];
-            _buffer = buffer;
         }
     }
     else
-    @disable this(this);
+    {
+        pragma(msg, T);
+        pragma(msg, T);
+        pragma(msg, T);
+        pragma(msg, T);
+        @disable this(this);
+    }
 
     ///
     ~this()
@@ -113,7 +126,8 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         data._mir_destroy;
         version(mir_secure_memory)
             _currentLength = 0;
-        (() @trusted { if (_buffer.ptr) free(cast(void*)_buffer.ptr); })();
+        if (!__ctfe)
+            (() @trusted { if (_heapAllocated) free(cast(void*)_buffer.ptr); })();
     }
 
     ///
@@ -210,14 +224,15 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     ///
     void initialize() @system scope nothrow @nogc
     {
+        _heapAllocated = false;
         _currentLength = 0;
-        _buffer = null;
+        _buffer = cast(T[]) _scopeBufferPayload;
     }
 
     ///
-    inout(T)[] data() inout @property @trusted scope return
+    inout(T)[] data() inout @property @trusted return scope
     {
-        return _buffer.length ? _buffer[0 .. _currentLength] : _scopeBuffer[0 .. _currentLength];
+        return _buffer[0 .. _currentLength];
     }
 
     /++

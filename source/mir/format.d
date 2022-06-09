@@ -334,6 +334,13 @@ struct HexAddress(T)
     }
 }
 
+///ditto
+HexAddress!T hexAddress(T)(const T value, SwitchLU switchLU = SwitchLU.upper)
+    if (isUnsigned!T && !is(T == enum))
+{
+    return typeof(return)(value, switchLU);
+}
+
 /++
 Escaped string formats
 +/
@@ -640,23 +647,35 @@ version (mir_test) unittest
 
 /// Prints array
 pragma(inline, false)
-ref W print(C = char, W, T)(scope return ref W w, scope const(T)[] c)
+ref W printArray(C = char, W, T)(scope return ref W w,
+    scope const(T)[] c,
+    scope const(C)[] lb = "[",
+    scope const(C)[] rb = "]",
+    scope const(C)[] sep = ", ",
+)
     if (isSomeChar!C && !isSomeChar!T)
 {
-    enum C left = '[';
-    enum C right = ']';
-    enum C[2] sep = ", ";
-    w.put(left);
+    w.put(lb);
     bool first = true;
     foreach (ref e; c)
     {
         if (!first)
-            w.printStaticString!C(sep);
+            w.put(sep);
         first = false;
         printElement!C(w, e);
     }
-    w.put(right);
+    w.put(rb);
     return w;
+}
+
+/// ditto
+pragma(inline, false)
+ref W print(C = char, W, T)(scope return ref W w,
+    scope const(T)[] c,
+)
+    if (isSomeChar!C && !isSomeChar!T)
+{
+    return printArray(w, c);
 }
 
 ///
@@ -667,6 +686,39 @@ version (mir_test) unittest
     auto w = scopedBuffer!char;
     string[2] array = ["a\na", "b"];
     assert(w.print(array[]).data == `["a\na", "b"]`);
+}
+
+/// Prints array as hex values
+pragma(inline, false)
+ref W printHexArray(C = char, W, T)(scope return ref W w,
+    scope const(T)[] c,
+    scope const(C)[] lb = "",
+    scope const(C)[] rb = "",
+    scope const(C)[] sep = " ",
+)
+    if (isSomeChar!C && !isSomeChar!T && isUnsigned!T)
+{
+    w.put(lb);
+    bool first = true;
+    foreach (ref e; c)
+    {
+        if (!first)
+            w.put(sep);
+        first = false;
+        printElement!C(w, e.hexAddress);
+    }
+    w.put(rb);
+    return w;
+}
+
+///
+@safe pure nothrow @nogc
+version (mir_test) unittest
+{
+    import mir.appender: scopedBuffer;
+    auto w = scopedBuffer!char;
+    ubyte[2] array = [0x34, 0x32];
+    assert(w.print(array[]).data == `34 32`);
 }
 
 /// Prints escaped character in the form `'c'`.
