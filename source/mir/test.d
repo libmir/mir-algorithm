@@ -65,7 +65,8 @@ struct Should(T)
     ///
     T value;
 
-    ///
+    static if(!is(immutable T == immutable ubyte[]))
+        ///
     void opEquals(R)(const R expected, string file = __FILE__, int line = __LINE__)
     {
         import mir.format: stringBuf, getData;
@@ -77,12 +78,29 @@ struct Should(T)
         if (value == expected)
             return;
         auto buf = stringBuf;
-        assumeAllAttrAndCall({
-            throw new MirError(buf
-                << "expected " << expected
-                << ", got " << value
-                << getData, file, line);
-        });
+        buf << "mir.test.should:\n";
+            buf << "expected " << expected << "\n"
+                << "     got " << value;
+        assumeAllAttrAndCall({ throw new MirError(buf << getData, file, line); });
+    }
+    else
+    /// ditto
+    void opEquals(scope const ubyte[] expected, string file = __FILE__, int line = __LINE__)
+        @safe pure nothrow @nogc
+    {
+        import mir.format: stringBuf, getData;
+        if (value == expected)
+            return;
+        auto buf = stringBuf;
+        import mir.format: printHexArray;
+        import mir.ndslice.topology: map;
+        buf << "mir.test.should:\n";
+        buf << "expected ";
+        buf.printHexArray(expected);
+        buf << "\n";
+        buf << "     got ";
+        buf.printHexArray(   value);
+        assumeAllAttrAndCall({ throw new MirError(buf << getData, file, line); });
     }
 }
 
@@ -98,6 +116,9 @@ unittest
 {
     1.0.should == 1;
     should(1) == 1;
+
+    ubyte[] val = [0, 2, 3];
+    val.should = [0, 2, 3];
 }
 
 ///
