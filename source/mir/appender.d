@@ -88,7 +88,6 @@ struct ScopedBuffer(T, size_t bytes = 4096)
 
     static if (isMutable!T && !hasElaborateAssign!T)
     {
-        pragma(msg, T, " has copy ");
         /// Copy constructor is enabled only if `T` is mutable type without eleborate assign.
         this(this)
         {
@@ -112,10 +111,6 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
     else
     {
-        pragma(msg, T);
-        pragma(msg, T);
-        pragma(msg, T);
-        pragma(msg, T);
         @disable this(this);
     }
 

@@ -284,7 +284,6 @@ private template bigSize(T)
     {
         enum size_t bits = T.max_exp - T.min_exp + T.mant_dig;
         enum size_t bigSize = bits / 64 + bits % 64 + 1;
-        pragma(msg, "bigSize = ", bigSize);
     }
 }
 
