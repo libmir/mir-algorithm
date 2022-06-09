@@ -118,7 +118,7 @@ unittest
     should(1) == 1;
 
     ubyte[] val = [0, 2, 3];
-    val.should = [0, 2, 3];
+    val.should == [0, 2, 3];
 }
 
 ///
