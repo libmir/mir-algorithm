@@ -715,10 +715,11 @@ ref W printHexArray(C = char, W, T)(scope return ref W w,
 @safe pure nothrow @nogc
 version (mir_test) unittest
 {
+    import mir.test;
     import mir.appender: scopedBuffer;
     auto w = scopedBuffer!char;
     ubyte[2] array = [0x34, 0x32];
-    assert(w.print(array[]).data == `34 32`);
+    w.printHexArray(array[]).data.should == `34 32`;
 }
 
 /// Prints escaped character in the form `'c'`.

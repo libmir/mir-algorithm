@@ -13,7 +13,7 @@ buildType "unittest" {
     buildOptions "unittests" "debugMode" "debugInfo"
     versions "mir_bignum_test" "mir_bignum_test_llv"
     // versions "mir_ndslice_test"
-    // versions "mir_test"
+    versions "mir_test"
     dflags "-lowmem"
 }
 buildType "unittest-dip1008" {
