@@ -30,7 +30,7 @@ Params:
     U = an unsigned type that can hold an index of keys. `U.max` must be less then the maximum possible number of struct members.
 +/
 struct StringMap(T, U = uint)
-    if (isMutable!T && !is(typeof(T.opPostMove)) && __traits(isUnsigned, U))
+    if (!is(typeof(T.opPostMove)) && __traits(isUnsigned, U))
 {
     import mir.utility: _expect;
     import core.lifetime: move;
@@ -632,7 +632,7 @@ struct StringMap(T, U = uint)
                     assert (index < length);
                     index = implementation._indices[index];
                     assert (index < length);
-                    implementation._values[index] = move(value);
+                    move(cast()value, cast()(implementation._values[index]));
                     return implementation._values[index];
                 }
                 assert (index <= length);
@@ -643,7 +643,7 @@ struct StringMap(T, U = uint)
             }
         }
         assert (index <= length);
-        implementation.insertAt(key, move(value), index);
+        implementation.insertAt(key, move(cast()value), index);
         index = implementation._indices[index];
         return implementation._values[index];
     }
@@ -843,7 +843,7 @@ struct StringMap(T, U = uint)
             }
             {
                 auto a = values;
-                a ~= move(value);
+                a ~= move(cast()value);
                 _values = a.ptr;
             }
             {
@@ -1019,7 +1019,33 @@ struct StringMap(T, U = uint)
 
 version(mir_test)
 ///
-unittest
+@safe unittest
+{
+    class C
+    {
+        this(int x) { this.x = x; }
+        int x;
+        bool opEquals(scope const C rhs) const scope @safe pure nothrow @nogc
+        {
+            return x == rhs.x;
+        }
+    }
+    StringMap!(const C) table;
+    const v0 = new C(42);
+    const v1 = new C(43);
+    table["0"] = v0;
+    table["1"] = v1;
+    assert(table.keys == ["0", "1"]);
+    static if (__VERSION__ > 2098) // See https://github.com/libmir/mir-algorithm/runs/6809888795?check_suite_focus=true#step:5:17
+    {
+        assert(table.values == [v0, v1]); // TODO: qualify unittest as `pure` when this is inferred `pure`
+    }
+    static assert(is(typeof(table.values) == const(C)[]));
+}
+
+version(mir_test)
+///
+@safe pure unittest
 {
     StringMap!int table;
     table["L"] = 3;
@@ -1054,7 +1080,7 @@ unittest
 
 version(mir_test)
 ///
-@safe unittest
+@safe pure unittest
 {
     static void testEquals(X, Y)()
     {
@@ -1089,7 +1115,7 @@ version(mir_test)
 }
 
 version(mir_test)
-@safe unittest
+@safe pure unittest
 {
     import mir.algebraic_alias.json: JsonAlgebraic;
     import mir.string_map: StringMap;
