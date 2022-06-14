@@ -89,6 +89,7 @@ SmallDecimalParsingResult parseJsonNumberImpl()(scope const(char)[] str)
     return result;
 }
 
+version(mir_test)
 unittest
 {
     import mir.test;
@@ -99,6 +100,19 @@ unittest
     res.coefficient.should == 1234567890;
 }
 
+version(mir_test)
+unittest
+{
+    import mir.test;
+    auto res = "-12345.67890e-10".parseJsonNumberImpl;
+    res.key.should == DecimalExponentKey.e;
+    res.sign.should == true;
+    res.exponent.should == -15;
+    res.coefficient.should == 1234567890;
+}
+
+
+version(mir_test)
 unittest
 {
     import mir.test;
@@ -156,6 +170,7 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
             }
         }
 
+        W multiplier = 10;
         W d = str[0] - C('0');
         str = str[1 .. $];
 
@@ -205,8 +220,26 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
 
         if (d < 10)
         {
+            multiplier = 10;
+            static if (is(C == char) && is(W == ulong))
+            if (!__ctfe)
+            if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
+            {
+                multiplier = 1000000000UL;
+                d *= 100000000;
+                d += parseEightDigits(str[0 .. 8]);
+                str = str[8 .. $];
+                if (str.length >= 8 && isMadeOfEightDigits(str[0 .. 8]))
+                {
+                    multiplier = 1000000000UL * 100000000;
+                    d *= 100000000;
+                    d += parseEightDigits(str[0 .. 8]);
+                    str = str[8 .. $];
+                }
+            }
+
     F0:
-            if (_expect(mullAdd(10u, cast(uint)d), false))
+            if (_expect(mullAdd(multiplier, d), false))
                 return false;
             goto S;
         }
@@ -239,7 +272,7 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
             }
 
         IF:
-            W multiplier = 10;
+            multiplier = 10;
             static if (is(C == char) && is(W == ulong))
             if (!__ctfe)
             {
@@ -305,8 +338,6 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
         FIL:
             if (_expect(mullAdd(multiplier, d), false))
                 return false;
-            import mir.stdio;
-            // debug dump("str = ", str);
             if (str.length == 0)
                 return true;
             d = str[0] - C('0');
@@ -348,13 +379,9 @@ template decimalFromStringImpl(alias mullAdd, W = size_t)
                 long exponentPlus;
                 if (parse(str, exponentPlus) && str.length == 0)
                 {
-                    import mir.stdio;
-                    // debug dump("exponentPlus ", exponentPlus);
-                    // debug dump("exponent ", exponent);
                     import mir.checkedint: adds;
                     bool overflow;
                     exponent = exponent.adds(exponentPlus, overflow);
-                    // debug dump("overflow ", overflow);
                     return !overflow;
                 }
             }
