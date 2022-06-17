@@ -4095,6 +4095,64 @@ version(mir_test)
     assert(equal!equal(rc, [ [3, 100], [], [400, 102] ]));
 }
 
+/// Filter out NaNs
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.algorithm.iteration: equal, filter;
+    import mir.ndslice.slice: sliced;
+    import std.math.traits: isNaN;
+   
+    static immutable result1 = [1.0, 2];
+   
+    double x;
+    auto y = [1.0, 2, x].sliced;
+    auto z = y.filter!(a => !isNaN(a));
+    assert(z.equal(result1));
+}
+
+/// Filter out NaNs by row and by column
+version(mir_test)
+@safe pure
+unittest {
+    import mir.algorithm.iteration: equal, filter;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: byDim, map;
+    import std.math.traits: isNaN;
+   
+    static immutable result1 = [[1.0, 2], [3.0, 4, 5]];
+    static immutable result2 = [[1.0, 3], [2.0, 4], [5.0]];
+   
+    double x;
+    auto y = [[1.0, 2, x], [3.0, 4, 5]].fuse;
+
+    auto z1 = y.byDim!0.map!(filter!(a => !isNaN(a)));
+    assert(z1.equal!equal(result1));
+    auto z2 = y.byDim!1.map!(filter!(a => !isNaN(a)));
+    assert(z2.equal!equal(result2));
+}
+
+/// Filter entire rows/columns that have NaNs
+version(mir_test)
+@safe pure
+unittest {
+    import mir.algorithm.iteration: equal, filter;
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: byDim, map;
+    import std.math.traits: isNaN;
+   
+    static immutable result1 = [[3.0, 4, 5]];
+    static immutable result2 = [[1.0, 3], [2.0, 4]];
+   
+    double x;
+    auto y = [[1.0, 2, x], [3.0, 4, 5]].fuse;
+
+    auto z1 = y.byDim!0.filter!(a => a.all!(b => !isNaN(b)));
+    assert(z1.equal!equal(result1));
+    auto z2 = y.byDim!1.filter!(a => a.all!(b => !isNaN(b)));
+    assert(z2.equal!equal(result2));
+}
+
 /++
 Implements the higher order filter and map function. The predicate and map functions are passed to
 `mir.functional.naryFun`, and can either accept a string, or any callable
