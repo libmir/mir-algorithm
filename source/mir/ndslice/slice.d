@@ -1622,7 +1622,7 @@ public:
     }
 
     ///ditto
-    void popFront(size_t dimension = 0)() @trusted
+    void popFront(size_t dimension = 0)() @trusted scope
         if (dimension < N && (dimension == 0 || kind != Contiguous))
     {
         assert(_lengths[dimension], __FUNCTION__ ~ ": length!" ~ dimension.stringof ~ " should be greater than 0.");
@@ -2488,7 +2488,7 @@ public:
     See_also: $(LREF .Slice.idup)
     +/
     Slice!(Unqual!DeepElement*, N)
-    dup()() scope @property @safe
+    dup()() scope @property @trusted
     {
         if (__ctfe)
         {
