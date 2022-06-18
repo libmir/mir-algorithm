@@ -70,7 +70,7 @@ version(mir_test)
 /++
 Constructs barycentric lagrange interpolant.
 +/
-Lagrange!(T, maxDerivative) lagrange(uint maxDerivative = 0, T, X)(scope const X[] x, scope const T[] y)
+Lagrange!(T, maxDerivative) lagrange(uint maxDerivative = 0, T, X)(scope const X[] x, scope const T[] y) @trusted
     if (maxDerivative < 16)
 {
     import mir.ndslice.allocation: rcslice;

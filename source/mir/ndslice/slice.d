@@ -2375,7 +2375,7 @@ public:
     Note:
         Does not allocate neither new slice nor a closure.
     +/
-    auto opUnary(string op)() return scope
+    auto opUnary(string op)()
         if (op == "*" || op == "~" || op == "-" || op == "+")
     {
         import mir.ndslice.topology: map;

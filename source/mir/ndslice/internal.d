@@ -359,18 +359,18 @@ package(mir) template strideOf(args...)
     }
 }
 
-package(mir) template frontOf(args...)
+package(mir) template frontOf(size_t n)
 {
-    static if (args.length == 0)
-        enum frontOf = args;
-    else
-    {
-        @optmath @property auto ref frontOfMod()()
+    enum frontOf = () {
+        string ret;
+        static foreach (i; 0 .. n)
         {
-            return args[0].front;
+            if (i)
+                ret ~= `, `;
+            ret ~= "slices[" ~ i.stringof ~ `].front`;
         }
-        alias frontOf = AliasSeq!(frontOfMod, frontOf!(args[1..$]));
-    }
+        return ret;
+    } ();
 }
 
 package(mir) template frontOf2(args...)

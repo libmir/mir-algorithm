@@ -286,7 +286,7 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// Shape of the concatenation.
-    size_t[N] shape()() const @property
+    size_t[N] shape()() scope const @property
     {
         typeof(return) ret;
         foreach(i; Iota!N)
@@ -295,7 +295,7 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// Multidimensional input range primitives
-    bool empty(size_t d = 0)() const @property
+    bool empty(size_t d = 0)() scope const @property
     {
         static if (d == dim)
         {
@@ -311,7 +311,7 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// ditto
-    void popFront(size_t d = 0)()
+    void popFront(size_t d = 0)() scope
     {
         static if (d == dim)
         {

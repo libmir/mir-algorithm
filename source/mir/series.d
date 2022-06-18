@@ -2188,17 +2188,44 @@ Merges multiple (time) series into one.
 Makes exactly one memory allocation for two series union
 and two memory allocation for three and more series union.
 
-Params:
-    seriesTuple = variadic static array of composed of series, each series must be sorted.
 Returns: sorted GC-allocated series.
 See_also $(LREF Series.opBinary) $(LREF makeUnionSeries)
 */
-auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
-    if (C > 1)
+auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind)(
+    Series!(IndexIterator, Iterator, N, kind) a,
+    Series!(IndexIterator, Iterator, N, kind) b,
+    ) @safe
 {
     import core.lifetime: move;
-    return unionSeriesImplPrivate!false(move(seriesTuple));
+    Series!(IndexIterator, Iterator, N, kind)[2] ar = [move(a), move(b)];
+    return unionSeriesImplPrivate!false(move(ar));
 }
+
+/// ditto
+auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind)(
+    Series!(IndexIterator, Iterator, N, kind) a,
+    Series!(IndexIterator, Iterator, N, kind) b,
+    Series!(IndexIterator, Iterator, N, kind) c,
+    ) @safe
+{
+    import core.lifetime: move;
+    Series!(IndexIterator, Iterator, N, kind)[3] ar = [move(a), move(b), move(c)];
+    return unionSeriesImplPrivate!false(move(ar));
+}
+
+/// ditto
+auto unionSeries(IndexIterator, Iterator, size_t N, SliceKind kind)(
+    Series!(IndexIterator, Iterator, N, kind) a,
+    Series!(IndexIterator, Iterator, N, kind) b,
+    Series!(IndexIterator, Iterator, N, kind) c,
+    Series!(IndexIterator, Iterator, N, kind) d,
+    ) @safe
+{
+    import core.lifetime: move;
+    Series!(IndexIterator, Iterator, N, kind)[4] ar = [move(a), move(b), move(c), move(d)];
+    return unionSeriesImplPrivate!false(move(ar));
+}
+
 
 ///
 @safe pure nothrow version(mir_test) unittest
@@ -2322,15 +2349,42 @@ auto makeUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C
 /**
 Merges multiple (time) series into one.
 
-Params:
-    seriesTuple = variadic static array of composed of series.
 Returns: sorted manually allocated series.
 See_also $(LREF unionSeries)
 */
-auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind, size_t C)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple...)
-    if (C > 1)
+auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind)(
+    Series!(IndexIterator, Iterator, N, kind) a,
+    Series!(IndexIterator, Iterator, N, kind) b,
+    ) @safe
 {
-    return unionSeriesImplPrivate!true(seriesTuple);
+    import core.lifetime: move;
+    Series!(IndexIterator, Iterator, N, kind)[2] ar = [move(a), move(b)];
+    return unionSeriesImplPrivate!true(move(ar));
+}
+
+///ditto
+auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind)(
+    Series!(IndexIterator, Iterator, N, kind) a,
+    Series!(IndexIterator, Iterator, N, kind) b,
+    Series!(IndexIterator, Iterator, N, kind) c,
+    ) @safe
+{
+    import core.lifetime: move;
+    Series!(IndexIterator, Iterator, N, kind)[3] ar = [move(a), move(b), move(c)];
+    return unionSeriesImplPrivate!true(move(ar));
+}
+
+///ditto
+auto rcUnionSeries(IndexIterator, Iterator, size_t N, SliceKind kind)(
+    Series!(IndexIterator, Iterator, N, kind) a,
+    Series!(IndexIterator, Iterator, N, kind) b,
+    Series!(IndexIterator, Iterator, N, kind) c,
+    Series!(IndexIterator, Iterator, N, kind) d,
+    ) @safe
+{
+    import core.lifetime: move;
+    Series!(IndexIterator, Iterator, N, kind)[4] ar = [move(a), move(b), move(c), move(d)];
+    return unionSeriesImplPrivate!true(move(ar));
 }
 
 ///
@@ -2374,9 +2428,9 @@ Params:
 pragma(inline, false)
 auto unionSeriesImpl(I, E,
     IndexIterator, Iterator, size_t N, SliceKind kind, UI, UE)(
-    Series!(IndexIterator, Iterator, N, kind)[] seriesTuple,
+    scope Series!(IndexIterator, Iterator, N, kind)[] seriesTuple,
     Series!(UI*, UE*, N) uninitSeries,
-    )
+    ) @trusted
 {
     import mir.conv: emplaceRef;
     import mir.algorithm.setops: multiwayUnion;
@@ -2403,7 +2457,7 @@ auto unionSeriesImpl(I, E,
     }
 }
 
-private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator)
+private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator) @safe
     if (C > 1 && Allocator.length <= 1)
 {
     import mir.algorithm.setops: unionLength;

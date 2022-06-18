@@ -703,9 +703,9 @@ S reduceImpl(alias fun, S, Slices...)(S seed, Slices slices)
     do
     {
         static if (DimensionCount!(Slices[0]) == 1)
-            seed = fun(seed, frontOf!slices);
+            mixin(`seed = fun(seed,` ~ frontOf!(Slices.length) ~ `);`);
         else
-            seed = .reduceImpl!fun(seed, frontOf!slices);
+            mixin(`seed = .reduceImpl!fun(seed,` ~ frontOf!(Slices.length) ~ `);`);
         foreach_reverse(ref slice; slices)
             slice.popFront;
     }
@@ -960,7 +960,7 @@ void eachImpl(alias fun, Slices...)(Slices slices)
     do
     {
         static if (DimensionCount!(Slices[0]) == 1)
-            fun(frontOf!slices);
+            mixin(`fun(`~ frontOf!(Slices.length) ~ `);`);
         else
             .eachImpl!fun(frontOf2!slices);
         foreach_reverse(i; Iota!(Slices.length))
@@ -988,7 +988,7 @@ void chequerEachImpl(alias fun, Slices...)(Chequer color, Slices slices)
     {
         do
         {
-            .chequerEachImpl!fun(color, frontOf!slices);
+            mixin(`.chequerEachImpl!fun(color,` ~ frontOf!(Slices.length) ~ `);`);
             color = cast(Chequer)!color;
             foreach_reverse(i; Iota!(Slices.length))
                 slices[i].popFront;
@@ -1029,7 +1029,7 @@ template eachOnBorder(alias fun)
             alias N = DimensionCount!(Slices[0]);
             static if (N == 1)
             {
-                fun(frontOf!slices);
+                mixin(`fun(`~ frontOf!(Slices.length) ~ `);`);
                 if (slices[0].length > 1)
                     fun(backOf!slices);
             }
@@ -1874,7 +1874,7 @@ bool findImpl(alias fun, size_t N, Slices...)(scope ref size_t[N] backwardIndex,
         {
             static if (DimensionCount!(Slices[0]) == 1)
             {
-                if (fun(frontOf!slices))
+                if (mixin(`fun(`~ frontOf!(Slices.length) ~ `)`))
                 {
                     backwardIndex[0] = slices[0].length;
                     return true;
@@ -1882,7 +1882,7 @@ bool findImpl(alias fun, size_t N, Slices...)(scope ref size_t[N] backwardIndex,
             }
             else
             {
-                if (findImpl!fun(backwardIndex[1 .. $], frontOf!slices))
+                if (mixin(`findImpl!fun(backwardIndex[1 .. $],` ~ frontOf!(Slices.length) ~ `)`))
                 {
                     backwardIndex[0] = slices[0].length;
                     return true;
@@ -2018,7 +2018,7 @@ template find(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) find(Slices...)(auto ref Slices slices)
+    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) find(Slices...)(Slices slices)
         if (Slices.length && allSatisfy!(hasShape, Slices))
     {
         static if (Slices.length > 1)
@@ -2125,9 +2125,10 @@ version(mir_test) unittest
     assert(bi == [1, 1]);
     assert(sl.backward(bi) == 5);
 
+    import mir.test;
     // sl was changed
-    assert(sl == [[8, 8, 8],
-                  [8, 8, 5]]);
+    sl.should == [[8, 8, 8],
+                  [8, 8, 5]];
 }
 
 @safe pure nothrow
@@ -2160,7 +2161,7 @@ size_t anyImpl(alias fun, Slices...)(Slices slices)
         {
             static if (DimensionCount!(Slices[0]) == 1)
             {
-                if (fun(frontOf!slices))
+                if (mixin(`fun(`~ frontOf!(Slices.length) ~ `)`))
                     return true;
             }
             else
@@ -2320,7 +2321,7 @@ size_t allImpl(alias fun, Slices...)(Slices slices)
         {
             static if (DimensionCount!(Slices[0]) == 1)
             {
-                if (!fun(frontOf!slices))
+                if (!mixin(`fun(`~ frontOf!(Slices.length) ~ `)`))
                     return false;
             }
             else
@@ -2634,7 +2635,7 @@ template equal(alias pred = "a == b")
                     }
                     if (empty)
                         return true;
-                    if (!pred(frontOf!slices))
+                    if (!mixin(`pred(`~ frontOf!(Slices.length) ~ `)`))
                         goto False;
                     foreach (ref slice; slices)
                         slice.popFront;
@@ -2848,7 +2849,7 @@ size_t countImpl(alias fun, Slices...)(Slices slices)
     {
         static if (DimensionCount!(Slices[0]) == 1)
         {
-            if(fun(frontOf!slices))
+            if(mixin(`fun(`~ frontOf!(Slices.length) ~ `)`))
                 ret++;
         }
         else

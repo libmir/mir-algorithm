@@ -111,7 +111,7 @@ struct File
     /++
     Throws: $(LREF FileException)
     +/
-    void rawWrite(scope const(void)[] data)
+    void rawWrite(scope const(void)[] data) scope
         in (__ctfe || fp !is null)
     {
         if (__ctfe)
@@ -124,7 +124,7 @@ struct File
     /++
     Throws: $(LREF FileException)
     +/
-    void flush()
+    void flush() scope
         in (__ctfe || fp !is null)
     {
         if (__ctfe)
@@ -151,7 +151,7 @@ struct AssumeNothrowFile
     /++
     Throws: $(LREF FileError)
     +/
-    void rawWrite(scope const(void)[] data)
+    void rawWrite(scope const(void)[] data) scope
         in (__ctfe || fp !is null)
     {
         if (__ctfe)
@@ -164,7 +164,7 @@ struct AssumeNothrowFile
     /++
     Throws: $(LREF FileError)
     +/
-    void flush()
+    void flush() scope
         in (__ctfe || fp !is null)
     {
         if (__ctfe)
@@ -179,7 +179,7 @@ struct AssumeNothrowFile
 mixin template FileMembers()
 {
     ///
-    void put(C)(const C data)
+    void put(C)(const C data) scope
         if (is(C == char) || is(C == wchar) | is(C == dchar))
     {
         C[1] array = [data];
@@ -187,7 +187,7 @@ mixin template FileMembers()
     }
 
     ///
-    void put(C)(scope const(C)[] data)
+    void put(C)(scope const(C)[] data) scope
         if (is(C == char) || is(C == wchar) | is(C == dchar))
     {
         this.rawWrite(data);
@@ -218,7 +218,7 @@ mixin template FileMembers()
     }
 
     /// Writes values in a text form
-    void writeln(string separator = "", Args...)(auto ref const Args args)
+    void writeln(string separator = "", Args...)(auto ref const Args args) scope
         if (Args.length > 0)
     {
         write(args);
@@ -226,7 +226,7 @@ mixin template FileMembers()
     }
 
     /// ditto
-    void write(string separator = "", Args...)(auto ref const Args args)
+    void write(string separator = "", Args...)(auto ref const Args args) scope
         if (Args.length > 0)
     {
         pragma(inline, false);
