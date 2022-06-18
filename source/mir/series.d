@@ -1316,20 +1316,15 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     {
         import mir.format: print;
         auto ls = lightScope;
-        print(w, "{ index: ", ls.index, ", data: ", ls.data, " }");
+        print(w, "{ index: ");
+        print(w, ls.index);
+        print(w, ", data: ");
+        print(w, ls.data);
+        print(w, " }");
     }
 
-    version(mir_test)
-    ///
-    unittest
-    {
-        import mir.series: series, sort;
-        auto s = ["b", "a"].series([9, 8]).sort;
-
-        import mir.format : text;
-        assert(s.text == `{ index: [a, b], data: [8, 9] }`);
-    }
 }
+
 
 /// ditto
 alias Series = mir_series;
@@ -1439,6 +1434,17 @@ alias Series = mir_series;
     {
 
     }
+}
+
+ version(mir_test)
+///
+@safe unittest
+{
+    import mir.series: series, sort;
+    auto s = ["b", "a"].series([9, 8]).sort;
+
+    import mir.format : text;
+    assert(s.text == `{ index: [a, b], data: [8, 9] }`);
 }
 
 /++

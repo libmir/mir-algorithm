@@ -994,7 +994,7 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
 /// ditto
 // FUTURE: remove it
 pragma(inline, false)
-ref W print(C = char, W, T)(scope return ref W w, scope const T c)
+ref W print(C = char, W, T)(scope return ref W w, const T c)
     if (isSomeChar!C && is(T == struct) || is(T == union))
 {
     return print!(C, W, T)(w, c);
