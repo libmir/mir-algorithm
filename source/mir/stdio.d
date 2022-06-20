@@ -317,6 +317,7 @@ private static immutable flushException = new FileException("Error on file flush
 private static immutable writeError = new FileError("Error on file write");
 private static immutable flushError = new FileError("Error on file flush");
 
+version(mir_test)
 @safe unittest
 {
     static struct ParameterSpec
