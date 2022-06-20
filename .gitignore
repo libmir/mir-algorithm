@@ -41,3 +41,4 @@ mir-algorithm-test-secure
 bigint_benchmark/bigint_benchmark
 bigint_benchmark/temp.d
 mir-algorithm-test-silly
+mir-algorithm-test-ci-bignum-test

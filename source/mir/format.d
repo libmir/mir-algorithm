@@ -902,7 +902,7 @@ unittest
 
 /// Prints structs and unions
 pragma(inline, false)
-ref W print(C = char, W, T)(scope return ref W w, ref const T c)
+ref W print(C = char, W, T)(scope return ref W w, ref scope const T c)
     if (isSomeChar!C && is(T == struct) || is(T == union) && !is(T : NumericSpec))
 {
     static if (__traits(hasMember, T, "toString"))
@@ -945,7 +945,8 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
             static if (is(typeof(w.put((*cast(T*)&c).toString))))
                 w.put((*cast(T*)&c).toString);
             else
-                static assert(0, T.stringof ~ ".toString definition is wrong: 'const' qualifier may be missing.");
+                c.toString(w);
+                // static assert(0, T.stringof ~ ".toString definition is wrong: 'const' qualifier may be missing.");
         }
 
         return w;
@@ -994,7 +995,7 @@ ref W print(C = char, W, T)(scope return ref W w, ref const T c)
 /// ditto
 // FUTURE: remove it
 pragma(inline, false)
-ref W print(C = char, W, T)(scope return ref W w, const T c)
+ref W print(C = char, W, T)(scope return ref W w, scope const T c)
     if (isSomeChar!C && is(T == struct) || is(T == union))
 {
     return print!(C, W, T)(w, c);
