@@ -13,6 +13,7 @@ module mir.serde;
 
 import mir.functional: naryFun;
 import mir.reflection;
+import std.meta: AliasSeq;
 import std.traits: TemplateArgsOf, EnumMembers, hasUDA, isAggregateType;
 
 version (D_Exceptions)
@@ -652,6 +653,13 @@ version(mir_test) unittest
 /++
 +/
 alias serdeGetProxy(alias symbol) = TemplateArgsOf!(getUDA!(symbol, serdeProxy))[0];
+
+/// Can be applied to @serdeProxy types to make (de)serialization use
+/// underlying type through casting. Useful for enums.
+enum serdeProxyCast;
+
+/// Equivalent to @serdeProxy!T @serdeProxyCast
+alias serdeEnumProxy(T) = AliasSeq!(serdeProxy!T, serdeProxyCast);
 
 /++
 Attributes to conditional ignore field during serialization.
