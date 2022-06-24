@@ -2316,6 +2316,44 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
     }
 }
 
+// copied from std.meta
+private template isSame(alias a, alias b)
+{
+    static if (!is(typeof(&a && &b)) // at least one is an rvalue
+            && __traits(compiles, { enum isSame = a == b; })) // c-t comparable
+    {
+        enum isSame = a == b;
+    }
+    else
+    {
+        enum isSame = __traits(isSame, a, b);
+    }
+}
+// copied from std.meta
+private template isSame(A, B)
+{
+    enum isSame = is(A == B);
+}
+
+/++
+works like $(REF Contains, mir,internal,meta), but also checks if @serdeProxy
+tagged types match.
++/
+template ContainsProxied(Types...)
+{
+    import mir.internal.meta : Contains;
+
+    enum ContainsProxied(T) =
+    (() {
+        // copied from std.meta : staticIndexOf
+        static foreach (Rhs; Types)
+            static if (isSame!(T, Rhs) || isSame!(T, serdeGetFinalProxy!Rhs))
+                // `if (__ctfe)` is redundant here but avoids the "Unreachable code" warning.
+                if (__ctfe) return true;
+        return false;
+    }());
+}
+
 private:
 
 auto fastLazyToUpper()(return scope const(char)[] name)
