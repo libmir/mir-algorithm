@@ -4096,6 +4096,27 @@ version(mir_test)
     assert(equal!equal(rc, [ [3, 100], [], [400, 102] ]));
 }
 
+/// N-dimensional filtering based on value in specific row/column
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse;
+    import mir.ndslice.topology: byDim;
+
+    auto matrix =
+    [[   3,   2, 400 ],
+     [ 100, -101, 102 ]].fuse;
+
+    // filter row based on value in index 1
+    auto r1 = matrix.byDim!0.filter!("a[1] > 0");
+    assert(equal!equal(r1, [ [3, 2, 400] ]));
+
+    // filter column based on value in index 1
+    auto r2 = matrix.byDim!1.filter!("a[1] > 0");
+    assert(equal!equal(r2, [ [3, 100], [400, 102] ]));
+}
+
 /// Filter out NaNs
 version(mir_test)
 @safe pure nothrow
