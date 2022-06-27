@@ -4127,8 +4127,10 @@ unittest {
     double x;
     auto y = [[1.0, 2, x], [3.0, 4, 5]].fuse;
 
+    // by row
     auto z1 = y.byDim!0.map!(filter!(a => !isNaN(a)));
     assert(z1.equal!equal(result1));
+    // by column
     auto z2 = y.byDim!1.map!(filter!(a => !isNaN(a)));
     assert(z2.equal!equal(result2));
 }
@@ -4148,8 +4150,10 @@ unittest {
     double x;
     auto y = [[1.0, 2, x], [3.0, 4, 5]].fuse;
 
+    // by row
     auto z1 = y.byDim!0.filter!(a => a.all!(b => !isNaN(b)));
     assert(z1.equal!equal(result1));
+    // by column
     auto z2 = y.byDim!1.filter!(a => a.all!(b => !isNaN(b)));
     assert(z2.equal!equal(result2));
 }
