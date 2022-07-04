@@ -381,6 +381,7 @@ version (mir_test) unittest
 version (mir_test) unittest
 {
     import mir.test: should;
+    import mir.conv: to;
     import std.meta: AliasSeq;
     foreach (T; AliasSeq!(byte, short, int, long))
     {
@@ -396,7 +397,7 @@ version (mir_test) unittest
         val.should == -9;
         assert(str == "text");
         enum m = T.min + 0;
-        str = m.stringof;
+        str = m.to!string;
         assert(parse(str, val));
         val.should == T.min;
     }
