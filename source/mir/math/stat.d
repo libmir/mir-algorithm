@@ -2052,18 +2052,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() @property
-    {
-        return meanAccumulator.count;
-    }
-
-    ///
-    F mean(F = T)() const @property
-    {
-        return meanAccumulator.mean;
-    }
-
-    ///
     Summator!(T, summation) sumOfSquares;
 
     ///
@@ -2081,6 +2069,20 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         meanAccumulator.put(x);
         sumOfSquares.put(x * x);
+    }
+
+const:
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() const @property
+    {
+        return meanAccumulator.mean;
     }
 
     ///
