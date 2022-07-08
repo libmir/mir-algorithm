@@ -2086,8 +2086,8 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        return cast(F) sumOfSquares.sum / cast(F) (count + isPopulation - 1) - 
-            (cast(F) meanAccumulator.mean) ^^ 2 * (cast(F) count / cast(F) (count + isPopulation - 1));
+        return cast(F) sumOfSquares.sum / (count + isPopulation - 1) - 
+            (cast(F) meanAccumulator.mean) ^^ 2 * (cast(F) count / (count + isPopulation - 1));
     }
 }
 
@@ -2194,7 +2194,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        return cast(F) centeredSumOfSquares.sum / cast(F) (count + isPopulation - 1);
+        return cast(F) centeredSumOfSquares.sum / (count + isPopulation - 1);
     }
 }
 
@@ -2405,7 +2405,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        return cast(F) centeredSumOfSquares.sum / cast(F) (count + isPopulation - 1);
+        return cast(F) centeredSumOfSquares.sum / (count + isPopulation - 1);
     }
 }
 
@@ -2529,7 +2529,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        return cast(F) centeredSumOfSquares.sum / cast(F) (count + isPopulation - 1);
+        return cast(F) centeredSumOfSquares.sum / (count + isPopulation - 1);
     }
 }
 
