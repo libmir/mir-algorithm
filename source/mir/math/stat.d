@@ -2359,18 +2359,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     MeanAccumulator!(T, summation) meanAccumulator;
 
     ///
-    size_t count() @property
-    {
-        return meanAccumulator.count;
-    }
-
-    ///
-    F mean(F = T)() const @property
-    {
-        return meanAccumulator.mean;
-    }
-
-    ///
     Summator!(T, summation) centeredSumOfSquares;
 
     ///
@@ -2404,6 +2392,20 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         meanAccumulator.put(x);
         centeredSumOfSquares.put(cast(T) 0);
+    }
+
+const:
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+
+    ///
+    F mean(F = T)() const @property
+    {
+        return meanAccumulator.mean;
     }
 
     ///
@@ -2477,18 +2479,6 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     import mir.ndslice.slice: Slice, SliceKind, hasAsSlice;
 
     private size_t _count;
-    
-    ///
-    size_t count() @property
-    {
-        return _count;
-    }
-    
-    ///
-    F mean(F = T)() const @property
-    {
-        return cast(F) 0;
-    }
 
     ///
     Summator!(T, summation) centeredSumOfSquares;
@@ -2528,6 +2518,20 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     {
         _count += v.count;
         centeredSumOfSquares.put(v.centeredSumOfSquares.sum);
+    }
+
+const:
+
+    ///
+    size_t count() @property
+    {
+        return _count;
+    }
+    
+    ///
+    F mean(F = T)() const @property
+    {
+        return cast(F) 0;
     }
 
     ///
