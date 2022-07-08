@@ -2086,12 +2086,8 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        if (isPopulation == false)
-            return cast(F) sumOfSquares.sum / cast(F) (count - 1) - 
-                (cast(F) meanAccumulator.mean) ^^ 2 * (cast(F) count / cast(F) (count - 1));
-        else
-            return cast(F) sumOfSquares.sum / cast(F) count - 
-                (cast(F) meanAccumulator.mean) ^^ 2;
+        return cast(F) sumOfSquares.sum / cast(F) (count + isPopulation - 1) - 
+            (cast(F) meanAccumulator.mean) ^^ 2 * (cast(F) count / cast(F) (count + isPopulation - 1));
     }
 }
 
@@ -2198,10 +2194,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        if (isPopulation == false)
-            return cast(F) centeredSumOfSquares.sum / cast(F) (count - 1);
-        else
-            return cast(F) centeredSumOfSquares.sum / cast(F) count;
+        return cast(F) centeredSumOfSquares.sum / cast(F) (count + isPopulation - 1);
     }
 }
 
@@ -2412,10 +2405,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        if (isPopulation == false)
-            return cast(F) centeredSumOfSquares.sum / cast(F) (count - 1);
-        else
-            return cast(F) centeredSumOfSquares.sum / cast(F) count;
+        return cast(F) centeredSumOfSquares.sum / cast(F) (count + isPopulation - 1);
     }
 }
 
@@ -2539,10 +2529,7 @@ struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     ///
     F variance(F = T)(bool isPopulation) @property
     {
-        if (isPopulation == false)
-            return cast(F) centeredSumOfSquares.sum / cast(F) (count - 1);
-        else
-            return cast(F) centeredSumOfSquares.sum / cast(F) count;
+        return cast(F) centeredSumOfSquares.sum / cast(F) (count + isPopulation - 1);
     }
 }
 
