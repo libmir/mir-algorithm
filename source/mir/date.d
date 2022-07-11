@@ -261,13 +261,13 @@ struct YearMonthDay
     alias opCast(T : Timestamp) = timestamp;
     
     ///
-    YearMonth!assumePeriod yearMonth(AssumePeriod assumePeriod)() @safe pure nothrow @nogc @property
+    YearMonth yearMonth() @safe pure nothrow @nogc @property
     {
-        return YearMonth!assumePeriod(year, cast(ubyte)month);
+        return YearMonth(year, cast(ubyte)month);
     }
 
     ///
-    alias opCast(T : YearMonth!assumePeriod, AssumePeriod assumePeriod) = yearMonth!assumePeriod;
+    alias opCast(T : YearMonth) = yearMonth;
 
     ///
     version(mir_test)
@@ -292,9 +292,9 @@ struct YearMonthDay
     }
 
     ///
-    this(AssumePeriod assumePeriod)(YearMonth!assumePeriod yearMonth) @safe pure nothrow @nogc
+    this(YearMonth yearMonth, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure nothrow @nogc
     {
-        with(yearMonth) this(year, month, day);
+        with(yearMonth) this(year, month, day(assumePeriod));
     }
 
     version(D_Exceptions)
@@ -458,26 +458,26 @@ enum AssumePeriod {
 
 ///
 @serdeProxy!Timestamp
-struct YearMonth(AssumePeriod assumePeriod)
+struct YearMonth
 {
     short year  = 1;
     Month month = Month.jan;
     
-    @property ubyte day() const @safe pure nothrow @nogc
+    @property ubyte day(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
-        static if (assumePeriod == AssumePeriod.begin) {
-            return 1;
-        } else static if (assumePeriod == AssumePeriod.end) {
-            return daysInMonth;
-        } else {
-            static assert(0, "Not supported");
+        final switch (assumePeriod)
+        {
+            case AssumePeriod.begin:
+                return 1;
+            case AssumePeriod.end:
+                return daysInMonth;
         }
     }
 
     ///
-    Timestamp timestamp(bool includeDay = false)() @safe pure nothrow @nogc @property
+    Timestamp timestamp(bool includeDay = false) @safe pure nothrow @nogc @property
     {
-        static if (!includeDay)
+        if (!includeDay)
             return Timestamp(year, cast(ubyte)month);
         else
             return Timestamp(year, cast(ubyte)month, this.day);  
@@ -491,11 +491,11 @@ struct YearMonth(AssumePeriod assumePeriod)
     unittest
     {
         import mir.timestamp;
-        auto ym0 = YearMonth!assumePeriod(2020, Month.may);
+        auto ym0 = YearMonth(2020, Month.may);
         auto timestamp1 = cast(Timestamp) ym0;
-        auto timestamp2 = ym0.timestamp!true;
-        auto ym1 = YearMonth!assumePeriod(timestamp1);
-        auto ym2 = YearMonth!assumePeriod(timestamp2);
+        auto timestamp2 = ym0.timestamp(true);
+        auto ym1 = YearMonth(timestamp1);
+        auto ym2 = YearMonth(timestamp2);
     }
 
     ///
@@ -509,20 +509,20 @@ struct YearMonth(AssumePeriod assumePeriod)
     version (mir_test)
     @safe unittest
     {
-        auto ym = YearMonth!(assumePeriod)(2000, Month.dec);
+        auto ym = YearMonth(2000, Month.dec);
     }
 
     ///
     this(Date date) @safe pure nothrow @nogc
     {
-        this = date.yearMonth!(assumePeriod);
+        this = date.yearMonth;
     }
 
     ///
     version (mir_test)
     @safe unittest
     {
-        auto ym = YearMonth!(assumePeriod)(Date(2000, Month.dec, 31));
+        auto ym = YearMonth(Date(2000, Month.dec, 31));
     }
 
     ///
@@ -535,7 +535,7 @@ struct YearMonth(AssumePeriod assumePeriod)
     version (mir_test)
     @safe unittest
     {
-        auto ym = YearMonth!(assumePeriod)(YearMonthDay(2000, Month.dec, 31));
+        auto ym = YearMonth(YearMonthDay(2000, Month.dec, 31));
     }
 
     version(D_Exceptions)
@@ -617,14 +617,14 @@ struct YearMonth(AssumePeriod assumePeriod)
     /++
         Day of the year this $(LREF Date) is on.
       +/
-    @property int dayOfYear() const @safe pure nothrow @nogc
+    @property int dayOfYear(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
         if (month >= Month.jan && month <= Month.dec)
         {
             immutable int[] lastDay = isLeapYear ? lastDayLeap : lastDayNonLeap;
             auto monthIndex = month - Month.jan;
 
-            return lastDay[monthIndex] + day;
+            return lastDay[monthIndex] + day(assumePeriod);
         }
         assert(0, "Invalid month.");
     }
@@ -658,11 +658,11 @@ struct YearMonth(AssumePeriod assumePeriod)
 version (mir_test)
 @safe unittest
 {
-    assert(YearMonth!(AssumePeriod.begin)(1999, cast(Month) 1).day == 1);
-    assert(YearMonth!(AssumePeriod.end)(1999, cast(Month) 12).day == 31);
-    assert(YearMonth!(AssumePeriod.begin)(1999, cast(Month) 1).dayOfYear == 1);
-    assert(YearMonth!(AssumePeriod.end)(1999, cast(Month) 12).dayOfYear == 365);
-    assert(YearMonth!(AssumePeriod.end)(2000, cast(Month) 12).dayOfYear == 366);
+    assert(YearMonth(1999, cast(Month) 1).day(AssumePeriod.begin) == 1);
+    assert(YearMonth(1999, cast(Month) 12).day(AssumePeriod.end) == 31);
+    assert(YearMonth(1999, cast(Month) 1).dayOfYear(AssumePeriod.begin) == 1);
+    assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.end) == 365);
+    assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.end) == 366);
 }
 
 /++
@@ -819,16 +819,23 @@ public:
 
     version(D_Exceptions)
     ///
-    this(AssumePeriod assumePeriod)(YearMonth!assumePeriod ym) @safe pure @nogc
+    this(YearMonth ym, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure @nogc
     {
-        with(ym) this(year, month, day);
+        with(ym) this(year, month, day(assumePeriod));
+    }
+
+    ///
+    this(YearMonth ym) @safe pure @nogc
+    {
+        with(ym) this(year, month, 1);
     }
 
     ///
     version(mir_test)
     @safe unittest
     {
-        auto d = date(YearMonth!(AssumePeriod.begin)(2020, Month.may));
+        auto d1 = date(YearMonth(2020, Month.may));
+        auto d2 = date(YearMonth(2020, Month.may), AssumePeriod.end);
     }
 
     version(D_Exceptions)
@@ -1144,11 +1151,11 @@ public:
             dict[i] = Date(i + Date._startDict).yearMonthDayImpl;
         return dict;
     }();
-    static immutable _dictYM(AssumePeriod assumePeriod) = ()
+    static immutable _dictYM = ()
     {
-        YearMonth!assumePeriod[Date._endDict - Date._startDict] dict;
+        YearMonth[Date._endDict - Date._startDict] dict;
         foreach (uint i; 0 .. dict.length)
-            dict[i] = Date(i + Date._startDict).yearMonthImpl!assumePeriod;
+            dict[i] = Date(i + Date._startDict).yearMonthImpl;
         return dict;
     }();
 
@@ -1168,7 +1175,7 @@ public:
     }
 
     ///
-    YearMonth!assumePeriod yearMonth(AssumePeriod assumePeriod = AssumePeriod.begin)() const @safe pure nothrow @nogc @property
+    YearMonth yearMonth() const @safe pure nothrow @nogc @property
     {
         uint day = _julianDay;
         if (day < _endDict)
@@ -1177,9 +1184,9 @@ public:
             bool overflow;
             auto index = subu(day, _startDict, overflow);
             if (!overflow)
-                return _dictYM!assumePeriod[index];
+                return _dictYM[index];
         }
-        return yearMonthImpl!(assumePeriod);
+        return yearMonthImpl;
     }
 
     ///
@@ -1187,7 +1194,7 @@ public:
     @safe unittest
     {
         auto d = Date(2020, Month.may, 31);
-        auto ym = d.yearMonth!(AssumePeriod.begin);
+        auto ym = d.yearMonth;
         assert(ym.year == 2020);
         assert(ym.month == Month.may);
     }
@@ -1197,7 +1204,7 @@ public:
     @safe unittest
     {
         auto d = Date(2050, Month.dec, 31);
-        auto ym = d.yearMonth!(AssumePeriod.begin);
+        auto ym = d.yearMonth;
         assert(ym.year == 2050);
         assert(ym.month == Month.dec);
     }
@@ -1350,9 +1357,9 @@ public:
     }
 
     pragma(inline, false)
-    YearMonth!assumePeriod yearMonthImpl(AssumePeriod assumePeriod)() const @safe pure nothrow @nogc @property
+    YearMonth yearMonthImpl() const @safe pure nothrow @nogc @property
     {
-        YearMonth!(assumePeriod) ym;
+        YearMonth ym;
         int days = dayOfGregorianCal;
         with(ym)
         if (days > 0)
@@ -1469,7 +1476,7 @@ public:
     @safe unittest
     {
         auto d = date(2020, Month.may, 31);
-        auto ym = d.yearMonthImpl!(AssumePeriod.begin);
+        auto ym = d.yearMonthImpl;
     }
 
     /++
