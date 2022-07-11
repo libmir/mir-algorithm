@@ -1903,7 +1903,7 @@ template sumSlices()
         alias T = Unqual!(DeepElementType!(DeepElementType!(Slice!(Iterator, 1, kind))));
         import mir.ndslice: slice;
         if (sliceOfSlices.length == 0)
-            return Slice!(T*).init;
+            return typeof(slice(as!T(sliceOfSlices.front))).init;
         auto ret = slice(as!T(sliceOfSlices.front));
         sliceOfSlices.popFront;
         foreach (sl; sliceOfSlices)
@@ -1925,11 +1925,16 @@ template sumSlices()
 version(mir_test)
 unittest
 {
-    import mir.ndslice.topology: map;
+    import mir.ndslice.topology: map, byDim;
     import mir.ndslice.slice: sliced;
 
     auto ar = [[1, 2, 3], [10, 20, 30]];
     assert(ar.map!sliced.sumSlices == [11, 22, 33]);
+
+    import mir.ndslice.fuse: fuse;
+    auto a = [[[1.2], [2.1]], [[4.1], [5.2]]].fuse;
+    auto s = a.byDim!0.sumSlices;
+    assert(s == [[5.3], [7.300000000000001]]);
 }
 
 version(mir_test)
