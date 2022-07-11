@@ -1561,7 +1561,10 @@ Params:
     fbx = Value of `f(bx)` (optional).
     relTolerance = Relative tolerance used by $(LREF findLocalMin).
     absTolerance = Absolute tolerance used by $(LREF findLocalMin).
+    lowerBound = 
+    upperBound =
     maxIterations = Appr. maximum allowed number of function calls for each $(LREF findRoot) call.
+    steps = 
 
 Returns: $(LREF FindSmileRootsResult)
 +/

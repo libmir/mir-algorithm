@@ -751,10 +751,10 @@ size_t biguintToOctal(char[] buff, const(BigDigit)[] data)
 /** Convert a big uint into a decimal string.
  *
  * Params:
- *  data    The biguint to be converted. Will be destroyed.
- *  buff    The destination buffer for the decimal string. Must be
- *          large enough to store the result, including leading zeros.
- *          Will be filled backwards, starting from buff[$-1].
+ *  buff = The destination buffer for the decimal string. Must be
+ *      large enough to store the result, including leading zeros.
+ *      Will be filled backwards, starting from buff[$-1].
+ *  data = The biguint to be converted. Will be destroyed.
  *
  * buff.length must be >= (data.length*32)/log2(10) = 9.63296 * data.length.
  * Returns:
@@ -787,9 +787,9 @@ size_t biguintToDecimal(char [] buff, BigDigit [] data) pure nothrow @safe
 /** Convert a decimal string into a big uint.
  *
  * Params:
- *  data    The biguint to be receive the result. Must be large enough to
- *          store the result.
- *  s       The decimal string. May contain _ or 0 .. 9
+ *  data = The biguint to be receive the result. Must be large enough to
+ *      store the result.
+ *  s = The decimal string. May contain _ or 0 .. 9
  *
  * The required length for the destination buffer is slightly less than
  *  1 + s.length/log2(10) = 1 + s.length/3.3219.

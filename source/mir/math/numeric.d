@@ -606,8 +606,6 @@ Quickly computes binomial coefficient using extended
 precision floating point type $(MREF mir,bignum,fp).
 
 Params:
-    DivisionType = the type used for a single division at the final.
-        By defualt, uses `real` precision. TODO: full `Fp` precision.
     n = number elements in the set 
     k = number elements in the subset 
 Returns: n choose k
