@@ -259,6 +259,15 @@ struct YearMonthDay
 
     ///
     alias opCast(T : Timestamp) = timestamp;
+    
+    ///
+    YearMonth yearMonth() @safe pure nothrow @nogc @property
+    {
+        return YearMonth(year, cast(ubyte)month);
+    }
+
+    ///
+    alias opCast(T : YearMonth) = yearMonth;
 
     ///
     version(mir_test)
@@ -280,6 +289,12 @@ struct YearMonthDay
     this(Date date) @safe pure nothrow @nogc
     {
         this = date.yearMonthDay;
+    }
+
+    ///
+    this(YearMonth yearMonth, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure nothrow @nogc
+    {
+        with(yearMonth) this(year, month, day(assumePeriod));
     }
 
     version(D_Exceptions)
@@ -435,6 +450,221 @@ struct YearMonthDay
     }
 }
 
+///
+enum AssumePeriod {
+    begin,
+    end
+}
+
+///
+@serdeProxy!Timestamp
+struct YearMonth
+{
+    short year  = 1;
+    Month month = Month.jan;
+    
+    @property ubyte day(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
+    {
+        final switch (assumePeriod)
+        {
+            case AssumePeriod.begin:
+                return 1;
+            case AssumePeriod.end:
+                return daysInMonth;
+        }
+    }
+
+    ///
+    Timestamp timestamp(bool includeDay = false) @safe pure nothrow @nogc @property
+    {
+        if (!includeDay)
+            return Timestamp(year, cast(ubyte)month);
+        else
+            return Timestamp(year, cast(ubyte)month, this.day);  
+    }
+
+    ///
+    alias opCast(T : Timestamp) = timestamp;
+
+    ///
+    version(mir_test)
+    unittest
+    {
+        import mir.timestamp;
+        auto ym0 = YearMonth(2020, Month.may);
+        auto timestamp1 = cast(Timestamp) ym0;
+        auto timestamp2 = ym0.timestamp(true);
+        auto ym1 = YearMonth(timestamp1);
+        auto ym2 = YearMonth(timestamp2);
+    }
+
+    ///
+    this(short year, Month month) @safe pure nothrow @nogc
+    {
+        this.year = year;
+        this.month = month;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(2000, Month.dec);
+    }
+
+    ///
+    this(Date date) @safe pure nothrow @nogc
+    {
+        this = date.yearMonth;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(Date(2000, Month.dec, 31));
+    }
+
+    ///
+    this(YearMonthDay yearMonthDay) @safe pure nothrow @nogc
+    {
+        with(yearMonthDay) this(year, month);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(YearMonthDay(2000, Month.dec, 31));
+    }
+
+    version(D_Exceptions)
+    ///
+    this(Timestamp timestamp) @safe pure nothrow @nogc
+    {
+        if (!(timestamp.precision == Timestamp.Precision.day) ||
+             (timestamp.precision == Timestamp.Precision.month))
+        {
+            static immutable exc = new Exception("YearMonth: invalid timestamp precision");
+        }
+        with(timestamp) this(year, cast(Month)month);
+    }
+
+    // Shares documentation with "years" version.
+    @safe pure nothrow @nogc
+    ref YearMonth add(string units)(long months)
+        if (units == "months")
+    {
+        auto years = months / 12;
+        months %= 12;
+        auto newMonth = month + months;
+
+        if (months < 0)
+        {
+            if (newMonth < 1)
+            {
+                newMonth += 12;
+                --years;
+            }
+        }
+        else if (newMonth > 12)
+        {
+            newMonth -= 12;
+            ++years;
+        }
+
+        year += years;
+        month = cast(Month) newMonth;
+
+        return this;
+    }
+
+    // Shares documentation with "years" version.
+    @safe pure nothrow @nogc
+    ref YearMonth add(string units)(long years)
+        if (units == "years")
+    {
+        year += years;
+        return this;
+    }
+
+    private void setMonthOfYear(bool useExceptions = false)(int days)
+    {
+        immutable int[] lastDay = isLeapYear ? lastDayLeap : lastDayNonLeap;
+
+        bool dayOutOfRange = days <= 0 || days > (isLeapYear ? daysInLeapYear : daysInYear);
+
+        static if (useExceptions)
+        {
+            if (dayOutOfRange) throw InvalidDay;
+        }
+        else
+        {
+            assert(!dayOutOfRange, "Invalid Day");
+        }
+
+        foreach (i; 1 .. lastDay.length)
+        {
+            if (days <= lastDay[i])
+            {
+                month = cast(Month)(cast(int) Month.jan + i - 1);
+                return;
+            }
+        }
+        assert(0, "Invalid day of the year.");
+    }
+
+    /++
+        Day of the year this $(LREF Date) is on.
+      +/
+    @property int dayOfYear(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
+    {
+        if (month >= Month.jan && month <= Month.dec)
+        {
+            immutable int[] lastDay = isLeapYear ? lastDayLeap : lastDayNonLeap;
+            auto monthIndex = month - Month.jan;
+
+            return lastDay[monthIndex] + day(assumePeriod);
+        }
+        assert(0, "Invalid month.");
+    }
+
+    /++
+        Whether this $(LREF Date) is in a leap year.
+     +/
+    @property bool isLeapYear() const @safe pure nothrow @nogc
+    {
+        return yearIsLeapYear(year);
+    }
+
+    /++
+        The last day in the month that this $(LREF Date) is in.
+      +/
+    @property ubyte daysInMonth() const @safe pure nothrow @nogc
+    {
+        return maxDay(year, month);
+    }
+
+    /++
+        Whether the current year is a date in A.D.
+      +/
+    @property bool isAD() const @safe pure nothrow @nogc
+    {
+        return year > 0;
+    }
+}
+
+///
+version (mir_test)
+@safe unittest
+{
+    assert(YearMonth(1999, cast(Month) 1).day(AssumePeriod.begin) == 1);
+    assert(YearMonth(1999, cast(Month) 12).day(AssumePeriod.end) == 31);
+    assert(YearMonth(1999, cast(Month) 1).dayOfYear(AssumePeriod.begin) == 1);
+    assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.end) == 365);
+    assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.end) == 366);
+}
+
 /++
     Represents a date in the
     $(HTTP en.wikipedia.org/wiki/Proleptic_Gregorian_calendar, Proleptic
@@ -578,6 +808,28 @@ public:
     this(YearMonthDay ymd) @safe pure @nogc
     {
         with(ymd) this(year, month, day);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = date(YearMonthDay(2020, Month.may, 31));
+    }
+
+    version(D_Exceptions)
+    ///
+    this(YearMonth ym, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure @nogc
+    {
+        with(ym) this(year, month, day(assumePeriod));
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d1 = date(YearMonth(2020, Month.may));
+        auto d2 = date(YearMonth(2020, Month.may), AssumePeriod.end);
     }
 
     version(D_Exceptions)
@@ -886,7 +1138,7 @@ public:
 
     private enum uint _startDict = Date(1900, 1, 1)._julianDay; // [
     private enum uint _endDict = Date(2040, 1, 1)._julianDay; // )
-    static immutable _dict = ()
+    static immutable _dictYMD = ()
     {
         YearMonthDay[Date._endDict - Date._startDict] dict;
         foreach (uint i; 0 .. dict.length)
@@ -904,27 +1156,68 @@ public:
             bool overflow;
             auto index = subu(day, _startDict, overflow);
             if (!overflow)
-                return _dict[index];
+                return _dictYMD[index];
         }
         return yearMonthDayImpl;
     }
 
     ///
+    YearMonth yearMonth() const @safe pure nothrow @nogc @property
+    {
+        uint day = _julianDay;
+        if (day < _endDict)
+        {
+            return yearMonthDay().YearMonth;
+        }
+        return yearMonthImpl;
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date(2020, Month.may, 31);
+        auto ym = d.yearMonth;
+        assert(ym.year == 2020);
+        assert(ym.month == Month.may);
+    }
+
+    //
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date(2050, Month.dec, 31);
+        auto ym = d.yearMonth;
+        assert(ym.year == 2050);
+        assert(ym.month == Month.dec);
+    }
+
+    ///
     short year() const @safe pure nothrow @nogc @property
     {
-        return yearMonthDay.year;
+        return yearMonth.year;
     }
 
     ///
     Month month() const @safe pure nothrow @nogc @property
     {
-        return yearMonthDay.month;
+        return yearMonth.month;
     }
 
     ///
     ubyte day() const @safe pure nothrow @nogc @property
     {
         return yearMonthDay.day;
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date(2020, Month.may, 31);
+        assert(d.year == 2020);
+        assert(d.month == Month.may);
+        assert(d.day == 31);
     }
 
     pragma(inline, false)
@@ -1044,6 +1337,129 @@ public:
             }
         }
         return ymd;
+    }
+
+    pragma(inline, false)
+    YearMonth yearMonthImpl() const @safe pure nothrow @nogc @property
+    {
+        YearMonth ym;
+        int days = dayOfGregorianCal;
+        with(ym)
+        if (days > 0)
+        {
+            int years = (days / daysIn400Years) * 400 + 1;
+            days %= daysIn400Years;
+
+            {
+                immutable tempYears = days / daysIn100Years;
+
+                if (tempYears == 4)
+                {
+                    years += 300;
+                    days -= daysIn100Years * 3;
+                }
+                else
+                {
+                    years += tempYears * 100;
+                    days %= daysIn100Years;
+                }
+            }
+
+            years += (days / daysIn4Years) * 4;
+            days %= daysIn4Years;
+
+            {
+                immutable tempYears = days / daysInYear;
+
+                if (tempYears == 4)
+                {
+                    years += 3;
+                    days -= daysInYear * 3;
+                }
+                else
+                {
+                    years += tempYears;
+                    days %= daysInYear;
+                }
+            }
+
+            if (days == 0)
+            {
+                year = cast(short)(years - 1);
+                month = Month.dec;
+            }
+            else
+            {
+                year = cast(short) years;
+                setMonthOfYear(days);
+            }
+        }
+        else if (days <= 0 && -days < daysInLeapYear)
+        {
+            year = 0;
+
+            setMonthOfYear(daysInLeapYear + days);
+        }
+        else
+        {
+            days += daysInLeapYear - 1;
+            int years = (days / daysIn400Years) * 400 - 1;
+            days %= daysIn400Years;
+
+            {
+                immutable tempYears = days / daysIn100Years;
+
+                if (tempYears == -4)
+                {
+                    years -= 300;
+                    days += daysIn100Years * 3;
+                }
+                else
+                {
+                    years += tempYears * 100;
+                    days %= daysIn100Years;
+                }
+            }
+
+            years += (days / daysIn4Years) * 4;
+            days %= daysIn4Years;
+
+            {
+                immutable tempYears = days / daysInYear;
+
+                if (tempYears == -4)
+                {
+                    years -= 3;
+                    days += daysInYear * 3;
+                }
+                else
+                {
+                    years += tempYears;
+                    days %= daysInYear;
+                }
+            }
+
+            if (days == 0)
+            {
+                year = cast(short)(years + 1);
+                month = Month.jan;
+            }
+            else
+            {
+                year = cast(short) years;
+                immutable newDoY = (yearIsLeapYear(year) ? daysInLeapYear : daysInYear) + days + 1;
+
+                setMonthOfYear(newDoY);
+            }
+        }
+        return ym;
+    }
+
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = date(2020, Month.may, 31);
+        auto ym = d.yearMonthImpl;
     }
 
     /++
