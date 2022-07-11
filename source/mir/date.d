@@ -825,12 +825,6 @@ public:
     }
 
     ///
-    this(YearMonth ym) @safe pure @nogc
-    {
-        with(ym) this(year, month, 1);
-    }
-
-    ///
     version(mir_test)
     @safe unittest
     {
@@ -1151,13 +1145,6 @@ public:
             dict[i] = Date(i + Date._startDict).yearMonthDayImpl;
         return dict;
     }();
-    static immutable _dictYM = ()
-    {
-        YearMonth[Date._endDict - Date._startDict] dict;
-        foreach (uint i; 0 .. dict.length)
-            dict[i] = Date(i + Date._startDict).yearMonthImpl;
-        return dict;
-    }();
 
     ///
     YearMonthDay yearMonthDay() const @safe pure nothrow @nogc @property
@@ -1180,11 +1167,7 @@ public:
         uint day = _julianDay;
         if (day < _endDict)
         {
-            import mir.checkedint: subu;
-            bool overflow;
-            auto index = subu(day, _startDict, overflow);
-            if (!overflow)
-                return _dictYM[index];
+            return yearMonthDay().YearMonth;
         }
         return yearMonthImpl;
     }
