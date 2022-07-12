@@ -268,42 +268,6 @@ struct YearMonthDay
     ///
     alias opCast(T : Timestamp) = timestamp;
 
-    version(D_BetterC){} else
-    {
-        private string toStringImpl(alias fun)() const @safe pure nothrow
-        {
-            import mir.small_string : SmallString;
-            SmallString!16 w;
-            try
-                fun(w);
-            catch (Exception e)
-                assert(0, __traits(identifier, fun) ~ " threw.");
-            return w[].idup;
-        }
-
-        ///
-        @ReflectDoc!"SIL"("Returns an ISO 8601 string representation (yyyy-MM).", reflectUnittest!"SIL"(`import YearMonth from xenon.date
-enforce(YearMonth(2020, 10).toISOExtString() == "2020-10", "Should match")`))
-        string toISOExtString() const @safe pure nothrow
-        {
-            return toStringImpl!toISOExtString;
-        }
-
-        alias toString = toISOExtString;
-    }
-
-    ///
-    void toISOExtString(W)(scope ref W w) const scope
-        if (isOutputRange!(W, char))
-    {
-        import mir.format: printZeroPad;
-        if (year >= 10_000)
-            w.put('+');
-        w.printZeroPad(year, year >= 0 ? year < 10_000 ? 4 : 5 : year > -10_000 ? 5 : 6);
-        w.put('-');
-        w.printZeroPad(cast(uint)month, 2);
-    }
-
 @safe pure @nogc:
 
     ///
@@ -531,7 +495,43 @@ struct YearMonth
 {
     short year  = 1;
     Month month = Month.jan;
-    
+
+    version(D_BetterC){} else
+    {
+        private string toStringImpl(alias fun)() const @safe pure nothrow
+        {
+            import mir.small_string : SmallString;
+            SmallString!16 w;
+            try
+                fun(w);
+            catch (Exception e)
+                assert(0, __traits(identifier, fun) ~ " threw.");
+            return w[].idup;
+        }
+
+        ///
+        @ReflectDoc!"SIL"("Returns an ISO 8601 string representation (yyyy-MM).", reflectUnittest!"SIL"(`import YearMonth from xenon.date
+enforce(YearMonth(2020, 10).toISOExtString() == "2020-10", "Should match")`))
+        string toISOExtString() const @safe pure nothrow
+        {
+            return toStringImpl!toISOExtString;
+        }
+
+        alias toString = toISOExtString;
+    }
+
+    ///
+    void toISOExtString(W)(scope ref W w) const scope
+        if (isOutputRange!(W, char))
+    {
+        import mir.format: printZeroPad;
+        if (year >= 10_000)
+            w.put('+');
+        w.printZeroPad(year, year >= 0 ? year < 10_000 ? 4 : 5 : year > -10_000 ? 5 : 6);
+        w.put('-');
+        w.printZeroPad(cast(uint)month, 2);
+    }
+
     @property ubyte day(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
         final switch (assumePeriod)
