@@ -139,7 +139,7 @@ unittest
     auto f1 = exp(3.Const * spot.powi!(-2));
     static assert(Dependencies!(typeof(f1)) == ["spot"].DependsOn);
     assert(f1.getFunctionValue == mir.math.exp(3 * 7.0 ^^ -2));
-    assert(f1.getDerivative!(["spot"]) == 3 * -2 * 7.0 ^^ -3 * mir.math.exp(3 * 7.0 ^^ -2));
+    assert(f1.getDerivative!(["spot"]).approxEqual(3 * -2 * 7.0 ^^ -3 * mir.math.exp(3 * 7.0 ^^ -2)));
     // Test DerivativeOf
     assert(f1.derivativeOf!"spot".getFunctionValue == f1.getDerivative!(["spot"]));
     // Test product and sum
