@@ -268,10 +268,6 @@ struct YearMonthDay
 
 @safe pure @nogc:
 
-
-    ///
-    alias opCast(T : YearMonth) = yearMonth;
-    
     ///
     YearQuarter yearQuarter() @safe pure nothrow @nogc @property
     {
@@ -301,6 +297,26 @@ struct YearMonthDay
     this(Date date) @safe pure nothrow @nogc
     {
         this = date.yearMonthDay;
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = YearMonthDay(2020, Month.may, 31);
+        auto ym = d.YearMonth;
+        assert(ym.year == 2020);
+        assert(ym.month == Month.may);
+    }
+
+    //
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = YearMonthDay(2050, Month.dec, 31);
+        auto ym = d.YearMonth;
+        assert(ym.year == 2050);
+        assert(ym.month == Month.dec);
     }
 
     ///
@@ -585,7 +601,7 @@ struct YearMonth
     ///
     this(Date date) @safe pure nothrow @nogc
     {
-        this = date.yearMonth;
+        this(date.YearMonthDay);
     }
 
     ///
@@ -593,6 +609,26 @@ struct YearMonth
     @safe unittest
     {
         auto ym = YearMonth(Date(2000, Month.dec, 31));
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date(2020, Month.may, 31);
+        auto ym = d.YearMonth;
+        assert(ym.year == 2020);
+        assert(ym.month == Month.may);
+    }
+
+    //
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date(2050, Month.dec, 31);
+        auto ym = d.YearMonth;
+        assert(ym.year == 2050);
+        assert(ym.month == Month.dec);
     }
 
     ///
@@ -1724,37 +1760,6 @@ public:
     }
 
     ///
-    YearMonth yearMonth() const @safe pure nothrow @nogc @property
-    {
-        uint day = _julianDay;
-        if (day < _endDict)
-        {
-            return yearMonthDay().YearMonth;
-        }
-        return yearMonthImpl;
-    }
-
-    ///
-    version(mir_test)
-    @safe unittest
-    {
-        auto d = Date(2020, Month.may, 31);
-        auto ym = d.yearMonth;
-        assert(ym.year == 2020);
-        assert(ym.month == Month.may);
-    }
-
-    //
-    version(mir_test)
-    @safe unittest
-    {
-        auto d = Date(2050, Month.dec, 31);
-        auto ym = d.yearMonth;
-        assert(ym.year == 2050);
-        assert(ym.month == Month.dec);
-    }
-
-    ///
     YearQuarter yearQuarter() const @safe pure nothrow @nogc @property
     {
         uint day = _julianDay;
@@ -1800,7 +1805,7 @@ public:
     ///
     Month month() const @safe pure nothrow @nogc @property
     {
-        return yearMonth.month;
+        return yearMonthDay.month;
     }
 
     ///
@@ -1939,128 +1944,7 @@ public:
         return ymd;
     }
 
-    pragma(inline, false)
-    YearMonth yearMonthImpl() const @safe pure nothrow @nogc @property
-    {
-        YearMonth ym;
-        int days = dayOfGregorianCal;
-        with(ym)
-        if (days > 0)
-        {
-            int years = (days / daysIn400Years) * 400 + 1;
-            days %= daysIn400Years;
 
-            {
-                immutable tempYears = days / daysIn100Years;
-
-                if (tempYears == 4)
-                {
-                    years += 300;
-                    days -= daysIn100Years * 3;
-                }
-                else
-                {
-                    years += tempYears * 100;
-                    days %= daysIn100Years;
-                }
-            }
-
-            years += (days / daysIn4Years) * 4;
-            days %= daysIn4Years;
-
-            {
-                immutable tempYears = days / daysInYear;
-
-                if (tempYears == 4)
-                {
-                    years += 3;
-                    days -= daysInYear * 3;
-                }
-                else
-                {
-                    years += tempYears;
-                    days %= daysInYear;
-                }
-            }
-
-            if (days == 0)
-            {
-                year = cast(short)(years - 1);
-                month = Month.dec;
-            }
-            else
-            {
-                year = cast(short) years;
-                setMonthOfYear(days);
-            }
-        }
-        else if (days <= 0 && -days < daysInLeapYear)
-        {
-            year = 0;
-
-            setMonthOfYear(daysInLeapYear + days);
-        }
-        else
-        {
-            days += daysInLeapYear - 1;
-            int years = (days / daysIn400Years) * 400 - 1;
-            days %= daysIn400Years;
-
-            {
-                immutable tempYears = days / daysIn100Years;
-
-                if (tempYears == -4)
-                {
-                    years -= 300;
-                    days += daysIn100Years * 3;
-                }
-                else
-                {
-                    years += tempYears * 100;
-                    days %= daysIn100Years;
-                }
-            }
-
-            years += (days / daysIn4Years) * 4;
-            days %= daysIn4Years;
-
-            {
-                immutable tempYears = days / daysInYear;
-
-                if (tempYears == -4)
-                {
-                    years -= 3;
-                    days += daysInYear * 3;
-                }
-                else
-                {
-                    years += tempYears;
-                    days %= daysInYear;
-                }
-            }
-
-            if (days == 0)
-            {
-                year = cast(short)(years + 1);
-                month = Month.jan;
-            }
-            else
-            {
-                year = cast(short) years;
-                immutable newDoY = (yearIsLeapYear(year) ? daysInLeapYear : daysInYear) + days + 1;
-
-                setMonthOfYear(newDoY);
-            }
-        }
-        return ym;
-    }
-
-    version(mir_test)
-    @safe unittest
-    {
-        auto d = date(2020, Month.may, 31);
-        auto ym = d.yearMonthImpl;
-    }
 
     pragma(inline, false)
     YearQuarter yearQuarterImpl() const @safe pure nothrow @nogc @property
