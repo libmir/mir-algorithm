@@ -258,19 +258,16 @@ struct YearMonthDay
     }
 
     ///
-    Timestamp timestamp() @safe pure nothrow @nogc @property
+    Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
         return Timestamp(year, cast(ubyte)month, day);
     }
 
     ///
     alias opCast(T : Timestamp) = timestamp;
-    
-    ///
-    YearMonth yearMonth() @safe pure nothrow @nogc @property
-    {
-        return YearMonth(year, cast(ubyte)month);
-    }
+
+@safe pure @nogc:
+
 
     ///
     alias opCast(T : YearMonth) = yearMonth;
@@ -320,19 +317,19 @@ struct YearMonthDay
 
     version(D_Exceptions)
     ///
-    this(Timestamp timestamp) @safe pure nothrow @nogc
+    this(Timestamp timestamp) @safe pure @nogc
     {
         if (timestamp.precision != Timestamp.Precision.day)
         {
             static immutable exc = new Exception("YearMonthDay: invalid timestamp precision");
+            throw exc;
         }
         with(timestamp) this(year, cast(Month)month, day);
     }
 
-    // Shares documentation with "years" version.
+    ///
     @safe pure nothrow @nogc
-    ref YearMonthDay add(string units)(long months, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
-        if (units == "months")
+    ref YearMonthDay add(string units : "months")(long months, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
     {
         auto years = months / 12;
         months %= 12;
@@ -372,54 +369,16 @@ struct YearMonthDay
         return this;
     }
 
-
-    // Shares documentation with "years" version.
+    ///
     @safe pure nothrow @nogc
-    ref YearMonthDay add(string units)(long quarters)
-        if (units == "quarters")
+    ref YearMonthDay add(string units : "quarters")(long quarters)
     {
-        auto years = quarters / 4;
-        quarters %= 4;
-        auto newQuarter = this.quarter + quarters;
-
-        if (quarters < 0)
-        {
-            if (newQuarter < 1)
-            {
-                newQuarter += 4;
-                --years;
-            }
-        }
-        else if (newQuarter > 4)
-        {
-            newQuarter -= 4;
-            ++years;
-        }
-
-        year += years;
-        month = cast(Month) (cast(ubyte) month + newQuarter * 3);
-
-        immutable currMaxDay = maxDay(year, month);
-        immutable overflow = day - currMaxDay;
-
-        if (overflow > 0)
-        {
-            if (allowOverflow == AllowDayOverflow.yes)
-            {
-                ++month;
-                day = cast(ubyte) overflow;
-            }
-            else
-                day = cast(ubyte) currMaxDay;
-        }
-
-        return this;
+        return add!"months"(quarters * 4);
     }
 
     // Shares documentation with "years" version.
     @safe pure nothrow @nogc
-    ref YearMonthDay add(string units)(long years, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
-        if (units == "years")
+    ref YearMonthDay add(string units : "years")(long years, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
     {
         year += years;
 
@@ -529,7 +488,40 @@ struct YearMonth
 {
     short year  = 1;
     Month month = Month.jan;
-    
+
+    version(D_BetterC){} else
+    {
+        private string toStringImpl(alias fun)() const @safe pure nothrow
+        {
+            import mir.small_string : SmallString;
+            SmallString!16 w;
+            try
+                fun(w);
+            catch (Exception e)
+                assert(0, __traits(identifier, fun) ~ " threw.");
+            return w[].idup;
+        }
+
+        string toISOExtString() const @safe pure nothrow
+        {
+            return toStringImpl!toISOExtString;
+        }
+
+        alias toString = toISOExtString;
+    }
+
+    ///
+    void toISOExtString(W)(scope ref W w) const scope
+        if (isOutputRange!(W, char))
+    {
+        import mir.format: printZeroPad;
+        if (year >= 10_000)
+            w.put('+');
+        w.printZeroPad(year, year >= 0 ? year < 10_000 ? 4 : 5 : year > -10_000 ? 5 : 6);
+        w.put('-');
+        w.printZeroPad(cast(uint)month, 2);
+    }
+
     @property ubyte day(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
         final switch (assumePeriod)
@@ -548,12 +540,9 @@ struct YearMonth
     }
 
     ///
-    Timestamp timestamp(bool includeDay = false) @safe pure nothrow @nogc @property
+    Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
-        if (!includeDay)
-            return Timestamp(year, cast(ubyte)month);
-        else
-            return Timestamp(year, cast(ubyte)month, this.day);  
+        return Timestamp(year, cast(ubyte)month);
     }
 
     ///
@@ -566,9 +555,7 @@ struct YearMonth
         import mir.timestamp;
         auto ym0 = YearMonth(2020, Month.may);
         auto timestamp1 = cast(Timestamp) ym0;
-        auto timestamp2 = ym0.timestamp(true);
         auto ym1 = YearMonth(timestamp1);
-        auto ym2 = YearMonth(timestamp2);
     }
 
     ///
@@ -586,18 +573,13 @@ struct YearMonth
     }
 
     ///
-    this(short year, Quarter quarter, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure nothrow @nogc
+    this(short year, ushort month) @safe pure @nogc
     {
+        static immutable exc = new Exception("Month out of bounds [1, 12]");
+        if (1 > month || month > 12)
+            throw exc;
         this.year = year;
-        this.month = monthInQuarter(quarter, assumePeriod);
-    }
-
-    ///
-    version (mir_test)
-    @safe unittest
-    {
-        auto ym1 = YearMonth(2000, Quarter.q1);
-        auto ym2 = YearMonth(2000, Quarter.q1, AssumePeriod.end);
+        this.month = cast(Month)month;
     }
 
     ///
@@ -642,20 +624,100 @@ struct YearMonth
 
     version(D_Exceptions)
     ///
-    this(Timestamp timestamp) @safe pure nothrow @nogc
+    this(Timestamp timestamp) @safe pure @nogc
     {
-        if (!(timestamp.precision == Timestamp.Precision.day) ||
-             (timestamp.precision == Timestamp.Precision.month))
+        if (timestamp.precision != Timestamp.Precision.month)
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
+            throw exc;
         }
         with(timestamp) this(year, cast(Month)month);
     }
 
-    // Shares documentation with "years" version.
+    Date nthWeekday(int n, DayOfWeek dow) const @safe pure nothrow @nogc
+    {
+        auto d = trustedWithDayOfMonth(1);
+        auto dc = d.dayOfWeek.daysToDayOfWeek(dow) + (n - 1) * 7;
+        d = d + dc;
+        return d;
+    }
+
+    ///
+    Date trustedWithDayOfMonth(int days) const @safe pure nothrow @nogc
+    {
+        assert(days <= lengthOfMonth);
+        return Date.trustedCreate(year, month, days);
+    }
+
+    ///
+    int opCmp(YearMonth rhs) const pure nothrow @nogc @safe
+    {
+        if (auto d = this.year - rhs.year)
+            return d;
+        return this.month - rhs.month;
+    }
+
+    ///
+    size_t toHash() const pure nothrow @nogc @safe
+    {
+        return year * 16 + month;
+    }
+
+    ///
+    Date endOfMonth() const nothrow @property @nogc @safe pure
+    {
+        return Date.trustedCreate(year, month, lengthOfMonth);
+    }
+
+    ///
+    ushort lengthOfMonth() const pure nothrow @property @nogc @safe
+    {
+        return maxDay(year, month);
+    }
+    ///
+    this(scope const(char)[] str) @safe pure @nogc
+    {
+        this = fromISOExtString(str);
+    }
+
+    static bool fromISOExtString(C)(scope const(C)[] str, out YearMonth value) @safe pure @nogc
+        if (isSomeChar!C)
+    {
+        import mir.parse: fromString;
+        if (str.length < 7 || str[$-3] != '-')
+            return false;
+
+        auto yearStr = str[0 .. $ - 3];
+
+        if ((yearStr[0] == '+' || yearStr[0] == '-') != (yearStr.length > 4))
+            return false;
+
+        short year;
+        ushort month;
+
+        const ret =
+         fromString(str[$ - 2 .. $], month)
+         && fromString(yearStr, year);
+
+        value = YearMonth(year, month);
+        return ret;
+    }
+
+    static YearMonth fromISOExtString(C)(scope const(C)[] str) @safe pure
+        if (isSomeChar!C)
+    {
+        YearMonth ret;
+        if (fromISOExtString(str, ret))
+            return ret;
+        static immutable exc = new Exception("Invalid YearMonth string");
+        throw exc;
+    }
+
+nothrow:
+
+    ///
     @safe pure nothrow @nogc
-    ref YearMonth add(string units)(long months)
-        if (units == "months")
+    ref YearMonth add(string units : "months")(long months)
     {
         auto years = months / 12;
         months %= 12;
@@ -681,10 +743,9 @@ struct YearMonth
         return this;
     }
 
-    // Shares documentation with "years" version.
+    ///
     @safe pure nothrow @nogc
-    ref YearMonth add(string units)(long quarters)
-        if (units == "quarters")
+    ref YearMonth add(string units : "quarters")(long quarters)
     {
         auto years = quarters / 4;
         quarters %= 4;
@@ -710,10 +771,9 @@ struct YearMonth
         return this;
     }
 
-    // Shares documentation with "years" version.
+    ///
     @safe pure nothrow @nogc
-    ref YearMonth add(string units)(long years)
-        if (units == "years")
+    ref YearMonth add(string units : "years")(long years)
     {
         year += years;
         return this;
@@ -744,6 +804,27 @@ struct YearMonth
         }
         assert(0, "Invalid day of the year.");
     }
+
+    ///
+    int opBinary(string op : "-")(YearMonth rhs) const
+    {
+        alias a = this;
+        alias b = rhs;
+        return (a.year - b.year) * 12 + a.month - b.month;
+    }
+
+    ///
+    YearMonth opBinary(string op)(int rhs) const
+        if (op == "+" || op == "-")
+    {
+        static if (op == "+")
+           return addMonths(rhs);
+        else
+           return addMonths(-rhs);
+    }
+
+    ///
+    alias opBinaryRight(string op : "+") = opBinary!"+";
 
     /++
         Day of the year this $(LREF Date) is on.
@@ -799,7 +880,7 @@ version (mir_test)
 }
 
 ///
-enum Quarter : ubyte
+enum Quarter : short
 {
     ///
     q1 = 1,
@@ -881,12 +962,9 @@ struct YearQuarter
     }
 
     ///
-    Timestamp timestamp(bool includeDay = false) @safe pure nothrow @nogc @property
+    Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
-        if (!includeDay)
-            return Timestamp(year, cast(ubyte)month);
-        else
-            return Timestamp(year, cast(ubyte)month, this.day);  
+        return Timestamp(year, cast(ubyte)month);
     }
 
     ///
@@ -898,10 +976,8 @@ struct YearQuarter
     {
         import mir.timestamp;
         auto yq0 = YearQuarter(2020, Quarter.q2);
-        auto timestamp1 = cast(Timestamp) yq0;
-        auto timestamp2 = yq0.timestamp(true);
-        auto yq1 = YearQuarter(timestamp1);
-        auto yq2 = YearQuarter(timestamp2);
+        auto timestamp = cast(Timestamp) yq0;
+        auto yq = YearQuarter(timestamp);
     }
 
     ///
@@ -973,20 +1049,19 @@ struct YearQuarter
 
     version(D_Exceptions)
     ///
-    this(Timestamp timestamp) @safe pure nothrow @nogc
+    this(Timestamp timestamp) @safe pure @nogc
     {
-        if (!(timestamp.precision == Timestamp.Precision.day) ||
-             (timestamp.precision == Timestamp.Precision.month))
+        if (timestamp.precision != Timestamp.Precision.month)
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
+            throw exc;
         }
         with(timestamp) this(year, cast(Month)month);
     }
 
-    // Shares documentation with "years" version.
+    ///
     @safe pure nothrow @nogc
-    ref YearQuarter add(string units)(long quarters)
-        if (units == "quarters")
+    ref YearQuarter add(string units : "quarters")(long quarters)
     {
         auto years = quarters / 4;
         quarters %= 4;
@@ -1012,10 +1087,9 @@ struct YearQuarter
         return this;
     }
 
-    // Shares documentation with "years" version.
+    ///
     @safe pure nothrow @nogc
-    ref YearQuarter add(string units)(long years)
-        if (units == "years")
+    ref YearQuarter add(string units : "years")(long years)
     {
         year += years;
         return this;
@@ -1257,7 +1331,9 @@ public:
         if (timestamp.precision != Timestamp.Precision.day)
         {
             static immutable exc = new Exception("Date: invalid timestamp precision");
+            throw exc;
         }
+        with(timestamp) this(year, cast(Month)month, day);
     }
 
     version(D_Exceptions)
@@ -1305,9 +1381,9 @@ public:
 
     version(D_Exceptions)
     ///
-    this(YearMonth ym, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure @nogc
+    this(YearMonth ym, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure @nogc nothrow
     {
-        with(ym) this(year, month, day(assumePeriod));
+        with(ym) this = trustedCreate(year, month, day(assumePeriod));
     }
 
     ///
