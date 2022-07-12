@@ -566,9 +566,7 @@ enforce(YearMonth(2020, 10).toISOExtString() == "2020-10", "Should match")`))
         import mir.timestamp;
         auto ym0 = YearMonth(2020, Month.may);
         auto timestamp1 = cast(Timestamp) ym0;
-        auto timestamp2 = ym0.timestamp(true);
         auto ym1 = YearMonth(timestamp1);
-        auto ym2 = YearMonth(timestamp2);
     }
 
     ///
