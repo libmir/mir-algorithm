@@ -551,7 +551,7 @@ enforce(YearMonth(2020, 10).toISOExtString() == "2020-10", "Should match")`))
     }
 
     ///
-    Timestamp timestamp(bool includeDay = false) @safe pure nothrow @nogc @property
+    Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
         if (!includeDay)
             return Timestamp(year, cast(ubyte)month);
