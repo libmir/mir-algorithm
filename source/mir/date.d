@@ -645,8 +645,7 @@ enforce(YearMonth(dates.Date(2020, 10, 15)).month == 10, "Should match")`))
     ///
     this(Timestamp timestamp) @safe pure @nogc
     {
-        if (!(timestamp.precision == Timestamp.Precision.day) ||
-             (timestamp.precision == Timestamp.Precision.month))
+        if (timestamp.precision != Timestamp.Precision.month)
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
             throw exc;
@@ -1103,8 +1102,7 @@ struct YearQuarter
     ///
     this(Timestamp timestamp) @safe pure @nogc
     {
-        if (!(timestamp.precision == Timestamp.Precision.day) ||
-             (timestamp.precision == Timestamp.Precision.month))
+        if (timestamp.precision != Timestamp.Precision.month)
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
             throw exc;
