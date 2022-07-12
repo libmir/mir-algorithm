@@ -252,6 +252,12 @@ struct YearMonthDay
     ubyte day   = 1;
 
     ///
+    Quarter quarter() @safe pure nothrow @nogc @property
+    {
+        return month.quarter;
+    }
+
+    ///
     Timestamp timestamp() @safe pure nothrow @nogc @property
     {
         return Timestamp(year, cast(ubyte)month, day);
@@ -268,6 +274,15 @@ struct YearMonthDay
 
     ///
     alias opCast(T : YearMonth) = yearMonth;
+    
+    ///
+    YearQuarter yearQuarter() @safe pure nothrow @nogc @property
+    {
+        return YearQuarter(year, this.quarter);
+    }
+
+    ///
+    alias opCast(T : YearQuarter) = yearQuarter;
 
     ///
     version(mir_test)
@@ -295,6 +310,12 @@ struct YearMonthDay
     this(YearMonth yearMonth, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure nothrow @nogc
     {
         with(yearMonth) this(year, month, day(assumePeriod));
+    }
+
+    ///
+    this(YearQuarter yearQuarter, AssumePeriod assumePeriodMonth = AssumePeriod.begin, AssumePeriod assumePeriodDay = AssumePeriod.begin) @safe pure nothrow @nogc
+    {
+        with(yearQuarter) this(year, month(assumePeriodMonth), day(assumePeriodDay));
     }
 
     version(D_Exceptions)
@@ -333,6 +354,50 @@ struct YearMonthDay
 
         year += years;
         month = cast(Month) newMonth;
+
+        immutable currMaxDay = maxDay(year, month);
+        immutable overflow = day - currMaxDay;
+
+        if (overflow > 0)
+        {
+            if (allowOverflow == AllowDayOverflow.yes)
+            {
+                ++month;
+                day = cast(ubyte) overflow;
+            }
+            else
+                day = cast(ubyte) currMaxDay;
+        }
+
+        return this;
+    }
+
+
+    // Shares documentation with "years" version.
+    @safe pure nothrow @nogc
+    ref YearMonthDay add(string units)(long quarters)
+        if (units == "quarters")
+    {
+        auto years = quarters / 4;
+        quarters %= 4;
+        auto newQuarter = this.quarter + quarters;
+
+        if (quarters < 0)
+        {
+            if (newQuarter < 1)
+            {
+                newQuarter += 4;
+                --years;
+            }
+        }
+        else if (newQuarter > 4)
+        {
+            newQuarter -= 4;
+            ++years;
+        }
+
+        year += years;
+        month = cast(Month) (cast(ubyte) month + newQuarter * 3);
 
         immutable currMaxDay = maxDay(year, month);
         immutable overflow = day - currMaxDay;
@@ -452,7 +517,9 @@ struct YearMonthDay
 
 ///
 enum AssumePeriod {
+    ///
     begin,
+    ///
     end
 }
 
@@ -472,6 +539,12 @@ struct YearMonth
             case AssumePeriod.end:
                 return daysInMonth;
         }
+    }
+
+    ///
+    Quarter quarter() @safe pure nothrow @nogc @property
+    {
+        return month.quarter;
     }
 
     ///
@@ -513,6 +586,21 @@ struct YearMonth
     }
 
     ///
+    this(short year, Quarter quarter, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure nothrow @nogc
+    {
+        this.year = year;
+        this.month = monthInQuarter(quarter, assumePeriod);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym1 = YearMonth(2000, Quarter.q1);
+        auto ym2 = YearMonth(2000, Quarter.q1, AssumePeriod.end);
+    }
+
+    ///
     this(Date date) @safe pure nothrow @nogc
     {
         this = date.yearMonth;
@@ -536,6 +624,20 @@ struct YearMonth
     @safe unittest
     {
         auto ym = YearMonth(YearMonthDay(2000, Month.dec, 31));
+    }
+
+    ///
+    this(YearQuarter yearQuarter, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure nothrow @nogc
+    {
+        with(yearQuarter) this(year, month(assumePeriod));
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym1 = YearMonth(YearQuarter(2000, Quarter.q1));
+        auto ym2 = YearMonth(YearQuarter(2000, Quarter.q1), AssumePeriod.end);
     }
 
     version(D_Exceptions)
@@ -575,6 +677,35 @@ struct YearMonth
 
         year += years;
         month = cast(Month) newMonth;
+
+        return this;
+    }
+
+    // Shares documentation with "years" version.
+    @safe pure nothrow @nogc
+    ref YearMonth add(string units)(long quarters)
+        if (units == "quarters")
+    {
+        auto years = quarters / 4;
+        quarters %= 4;
+        auto newQuarter = this.quarter + quarters;
+
+        if (quarters < 0)
+        {
+            if (newQuarter < 1)
+            {
+                newQuarter += 4;
+                --years;
+            }
+        }
+        else if (newQuarter > 4)
+        {
+            newQuarter -= 4;
+            ++years;
+        }
+
+        year += years;
+        month = cast(Month) (cast(ubyte) month + newQuarter * 3);
 
         return this;
     }
@@ -661,8 +792,341 @@ version (mir_test)
     assert(YearMonth(1999, cast(Month) 1).day(AssumePeriod.begin) == 1);
     assert(YearMonth(1999, cast(Month) 12).day(AssumePeriod.end) == 31);
     assert(YearMonth(1999, cast(Month) 1).dayOfYear(AssumePeriod.begin) == 1);
+    assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.begin) == 335);
     assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.end) == 365);
+    assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.begin) == 336);
     assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.end) == 366);
+}
+
+///
+enum Quarter : ubyte
+{
+    ///
+    q1 = 1,
+    ///
+    q2,
+    ///
+    q3,
+    ///
+    q4,
+}
+
+///
+@safe pure @nogc nothrow
+Quarter quarter(Month month)
+{
+    return cast(Quarter)((cast(ubyte)month - 1) / 3 + 1);
+}
+
+///
+version(mir_test)
+@safe pure @nogc nothrow
+unittest {
+    assert(Month.jan.quarter == Quarter.q1);
+    assert(Month.feb.quarter == Quarter.q1);
+    assert(Month.mar.quarter == Quarter.q1);
+    assert(Month.apr.quarter == Quarter.q2);
+    assert(Month.may.quarter == Quarter.q2);
+    assert(Month.jun.quarter == Quarter.q2);
+    assert(Month.jul.quarter == Quarter.q3);
+    assert(Month.aug.quarter == Quarter.q3);
+    assert(Month.sep.quarter == Quarter.q3);
+    assert(Month.oct.quarter == Quarter.q4);
+    assert(Month.nov.quarter == Quarter.q4);
+    assert(Month.dec.quarter == Quarter.q4);
+}
+
+private
+@safe pure @nogc nothrow
+Month monthInQuarter(Quarter quarter, AssumePeriod assumePeriod = AssumePeriod.begin)
+{
+    assert (assumePeriod == AssumePeriod.begin || assumePeriod == AssumePeriod.end);
+    return cast(Month) ((cast(byte)quarter - 1) * 3 + 1 + 2 * assumePeriod);
+}
+
+version(mir_test)
+@safe pure @nogc nothrow
+unittest {
+    assert(Quarter.q1.monthInQuarter == Month.jan);
+    assert(Quarter.q1.monthInQuarter(AssumePeriod.end) == Month.mar);
+    assert(Quarter.q2.monthInQuarter == Month.apr);
+    assert(Quarter.q2.monthInQuarter(AssumePeriod.end) == Month.jun);
+    assert(Quarter.q3.monthInQuarter == Month.jul);
+    assert(Quarter.q3.monthInQuarter(AssumePeriod.end) == Month.sep);
+    assert(Quarter.q4.monthInQuarter == Month.oct);
+    assert(Quarter.q4.monthInQuarter(AssumePeriod.end) == Month.dec);
+}
+
+///
+@serdeProxy!Timestamp
+struct YearQuarter
+{
+    short year  = 1;
+    Quarter quarter = Quarter.q1;
+    
+    @property Month month(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
+    {
+        return quarter.monthInQuarter(assumePeriod);
+    }
+
+    @property ubyte day(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
+    {
+        final switch (assumePeriod)
+        {
+            case AssumePeriod.begin:
+                return 1;
+            case AssumePeriod.end:
+                return daysInMonth;
+        }
+    }
+
+    ///
+    Timestamp timestamp(bool includeDay = false) @safe pure nothrow @nogc @property
+    {
+        if (!includeDay)
+            return Timestamp(year, cast(ubyte)month);
+        else
+            return Timestamp(year, cast(ubyte)month, this.day);  
+    }
+
+    ///
+    alias opCast(T : Timestamp) = timestamp;
+
+    ///
+    version(mir_test)
+    unittest
+    {
+        import mir.timestamp;
+        auto yq0 = YearQuarter(2020, Quarter.q2);
+        auto timestamp1 = cast(Timestamp) yq0;
+        auto timestamp2 = yq0.timestamp(true);
+        auto yq1 = YearQuarter(timestamp1);
+        auto yq2 = YearQuarter(timestamp2);
+    }
+
+    ///
+    this(short year, Quarter quarter) @safe pure nothrow @nogc
+    {
+        this.year = year;
+        this.quarter = quarter;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(2000, Quarter.q4);
+    }
+
+    ///
+    this(short year, Month month) @safe pure nothrow @nogc
+    {
+        this.year = year;
+        this.quarter = month.quarter;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(2000, Month.dec);
+    }
+
+    ///
+    this(Date date) @safe pure nothrow @nogc
+    {
+        this = date.yearQuarter;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(Date(2000, Month.dec, 31));
+    }
+
+    ///
+    this(YearMonthDay yearMonthDay) @safe pure nothrow @nogc
+    {
+        with(yearMonthDay) this(year, quarter);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearQuarter(YearMonthDay(2000, Month.dec, 31));
+    }
+
+    ///
+    this(YearMonth yearMonth) @safe pure nothrow @nogc
+    {
+        with(yearMonth) this(year, quarter);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(YearMonth(2000, Month.dec));
+    }
+
+    version(D_Exceptions)
+    ///
+    this(Timestamp timestamp) @safe pure nothrow @nogc
+    {
+        if (!(timestamp.precision == Timestamp.Precision.day) ||
+             (timestamp.precision == Timestamp.Precision.month))
+        {
+            static immutable exc = new Exception("YearMonth: invalid timestamp precision");
+        }
+        with(timestamp) this(year, cast(Month)month);
+    }
+
+    // Shares documentation with "years" version.
+    @safe pure nothrow @nogc
+    ref YearQuarter add(string units)(long quarters)
+        if (units == "quarters")
+    {
+        auto years = quarters / 4;
+        quarters %= 4;
+        auto newQuarter = quarter + quarters;
+
+        if (quarters < 0)
+        {
+            if (newQuarter < 1)
+            {
+                newQuarter += 4;
+                --years;
+            }
+        }
+        else if (newQuarter > 4)
+        {
+            newQuarter -= 4;
+            ++years;
+        }
+
+        year += years;
+        quarter = cast(Quarter) newQuarter;
+
+        return this;
+    }
+
+    // Shares documentation with "years" version.
+    @safe pure nothrow @nogc
+    ref YearQuarter add(string units)(long years)
+        if (units == "years")
+    {
+        year += years;
+        return this;
+    }
+
+    private void setQuarterOfYear(bool useExceptions = false)(int days)
+    {
+        immutable int[] lastDay = isLeapYear ? lastDayQuarterLeap : lastDayQuarterNonLeap;
+
+        bool dayOutOfRange = days <= 0 || days > (isLeapYear ? daysInLeapYear : daysInYear);
+
+        static if (useExceptions)
+        {
+            if (dayOutOfRange) throw InvalidDay;
+        }
+        else
+        {
+            assert(!dayOutOfRange, "Invalid Day");
+        }
+
+        foreach (i; 1 .. lastDay.length)
+        {
+            if (days <= lastDay[i])
+            {
+                quarter = cast(Quarter)(cast(int) Quarter.q1 + i - 1);
+                return;
+            }
+        }
+        assert(0, "Invalid day of the year.");
+    }
+
+    /++
+        Day of the quarter this $(LREF Date) is on.
+      +/
+    @property int dayOfQuarter(AssumePeriod assumePeriodMonth, AssumePeriod assumePeriodDay) const @safe pure nothrow @nogc
+    {
+        if (quarter >= Quarter.q1 && quarter <= Quarter.q4)
+        {
+            immutable int[] lastDayQuarter = isLeapYear ? lastDayQuarterLeap : lastDayQuarterNonLeap;
+            auto quarterIndex = quarter - Quarter.q1;
+            immutable int[] lastDay = isLeapYear ? lastDayLeap : lastDayNonLeap;
+            auto monthIndex = month(assumePeriodMonth) - Month.jan;
+
+            return lastDay[monthIndex] - lastDayQuarter[quarterIndex] + day(assumePeriodDay);
+        }
+        assert(0, "Invalid quarter.");
+    }
+
+    /// ditto
+    @property int dayOfQuarter(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
+    {
+        return dayOfQuarter(assumePeriod, assumePeriod);
+    }
+
+    /++
+        Day of the year this $(LREF Date) is on.
+      +/
+    @property int dayOfYear(AssumePeriod assumePeriodMonth, AssumePeriod assumePeriodDay) const @safe pure nothrow @nogc
+    {
+        if (quarter >= Quarter.q1 && quarter <= Quarter.q4)
+        {
+            immutable int[] lastDayQuarter = isLeapYear ? lastDayQuarterLeap : lastDayQuarterNonLeap;
+            auto quarterIndex = quarter - Quarter.q1;
+
+            return lastDayQuarter[quarterIndex] + dayOfQuarter(assumePeriodMonth, assumePeriodDay);
+        }
+        assert(0, "Invalid quarter.");
+    }
+    
+    /// ditto
+    @property int dayOfYear(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
+    {
+        return dayOfYear(assumePeriod, assumePeriod);
+    }
+
+    /++
+        Whether this $(LREF Date) is in a leap year.
+     +/
+    @property bool isLeapYear() const @safe pure nothrow @nogc
+    {
+        return yearIsLeapYear(year);
+    }
+
+    /++
+        The last day in the month that this $(LREF Date) is in.
+      +/
+    @property ubyte daysInMonth() const @safe pure nothrow @nogc
+    {
+        return maxDay(year, month);
+    }
+
+    /++
+        Whether the current year is a date in A.D.
+      +/
+    @property bool isAD() const @safe pure nothrow @nogc
+    {
+        return year > 0;
+    }
+}
+
+///
+version (mir_test)
+@safe unittest
+{
+    assert(YearQuarter(1999, cast(Quarter) 1).day(AssumePeriod.begin) == 1);
+    assert(YearQuarter(1999, cast(Quarter) 4).day(AssumePeriod.end) == 31);
+    assert(YearQuarter(1999, cast(Quarter) 1).dayOfYear == 1);
+    assert(YearQuarter(1999, cast(Quarter) 4).dayOfYear == 274);
+    assert(YearQuarter(1999, cast(Quarter) 4).dayOfYear(AssumePeriod.end) == 365);
+    assert(YearQuarter(2000, cast(Quarter) 4).dayOfYear == 275);
+    assert(YearQuarter(2000, cast(Quarter) 4).dayOfYear(AssumePeriod.end) == 366);
 }
 
 /++
@@ -815,6 +1279,28 @@ public:
     @safe unittest
     {
         auto d = date(YearMonthDay(2020, Month.may, 31));
+    }
+
+    version(D_Exceptions)
+    ///
+    this(YearQuarter yq, AssumePeriod assumePeriodMonth, AssumePeriod assumePeriodDay) @safe pure @nogc
+    {
+        with(yq) this(year, month(assumePeriodMonth), day(assumePeriodDay));
+    }
+
+    version(D_Exceptions)
+    ///
+    this(YearQuarter yq, AssumePeriod assumePeriod = AssumePeriod.begin) @safe pure @nogc
+    {
+        this(yq, assumePeriod, assumePeriod);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d1 = date(YearQuarter(2020, Quarter.q2));
+        auto d2 = date(YearQuarter(2020, Quarter.q2), AssumePeriod.end);
     }
 
     version(D_Exceptions)
@@ -1193,9 +1679,46 @@ public:
     }
 
     ///
+    YearQuarter yearQuarter() const @safe pure nothrow @nogc @property
+    {
+        uint day = _julianDay;
+        if (day < _endDict)
+        {
+            return yearMonthDay().YearQuarter;
+        }
+        return yearQuarterImpl;
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date(2020, Month.may, 31);
+        auto yq = d.yearQuarter;
+        assert(yq.year == 2020);
+        assert(yq.quarter == Quarter.q2);
+    }
+
+    //
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date(2050, Month.dec, 31);
+        auto yq = d.yearQuarter;
+        assert(yq.year == 2050);
+        assert(yq.quarter == Quarter.q4);
+    }
+
+    ///
     short year() const @safe pure nothrow @nogc @property
     {
-        return yearMonth.year;
+        return yearQuarter.year;
+    }
+
+    ///
+    Quarter quarter() const @safe pure nothrow @nogc @property
+    {
+        return yearQuarter.quarter;
     }
 
     ///
@@ -1216,6 +1739,7 @@ public:
     {
         auto d = Date(2020, Month.may, 31);
         assert(d.year == 2020);
+        assert(d.quarter == Quarter.q2);
         assert(d.month == Month.may);
         assert(d.day == 31);
     }
@@ -1460,6 +1984,129 @@ public:
     {
         auto d = date(2020, Month.may, 31);
         auto ym = d.yearMonthImpl;
+    }
+
+    pragma(inline, false)
+    YearQuarter yearQuarterImpl() const @safe pure nothrow @nogc @property
+    {
+        YearQuarter yq;
+        int days = dayOfGregorianCal;
+        with(yq)
+        if (days > 0)
+        {
+            int years = (days / daysIn400Years) * 400 + 1;
+            days %= daysIn400Years;
+
+            {
+                immutable tempYears = days / daysIn100Years;
+
+                if (tempYears == 4)
+                {
+                    years += 300;
+                    days -= daysIn100Years * 3;
+                }
+                else
+                {
+                    years += tempYears * 100;
+                    days %= daysIn100Years;
+                }
+            }
+
+            years += (days / daysIn4Years) * 4;
+            days %= daysIn4Years;
+
+            {
+                immutable tempYears = days / daysInYear;
+
+                if (tempYears == 4)
+                {
+                    years += 3;
+                    days -= daysInYear * 3;
+                }
+                else
+                {
+                    years += tempYears;
+                    days %= daysInYear;
+                }
+            }
+
+            if (days == 0)
+            {
+                year = cast(short)(years - 1);
+                quarter = Quarter.q4;
+            }
+            else
+            {
+                year = cast(short) years;
+                setQuarterOfYear(days);
+            }
+        }
+        else if (days <= 0 && -days < daysInLeapYear)
+        {
+            year = 0;
+
+            setQuarterOfYear(daysInLeapYear + days);
+        }
+        else
+        {
+            days += daysInLeapYear - 1;
+            int years = (days / daysIn400Years) * 400 - 1;
+            days %= daysIn400Years;
+
+            {
+                immutable tempYears = days / daysIn100Years;
+
+                if (tempYears == -4)
+                {
+                    years -= 300;
+                    days += daysIn100Years * 3;
+                }
+                else
+                {
+                    years += tempYears * 100;
+                    days %= daysIn100Years;
+                }
+            }
+
+            years += (days / daysIn4Years) * 4;
+            days %= daysIn4Years;
+
+            {
+                immutable tempYears = days / daysInYear;
+
+                if (tempYears == -4)
+                {
+                    years -= 3;
+                    days += daysInYear * 3;
+                }
+                else
+                {
+                    years += tempYears;
+                    days %= daysInYear;
+                }
+            }
+
+            if (days == 0)
+            {
+                year = cast(short)(years + 1);
+                quarter = Quarter.q2;
+            }
+            else
+            {
+                year = cast(short) years;
+                immutable newDoY = (yearIsLeapYear(year) ? daysInLeapYear : daysInYear) + days + 1;
+
+                setQuarterOfYear(newDoY);
+            }
+        }
+        return yq;
+    }
+
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = date(2020, Month.may, 31);
+        auto yq = d.yearQuarterImpl;
     }
 
     /++
@@ -2818,6 +3465,15 @@ immutable int[13] lastDayNonLeap = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273,
   +/
 immutable int[13] lastDayLeap = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366];
 
+/+
+    Array of integers representing the last days of each quarter in a year.
+  +/
+immutable int[5] lastDayQuarterNonLeap = [0, 90, 181, 273, 365];
+
+/+
+    Array of integers representing the last days of each quarter in a leap year.
+  +/
+immutable int[5] lastDayQuarterLeap = [0, 91, 182, 274, 366];
 
 /+
     Returns the string representation of the given month.
