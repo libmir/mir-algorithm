@@ -260,7 +260,7 @@ struct YearMonthDay
     }
 
     ///
-    Timestamp timestamp() @safe pure nothrow @nogc @property
+    Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
         return Timestamp(year, cast(ubyte)month, day);
     }
@@ -324,11 +324,12 @@ struct YearMonthDay
 
     version(D_Exceptions)
     ///
-    this(Timestamp timestamp) @safe pure nothrow @nogc
+    this(Timestamp timestamp) @safe pure @nogc
     {
         if (timestamp.precision != Timestamp.Precision.day)
         {
             static immutable exc = new Exception("YearMonthDay: invalid timestamp precision");
+            throw exc;
         }
         with(timestamp) this(year, cast(Month)month, day);
     }
@@ -647,12 +648,13 @@ enforce(YearMonth(dates.Date(2020, 10, 15)).month == 10, "Should match")`))
 
     version(D_Exceptions)
     ///
-    this(Timestamp timestamp) @safe pure nothrow @nogc
+    this(Timestamp timestamp) @safe pure @nogc
     {
         if (!(timestamp.precision == Timestamp.Precision.day) ||
              (timestamp.precision == Timestamp.Precision.month))
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
+            throw exc;
         }
         with(timestamp) this(year, cast(Month)month);
     }
@@ -1017,12 +1019,9 @@ struct YearQuarter
     }
 
     ///
-    Timestamp timestamp(bool includeDay = false) @safe pure nothrow @nogc @property
+    Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
-        if (!includeDay)
-            return Timestamp(year, cast(ubyte)month);
-        else
-            return Timestamp(year, cast(ubyte)month, this.day);  
+        return Timestamp(year, cast(ubyte)month);
     }
 
     ///
@@ -1109,12 +1108,13 @@ struct YearQuarter
 
     version(D_Exceptions)
     ///
-    this(Timestamp timestamp) @safe pure nothrow @nogc
+    this(Timestamp timestamp) @safe pure @nogc
     {
         if (!(timestamp.precision == Timestamp.Precision.day) ||
              (timestamp.precision == Timestamp.Precision.month))
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
+            throw exc;
         }
         with(timestamp) this(year, cast(Month)month);
     }
@@ -1391,7 +1391,9 @@ public:
         if (timestamp.precision != Timestamp.Precision.day)
         {
             static immutable exc = new Exception("Date: invalid timestamp precision");
+            throw exc;
         }
+        with(timestamp) this(year, cast(Month)month, day);
     }
 
     version(D_Exceptions)
