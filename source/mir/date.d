@@ -553,10 +553,7 @@ enforce(YearMonth(2020, 10).toISOExtString() == "2020-10", "Should match")`))
     ///
     Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
-        if (!includeDay)
-            return Timestamp(year, cast(ubyte)month);
-        else
-            return Timestamp(year, cast(ubyte)month, this.day);  
+        return Timestamp(year, cast(ubyte)month);
     }
 
     ///
@@ -1033,10 +1030,8 @@ struct YearQuarter
     {
         import mir.timestamp;
         auto yq0 = YearQuarter(2020, Quarter.q2);
-        auto timestamp1 = cast(Timestamp) yq0;
-        auto timestamp2 = yq0.timestamp(true);
-        auto yq1 = YearQuarter(timestamp1);
-        auto yq2 = YearQuarter(timestamp2);
+        auto timestamp = cast(Timestamp) yq0;
+        auto yq = YearQuarter(timestamp);
     }
 
     ///
