@@ -123,7 +123,7 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
     enum wordBits = T.mant_dig < 64 ? 64 : 128;
     enum ulong half = (1UL << (wordBits - T.mant_dig - 1));
     enum bigHalf = UInt!128([0UL, half]);
-    enum bigMask = (1UL << (64 - T.mant_dig)) - 1;
+    enum bigMask = (UInt!128(1UL) << (64 - T.mant_dig)) - 1;
 
     static if (T.mant_dig > 64)
         enum ulong mask = (1UL << (128 - T.mant_dig)) - 1;
@@ -131,7 +131,7 @@ T decimalToFloatImpl(T)(ulong coefficient, long exponent)
     static if (T.mant_dig == 64)
         enum ulong mask = ulong.max;
     else
-        enum ulong mask = bigMask;
+        enum ulong mask = (1UL << (64 - T.mant_dig)) - 1;
     
     if (coefficient == 0)
         return 0;
