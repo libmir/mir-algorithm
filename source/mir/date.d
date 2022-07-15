@@ -7,9 +7,12 @@ $(BOOKTABLE,
 $(TR $(TH Category) $(TH Functions))
 $(TR $(TD Main date types) $(TD
     $(LREF Date)
+    $(LREF YearMonth)
+    $(LREF YearQuarter)
 ))
 $(TR $(TD Other date types) $(TD
     $(LREF Month)
+    $(LREF Quarter)
     $(LREF DayOfWeek)
 ))
 $(TR $(TD Date checking) $(TD
@@ -18,10 +21,12 @@ $(TR $(TD Date checking) $(TD
 ))
 $(TR $(TD Date conversion) $(TD
     $(LREF daysToDayOfWeek)
+    $(LREF quarter)
 ))
 $(TR $(TD Other) $(TD
     $(LREF AllowDayOverflow)
     $(LREF DateTimeException)
+    $(LREF AssumePeriod)
 ))
 ))
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
@@ -490,7 +495,10 @@ struct YearMonthDay
     }
 }
 
-///
+/++
+Controls the assumed start period of days for `YearMonth` or days and quarters
+for `YearQuarter`
++/
 enum AssumePeriod {
     ///
     begin,
@@ -498,7 +506,7 @@ enum AssumePeriod {
     end
 }
 
-///
+/// Represents a date as a pair of years and months. 
 @serdeProxy!Timestamp
 struct YearMonth
 {
@@ -928,7 +936,13 @@ enum Quarter : short
     q4,
 }
 
-///
+/++
+Returns the quarter for a given month.
+
+Params:
+    month
+
++/
 @safe pure @nogc nothrow
 Quarter quarter(Month month)
 {
@@ -974,7 +988,7 @@ unittest {
     assert(Quarter.q4.monthInQuarter(AssumePeriod.end) == Month.dec);
 }
 
-///
+/// Represents a date as a pair of years and quarters. 
 @serdeProxy!Timestamp
 struct YearQuarter
 {
