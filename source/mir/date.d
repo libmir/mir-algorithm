@@ -7,9 +7,12 @@ $(BOOKTABLE,
 $(TR $(TH Category) $(TH Functions))
 $(TR $(TD Main date types) $(TD
     $(LREF Date)
+    $(LREF YearMonth)
+    $(LREF YearQuarter)
 ))
 $(TR $(TD Other date types) $(TD
     $(LREF Month)
+    $(LREF Quarter)
     $(LREF DayOfWeek)
 ))
 $(TR $(TD Date checking) $(TD
@@ -18,10 +21,12 @@ $(TR $(TD Date checking) $(TD
 ))
 $(TR $(TD Date conversion) $(TD
     $(LREF daysToDayOfWeek)
+    $(LREF quarter)
 ))
 $(TR $(TD Other) $(TD
     $(LREF AllowDayOverflow)
     $(LREF DateTimeException)
+    $(LREF AssumePeriod)
 ))
 ))
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
@@ -490,7 +495,10 @@ struct YearMonthDay
     }
 }
 
-///
+/++
+Controls the assumed start period of days for `YearMonth` or days and quarters
+for `YearQuarter`
++/
 enum AssumePeriod {
     ///
     begin,
@@ -498,7 +506,7 @@ enum AssumePeriod {
     end
 }
 
-///
+/// Represents a date as a pair of years and months. 
 @serdeProxy!Timestamp
 struct YearMonth
 {
@@ -538,6 +546,22 @@ struct YearMonth
         w.printZeroPad(cast(uint)month, 2);
     }
 
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(1999, Month.jan);
+        assert(ym.toISOExtString == "1999-01");
+    }
+
+    //
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(10_001, Month.jan);
+        assert(ym.toISOExtString == "+10001-01");
+    }
+
     @property ubyte day(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
         final switch (assumePeriod)
@@ -550,9 +574,24 @@ struct YearMonth
     }
 
     ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(1999, cast(Month) 1).day(AssumePeriod.begin) == 1);
+        assert(YearMonth(1999, cast(Month) 12).day(AssumePeriod.end) == 31);
+    }
+
+    ///
     Quarter quarter() @safe pure nothrow @nogc @property
     {
         return month.quarter;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(1999, Month.jan).quarter == 1);
     }
 
     ///
@@ -596,6 +635,13 @@ struct YearMonth
             throw exc;
         this.year = year;
         this.month = cast(Month)month;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(2000, 12);
     }
 
     ///
@@ -679,10 +725,27 @@ struct YearMonth
     }
 
     ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(2000, Month.nov);
+        assert(ym.nthWeekday(1, DayOfWeek.mon) == Date(2000, 11, 6));
+        assert(ym.nthWeekday(5, DayOfWeek.mon) == Date(2000, 12, 4));
+    }
+
+    ///
     Date trustedWithDayOfMonth(int days) const @safe pure nothrow @nogc
     {
         assert(days <= lengthOfMonth);
         return Date.trustedCreate(year, month, days);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(2000, Month.nov);
+        assert(ym.trustedWithDayOfMonth(6) == Date(2000, 11, 6));
     }
 
     ///
@@ -694,9 +757,27 @@ struct YearMonth
     }
 
     ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(2000, Month.nov);
+        assert(ym.opCmp(YearMonth(2000, Month.nov)) == 0);
+        assert(ym.opCmp(YearMonth(2000, Month.oct)) == 1);
+        assert(ym.opCmp(YearMonth(2000, Month.dec)) == -1);
+        assert(ym.opCmp(YearMonth(2001, Month.nov)) == -1);
+    }
+
+    ///
     size_t toHash() const pure nothrow @nogc @safe
     {
         return year * 16 + month;
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(2000, Month.dec).toHash == 32012);
     }
 
     ///
@@ -706,14 +787,38 @@ struct YearMonth
     }
 
     ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(2000, Month.dec).endOfMonth == Date(2000, Month.dec, 31));
+    }
+
+    ///
     ushort lengthOfMonth() const pure nothrow @property @nogc @safe
     {
         return maxDay(year, month);
     }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(2000, Month.dec).lengthOfMonth == 31);
+    }
+
     ///
     this(scope const(char)[] str) @safe pure @nogc
     {
         this = fromISOExtString(str);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth("1999-01");
+        assert(ym.year == 1999);
+        assert(ym.month == 1);
     }
 
     static bool fromISOExtString(C)(scope const(C)[] str, out YearMonth value) @safe pure @nogc
@@ -780,31 +885,64 @@ nothrow:
     }
 
     ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        ym0.add!"months"(1);
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.feb);
+
+        auto ym1 = ym0.add!"months"(1);
+        assert(ym1.year == 2020);
+        assert(ym1.month == Month.mar);
+
+        // also changes ym0
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.mar);
+
+        ym1.add!"months"(10);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.jan);
+
+        ym1.add!"months"(-13);
+        assert(ym1.year == 2019);
+        assert(ym1.month == Month.dec);
+    }
+
+    ///
     @safe pure nothrow @nogc
     ref YearMonth add(string units : "quarters")(long quarters)
     {
-        auto years = quarters / 4;
-        quarters %= 4;
-        auto newQuarter = this.quarter + quarters;
+        return add!"months"(quarters * 3);
+    }
 
-        if (quarters < 0)
-        {
-            if (newQuarter < 1)
-            {
-                newQuarter += 4;
-                --years;
-            }
-        }
-        else if (newQuarter > 4)
-        {
-            newQuarter -= 4;
-            ++years;
-        }
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq0 = YearMonth(2020, Month.jan);
 
-        year += years;
-        month = cast(Month) (cast(ubyte) month + newQuarter * 3);
+        yq0.add!"quarters"(1);
+        assert(yq0.year == 2020);
+        assert(yq0.month == Month.apr);
 
-        return this;
+        auto yq1 = yq0.add!"quarters"(1);
+        assert(yq1.year == 2020);
+        assert(yq1.month == Month.jul);
+
+        // also changes yq0
+        assert(yq0.year == 2020);
+        assert(yq0.month == Month.jul);
+
+        yq1.add!"quarters"(2);
+        assert(yq1.year == 2021);
+        assert(yq1.month == Month.jan);
+
+        yq1.add!"quarters"(-5);
+        assert(yq1.year == 2019);
+        assert(yq1.month == Month.oct);
     }
 
     ///
@@ -813,6 +951,129 @@ nothrow:
     {
         year += years;
         return this;
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        ym0.add!"years"(1);
+        assert(ym0.year == 2021);
+        assert(ym0.month == Month.jan);
+
+        auto ym1 = ym0.add!"years"(1);
+        assert(ym1.year == 2022);
+        assert(ym1.month == Month.jan);
+
+        // also changes ym0
+        assert(ym0.year == 2022);
+        assert(ym0.month == Month.jan);
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    YearMonth addMonths(long months)
+    {
+        auto newYear = year;
+        newYear += months / 12;
+        months %= 12;
+        auto newMonth = month;
+        newMonth += months;
+
+        if (months < 0)
+        {
+            if (newMonth < 1)
+            {
+                newMonth += 12;
+                --newYear;
+            }
+        }
+        else if (newMonth > 12)
+        {
+            newMonth -= 12;
+            ++newYear;
+        }
+
+        return YearMonth(newYear, newMonth);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        auto ym1 = ym0.addMonths(15);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.apr);
+
+        auto ym2 = ym1.addMonths(-6);
+        assert(ym2.year == 2020);
+        assert(ym2.month == Month.oct);
+
+        auto ym3 = YearMonth(2020, Month.dec).addMonths(3);
+        assert(ym3.year == 2021);
+        assert(ym3.month == Month.mar);
+
+        // ym0 is left unchagned
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.jan);
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    YearMonth addQuarters(long quarters)
+    {
+        return addMonths(quarters * 3);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        auto ym1 = ym0.addQuarters(5);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.apr);
+
+        auto ym2 = ym1.addQuarters(-2);
+        assert(ym2.year == 2020);
+        assert(ym2.month == Month.oct);
+
+        auto ym3 = YearMonth(2020, Month.dec).addQuarters(1);
+        assert(ym3.year == 2021);
+        assert(ym3.month == Month.mar);
+
+        // ym0 is left unchagned
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.jan);
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    YearMonth addYears(long years)
+    {
+        auto newYear = this.year;
+        newYear += years;
+        return YearMonth(newYear, month);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        auto ym1 = ym0.addYears(1);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.jan);
+ 
+        // leaves ym0 unchanged
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.jan);
     }
 
     private void setMonthOfYear(bool useExceptions = false)(int days)
@@ -842,6 +1103,25 @@ nothrow:
     }
 
     ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym = YearMonth(2020, Month.feb);
+        ym.setMonthOfYear(10);
+        assert(ym.year == 2020);
+        assert(ym.month == Month.jan);
+        ym.setMonthOfYear(100);
+        assert(ym.year == 2020);
+        assert(ym.month == Month.apr);
+        ym.setMonthOfYear(200);
+        assert(ym.year == 2020);
+        assert(ym.month == Month.jul);
+        ym.setMonthOfYear(300);
+        assert(ym.year == 2020);
+        assert(ym.month == Month.oct);
+    }
+
+    ///
     int opBinary(string op : "-")(YearMonth rhs) const
     {
         alias a = this;
@@ -854,9 +1134,9 @@ nothrow:
         if (op == "+" || op == "-")
     {
         static if (op == "+")
-           return addMonths(rhs);
+           return add!"months"(rhs);
         else
-           return addMonths(-rhs);
+           return add!"months"(-rhs);
     }
 
     ///
@@ -877,12 +1157,31 @@ nothrow:
         assert(0, "Invalid month.");
     }
 
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(1999, cast(Month) 1).dayOfYear == 1);
+        assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.begin) == 335);
+        assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.end) == 365);
+        assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.begin) == 336);
+        assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.end) == 366);
+    }
+
     /++
         Whether this $(LREF Date) is in a leap year.
      +/
     @property bool isLeapYear() const @safe pure nothrow @nogc
     {
         return yearIsLeapYear(year);
+    }
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(1999, cast(Month) 12).isLeapYear == false);
+        assert(YearMonth(2000, cast(Month) 12).isLeapYear == true);
     }
 
     /++
@@ -893,6 +1192,13 @@ nothrow:
         return maxDay(year, month);
     }
 
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(2020, Month.dec).daysInMonth == 31);
+    }
+
     /++
         Whether the current year is a date in A.D.
       +/
@@ -900,19 +1206,13 @@ nothrow:
     {
         return year > 0;
     }
-}
-
-///
-version (mir_test)
-@safe unittest
-{
-    assert(YearMonth(1999, cast(Month) 1).day(AssumePeriod.begin) == 1);
-    assert(YearMonth(1999, cast(Month) 12).day(AssumePeriod.end) == 31);
-    assert(YearMonth(1999, cast(Month) 1).dayOfYear(AssumePeriod.begin) == 1);
-    assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.begin) == 335);
-    assert(YearMonth(1999, cast(Month) 12).dayOfYear(AssumePeriod.end) == 365);
-    assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.begin) == 336);
-    assert(YearMonth(2000, cast(Month) 12).dayOfYear(AssumePeriod.end) == 366);
+    
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        assert(YearMonth(2020, Month.jan).isAD == true);
+    }
 }
 
 ///
@@ -928,7 +1228,13 @@ enum Quarter : short
     q4,
 }
 
-///
+/++
+Returns the quarter for a given month.
+
+Params:
+    month
+
++/
 @safe pure @nogc nothrow
 Quarter quarter(Month month)
 {
@@ -974,18 +1280,29 @@ unittest {
     assert(Quarter.q4.monthInQuarter(AssumePeriod.end) == Month.dec);
 }
 
-///
+/// Represents a date as a pair of years and quarters. 
 @serdeProxy!Timestamp
 struct YearQuarter
 {
     short year  = 1;
     Quarter quarter = Quarter.q1;
     
+    ///
     @property Month month(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
         return quarter.monthInQuarter(assumePeriod);
     }
 
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(2000, Quarter.q4);
+        assert(yq.month == 10);
+        assert(yq.month(AssumePeriod.end) == 12);
+    }
+
+    ///
     @property ubyte day(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
         final switch (assumePeriod)
@@ -998,9 +1315,27 @@ struct YearQuarter
     }
 
     ///
+    version (mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(2000, Quarter.q4);
+        assert(yq.day == 1);
+        assert(yq.day(AssumePeriod.end) == 31);
+    }
+
+    ///
     Timestamp timestamp() @safe pure nothrow @nogc const @property
     {
         return Timestamp(year, cast(ubyte)month);
+    }
+
+    ///
+    version(mir_test)
+    unittest
+    {
+        import mir.timestamp;
+        auto yq = YearQuarter(2020, Quarter.q2);
+        auto ts = yq.timestamp;
     }
 
     ///
@@ -1011,9 +1346,8 @@ struct YearQuarter
     unittest
     {
         import mir.timestamp;
-        auto yq0 = YearQuarter(2020, Quarter.q2);
-        auto timestamp = cast(Timestamp) yq0;
-        auto yq = YearQuarter(timestamp);
+        auto yq = YearQuarter(2020, Quarter.q2);
+        auto timestamp = cast(Timestamp) yq;
     }
 
     ///
@@ -1096,6 +1430,15 @@ struct YearQuarter
     }
 
     ///
+    version(mir_test)
+    @safe unittest
+    {
+        import mir.timestamp;
+        auto ts = Timestamp(2020, 4);
+        auto yq = YearQuarter(ts);
+    }
+
+    ///
     @safe pure nothrow @nogc
     ref YearQuarter add(string units : "quarters")(long quarters)
     {
@@ -1124,11 +1467,131 @@ struct YearQuarter
     }
 
     ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        yq0.add!"quarters"(1);
+        assert(yq0.year == 2020);
+        assert(yq0.quarter == Quarter.q2);
+
+        auto yq1 = yq0.add!"quarters"(1);
+        assert(yq1.year == 2020);
+        assert(yq1.quarter == Quarter.q3);
+
+        // also changes yq0
+        assert(yq0.year == 2020);
+        assert(yq0.quarter == Quarter.q3);
+
+        yq1.add!"quarters"(2);
+        assert(yq1.year == 2021);
+        assert(yq1.quarter == Quarter.q1);
+
+        yq1.add!"quarters"(-5);
+        assert(yq1.year == 2019);
+        assert(yq1.quarter == Quarter.q4);
+    }
+
+    ///
     @safe pure nothrow @nogc
     ref YearQuarter add(string units : "years")(long years)
     {
         year += years;
         return this;
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        yq0.add!"years"(1);
+        assert(yq0.year == 2021);
+        assert(yq0.quarter == Quarter.q1);
+
+        auto yq1 = yq0.add!"years"(1);
+        assert(yq1.year == 2022);
+        assert(yq1.quarter == Quarter.q1);
+
+        // also changes yq0
+        assert(yq0.year == 2022);
+        assert(yq0.quarter == Quarter.q1);
+    }
+
+
+    ///
+    @safe pure nothrow @nogc
+    YearQuarter addQuarters(long quarters)
+    {
+        auto years = quarters / 4;
+        auto newYear = year;
+        newYear += years;
+        quarters %= 4;
+        auto newQuarter = quarter + quarters;
+
+        if (quarters < 0)
+        {
+            if (newQuarter < 1)
+            {
+                newQuarter += 4;
+                --newYear;
+            }
+        }
+        else if (newQuarter > 4)
+        {
+            newQuarter -= 4;
+            ++newYear;
+        }
+
+        return YearQuarter(newYear, cast(Quarter) newQuarter);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        auto yq1 = yq0.addQuarters(5);
+        assert(yq1.year == 2021);
+        assert(yq1.quarter == Quarter.q2);
+
+        auto yq2 = yq1.addQuarters(-2);
+        assert(yq2.year == 2020);
+        assert(yq2.quarter == Quarter.q4);
+
+        auto yq3 = YearQuarter(2020, Quarter.q4).addQuarters(1);
+        assert(yq3.year == 2021);
+        assert(yq3.quarter == Quarter.q1);
+
+        // yq0 is left unchagned
+        assert(yq0.year == 2020);
+        assert(yq0.quarter == Quarter.q1);
+    }
+    ///
+    @safe pure nothrow @nogc
+    YearQuarter addYears(long years)
+    {
+        auto newYear = this.year;
+        newYear += years;
+        return YearQuarter(newYear, quarter);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        auto yq1 = yq0.addYears(1);
+        assert(yq1.year == 2021);
+        assert(yq1.quarter == Quarter.q1);
+ 
+        // leaves yq0 unchanged
+        assert(yq0.year == 2020);
+        assert(yq0.quarter == Quarter.q1);
     }
 
     private void setQuarterOfYear(bool useExceptions = false)(int days)
@@ -1157,6 +1620,25 @@ struct YearQuarter
         assert(0, "Invalid day of the year.");
     }
 
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(2020, Quarter.q3);
+        yq.setQuarterOfYear(10);
+        assert(yq.year == 2020);
+        assert(yq.quarter == Quarter.q1);
+        yq.setQuarterOfYear(100);
+        assert(yq.year == 2020);
+        assert(yq.quarter == Quarter.q2);
+        yq.setQuarterOfYear(200);
+        assert(yq.year == 2020);
+        assert(yq.quarter == Quarter.q3);
+        yq.setQuarterOfYear(300);
+        assert(yq.year == 2020);
+        assert(yq.quarter == Quarter.q4);
+    }
+
     /++
         Day of the quarter this $(LREF Date) is on.
       +/
@@ -1180,6 +1662,22 @@ struct YearQuarter
         return dayOfQuarter(assumePeriod, assumePeriod);
     }
 
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearQuarter(1999, cast(Quarter) 1).dayOfQuarter == 1);
+        assert(YearQuarter(1999, cast(Quarter) 1).dayOfQuarter(AssumePeriod.begin, AssumePeriod.end) == 31);
+        assert(YearQuarter(1999, cast(Quarter) 1).dayOfQuarter(AssumePeriod.end) == 90);
+
+        assert(YearQuarter(2000, cast(Quarter) 1).dayOfQuarter(AssumePeriod.begin, AssumePeriod.end) == 31);
+        assert(YearQuarter(2000, cast(Quarter) 1).dayOfQuarter(AssumePeriod.end) == 91);
+
+        assert(YearQuarter(2000, cast(Quarter) 4).dayOfQuarter == 1);
+        assert(YearQuarter(2000, cast(Quarter) 4).dayOfQuarter(AssumePeriod.begin, AssumePeriod.end) == 31);
+        assert(YearQuarter(2000, cast(Quarter) 4).dayOfQuarter(AssumePeriod.end) == 92);
+    }
+
     /++
         Day of the year this $(LREF Date) is on.
       +/
@@ -1201,6 +1699,19 @@ struct YearQuarter
         return dayOfYear(assumePeriod, assumePeriod);
     }
 
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearQuarter(1999, cast(Quarter) 1).dayOfYear == 1);
+        assert(YearQuarter(1999, cast(Quarter) 4).dayOfYear == 274);
+        assert(YearQuarter(1999, cast(Quarter) 4).dayOfYear(AssumePeriod.begin, AssumePeriod.end) == 304);
+        assert(YearQuarter(1999, cast(Quarter) 4).dayOfYear(AssumePeriod.end) == 365);
+        assert(YearQuarter(2000, cast(Quarter) 4).dayOfYear == 275);
+        assert(YearQuarter(2000, cast(Quarter) 4).dayOfYear(AssumePeriod.begin, AssumePeriod.end) == 305);
+        assert(YearQuarter(2000, cast(Quarter) 4).dayOfYear(AssumePeriod.end) == 366);
+    }
+
     /++
         Whether this $(LREF Date) is in a leap year.
      +/
@@ -1209,12 +1720,29 @@ struct YearQuarter
         return yearIsLeapYear(year);
     }
 
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        assert(YearQuarter(1999, cast(Quarter) 4).isLeapYear == false);
+        assert(YearQuarter(2000, cast(Quarter) 4).isLeapYear == true);
+    }
+
     /++
         The last day in the month that this $(LREF Date) is in.
       +/
-    @property ubyte daysInMonth() const @safe pure nothrow @nogc
+    @property ubyte daysInMonth(AssumePeriod assumePeriod = AssumePeriod.begin) const @safe pure nothrow @nogc
     {
-        return maxDay(year, month);
+        return maxDay(year, month(assumePeriod));
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq = YearQuarter(2020, Quarter.q3);
+        assert(yq.daysInMonth == 31);
+        assert(yq.daysInMonth(AssumePeriod.end) == 30);
     }
 
     /++
@@ -1224,19 +1752,13 @@ struct YearQuarter
     {
         return year > 0;
     }
-}
 
-///
-version (mir_test)
-@safe unittest
-{
-    assert(YearQuarter(1999, cast(Quarter) 1).day(AssumePeriod.begin) == 1);
-    assert(YearQuarter(1999, cast(Quarter) 4).day(AssumePeriod.end) == 31);
-    assert(YearQuarter(1999, cast(Quarter) 1).dayOfYear == 1);
-    assert(YearQuarter(1999, cast(Quarter) 4).dayOfYear == 274);
-    assert(YearQuarter(1999, cast(Quarter) 4).dayOfYear(AssumePeriod.end) == 365);
-    assert(YearQuarter(2000, cast(Quarter) 4).dayOfYear == 275);
-    assert(YearQuarter(2000, cast(Quarter) 4).dayOfYear(AssumePeriod.end) == 366);
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        assert(YearQuarter(2020, Quarter.q1).isAD == true);
+    }
 }
 
 /++
@@ -1360,6 +1882,15 @@ public:
         return yearMonthDay.timestamp;
     }
 
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        import mir.timestamp;
+        auto d1 = Date(2020, Month.may, 15);
+        auto ts2 = d1.timestamp;
+    }
+
     version(D_Exceptions)
     ///
     this(Timestamp timestamp) @safe pure @nogc
@@ -1372,11 +1903,27 @@ public:
         with(timestamp) this(year, cast(Month)month, day);
     }
 
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        import mir.timestamp;
+        auto ts = Date(2020, Month.may, 15).timestamp;
+        auto d2 = Date(ts);
+    }
+
     version(D_Exceptions)
     ///
     this(scope const(char)[] str) @safe pure @nogc
     {
         this = fromString(str);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto d = Date("2020-12-31");
     }
 
     version(D_Exceptions)
