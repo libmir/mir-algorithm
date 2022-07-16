@@ -972,6 +972,110 @@ nothrow:
         assert(ym0.month == Month.jan);
     }
 
+    ///
+    @safe pure nothrow @nogc
+    YearMonth addMonths(long months)
+    {
+        auto newYear = year;
+        newYear += months / 12;
+        months %= 12;
+        auto newMonth = month;
+        newMonth += months;
+
+        if (months < 0)
+        {
+            if (newMonth < 1)
+            {
+                newMonth += 12;
+                --newYear;
+            }
+        }
+        else if (newMonth > 12)
+        {
+            newMonth -= 12;
+            ++newYear;
+        }
+
+        return YearMonth(newYear, newMonth);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        auto ym1 = ym0.addMonths(15);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.apr);
+
+        auto ym2 = ym1.addMonths(-6);
+        assert(ym2.year == 2020);
+        assert(ym2.month == Month.oct);
+
+        auto ym3 = YearMonth(2020, Month.dec).addMonths(3);
+        assert(ym3.year == 2021);
+        assert(ym3.month == Month.mar);
+
+        // ym0 is left unchagned
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.jan);
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    YearMonth addQuarters(long quarters)
+    {
+        return addMonths(quarters * 3);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        auto ym1 = ym0.addQuarters(5);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.apr);
+
+        auto ym2 = ym1.addQuarters(-2);
+        assert(ym2.year == 2020);
+        assert(ym2.month == Month.oct);
+
+        auto ym3 = YearMonth(2020, Month.dec).addQuarters(1);
+        assert(ym3.year == 2021);
+        assert(ym3.month == Month.mar);
+
+        // ym0 is left unchagned
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.jan);
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    YearMonth addYears(long years)
+    {
+        auto newYear = this.year;
+        newYear += years;
+        return YearMonth(newYear, month);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        auto ym1 = ym0.addYears(1);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.jan);
+ 
+        // leaves ym0 unchanged
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.jan);
+    }
+
     private void setMonthOfYear(bool useExceptions = false)(int days)
     {
         immutable int[] lastDay = isLeapYear ? lastDayLeap : lastDayNonLeap;
@@ -1413,6 +1517,80 @@ struct YearQuarter
 
         // also changes yq0
         assert(yq0.year == 2022);
+        assert(yq0.quarter == Quarter.q1);
+    }
+
+
+    ///
+    @safe pure nothrow @nogc
+    YearQuarter addQuarters(long quarters)
+    {
+        auto years = quarters / 4;
+        auto newYear = year;
+        newYear += years;
+        quarters %= 4;
+        auto newQuarter = quarter + quarters;
+
+        if (quarters < 0)
+        {
+            if (newQuarter < 1)
+            {
+                newQuarter += 4;
+                --newYear;
+            }
+        }
+        else if (newQuarter > 4)
+        {
+            newQuarter -= 4;
+            ++newYear;
+        }
+
+        return YearQuarter(newYear, cast(Quarter) newQuarter);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        auto yq1 = yq0.addQuarters(5);
+        assert(yq1.year == 2021);
+        assert(yq1.quarter == Quarter.q2);
+
+        auto yq2 = yq1.addQuarters(-2);
+        assert(yq2.year == 2020);
+        assert(yq2.quarter == Quarter.q4);
+
+        auto yq3 = YearQuarter(2020, Quarter.q4).addQuarters(1);
+        assert(yq3.year == 2021);
+        assert(yq3.quarter == Quarter.q1);
+
+        // yq0 is left unchagned
+        assert(yq0.year == 2020);
+        assert(yq0.quarter == Quarter.q1);
+    }
+    ///
+    @safe pure nothrow @nogc
+    YearQuarter addYears(long years)
+    {
+        auto newYear = this.year;
+        newYear += years;
+        return YearQuarter(newYear, quarter);
+    }
+
+    ///
+    version(mir_test)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        auto yq1 = yq0.addYears(1);
+        assert(yq1.year == 2021);
+        assert(yq1.quarter == Quarter.q1);
+ 
+        // leaves yq0 unchanged
+        assert(yq0.year == 2020);
         assert(yq0.quarter == Quarter.q1);
     }
 
