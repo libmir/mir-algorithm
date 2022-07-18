@@ -257,7 +257,7 @@ struct YearMonthDay
     ubyte day   = 1;
 
     ///
-    Quarter quarter() @safe pure nothrow @nogc @property
+    Quarter quarter() @safe pure nothrow @nogc const @property
     {
         return month.quarter;
     }
@@ -417,6 +417,23 @@ struct YearMonthDay
                 day = cast(ubyte) currMaxDay;
         }
         return this;
+    }
+
+    /// Number of units between `this` and `endYearMonthDay`
+    @safe pure @nogc
+    int between(string units = "days")(YearMonthDay endYearMonthDay) const
+        if (units == "days")
+    {
+        return Date(endYearMonthDay) - Date(this);
+    }
+
+    ///
+    version (mir_test)
+    @safe pure @nogc
+    unittest {
+        assert(YearMonthDay(2020, Month.dec, 1).between(YearMonthDay(2020, Month.dec, 1)) == 0);
+        assert(YearMonthDay(2020, Month.dec, 1).between(YearMonthDay(2020, Month.dec, 2)) == 1);
+        assert(YearMonthDay(2020, Month.dec, 1).between(YearMonthDay(2020, Month.nov, 30)) == -1);
     }
 
     /++
@@ -582,7 +599,7 @@ struct YearMonth
     }
 
     ///
-    Quarter quarter() @safe pure nothrow @nogc @property
+    Quarter quarter() @safe pure nothrow @nogc const @property
     {
         return month.quarter;
     }
@@ -1074,6 +1091,47 @@ nothrow:
         // leaves ym0 unchanged
         assert(ym0.year == 2020);
         assert(ym0.month == Month.jan);
+    }
+
+    /// Number of units between `this` and `endYearMonth`
+    @safe pure @nogc nothrow
+    int between(string units = "months")(YearMonth endYearMonth) const
+        if (units == "months" || units == "quarters" || units == "years")
+    {
+        static if (units == "months") {
+            return (endYearMonth.year - this.year) * 12 + (endYearMonth.month - this.month);
+        } else static if (units == "quarters") {
+            return (endYearMonth.year - this.year) * 4 + (endYearMonth.quarter - this.quarter);
+        } else static if (units == "years") {
+            return endYearMonth.year - this.year;
+        }
+    }
+
+    ///
+    version (mir_test)
+    @safe pure @nogc nothrow
+    unittest {
+        assert(YearMonth(2020, Month.dec).between(YearMonth(2020, Month.dec)) == 0);
+        assert(YearMonth(2020, Month.jan).between(YearMonth(2021, Month.dec)) == 23);
+        assert(YearMonth(2020, Month.jan).between(YearMonth(2020, Month.dec)) == 11);
+        assert(YearMonth(2020, Month.jan).between(YearMonth(2019, Month.dec)) == -1);
+        assert(YearMonth(2020, Month.dec).between(YearMonth(2022, Month.jan)) == 13);
+        assert(YearMonth(2020, Month.dec).between(YearMonth(2021, Month.jan)) == 1);
+        assert(YearMonth(2020, Month.dec).between(YearMonth(2020, Month.jan)) == -11);
+        assert(YearMonth(2020, Month.dec).between(YearMonth(2019, Month.jan)) == -23);
+
+        assert(YearMonth(2020, Month.dec).between!"quarters"(YearMonth(2020, Month.dec)) == 0);
+        assert(YearMonth(2020, Month.jan).between!"quarters"(YearMonth(2021, Month.dec)) == 7);
+        assert(YearMonth(2020, Month.jan).between!"quarters"(YearMonth(2020, Month.dec)) == 3);
+        assert(YearMonth(2020, Month.jan).between!"quarters"(YearMonth(2019, Month.dec)) == -1);
+        assert(YearMonth(2020, Month.dec).between!"quarters"(YearMonth(2022, Month.jan)) == 5);
+        assert(YearMonth(2020, Month.dec).between!"quarters"(YearMonth(2021, Month.jan)) == 1);
+        assert(YearMonth(2020, Month.dec).between!"quarters"(YearMonth(2020, Month.jan)) == -3);
+        assert(YearMonth(2020, Month.dec).between!"quarters"(YearMonth(2019, Month.jan)) == -7);
+
+        assert(YearMonth(2020, Month.jan).between!"years"(YearMonth(2021, Month.dec)) == 1);
+        assert(YearMonth(2020, Month.jan).between!"years"(YearMonth(2020, Month.dec)) == 0);
+        assert(YearMonth(2020, Month.jan).between!"years"(YearMonth(2019, Month.dec)) == -1);
     }
 
     private void setMonthOfYear(bool useExceptions = false)(int days)
@@ -1592,6 +1650,36 @@ struct YearQuarter
         // leaves yq0 unchanged
         assert(yq0.year == 2020);
         assert(yq0.quarter == Quarter.q1);
+    }
+
+    /// Number of units between `this` and `endYearQuarter`
+    @safe pure @nogc nothrow
+    int between(string units = "quarters")(YearQuarter endYearQuarter) const
+        if (units == "quarters" || units == "years")
+    {
+        static if (units == "quarters") {
+            return (endYearQuarter.year - this.year) * 4 + (endYearQuarter.quarter - this.quarter);
+        } else static if (units == "years") {
+            return endYearQuarter.year - this.year;
+        }
+    }
+
+    ///
+    version (mir_test)
+    @safe pure @nogc nothrow
+    unittest {
+        assert(YearQuarter(2020, Quarter.q4).between(YearQuarter(2020, Quarter.q4)) == 0);
+        assert(YearQuarter(2020, Quarter.q1).between(YearQuarter(2021, Quarter.q4)) == 7);
+        assert(YearQuarter(2020, Quarter.q1).between(YearQuarter(2020, Quarter.q4)) == 3);
+        assert(YearQuarter(2020, Quarter.q1).between(YearQuarter(2019, Quarter.q4)) == -1);
+        assert(YearQuarter(2020, Quarter.q4).between(YearQuarter(2022, Quarter.q1)) == 5);
+        assert(YearQuarter(2020, Quarter.q4).between(YearQuarter(2021, Quarter.q1)) == 1);
+        assert(YearQuarter(2020, Quarter.q4).between(YearQuarter(2020, Quarter.q1)) == -3);
+        assert(YearQuarter(2020, Quarter.q4).between(YearQuarter(2019, Quarter.q1)) == -7);
+
+        assert(YearQuarter(2020, Quarter.q1).between!"years"(YearQuarter(2021, Quarter.q4)) == 1);
+        assert(YearQuarter(2020, Quarter.q1).between!"years"(YearQuarter(2020, Quarter.q4)) == 0);
+        assert(YearQuarter(2020, Quarter.q1).between!"years"(YearQuarter(2019, Quarter.q4)) == -1);
     }
 
     private void setQuarterOfYear(bool useExceptions = false)(int days)
@@ -2742,6 +2830,41 @@ public:
     Date add(string units)(long amount, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
     {
         with(yearMonthDay.add!units(amount)) return trustedCreate(year, month, day);
+    }
+
+    /// Number of units between `this` and `endDate`
+    @safe pure @nogc nothrow
+    int between(string units = "days")(Date endDate) const
+        if (units == "days" || units == "months" || units == "quarters" || units == "years")
+    {
+        static if (units == "days") {
+            return endDate - this;
+        } else static if (units == "months") {
+            return YearMonth(this).between!units(YearMonth(endDate));
+        } else {
+            return YearQuarter(this).between!units(YearQuarter(endDate));
+        }
+    }
+
+    ///
+    version (mir_test)
+    @safe pure @nogc
+    unittest {
+        assert(Date(2020, 12, 31).between(Date(2021, 1, 4)) == 4);
+        assert(Date(2020, 12, 31).between(Date(2020, 12, 31)) == 0);
+        assert(Date(2020, 12, 31).between(Date(2020, 12, 29)) == -2);
+
+        assert(Date(2020, 12, 31).between!"months"(Date(2021, 2, 28)) == 2);
+        assert(Date(2020, 12, 31).between!"months"(Date(2020, 12, 1)) == 0);
+        assert(Date(2020, 12, 31).between!"months"(Date(2020, 11, 1)) == -1);
+
+        assert(Date(2020, 12, 31).between!"quarters"(Date(2021, 1, 31)) == 1);
+        assert(Date(2020, 12, 31).between!"quarters"(Date(2020, 11, 1)) == 0);
+        assert(Date(2020, 12, 31).between!"quarters"(Date(2020, 5, 15)) == -2);
+
+        assert(Date(2020, 12, 31).between!"years"(Date(2022, 1, 31)) == 2);
+        assert(Date(2020, 12, 31).between!"years"(Date(2020, 11, 1)) == 0);
+        assert(Date(2020, 12, 31).between!"years"(Date(2019, 8, 15)) == -1);
     }
 
     /++
