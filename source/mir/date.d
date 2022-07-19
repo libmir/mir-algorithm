@@ -14,6 +14,7 @@ $(TR $(TD Other date types) $(TD
     $(LREF Month)
     $(LREF Quarter)
     $(LREF DayOfWeek)
+    $(LREF DateIterator)
 ))
 $(TR $(TD Date checking) $(TD
     $(LREF valid)
@@ -348,9 +349,28 @@ struct YearMonthDay
         with(timestamp) this(year, cast(Month)month, day);
     }
 
-    ///
+    /// Adds `amount` of `units` to `this` and returns a reference
     @safe pure nothrow @nogc
-    ref YearMonthDay add(string units : "months")(long months, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
+    ref YearMonthDay add(string units = "months")(long amount, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
+        if (units == "months" || units == "quarters" || units == "years")
+    {
+        this.increment!units(amount, allowOverflow);
+        return this;
+    }
+
+    /// Increments by `amount` of `units` and then returns a copy
+    @safe pure nothrow @nogc
+    YearMonthDay incrementCopy(string units = "months")(long amount, AllowDayOverflow allowOverflow = AllowDayOverflow.yes) const
+        if (units == "months" || units == "quarters" || units == "years")
+    {
+        YearMonthDay ret = this;
+        ret.increment!units(amount, allowOverflow);
+        return ret;
+    }
+
+    /// Increments `this` by months
+    @safe pure nothrow @nogc
+    void increment(string units : "months")(long months, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
     {
         auto years = months / 12;
         months %= 12;
@@ -386,20 +406,18 @@ struct YearMonthDay
             else
                 day = cast(ubyte) currMaxDay;
         }
-
-        return this;
     }
 
-    ///
+    /// ditto
     @safe pure nothrow @nogc
-    ref YearMonthDay add(string units : "quarters")(long quarters)
+    void increment(string units : "quarters")(long quarters, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
     {
-        return add!"months"(quarters * 4);
+        this.increment!"months"(quarters * 3, allowOverflow);
     }
 
-    // Shares documentation with "years" version.
+    /// ditto
     @safe pure nothrow @nogc
-    ref YearMonthDay add(string units : "years")(long years, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
+    void increment(string units : "years")(long years, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
     {
         year += years;
 
@@ -416,7 +434,6 @@ struct YearMonthDay
             else
                 day = cast(ubyte) currMaxDay;
         }
-        return this;
     }
 
     /++
@@ -856,31 +873,12 @@ struct YearMonth
 
 nothrow:
 
-    ///
+    /// Adds `units` of `amount` and then returns a reference to `this`
     @safe pure nothrow @nogc
-    ref YearMonth add(string units : "months")(long months)
+    ref YearMonth add(string units = "months")(long amount)
+        if (units == "months" || units == "quarters" || units == "years")
     {
-        auto years = months / 12;
-        months %= 12;
-        auto newMonth = month + months;
-
-        if (months < 0)
-        {
-            if (newMonth < 1)
-            {
-                newMonth += 12;
-                --years;
-            }
-        }
-        else if (newMonth > 12)
-        {
-            newMonth -= 12;
-            ++years;
-        }
-
-        year += years;
-        month = cast(Month) newMonth;
-
+        this.increment!units(amount);
         return this;
     }
 
@@ -912,13 +910,6 @@ nothrow:
     }
 
     ///
-    @safe pure nothrow @nogc
-    ref YearMonth add(string units : "quarters")(long quarters)
-    {
-        return add!"months"(quarters * 3);
-    }
-
-    ///
     version(mir_test)
     @safe unittest
     {
@@ -946,14 +937,6 @@ nothrow:
     }
 
     ///
-    @safe pure nothrow @nogc
-    ref YearMonth add(string units : "years")(long years)
-    {
-        year += years;
-        return this;
-    }
-
-    ///
     version(mir_test)
     @safe unittest
     {
@@ -972,31 +955,54 @@ nothrow:
         assert(ym0.month == Month.jan);
     }
 
-    ///
+    /// Increments by `months`
     @safe pure nothrow @nogc
-    YearMonth addMonths(long months)
+    void increment(string units : "months")(long months)
     {
-        auto newYear = year;
-        newYear += months / 12;
+        auto years = months / 12;
         months %= 12;
-        auto newMonth = month;
-        newMonth += months;
+        auto newMonth = month + months;
 
         if (months < 0)
         {
             if (newMonth < 1)
             {
                 newMonth += 12;
-                --newYear;
+                --years;
             }
         }
         else if (newMonth > 12)
         {
             newMonth -= 12;
-            ++newYear;
+            ++years;
         }
 
-        return YearMonth(newYear, newMonth);
+        year += years;
+        month = cast(Month) newMonth;
+    }
+
+    /// ditto
+    @safe pure nothrow @nogc
+    void increment(string units : "quarters")(long quarters)
+    {
+        this.increment!"months"(quarters * 3);
+    }
+
+    /// ditto
+    @safe pure nothrow @nogc
+    void increment(string units : "years")(long years)
+    {
+        year += years;
+    }
+
+    /// Increments and then returns a copy
+    @safe pure nothrow @nogc
+    YearMonth incrementCopy(string units = "months")(long amount) const
+        if (units == "months" || units == "quarters" || units == "years")
+    {
+        YearMonth ret = this;
+        ret.increment!units(amount);
+        return ret;
     }
 
     ///
@@ -1005,15 +1011,16 @@ nothrow:
     {
         auto ym0 = YearMonth(2020, Month.jan);
 
-        auto ym1 = ym0.addMonths(15);
+        auto ym1 = ym0.incrementCopy(15);
+
         assert(ym1.year == 2021);
         assert(ym1.month == Month.apr);
 
-        auto ym2 = ym1.addMonths(-6);
+        auto ym2 = ym1.incrementCopy(-6);
         assert(ym2.year == 2020);
         assert(ym2.month == Month.oct);
 
-        auto ym3 = YearMonth(2020, Month.dec).addMonths(3);
+        auto ym3 = YearMonth(2020, Month.dec).incrementCopy(3);
         assert(ym3.year == 2021);
         assert(ym3.month == Month.mar);
 
@@ -1023,27 +1030,20 @@ nothrow:
     }
 
     ///
-    @safe pure nothrow @nogc
-    YearMonth addQuarters(long quarters)
-    {
-        return addMonths(quarters * 3);
-    }
-
-    ///
     version(mir_test)
     @safe unittest
     {
         auto ym0 = YearMonth(2020, Month.jan);
 
-        auto ym1 = ym0.addQuarters(5);
+        auto ym1 = ym0.incrementCopy!"quarters"(5);
         assert(ym1.year == 2021);
         assert(ym1.month == Month.apr);
 
-        auto ym2 = ym1.addQuarters(-2);
+        auto ym2 = ym1.incrementCopy!"quarters"(-2);
         assert(ym2.year == 2020);
         assert(ym2.month == Month.oct);
 
-        auto ym3 = YearMonth(2020, Month.dec).addQuarters(1);
+        auto ym3 = YearMonth(2020, Month.dec).incrementCopy!"quarters"(1);
         assert(ym3.year == 2021);
         assert(ym3.month == Month.mar);
 
@@ -1053,21 +1053,12 @@ nothrow:
     }
 
     ///
-    @safe pure nothrow @nogc
-    YearMonth addYears(long years)
-    {
-        auto newYear = this.year;
-        newYear += years;
-        return YearMonth(newYear, month);
-    }
-
-    ///
     version(mir_test)
     @safe unittest
     {
         auto ym0 = YearMonth(2020, Month.jan);
 
-        auto ym1 = ym0.addYears(1);
+        auto ym1 = ym0.incrementCopy!"years"(1);
         assert(ym1.year == 2021);
         assert(ym1.month == Month.jan);
  
@@ -1137,6 +1128,16 @@ nothrow:
            return add!"months"(rhs);
         else
            return add!"months"(-rhs);
+    }
+
+    ///
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    {
+        static if (op == "++")
+           this.add!"months"(rhs);
+        else
+           this.add!"months"(-rhs);
     }
 
     ///
@@ -1438,31 +1439,12 @@ struct YearQuarter
         auto yq = YearQuarter(ts);
     }
 
-    ///
+    /// Adds `units` of `amount` and returns a reference
     @safe pure nothrow @nogc
-    ref YearQuarter add(string units : "quarters")(long quarters)
+    ref YearQuarter add(string units = "quarters")(long amount)
+        if (units == "quarters" || units == "years")
     {
-        auto years = quarters / 4;
-        quarters %= 4;
-        auto newQuarter = quarter + quarters;
-
-        if (quarters < 0)
-        {
-            if (newQuarter < 1)
-            {
-                newQuarter += 4;
-                --years;
-            }
-        }
-        else if (newQuarter > 4)
-        {
-            newQuarter -= 4;
-            ++years;
-        }
-
-        year += years;
-        quarter = cast(Quarter) newQuarter;
-
+        this.increment!units(amount);
         return this;
     }
 
@@ -1494,14 +1476,6 @@ struct YearQuarter
     }
 
     ///
-    @safe pure nothrow @nogc
-    ref YearQuarter add(string units : "years")(long years)
-    {
-        year += years;
-        return this;
-    }
-
-    ///
     version(mir_test)
     @safe unittest
     {
@@ -1520,14 +1494,11 @@ struct YearQuarter
         assert(yq0.quarter == Quarter.q1);
     }
 
-
-    ///
+    /// Increments by quarters
     @safe pure nothrow @nogc
-    YearQuarter addQuarters(long quarters)
+    void increment(string units : "quarters")(long quarters)
     {
         auto years = quarters / 4;
-        auto newYear = year;
-        newYear += years;
         quarters %= 4;
         auto newQuarter = quarter + quarters;
 
@@ -1536,16 +1507,34 @@ struct YearQuarter
             if (newQuarter < 1)
             {
                 newQuarter += 4;
-                --newYear;
+                --years;
             }
         }
         else if (newQuarter > 4)
         {
             newQuarter -= 4;
-            ++newYear;
+            ++years;
         }
 
-        return YearQuarter(newYear, cast(Quarter) newQuarter);
+        year += years;
+        quarter = cast(Quarter) newQuarter;
+    }
+
+    ///
+    @safe pure nothrow @nogc
+    void increment(string units : "years")(long years)
+    {
+        year += years;
+    }
+
+    /// Increments and then returns a copy
+    @safe pure nothrow @nogc
+    YearQuarter incrementCopy(string units = "quarters")(long amount) const
+        if (units == "quarters" || units == "years")
+    {
+        YearQuarter ret = this;
+        ret.increment!units(amount);
+        return ret;
     }
 
     ///
@@ -1554,15 +1543,15 @@ struct YearQuarter
     {
         auto yq0 = YearQuarter(2020, Quarter.q1);
 
-        auto yq1 = yq0.addQuarters(5);
+        auto yq1 = yq0.incrementCopy(5);
         assert(yq1.year == 2021);
         assert(yq1.quarter == Quarter.q2);
 
-        auto yq2 = yq1.addQuarters(-2);
+        auto yq2 = yq1.incrementCopy(-2);
         assert(yq2.year == 2020);
         assert(yq2.quarter == Quarter.q4);
 
-        auto yq3 = YearQuarter(2020, Quarter.q4).addQuarters(1);
+        auto yq3 = YearQuarter(2020, Quarter.q4).incrementCopy(1);
         assert(yq3.year == 2021);
         assert(yq3.quarter == Quarter.q1);
 
@@ -1570,14 +1559,6 @@ struct YearQuarter
         assert(yq0.year == 2020);
         assert(yq0.quarter == Quarter.q1);
     }
-    ///
-    @safe pure nothrow @nogc
-    YearQuarter addYears(long years)
-    {
-        auto newYear = this.year;
-        newYear += years;
-        return YearQuarter(newYear, quarter);
-    }
 
     ///
     version(mir_test)
@@ -1585,7 +1566,7 @@ struct YearQuarter
     {
         auto yq0 = YearQuarter(2020, Quarter.q1);
 
-        auto yq1 = yq0.addYears(1);
+        auto yq1 = yq0.incrementCopy!"years"(1);
         assert(yq1.year == 2021);
         assert(yq1.quarter == Quarter.q1);
  
@@ -1758,6 +1739,16 @@ struct YearQuarter
     @safe unittest
     {
         assert(YearQuarter(2020, Quarter.q1).isAD == true);
+    }
+
+    ///
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
+    {
+        static if (op == "++")
+           this.add!"quarters"(rhs);
+        else
+           this.add!"quarters"(-rhs);
     }
 }
 
@@ -2738,10 +2729,52 @@ public:
         return Date(_julianDay - lhs);
     }
 
-    const nothrow @nogc pure @safe
-    Date add(string units)(long amount, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
+    ///
+    void opUnary(string op)()
+        if (op == "--" || op == "++")
     {
-        with(yearMonthDay.add!units(amount)) return trustedCreate(year, month, day);
+        mixin(op ~ `_julianDay;`);
+    }
+
+    ///
+    nothrow @nogc pure @safe
+    ref Date add(string units = "days")(long amount, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
+        if (units == "days" || units == "months" || units == "quarters" || units == "years")
+    {
+        static if (units == "days") {
+            this._addDays(amount);
+        } else {
+            this.increment!units(amount, allowOverflow);
+            return this;
+        }
+    }
+
+    /// Increments `units` by `amount`
+    @safe pure nothrow @nogc
+    void increment(string units = "days")(long amount, AllowDayOverflow allowOverflow = AllowDayOverflow.yes)
+        if (units == "days" || units == "months" || units == "quarters" || units == "years")
+    {
+        static if (units == "days") {
+            _julianDay = cast(int)(_julianDay + amount);
+        } else {
+            this = this.incrementCopy!units(amount, allowOverflow);
+        }
+    }
+
+    /// Increments and then returns a copy
+    @safe pure nothrow @nogc
+    Date incrementCopy(string units = "days")(long amount, AllowDayOverflow allowOverflow = AllowDayOverflow.yes) const
+        if (units == "days" || units == "months" || units == "quarters" || units == "years")
+    {
+        static if (units == "days") {
+            Date ret = this;
+            ret.increment!units(amount);
+            return ret;
+        } else {
+            auto ymd = yearMonthDay;
+            ymd.increment!units(amount, allowOverflow);
+            with(ymd) return trustedCreate(year, month, day);
+        }
     }
 
     /++
@@ -3573,7 +3606,7 @@ package:
       +/
     ref Date _addDays(long days) return @safe pure nothrow @nogc
     {
-        _julianDay = cast(int)(_julianDay + days);
+        this.increment!"days"(days);
         return this;
     }
 
@@ -4270,4 +4303,204 @@ version(unittest)
                 testDatesAD ~= Date(year, md.month, md.day);
         }
     }
+}
+
+struct DateIterator(D, string units)
+    if (is(D == Date) || is(D == YearMonth) || is(D == YearQuarter) || is(D == YearMonthDay) &&
+        (units == "days" || units == "months" || units == "quarters" || units == "years"))
+{
+    import mir.math.common: optmath;
+    import std.traits: arity;
+
+@optmath:
+
+    ///
+    D _index;
+
+pure:
+
+    D opUnary(string op : "*")()
+    { return _index; }
+
+    void opUnary(string op)()
+        if (units == "days" && (op == "--" || op == "++"))
+    { mixin(op ~ `_index;`); }
+
+    void opUnary(string op)()
+        if (units != "days" && (op == "++" || op == "--"))
+    {
+        static if (arity!(_index.add!units) == 2) {
+            mixin(`_index = _index.add!units(` ~ op[0] ~ `1, AllowDayOverflow.no);`);
+        } else static if (arity!(_index.add!units) == 1) {
+            mixin(`_index = _index.add!units(` ~ op[0] ~ `1);`);
+        } else {
+            static assert(0, "Not supprted");
+        }
+    }
+
+    D opIndex()(ptrdiff_t index) const
+    {
+        D ret;
+        static if (arity!(_index.incrementCopy!units) == 2) {
+            ret = _index.incrementCopy!units(index, AllowDayOverflow.no);
+        } else static if (arity!(_index.incrementCopy!units) == 1) {
+            ret = _index.incrementCopy!units(index);
+        } else {
+            static assert(0, "Not supprted");
+        }
+        return ret;
+    }
+
+    void opOpAssign(string op)(ptrdiff_t index)
+        if (op == `+` || op == `-`)
+    {
+        import std.traits: Parameters;
+        static if (arity!(_index.increment!units) == 2) {
+            mixin(`_index.increment!units(` ~ op ~ `index, AllowDayOverflow.no);`);
+        } else static if (arity!(_index.increment!units) == 1) {
+            mixin(`_index.increment!units(` ~ op ~ `index);`);
+        } else {
+            static assert(0, "Not supprted");
+        }
+    }
+
+    auto opBinary(string op)(ptrdiff_t index)
+        if (op == "+" || op == "-")
+    {
+        auto ret = this;
+        mixin(`ret ` ~ op ~ `= index;`);
+        return ret;
+    }
+
+    ptrdiff_t opBinary(string op : "-")(const typeof(this) right) const
+    { return cast(ptrdiff_t)(this._index - right._index); }
+
+    bool opEquals()(const typeof(this) right) const
+    { return this._index == right._index; }
+
+    auto opCmp()(const typeof(this) right) const
+    { return this._index - right._index; }
+}
+
+/// `Date` with `days`
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(Date, "days")(Date(2020, 12, 31));
+    ++d;
+    assert(d._index == Date(2021, 1, 1));
+    assert(d[0] == Date(2021, 1, 1));
+    assert(d[1] == Date(2021, 1, 2));
+    d += 2;
+    assert(d._index == Date(2021, 1, 3));
+    d = d + 3;
+    assert(d._index == Date(2021, 1, 6));
+}
+
+/// `Date` with `months`
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(Date, "months")(Date(2020, 12, 31));
+    ++d;
+    assert(d._index == Date(2021, 1, 31));
+    assert(d[0] == Date(2021, 1, 31));
+    assert(d[1] == Date(2021, 2, 28));
+    d += 2;
+    assert(d._index == Date(2021, 3, 31));
+    d = d + 3;
+    assert(d._index == Date(2021, 6, 30));
+}
+
+// Make sure days stay the same when overflow is not a concern
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(Date, "months")(Date(2021, 1, 1));
+    assert(d[0] == Date(2021, 1, 1));
+    assert(d[1] == Date(2021, 2, 1));
+    assert(d[2] == Date(2021, 3, 1));
+}
+
+/// `Date` with `quarters`
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(Date, "quarters")(Date(2020, 12, 31));
+    ++d;
+    assert(d._index == Date(2021, 3, 31));
+    assert(d[0] == Date(2021, 3, 31));
+    assert(d[1] == Date(2021, 6, 30));
+    d += 2;
+    assert(d._index == Date(2021, 9, 30));
+    d = d + 3;
+    assert(d._index == Date(2022, 6, 30));
+}
+
+/// `Date` with `years`
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(Date, "years")(Date(2020, 12, 31));
+    ++d;
+    assert(d._index == Date(2021, 12, 31));
+    assert(d[0] == Date(2021, 12, 31));
+    assert(d[1] == Date(2022, 12, 31));
+    d += 2;
+    assert(d._index == Date(2023, 12, 31));
+    d = d + 3;
+    assert(d._index == Date(2026, 12, 31));
+}
+
+/// `YearMonth` with `months`
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(YearMonth, "months")(YearMonth(2020, cast(Month) 12));
+    ++d;
+    assert(d._index == YearMonth(2021, cast(Month) 1));
+    assert(d[0] == YearMonth(2021, cast(Month) 1));
+    assert(d[1] == YearMonth(2021, cast(Month) 2));
+    d += 2;
+    assert(d._index == YearMonth(2021, cast(Month) 3));
+    d = d + 3;
+    assert(d._index == YearMonth(2021, cast(Month) 6));
+}
+
+/// `YearQuarter` with `quarters`
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(YearQuarter, "quarters")(YearQuarter(2020, cast(Quarter) 4));
+    ++d;
+    assert(d._index == YearQuarter(2021, cast(Quarter) 1));
+    assert(d[0] == YearQuarter(2021, cast(Quarter) 1));
+    assert(d[1] == YearQuarter(2021, cast(Quarter) 2));
+    d += 2;
+    assert(d._index == YearQuarter(2021, cast(Quarter) 3));
+    d = d + 3;
+    assert(d._index == YearQuarter(2022, cast(Quarter) 2));
+}
+
+/// `YearMonthDay` with `quarters`
+version (mir_test)
+@safe pure @nogc
+unittest
+{
+    auto d = DateIterator!(YearMonthDay, "quarters")(YearMonthDay(2020, cast(Month) 12, 1));
+    ++d;
+    assert(d._index == YearMonthDay(2021, cast(Month) 3, 1));
+    assert(d[0] == YearMonthDay(2021, cast(Month) 3, 1));
+    assert(d[1] == YearMonthDay(2021, cast(Month) 6, 1));
+    d += 2;
+    assert(d._index == YearMonthDay(2021, cast(Month) 9, 1));
+    d = d + 3;
+    assert(d._index == YearMonthDay(2022, cast(Month) 6, 1));
 }
