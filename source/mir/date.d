@@ -1133,10 +1133,12 @@ nothrow:
     YearMonth opBinary(string op)(int rhs) const
         if (op == "+" || op == "-")
     {
+        auto ret = this;
         static if (op == "+")
-           return add!"months"(rhs);
+           ret.add!"months"(rhs);
         else
-           return add!"months"(-rhs);
+           ret.add!"months"(-rhs);
+        return ret;
     }
 
     ///
