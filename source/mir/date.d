@@ -857,6 +857,125 @@ struct YearMonth
 nothrow:
 
     ///
+    deprecated("please use addMonths instead")
+    @safe pure nothrow @nogc
+    ref YearMonth add(string units : "months")(long months)
+    {
+        auto years = months / 12;
+        months %= 12;
+        auto newMonth = month + months;
+
+        if (months < 0)
+        {
+            if (newMonth < 1)
+            {
+                newMonth += 12;
+                --years;
+            }
+        }
+        else if (newMonth > 12)
+        {
+            newMonth -= 12;
+            ++years;
+        }
+
+        year += years;
+        month = cast(Month) newMonth;
+
+        return this;
+    }
+
+    ///
+    version(mir_test_deprecated)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        ym0.add!"months"(1);
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.feb);
+
+        auto ym1 = ym0.add!"months"(1);
+        assert(ym1.year == 2020);
+        assert(ym1.month == Month.mar);
+
+        // also changes ym0
+        assert(ym0.year == 2020);
+        assert(ym0.month == Month.mar);
+
+        ym1.add!"months"(10);
+        assert(ym1.year == 2021);
+        assert(ym1.month == Month.jan);
+
+        ym1.add!"months"(-13);
+        assert(ym1.year == 2019);
+        assert(ym1.month == Month.dec);
+    }
+
+    ///
+    deprecated("please use addQuarters instead")
+    @safe pure nothrow @nogc
+    ref YearMonth add(string units : "quarters")(long quarters)
+    {
+        return add!"months"(quarters * 3);
+    }
+
+    ///
+    version(mir_test_deprecated)
+    @safe unittest
+    {
+        auto yq0 = YearMonth(2020, Month.jan);
+
+        yq0.add!"quarters"(1);
+        assert(yq0.year == 2020);
+        assert(yq0.month == Month.apr);
+
+        auto yq1 = yq0.add!"quarters"(1);
+        assert(yq1.year == 2020);
+        assert(yq1.month == Month.jul);
+
+        // also changes yq0
+        assert(yq0.year == 2020);
+        assert(yq0.month == Month.jul);
+
+        yq1.add!"quarters"(2);
+        assert(yq1.year == 2021);
+        assert(yq1.month == Month.jan);
+
+        yq1.add!"quarters"(-5);
+        assert(yq1.year == 2019);
+        assert(yq1.month == Month.oct);
+    }
+
+    ///
+    deprecated("please use addYears instead")
+    @safe pure nothrow @nogc
+    ref YearMonth add(string units : "years")(long years)
+    {
+        year += years;
+        return this;
+    }
+
+    ///
+    version(mir_test_deprecated)
+    @safe unittest
+    {
+        auto ym0 = YearMonth(2020, Month.jan);
+
+        ym0.add!"years"(1);
+        assert(ym0.year == 2021);
+        assert(ym0.month == Month.jan);
+
+        auto ym1 = ym0.add!"years"(1);
+        assert(ym1.year == 2022);
+        assert(ym1.month == Month.jan);
+
+        // also changes ym0
+        assert(ym0.year == 2022);
+        assert(ym0.month == Month.jan);
+    }
+
+    ///
     @safe pure nothrow @nogc
     YearMonth addMonths(long months)
     {
@@ -1375,6 +1494,90 @@ struct YearQuarter
         import mir.timestamp;
         auto ts = Timestamp(2020, 4);
         auto yq = YearQuarter(ts);
+    }
+
+    ///
+    deprecated("please use addQuarters instead")
+    @safe pure nothrow @nogc
+    ref YearQuarter add(string units : "quarters")(long quarters)
+    {
+        auto years = quarters / 4;
+        quarters %= 4;
+        auto newQuarter = quarter + quarters;
+
+        if (quarters < 0)
+        {
+            if (newQuarter < 1)
+            {
+                newQuarter += 4;
+                --years;
+            }
+        }
+        else if (newQuarter > 4)
+        {
+            newQuarter -= 4;
+            ++years;
+        }
+
+        year += years;
+        quarter = cast(Quarter) newQuarter;
+
+        return this;
+    }
+
+    ///
+    version(mir_test_deprecated)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        yq0.add!"quarters"(1);
+        assert(yq0.year == 2020);
+        assert(yq0.quarter == Quarter.q2);
+
+        auto yq1 = yq0.add!"quarters"(1);
+        assert(yq1.year == 2020);
+        assert(yq1.quarter == Quarter.q3);
+
+        // also changes yq0
+        assert(yq0.year == 2020);
+        assert(yq0.quarter == Quarter.q3);
+
+        yq1.add!"quarters"(2);
+        assert(yq1.year == 2021);
+        assert(yq1.quarter == Quarter.q1);
+
+        yq1.add!"quarters"(-5);
+        assert(yq1.year == 2019);
+        assert(yq1.quarter == Quarter.q4);
+    }
+
+    ///
+    deprecated("please use addYears instead")
+    @safe pure nothrow @nogc
+    ref YearQuarter add(string units : "years")(long years)
+    {
+        year += years;
+        return this;
+    }
+
+    ///
+    version(mir_test_deprecated)
+    @safe unittest
+    {
+        auto yq0 = YearQuarter(2020, Quarter.q1);
+
+        yq0.add!"years"(1);
+        assert(yq0.year == 2021);
+        assert(yq0.quarter == Quarter.q1);
+
+        auto yq1 = yq0.add!"years"(1);
+        assert(yq1.year == 2022);
+        assert(yq1.quarter == Quarter.q1);
+
+        // also changes yq0
+        assert(yq0.year == 2022);
+        assert(yq0.quarter == Quarter.q1);
     }
 
     ///
