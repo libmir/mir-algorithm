@@ -1168,7 +1168,7 @@ enum Quarter : short
 Returns the quarter for a given month.
 
 Params:
-    month
+    month = month
 
 +/
 @safe pure @nogc nothrow
