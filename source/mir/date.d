@@ -2715,7 +2715,7 @@ public:
         assert(a == result4);
 
         // every year
-        auto b = (d.YearMonth + iota!uint([4], 0, 12)).map!Date;
+        auto b = (d.year + 4.iota!uint).map!(a => YearMonthDay(cast(short) a, Month.mar, 1).Date);
         assert(b == result5);
     }
 
