@@ -1027,10 +1027,13 @@ nothrow:
     alias opBinaryRight(string op : "+") = opBinary!"+";
 
     ///
-    ref YearMonth opOpAssign(string op)(int lhs) return @safe pure nothrow @nogc
+    ref YearMonth opOpAssign(string op)(int rhs) return @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
-        mixin("this = addMonths(" ~ op ~ "lhs);");
+        static if (op == "+")
+           this = addMonths(rhs);
+        else
+           this = addMonths(-rhs);
         return this;
     }
 
@@ -1515,10 +1518,13 @@ struct YearQuarter
     alias opBinaryRight(string op : "+") = opBinary!"+";
 
     ///
-    ref YearQuarter opOpAssign(string op)(int lhs) return @safe pure nothrow @nogc
+    ref YearQuarter opOpAssign(string op)(int rhs) return @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
-        mixin("this = addQuarters(" ~ op ~ "lhs);");
+        static if (op == "+")
+           this = addQuarters(rhs);
+        else
+           this = addQuarters(-rhs);
         return this;
     }
 
@@ -2666,10 +2672,13 @@ public:
     }
 
     ///
-    ref Date opOpAssign(string op)(int lhs) return @safe pure nothrow @nogc
+    ref Date opOpAssign(string op)(int rhs) return @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
-        mixin("this._addDays(" ~ op ~ "lhs);");
+        static if (op == "+")
+           this._addDays(rhs);
+        else
+           this._addDays(-rhs);
         return this;
     }
     
