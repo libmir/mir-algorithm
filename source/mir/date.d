@@ -2648,27 +2648,27 @@ public:
     }
 
     ///
-    int opBinary(string op : "-")(Date lhs) const
+    int opBinary(string op : "-")(Date rhs) const
     {
-        return _julianDay - lhs._julianDay;
+        return _julianDay - rhs._julianDay;
     }
 
     ///
-    Date opBinary(string op : "+")(int lhs) const
+    Date opBinary(string op : "+")(int rhs) const
     {
-        return Date(_julianDay + lhs);
+        return Date(_julianDay + rhs);
     }
 
     ///
-    Date opBinaryRight(string op : "+")(int lhs) const
+    Date opBinaryRight(string op : "+")(int rhs) const
     {
-        return Date(_julianDay + lhs);
+        return Date(_julianDay + rhs);
     }
 
     ///
-    Date opBinary(string op : "-")(int lhs) const
+    Date opBinary(string op : "-")(int rhs) const
     {
-        return Date(_julianDay - lhs);
+        return Date(_julianDay - rhs);
     }
 
     ///
