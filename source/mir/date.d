@@ -857,6 +857,7 @@ struct YearMonth
 nothrow:
 
     ///
+    deprecated("please use addMonths instead")
     @safe pure nothrow @nogc
     ref YearMonth add(string units : "months")(long months)
     {
@@ -885,7 +886,7 @@ nothrow:
     }
 
     ///
-    version(mir_test)
+    version(mir_test_deprecated)
     @safe unittest
     {
         auto ym0 = YearMonth(2020, Month.jan);
@@ -912,6 +913,7 @@ nothrow:
     }
 
     ///
+    deprecated("please use addQuarters instead")
     @safe pure nothrow @nogc
     ref YearMonth add(string units : "quarters")(long quarters)
     {
@@ -919,7 +921,7 @@ nothrow:
     }
 
     ///
-    version(mir_test)
+    version(mir_test_deprecated)
     @safe unittest
     {
         auto yq0 = YearMonth(2020, Month.jan);
@@ -946,6 +948,7 @@ nothrow:
     }
 
     ///
+    deprecated("please use addYears instead")
     @safe pure nothrow @nogc
     ref YearMonth add(string units : "years")(long years)
     {
@@ -954,7 +957,7 @@ nothrow:
     }
 
     ///
-    version(mir_test)
+    version(mir_test_deprecated)
     @safe unittest
     {
         auto ym0 = YearMonth(2020, Month.jan);
@@ -1122,7 +1125,7 @@ nothrow:
     }
 
     ///
-    int opBinary(string op : "-")(YearMonth rhs) const
+    int opBinary(string op : "-")(YearMonth rhs)
     {
         alias a = this;
         alias b = rhs;
@@ -1130,17 +1133,72 @@ nothrow:
     }
 
     ///
-    YearMonth opBinary(string op)(int rhs) const
+    YearMonth opBinary(string op)(int rhs)
         if (op == "+" || op == "-")
     {
         static if (op == "+")
-           return add!"months"(rhs);
+           return addMonths(rhs);
         else
-           return add!"months"(-rhs);
+           return addMonths(-rhs);
     }
 
     ///
     alias opBinaryRight(string op : "+") = opBinary!"+";
+
+    ///
+    ref YearMonth opOpAssign(string op)(int rhs) return @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        static if (op == "+")
+           this = addMonths(rhs);
+        else
+           this = addMonths(-rhs);
+        return this;
+    }
+
+    ///
+    @safe pure @nogc nothrow
+    version(mir_test)
+    unittest
+    {
+        auto x = YearMonth(2020, Month.mar);
+        auto x1 = x + 1;
+        assert(x1 == YearMonth(2020, Month.apr));
+        auto x2 = x + 2;
+        assert(x2 == YearMonth(2020, Month.may));
+        auto x3 = x + 3;
+        assert(x3 == YearMonth(2020, Month.jun));
+    }
+
+    ///
+    @safe pure @nogc nothrow
+    version(mir_test)
+    unittest {
+        auto ym = YearMonth(2020, Month.mar);
+        ym += 2;
+        assert(ym == YearMonth(2020, Month.may));
+        ym -= 1;
+        assert(ym == YearMonth(2020, Month.apr));
+    }
+
+    /// Get a slice of YearMonths
+    @safe pure @nogc nothrow
+    version(mir_test)
+    unittest {
+        import mir.ndslice.topology: iota;
+
+        static immutable result1 = [YearMonth(2020, Month.mar), YearMonth(2020, Month.apr), YearMonth(2020, Month.may), YearMonth(2020, Month.jun)];
+        static immutable result2 = [YearMonth(2020, Month.mar), YearMonth(2020, Month.may), YearMonth(2020, Month.jul), YearMonth(2020, Month.sep)];
+
+        auto ym = YearMonth(2020, Month.mar);
+
+        auto x = ym + 4.iota!uint;
+        assert(x == result1);
+
+        // every other month
+        auto y = ym + iota!uint([4], 0, 2);
+        assert(y == result2);
+    }
 
     /++
         Day of the year this $(LREF Date) is on.
@@ -1232,7 +1290,7 @@ enum Quarter : short
 Returns the quarter for a given month.
 
 Params:
-    month
+    month = month
 
 +/
 @safe pure @nogc nothrow
@@ -1439,6 +1497,7 @@ struct YearQuarter
     }
 
     ///
+    deprecated("please use addQuarters instead")
     @safe pure nothrow @nogc
     ref YearQuarter add(string units : "quarters")(long quarters)
     {
@@ -1467,7 +1526,7 @@ struct YearQuarter
     }
 
     ///
-    version(mir_test)
+    version(mir_test_deprecated)
     @safe unittest
     {
         auto yq0 = YearQuarter(2020, Quarter.q1);
@@ -1494,6 +1553,7 @@ struct YearQuarter
     }
 
     ///
+    deprecated("please use addYears instead")
     @safe pure nothrow @nogc
     ref YearQuarter add(string units : "years")(long years)
     {
@@ -1502,7 +1562,7 @@ struct YearQuarter
     }
 
     ///
-    version(mir_test)
+    version(mir_test_deprecated)
     @safe unittest
     {
         auto yq0 = YearQuarter(2020, Quarter.q1);
@@ -1519,7 +1579,6 @@ struct YearQuarter
         assert(yq0.year == 2022);
         assert(yq0.quarter == Quarter.q1);
     }
-
 
     ///
     @safe pure nothrow @nogc
@@ -1570,6 +1629,7 @@ struct YearQuarter
         assert(yq0.year == 2020);
         assert(yq0.quarter == Quarter.q1);
     }
+
     ///
     @safe pure nothrow @nogc
     YearQuarter addYears(long years)
@@ -1637,6 +1697,82 @@ struct YearQuarter
         yq.setQuarterOfYear(300);
         assert(yq.year == 2020);
         assert(yq.quarter == Quarter.q4);
+    }
+
+    ///
+    int opBinary(string op : "-")(YearQuarter rhs)
+    {
+        alias a = this;
+        alias b = rhs;
+        return (a.year - b.year) * 4 + a.quarter - b.quarter;
+    }
+
+    ///
+    YearQuarter opBinary(string op)(int rhs)
+        if (op == "+" || op == "-")
+    {
+        static if (op == "+")
+           return addQuarters(rhs);
+        else
+           return addQuarters(-rhs);
+    }
+
+    ///
+    alias opBinaryRight(string op : "+") = opBinary!"+";
+
+    ///
+    ref YearQuarter opOpAssign(string op)(int rhs) return @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        static if (op == "+")
+           this = addQuarters(rhs);
+        else
+           this = addQuarters(-rhs);
+        return this;
+    }
+
+    ///
+    @safe pure @nogc nothrow
+    version(mir_test)
+    unittest
+    {
+        auto x = YearQuarter(2020, Quarter.q1);
+        auto x1 = x + 1;
+        assert(x1 == YearQuarter(2020, Quarter.q2));
+        auto x2 = x + 2;
+        assert(x2 == YearQuarter(2020, Quarter.q3));
+        auto x3 = x + 3;
+        assert(x3 == YearQuarter(2020, Quarter.q4));
+    }
+
+    ///
+    @safe pure @nogc nothrow
+    version(mir_test)
+    unittest {
+        auto yq = YearQuarter(2020, Quarter.q1);
+        yq += 2;
+        assert(yq == YearQuarter(2020, Quarter.q3));
+        yq -= 1;
+        assert(yq == YearQuarter(2020, Quarter.q2));
+    }
+
+    /// Get a slice of YearQuarters
+    @safe pure @nogc nothrow
+    version(mir_test)
+    unittest {
+        import mir.ndslice.topology: iota;
+
+        static immutable result1 = [YearQuarter(2020, Quarter.q1), YearQuarter(2020, Quarter.q2), YearQuarter(2020, Quarter.q3), YearQuarter(2020, Quarter.q4)];
+        static immutable result2 = [YearQuarter(2020, Quarter.q1), YearQuarter(2020, Quarter.q3), YearQuarter(2021, Quarter.q1), YearQuarter(2021, Quarter.q3)];
+
+        auto yq = YearQuarter(2020, Quarter.q1);
+
+        auto x = yq + 4.iota!uint;
+        assert(x == result1);
+
+        // every other quarter
+        auto y = yq + iota!uint([4], 0, 2);
+        assert(y == result2);
     }
 
     /++
@@ -2715,27 +2851,84 @@ public:
     }
 
     ///
-    int opBinary(string op : "-")(Date lhs) const
+    int opBinary(string op : "-")(Date rhs) const
     {
-        return _julianDay - lhs._julianDay;
+        return _julianDay - rhs._julianDay;
     }
 
     ///
-    Date opBinary(string op : "+")(int lhs) const
+    Date opBinary(string op : "+")(int rhs) const
     {
-        return Date(_julianDay + lhs);
+        return Date(_julianDay + rhs);
     }
 
     ///
-    Date opBinaryRight(string op : "+")(int lhs) const
+    Date opBinaryRight(string op : "+")(int rhs) const
     {
-        return Date(_julianDay + lhs);
+        return Date(_julianDay + rhs);
     }
 
     ///
-    Date opBinary(string op : "-")(int lhs) const
+    Date opBinary(string op : "-")(int rhs) const
     {
-        return Date(_julianDay - lhs);
+        return Date(_julianDay - rhs);
+    }
+
+    ///
+    ref Date opOpAssign(string op)(int rhs) return @safe pure nothrow @nogc
+        if (op == "+" || op == "-")
+    {
+        static if (op == "+")
+           this._addDays(rhs);
+        else
+           this._addDays(-rhs);
+        return this;
+    }
+    
+    ///
+    @safe pure @nogc
+    version(mir_test)
+    unittest {
+        auto d = Date(2020, 1, 1);
+        d += 2;
+        assert(d == Date(2020, 1, 3));
+        d -= 1;
+        assert(d == Date(2020, 1, 2));
+    }
+
+
+    /// Get a slice of Dates
+    @safe pure @nogc
+    version(mir_test)
+    unittest {
+        import mir.ndslice.topology: iota, map;
+
+        static immutable result1 = [Date(2020, Month.mar, 1), Date(2020, Month.mar, 2), Date(2020, Month.mar, 3), Date(2020, Month.mar, 4)];
+        static immutable result2 = [Date(2020, Month.mar, 1), Date(2020, Month.mar, 3), Date(2020, Month.mar, 5), Date(2020, Month.mar, 7)];
+        static immutable result3 = [Date(2020, Month.mar, 1), Date(2020, Month.apr, 1), Date(2020, Month.may, 1), Date(2020, Month.jun, 1)];
+        static immutable result4 = [Date(2020, Month.mar, 1), Date(2020, Month.jun, 1), Date(2020, Month.sep, 1), Date(2020, Month.dec, 1)];
+        static immutable result5 = [Date(2020, Month.mar, 1), Date(2021, Month.mar, 1), Date(2022, Month.mar, 1), Date(2023, Month.mar, 1)];
+
+        auto d = Date(2020, Month.mar, 1);
+
+        auto x = d + 4.iota!uint;
+        assert(x == result1);
+
+        // every other date
+        auto y = d + iota!uint([4], 0, 2);
+        assert(y == result2);
+
+        // every month
+        auto z = (d.YearMonth + 4.iota!uint).map!Date;
+        assert(z == result3);
+
+        // every quarter
+        auto a = (d.YearQuarter + 4.iota!uint).map!(a => a.Date(AssumePeriod.end, AssumePeriod.begin));
+        assert(a == result4);
+
+        // every year
+        auto b = (d.year + 4.iota!uint).map!(a => YearMonthDay(cast(short) a, Month.mar, 1).Date);
+        assert(b == result5);
     }
 
     const nothrow @nogc pure @safe
