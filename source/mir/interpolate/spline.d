@@ -332,6 +332,7 @@ unittest
     auto grid = cartesian(x0, x1, x2);
 
     auto interpolant = spline!(double, 3)(x0.rcslice, x1.rcslice, x2.rcslice, grid.map!f);
+    assert(interpolant.convexity == [SplineConvexity.none, SplineConvexity.none, SplineConvexity.convex]);
 
     ///// compute test data ////
     auto test_grid = cartesian(x0.sliced + 1.23, x1.sliced + 3.23, x2.sliced - 3);
@@ -470,6 +471,19 @@ enum SplineType
     $(HTTPS en.wikipedia.org/wiki/Akima_spline, Akima spline).
     +/
     akima,
+}
+
+/++
+Spline convexity type
++/
+enum SplineConvexity
+{
+    /// Neither convex nor concave spline
+    none = 0,
+    /// Concave spline
+    concave = -1,
+    /// Convex spline
+    convex = 1,
 }
 
 /++
@@ -726,6 +740,8 @@ struct Spline(F, size_t N = 1, X = F)
     Slice!(RCI!(F[2 ^^ N]), N) _data;
     /// Grid iterators. $(RED For internal use.)
     Repeat!(N, RCI!(immutable X)) _grid;
+    ///
+    SplineConvexity[N] convexity;
 
     enum dimensionCount = N;
 
@@ -809,7 +825,7 @@ struct Spline(F, size_t N = 1, X = F)
 
         static if (N == 1)
         {
-            splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data.lightScope, 0), pickDataSubslice(_data.lightScope, 1), temp[0 .. _data._lengths[0]], kind, param, lBoundary, rBoundary);
+            convexity[0] = splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data.lightScope, 0), pickDataSubslice(_data.lightScope, 1), temp[0 .. _data._lengths[0]], kind, param, lBoundary, rBoundary);
         }
         else
         foreach_reverse(i; Iota!N)
@@ -826,7 +842,16 @@ struct Spline(F, size_t N = 1, X = F)
                         auto y = pickDataSubslice(d, l);
                         auto s = pickDataSubslice(d, L + l);
                         // debug printf("ptr = %ld, stride = %ld, stride = %ld, d = %ld i = %ld l = %ld\n", d.iterator, d._stride!0, y._stride!0, d.length, i, l);
-                        splineSlopes!(F, F)(_grid[i].sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lBoundary, rBoundary);
+                        auto c = splineSlopes!(F, F)(_grid[i].sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lBoundary, rBoundary);
+                        static if (l)
+                        {
+                            if (convexity[i] != c)
+                                convexity[i] = SplineConvexity.none;
+                        }
+                        else
+                        {
+                            convexity[i] = c;
+                        }
                         // debug{
                         //     (cast(void delegate() @nogc)(){
                         //     writeln("y = ", y);
@@ -1055,8 +1080,10 @@ Params:
 Constraints:
     `points`, `values`, and `slopes`, must have the same length > 3;
     `temp` must have length greater or equal to points less minus one.
+Returs:
+    Spline convexity type
 +/
-void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
+SplineConvexity splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
     Slice!(IP, 1, gkind) points,
     Slice!(IV, 1, vkind) values,
     Slice!(IS, 1, skind) slopes,
@@ -1146,7 +1173,7 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
                 assert(slopes.length == 2);
                 slopes.back = slopes.front = yd.front / xd.front;
             }
-            return;
+            return slopes.back >= slopes.front ? SplineConvexity.convex : SplineConvexity.concave;
         }
     }
 
@@ -1360,12 +1387,30 @@ void splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind 
 
     slopes.back = temp.back / slopes.back;
 
+    size_t convexCount;
+    size_t concaveCount;
     foreach_reverse (i; 0 .. n - 1)
     {
         auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
         auto v = temp[i] - c * slopes[i + 1];
         slopes[i] = slopes[i]  == 1 ? v : v / slopes[i];
+
+        auto xdiff = points[i + 1] - points[i];
+        auto ydiff = values[i + 1] - values[i];
+
+        auto convex1  = xdiff * (2 * slopes[i] + slopes[i + 1]) <= 3 * ydiff;
+        auto concave1 = xdiff * (2 * slopes[i] + slopes[i + 1]) >= 3 * ydiff;
+        auto convex2  = xdiff * (slopes[i] + 2 * slopes[i + 1]) >= 3 * ydiff;
+        auto concave2 = xdiff * (slopes[i] + 2 * slopes[i + 1]) <= 3 * ydiff;
+        convexCount += convex1 & convex2;
+        convexCount += concave1 & concave2;
     }
+
+    return
+        // convex kind has priority for the linear spline
+        convexCount  == n - 1 ? SplineConvexity.convex  :
+        concaveCount == n - 1 ? SplineConvexity.concave :
+        SplineConvexity.none;
 }
 
 private F akimaTail(F)(in F d2, in F d3)
@@ -1813,7 +1858,7 @@ unittest
         .map!f
         .rcslice
         .lightConst;
-    
+
     auto int0 = spline!double(x1.rcslice!(immutable double), grid[0]);
     auto int1 = spline!double(x1.rcslice!(immutable double), grid[1]);
     auto int2 = spline!double(x1.rcslice!(immutable double), grid[2]);
@@ -1838,4 +1883,18 @@ unittest
     assert(appreq(d[1][0], y_x0 + y_x0x1 * z1));
     assert(appreq(d[0][1], y_x1 + y_x0x1 * z0));
     assert(appreq(d[1][1], y_x0x1));
+}
+
+version(mir_test)
+unittest
+{
+    static immutable x = [0.05000161436323281, 0.10000322872646562, 0.15000484308969841, 0.250008071816164, 0.35001130054262963, 0.5, 0.6499886994573704, 0.749991928183836, 0.8499951569103016, 0.8999967712735344, 0.9499983856367672];
+    static immutable y = [0.09758, 0.097825, 0.09795000000000001, 0.0991, 0.10115, 0.10545, 0.11115000000000001, 0.1164, 0.12425, 0.129675, 0.13632];
+    import mir.ndslice, mir.stdio;
+    auto spline = spline!double(x.rcslice, y.rcslice, SplineType.c2);
+    foreach (e; x)
+    {
+        auto v = spline.opCall!2(e);
+        writeln(e, ",\t", v[0], ",\t", v[1], ",\t", v[2]);
+    }
 }
