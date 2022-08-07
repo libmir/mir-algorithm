@@ -162,8 +162,11 @@ extern(D):
     enum uint derivativeOrder = 0;
 
     ///
+    enum dimensionCount = N;
+
+    ///
     template opCall(uint derivative = 0)
-        if (derivative <= derivativeOrder)
+        // if (derivative <= derivativeOrder)
     {
         /++
         `(x)` operator.
@@ -181,7 +184,16 @@ extern(D):
                 else
                     indices[i] = _data._lengths[i] > 1 ? this.findInterval!i(xs[i]) : 0;
             }
-            return _data[indices];
+            static if (derivative == 0)
+            {
+                return _data[indices];
+            }
+            else
+            {
+                F[derivative + 1] ret = 0;
+                ret[0] = _data[indices];
+                return ret;
+            }
         }
     }
 }
