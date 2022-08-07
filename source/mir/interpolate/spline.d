@@ -743,7 +743,7 @@ struct Spline(F, size_t N = 1, X = F)
     ///
     SplineConvexity[N] convexity;
 
-    enum dimensionCount = N;
+    enum uint dimensionCount = N;
 
 @fmamath extern(D):
 
@@ -1733,7 +1733,7 @@ struct MetaSpline(T, X)
     enum uint derivativeOrder = 3;
 
     ///
-    enum dimensionCount = T.dimensionCount + 1;
+    enum uint dimensionCount = T.dimensionCount + 1;
 
     ///
     template opCall(uint derivative = 0)

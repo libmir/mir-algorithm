@@ -162,7 +162,7 @@ extern(D):
     enum uint derivativeOrder = 0;
 
     ///
-    enum dimensionCount = N;
+    enum uint dimensionCount = N;
 
     ///
     template opCall(uint derivative = 0)
@@ -196,4 +196,64 @@ extern(D):
             }
         }
     }
+}
+
+/++
+Single value interpolation
++/
+SingleConstant!F singleConstant(F)(const F value)
+{
+    return typeof(return)(value);
+}
+
+/// ditto
+struct SingleConstant(F)
+{
+    ///
+    enum uint derivativeOrder = 0;
+
+    ///
+    enum uint dimensionCount = 1;
+
+    ///
+    F value;
+
+    ///
+    this(F value)
+    {
+        this.value = value;
+    }
+
+    ///
+    template opCall(uint derivative = 0)
+    {
+        /++
+        `(x)` operator.
+        Complexity:
+            `O(1)`
+        +/
+        auto opCall(X...)(in X xs) scope const @trusted
+        {
+            static if (derivative == 0)
+            {
+                return value;
+            }
+            else
+            {
+                F[derivative + 1] ret = 0;
+                ret[0] = value;
+                return ret;
+            }
+        }
+    }
+}
+
+///
+@safe pure nothrow
+version (mir_test)
+unittest
+{
+    auto sc = singleConstant(34.1);
+    assert(sc(100) == 34.1);
+    assert(sc.opCall!2(100) == [34.1, 0, 0]);
 }

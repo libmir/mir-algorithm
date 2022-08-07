@@ -268,7 +268,7 @@ struct Linear(F, size_t N = 1, X = F)
     enum uint derivativeOrder = 1;
 
     ///
-    enum dimensionCount = N;
+    enum uint dimensionCount = N;
 
     ///
     template opCall(uint derivative = 0)
@@ -498,7 +498,7 @@ struct MetaLinear(T, X)
     enum uint derivativeOrder = 1;
 
     ///
-    enum dimensionCount = T.dimensionCount + 1;
+    enum uint dimensionCount = T.dimensionCount + 1;
 
     ///
     template opCall(uint derivative = 0)
