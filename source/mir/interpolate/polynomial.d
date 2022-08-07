@@ -104,6 +104,8 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0, X = T)
 
     ///
     enum uint derivativeOrder = maxAdditionalFunctions;
+    ///
+    enum uint dimensionCount = 1;
 
     /++
     Complexity: `O(N)`
