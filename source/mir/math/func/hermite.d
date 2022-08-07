@@ -81,7 +81,6 @@ See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
 +/
 template hermiteCoefficients(size_t N)
-    if (N <= 10)
 {
     import std.meta: AliasSeq;
 
