@@ -207,7 +207,7 @@ SingleConstant!F singleConstant(F)(const F value)
 }
 
 /// ditto
-struct SingleConstant(F)
+struct SingleConstant(F, X = F)
 {
     ///
     enum uint derivativeOrder = 0;
@@ -224,6 +224,14 @@ struct SingleConstant(F)
         this.value = value;
     }
 
+
+    ///
+    immutable(X)[] gridScopeView(size_t dimension = 0)() return scope const @property @trusted
+        if (dimension == 0)
+    {
+        return null;
+    }
+
     ///
     template opCall(uint derivative = 0)
     {
@@ -236,7 +244,7 @@ struct SingleConstant(F)
         {
             static if (derivative == 0)
             {
-                return value;
+                return F(value);
             }
             else
             {
@@ -256,4 +264,96 @@ unittest
     auto sc = singleConstant(34.1);
     assert(sc(100) == 34.1);
     assert(sc.opCall!2(100) == [34.1, 0, 0]);
+}
+
+/++
+Interpolator used for non-rectiliner trapezoid-like greeds.
+Params:
+    grid = rc-array of interpolation grid
+    data = rc-array of interpolator-like structures
++/
+auto metaSingleConstant(T)(T data)
+{
+    import core.lifetime: move;
+    return MetaSingleConstant!T(data.move);
+}
+
+/// ditto
+struct MetaSingleConstant(T, X = double)
+    // if (T.derivativeOrder >= 1)
+{
+    import mir.interpolate.utility: DeepType;
+
+    ///
+    T data;
+
+    ///
+    this(T data)
+    {
+        import core.lifetime: move;
+        this.data = data.move;
+    }
+
+    ///
+    MetaSingleConstant lightConst()() const @property { return *cast(MetaSingleConstant*)&this; }
+
+    ///
+    immutable(X)[] gridScopeView(size_t dimension = 0)() return scope const @property @trusted
+        if (dimension == 0)
+    {
+        return null;
+    }
+
+    ///
+    enum uint derivativeOrder = 1;
+
+    static if (__traits(compiles, {enum N = T.dimensionCount;}))
+    ///
+    enum uint dimensionCount = T.dimensionCount + 1;
+
+    ///
+    template opCall(uint derivative = 0)
+    {
+        /++
+        `(x)` operator.
+        Complexity:
+            `O(log(grid.length))`
+        +/
+        auto opCall(X...)(const X xs) scope const @trusted
+            if (xs.length >= 1)
+        {
+            static if (derivative == 0)
+            {
+                return data(xs[1.. $]);
+            }
+            else
+            {
+                auto iv = data.opCall!derivative(xs[1.. $]);
+                typeof(iv)[derivative + 1] ret = 0;
+                ret[0] = iv;
+                return ret;
+            }
+        }
+    }
+}
+
+/// Ignores the first dimension parameter
+version(mir_test)
+unittest
+{
+    import mir.interpolate.linear;
+
+    auto x = [0.0, 1, 2, 3, 5];
+    auto y = [4.0, 0, 9, 23, 40];
+
+    auto g = [7.0, 10, 15];
+
+    import mir.ndslice.allocation: rcslice;
+
+    auto d = linear!double(x.rcslice!(immutable double), y.rcslice!(const double));
+
+    auto ignoresFirstDim = d.metaSingleConstant;
+
+    assert(ignoresFirstDim(9.0, 1.8) == d(1.8));
+    assert(ignoresFirstDim.opCall!1(9.0, 1.8) == [d.opCall!1(1.8), [0.0, 0.0]]);
 }

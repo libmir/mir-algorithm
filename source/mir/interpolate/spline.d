@@ -41,7 +41,13 @@ version(D_Exceptions)
     static immutable splineConfigurationException = new Exception(splineConfigurationMsg);
 }
 
-private alias ValueType(T, X) = typeof(T.init.opCall(Repeat!(T.dimensionCount, X.init)));
+private template ValueType(T, X)
+{
+    static if (__traits(compiles, {enum N = T.dimensionCount;}))
+        alias ValueType = typeof(T.init.opCall(Repeat!(T.dimensionCount, X.init)));
+    else
+        alias ValueType = typeof(T.init.opCall(X.init));
+}
 
 @fmamath:
 
@@ -510,7 +516,8 @@ template spline(T, size_t N = 1, X = T)
         in T valueOfBoundaryConditions = 0,
         )
     {
-        return spline(grid, values, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
+        import core.lifetime: forward;
+        return spline(forward!grid, forward!values, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
     }
 
     Spline!(T, N, X) spline(yIterator, SliceKind ykind)(
@@ -522,7 +529,8 @@ template spline(T, size_t N = 1, X = T)
         in T valueOfBoundaryConditions = 0,
         )
     {
-        return spline(grid, values, SplineBoundaryCondition!T(typeOfBoundaries, valueOfBoundaryConditions), kind, param);
+        import core.lifetime: forward;
+        return spline(forward!grid, forward!values, SplineBoundaryCondition!T(typeOfBoundaries, valueOfBoundaryConditions), kind, param);
     }
 
     /++
@@ -545,7 +553,8 @@ template spline(T, size_t N = 1, X = T)
         in T param = 0,
         )
     {
-        return spline(grid, values, boundaries, boundaries, kind, param);
+        import core.lifetime: forward;
+        return spline(forward!grid, forward!values, boundaries, boundaries, kind, param);
     }
 
     /++
@@ -825,7 +834,7 @@ struct Spline(F, size_t N = 1, X = F)
 
         static if (N == 1)
         {
-            convexity[0] = splineSlopes!(F, F)(_grid[0].lightConst.sliced(_data._lengths[0]), pickDataSubslice(_data.lightScope, 0), pickDataSubslice(_data.lightScope, 1), temp[0 .. _data._lengths[0]], kind, param, lBoundary, rBoundary);
+            convexity[0] = splineSlopes!(F, F)(_grid[0]._iterator.sliced(_data._lengths[0]), pickDataSubslice(_data.lightScope, 0), pickDataSubslice(_data.lightScope, 1), temp[0 .. _data._lengths[0]], kind, param, lBoundary, rBoundary);
         }
         else
         foreach_reverse(i; Iota!N)
@@ -842,7 +851,7 @@ struct Spline(F, size_t N = 1, X = F)
                         auto y = pickDataSubslice(d, l);
                         auto s = pickDataSubslice(d, L + l);
                         // debug printf("ptr = %ld, stride = %ld, stride = %ld, d = %ld i = %ld l = %ld\n", d.iterator, d._stride!0, y._stride!0, d.length, i, l);
-                        auto c = splineSlopes!(F, F)(_grid[i].sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lBoundary, rBoundary);
+                        auto c = splineSlopes!(F, F)(_grid[i]._iterator.sliced(_data._lengths[i]), y, s, temp[0 .. _data._lengths[i]], kind, param, lBoundary, rBoundary);
                         static if (l)
                         {
                             if (convexity[i] != c)
@@ -1083,8 +1092,8 @@ Constraints:
 Returs:
     Spline convexity type
 +/
-SplineConvexity splineSlopes(F, T, IP, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
-    Slice!(IP, 1, gkind) points,
+SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, SliceKind skind)(
+    Slice!(P*, 1, gkind) points,
     Slice!(IV, 1, vkind) values,
     Slice!(IS, 1, skind) slopes,
     Slice!(T*) temp,
@@ -1556,7 +1565,8 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
     const F valueOfBoundaryConditions = 0,
     )
 {
-    return metaSpline!(F, X, T)(grid, data, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
+    import core.lifetime: move;
+    return metaSpline!(F, X, T)(grid.move, data.move, SplineType.c2, 0, typeOfBoundaries, valueOfBoundaryConditions);
 }
 
 /++
@@ -1582,7 +1592,8 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
     const F valueOfBoundaryConditions = 0,
     )
 {
-    return metaSpline!(F, X, T)(grid, data, SplineBoundaryCondition!F(typeOfBoundaries, valueOfBoundaryConditions), kind, param);
+    import core.lifetime: move;
+    return metaSpline!(F, X, T)(grid.move, data.move, SplineBoundaryCondition!F(typeOfBoundaries, valueOfBoundaryConditions), kind, param);
 }
 
 /++
@@ -1606,7 +1617,8 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
     const F param = 0,
     )
 {
-    return metaSpline!(F, X, T)(grid, data, SplineConfiguration!F(kind, boundaries, boundaries, param));
+    import core.lifetime: move;
+    return metaSpline!(F, X, T)(grid.move, data.move, SplineConfiguration!F(kind, boundaries, boundaries, param));
 }
 
 /++
@@ -1658,7 +1670,6 @@ MetaSpline!(T, X) metaSpline(F, X, T)(
 
 /// ditto
 struct MetaSpline(T, X)
-    if (T.derivativeOrder >= 3)
 {
     import mir.interpolate.utility: DeepType;
     // alias ElementInterpolator = Linear!(F, N, X);
@@ -1732,12 +1743,13 @@ struct MetaSpline(T, X)
     ///
     enum uint derivativeOrder = 3;
 
+    static if (__traits(compiles, {enum N = T.dimensionCount;}))
     ///
     enum uint dimensionCount = T.dimensionCount + 1;
 
     ///
     template opCall(uint derivative = 0)
-        if (derivative <= derivativeOrder)
+        // if (derivative <= derivativeOrder)
     {
         /++
         `(x)` operator.
@@ -1745,7 +1757,7 @@ struct MetaSpline(T, X)
             `O(log(grid.length))`
         +/
         auto opCall(X...)(const X xs) scope const @trusted
-            if (X.length == dimensionCount)
+            // if (X.length == dimensionCount)
         {
             F[2][][derivative + 1] mutable;
 

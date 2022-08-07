@@ -444,7 +444,7 @@ auto metaLinear(X, T)(RCArray!(immutable X) grid, RCArray!(const T) data)
 
 /// ditto
 struct MetaLinear(T, X)
-    if (T.derivativeOrder >= 1)
+    // if (T.derivativeOrder >= 1)
 {
     import mir.interpolate.utility: DeepType;
     // alias ElementInterpolator = Linear!(F, N, X);
@@ -497,6 +497,7 @@ struct MetaLinear(T, X)
     ///
     enum uint derivativeOrder = 1;
 
+    static if (__traits(compiles, {enum N = T.dimensionCount;}))
     ///
     enum uint dimensionCount = T.dimensionCount + 1;
 
@@ -509,7 +510,7 @@ struct MetaLinear(T, X)
             `O(log(grid.length))`
         +/
         auto opCall(X...)(const X xs) scope const @trusted
-            if (X.length == dimensionCount)
+            // if (X.length == dimensionCount)
         {
             static if (isInterval!(typeof(xs[0])))
             {
