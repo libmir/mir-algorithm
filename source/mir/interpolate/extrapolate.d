@@ -1,5 +1,5 @@
 /++
-$(H2 Constant Interpolation)
+$(H2 Extrapolators)
 
 See_also: $(REF_ALTTEXT $(TT interp1), interp1, mir, interpolate)
 
