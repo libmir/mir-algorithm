@@ -1,8 +1,8 @@
 name "mir-algorithm"
 description "Dlang Core Library"
 
-authors "Ilya Yaroshenko" "John Michael Hall" "Shigeki Karita" "Sebastian Wilzbach" "And others" "mir.date and a bit of other code is based on Phobos"
-copyright "2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments"
+authors "Ilia Ki" "John Michael Hall" "Shigeki Karita" "Sebastian Wilzbach" "And others" "mir.date and a bit of other code is based on Phobos"
+copyright "2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments"
 license "Apache-2.0"
 
 dependency "mir-core" version=">=1.1.106"

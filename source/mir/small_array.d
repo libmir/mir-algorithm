@@ -5,8 +5,8 @@ The module contains self-contained generic small array implementaton.
 
 $(LREF SmallArray) supports ASDF - Json Serialisation Library.
 
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
-Authors: Ilya Yaroshenko
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilia Ki
 +/
 module mir.small_array;
 

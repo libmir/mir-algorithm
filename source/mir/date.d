@@ -30,7 +30,7 @@ $(TR $(TD Other) $(TD
 ))
 ))
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Authors: $(HTTP jmdavisprog.com, Jonathan M Davis), Ilya Yaroshenko (boost-like and BetterC rework)
+Authors: $(HTTP jmdavisprog.com, Jonathan M Davis), Ilia Ki (boost-like and BetterC rework)
 +/
 module mir.date;
 

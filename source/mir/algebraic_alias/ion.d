@@ -6,7 +6,7 @@ This module contains a single alias definition and doesn't provide Ion serializa
 See_also: Ion library $(MIR_PACKAGE mir-ion)
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Authors: Ilya Yaroshenko 
+Authors: Ilia Ki 
 Macros:
 +/
 module mir.algebraic_alias.ion;

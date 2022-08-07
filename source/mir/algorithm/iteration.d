@@ -38,13 +38,13 @@ All operators are suitable to change slices using `ref` argument qualification i
 Note, that string lambdas in Mir are `auto ref` functions.
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
-Authors: Ilya Yaroshenko, John Michael Hall, Andrei Alexandrescu (original Phobos code)
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilia Ki, John Michael Hall, Andrei Alexandrescu (original Phobos code)
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
 
-Authors: , Ilya Yaroshenko (Mir & BetterC rework).
+Authors: , Ilia Ki (Mir & BetterC rework).
 Source: $(PHOBOSSRC std/algorithm/_iteration.d)
 Macros:
     NDSLICEREF = $(REF_ALTTEXT $(TT $2), $2, mir, ndslice, $1)$(NBSP)
@@ -3831,7 +3831,7 @@ version(mir_test)
 }
 
 /++
-Authros: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Yaroshenko (betterC rework)
+Authros: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilia Ki (betterC rework)
 +/
 struct Uniq(alias pred, Range)
 {

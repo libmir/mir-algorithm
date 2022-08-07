@@ -2,8 +2,8 @@
 This implements common de/serialization routines.
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
-Authors: Ilya Yaroshenko
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilia Ki
 
 Macros:
 T2=$(TR $(TDNW $(LREF $1)) $(TD $+))

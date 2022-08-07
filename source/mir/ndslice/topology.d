@@ -101,8 +101,8 @@ Examples of use of subspace selectors are available for selectors,
 $(SUBREF slice, Slice.shape), and $(SUBREF slice, Slice.elementCount).
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
-Authors: Ilya Yaroshenko, John Michael Hall, Shigeki Karita (original numir code)
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilia Ki, John Michael Hall, Shigeki Karita (original numir code)
 
 Sponsors: Part of this work has been sponsored by $(LINK2 http://symmetryinvestments.com, Symmetry Investments) and Kaleidic Associates.
 

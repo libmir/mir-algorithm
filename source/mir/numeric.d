@@ -4,7 +4,7 @@ Base numeric algorithms.
 Reworked part of `std.numeric`.
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Authors: Ilya Yaroshenko (API, findLocalMin, findRoot extension), Don Clugston (findRoot), Lars Tandle Kyllingstad (diff)
+Authors: Ilia Ki (API, findLocalMin, findRoot extension), Don Clugston (findRoot), Lars Tandle Kyllingstad (diff)
 +/
 module mir.numeric;
 
@@ -415,7 +415,7 @@ private @fmamath FindRootResult!T findRootImplGen(T)(
     // (www.netlib.org).  The changes to improve the worst-cast performance are
     // entirely original.
     
-    // Author: Ilya Yaroshenko (Bounds extension logic,
+    // Author: Ilia Ki (Bounds extension logic,
     // API improvements, infinity and huge numbers handing, compiled code size reduction)
 
     T d;  // [a .. b] is our current bracket. d is the third best guess.

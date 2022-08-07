@@ -4,7 +4,7 @@ $(H1 Transformation utilities for JSON-like values)
 See_also: JSON libraries $(MIR_PACKAGE mir-ion) and $(MIR_PACKAGE asdf);
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Authors: Ilya Yaroshenko 
+Authors: Ilia Ki 
 Macros:
 +/
 module mir.algebraic_alias.transform;

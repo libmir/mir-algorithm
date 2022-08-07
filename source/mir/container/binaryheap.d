@@ -6,11 +6,11 @@ Current implementation is suitable for Mir/BetterC concepts.
 
 This module is a submodule of $(MREF mir, container).
 
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 
-Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Yaroshenko (Mir & BetterC rework).
+Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilia Ki (Mir & BetterC rework).
 */
 module mir.container.binaryheap;
 

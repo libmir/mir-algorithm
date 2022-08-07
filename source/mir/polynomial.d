@@ -2,7 +2,7 @@
 Polynomial ref-counted structure.
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Authors: Ilya Yaroshenko
+Authors: Ilia Ki
 +/
 module mir.polynomial;
 

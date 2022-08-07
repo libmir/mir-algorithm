@@ -68,7 +68,7 @@ On the other hand, it can't eliminate identical calls of complex functions.
 It is highly recommended to evaluate a set of partial derivatives immediately after constructing
 a complex expression such as $(LREF normalDistribution).
 
-Authors: Ilya Yaroshenko
+Authors: Ilia Ki
 +/
 module mir.ediff;
 

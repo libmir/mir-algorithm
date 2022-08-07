@@ -2,8 +2,8 @@
 $(H1 @nogc and nothrow Parsing Utilities)
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Authors: Ilya Yaroshenko
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilia Ki
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
 +/
 module mir.parse;
 

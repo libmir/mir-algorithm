@@ -1,7 +1,7 @@
 /**
 This module contains various combinatorics algorithms.
 
-Authors: Sebastian Wilzbach, Ilya Yaroshenko
+Authors: Sebastian Wilzbach, Ilia Ki
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 */

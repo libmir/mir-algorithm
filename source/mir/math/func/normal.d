@@ -6,7 +6,7 @@ License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
  *
  * Copyright: Based on the CEPHES math library, which is
  *            Copyright (C) 1994 Stephen L. Moshier (moshier@world.std.com).
- * Authors:   Stephen L. Moshier, ported to D by Don Clugston and David Nadlinger. Adopted to Mir by Ilya Yaroshenko.
+ * Authors:   Stephen L. Moshier, ported to D by Don Clugston and David Nadlinger. Adopted to Mir by Ilia Ki.
  */
 /**
  * Macros:

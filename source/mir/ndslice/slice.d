@@ -6,8 +6,8 @@ Safety_note:
     Bounds are checked in ndslice code.
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
-Authors: Ilya Yaroshenko
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
+Authors: Ilia Ki
 
 $(BOOKTABLE $(H2 Definitions),
 $(TR $(TH Name) $(TH Description))

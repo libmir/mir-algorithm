@@ -3,9 +3,9 @@
 This is a submodule of $(MREF mir, algorithm). It contains `nothrow` `@nogc` BetterC alternative to `MultiwayMerge` from `std.algorithm.setops`.
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
 
-Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilya Yaroshenko (Mir & BetterC rework, optimization).
+Authors: $(HTTP erdani.com, Andrei Alexandrescu) (original Phobos code), Ilia Ki (Mir & BetterC rework, optimization).
  */
 module mir.algorithm.setops;
 

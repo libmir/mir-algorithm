@@ -7,9 +7,9 @@ at expense of precision, one can use $(REF_ALTTEXT $(TT Summation.fast), Summati
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 
-Authors: Shigeki Karita (original numir code), Ilya Yaroshenko, John Michael Hall
+Authors: Shigeki Karita (original numir code), Ilia Ki, John Michael Hall
 
-Copyright: 2020 Ilya Yaroshenko, Kaleidic Associates Advisory Limited, Symmetry Investments
+Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
 
 Macros:
 SUBREF = $(REF_ALTTEXT $(TT $2), $2, mir, math, $1)$(NBSP)
