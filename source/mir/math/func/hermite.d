@@ -9,7 +9,7 @@ Authors: John Hall
 module mir.math.func.hermite;
 
 /++
-Statistician's Hermite polynomial coefficients
+Normalized (probabilist's) Hermite polynomial coefficients
 
 Params:
     N = Degree of polynomial
@@ -17,25 +17,25 @@ Params:
 See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
 +/
-template hermiteCoefficientsStatistician(size_t N)
+template hermiteCoefficientsNorm(size_t N)
 {
     import std.meta: AliasSeq;
 
     alias G = int[N + 1];
     static if (N == 0) {
-        enum G hermiteCoefficientsStatistician = [1];
+        enum G hermiteCoefficientsNorm = [1];
     } else static if (N == 1) {
-        enum G hermiteCoefficientsStatistician = [0, 1];
+        enum G hermiteCoefficientsNorm = [0, 1];
     } else static if (N >= 2) {
-        alias x = AliasSeq!(-(cast(int) N - 1) * hermiteCoefficientsStatistician!(N - 2)[0]);
+        alias x = AliasSeq!(-(cast(int) N - 1) * hermiteCoefficientsNorm!(N - 2)[0]);
         static foreach (i; 1..(N + 1)) {
             static if (i < (N - 1)) {
-                x = AliasSeq!(x, hermiteCoefficientsStatistician!(N - 1)[i - 1] - (cast(int) N - 1) * hermiteCoefficientsStatistician!(N - 2)[i]);
+                x = AliasSeq!(x, hermiteCoefficientsNorm!(N - 1)[i - 1] - (cast(int) N - 1) * hermiteCoefficientsNorm!(N - 2)[i]);
             } else {
-                x = AliasSeq!(x, hermiteCoefficientsStatistician!(N - 1)[i - 1]);
+                x = AliasSeq!(x, hermiteCoefficientsNorm!(N - 1)[i - 1]);
             }
         }
-        enum G hermiteCoefficientsStatistician = [x];
+        enum G hermiteCoefficientsNorm = [x];
     }
 }
 
@@ -48,16 +48,16 @@ unittest
     import mir.rc.array: rcarray;
     import mir.test: should;
 
-    auto h1 = hermiteCoefficientsStatistician!1.rcarray!(const double).polynomial;
-    auto h2 = hermiteCoefficientsStatistician!2.rcarray!(const double).polynomial;
-    auto h3 = hermiteCoefficientsStatistician!3.rcarray!(const double).polynomial;
-    auto h4 = hermiteCoefficientsStatistician!4.rcarray!(const double).polynomial;
-    auto h5 = hermiteCoefficientsStatistician!5.rcarray!(const double).polynomial;
-    auto h6 = hermiteCoefficientsStatistician!6.rcarray!(const double).polynomial;
-    auto h7 = hermiteCoefficientsStatistician!7.rcarray!(const double).polynomial;
-    auto h8 = hermiteCoefficientsStatistician!8.rcarray!(const double).polynomial;
-    auto h9 = hermiteCoefficientsStatistician!9.rcarray!(const double).polynomial;
-    auto h10 = hermiteCoefficientsStatistician!10.rcarray!(const double).polynomial;
+    auto h1 = hermiteCoefficientsNorm!1.rcarray!(const double).polynomial;
+    auto h2 = hermiteCoefficientsNorm!2.rcarray!(const double).polynomial;
+    auto h3 = hermiteCoefficientsNorm!3.rcarray!(const double).polynomial;
+    auto h4 = hermiteCoefficientsNorm!4.rcarray!(const double).polynomial;
+    auto h5 = hermiteCoefficientsNorm!5.rcarray!(const double).polynomial;
+    auto h6 = hermiteCoefficientsNorm!6.rcarray!(const double).polynomial;
+    auto h7 = hermiteCoefficientsNorm!7.rcarray!(const double).polynomial;
+    auto h8 = hermiteCoefficientsNorm!8.rcarray!(const double).polynomial;
+    auto h9 = hermiteCoefficientsNorm!9.rcarray!(const double).polynomial;
+    auto h10 = hermiteCoefficientsNorm!10.rcarray!(const double).polynomial;
     
     h1(3).should == 3;
     h2(3).should == 8;
@@ -80,26 +80,26 @@ Params:
 See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
 +/
-template hermiteCoefficientsPhysicist(size_t N)
+template hermiteCoefficients(size_t N)
     if (N <= 10)
 {
     import std.meta: AliasSeq;
 
     alias G = int[N + 1];
     static if (N == 0) {
-        enum G hermiteCoefficientsPhysicist = [1];
+        enum G hermiteCoefficients = [1];
     } else static if (N == 1) {
-        enum G hermiteCoefficientsPhysicist = [0, 2];
+        enum G hermiteCoefficients = [0, 2];
     } else static if (N >= 2) {
-        alias x = AliasSeq!(-hermiteCoefficientsPhysicist!(N - 1)[1]);
+        alias x = AliasSeq!(-hermiteCoefficients!(N - 1)[1]);
         static foreach (i; 1..(N + 1)) {
             static if ((i + 1) < N) {
-                x = AliasSeq!(x, 2 * hermiteCoefficientsPhysicist!(N - 1)[i - 1] - (cast(int) i + 1) * hermiteCoefficientsPhysicist!(N - 1)[i + 1]);
+                x = AliasSeq!(x, 2 * hermiteCoefficients!(N - 1)[i - 1] - (cast(int) i + 1) * hermiteCoefficients!(N - 1)[i + 1]);
             } else {
-                x = AliasSeq!(x, 2 * hermiteCoefficientsPhysicist!(N - 1)[i - 1]);
+                x = AliasSeq!(x, 2 * hermiteCoefficients!(N - 1)[i - 1]);
             }
         }
-        enum G hermiteCoefficientsPhysicist = [x];
+        enum G hermiteCoefficients = [x];
     }
 }
 
@@ -112,16 +112,16 @@ unittest
     import mir.rc.array: rcarray;
     import mir.test: should;
 
-    auto h1 = hermiteCoefficientsPhysicist!1.rcarray!(const double).polynomial;
-    auto h2 = hermiteCoefficientsPhysicist!2.rcarray!(const double).polynomial;
-    auto h3 = hermiteCoefficientsPhysicist!3.rcarray!(const double).polynomial;
-    auto h4 = hermiteCoefficientsPhysicist!4.rcarray!(const double).polynomial;
-    auto h5 = hermiteCoefficientsPhysicist!5.rcarray!(const double).polynomial;
-    auto h6 = hermiteCoefficientsPhysicist!6.rcarray!(const double).polynomial;
-    auto h7 = hermiteCoefficientsPhysicist!7.rcarray!(const double).polynomial;
-    auto h8 = hermiteCoefficientsPhysicist!8.rcarray!(const double).polynomial;
-    auto h9 = hermiteCoefficientsPhysicist!9.rcarray!(const double).polynomial;
-    auto h10 = hermiteCoefficientsPhysicist!10.rcarray!(const double).polynomial;
+    auto h1 = hermiteCoefficients!1.rcarray!(const double).polynomial;
+    auto h2 = hermiteCoefficients!2.rcarray!(const double).polynomial;
+    auto h3 = hermiteCoefficients!3.rcarray!(const double).polynomial;
+    auto h4 = hermiteCoefficients!4.rcarray!(const double).polynomial;
+    auto h5 = hermiteCoefficients!5.rcarray!(const double).polynomial;
+    auto h6 = hermiteCoefficients!6.rcarray!(const double).polynomial;
+    auto h7 = hermiteCoefficients!7.rcarray!(const double).polynomial;
+    auto h8 = hermiteCoefficients!8.rcarray!(const double).polynomial;
+    auto h9 = hermiteCoefficients!9.rcarray!(const double).polynomial;
+    auto h10 = hermiteCoefficients!10.rcarray!(const double).polynomial;
     
     h1(3).should == 6;
     h2(3).should == 34;
