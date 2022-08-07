@@ -18,31 +18,24 @@ See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
 +/
 template hermiteCoefficientsStatistician(size_t N)
-    if (N <= 10)
 {
+    import std.meta: AliasSeq;
+
     alias G = int[N + 1];
     static if (N == 0) {
         enum G hermiteCoefficientsStatistician = [1];
     } else static if (N == 1) {
         enum G hermiteCoefficientsStatistician = [0, 1];
-    } else static if (N == 2) {
-        enum G hermiteCoefficientsStatistician = [-1, 0, 1];
-    } else static if (N == 3) {
-        enum G hermiteCoefficientsStatistician = [0, -3, 0, 1];
-    } else static if (N == 4) {
-        enum G hermiteCoefficientsStatistician = [3, 0, -6, 0, 1];
-    } else static if (N == 5) {
-        enum G hermiteCoefficientsStatistician = [0, 15, 0, -10, 0, 1];
-    } else static if (N == 6) {
-        enum G hermiteCoefficientsStatistician = [-15, 0, 45, 0, -15, 0, 1];
-    } else static if (N == 7) {
-        enum G hermiteCoefficientsStatistician = [0, -105, 0, 105, 0, -21, 0, 1];
-    } else static if (N == 8) {
-        enum G hermiteCoefficientsStatistician = [105, 0, -420, 0, 210, 0, -28, 0, 1];
-    } else static if (N == 9) {
-        enum G hermiteCoefficientsStatistician = [0, 945, 0, -1260, 0, 378, 0, -36, 0, 1];
-    } else static if (N == 10) {
-        enum G hermiteCoefficientsStatistician = [-945, 0, 4725, 0, -3150, 0, 630, 0, -45, 0, 1];
+    } else static if (N >= 2) {
+        alias x = AliasSeq!(-(cast(int) N - 1) * hermiteCoefficientsStatistician!(N - 2)[0]);
+        static foreach (i; 1..(N + 1)) {
+            static if (i < (N - 1)) {
+                x = AliasSeq!(x, hermiteCoefficientsStatistician!(N - 1)[i - 1] - (cast(int) N - 1) * hermiteCoefficientsStatistician!(N - 2)[i]);
+            } else {
+                x = AliasSeq!(x, hermiteCoefficientsStatistician!(N - 1)[i - 1]);
+            }
+        }
+        enum G hermiteCoefficientsStatistician = [x];
     }
 }
 
@@ -90,29 +83,23 @@ See_also:
 template hermiteCoefficientsPhysicist(size_t N)
     if (N <= 10)
 {
+    import std.meta: AliasSeq;
+
     alias G = int[N + 1];
     static if (N == 0) {
         enum G hermiteCoefficientsPhysicist = [1];
     } else static if (N == 1) {
         enum G hermiteCoefficientsPhysicist = [0, 2];
-    } else static if (N == 2) {
-        enum G hermiteCoefficientsPhysicist = [-2, 0, 4];
-    } else static if (N == 3) {
-        enum G hermiteCoefficientsPhysicist = [0, -12, 0, 8];
-    } else static if (N == 4) {
-        enum G hermiteCoefficientsPhysicist = [12, 0, -48, 0, 16];
-    } else static if (N == 5) {
-        enum G hermiteCoefficientsPhysicist = [0, 120, 0, -160, 0, 32];
-    } else static if (N == 6) {
-        enum G hermiteCoefficientsPhysicist = [-120, 0, 720, 0, -480, 0, 64];
-    } else static if (N == 7) {
-        enum G hermiteCoefficientsPhysicist = [0, -1680, 0, 3360, 0, -1344, 0, 128];
-    } else static if (N == 8) {
-        enum G hermiteCoefficientsPhysicist = [1680, 0, -13440, 0, 13440, 0, -3584, 0, 256];
-    } else static if (N == 9) {
-        enum G hermiteCoefficientsPhysicist = [0, 30240, 0, -80640, 0, 48384, 0, -9216, 0, 512];
-    } else static if (N == 10) {
-        enum G hermiteCoefficientsPhysicist = [-30240, 0, 302400, 0, -403200, 0, 161280, 0, -23040, 0, 1024];
+    } else static if (N >= 2) {
+        alias x = AliasSeq!(-hermiteCoefficientsPhysicist!(N - 1)[1]);
+        static foreach (i; 1..(N + 1)) {
+            static if ((i + 1) < N) {
+                x = AliasSeq!(x, 2 * hermiteCoefficientsPhysicist!(N - 1)[i - 1] - (cast(int) i + 1) * hermiteCoefficientsPhysicist!(N - 1)[i + 1]);
+            } else {
+                x = AliasSeq!(x, 2 * hermiteCoefficientsPhysicist!(N - 1)[i - 1]);
+            }
+        }
+        enum G hermiteCoefficientsPhysicist = [x];
     }
 }
 
