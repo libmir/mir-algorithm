@@ -12,7 +12,7 @@ module mir.math.func.hermite;
 Statistician's Hermite polynomial coefficients
 
 Params:
-    N = Polynomial Order
+    N = Degree of polynomial
 
 See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
@@ -82,7 +82,7 @@ unittest
 Physicist's Hermite polynomial coefficients
 
 Params:
-    N = Polynomial Order
+    N = Degree of polynomial
 
 See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
