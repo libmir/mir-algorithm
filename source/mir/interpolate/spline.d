@@ -1884,17 +1884,3 @@ unittest
     assert(appreq(d[0][1], y_x1 + y_x0x1 * z0));
     assert(appreq(d[1][1], y_x0x1));
 }
-
-version(mir_test)
-unittest
-{
-    static immutable x = [0.05000161436323281, 0.10000322872646562, 0.15000484308969841, 0.250008071816164, 0.35001130054262963, 0.5, 0.6499886994573704, 0.749991928183836, 0.8499951569103016, 0.8999967712735344, 0.9499983856367672];
-    static immutable y = [0.09758, 0.097825, 0.09795000000000001, 0.0991, 0.10115, 0.10545, 0.11115000000000001, 0.1164, 0.12425, 0.129675, 0.13632];
-    import mir.ndslice, mir.stdio;
-    auto spline = spline!double(x.rcslice, y.rcslice, SplineType.c2);
-    foreach (e; x)
-    {
-        auto v = spline.opCall!2(e);
-        writeln(e, ",\t", v[0], ",\t", v[1], ",\t", v[2]);
-    }
-}
