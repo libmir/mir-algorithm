@@ -92,37 +92,43 @@ struct ConstantExtrapolator(T)
                 return data(xm);
             else
             {
-                static assert (xs.length <= 2, "multidimensional constant exrapolation with derivatives isn't implemented");
+                static assert (xs.length <= 4, "multidimensional constant exrapolation with derivatives isn't implemented");
                 auto ret = data.opCall!derivative(xm);
-                static if (xs.length == 1)
+ 
+                static if (xs.length <= 1)
                 {
                     if (extrpolated[0])
-                    {
-                        foreach (ref e; ret[1 .. $])
-                        {
-                            e = 0;
-                        }
-                    }
+                    foreach (ref a; ret[1 .. $])
+                        a = 0;
                 }
-                else
-                static if (xs.length == 2)
-                {
-                    if (extrpolated[0])
-                    {
-                        foreach (ref e; ret[1 .. $])
-                        {
-                            e = 0;
-                        }
-                    }
 
+                static if (xs.length <= 2)
+                {
                     if (extrpolated[1])
-                    {
-                        foreach (ref e; ret)
-                        {
-                            e[1 .. $] = 0;
-                        }
-                    }
+                    foreach (ref a; ret)
+                    foreach (ref b; a[1 .. $])
+                        b = 0;
                 }
+
+                static if (xs.length <= 3)
+                {
+                    if (extrpolated[2])
+                    foreach (ref a; ret)
+                    foreach (ref b; a)
+                    foreach (ref c; b[1 .. $])
+                        c = 0;
+                }
+
+                static if (xs.length <= 4)
+                {
+                    if (extrpolated[2])
+                    foreach (ref a; ret)
+                    foreach (ref b; a)
+                    foreach (ref c; b)
+                    foreach (ref d; c[1 .. $])
+                        d = 0;
+                }
+
                 return ret;
             }
         }
