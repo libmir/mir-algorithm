@@ -62,7 +62,7 @@ struct ConstantExtrapolator(T)
             `O(log(grid.length))`
         +/
         auto opCall(X...)(const X xs) scope const @trusted
-            if (xs.length >= 1)
+            if (X.length >= 1)
         {
             import mir.internal.utility: Iota;
             import mir.math.common: fmin, fmax;
@@ -92,17 +92,17 @@ struct ConstantExtrapolator(T)
                 return data(xm);
             else
             {
-                static assert (xs.length <= 4, "multidimensional constant exrapolation with derivatives isn't implemented");
+                static assert (X.length <= 4, "multidimensional constant exrapolation with derivatives isn't implemented");
                 auto ret = data.opCall!derivative(xm);
  
-                static if (xs.length <= 1)
+                static if (X.length >= 1)
                 {
                     if (extrpolated[0])
                     foreach (ref a; ret[1 .. $])
                         a = 0;
                 }
 
-                static if (xs.length <= 2)
+                static if (X.length >= 2)
                 {
                     if (extrpolated[1])
                     foreach (ref a; ret)
@@ -110,7 +110,7 @@ struct ConstantExtrapolator(T)
                         b = 0;
                 }
 
-                static if (xs.length <= 3)
+                static if (X.length >= 3)
                 {
                     if (extrpolated[2])
                     foreach (ref a; ret)
@@ -119,7 +119,7 @@ struct ConstantExtrapolator(T)
                         c = 0;
                 }
 
-                static if (xs.length <= 4)
+                static if (X.length >= 4)
                 {
                     if (extrpolated[2])
                     foreach (ref a; ret)
