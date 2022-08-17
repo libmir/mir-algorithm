@@ -246,6 +246,9 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
+    alias opOpAssign(string op : "~") = put;
+
+    ///
     void reset() scope nothrow
     {
         this.__dtor;
@@ -320,6 +323,27 @@ version (mir_test) unittest
     auto buf = scopedBuffer!(char, 3);
     buf.put('c');
     buf.put("str");
+    assert(buf.data == "cstr");
+
+    buf.popBackN(2);
+    assert(buf.data == "cs");
+}
+
+@safe pure nothrow @nogc
+version (mir_test) unittest
+{
+    alias T = char;
+    const n = 3;
+
+    auto buf = scopedBuffer!(T, n * T.sizeof);
+    assert(buf._scopeBuffer.length == n); // stack
+    assert(buf._buffer.length == 0);      // unset
+
+    buf.reserve(n + 1);                   // transition to heap
+    assert(buf._buffer.length >= n + 1); // heap
+
+    buf ~= 'c';
+    buf ~= "str";
     assert(buf.data == "cstr");
 
     buf.popBackN(2);
