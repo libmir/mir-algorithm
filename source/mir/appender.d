@@ -26,7 +26,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
 
     private enum size_t _bufferLength =  bytes / T.sizeof + (bytes % T.sizeof != 0);
     private T[] _buffer;
-    size_t _currentLength;
+    private size_t _currentLength;
 
     version (mir_secure_memory)
         private align(T.alignof) ubyte[_bufferLength * T.sizeof] _scopeBufferPayload;
@@ -36,6 +36,48 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     private ref inout(T[_bufferLength]) _scopeBuffer() inout @trusted scope
     {
         return *cast(inout(T[_bufferLength])*)&_scopeBufferPayload;
+    }
+
+    ///
+    void reserve(size_t n) @trusted scope
+    {
+        import mir.internal.memory: realloc, malloc;
+        const nextLength = _currentLength + n;
+        if (_buffer.length == 0)
+        {
+            if (nextLength <= _bufferLength)
+            {
+                return;
+            }
+            else
+            {
+                const newLen = nextLength << 1;
+                if (auto p = malloc(T.sizeof * newLen))
+                {
+                    _buffer = (cast(T*)p)[0 .. newLen];
+                }
+                else assert(0);
+                version (mir_secure_memory)
+                {
+                    (cast(ubyte[])_buffer)[] = 0;
+                }
+                memcpy(cast(void*)_buffer.ptr, _scopeBuffer.ptr, T.sizeof * (nextLength - n));
+            }
+        }
+        else
+        if (nextLength > _buffer.length)
+        {
+            const newLen = nextLength << 1;
+            if (auto p = realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))
+            {
+                _buffer = (cast(T*)p)[0 .. newLen];
+            }
+            else assert(0);
+            version (mir_secure_memory)
+            {
+                (cast(ubyte[])_buffer[nextLength .. $])[] = 0;
+            }
+        }
     }
 
     ///
@@ -51,7 +93,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
             }
             else
             {
-                auto newLen = _currentLength << 1;
+                const newLen = _currentLength << 1;
                 if (auto p = malloc(T.sizeof * newLen))
                 {
                     _buffer = (cast(T*)p)[0 .. newLen];
@@ -67,8 +109,12 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         else
         if (_currentLength > _buffer.length)
         {
-            auto newLen = _currentLength << 1;
-            _buffer = (cast(T*)realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))[0 .. newLen];
+            const newLen = _currentLength << 1;
+            if (auto p = realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))
+            {
+                _buffer = (cast(T*)p)[0 .. newLen];
+            }
+            else assert(0);
             version (mir_secure_memory)
             {
                 (cast(ubyte[])_buffer[_currentLength .. $])[] = 0;
