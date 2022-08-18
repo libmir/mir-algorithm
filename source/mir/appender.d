@@ -38,49 +38,14 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         return *cast(inout(T[_bufferLength])*)&_scopeBufferPayload;
     }
 
-    ///
-    void reserve(size_t n) @trusted scope
+    /// Reserve `n` more elements.
+    void reserve(size_t n) @safe scope
     {
-        import mir.internal.memory: realloc, malloc;
-        const nextLength = _currentLength + n;
-        if (_buffer.length == 0)
-        {
-            if (nextLength <= _bufferLength)
-            {
-                return;
-            }
-            else
-            {
-                const newLen = nextLength << 1;
-                if (auto p = malloc(T.sizeof * newLen))
-                {
-                    _buffer = (cast(T*)p)[0 .. newLen];
-                }
-                else assert(0);
-                version (mir_secure_memory)
-                {
-                    (cast(ubyte[])_buffer)[] = 0;
-                }
-                memcpy(cast(void*)_buffer.ptr, _scopeBuffer.ptr, T.sizeof * (nextLength - n));
-            }
-        }
-        else
-        if (nextLength > _buffer.length)
-        {
-            const newLen = nextLength << 1;
-            if (auto p = realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))
-            {
-                _buffer = (cast(T*)p)[0 .. newLen];
-            }
-            else assert(0);
-            version (mir_secure_memory)
-            {
-                (cast(ubyte[])_buffer[nextLength .. $])[] = 0;
-            }
-        }
+        prepare(n);
+        _currentLength -= n;
     }
 
-    ///
+    /// Return a slice to `n` more elements.
     T[] prepare(size_t n) @trusted scope
     {
         import mir.internal.memory: realloc, malloc;
