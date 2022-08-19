@@ -38,7 +38,14 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         return *cast(inout(T[_bufferLength])*)&_scopeBufferPayload;
     }
 
-    ///
+    /// Reserve `n` more elements.
+    void reserve(size_t n) @safe scope
+    {
+        prepare(n);
+        _currentLength -= n;
+    }
+
+    /// Return a slice to `n` more elements.
     T[] prepare(size_t n) @trusted scope
     {
         import mir.internal.memory: realloc, malloc;
@@ -51,7 +58,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
             }
             else
             {
-                auto newLen = _currentLength << 1;
+                const newLen = _currentLength << 1;
                 if (auto p = malloc(T.sizeof * newLen))
                 {
                     _buffer = (cast(T*)p)[0 .. newLen];
@@ -67,8 +74,12 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         else
         if (_currentLength > _buffer.length)
         {
-            auto newLen = _currentLength << 1;
-            _buffer = (cast(T*)realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))[0 .. newLen];
+            const newLen = _currentLength << 1;
+            if (auto p = realloc(cast(void*)_buffer.ptr, T.sizeof * newLen))
+            {
+                _buffer = (cast(T*)p)[0 .. newLen];
+            }
+            else assert(0);
             version (mir_secure_memory)
             {
                 (cast(ubyte[])_buffer[_currentLength .. $])[] = 0;
@@ -200,6 +211,9 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     }
 
     ///
+    alias opOpAssign(string op : "~") = put;
+
+    ///
     void reset() scope nothrow
     {
         this.__dtor;
@@ -274,6 +288,27 @@ version (mir_test) unittest
     auto buf = scopedBuffer!(char, 3);
     buf.put('c');
     buf.put("str");
+    assert(buf.data == "cstr");
+
+    buf.popBackN(2);
+    assert(buf.data == "cs");
+}
+
+@safe pure nothrow @nogc
+version (mir_test) unittest
+{
+    alias T = char;
+    const n = 3;
+
+    auto buf = scopedBuffer!(T, n * T.sizeof);
+    assert(buf._scopeBuffer.length == n); // stack
+    assert(buf._buffer.length == 0);      // unset
+
+    buf.reserve(n + 1);                   // transition to heap
+    assert(buf._buffer.length >= n + 1); // heap
+
+    buf ~= 'c';
+    buf ~= "str";
     assert(buf.data == "cstr");
 
     buf.popBackN(2);
