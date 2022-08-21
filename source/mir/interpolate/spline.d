@@ -450,7 +450,7 @@ version(mir_test)
     assert(vmap(points[0 .. $ - 1].sliced +  0.5, interpolant) == vmap(pointsR.retro[0 .. $ - 1] - 0.5, interpolantR));
 }
 
-/// argmin test
+/// argmin, +, - tests
 version(mir_test)
 unittest
 {
@@ -471,6 +471,18 @@ unittest
     interpolant.argmin!"a > b".shouldApprox == argmax;
     interpolant.opCall!1(argmax)[1].shouldApprox == 0;
     interpolant(argmax).shouldApprox == 19.54377309088673;
+
+    auto zeroInterpolant = interpolant - interpolant;
+    zeroInterpolant.opCall!3(13.3).should == [0.0, 0.0, 0.0, 0.0];
+
+    static immutable pointsR = [1.0, 3, 4,];
+    static immutable valuesR = [13.0, 12, 10];
+    auto interpolantR = spline!double(pointsR.rcslice, valuesR.sliced);
+
+    auto sumInterpolant = interpolant + interpolantR;
+
+    sumInterpolant(2.3).shouldApprox == interpolant(2.3) + interpolantR(2.3);
+    sumInterpolant(3.3).shouldApprox == interpolant(3.3) + interpolantR(3.3);
 }
 
 /++
@@ -819,6 +831,66 @@ struct Spline(F, size_t N = 1, X = F)
         foreach (i; Iota!(strides.length))
             strides[i] *= DeepElementType!D.length;
         return Slice!(F*, strides.length, Universal)(data.shape, strides, data._iterator.ptr + index);
+    }
+
+    static if (N == 1)
+    /++
+    Note: defined only for 1D splines
+    +/
+    Spline opBinary(string op)(const Spline rhs) @trusted const
+        if (op == "+" || op == "-")
+    {
+        import mir.ndslice.allocation: rcslice;
+        import core.lifetime: move;
+        import mir.algorithm.setops: unionLength, multiwayUnion;
+
+        auto lgrid = this.gridScopeView;
+        auto rgrid = rhs.gridScopeView;
+        scope const(F)[][2] grids = [lgrid, rgrid];
+        auto length = grids[].unionLength;
+        grids = [lgrid, rgrid];
+
+        size_t j;
+        auto grid = RCArray!X(length);
+        auto data = length.rcslice!(F[2]);
+        auto un = grids[].multiwayUnion;
+
+        while (!un.empty)
+        {
+            auto x = un.front;
+            un.popFront;
+            auto ly = this.opCall!1(x);
+            auto ry = rhs.opCall!1(x);
+            data[j] = mixin(`[ly[0] ` ~ op ~ ` ry[0], ly[1] ` ~ op ~ ` ry[1]]`);
+            grid[j++] = x;
+        }
+
+        size_t convexCount;
+        size_t concaveCount;
+        foreach_reverse (i; 0 .. length - 1)
+        {
+            auto xdiff = grid[i + 1] - grid[i];
+            auto ydiff = data[i + 1][0] - data[i][0];
+
+            auto convex1  = xdiff * (2 * data[i][1] + data[i + 1][1]) <= 3 * ydiff;
+            auto concave1 = xdiff * (2 * data[i][1] + data[i + 1][1]) >= 3 * ydiff;
+            auto convex2  = xdiff * (data[i][1] + 2 * data[i + 1][1]) >= 3 * ydiff;
+            auto concave2 = xdiff * (data[i][1] + 2 * data[i + 1][1]) <= 3 * ydiff;
+            convexCount += convex1 & convex2;
+            convexCount += concave1 & concave2;
+        }
+
+        Spline ret;
+        ret._data = data.move;
+        ret._grid[0] = RCI!(immutable X)(cast(RCArray!(immutable X))grid) ;
+
+        ret.convexity =
+            // convex kind has priority for the linear spline
+            convexCount  == length - 1 ? SplineConvexity.convex  :
+            concaveCount == length - 1 ? SplineConvexity.concave :
+            SplineConvexity.none;
+
+        return ret;
     }
 
     static if (N == 1)
