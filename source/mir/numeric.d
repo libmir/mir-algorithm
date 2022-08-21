@@ -1162,6 +1162,11 @@ Params:
     bx = Right bound of initial range of f known to contain the minimum.
     relTolerance = Relative tolerance.
     absTolerance = Absolute tolerance.
+    N = number of addition inner points of uniform grid.
+        The algorithm computes function value for the N points.
+        Then reassing ax to the point that preceeds the grid's argmin,
+        reassing bx to the point that follows the the grid's argmin.
+        The search interval reduces (N + 1) / 2 times.
 Preconditions:
     `ax` and `bx` shall be finite reals. $(BR)
     `relTolerance` shall be normal positive real. $(BR)
@@ -1179,7 +1184,9 @@ FindLocalMinResult!T findLocalMin(alias f, T)(
     const T ax,
     const T bx,
     const T relTolerance = sqrt(T.epsilon),
-    const T absTolerance = sqrt(T.epsilon))
+    const T absTolerance = sqrt(T.epsilon),
+    size_t N = 0,
+)
     if (isFloatingPoint!T && __traits(compiles, T(f(T.init))))
 {
     if (false) // break attributes
@@ -1191,7 +1198,7 @@ FindLocalMinResult!T findLocalMin(alias f, T)(
     };
     scope fun = funInst.trustedAllAttr;
 
-    return findLocalMinImpl(ax, bx, relTolerance, absTolerance, fun);
+    return findLocalMinImpl(ax, bx, relTolerance, absTolerance, fun, N);
 }
 
 @fmamath
@@ -1201,10 +1208,11 @@ private FindLocalMinResult!float findLocalMinImpl(
     const float relTolerance,
     const float absTolerance,
     scope const float delegate(float) @safe pure nothrow @nogc f,
+    size_t N,
     ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findLocalMinImplGen!float(ax, bx, relTolerance, absTolerance, f);
+    return findLocalMinImplGen!float(ax, bx, relTolerance, absTolerance, f, N);
 }
 
 @fmamath
@@ -1214,10 +1222,11 @@ private FindLocalMinResult!double findLocalMinImpl(
     const double relTolerance,
     const double absTolerance,
     scope const double delegate(double) @safe pure nothrow @nogc f,
+    size_t N,
     ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findLocalMinImplGen!double(ax, bx, relTolerance, absTolerance, f);
+    return findLocalMinImplGen!double(ax, bx, relTolerance, absTolerance, f, N);
 }
 
 @fmamath
@@ -1227,19 +1236,21 @@ private FindLocalMinResult!real findLocalMinImpl(
     const real relTolerance,
     const real absTolerance,
     scope const real delegate(real) @safe pure nothrow @nogc f,
+    size_t N,
     ) @safe pure nothrow @nogc
 {
     pragma(inline, false);
-    return findLocalMinImplGen!real(ax, bx, relTolerance, absTolerance, f);
+    return findLocalMinImplGen!real(ax, bx, relTolerance, absTolerance, f, N);
 }
 
 @fmamath
 private FindLocalMinResult!T findLocalMinImplGen(T)(
-    const T ax,
-    const T bx,
+    T ax,
+    T bx,
     const T relTolerance,
     const T absTolerance,
     scope const T delegate(T) @safe pure nothrow @nogc f,
+    size_t N,
     )
     if (isFloatingPoint!T && __traits(compiles, {T _ = f(T.init);}))
 in
@@ -1251,6 +1262,26 @@ in
 }
 do
 {
+    if (N > 1)
+    {
+        import mir.ndslice.topology: linspace;
+
+        auto xPoints = linspace!T([N + 2], [ax, bx]);
+        size_t idx;
+        double value = double.infinity;
+        foreach (i; 0 .. N)
+        {
+            auto y = f(xPoints[i + 1]);
+            if (y < value)
+            {
+                value = y;
+                idx = i;
+            }
+        }
+        ax = xPoints[idx + 0];
+        bx = xPoints[idx + 2];
+    }
+
     version(LDC) pragma(inline, true);
     // c is the squared inverse of the golden ratio
     // (3 - sqrt(5))/2
@@ -1415,6 +1446,23 @@ version(mir_test) @safe unittest
             assert(ret.error.approxEqual(T(0)));
         }
     }
+}
+
+/// Tries to find a global minimum using uniform grid to reduce the search interval
+version(mir_test)
+unittest
+{
+    import mir.math.common: cos;
+    import mir.test;
+
+    alias f = x => cos(x)  + x / 10;
+
+    findLocalMin!f(-4.0, 6.0, double.epsilon, 2 * double.epsilon)
+        .validate.x.shouldApprox == 3.041425233955413;
+    // Use 10 inner points on uniform grid to reduce the interval
+    // reduces the interval of search 5.5 = (10 + 1) / 2  times
+    findLocalMin!f(-4.0, 6.0, double.epsilon, 2 * double.epsilon, 10)
+        .validate.x.shouldApprox == -3.2417600767368255;
 }
 
 /++
