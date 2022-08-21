@@ -237,6 +237,7 @@ private template ValueType(T, X)
 version(mir_test)
 @safe unittest
 {
+    import mir.test;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
     import mir.ndslice;
@@ -386,6 +387,7 @@ unittest
 version(mir_test)
 @safe unittest
 {
+    import mir.test;
     import mir.math.common: approxEqual;
     import mir.algorithm.iteration: all;
     import mir.ndslice.allocation: rcslice;
@@ -395,6 +397,8 @@ version(mir_test)
     static immutable x = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
     static immutable y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
     auto interpolant = spline!double(x.rcslice, y.sliced, SplineType.monotone);
+    interpolant.argmin.should == 2;
+    interpolant.argmin!"a > b".should == 12;
 
     auto xs = x[0 .. $ - 1].sliced + 0.5;
 
@@ -444,6 +448,29 @@ version(mir_test)
 
     version(X86_64)
     assert(vmap(points[0 .. $ - 1].sliced +  0.5, interpolant) == vmap(pointsR.retro[0 .. $ - 1] - 0.5, interpolantR));
+}
+
+/// argmin test
+version(mir_test)
+unittest
+{
+    import mir.test;
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.allocation: rcslice;
+
+    static immutable points = [1.0, 2, 4, 5, 8, 10, 12, 15, 19, 22];
+    static immutable values = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
+    auto interpolant = spline!double(points.rcslice, values.sliced);
+
+    auto argmin = 5.898317667706634;
+    interpolant.argmin.shouldApprox == argmin;
+    interpolant(argmin).shouldApprox == -0.8684781710737299;
+    interpolant.opCall!2(argmin)[1].shouldApprox == 0;
+
+    auto argmax = 19.8816211020945;
+    interpolant.argmin!"a > b".shouldApprox == argmax;
+    interpolant.opCall!1(argmax)[1].shouldApprox == 0;
+    interpolant(argmax).shouldApprox == 19.54377309088673;
 }
 
 /++
@@ -792,6 +819,90 @@ struct Spline(F, size_t N = 1, X = F)
         foreach (i; Iota!(strides.length))
             strides[i] *= DeepElementType!D.length;
         return Slice!(F*, strides.length, Universal)(data.shape, strides, data._iterator.ptr + index);
+    }
+
+    static if (N == 1)
+    /++
+    Returns: spline argmin on the interpolation interval
+    Note: defined only for 1D splines
+    +/
+    F argmin(string pred = "a < b")() @trusted const @property
+        if (pred == "a < b" || pred == "a > b")
+    {
+        import mir.functional: naryFun;
+
+        static if (pred == "a < b")
+            auto min = F.max;
+        else
+            auto min = -F.max;
+
+        F argmin;
+
+        auto grid = gridScopeView;
+        foreach (i, ref y; _data.lightScope.field)
+        {
+            if (naryFun!pred(y[0], min))
+            {
+                min = y[0];
+                argmin = grid[i];
+            }
+        }
+
+        foreach (i; 0 .. grid.length - 1)
+        {
+            auto x = grid[i + 0];
+
+            auto y = SplineKernel!F(
+                grid[i + 0],
+                grid[i + 1],
+                x, // any point between
+            ).opCall!3(
+                _data[i + 0][0],
+                _data[i + 1][0],
+                _data[i + 0][1],
+                _data[i + 1][1],
+            );
+
+            // 3 ax^2 + 2 bx + c = y[1]
+            // 6 ax + 2 b= y[2]
+            // 6 a = y[3]
+
+            auto a3 = y[3] * 0.5;
+            auto b2 = y[2] - y[3] * x;
+            auto c = y[1] - (b2 + a3 * x) * x;
+            auto d = b2 * b2 - 4 * a3 * c;
+            if (d < 0)
+                continue;
+
+            import mir.math.common: sqrt;
+            F[2] x12 = [
+                (-b2 - sqrt(d)) / (2 * a3),
+                (-b2 + sqrt(d)) / (2 * a3),
+            ];
+
+            foreach (xi; x12)
+            if (grid[i + 0] < xi && xi < grid[i + 1])
+            {
+                auto yi = SplineKernel!F(
+                    grid[i + 0],
+                    grid[i + 1],
+                    xi,
+                )(
+                    _data[i + 0][0],
+                    _data[i + 1][0],
+                    _data[i + 0][1],
+                    _data[i + 1][1],
+                );
+
+                if (naryFun!pred(yi, min))
+                {
+                    min = yi;
+                    argmin = xi;
+                }
+            }
+        }
+
+        return argmin;
     }
 
     /++
@@ -1400,7 +1511,7 @@ SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, 
     size_t concaveCount;
     foreach_reverse (i; 0 .. n - 1)
     {
-        auto c = i ==     0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
+        auto c = i == 0 ? first : kind == SplineType.c2 ? xd[i - 1] : 0;
         auto v = temp[i] - c * slopes[i + 1];
         slopes[i] = slopes[i]  == 1 ? v : v / slopes[i];
 
