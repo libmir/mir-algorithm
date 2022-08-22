@@ -398,7 +398,9 @@ version(mir_test)
     static immutable y = [17.0, 0, 16, 4, 10, 15, 19, 5, 18, 6];
     auto interpolant = spline!double(x.rcslice, y.sliced, SplineType.monotone);
     interpolant.argmin.should == 2;
-    interpolant.argmin!"a > b".should == 12;
+    interpolant.withDerivative(2)[1].should == 0;
+    interpolant.argmax.should == 12;
+    interpolant.withDerivative(12)[1].should == 0;
 
     auto xs = x[0 .. $ - 1].sliced + 0.5;
 
@@ -468,8 +470,8 @@ unittest
     interpolant.opCall!2(argmin)[1].shouldApprox == 0;
 
     auto argmax = 19.8816211020945;
-    interpolant.argmin!"a > b".shouldApprox == argmax;
-    interpolant.opCall!1(argmax)[1].shouldApprox == 0;
+    interpolant.argmax.shouldApprox == argmax;
+    interpolant.withDerivative(argmax)[1].shouldApprox == 0;
     interpolant(argmax).shouldApprox == 19.54377309088673;
 
     auto zeroInterpolant = interpolant - interpolant;
@@ -894,88 +896,101 @@ struct Spline(F, size_t N = 1, X = F)
     }
 
     static if (N == 1)
-    /++
-    Returns: spline argmin on the interpolation interval
-    Note: defined only for 1D splines
-    +/
-    F argmin(string pred = "a < b")() @trusted const @property
+    private template argminImpl(string pred)
         if (pred == "a < b" || pred == "a > b")
     {
-        import mir.functional: naryFun;
-
-        static if (pred == "a < b")
-            auto min = F.max;
-        else
-            auto min = -F.max;
-
-        F argmin;
-
-        auto grid = gridScopeView;
-        foreach (i, ref y; _data.lightScope.field)
+        F argminImpl()() @trusted const @property
         {
-            if (naryFun!pred(y[0], min))
+            import mir.functional: naryFun;
+
+            static if (pred == "a < b")
+                auto min = F.max;
+            else
+                auto min = -F.max;
+
+            F argmin;
+
+            auto grid = gridScopeView;
+            foreach (i, ref y; _data.lightScope.field)
             {
-                min = y[0];
-                argmin = grid[i];
+                if (naryFun!pred(y[0], min))
+                {
+                    min = y[0];
+                    argmin = grid[i];
+                }
             }
-        }
 
-        foreach (i; 0 .. grid.length - 1)
-        {
-            auto x = grid[i + 0];
-
-            auto y = SplineKernel!F(
-                grid[i + 0],
-                grid[i + 1],
-                x, // any point between
-            ).opCall!3(
-                _data[i + 0][0],
-                _data[i + 1][0],
-                _data[i + 0][1],
-                _data[i + 1][1],
-            );
-
-            // 3 ax^2 + 2 bx + c = y[1]
-            // 6 ax + 2 b= y[2]
-            // 6 a = y[3]
-
-            auto a3 = y[3] * 0.5;
-            auto b2 = y[2] - y[3] * x;
-            auto c = y[1] - (b2 + a3 * x) * x;
-            auto d = b2 * b2 - 4 * a3 * c;
-            if (d < 0)
-                continue;
-
-            import mir.math.common: sqrt;
-            F[2] x12 = [
-                (-b2 - sqrt(d)) / (2 * a3),
-                (-b2 + sqrt(d)) / (2 * a3),
-            ];
-
-            foreach (xi; x12)
-            if (grid[i + 0] < xi && xi < grid[i + 1])
+            foreach (i; 0 .. grid.length - 1)
             {
-                auto yi = SplineKernel!F(
+                auto x = grid[i + 0];
+
+                auto y = SplineKernel!F(
                     grid[i + 0],
                     grid[i + 1],
-                    xi,
-                )(
+                    x, // any point between
+                ).opCall!3(
                     _data[i + 0][0],
                     _data[i + 1][0],
                     _data[i + 0][1],
                     _data[i + 1][1],
                 );
 
-                if (naryFun!pred(yi, min))
+                // 3 ax^2 + 2 bx + c = y[1]
+                // 6 ax + 2 b= y[2]
+                // 6 a = y[3]
+
+                auto a3 = y[3] * 0.5;
+                auto b2 = y[2] - y[3] * x;
+                auto c = y[1] - (b2 + a3 * x) * x;
+                auto d = b2 * b2 - 4 * a3 * c;
+                if (d < 0)
+                    continue;
+
+                import mir.math.common: sqrt;
+                F[2] x12 = [
+                    (-b2 - sqrt(d)) / (2 * a3),
+                    (-b2 + sqrt(d)) / (2 * a3),
+                ];
+
+                foreach (xi; x12)
+                if (grid[i + 0] < xi && xi < grid[i + 1])
                 {
-                    min = yi;
-                    argmin = xi;
+                    auto yi = SplineKernel!F(
+                        grid[i + 0],
+                        grid[i + 1],
+                        xi,
+                    )(
+                        _data[i + 0][0],
+                        _data[i + 1][0],
+                        _data[i + 0][1],
+                        _data[i + 1][1],
+                    );
+
+                    if (naryFun!pred(yi, min))
+                    {
+                        min = yi;
+                        argmin = xi;
+                    }
                 }
             }
-        }
 
-        return argmin;
+            return argmin;
+        }
     }
+
+    static if (N == 1)
+    /++
+    Returns: spline argmin on the interpolation interval
+    Note: defined only for 1D splines
+    +/
+    alias argmin = argminImpl!"a < b";
+
+    static if (N == 1)
+    /++
+    Returns: spline argmax on the interpolation interval
+    Note: defined only for 1D splines
+    +/
+    alias argmax = argminImpl!"a > b";
 
     /++
     Assigns function values to the internal memory.
