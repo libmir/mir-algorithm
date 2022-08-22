@@ -17,48 +17,60 @@ Params:
 See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
 +/
-template hermiteCoefficientsNorm(size_t N)
+@safe pure nothrow
+long[] hermiteCoefficientsNorm(size_t N)
 {
-    import std.meta: AliasSeq;
+    if (N == 0) {
+      return [1];  
+    } else {
+        typeof(return) output = [0, 1];
+        if (N > 1) {
+            output.length = N + 1;
+            int K;
+            typeof(return) h_N_minus_1 = hermiteCoefficientsNorm(0); // to be copied to h_N_minus_2 in loop
+            h_N_minus_1.length = N;
+            typeof(return) h_N_minus_2; //value replaced later
+            h_N_minus_2.length = N - 1;
 
-    alias G = int[N + 1];
-    static if (N == 0) {
-        enum G hermiteCoefficientsNorm = [1];
-    } else static if (N == 1) {
-        enum G hermiteCoefficientsNorm = [0, 1];
-    } else static if (N >= 2) {
-        alias x = AliasSeq!(-(cast(int) N - 1) * hermiteCoefficientsNorm!(N - 2)[0]);
-        static foreach (i; 1..(N + 1)) {
-            static if (i < (N - 1)) {
-                x = AliasSeq!(x, hermiteCoefficientsNorm!(N - 1)[i - 1] - (cast(int) N - 1) * hermiteCoefficientsNorm!(N - 2)[i]);
-            } else {
-                x = AliasSeq!(x, hermiteCoefficientsNorm!(N - 1)[i - 1]);
+            foreach (size_t j; 2..(N + 1)) {
+                h_N_minus_2[0..(j - 1)] = h_N_minus_1[0..(j - 1)];
+                h_N_minus_1[0..j] = output[0..j];
+                K = -(cast(int) j - 1);
+                output[0] = K * h_N_minus_2[0];
+                foreach (size_t i; 1..(j - 1)) {
+                    output[i] = h_N_minus_1[i - 1] + K * h_N_minus_2[i];
+                }
+                foreach (size_t i; (j - 1)..(j + 1)) {
+                    output[i] = h_N_minus_1[i - 1];
+                }
             }
         }
-        enum G hermiteCoefficientsNorm = [x];
+        return output;
     }
 }
 
 ///
 version(mir_test)
-@safe pure nothrow @nogc
+@safe pure nothrow
 unittest
 {
     import mir.polynomial: polynomial;
     import mir.rc.array: rcarray;
     import mir.test: should;
 
-    auto h1 = hermiteCoefficientsNorm!1.rcarray!(const double).polynomial;
-    auto h2 = hermiteCoefficientsNorm!2.rcarray!(const double).polynomial;
-    auto h3 = hermiteCoefficientsNorm!3.rcarray!(const double).polynomial;
-    auto h4 = hermiteCoefficientsNorm!4.rcarray!(const double).polynomial;
-    auto h5 = hermiteCoefficientsNorm!5.rcarray!(const double).polynomial;
-    auto h6 = hermiteCoefficientsNorm!6.rcarray!(const double).polynomial;
-    auto h7 = hermiteCoefficientsNorm!7.rcarray!(const double).polynomial;
-    auto h8 = hermiteCoefficientsNorm!8.rcarray!(const double).polynomial;
-    auto h9 = hermiteCoefficientsNorm!9.rcarray!(const double).polynomial;
-    auto h10 = hermiteCoefficientsNorm!10.rcarray!(const double).polynomial;
-    
+    auto h0 = hermiteCoefficientsNorm(0).rcarray!(const double).polynomial;
+    auto h1 = hermiteCoefficientsNorm(1).rcarray!(const double).polynomial;
+    auto h2 = hermiteCoefficientsNorm(2).rcarray!(const double).polynomial;
+    auto h3 = hermiteCoefficientsNorm(3).rcarray!(const double).polynomial;
+    auto h4 = hermiteCoefficientsNorm(4).rcarray!(const double).polynomial;
+    auto h5 = hermiteCoefficientsNorm(5).rcarray!(const double).polynomial;
+    auto h6 = hermiteCoefficientsNorm(6).rcarray!(const double).polynomial;
+    auto h7 = hermiteCoefficientsNorm(7).rcarray!(const double).polynomial;
+    auto h8 = hermiteCoefficientsNorm(8).rcarray!(const double).polynomial;
+    auto h9 = hermiteCoefficientsNorm(9).rcarray!(const double).polynomial;
+    auto h10 = hermiteCoefficientsNorm(10).rcarray!(const double).polynomial;
+
+    h0(3).should == 1;
     h1(3).should == 3;
     h2(3).should == 8;
     h3(3).should == 18;
@@ -71,6 +83,20 @@ unittest
     h10(3).should == 9_504;
 }
 
+/// Also works with @nogc CTFE
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.test: should;
+
+    static immutable result = [-1, 0, 1];
+
+    static immutable hc2 = hermiteCoefficientsNorm(2);
+    hc2.sliced.should == result;
+}
+
 /++
 Physicist's Hermite polynomial coefficients
 
@@ -80,48 +106,55 @@ Params:
 See_also:
     $(LINK2 https://en.wikipedia.org/wiki/Hermite_polynomials, Hermite polynomials)
 +/
-template hermiteCoefficients(size_t N)
+@safe pure nothrow
+long[] hermiteCoefficients(size_t N)
 {
-    import std.meta: AliasSeq;
+    if (N == 0) {
+      return [1];  
+    } else {
+        typeof(return) output = [0, 2];
+        if (N > 1) {
+            output.length = N + 1;
+            typeof(return) h_N_minus_1 = hermiteCoefficients(0);
+            h_N_minus_1.length = N;
 
-    alias G = int[N + 1];
-    static if (N == 0) {
-        enum G hermiteCoefficients = [1];
-    } else static if (N == 1) {
-        enum G hermiteCoefficients = [0, 2];
-    } else static if (N >= 2) {
-        alias x = AliasSeq!(-hermiteCoefficients!(N - 1)[1]);
-        static foreach (i; 1..(N + 1)) {
-            static if ((i + 1) < N) {
-                x = AliasSeq!(x, 2 * hermiteCoefficients!(N - 1)[i - 1] - (cast(int) i + 1) * hermiteCoefficients!(N - 1)[i + 1]);
-            } else {
-                x = AliasSeq!(x, 2 * hermiteCoefficients!(N - 1)[i - 1]);
+            foreach (size_t j; 2..(N + 1)) {
+                h_N_minus_1[0..j] = output[0..j];
+                output[0] = -h_N_minus_1[1];
+                foreach (size_t i; 1..(j - 1)) {
+                    output[i] = 2 * h_N_minus_1[i - 1] - (cast(int) i + 1) * h_N_minus_1[i + 1];
+                }
+                foreach (size_t i; (j - 1)..(j + 1)) {
+                    output[i] = 2 * h_N_minus_1[i - 1];
+                }
             }
         }
-        enum G hermiteCoefficients = [x];
+        return output;
     }
 }
 
 ///
 version(mir_test)
-@safe pure nothrow @nogc
+@safe pure nothrow
 unittest
 {
     import mir.polynomial: polynomial;
     import mir.rc.array: rcarray;
     import mir.test: should;
 
-    auto h1 = hermiteCoefficients!1.rcarray!(const double).polynomial;
-    auto h2 = hermiteCoefficients!2.rcarray!(const double).polynomial;
-    auto h3 = hermiteCoefficients!3.rcarray!(const double).polynomial;
-    auto h4 = hermiteCoefficients!4.rcarray!(const double).polynomial;
-    auto h5 = hermiteCoefficients!5.rcarray!(const double).polynomial;
-    auto h6 = hermiteCoefficients!6.rcarray!(const double).polynomial;
-    auto h7 = hermiteCoefficients!7.rcarray!(const double).polynomial;
-    auto h8 = hermiteCoefficients!8.rcarray!(const double).polynomial;
-    auto h9 = hermiteCoefficients!9.rcarray!(const double).polynomial;
-    auto h10 = hermiteCoefficients!10.rcarray!(const double).polynomial;
-    
+    auto h0 = hermiteCoefficients(0).rcarray!(const double).polynomial;
+    auto h1 = hermiteCoefficients(1).rcarray!(const double).polynomial;
+    auto h2 = hermiteCoefficients(2).rcarray!(const double).polynomial;
+    auto h3 = hermiteCoefficients(3).rcarray!(const double).polynomial;
+    auto h4 = hermiteCoefficients(4).rcarray!(const double).polynomial;
+    auto h5 = hermiteCoefficients(5).rcarray!(const double).polynomial;
+    auto h6 = hermiteCoefficients(6).rcarray!(const double).polynomial;
+    auto h7 = hermiteCoefficients(7).rcarray!(const double).polynomial;
+    auto h8 = hermiteCoefficients(8).rcarray!(const double).polynomial;
+    auto h9 = hermiteCoefficients(9).rcarray!(const double).polynomial;
+    auto h10 = hermiteCoefficients(10).rcarray!(const double).polynomial;
+
+    h0(3).should == 1;
     h1(3).should == 6;
     h2(3).should == 34;
     h3(3).should == 180;
@@ -132,4 +165,18 @@ unittest
     h8(3).should == 36_240;
     h9(3).should == -406_944;
     h10(3).should == -3_093_984;
+}
+
+/// Also works with @nogc CTFE
+version(mir_test)
+@safe pure nothrow @nogc
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.test: should;
+
+    static immutable result = [-2, 0, 4];
+
+    static immutable hc2 = hermiteCoefficients(2);
+    hc2.sliced.should == result;
 }
