@@ -896,7 +896,7 @@ struct Spline(F, size_t N = 1, X = F)
     }
 
     static if (N == 1)
-    private template argminImpl(string pred)
+    template argminImpl(string pred)
         if (pred == "a < b" || pred == "a > b")
     {
         F argminImpl()() @trusted const @property
