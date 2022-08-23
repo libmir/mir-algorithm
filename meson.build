@@ -48,6 +48,7 @@ sources_list = [
     'mir/interpolate/utility',
     'mir/lob',
     'mir/math/func/expdigamma',
+    'mir/math/func/hermite',
     'mir/math/func/normal',
     'mir/math/numeric',
     'mir/math/stat',
