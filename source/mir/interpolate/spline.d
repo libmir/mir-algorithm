@@ -1496,7 +1496,7 @@ SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, 
 
     }
 
-    with(SplineType) final switch(kind)
+    if (n > 2) with(SplineType) final switch(kind)
     {
         case c2:
 
