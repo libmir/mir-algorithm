@@ -126,6 +126,14 @@ private template ValueType(T, X)
     interpolant = spline!double(x, y, SplineType.akima);
     assert(xs.vmap(interpolant).all!approxEqual(test_data6));
 
+    static immutable test_data7 = [
+        12.363463972190182, 3.066421497605127, 9.848385331143952, 4.429544487015751, 11.244211106655975,
+        16.255750063889600, 18.140374440374440, 5.291585909796099, 17.722477222271888, 3.181558328118484,
+    ];
+    /// Modified Akima spline
+    interpolant = spline!double(x, y, SplineType.makima);
+    assert(xs.vmap(interpolant).all!approxEqual(test_data7));
+
     /// Double Quadratic spline
     interpolant = spline!double(x, y, SplineType.doubleQuadratic);
     import mir.interpolate.utility: ParabolaKernel;
@@ -518,6 +526,10 @@ enum SplineType
     $(HTTPS en.wikipedia.org/wiki/Akima_spline, Akima spline).
     +/
     akima,
+    /++
+    $(HTTPS https://www.mathworks.com/help/matlab/ref/makima.html, Modified Akima spline).
+    +/
+    makima,
 }
 
 /++
@@ -684,6 +696,10 @@ enum SplineBoundaryType
     Default for Akima splines.
     +/
     akima,
+    /++
+    Default for Modified Akima splines.
+    +/
+    makima,
     /++
     Not implemented.
     +/
@@ -1345,6 +1361,12 @@ SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, 
             if (rBoundary.type == SplineBoundaryType.notAKnot)
                 rBoundary.type = SplineBoundaryType.akima;
             break;
+        case makima:
+            if (lBoundary.type == SplineBoundaryType.notAKnot)
+                lBoundary.type = SplineBoundaryType.makima;
+            if (rBoundary.type == SplineBoundaryType.notAKnot)
+                rBoundary.type = SplineBoundaryType.makima;
+            break;
     }
 
     if (n <= 3)
@@ -1357,9 +1379,11 @@ SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, 
         if (n == 2)
         {
             if (lBoundary.type == SplineBoundaryType.monotone
+             || lBoundary.type == SplineBoundaryType.makima
              || lBoundary.type == SplineBoundaryType.akima)
                 lBoundary.type = SplineBoundaryType.parabolic;
             if (rBoundary.type == SplineBoundaryType.monotone
+             || rBoundary.type == SplineBoundaryType.makima
              || rBoundary.type == SplineBoundaryType.akima)
                 rBoundary.type = SplineBoundaryType.parabolic;
         }
@@ -1439,6 +1463,13 @@ SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, 
         temp.front = akimaTail(dd[0], dd[1]);
         break;
 
+    case makima:
+
+        slopes.front = 1;
+        first = 0;
+        temp.front = makimaTail(dd[0], dd[1]);
+        break;
+
     }
 
     with(SplineBoundaryType) final switch(rBoundary.type)
@@ -1492,6 +1523,13 @@ SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, 
         slopes.back = 1;
         last = 0;
         temp.back = akimaTail(dd[$ - 1], dd[$ - 2]);
+        break;
+
+    case makima:
+
+        slopes.back = 1;
+        last = 0;
+        temp.back = makimaTail(dd[$ - 1], dd[$ - 2]);
         break;
 
     }
@@ -1581,6 +1619,24 @@ SplineConvexity splineSlopes(F, T, P, IV, IS, SliceKind gkind, SliceKind vkind, 
                 }
                 break;
             }
+
+        case makima:
+            {
+                auto d3 = dd[1];
+                auto d2 = dd[0];
+                auto d1 = 2 * d2 - d3;
+                auto d0 = d1;
+                foreach (i; 1 .. n - 1)
+                {
+                    d0 = d1;
+                    d1 = d2;
+                    d2 = d3;
+                    d3 = i == n - 2 ? 2 * d2 - d1 : dd[i + 1];
+                    slopes[i] = 1;
+                    temp[i] = makimaSlope(d0, d1, d2, d3);
+                }
+                break;
+            }
     }
 
     foreach (i; 0 .. n - 1)
@@ -1639,6 +1695,25 @@ private F akimaSlope(F)(in F d0, in F d1, in F d2, in F d3)
         return d2;
     auto w0 = fabs(d1 - d0);
     auto w1 = fabs(d3 - d2);
+    auto ws = w0 + w1;
+    w0 /= ws;
+    w1 /= ws;
+    return w0 * d2 + w1 * d1;
+}
+
+private F makimaTail(F)(in F d2, in F d3)
+{
+    auto d1 = 2 * d2 - d3;
+    auto d0 = 2 * d1 - d2;
+    return makimaSlope(d0, d1, d2, d3);
+}
+
+private F makimaSlope(F)(in F d0, in F d1, in F d2, in F d3)
+{
+    if (d1 == d2)
+        return d1;
+    auto w0 = fabs(d1 - d0) + fabs(d1 + d0) * 0.5f;
+    auto w1 = fabs(d3 - d2) + fabs(d3 + d2) * 0.5f;
     auto ws = w0 + w1;
     w0 /= ws;
     w1 /= ws;
