@@ -110,9 +110,9 @@ struct Fp(uint size)
             auto most = ulong(high);
             auto least = cast(ulong)x;
             version(LittleEndian)
-                ulong[2] pair = [most, least];
-            else
                 ulong[2] pair = [least, most];
+            else
+                ulong[2] pair = [most, least];
 
             if (normalize)
             {
@@ -167,8 +167,11 @@ struct Fp(uint size)
         static assert(cast(double) Fp!64(double.min_normal / 2) == double.min_normal / 2);
         static assert(cast(double) Fp!64(double.min_normal * double.epsilon) == double.min_normal * double.epsilon);
         // subnormals
-        static assert(cast(real) Fp!64(real.min_normal / 2) == real.min_normal / 2);
-        static assert(cast(real) Fp!64(real.min_normal * real.epsilon) == real.min_normal * real.epsilon);
+        static if (real.mant_dig <= 64)
+        {
+            static assert(cast(real) Fp!128(real.min_normal / 2) == real.min_normal / 2);
+            static assert(cast(real) Fp!128(real.min_normal * real.epsilon) == real.min_normal * real.epsilon);
+        }
 
         enum d = cast(float) Fp!64(float.min_normal / 2, false);
 
@@ -179,8 +182,11 @@ struct Fp(uint size)
         static assert(cast(double) Fp!64(double.min_normal / 2, false) == double.min_normal / 2);
         static assert(cast(double) Fp!64(double.min_normal * double.epsilon, false) == double.min_normal * double.epsilon);
         // subnormals
-        static assert(cast(real) Fp!64(real.min_normal / 2, false) == real.min_normal / 2);
-        static assert(cast(real) Fp!64(real.min_normal * real.epsilon, false) == real.min_normal * real.epsilon);
+        static if (real.mant_dig <= 64)
+        {
+            static assert(cast(real) Fp!64(real.min_normal / 2, false) == real.min_normal / 2);
+            static assert(cast(real) Fp!64(real.min_normal * real.epsilon, false) == real.min_normal * real.epsilon);
+        }
 
         import mir.bignum.fixed: UInt;
 
