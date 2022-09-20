@@ -278,13 +278,6 @@ template serdeHasAlgebraicAnnotation(T)
             enum serdeHasAlgebraicAnnotation = true;
         }
         else
-        static if (__traits(getAliasThis, T).length)
-        {
-            T* aggregate;
-            alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
-            enum serdeHasAlgebraicAnnotation = .serdeHasAlgebraicAnnotation!A;
-        }
-        else
         {
             enum serdeHasAlgebraicAnnotation = false;
         }

@@ -120,7 +120,7 @@ struct Interp1(Range, Interpolant)
     private size_t _interval;
 
     ///
-    auto lightScope()
+    auto lightScope() scope
     {
         return Interp1!(LightScopeOf!Range, LightScopeOf!Interpolant)(.lightScope(_range), .lightScope(_interpolant), _interval);
     }

@@ -234,10 +234,10 @@ scope nothrow:
         return opIndex()[range[0] .. range[1]];
     }
 
-const:
+scope const:
 
     /// ditto
-    size_t[2] opSlice(size_t pos : 0)(size_t i, size_t j) scope {
+    size_t[2] opSlice(size_t pos : 0)(size_t i, size_t j) {
         return [i, j];
     }
 
@@ -266,38 +266,38 @@ const:
     }
 
     /// Comparisons operator overloads
-    bool opEquals(ref scope const SmallString rhs) scope
+    bool opEquals(ref scope const SmallString rhs)
     {
         return _data == rhs._data;
     }
 
     /// ditto
-    bool opEquals(SmallString rhs) scope
+    bool opEquals(SmallString rhs)
     {
         return _data == rhs._data;
     }
 
     /// ditto
-    bool opEquals(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs) scope
+    bool opEquals(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs)
         if (rhsMaxLength != maxLength)
     {
         return opIndex == rhs.opIndex;
     }
 
     /// ditto
-    bool opEquals()(scope const(char)[] str) scope
+    bool opEquals()(scope const(char)[] str)
     {
         return opIndex == str;
     }
 
     /// ditto
-    int opCmp(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs) scope
+    int opCmp(uint rhsMaxLength)(auto ref scope const SmallString!rhsMaxLength rhs)
     {
         return __cmp(opIndex, rhs.opIndex);
     }
 
     /// ditto
-    int opCmp()(scope const(char)[] str) scope
+    int opCmp()(scope const(char)[] str)
     {
         return __cmp(opIndex, str);
     }

@@ -65,7 +65,7 @@ struct mir_rcptr(T)
     static if (is(T == class) || is(T == interface))
         ///
         pragma(inline, true)
-        inout(T) _get_value() scope inout @property
+        inout(T) _get_value() return scope inout @property
         {
             assert(this, getExcMsg);
             return _value;
@@ -73,7 +73,7 @@ struct mir_rcptr(T)
     else
         ///
         pragma(inline, true)
-        ref inout(T) _get_value() scope inout @property
+        ref inout(T) _get_value() return scope inout @property
         {
             assert(this, getExcMsg);
             return *_value;
@@ -223,7 +223,7 @@ alias RCPtr = mir_rcptr;
 /++
 Returns: shared pointer of the member and the context from the current pointer. 
 +/
-auto shareMember(string member, T, Args...)(return mir_rcptr!T context, auto ref Args args)
+auto shareMember(string member, T, Args...)(return mir_rcptr!T context, auto ref Args args) @safe
 {
     import core.lifetime: move;
     void foo(A)(auto ref A) {}
@@ -231,13 +231,13 @@ auto shareMember(string member, T, Args...)(return mir_rcptr!T context, auto ref
     static if (args.length)
     {
         // breaks safaty
-        if (false) foo(__traits(getMember, context._get_value, member)(forward!args));
+        if (false) foo(__traits(getMember, T.init, member)(forward!args));
         return (()@trusted => createRCWithContext(__traits(getMember, context._get_value, member)(forward!args), context.move))();
     }
     else
     {
         // breaks safaty
-        if (false) foo(__traits(getMember, context._get_value, member));
+        if (false) foo(__traits(getMember, T.init, member));
         return (()@trusted => createRCWithContext(__traits(getMember, context._get_value, member), context.move))();
     }
 }

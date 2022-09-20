@@ -202,7 +202,8 @@ mixin template FileMembers()
             if (__ctfe)
                 return this;
             import mir.format: print;
-            return print!char(this, value);
+            print!char(this, value);
+            return this;
         }
 
         /// Prints new line and flushes the stream

@@ -243,7 +243,7 @@ template SmallArray(T, uint maxLength)
             return opIndex[index];
         }
 
-    const:
+    scope const:
 
         ///
         bool empty() @property
@@ -264,7 +264,7 @@ template SmallArray(T, uint maxLength)
         }
 
         /// Comparisons operator overloads
-        bool opEquals(ref const SmallArray rhs)
+        bool opEquals(scope ref const SmallArray rhs)
         {
             return opIndex == rhs.opIndex;
         }
@@ -276,25 +276,25 @@ template SmallArray(T, uint maxLength)
         }
 
         /// ditto
-        bool opEquals()(V[] array)
+        bool opEquals()(const scope V[] array)
         {
             return opIndex == array;
         }
 
         /// ditto
-        bool opEquals(uint rhsMaxLength)(auto ref SmallArray!(T, rhsMaxLength) array)
+        bool opEquals(uint rhsMaxLength)(auto ref scope SmallArray!(T, rhsMaxLength) array)
         {
             return opIndex == array.opIndex;
         }
 
         /// ditto
-        auto opCmp()(V[] array)
+        auto opCmp()(const scope V[] array)
         {
             return __cmp(opIndex, array);
         }
 
         /// ditto
-        auto opCmp(uint rhsMaxLength)(auto ref SmallArray!(T, rhsMaxLength) array)
+        auto opCmp(uint rhsMaxLength)(auto ref scope const SmallArray!(T, rhsMaxLength) array)
         {
             return __cmp(opIndex, array.opIndex);
         }

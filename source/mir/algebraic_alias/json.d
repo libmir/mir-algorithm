@@ -11,14 +11,14 @@ Macros:
 +/
 module mir.algebraic_alias.json;
 
-import mir.algebraic: TaggedVariant, This;
+import mir.algebraic: Algebraic, This;
 ///
 public import mir.string_map: StringMap;
 
 /++
 Definition union for $(LREF JsonAlgebraic).
 +/
-union JsonAlgebraicUnion
+union Json_
 {
     ///
     typeof(null) null_;
@@ -42,10 +42,11 @@ JSON tagged algebraic alias.
 The example below shows only the basic features. Advanced API to work with algebraic types can be found at $(GMREF mir-core, mir,algebraic).
 See also $(MREF mir,string_map) - ordered string-value associative array.
 +/
-alias JsonAlgebraic = TaggedVariant!JsonAlgebraicUnion;
+alias JsonAlgebraic = Algebraic!Json_;
 
 ///
 version(mir_test)
+@safe pure
 unittest
 {
     import mir.ndslice.topology: map;
@@ -64,14 +65,28 @@ unittest
     assert(!value.isNull);
     assert(value == true);
     assert(value.kind == JsonAlgebraic.Kind.boolean);
+    // access
+    assert(value.boolean == true);
     assert(value.get!bool == true);
+    assert(value.get!"boolean" == true);
     assert(value.get!(JsonAlgebraic.Kind.boolean) == true);
+    // nothrow access
+    assert(value.trustedGet!bool == true);
+    assert(value.trustedGet!"boolean" == true);
+    assert(value.trustedGet!(JsonAlgebraic.Kind.boolean) == true);
+    // checks
+    assert(!value._is!string);
+    assert(value._is!bool);
+    assert(value._is!"boolean");
+    assert(value._is!(JsonAlgebraic.Kind.boolean));
 
     // Null
     value = object["null"] = null;
     assert(value.isNull);
     assert(value == null);
     assert(value.kind == JsonAlgebraic.Kind.null_);
+    // access
+    assert(value.null_ == null);
     assert(value.get!(typeof(null)) == null);
     assert(value.get!(JsonAlgebraic.Kind.null_) == null);
 
@@ -79,7 +94,13 @@ unittest
     value = object["string"] = "s";
     assert(value.kind == JsonAlgebraic.Kind.string);
     assert(value == "s");
+    // access
+    // Yep, `string` here is an alias to `get!(immutable(char)[])` method
+    assert(value.string == "s");
+    // `string` here is an alias of type `immutable(char)[]`
     assert(value.get!string == "s");
+    assert(value.get!"string" == "s");
+    // finally, `string` here is an enum meber
     assert(value.get!(JsonAlgebraic.Kind.string) == "s");
 
     // Integer
@@ -87,16 +108,14 @@ unittest
     assert(value.kind == JsonAlgebraic.Kind.integer);
     assert(value == 4);
     assert(value != 4.0);
-    assert(value.get!long == 4);
-    assert(value.get!(JsonAlgebraic.Kind.integer) == 4);
+    assert(value.integer == 4);
 
     // Float
     value = object["float"] = 3.0;
     assert(value.kind == JsonAlgebraic.Kind.float_);
     assert(value != 3);
     assert(value == 3.0);
-    assert(value.get!double == 3.0);
-    assert(value.get!(JsonAlgebraic.Kind.float_) == 3.0);
+    assert(value.float_ == 3.0);
 
     // Array
     JsonAlgebraic[] arr = [0, 1, 2, 3, 4].map!JsonAlgebraic.array;
@@ -104,7 +123,7 @@ unittest
     value = object["array"] = arr;
     assert(value.kind == JsonAlgebraic.Kind.array);
     assert(value == arr);
-    assert(value.get!(JsonAlgebraic[])[3] == 3);
+    assert(value.array[3] == 3);
 
     // Object
     assert(object.keys == ["bool", "null", "string", "integer", "float", "array"]);
@@ -114,13 +133,12 @@ unittest
 
     value = object["array"] = object;
     assert(value.kind == JsonAlgebraic.Kind.object);
-    assert(value.get!(StringMap!JsonAlgebraic).keys is object.keys);
-    assert(value.get!(StringMap!JsonAlgebraic).values is object.values);
+    assert(value.object.keys is object.keys);
 
     JsonAlgebraic[string] aa = object.toAA;
-    object = StringMap!JsonAlgebraic(aa);
+    object = aa.StringMap!JsonAlgebraic;
 
     JsonAlgebraic fromAA = ["a" : JsonAlgebraic(3), "b" : JsonAlgebraic("b")];
-    assert(fromAA.get!(StringMap!JsonAlgebraic)["a"] == 3);
-    assert(fromAA.get!(StringMap!JsonAlgebraic)["b"] == "b");
+    assert(fromAA.object["a"] == 3);
+    assert(fromAA.object["b"] == "b");
 }

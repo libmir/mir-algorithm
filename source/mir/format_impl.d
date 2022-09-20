@@ -410,7 +410,7 @@ version (mir_test) unittest
     static assert (stringBuf() << 123 << getData == "123");
 }
 
-ref W printIntegralZeroImpl(C, size_t N, W, I)(scope return ref W w, I c, size_t zeroLen)
+void printIntegralZeroImpl(C, size_t N, W, I)(ref scope W w, I c, size_t zeroLen)
 {
     static if (__traits(isUnsigned, I))
         alias impl = printUnsignedToTail;

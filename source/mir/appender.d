@@ -387,7 +387,7 @@ unittest
     static struct S
     {
     @safe pure nothrow @nogc:
-        @property string toString() const
+        @property string toString() scope const
         {
             return "_";
         }

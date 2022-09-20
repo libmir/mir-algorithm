@@ -241,19 +241,19 @@ struct IndexedRoR(Collection, Range)
     }
 
     ///
-    auto lightScope()()
+    auto lightScope()() return scope
     {
         return IndexedRoR!(LightScopeOf!Collection, LightScopeOf!Range)(.lightScope(c), .lightScope(r));
     }
 
     ///
-    auto lightScope()() const
+    auto lightScope()() return scope const
     {
         return IndexedRoR!(LightConstOf!(LightScopeOf!Collection), LightConstOf!(LightScopeOf!Range))(.lightScope(c), .lightScope(r));
     }
 
     ///
-    auto lightConst()() const
+    auto lightConst()() return scope const
     {
         return IndexedRoR!(LightConstOf!Collection, LightConstOf!Range)(.lightConst(c), .lightConst(r));
     }

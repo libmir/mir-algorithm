@@ -131,7 +131,7 @@ struct UInt(size_t size)
     }
 
     ///
-    immutable(C)[] toString(C = char)() const @safe pure nothrow
+    immutable(C)[] toString(C = char)() scope const @safe pure nothrow
         if(isSomeChar!C && isMutable!C)
     {
         UInt!size copy = this;
@@ -154,7 +154,7 @@ struct UInt(size_t size)
     }
 
     ///
-    void toString(C = char, W)(scope ref W w) const
+    void toString(C = char, W)(ref scope W w) scope const
         if(isSomeChar!C && isMutable!C)
     {
         UInt!size copy = this;

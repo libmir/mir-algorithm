@@ -239,7 +239,7 @@ Params:
 Returns:
     n-dimensional slice
 +/
-auto sliced(size_t N, Iterator)(Iterator iterator, size_t[N] lengths...)
+auto sliced(size_t N, Iterator)(return scope Iterator iterator, size_t[N] lengths...)
     if (!__traits(isStaticArray, Iterator) && N
         && !is(Iterator : Slice!(_Iterator, _N, kind), _Iterator, size_t _N, SliceKind kind))
 {
@@ -964,7 +964,7 @@ public:
     }
 
     /// ditto
-    auto lightScope()() return immutable scope @property
+    auto lightScope()() return scope immutable @property
     {
         auto ret =  Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightImmutableOfLightConstOf(Labels)))
             (_structure, .lightScope(_iterator));

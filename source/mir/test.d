@@ -67,7 +67,7 @@ struct Should(T)
 
     static if(!is(immutable T == immutable ubyte[]))
         ///
-    void opEquals(R)(const R expected, string file = __FILE__, int line = __LINE__)
+    void opEquals(R)(const R expected, string file = __FILE__, int line = __LINE__) @trusted
     {
         import mir.format: stringBuf, getData;
         static if (__traits(isFloating, R))
@@ -85,8 +85,8 @@ struct Should(T)
     }
     else
     /// ditto
-    void opEquals(scope const ubyte[] expected, string file = __FILE__, int line = __LINE__)
-        @safe pure nothrow @nogc
+    void opEquals(scope const ubyte[] expected, string file = __FILE__, int line = __LINE__) @trusted
+        pure nothrow @nogc
     {
         import mir.format: stringBuf, getData;
         if (value == expected)
@@ -122,7 +122,7 @@ unittest
 }
 
 ///
-void should(alias fun, T, R)(const T value, const R expected, string file = __FILE__, int line = __LINE__)
+void should(alias fun = "a == b", T, R)(const T value, const R expected, string file = __FILE__, int line = __LINE__)
 {
     import mir.functional;
     import mir.format: stringBuf, getData;

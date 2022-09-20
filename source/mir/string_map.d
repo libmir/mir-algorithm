@@ -7,6 +7,7 @@ AlgebraicREF = $(GREF_ALTTEXT mir-core, $(TT $1), $1, mir, algebraic)$(NBSP)
 module mir.string_map;
 
 import std.traits;
+import mir.internal.meta: basicElementType;
 
 /++
 Checks if the type is instance of $(LREF StringMap).
@@ -29,12 +30,14 @@ Params:
     T = mutable value type, can be instance of $(AlgebraicREF Algebraic) for example.
     U = an unsigned type that can hold an index of keys. `U.max` must be less then the maximum possible number of struct members.
 +/
-struct StringMap(T, U = uint)
-    if (!is(typeof(T.opPostMove)) && __traits(isUnsigned, U))
+struct StringMap(T)
+    if (!is(typeof(T.opPostMove)))
 {
     import mir.utility: _expect;
     import core.lifetime: move;
     import mir.conv: emplaceRef;
+
+    private alias U = uint;
 
     ///
     static struct KeyValue
@@ -48,13 +51,35 @@ struct StringMap(T, U = uint)
     ///
     alias serdeKeysProxy = Unqual!T;
 
-    ///
-    // current implementation is workaround for linking bugs when used in self referencing algebraic types
-    bool opEquals(V)(scope const StringMap!(V, U) rhs) const @trusted
+    /// `hashOf` Implementation. Doesn't depend on order
+    size_t toHash() scope const //@trusted pure nothrow @nogc
     {
+        if (implementation is null)
+            return 0;
+        size_t hash;
+        foreach (i, index; implementation.indices)
+        {
+            hash = hashOf(implementation._keys[index], hash);
+            hash = hashOf(implementation._values[index], hash);
+        }
+        return hash;
+    }
+
+    /// `==` implementation. Doesn't depend on order
+    // current implementation is workaround for linking bugs when used in self referencing algebraic types
+    bool opEquals(V)(scope const StringMap!V rhs) scope const @trusted
+    {
+        import std.traits: isAggregateType;
         // NOTE: moving this to template restriction fails with recursive template instanation
-        static assert(is(typeof(T.init == V.init) : bool),
-                      "Unsupported rhs of type " ~ typeof(rhs).stringof);
+        static if (isAggregateType!T)
+        {
+            if (false)
+            {
+                T a;
+                V b;
+                auto c = a.opEquals(b);
+            }
+        }
         if (implementation is null)
             return rhs.length == 0;
         if (rhs.implementation is null)
@@ -67,8 +92,9 @@ struct StringMap(T, U = uint)
                 return false;
         return true;
     }
+
     /// ditto
-    bool opEquals(K, V)(scope const const(V)[const(K)] rhs) const
+    bool opEquals(K, V)(scope const const(V)[const(K)] rhs) scope const
     if (is(typeof(K.init == string.init) : bool) &&
         is(typeof(V.init == T.init) : bool))
     {
@@ -162,7 +188,7 @@ struct StringMap(T, U = uint)
     }
 
     ///
-    string toString()() const
+    string toString()() const scope
     {
         import mir.format: stringBuf;
         stringBuf buffer;
@@ -171,7 +197,7 @@ struct StringMap(T, U = uint)
     }
 
     ///ditto
-    void toString(W)(scope ref W w) const
+    void toString(W)(ref scope W w) const scope
     {
         bool next;
         w.put('[');
@@ -1014,6 +1040,42 @@ struct StringMap(T, U = uint)
         return this;
     }
 
+    private alias E = .basicElementType!T;
+
+    import std.traits: isAssociativeArray, isAggregateType;
+    static if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
+    /// `opCmp` Implementation. Doesn't depend on order
+    int opCmp()(ref scope const typeof(this) rhs) scope const @trusted // pure nothrow @nogc
+    {
+        if (sizediff_t d = length - rhs.length)
+            return d < 0 ? -1 : 1;
+        if (length == 0)
+            return 0;
+
+        foreach (i, index; implementation.indices)
+            if (auto d = __cmp(implementation._keys[index], rhs.implementation._keys[rhs.implementation._indices[i]]))
+                return d;
+        foreach (i, index; implementation.indices)
+            static if (__traits(compiles, __cmp(implementation._values[index], rhs.implementation._values[rhs.implementation._indices[i]])))
+            {
+                if (auto d = __cmp(implementation._values[index], rhs.implementation._values[rhs.implementation._indices[i]]))
+                    return d;
+            }
+            else
+            static if (__traits(hasMember, T, "opCmp"))
+            {
+                if (auto d = implementation._values[index].opCmp(rhs.implementation._values[rhs.implementation._indices[i]]))
+                    return d;
+            }
+            else
+            {
+                return
+                    implementation._values[index] < rhs.implementation._values[rhs.implementation._indices[i]] ? -1 :
+                    implementation._values[index] > rhs.implementation._values[rhs.implementation._indices[i]] ? +1 : 0;
+            }
+        return false;
+    }
+
     private Impl* implementation;
 }
 
@@ -1028,6 +1090,11 @@ version(mir_test)
         bool opEquals(scope const C rhs) const scope @safe pure nothrow @nogc
         {
             return x == rhs.x;
+        }
+
+        override size_t toHash() @safe const scope pure nothrow @nogc
+        {
+            return x;
         }
     }
     StringMap!(const C) table;

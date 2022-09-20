@@ -7,6 +7,37 @@ Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investme
 +/
 module mir.parse;
 
+/++
+Parsing position
++/
+struct ParsePosition
+{
+    ///
+    string file;
+    /// 0 is for unknown
+    uint line;
+    /// 0 is for unknown
+    uint column;
+
+    ///
+    void toString(W)(scope ref W w) scope const
+    {
+        w.put(file);
+        if (line)
+        {
+            import mir.format: print;
+            w.put("(");
+            w.print(line);
+            if (column)
+            {
+                w.put(",");
+                w.print(column);
+            }
+            w.put(")");
+        }
+    }
+}
+
 ///
 enum DecimalExponentKey
 {

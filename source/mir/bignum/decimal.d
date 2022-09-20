@@ -35,7 +35,7 @@ struct Decimal(uint size64)
     BigInt!size64 coefficient;
 
     ///
-    void toString(C = char, W)(scope ref W w, NumericSpec spec = NumericSpec.init) const
+    void toString(C = char, W)(ref scope W w, NumericSpec spec = NumericSpec.init) const scope
         if(isSomeChar!C && isMutable!C)
     {
         assert(spec.format == NumericSpec.Format.exponent || spec.format == NumericSpec.Format.human);
@@ -382,7 +382,7 @@ struct Decimal(uint size64)
     private enum eDecimalLength = coefficientBufferLength + expBufferLength;
 
     ///
-    immutable(C)[] toString(C = char)(NumericSpec spec = NumericSpec.init) const @safe pure nothrow
+    immutable(C)[] toString(C = char)(NumericSpec spec = NumericSpec.init) const scope @safe pure nothrow
         if(isSomeChar!C && isMutable!C)
     {
         import mir.appender: UnsafeArrayBuffer;

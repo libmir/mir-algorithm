@@ -220,7 +220,7 @@ if ((isInputRange!Range || isIterable!Range) && !isInfinite!Range && !__traits(i
     // @system due to array!string
     import std.conv : to;
 
-    static struct TestArray { int x; string toString() @safe { return to!string(x); } }
+    static struct TestArray { int x; string toString() scope const @safe { return to!string(x); } }
 
     static struct OpAssign
     {

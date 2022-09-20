@@ -7,7 +7,7 @@ Copyright: 2021 Harrison Ford, Symmetry Investments
 +/
 module mir.base64;
 
-package static immutable base64DecodeInvalidCharMsg = "Invalid character encountered.";
+package static immutable base64DecodeInvalidCharMsg = "base64: Invalid character encountered.";
 package static immutable base64DecodeInvalidLenMsg = "Cannot decode a buffer with given length (not a multiple of 4, missing padding?)";
 version(D_Exceptions) {
     package static immutable base64DecodeInvalidCharException = new Exception(base64DecodeInvalidCharMsg);
@@ -101,7 +101,7 @@ ubyte[] decodeBase64(scope const(char)[] data, char plusChar = '+', char slashCh
 Decode a Base64 encoded value, placing the result onto an Appender.
 +/
 void decodeBase64(Appender)(scope const(char)[] data,
-                            scope return ref Appender appender,
+                            scope ref Appender appender,
                             char plusChar = '+',
                             char slashChar = '/') @safe pure
 {
@@ -289,19 +289,19 @@ version(mir_test)
 /++
 Encode a ubyte array as Base64, returning the encoded value.
 +/
-const(char)[] encodeBase64(scope const(ubyte)[] buf, char plusChar = '+', char slashChar = '/') @safe pure
+string encodeBase64(scope const(ubyte)[] buf, char plusChar = '+', char slashChar = '/') @safe pure
 {
     import mir.appender : scopedBuffer;
     auto app = scopedBuffer!char;
     encodeBase64(buf, app, plusChar, slashChar);
-    return app.data.dup;
+    return app.data.idup;
 }
 
 /++
 Encode a ubyte array as Base64, placing the result onto an Appender.
 +/
 void encodeBase64(Appender)(scope const(ubyte)[] input,
-                            scope return ref Appender appender,
+                            scope ref Appender appender,
                             char plusChar = '+',
                             char slashChar = '/') @safe pure
 {

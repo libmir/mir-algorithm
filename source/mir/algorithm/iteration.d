@@ -3837,11 +3837,6 @@ struct Uniq(alias pred, Range)
 {
     Range _input;
 
-    ref opSlice() inout
-    {
-        return this;
-    }
-
     void popFront() scope
     {
         assert(!empty, "Attempting to popFront an empty uniq.");
@@ -3888,6 +3883,16 @@ struct Uniq(alias pred, Range)
     else
     {
         @property bool empty() const { return _input.empty; }
+    }
+
+    ref opIndex()() scope return
+    {
+        return this;
+    }
+
+    auto opIndex()() const return scope
+    {
+        return Filter!(typeof(_input[]))(_input[]);
     }
 
     import std.range.primitives: isForwardRange;
@@ -3995,11 +4000,6 @@ struct Filter(alias pred, Range)
     Range _input;
     version(assert) bool _freshEmpty;
 
-    ref opSlice() inout
-    {
-        return this;
-    }
-
     void popFront() scope
     {
         assert(!_input.empty, "Attempting to popFront an empty Filter.");
@@ -4008,14 +4008,14 @@ struct Filter(alias pred, Range)
         _input.popFront;
     }
 
-    auto ref front() @property
+    auto ref front() @property return scope
     {
         assert(!_input.empty, "Attempting to fetch the front of an empty Filter.");
         version(assert) assert(_freshEmpty, "Attempting to fetch the front of a Filter without calling '.empty' method ahead.");
         return _input.front;
     }
 
-    bool empty() @property
+    bool empty() scope @property
     {
         version(assert) _freshEmpty = true;
         for (;;)
@@ -4035,6 +4035,16 @@ struct Filter(alias pred, Range)
         {
             return typeof(this)(_input.save);
         }
+    }
+
+    ref opIndex()() scope return
+    {
+        return this;
+    }
+
+    auto opIndex()() const return scope
+    {
+        return Filter!(pred, typeof(_input[]))(_input[]);
     }
 }
 

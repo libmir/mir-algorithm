@@ -11,7 +11,7 @@ Macros:
 +/
 module mir.algebraic_alias.ion;
 
-import mir.algebraic: TaggedVariant, This;
+import mir.algebraic: Algebraic, This;
 ///
 public import mir.annotated: Annotated;
 ///
@@ -25,7 +25,7 @@ public import mir.timestamp: Timestamp;
 /++
 Definition union for $(LREF IonAlgebraic).
 +/
-union IonAlgebraicUnion
+union Ion_
 {
     ///
     typeof(null) null_;
@@ -48,7 +48,7 @@ union IonAlgebraicUnion
     /// Self alias in $(MREF mir,string_map).
     StringMap!This object;
     /// Self alias in $(MREF mir,annotated).
-    Annotated!This annotations;
+    Annotated!This annotated;
 }
 
 /++
@@ -57,7 +57,7 @@ Ion tagged algebraic alias.
 The example below shows only the basic features. Advanced API to work with algebraic types can be found at $(GMREF mir-core, mir,algebraic).
 See also $(MREF mir,string_map) - ordered string-value associative array.
 +/
-alias IonAlgebraic = TaggedVariant!IonAlgebraicUnion;
+alias IonAlgebraic = Algebraic!Ion_;
 
 ///
 version(mir_test)
@@ -79,14 +79,28 @@ unittest
     assert(!value.isNull);
     assert(value == true);
     assert(value.kind == IonAlgebraic.Kind.boolean);
+    // access
+    assert(value.boolean == true);
     assert(value.get!bool == true);
+    assert(value.get!"boolean" == true);
     assert(value.get!(IonAlgebraic.Kind.boolean) == true);
+    // nothrow access
+    assert(value.trustedGet!bool == true);
+    assert(value.trustedGet!"boolean" == true);
+    assert(value.trustedGet!(IonAlgebraic.Kind.boolean) == true);
+    // checks
+    assert(!value._is!string);
+    assert(value._is!bool);
+    assert(value._is!"boolean");
+    assert(value._is!(IonAlgebraic.Kind.boolean));
 
     // Null
     value = object["null"] = null;
     assert(value.isNull);
     assert(value == null);
     assert(value.kind == IonAlgebraic.Kind.null_);
+    // access
+    assert(value.null_ == null);
     assert(value.get!(typeof(null)) == null);
     assert(value.get!(IonAlgebraic.Kind.null_) == null);
 
@@ -94,7 +108,13 @@ unittest
     value = object["string"] = "s";
     assert(value.kind == IonAlgebraic.Kind.string);
     assert(value == "s");
+    // access
+    // Yep, `string` here is an alias to `get!(immutable(char)[])` method
+    assert(value.string == "s");
+    // `string` here is an alias of type `immutable(char)[]`
     assert(value.get!string == "s");
+    assert(value.get!"string" == "s");
+    // finally, `string` here is an enum meber
     assert(value.get!(IonAlgebraic.Kind.string) == "s");
 
     // Integer
@@ -102,16 +122,14 @@ unittest
     assert(value.kind == IonAlgebraic.Kind.integer);
     assert(value == 4);
     assert(value != 4.0);
-    assert(value.get!long == 4);
-    assert(value.get!(IonAlgebraic.Kind.integer) == 4);
+    assert(value.integer == 4);
 
     // Float
     value = object["float"] = 3.0;
     assert(value.kind == IonAlgebraic.Kind.float_);
     assert(value != 3);
     assert(value == 3.0);
-    assert(value.get!double == 3.0);
-    assert(value.get!(IonAlgebraic.Kind.float_) == 3.0);
+    assert(value.float_ == 3.0);
 
     // Array
     IonAlgebraic[] arr = [0, 1, 2, 3, 4].map!IonAlgebraic.array;
@@ -119,7 +137,7 @@ unittest
     value = object["array"] = arr;
     assert(value.kind == IonAlgebraic.Kind.array);
     assert(value == arr);
-    assert(value.get!(IonAlgebraic[])[3] == 3);
+    assert(value.array[3] == 3);
 
     // Object
     assert(object.keys == ["bool", "null", "string", "integer", "float", "array"]);
@@ -129,15 +147,14 @@ unittest
 
     value = object["array"] = object;
     assert(value.kind == IonAlgebraic.Kind.object);
-    assert(value.get!(StringMap!IonAlgebraic).keys is object.keys);
-    assert(value.get!(StringMap!IonAlgebraic).values is object.values);
+    assert(value.object.keys is object.keys);
 
     IonAlgebraic[string] aa = object.toAA;
-    object = StringMap!IonAlgebraic(aa);
+    object = aa.StringMap!IonAlgebraic;
 
     IonAlgebraic fromAA = ["a" : IonAlgebraic(3), "b" : IonAlgebraic("b")];
-    assert(fromAA.get!(StringMap!IonAlgebraic)["a"] == 3);
-    assert(fromAA.get!(StringMap!IonAlgebraic)["b"] == "b");
+    assert(fromAA.object["a"] == 3);
+    assert(fromAA.object["b"] == "b");
 
     auto annotated = Annotated!IonAlgebraic(["birthday"], Timestamp("2001-01-01"));
     value = annotated;

@@ -1001,7 +1001,7 @@ struct BigInt(uint size64)
     }
 
     ///
-    immutable(C)[] toString(C = char)() const @safe pure nothrow
+    immutable(C)[] toString(C = char)() scope const @safe pure nothrow
         if(isSomeChar!C && isMutable!C)
     {
         C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;
@@ -1025,7 +1025,7 @@ struct BigInt(uint size64)
     }
 
     ///
-    void toString(C = char, W)(scope ref W w) const
+    void toString(C = char, W)(ref scope W w) scope const
         if(isSomeChar!C && isMutable!C)
     {
         C[ceilLog10Exp2(data.length * (size_t.sizeof * 8)) + 1] buffer = void;

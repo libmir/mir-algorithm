@@ -62,7 +62,7 @@ struct mir_slim_rcptr(T)
     static if (is(T == class) || is(T == interface))
         ///
         pragma(inline, true)
-        inout(T) _get_value() scope inout @property
+        inout(T) _get_value() return scope inout @property
         {
             assert(this, getExcMsg);
             return _value;
@@ -70,7 +70,7 @@ struct mir_slim_rcptr(T)
     else
         ///
         pragma(inline, true)
-        ref inout(T) _get_value() scope inout @property
+        ref inout(T) _get_value() return scope inout @property
         {
             assert(this, getExcMsg);
             return *_value;

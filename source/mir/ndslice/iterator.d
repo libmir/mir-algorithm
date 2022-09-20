@@ -749,7 +749,7 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
 @optmath:
 
     ///
-    auto lightScope()() scope @property
+    auto lightScope()() return scope @property
     {
         return CachedIterator!(LightScopeOf!Iterator, LightScopeOf!CacheIterator, LightScopeOf!FlagIterator)(
             .lightScope(_iterator),
@@ -759,13 +759,13 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
     }
 
     ///
-    auto lightScope()() scope const @property
+    auto lightScope()() return scope const @property
     {
         return lightConst.lightScope;
     }
 
     ///
-    auto lightScope()() scope immutable @property
+    auto lightScope()() return scope immutable @property
     {
         return lightImmutable.lightScope;
     }

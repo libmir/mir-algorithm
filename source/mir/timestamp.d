@@ -898,7 +898,7 @@ struct Timestamp
         }
 
         /// ditto
-        void toISOStringImp(W)(scope ref W w) const scope
+        void toISOStringImp(W)(ref scope W w) const scope
             // if (isOutputRange!(W, char))
         {
             import mir.format: printZeroPad;

@@ -373,17 +373,17 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
         return this.lightScopeIndex == rhs.lightScopeIndex && this.data.lightScope == rhs.data.lightScope;
     }
 
-    private auto lightScopeIndex()() @property @trusted
+    private auto lightScopeIndex()() return scope @trusted
     {
         return .lightScope(_index).sliced(this.data._lengths[0]);
     }
 
-    private auto lightScopeIndex()() @property @trusted const
+    private auto lightScopeIndex()() return scope @trusted const
     {
         return .lightScope(_index).sliced(this.data._lengths[0]);
     }
 
-    private auto lightScopeIndex()() @property @trusted immutable
+    private auto lightScopeIndex()() return scope @trusted immutable
     {
         return .lightScope(_index).sliced(this.data._lengths[0]);
     }
@@ -391,14 +391,14 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     ///
     typeof(this) opBinary(string op : "~")(typeof(this) rhs)
     {
-        typeof(this.lightScope)[2] lhsAndRhs = [this.lightScope, rhs.lightScope];
+        scope typeof(this.lightScope)[2] lhsAndRhs = [this.lightScope, rhs.lightScope];
         return unionSeriesImplPrivate!false(lhsAndRhs);
     }
 
     /// ditto
     auto opBinary(string op : "~")(const typeof(this) rhs) const @trusted
     {
-        typeof(this.lightScope)[2] lhsAndRhs = [this.lightScope, rhs.lightScope];
+        scope typeof(this.lightScope)[2] lhsAndRhs = [this.lightScope, rhs.lightScope];
         return unionSeriesImplPrivate!false(lhsAndRhs);
     }
 
@@ -505,8 +505,8 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     void opIndexOpAssign(string op, IndexIterator_, Iterator_, size_t N_, SliceKind kind_)
         (auto ref Series!(IndexIterator_, Iterator_, N_, kind_) rSeries)
     {
-        auto l = this.lightScope;
-        auto r = rSeries.lightScope;
+        scope l = this.lightScope;
+        scope r = rSeries.lightScope;
         if (r.empty)
             return;
         if (l.empty)
@@ -1276,19 +1276,19 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
-    Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() @trusted @property
+    Series!(LightScopeOf!IndexIterator, LightScopeOf!Iterator, N, kind) lightScope()() return scope @trusted @property
     {
         return typeof(return)(lightScopeIndex, this.data.lightScope);
     }
 
     /// ditto
-    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted const @property
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() return scope @trusted const @property
     {
         return typeof(return)(lightScopeIndex, this.data.lightScope);
     }
 
     /// ditto
-    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() @trusted immutable @property
+    Series!(LightConstOf!(LightScopeOf!IndexIterator), LightConstOf!(LightScopeOf!Iterator), N, kind) lightScope()() return scope @trusted immutable @property
     {
         return typeof(return)(lightScopeIndex, this.data.lightScope);
     }
@@ -1312,10 +1312,10 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
-    void toString(Writer)(scope ref Writer w) const
+    void toString(Writer)(scope ref Writer w) scope const @safe
     {
         import mir.format: print;
-        auto ls = lightScope;
+        scope ls = lightScope;
         print(w, "{ index: ");
         print(w, ls.index);
         print(w, ", data: ");
@@ -2463,7 +2463,7 @@ auto unionSeriesImpl(I, E,
     }
 }
 
-private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator) @safe
+private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, SliceKind kind, size_t C, Allocator...)(scope Series!(IndexIterator, Iterator, N, kind)[C] seriesTuple, ref Allocator allocator) @safe
     if (C > 1 && Allocator.length <= 1)
 {
     import mir.algorithm.setops: unionLength;
@@ -2477,7 +2477,7 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
     foreach (i; Iota!C)
         indeces[i] = seriesTuple[i].index;
 
-    immutable len = indeces[].unionLength;
+    immutable len = (()@trusted => indeces[].unionLength)();
 
     alias I = typeof(seriesTuple[0].index.front);
     alias E = typeof(seriesTuple[0].data.front);
@@ -2539,7 +2539,7 @@ private auto unionSeriesImplPrivate(bool rc, IndexIterator, Iterator, size_t N, 
     }
     else
     {
-        unionSeriesImpl!(I, E)(seriesTuple, ret.lightScope);
+        unionSeriesImpl!(I, E)((()@trusted => seriesTuple[])(), ret.lightScope);
     }
 
     return () @trusted {return *cast(R*) &ret; }();

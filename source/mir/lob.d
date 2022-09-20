@@ -13,6 +13,13 @@ struct Clob
 {
     ///
     const(char)[] data;
+
+    ///
+    int opCmp(scope const typeof(this) rhs)
+    @safe pure nothrow @nogc scope const
+    {
+        return __cmp(data, rhs.data);
+    }
 }
 
 /++
@@ -23,4 +30,11 @@ struct Blob
 {
     ///
     const(ubyte)[] data;
+
+    ///
+    int opCmp(scope const typeof(this) rhs)
+    @safe pure nothrow @nogc scope const
+    {
+        return __cmp(data, rhs.data);
+    }
 }
