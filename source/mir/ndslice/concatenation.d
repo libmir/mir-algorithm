@@ -261,7 +261,7 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// Length primitive
-    size_t length(size_t d = 0)() const @property
+    size_t length(size_t d = 0)() scope const @property
     {
         static if (d == dim)
         {
@@ -277,7 +277,7 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// Total elements count in the concatenation.
-    size_t elementCount()() const @property
+    size_t elementCount()() scope const @property
     {
         size_t count = 1;
         foreach(i; Iota!N)
@@ -331,7 +331,7 @@ struct Concatenation(size_t dim, Slices...)
     }
 
     /// ditto
-    auto front(size_t d = 0)()
+    auto ref front(size_t d = 0)() return scope
     {
         static if (d == dim)
         {

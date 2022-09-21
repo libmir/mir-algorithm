@@ -232,13 +232,13 @@ template SmallArray(T, uint maxLength)
 
         The alias helps with `[]`, `[i]`, `[i .. j]`, `==`, and `!=` operations and implicit conversion to strings.
         +/
-        inout(T)[] opIndex() inout @trusted return scope
+        inout(T)[] opIndex() inout @trusted scope return
         {
             return _data[0 .. _length];
         }
 
         ///
-        ref inout(T) opIndex(size_t index) inout return scope
+        ref inout(T) opIndex(size_t index) inout scope return
         {
             return opIndex[index];
         }

@@ -206,7 +206,7 @@ scope nothrow:
 
     The method implement with `[]` operation.
     +/
-    inout(char)[] opIndex() inout @trusted return scope
+    inout(char)[] opIndex() inout @trusted scope return
     {
         size_t i;
         if (__ctfe)
@@ -217,7 +217,7 @@ scope nothrow:
     }
 
     ///
-    ref inout(char) opIndex(size_t index) inout return scope
+    ref inout(char) opIndex(size_t index) inout scope return
     {
         return opIndex[index];
     }
@@ -227,7 +227,7 @@ scope nothrow:
 
     The method implement with `[i .. j]` operation.
     +/
-    inout(char)[] opIndex(size_t[2] range) inout @trusted return scope
+    inout(char)[] opIndex(size_t[2] range) inout @trusted scope return
     in (range[0] <= range[1])
     in (range[1] <= this.length)
     {

@@ -2608,7 +2608,7 @@ template equal(alias pred = "a == b")
         Returns:
             `true` any of the elements verify `pred` and `false` otherwise.
         +/
-        bool equal(Slices...)(Slices slices)
+        bool equal(Slices...)(Slices slices) @safe
             if (Slices.length >= 2)
         {
             import mir.internal.utility;
@@ -4008,14 +4008,14 @@ struct Filter(alias pred, Range)
         _input.popFront;
     }
 
-    auto ref front() @property return scope
+    auto ref front() @safe @property return scope
     {
         assert(!_input.empty, "Attempting to fetch the front of an empty Filter.");
         version(assert) assert(_freshEmpty, "Attempting to fetch the front of a Filter without calling '.empty' method ahead.");
         return _input.front;
     }
 
-    bool empty() scope @property
+    bool empty() @safe scope @property
     {
         version(assert) _freshEmpty = true;
         for (;;)
