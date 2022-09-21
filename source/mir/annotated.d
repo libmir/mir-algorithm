@@ -111,9 +111,9 @@ struct Annotated(T) {
     private alias E = .basicElementType!T;
 
     import std.traits: isAssociativeArray, isAggregateType;
-    static if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
     ///
-    int opCmp()(ref scope const typeof(this) rhs) scope const // pure nothrow @nogc
+    int opCmp()(ref scope const typeof(this) rhs) scope const pure nothrow @nogc
+        if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
     {
         if (auto d = __cmp(annotations, rhs.annotations))
             return d;

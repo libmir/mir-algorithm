@@ -2210,7 +2210,7 @@ struct serdeDiscriminatedField
 template deserializeValueMemberImpl(alias deserializeValue, alias deserializeScoped)
 {
     ///
-    SerdeException deserializeValueMemberImpl(string member, Data, T, Context...)(Data data, ref T value, ref SerdeFlags!T requiredFlags, ref Context context)
+    SerdeException deserializeValueMemberImpl(string member, Data, T, Context...)(Data data, scope ref T value, scope ref SerdeFlags!T requiredFlags, scope ref Context context)
     {
         import core.lifetime: move;
         import mir.conv: to;
