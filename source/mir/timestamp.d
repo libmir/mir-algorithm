@@ -25,12 +25,13 @@ class DateTimeException : Exception
 
 version(D_Exceptions)
 {
-    private static immutable InvalidMonth = new DateTimeException("Invalid Month");
-    private static immutable InvalidDay = new DateTimeException("Invalid Day");
-    private static immutable InvalidISOString = new DateTimeException("Invalid ISO String");
-    private static immutable InvalidISOExtendedString = new DateTimeException("Invalid ISO Extended String");
-    private static immutable InvalidString = new DateTimeException("Invalid String");
-    private static immutable ExpectedDuration = new DateTimeException("Expected Duration");
+    private static immutable InvalidMonth = new DateTimeException("Timestamp: Invalid Month");
+    private static immutable InvalidDay = new DateTimeException("Timestamp: Invalid Day");
+    private static immutable InvalidISOString = new DateTimeException("Timestamp: Invalid ISO String");
+    private static immutable InvalidISOExtendedString = new DateTimeException("Timestamp: Invalid ISO Extended String");
+    private static immutable InvalidYamlString = new DateTimeException("Timestamp: Invalid YAML String");
+    private static immutable InvalidString = new DateTimeException("Timestamp: Invalid String");
+    private static immutable ExpectedDuration = new DateTimeException("Timestamp: Expected Duration");
 }
 
 /++
@@ -1135,6 +1136,38 @@ struct Timestamp
         static assert(Timestamp(2021, 01, 29,  4, 42, 44).withOffset(- (7 * 60 + 30)) == Timestamp.fromISOExtString("2021-01-28T21:12:44-07:30"));
     }
 
+    /++
+    Creates a $(LREF Timestamp) from a YAML string format
+    or its leading part allowed by the standard.
+
+    Params:
+        str = A string formatted in the way that $(LREF .Timestamp.toISOExtString) formats dates.
+        value = (optional) result value.
+
+    Throws:
+        $(LREF DateTimeException) if the given string is
+        not in the correct format. Two arguments overload is `nothrow`.
+    Returns:
+        `bool` on success for two arguments overload, and the resulting timestamp for single argument overdload.
+    +/
+    alias fromYamlString = fromISOStringImpl!(true, true);
+
+    ///
+    version (mir_test)
+    @safe unittest
+    {
+        //canonical:        
+        assert(Timestamp.fromYamlString("2001-12-15T02:59:43.1Z") == Timestamp("2001-12-15T02:59:43.1Z"));
+        //valid iso8601:    
+        assert(Timestamp.fromYamlString("2001-12-14t21:59:43.1-05:30") == Timestamp("2001-12-14T21:59:43.1-05:30"));
+        //yamle separated:  
+        assert(Timestamp.fromYamlString("2001-12-14 21:59:43.1 -5") == Timestamp("2001-12-14T21:59:43.1-05"));
+        //no time zone (Z): 
+        assert(Timestamp.fromYamlString("2001-12-15 2:59:43.10") == Timestamp("2001-12-15T02:59:43.10"));
+        //date (00:00:00Z): 
+        assert(Timestamp.fromYamlString("2002-12-14") == Timestamp("2002-12-14"));
+    }
+
     version (mir_test)
     @safe unittest
     {
@@ -1246,7 +1279,7 @@ struct Timestamp
         throw InvalidString;
     }
 
-    template fromISOStringImpl(bool ext)
+    template fromISOStringImpl(bool ext, bool yaml = false)
     {
         static Timestamp fromISOStringImpl(C)(scope const(C)[] str) @safe pure
             if (isSomeChar!C)
@@ -1254,7 +1287,13 @@ struct Timestamp
             Timestamp ret;
             if (fromISOStringImpl(str, ret))
                 return ret;
-            throw InvalidISOExtendedString;
+            static if (yaml)
+                throw InvalidYamlString;
+            else
+            static if (ext)
+                throw InvalidISOExtendedString;
+            else
+                throw InvalidISOString;
         }
 
         static bool fromISOStringImpl(C)(scope const(C)[] str, out Timestamp value) @safe pure nothrow @nogc
@@ -1263,9 +1302,9 @@ struct Timestamp
             import mir.parse: fromString, parse;
 
             static if (ext)
-                auto isOnlyTime = str.length >= 3 && (str[0] == 'T' || str[2] == ':');
+                auto isOnlyTime = str.length >= 3 && ((str[0] == 'T' || (yaml && (str[0] == 't' || str[0] == ' ' || str[0] == '\t'))) || str[2] == ':');
             else
-                auto isOnlyTime = str.length >= 3 && str[0] == 'T';
+                auto isOnlyTime = str.length >= 3 && (str[0] == 'T' || (yaml && (str[0] == 't' || str[0] == ' ' || str[0] == '\t')));
 
             if (!isOnlyTime)
             {
@@ -1303,7 +1342,7 @@ struct Timestamp
                     return false;
                 str = str[2 .. $];
                 value.precision = Precision.month;
-                if (str.length == 0 || str == "T")
+                if (str.length == 0 || str.length == 1 && (str[0] == 'T' || (yaml && (str[0] == 't' || str[0] == ' ' || str[0] == '\t'))))
                     return ext;
 
                 static if (ext)
@@ -1324,7 +1363,7 @@ struct Timestamp
 
             // str isn't empty here
             // T
-            if (str[0] == 'T')
+            if ((str[0] == 'T' || (yaml && (str[0] == 't' || str[0] == ' ' || str[0] == '\t'))))
             {
                 str = str[1 .. $];
                 // OK, onlyTime requires length >= 3
@@ -1341,8 +1380,20 @@ struct Timestamp
 
             // hh
             if (str.length < 2 || !str[0].isDigit || !fromString(str[0 .. 2], value.hour))
-                return false;
-            str = str[2 .. $];
+            {
+                static if (yaml)
+                {
+                    if (str.length < 1 || !str[0].isDigit || !fromString(str[0 .. 1], value.hour))
+                        return false;
+                    else
+                        str = str[1 .. $];
+                }
+                else
+                    return false;
+            }
+            else
+                str = str[2 .. $];
+
             if (str.length == 0)
                 return true;
 
@@ -1408,14 +1459,32 @@ struct Timestamp
 
         TZ:
 
+            static if (yaml)
+            {
+                if (str.length && (str[0] == ' ' || str[0] == '\t'))
+                    str = str[1 .. $];
+            }
+
             if (str == "Z")
                 return true;
 
             int hour;
             int minute;
             if (str.length < 3 || str[0].isDigit || !fromString(str[0 .. 3], hour))
-                return false;
-            str = str[3 .. $];
+            {
+                static if (yaml)
+                {
+                    if (str.length < 2 || str[0].isDigit || !fromString(str[0 .. 2], hour))
+                        return false;
+                    str = str[2 .. $];
+                }
+                else
+                    return false;
+            }
+            else
+            {
+                str = str[3 .. $];
+            }
 
             if (str.length)
             {

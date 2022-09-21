@@ -219,12 +219,12 @@ class DateTimeException : Exception
 
 version(D_Exceptions)
 {
-    private static immutable InvalidMonth = new DateTimeException("Invalid Month");
-    private static immutable InvalidDay = new DateTimeException("Invalid Day");
-    private static immutable InvalidISOString = new DateTimeException("Invalid ISO String");
-    private static immutable InvalidISOExtendedString = new DateTimeException("Invalid ISO Extended String");
-    private static immutable InvalidSimpleString = new DateTimeException("Invalid Simple String");
-    private static immutable InvalidString = new DateTimeException("Invalid String");
+    private static immutable InvalidMonth = new DateTimeException("Date: Invalid Month");
+    private static immutable InvalidDay = new DateTimeException("Date: Invalid Day");
+    private static immutable InvalidISOString = new DateTimeException("Date: Invalid ISO String");
+    private static immutable InvalidISOExtendedString = new DateTimeException("Date: Invalid ISO Extended String");
+    private static immutable InvalidSimpleString = new DateTimeException("Date: Invalid Simple String");
+    private static immutable InvalidString = new DateTimeException("Date: Invalid String");
 }
 
 version (mir_test)
