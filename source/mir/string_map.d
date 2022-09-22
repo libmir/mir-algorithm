@@ -23,6 +23,8 @@ unittest
     static assert(!isStringMap!int);
 }
 
+private alias U = uint;
+
 /++
 Ordered string-value associative array with extremely fast lookup.
 
@@ -31,13 +33,11 @@ Params:
     U = an unsigned type that can hold an index of keys. `U.max` must be less then the maximum possible number of struct members.
 +/
 struct StringMap(T)
-    if (!is(typeof(T.opPostMove)))
+    // if (!is(typeof(T.opPostMove)))
 {
     import mir.utility: _expect;
     import core.lifetime: move;
     import mir.conv: emplaceRef;
-
-    private alias U = uint;
 
     ///
     static struct KeyValue
@@ -47,9 +47,6 @@ struct StringMap(T)
         ///
         T value;
     }
-
-    ///
-    alias serdeKeysProxy = Unqual!T;
 
     /// `hashOf` Implementation. Doesn't depend on order
     size_t toHash() scope const pure @trusted  nothrow @nogc
@@ -70,19 +67,10 @@ struct StringMap(T)
 
     /// `==` implementation. Doesn't depend on order
     // current implementation is workaround for linking bugs when used in self referencing algebraic types
-    bool opEquals(V)(scope const StringMap!V rhs) scope const @trusted
+    bool opEquals(V)(scope const StringMap!V rhs) scope const @trusted pure @nogc nothrow
     {
         import std.traits: isAggregateType;
         // NOTE: moving this to template restriction fails with recursive template instanation
-        static if (isAggregateType!T)
-        {
-            if (false)
-            {
-                T a;
-                V b;
-                auto c = a.opEquals(b);
-            }
-        }
         if (implementation is null)
             return rhs.length == 0;
         if (rhs.implementation is null)
@@ -1043,10 +1031,8 @@ struct StringMap(T)
         return this;
     }
 
-    private alias E = .basicElementType!T;
-
     import std.traits: isAssociativeArray, isAggregateType;
-    static if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
+    static if (!isAssociativeArray!(.basicElementType!T) && (!isAggregateType!(.basicElementType!T) || __traits(hasMember, .basicElementType!T, "opCmp")))
     /// `opCmp` Implementation. Doesn't depend on order
     int opCmp()(ref scope const typeof(this) rhs) scope const @trusted // pure nothrow @nogc
     {
@@ -1080,6 +1066,16 @@ struct StringMap(T)
     }
 
     private Impl* implementation;
+
+    ///
+    static if (is(T == const) || is(T == immutable))
+    {
+        alias serdeKeysProxy = Unqual!T;
+    }
+    else
+    {
+        alias serdeKeysProxy = T;
+    }
 }
 
 version(mir_test)
