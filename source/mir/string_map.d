@@ -60,7 +60,10 @@ struct StringMap(T)
         foreach (i, index; implementation.indices)
         {
             hash = hashOf(implementation._keys[index], hash);
-            hash = hashOf(implementation._values[index], hash);
+            static if (__traits(hasMember, T, "toHash"))
+               hash = hashOf(implementation._values[index].toHash, hash);
+            else
+               hash = hashOf(implementation._values[index], hash);
         }
         return hash;
     }

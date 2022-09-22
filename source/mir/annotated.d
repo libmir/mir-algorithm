@@ -74,6 +74,17 @@ struct Annotated(T) {
         {
             return annotations == rhs.annotations && value == rhs.value;
         }
+
+        size_t toHash() scope @trusted const pure nothrow @nogc
+        {
+            static if (__traits(compiles, hashOf(value)))
+                return hashOf(value);
+            else
+            {
+                debug pragma(msg, "Mir warning: can't compute hash. Expexted `size_t toHash() scope @safe const pure nothrow @nogc` method for " ~ T.stringof);
+                return cast(size_t)_value;
+            }
+        }
     }
     else
     {
