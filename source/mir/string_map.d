@@ -52,7 +52,7 @@ struct StringMap(T)
     alias serdeKeysProxy = Unqual!T;
 
     /// `hashOf` Implementation. Doesn't depend on order
-    size_t toHash() scope const //@trusted pure nothrow @nogc
+    size_t toHash() scope const pure @trusted  nothrow @nogc
     {
         if (implementation is null)
             return 0;
