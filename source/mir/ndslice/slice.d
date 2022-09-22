@@ -1832,7 +1832,7 @@ public:
     /+
     Returns: `true` if for any dimension of completely unpacked slice the length equals to `0`, and `false` otherwise.
     +/
-    private bool anyRUEmpty()() @trusted @property scope const
+    private bool anyRUEmpty()() @trusted scope const
     {
         static if (isInstanceOf!(SliceIterator, Iterator))
         {

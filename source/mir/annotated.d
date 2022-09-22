@@ -46,12 +46,13 @@ struct Annotated(T) {
         private T* _value;
         ///
         ref inout(T) value() inout @property
+            in(_value)
         {
             return *_value;
         }
 
         ///
-        ref T value(T value) @property
+        ref T value(T value) @property return scope
         {
             if (_value is null)
             {
