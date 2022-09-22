@@ -2,9 +2,9 @@
     "dmd-master",
     "dmd-latest",
     "dmd-beta",
-    "dmd-2.098.1",
+    "dmd-2.100.2",
     "ldc-master",
     "ldc-latest",
     "ldc-beta",
-    "ldc-1.28.1"
+    "ldc-1.30.1"
 ]
