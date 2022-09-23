@@ -1865,11 +1865,14 @@ package template isAlgebraicAliasThis(T)
     {
         import mir.algebraic: isVariant;
         T* aggregate;
-        alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
-        static if (isVariant!A)
+        alias A = AliasSeq!(typeof(__traits(getMember, aggregate, __traits(getAliasThis, T))));
+        static if (A.length != 1)
+            enum isAlgebraicAliasThis = false;
+        else
+        static if (isVariant!(A[0]))
             enum isAlgebraicAliasThis = true;
         else
-            enum isAlgebraicAliasThis = serdeIsDynamicAlgebraic!A;
+            enum isAlgebraicAliasThis = serdeIsDynamicAlgebraic!(A[0]);
     }
     else
     {
