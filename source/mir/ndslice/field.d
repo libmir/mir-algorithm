@@ -96,8 +96,8 @@ struct MapField(Field, alias _fun)
 
     auto ref opIndex(T...)(auto ref T index)
     {
-        import mir.functional: RefTuple, unref;
-        static if (is(typeof(_field[index]) : RefTuple!K, K...))
+        import mir.functional: Tuple, unref;
+        static if (is(typeof(_field[index]) : Tuple!K, K...))
         {
             auto t = _field[index];
             return mixin("_fun(" ~ _iotaArgs!(K.length, "t.expand[", "].unref, ") ~ ")");
@@ -157,8 +157,8 @@ struct VmapField(Field, Fun)
 
     auto ref opIndex(T...)(auto ref T index)
     {
-        import mir.functional: RefTuple, unref;
-        static if (is(typeof(_field[index]) : RefTuple!K, K...))
+        import mir.functional: Tuple, unref;
+        static if (is(typeof(_field[index]) : Tuple!K, K...))
         {
             auto t = _field[index];
             return mixin("_fun(" ~ _iotaArgs!(K.length, "t.expand[", "].unref, ") ~ ")");
@@ -239,7 +239,7 @@ struct ZipField(Fields...)
     if (Fields.length > 1)
 {
 @optmath:
-    import mir.functional: RefTuple, Ref, _ref;
+    import mir.functional: Tuple, Ref, _ref;
     import std.meta: anySatisfy;
 
     ///
@@ -268,10 +268,10 @@ struct ZipField(Fields...)
         alias Iterators = Fields;
         alias _iterators = _fields;
         import mir.ndslice.iterator: _zip_types, _zip_index;
-        return mixin("RefTuple!(_zip_types!Fields)(" ~ _zip_index!Fields ~ ")");
+        return mixin("Tuple!(_zip_types!Fields)(" ~ _zip_index!Fields ~ ")");
     }
 
-    auto opIndexAssign(Types...)(RefTuple!(Types) value, ptrdiff_t index)
+    auto opIndexAssign(Types...)(Tuple!(Types) value, ptrdiff_t index)
         if (Types.length == Fields.length)
     {
         foreach(i, ref val; value.expand)

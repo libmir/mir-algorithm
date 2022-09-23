@@ -2000,16 +2000,16 @@ version(mir_ndslice_test) unittest
 @safe pure nothrow
 version(mir_ndslice_test) unittest
 {
-    import mir.functional: refTuple;
+    import mir.functional: tuple;
 
     auto s = linspace!double([5, 3], [1.0, 2.0], [0.0, 1.0]);
 
     assert(s == [
-        [refTuple(1.00, 0.00), refTuple(1.00, 0.5), refTuple(1.00, 1.0)],
-        [refTuple(1.25, 0.00), refTuple(1.25, 0.5), refTuple(1.25, 1.0)],
-        [refTuple(1.50, 0.00), refTuple(1.50, 0.5), refTuple(1.50, 1.0)],
-        [refTuple(1.75, 0.00), refTuple(1.75, 0.5), refTuple(1.75, 1.0)],
-        [refTuple(2.00, 0.00), refTuple(2.00, 0.5), refTuple(2.00, 1.0)],
+        [tuple(1.00, 0.00), tuple(1.00, 0.5), tuple(1.00, 1.0)],
+        [tuple(1.25, 0.00), tuple(1.25, 0.5), tuple(1.25, 1.0)],
+        [tuple(1.50, 0.00), tuple(1.50, 0.5), tuple(1.50, 1.0)],
+        [tuple(1.75, 0.00), tuple(1.75, 0.5), tuple(1.75, 1.0)],
+        [tuple(2.00, 0.00), tuple(2.00, 0.5), tuple(2.00, 1.0)],
         ]);
 
     assert(s.map!"a * b" == [
@@ -2917,7 +2917,7 @@ version(mir_ndslice_test) unittest
 
 /++
 Multiple functions can be passed to `map`.
-In that case, the element type of `map` is a refTuple containing
+In that case, the element type of `map` is a tuple containing
 one element for each function.
 +/
 @safe pure nothrow
@@ -3159,7 +3159,7 @@ version(mir_ndslice_test) unittest
 // TODO
 /+
 Multiple functions can be passed to `vmap`.
-In that case, the element type of `vmap` is a refTuple containing
+In that case, the element type of `vmap` is a tuple containing
 one element for each function.
 +/
 @safe pure nothrow
@@ -3919,7 +3919,7 @@ Params:
     sameStrides = if `true` assumes that all slices has the same strides.
     slices = list of slices
 Returns:
-    n-dimensional slice of elements refTuple
+    n-dimensional slice of elements tuple
 See_also: $(SUBREF slice, Slice.strides).
 +/
 template zip(bool sameStrides = false)
@@ -3929,7 +3929,7 @@ template zip(bool sameStrides = false)
     Params:
         slices = list of slices
     Returns:
-        n-dimensional slice of elements refTuple
+        n-dimensional slice of elements tuple
     See_also: $(SUBREF slice, Slice.strides).
     +/
     @optmath

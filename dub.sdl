@@ -5,7 +5,7 @@ authors "Ilia Ki" "John Michael Hall" "Shigeki Karita" "Sebastian Wilzbach" "And
 copyright "2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments"
 license "Apache-2.0"
 
-dependency "mir-core" version=">=1.3.0"
+dependency "mir-core" version=">=1.3.5"
 
 // dflags "-mtriple=aarch64-linux-gnu"
 

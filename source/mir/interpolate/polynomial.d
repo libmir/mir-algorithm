@@ -16,7 +16,7 @@ module mir.interpolate.polynomial;
 ///
 public import mir.interpolate: atInterval;
 import core.lifetime: move;
-import mir.functional: RefTuple;
+import mir.functional: Tuple;
 import mir.internal.utility : isFloatingPoint, Iota;
 import mir.interpolate: findInterval;
 import mir.math.common;
@@ -185,12 +185,12 @@ scope const:
         pragma(inline, false)
         auto opCall(T x)
         {
-            return opCall!derivative(RefTuple!(size_t, T)(this.findInterval(x), x));
+            return opCall!derivative(Tuple!(size_t, T)(this.findInterval(x), x));
         }
 
         ///
         pragma(inline, false)
-        auto opCall(RefTuple!(size_t, T) tuple)
+        auto opCall(Tuple!(size_t, T) tuple)
         {
 
             const x = tuple[1];

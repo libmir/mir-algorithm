@@ -192,11 +192,11 @@ extern(D):
         +/
         auto opCall(X)(in X x) const
         {
-            return opCall!(X)(RefTuple!(size_t, X)(this.findInterval(x), x));
+            return opCall!(X)(Tuple!(size_t, X)(this.findInterval(x), x));
         }
 
         ///
-        auto opCall(X)(RefTuple!(size_t, X) tuple) const
+        auto opCall(X)(Tuple!(size_t, X) tuple) const
         {
             X x = tuple[1];
             size_t idx = tuple[0];

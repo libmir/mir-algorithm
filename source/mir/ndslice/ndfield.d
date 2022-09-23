@@ -126,8 +126,8 @@ struct Cartesian(NdFields...)
     ///
     auto opIndex(size_t[N] indices...)
     {
-        import mir.functional : refTuple;
-        return mixin("refTuple(" ~ _indices!(NdFields) ~ ")");
+        import mir.functional : tuple;
+        return mixin("tuple(" ~ _indices!(NdFields) ~ ")");
     }
 }
 

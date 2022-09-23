@@ -20,7 +20,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate;
 
-import mir.functional: RefTuple;
+import mir.functional: Tuple;
 import mir.math.common: optmath;
 import mir.ndslice.slice: Slice, Contiguous;
 import mir.primitives;
@@ -32,8 +32,8 @@ import std.traits: isInstanceOf;
 package ref iter(alias s)() { return s._iterator; };
 package alias GridVector(It) = Slice!It;
 
-package enum bool isInterval(T) = isInstanceOf!(RefTuple, T);
-package enum bool isInterval(alias T) = isInstanceOf!(RefTuple, T);
+package enum bool isInterval(T) = isInstanceOf!(Tuple, T);
+package enum bool isInterval(alias T) = isInstanceOf!(Tuple, T);
 
 package template Repeat(ulong n, L...)
 {
@@ -204,7 +204,7 @@ By default interpolants uses binary search to find appropriate interval,
 it has `O(log(.gridScopeView.length))` complexity.
 If an interval is given, interpolant uses it instead of binary search.
 +/
-RefTuple!(T, size_t) atInterval(T)(in T value, size_t intervalIndex)
+Tuple!(T, size_t) atInterval(T)(in T value, size_t intervalIndex)
 {
     return typeof(return)(value, intervalIndex);
 }

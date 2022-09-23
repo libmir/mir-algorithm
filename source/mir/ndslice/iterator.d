@@ -599,7 +599,7 @@ struct ZipIterator(Iterators...)
 @optmath:
     import std.traits: ConstOf, ImmutableOf;
     import std.meta: staticMap;
-    import mir.functional: RefTuple, Ref, _ref;
+    import mir.functional: Tuple, Ref, _ref;
     ///
     Iterators _iterators;
 
@@ -626,14 +626,14 @@ struct ZipIterator(Iterators...)
     }
 
     auto opUnary(string op : "*")()
-    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
+    { return mixin("Tuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
 
 
     auto opUnary(string op : "*")() const
-    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
+    { return mixin("Tuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
 
     auto opUnary(string op : "*")() immutable
-    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
+    { return mixin("Tuple!(_zip_types!Iterators)(" ~ _zip_fronts!Iterators ~ ")"); }
 
     void opUnary(string op)() scope
         if (op == "++" || op == "--")
@@ -643,9 +643,9 @@ struct ZipIterator(Iterators...)
     }
 
     auto opIndex()(ptrdiff_t index)
-    { return mixin("RefTuple!(_zip_types!Iterators)(" ~ _zip_index!Iterators ~ ")"); }
+    { return mixin("Tuple!(_zip_types!Iterators)(" ~ _zip_index!Iterators ~ ")"); }
 
-    auto opIndexAssign(Types...)(RefTuple!(Types) value, ptrdiff_t index)
+    auto opIndexAssign(Types...)(Tuple!(Types) value, ptrdiff_t index)
         if (Types.length == Iterators.length)
     {
         foreach(i, ref val; value.expand)
@@ -860,11 +860,11 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
 
 private enum map_primitives = q{
 
-    import mir.functional: RefTuple, autoExpandAndForward;
+    import mir.functional: Tuple, autoExpandAndForward;
 
     auto ref opUnary(string op : "*")()
     {
-        static if (is(typeof(*_iterator) : RefTuple!T, T...))
+        static if (is(typeof(*_iterator) : Tuple!T, T...))
         {
             auto t = *_iterator;
             return _fun(autoExpandAndForward!t);
@@ -875,7 +875,7 @@ private enum map_primitives = q{
 
     auto ref opIndex(ptrdiff_t index) scope
     {
-        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
             auto t = _iterator[index];
             return _fun(autoExpandAndForward!t);
@@ -888,7 +888,7 @@ private enum map_primitives = q{
     {
         auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return _fun(autoExpandAndForward!t) = value;
@@ -899,7 +899,7 @@ private enum map_primitives = q{
 
         auto ref opIndexUnary(string op)(ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return _fun(autoExpandAndForward!t);
@@ -910,7 +910,7 @@ private enum map_primitives = q{
 
         auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return mixin("_fun(autoExpandAndForward!t)" ~ op ~ "= value");
@@ -945,11 +945,11 @@ struct VmapIterator(Iterator, Fun)
         return VmapIterator!(LightImmutableOf!Iterator, LightImmutableOf!Fun)(.lightImmutable(_iterator), .lightImmutable(_fun));
     }
 
-    import mir.functional: RefTuple, autoExpandAndForward;
+    import mir.functional: Tuple, autoExpandAndForward;
 
     auto ref opUnary(string op : "*")()
     {
-        static if (is(typeof(*_iterator) : RefTuple!T, T...))
+        static if (is(typeof(*_iterator) : Tuple!T, T...))
         {
             auto t = *_iterator;
             return _fun(autoExpandAndForward!t);
@@ -960,7 +960,7 @@ struct VmapIterator(Iterator, Fun)
 
     auto ref opIndex(ptrdiff_t index) scope
     {
-        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
             auto t = _iterator[index];
             return _fun(autoExpandAndForward!t);
@@ -973,7 +973,7 @@ struct VmapIterator(Iterator, Fun)
     {
         auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return _fun(autoExpandAndForward!t) = value;
@@ -984,7 +984,7 @@ struct VmapIterator(Iterator, Fun)
 
         auto ref opIndexUnary(string op)(ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return mixin(op ~ "_fun(autoExpandAndForward!t)");
@@ -995,7 +995,7 @@ struct VmapIterator(Iterator, Fun)
 
         auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return mixin("_fun(autoExpandAndForward!t)" ~ op ~ "= value");
@@ -1045,11 +1045,11 @@ struct MapIterator(Iterator, alias _fun)
     ///
     static alias __map(alias fun1) = MapIterator__map!(Iterator, _fun, pipe!(_fun, fun1));
 
-    import mir.functional: RefTuple, autoExpandAndForward;
+    import mir.functional: Tuple, autoExpandAndForward;
 
     auto ref opUnary(string op : "*")()
     {
-        static if (is(typeof(*_iterator) : RefTuple!T, T...))
+        static if (is(typeof(*_iterator) : Tuple!T, T...))
         {
             auto t = *_iterator;
             return _fun(autoExpandAndForward!t);
@@ -1060,7 +1060,7 @@ struct MapIterator(Iterator, alias _fun)
 
     auto ref opIndex(ptrdiff_t index) scope
     {
-        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
             auto t = _iterator[index];
             return _fun(autoExpandAndForward!t);
@@ -1073,7 +1073,7 @@ struct MapIterator(Iterator, alias _fun)
     {
         auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return _fun(autoExpandAndForward!t) = value;
@@ -1084,7 +1084,7 @@ struct MapIterator(Iterator, alias _fun)
 
         auto ref opIndexUnary(string op)(ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return mixin(op ~ "_fun(autoExpandAndForward!t)");
@@ -1095,7 +1095,7 @@ struct MapIterator(Iterator, alias _fun)
 
         auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return mixin("_fun(autoExpandAndForward!t)" ~ op ~ "= value");
@@ -1212,10 +1212,10 @@ struct NeighboursIterator(Iterator, size_t N, alias _fun, bool around)
         return NeighboursIterator!(LightImmutableOf!Iterator, N, _fun, around)(.lightImmutable(_iterator), neighbours);
     }
 
-    import mir.functional: RefTuple, _ref;
+    import mir.functional: Tuple, _ref;
 
     private alias RA = Unqual!(typeof(_fun(_iterator[-1], _iterator[+1])));
-    private alias Result = RefTuple!(_zip_types!Iterator, RA);
+    private alias Result = Tuple!(_zip_types!Iterator, RA);
 
     auto ref opUnary(string op : "*")()
     {
@@ -1516,7 +1516,7 @@ Iterates a field using an iterator.
 +/
 struct IndexIterator(Iterator, Field)
 {
-    import mir.functional: RefTuple, autoExpandAndForward;
+    import mir.functional: Tuple, autoExpandAndForward;
 
 @optmath:
     ///
@@ -1541,7 +1541,7 @@ struct IndexIterator(Iterator, Field)
 
     auto ref opUnary(string op : "*")()
     {
-        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
             auto t = *_iterator;
             return _field[autoExpandAndForward!t];
@@ -1552,7 +1552,7 @@ struct IndexIterator(Iterator, Field)
 
     auto ref opIndex()(ptrdiff_t index)
     {
-        static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+        static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
             auto t = _iterator[index];
             return _field[autoExpandAndForward!t];
@@ -1565,7 +1565,7 @@ struct IndexIterator(Iterator, Field)
     {
         auto ref opIndexAssign(T)(auto ref T value, ptrdiff_t index) scope
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return _field[autoExpandAndForward!t] = value;
@@ -1576,7 +1576,7 @@ struct IndexIterator(Iterator, Field)
 
         auto ref opIndexUnary(string op)(ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return mixin(op ~ "_field[autoExpandAndForward!t]");
@@ -1587,7 +1587,7 @@ struct IndexIterator(Iterator, Field)
 
         auto ref opIndexOpAssign(string op, T)(T value, ptrdiff_t index)
         {
-            static if (is(typeof(_iterator[0]) : RefTuple!T, T...))
+            static if (is(typeof(_iterator[0]) : Tuple!T, T...))
             {
                 auto t = _iterator[index];
                 return mixin("_field[autoExpandAndForward!t]" ~ op ~ "= value");
