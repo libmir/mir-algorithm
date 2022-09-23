@@ -1243,10 +1243,10 @@ struct Timestamp
     }
 
     /++
-    Creates a $(LREF Timestamp) from a string with the format YYYY-MM-DD, YYYYMMDD, or YYYY-Mon-DD.
+    Creates a $(LREF Timestamp) from a string.
 
     Params:
-        str = A string formatted in the way that $(LREF .Timestamp.toISOExtString) and $(LREF .Timestamp.toISOString) format dates. The function is case sensetive.
+        str = A string formatted in the way that $(LREF .Timestamp.toISOExtString) and $(LREF .Timestamp.toISOString) format dates, also YAML like spaces seprated strings are accepted. The function is case sensetive.
         value = (optional) result value.
 
     Throws:
@@ -1257,7 +1257,7 @@ struct Timestamp
     +/
     static bool fromString(C)(scope const(C)[] str, out Timestamp value) @safe pure nothrow @nogc
     {
-        return fromISOExtString(str, value)
+        return fromYamlString(str, value)
             || fromISOString(str, value);
     }
 
