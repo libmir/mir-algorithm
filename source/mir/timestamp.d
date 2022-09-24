@@ -1160,7 +1160,7 @@ struct Timestamp
         assert(Timestamp.fromYamlString("2001-12-15T02:59:43.1Z") == Timestamp("2001-12-15T02:59:43.1Z"));
         //valid iso8601:    
         assert(Timestamp.fromYamlString("2001-12-14t21:59:43.1-05:30") == Timestamp("2001-12-14T21:59:43.1-05:30"));
-        //yamle separated:  
+        //yaml space separated:  
         assert(Timestamp.fromYamlString("2001-12-14 21:59:43.1 -5") == Timestamp("2001-12-14T21:59:43.1-05"));
         //no time zone (Z): 
         assert(Timestamp.fromYamlString("2001-12-15 2:59:43.10") == Timestamp("2001-12-15T02:59:43.10"));
