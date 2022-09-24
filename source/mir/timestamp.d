@@ -1156,15 +1156,15 @@ struct Timestamp
     version (mir_test)
     @safe unittest
     {
-        //canonical:        
+        // canonical
         assert(Timestamp.fromYamlString("2001-12-15T02:59:43.1Z") == Timestamp("2001-12-15T02:59:43.1Z"));
-        //valid iso8601:    
+        // with lower 't' separator
         assert(Timestamp.fromYamlString("2001-12-14t21:59:43.1-05:30") == Timestamp("2001-12-14T21:59:43.1-05:30"));
-        //yaml space separated:  
+        // yaml space separated
         assert(Timestamp.fromYamlString("2001-12-14 21:59:43.1 -5") == Timestamp("2001-12-14T21:59:43.1-05"));
-        //no time zone (Z): 
+        // no time zone (Z)
         assert(Timestamp.fromYamlString("2001-12-15 2:59:43.10") == Timestamp("2001-12-15T02:59:43.10"));
-        //date (00:00:00Z): 
+        // date 00:00:00Z
         assert(Timestamp.fromYamlString("2002-12-14") == Timestamp("2002-12-14"));
     }
 
