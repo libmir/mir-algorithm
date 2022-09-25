@@ -1301,10 +1301,13 @@ struct Timestamp
         {
             import mir.parse: fromString, parse;
 
+            if (str.length < 4)
+                return false;
+
             static if (ext)
-                auto isOnlyTime = str.length >= 3 && ((str[0] == 'T' || (yaml && (str[0] == 't' || str[0] == ' ' || str[0] == '\t'))) || str[2] == ':');
+                auto isOnlyTime = (str[0] == 'T' || yaml && (str[0] == 't')) || str[2] == ':';
             else
-                auto isOnlyTime = str.length >= 3 && (str[0] == 'T' || (yaml && (str[0] == 't' || str[0] == ' ' || str[0] == '\t')));
+                auto isOnlyTime = str[0] == 'T' || yaml && (str[0] == 't');
 
             if (!isOnlyTime)
             {
