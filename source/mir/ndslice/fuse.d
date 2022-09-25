@@ -41,7 +41,7 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
 {
     import mir.ndslice.fuse;
     import mir.ndslice.slice : Contiguous, Slice;
-    import mir.ndslice.topology: iota;
+    import mir.ndslice.topology: iota, map, as;
     import mir.rc.array: RCI;
 
     enum ror = [
@@ -63,6 +63,11 @@ alias rcfuse(Dimensions...) = fuseImpl!(true, void, Dimensions);
     // matrix is contiguos
     static assert(is(typeof(matrix) == Slice!(int*, 2)));
     static assert(is(typeof(rcmatrix) == Slice!(RCI!int, 2)));
+
+    /// also works with strings
+    auto strMatrix = ror.map!(as!string).fuse;
+    static assert(is(typeof(strMatrix) == Slice!(string*, 2)));
+    assert(strMatrix.as!int == matrix);
 }
 
 /// Transposed
@@ -181,7 +186,7 @@ template fuseImpl(bool RC, T_, Dimensions...)
         r = parallelotope (ndrange) with length/shape and input range primitives.
     +/
     auto fuseImpl(NDRange)(NDRange r)
-        if (hasShape!NDRange)
+        if (isFusable!NDRange)
     {
         import mir.conv: emplaceRef;
         import mir.algorithm.iteration: each;
@@ -276,8 +281,19 @@ template fuseImpl(bool RC, T_, Dimensions...)
 
 private template fuseDimensionCount(R)
 {
+    static if (!isFusable!R)
+        enum size_t fuseDimensionCount = 0;
+    else
     static if (is(typeof(R.init.shape) : size_t[N], size_t N) && (isDynamicArray!R || __traits(hasMember, R, "front")))
-        enum size_t fuseDimensionCount = N + fuseDimensionCount!(DeepElementType!R);
+    {
+        static if (N == 1)
+            static if (isSomeChar!(typeof(R.init.front)))
+                enum size_t fuseDimensionCount = 0;
+            else
+                enum size_t fuseDimensionCount = N + fuseDimensionCount!(DeepElementType!R);
+        else
+            enum size_t fuseDimensionCount = N + fuseDimensionCount!(DeepElementType!R);
+    }
     else
         enum size_t fuseDimensionCount = 0;
 }
@@ -302,11 +318,23 @@ private static immutable shapeExceptionMsg = "fuseShape Exception: elements have
 version(D_Exceptions)
     static immutable shapeException = new Exception(shapeExceptionMsg);
 
+private template isFusable(Range)
+{
+    static if (hasShape!Range)
+    {
+        enum isFusable = !isSomeChar!(typeof(Range.init.front));
+    }
+    else
+    {
+        enum isFusable = false;
+    }
+}
+
 /+
 TODO docs
 +/
 size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
-    if (hasShape!Range)
+    if (isFusable!Range)
 {
     enum N = r.shape.length;
     enum RN = typeof(return).length;
@@ -387,12 +415,16 @@ size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
 }
 
 private template FuseElementType(NDRange)
-    if (fuseDimensionCount!NDRange >= 1)
+    if (isFusable!NDRange)
 {
+    static assert (fuseDimensionCount!NDRange);
     static if (fuseDimensionCount!NDRange == 1)
         alias FuseElementType = typeof(NDRange.init.front);
     else
+    static if (isFusable!(typeof(NDRange.init.front)))
         alias FuseElementType = FuseElementType!(typeof(NDRange.init.front));
+    else
+        alias FuseElementType = typeof(NDRange.init.front);
 }
 
 /++

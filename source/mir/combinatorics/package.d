@@ -15,11 +15,12 @@ import std.traits;
 version(mir_test) unittest
 {
     import mir.ndslice.fuse;
+    import std.string: representation;
 
-    assert(['a', 'b'].permutations.fuse == [['a', 'b'], ['b', 'a']]);
-    assert(['a', 'b'].cartesianPower(2).fuse == [['a', 'a'], ['a', 'b'], ['b', 'a'], ['b', 'b']]);
-    assert(['a', 'b'].combinations(2).fuse == [['a', 'b']]);
-    assert(['a', 'b'].combinationsRepeat(2).fuse == [['a', 'a'], ['a', 'b'], ['b', 'b']]);
+    assert(['a', 'b'].representation.permutations.fuse == [['a', 'b'], ['b', 'a']]);
+    assert(['a', 'b'].representation.cartesianPower(2).fuse == [['a', 'a'], ['a', 'b'], ['b', 'a'], ['b', 'b']]);
+    assert(['a', 'b'].representation.combinations(2).fuse == [['a', 'b']]);
+    assert(['a', 'b'].representation.combinationsRepeat(2).fuse == [['a', 'a'], ['a', 'b'], ['b', 'b']]);
 
     assert(permutations!ushort(2).fuse == [[0, 1], [1, 0]]);
     assert(cartesianPower!ushort(2, 2).fuse == [[0, 0], [0, 1], [1, 0], [1, 1]]);
@@ -323,9 +324,10 @@ struct IndexedRoR(Collection, Range)
 version(mir_test) unittest
 {
     import mir.ndslice.fuse;
+    import std.string: representation;
     // import mir.ndslice.topology: only;
 
-    auto projectionD = 2.permutations.indexedRoR("ab"d);
+    auto projectionD = 2.permutations.indexedRoR("ab"d.representation);
     assert(projectionD.fuse == [['a', 'b'], ['b', 'a']]);
 
     // auto projectionC = 2.permutations.indexedRoR(only('a', 'b'));
@@ -745,13 +747,15 @@ pure nothrow @safe version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
+
     assert(iota(2).cartesianPower.fuse == [[0], [1]]);
     assert(iota(2).cartesianPower(2).fuse == [[0, 0], [0, 1], [1, 0], [1, 1]]);
 
     auto three_nums_two_bins = [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]];
     assert(iota(3).cartesianPower(2).fuse == three_nums_two_bins);
 
-    assert("AB"d.cartesianPower(2).fuse == ["AA"d, "AB"d, "BA"d, "BB"d]);
+    import std.string: representation;
+    assert("AB"d.representation.cartesianPower(2).fuse == ["AA"d, "AB"d, "BA"d, "BB"d]);
 }
 
 ///
@@ -781,16 +785,17 @@ pure nothrow @safe version(mir_test) unittest
     import mir.array.allocation: array;
     import mir.ndslice.topology: iota;
     import std.range: dropOne;
+    import std.string: representation;
 
     assert(iota(0).cartesianPower.length == 0);
-    assert("AB"d.cartesianPower(3).fuse == ["AAA"d, "AAB"d, "ABA"d, "ABB"d, "BAA"d, "BAB"d, "BBA"d, "BBB"d]);
+    assert("AB"d.representation.cartesianPower(3).fuse == ["AAA"d, "AAB"d, "ABA"d, "ABB"d, "BAA"d, "BAB"d, "BBA"d, "BBB"d]);
     auto expected = ["AA"d, "AB"d, "AC"d, "AD"d,
                      "BA"d, "BB"d, "BC"d, "BD"d,
                      "CA"d, "CB"d, "CC"d, "CD"d,
                      "DA"d, "DB"d, "DC"d, "DD"d];
-    assert("ABCD"d.cartesianPower(2).fuse == expected);
+    assert("ABCD"d.representation.cartesianPower(2).fuse == expected);
     // verify with array too
-    assert("ABCD"d.cartesianPower(2).fuse == expected);
+    assert("ABCD"d.representation.cartesianPower(2).fuse == expected);
 
     assert(iota(2).cartesianPower.front == [0]);
 
@@ -1023,9 +1028,10 @@ pure nothrow @safe version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
+    import std.string: representation;
     assert(iota(3).combinations(2).fuse == [[0, 1], [0, 2], [1, 2]]);
-    assert("AB"d.combinations(2).fuse == ["AB"d]);
-    assert("ABC"d.combinations(2).fuse == ["AB"d, "AC"d, "BC"d]);
+    assert("AB"d.representation.combinations(2).fuse == ["AB"d]);
+    assert("ABC"d.representation.combinations(2).fuse == ["AB"d, "AC"d, "BC"d]);
 }
 
 ///
@@ -1054,14 +1060,15 @@ pure nothrow @safe version(mir_test) unittest
     import mir.array.allocation: array;
     import mir.ndslice.topology: iota;
     import std.range: dropOne;
+    import std.string: representation;
 
     assert(iota(0).combinations.length == 0);
     assert(iota(2).combinations.fuse == [[0], [1]]);
 
     auto expected = ["AB"d, "AC"d, "AD"d, "BC"d, "BD"d, "CD"d];
-    assert("ABCD"d.combinations(2).fuse == expected);
+    assert("ABCD"d.representation.combinations(2).fuse == expected);
     // verify with array too
-    assert("ABCD"d.combinations(2).fuse == expected);
+    assert("ABCD"d.representation.combinations(2).fuse == expected);
     assert(iota(2).combinations.front == [0]);
 
     // is copyable?
@@ -1329,11 +1336,12 @@ pure nothrow @safe version(mir_test) unittest
 {
     import mir.ndslice.fuse;
     import mir.ndslice.topology: iota;
+    import std.string: representation;
 
     assert(iota(2).combinationsRepeat.fuse == [[0], [1]]);
     assert(iota(2).combinationsRepeat(2).fuse == [[0, 0], [0, 1], [1, 1]]);
     assert(iota(3).combinationsRepeat(2).fuse == [[0, 0], [0, 1], [0, 2], [1, 1], [1, 2], [2, 2]]);
-    assert("AB"d.combinationsRepeat(2).fuse == ["AA"d, "AB"d,  "BB"d]);
+    assert("AB"d.representation.combinationsRepeat(2).fuse == ["AA"d, "AB"d,  "BB"d]);
 }
 
 ///
@@ -1362,14 +1370,15 @@ version(mir_test) unittest
     import mir.array.allocation: array;
     import mir.ndslice.topology: iota;
     import std.range: dropOne;
+    import std.string: representation;
 
     assert(iota(0).combinationsRepeat.length == 0);
-    assert("AB"d.combinationsRepeat(3).fuse == ["AAA"d, "AAB"d, "ABB"d,"BBB"d]);
+    assert("AB"d.representation.combinationsRepeat(3).fuse == ["AAA"d, "AAB"d, "ABB"d,"BBB"d]);
 
     auto expected = ["AA"d, "AB"d, "AC"d, "AD"d, "BB"d, "BC"d, "BD"d, "CC"d, "CD"d, "DD"d];
-    assert("ABCD"d.combinationsRepeat(2).fuse == expected);
+    assert("ABCD"d.representation.combinationsRepeat(2).fuse == expected);
     // verify with array too
-    assert("ABCD"d.combinationsRepeat(2).fuse == expected);
+    assert("ABCD"d.representation.combinationsRepeat(2).fuse == expected);
 
     assert(iota(2).combinationsRepeat.front == [0]);
 
