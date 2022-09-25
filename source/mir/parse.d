@@ -308,12 +308,7 @@ bool fromString(T, C)(scope const(C)[] str, ref T value)
         auto ret = decimal.fromStringImpl(str, key);
         if (_expect(ret, true))
         {
-            switch(key) with(DecimalExponentKey)
-            {
-                case nan: value = decimal.coefficient.sign ? -T.nan : T.nan; break;
-                case infinity: value = decimal.coefficient.sign ? -T.infinity : T.infinity; break;
-                default: value =  cast(T) decimal; break;
-            }
+            value = cast(T) decimal;
         }
         return ret;
     }
@@ -329,6 +324,15 @@ version(mir_test)
 {
     int value;
     assert("123".fromString(value) && value == 123);
+}
+
+///
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    double value = 0;
+    assert("+Inf".fromString(value) && value == double.infinity);
+    assert("-nan".fromString(value) && value != value);
 }
 
 /++
