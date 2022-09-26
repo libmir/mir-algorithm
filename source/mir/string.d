@@ -27,7 +27,7 @@ bool containsAny(C, size_t L)
 
     alias U = Representation!C;
 
-    version(none)
+    // version(none)
     version (LittleEndian)
     version (LDC)
     static if (N <= 8)
