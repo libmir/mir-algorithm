@@ -72,13 +72,15 @@ struct Decimal(uint size64)
             }
             else
             {
-                BigInt!size64 work = coefficient;
+                BigInt!size64 work = void;
+                work = coefficient;
                 coefficientLength = work.view.unsigned.toStringImpl(buffer);
             }
         }
         else
         {
-            BigInt!size64 work = coefficient;
+            BigInt!size64 work = void;
+            work = coefficient;
             coefficientLength = work.view.unsigned.toStringImpl(buffer);
         }
 

@@ -73,7 +73,7 @@ struct BigInt(uint size64)
         static if (size_t.sizeof == ulong.sizeof)
         {
             length = data != 0;
-            view.coefficients[0] = data;
+            this.data[0] = data;
         }
         else
         {
