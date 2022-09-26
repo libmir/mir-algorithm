@@ -492,6 +492,34 @@ version (mir_test) unittest
     assert(w.data == `\x03`);
 }
 
+///
+void printReplaced(C, W)(scope ref W w, scope const(C)[] str, C c, scope const(C)[] to)
+{
+    import mir.string: scanLeftAny;
+
+    while (str.length)
+    {
+        auto tailLen = str.scanLeftAny(c).length;
+        print(w, str[0 .. $ - tailLen]);
+        if (tailLen == 0)
+            break;
+        print(w, to);
+        str = str[$ - tailLen + 1 .. $];
+    }
+}
+
+///
+@safe pure nothrow
+unittest
+{
+    import mir.test: should;
+    auto csv = stringBuf;
+    csv.put('"');
+    csv.printReplaced(`some string with " double quotes "!`, '"', `""`);
+    csv.put('"');
+    csv.data.should == `"some string with "" double quotes ""!"`;
+}
+
 /++
 Decodes `char` `c` to the form `u00XX`, where `XX` is 2 hexadecimal characters.
 +/

@@ -32,6 +32,7 @@ bool containsAny(C, size_t L)
     version (LDC)
     static if (N <= 8)
     static if (is(__vector(U[N])))
+    if (!__ctfe)
     {
         alias V = __vector(U[N]);
         pragma(msg, V);
@@ -102,6 +103,7 @@ template scanLeftAny(string op = "==")
         version (LDC)
         static if (N <= 8)
         static if (is(__vector(U[N])))
+        if (!__ctfe)
         {
             import mir.bitop: cttz;
 
@@ -207,6 +209,7 @@ template scanRightAny(string op = "==")
         version (LDC)
         static if (N <= 8)
         static if (is(__vector(U[N])))
+        if (!__ctfe)
         {
             import mir.bitop: ctlz;
 
@@ -296,7 +299,7 @@ unittest
 inout(C)[]
     strip(C, size_t L)
     (return scope inout(C)[] str, const C[L] chars...)
-    @trusted pure nothrow @nogc
+    @safe pure nothrow @nogc
     if (isSomeChar!C && L)
 {
     return str.stripLeft(chars).stripRight(chars);
