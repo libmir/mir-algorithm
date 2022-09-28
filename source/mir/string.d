@@ -23,44 +23,64 @@ bool containsAny(C, size_t L)
     @trusted pure nothrow @nogc
     if (isSomeChar!C && L)
 {
-    enum size_t N = ScanVecSize / C.sizeof;
+    enum size_t NF = ScanVecSize / C.sizeof;
 
     alias U = Representation!C;
 
     // version(none)
     version (LittleEndian)
     version (LDC)
-    static if (N <= 8)
-    static if (is(__vector(U[N])))
+    static if (L <= 8)
+    static if (is(__vector(U[NF])))
     if (!__ctfe)
     {
-        alias V = __vector(U[N]);
-        pragma(msg, V);
-        V[L] charsv;
-        static foreach (i; 0 .. L)
-            charsv[i] = chars[i];
+        import mir.bitop: cttzp;
 
-        while (str.length >= N)
-        {
-            auto a = cast(V) *cast(const U[N]*) str.ptr;
+        static foreach (F; 1 .. 2 + (C.sizeof == 1))
+        {{
+            enum N = NF / F;
+            alias V = __vector(U[N]);
 
-            import ldc.simd: mask = equalMask;
-
-            V[L] masked;
+            V[L] charsv;
             static foreach (i; 0 .. L)
-                masked[i] = mask!(__vector(U[N]))(a, charsv[i]);
+                charsv[i] = chars[i];
 
-            static foreach (i; 0 .. L)
-                static if (i == 0)
-                    V m = masked[i];
+            while (str.length >= N)
+            {
+                auto a = cast(V) *cast(const U[N]*) str.ptr;
+
+                import ldc.simd: mask = equalMask;
+
+                V[L] masked;
+                static foreach (i; 0 .. L)
+                    masked[i] = mask!(__vector(U[N]))(a, charsv[i]);
+
+                static foreach (i; 0 .. L)
+                    static if (i == 0)
+                        V m = masked[i];
+                    else
+                        m |= masked[i];
+
+                static if (U[N].sizeof == size_t.sizeof)
+                {
+                    size_t[U[N].sizeof / size_t.sizeof] words = [(cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array[0]];
+                }
                 else
-                    m |= masked[i];
+                {
+                    auto words = (cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array;
+                }
 
-            if (m != V.init)
-                return true;
+                foreach (word; words)
+                    if (word)
+                        return true;
 
-            str = str[N .. $];
-        }
+                str = str[N .. $];
+
+                static if (F != 1)
+                    break;
+            }
+
+        }}
     }
 
     foreach (C c; str)
@@ -94,56 +114,81 @@ template scanLeftAny(string op = "==")
         @trusted pure nothrow @nogc
         if (isSomeChar!C && L)
     {
-        enum size_t N = ScanVecSize / C.sizeof;
+        enum size_t NF = ScanVecSize / C.sizeof;
 
         alias U = Representation!C;
 
         // version(none)
         version (LittleEndian)
         version (LDC)
-        static if (N <= 8)
-        static if (is(__vector(U[N])))
+        static if (L <= 8)
+        static if (is(__vector(U[NF])))
         if (!__ctfe)
         {
-            import mir.bitop: cttz;
+            import mir.bitop: cttzp;
 
-            alias V = __vector(U[N]);
-            pragma(msg, V);
-            V[L] charsv;
-            static foreach (i; 0 .. L)
-                charsv[i] = chars[i];
-
-            while (str.length >= N)
-            {
-                auto a = cast(V) *cast(const U[N]*) str.ptr;
-
-                import ldc.simd: mask = equalMask;
-
-                V[L] masked;
+            static foreach (F; 1 .. 2 + (C.sizeof == 1))
+            {{
+                enum N = NF / F;
+                alias V = __vector(U[N]);
+                V[L] charsv;
                 static foreach (i; 0 .. L)
-                    masked[i] = mask!(__vector(U[N]))(a, charsv[i]);
+                    charsv[i] = chars[i];
 
-                static foreach (i; 0 .. L)
-                    static if (i == 0)
-                        V m = masked[i];
-                    else
-                        m |= masked[i];
-
-                static if (op == "!=")
-                    m = ~m;
-
-                auto words = (cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array;
-
-                static foreach (i; 0 .. words.length)
+                while (str.length >= N)
                 {
-                    if (words[i])
+                    auto a = cast(V) *cast(const U[N]*) str.ptr;
+
+                    import ldc.simd: mask = equalMask;
+
+                    V[L] masked;
+                    static foreach (i; 0 .. L)
+                        masked[i] = mask!(__vector(U[N]))(a, charsv[i]);
+
+                    static foreach (i; 0 .. L)
+                        static if (i == 0)
+                            V m = masked[i];
+                        else
+                            m |= masked[i];
+
+                    static if (op == "!=")
+                        m = ~m;
+
+                    static if (U[N].sizeof == size_t.sizeof)
                     {
-                        enum p = i * size_t.sizeof / U.sizeof;
-                        return str[p + (cttz(words[i]) / (U.sizeof * 8)) .. $];
+                        size_t[U[N].sizeof / size_t.sizeof] words = [(cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array[0]];
                     }
+                    else
+                    {
+                        auto words = (cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array;
+                    }
+
+                    size_t p;
+
+                    static foreach (i; 0 .. words.length)
+                    {
+                        p += cttzp(words[i]);
+                        if (words[i])
+                        {
+                            static if (F == 1)
+                                goto L;
+                            else
+                                goto M;
+                        }
+                    }
+                    str = str[N .. $];
+                    static if (F == 1)
+                        continue;
+                    else
+                        break;
+
+                    static if (F == 1)
+                {L:}
+                    else
+                {M:}
+                    return str[p / (U.sizeof * 8) .. $];
                 }
-                str = str[N .. $];
-            }
+            }}
         }
 
         Loop: for (; str.length; str = str[1 .. $])
@@ -200,56 +245,81 @@ template scanRightAny(string op = "==")
         @trusted pure nothrow @nogc
         if (isSomeChar!C && L)
     {
-        enum size_t N = ScanVecSize / C.sizeof;
+        enum size_t NF = ScanVecSize / C.sizeof;
 
         alias U = Representation!C;
 
         // version(none)
         version (LittleEndian)
         version (LDC)
-        static if (N <= 8)
-        static if (is(__vector(U[N])))
+        static if (L <= 8)
+        static if (is(__vector(U[NF])))
         if (!__ctfe)
         {
-            import mir.bitop: ctlz;
+            import mir.bitop: ctlzp;
 
-            alias V = __vector(U[N]);
-            pragma(msg, V);
-            V[L] charsv;
-            static foreach (i; 0 .. L)
-                charsv[i] = chars[i];
+            static foreach (F; 1 .. 2 + (C.sizeof == 1))
+            {{
+                enum N = NF / F;
 
-            while (str.length >= N)
-            {
-                auto a = cast(V) *cast(const U[N]*) (str.ptr + str.length - N);
-
-                import ldc.simd: mask = equalMask;
-
-                V[L] masked;
+                alias V = __vector(U[N]);
+                V[L] charsv;
                 static foreach (i; 0 .. L)
-                    masked[i] = mask!(__vector(U[N]))(a, charsv[i]);
+                    charsv[i] = chars[i];
 
-                static foreach (i; 0 .. L)
-                    static if (i == 0)
-                        V m = masked[i];
-                    else
-                        m |= masked[i];
-
-                static if (op == "!=")
-                    m = ~m;
-
-                auto words = (cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array;
-
-                static foreach (i; 0 .. words.length)
+                while (str.length >= N)
                 {
-                    if (words[$ - 1 - i])
+                    auto a = cast(V) *cast(const U[N]*) (str.ptr + str.length - N);
+
+                    import ldc.simd: mask = equalMask;
+
+                    V[L] masked;
+                    static foreach (i; 0 .. L)
+                        masked[i] = mask!(__vector(U[N]))(a, charsv[i]);
+
+                    static foreach (i; 0 .. L)
+                        static if (i == 0)
+                            V m = masked[i];
+                        else
+                            m |= masked[i];
+
+                    static if (op == "!=")
+                        m = ~m;
+
+                    static if (U[N].sizeof == size_t.sizeof)
                     {
-                        enum p = i * size_t.sizeof / U.sizeof;
-                        return str[0 .. $ - (p + (ctlz(words[$ - 1 - i]) / (U.sizeof * 8)))];
+                        size_t[U[N].sizeof / size_t.sizeof] words = [(cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array[0]];
                     }
+                    else
+                    {
+                        auto words = (cast(__vector(size_t[U[N].sizeof / size_t.sizeof])) m).array;
+                    }
+                    size_t p;
+
+                    static foreach (i; 0 .. words.length)
+                    {
+                        p += ctlzp(words[$ - 1 - i]);
+                        if (words[$ - 1 - i])
+                        {
+                            static if (F == 1)
+                                goto L;
+                            else
+                                goto M;
+                        }
+                    }
+                    str = str[0 .. $ - N];
+                    static if (F == 1)
+                        continue;
+                    else
+                        break;
+
+                    static if (F == 1)
+                {L:}
+                    else
+                {M:}
+                    return str[0 .. $ - p / (U.sizeof * 8)];
                 }
-                str = str[0 .. $ - N];
-            }
+            }}
         }
 
         Loop: for (; str.length; str = str[0 .. $ - 1])

@@ -15,8 +15,6 @@ module mir.small_string;
 
 import mir.serde: serdeScoped, serdeProxy;
 
-private extern (C) @system nothrow @nogc pure size_t strnlen_s(scope const char* s, size_t n);
-
 private static immutable errorMsg = "Cannot create SmallString: input string exceeds maximum allowed length.";
 version(D_Exceptions)
     private static immutable exception = new Exception(errorMsg);
@@ -30,7 +28,7 @@ struct SmallString(uint maxLength)
     if (maxLength)
 {
 
-    import core.stdc.string: memcmp, memcpy, strlen;
+    import core.stdc.string: memcmp, memcpy;
     import std.traits: Unqual, isIterable;
 
     // maxLength bytes
@@ -81,6 +79,7 @@ extern(D) @safe pure @nogc:
     /// ditto
     ref typeof(this) opAssign(scope const(char)[] str) return @trusted
     {
+        _data = '\0';
         if (str.length > _data.sizeof)
         {
             version(D_Exceptions) throw exception;
@@ -90,7 +89,6 @@ extern(D) @safe pure @nogc:
             _data[0 .. str.length] =  str;
         else
             memcpy(_data.ptr, str.ptr, str.length);
-        _data[str.length .. $] = '\0';
         return this;
     }
 
@@ -100,11 +98,11 @@ extern(D) @safe pure @nogc:
     {
         static if (n < maxLength)
         {
+            _data = '\0';
             version (LDC)
                 cast(char[n])(_data[0 .. n]) = rhs._data;
             else
                 _data[0 .. n] = rhs._data;
-            _data[n .. maxLength] = '\0';
         }
         else
         {
@@ -208,12 +206,8 @@ scope nothrow:
     +/
     inout(char)[] opIndex() inout @trusted scope return
     {
-        size_t i;
-        if (__ctfe)
-            while (i < maxLength && _data[i]) i++;
-        else
-            i = _data[$ - 1] ? _data.length : strlen(_data.ptr);
-        return _data[0 .. i];
+        import mir.string: scanLeftAny;
+        return _data[0 .. $ - _data.scanLeftAny('\0').length];
     }
 
     ///
@@ -258,12 +252,6 @@ scope const:
 
     ///
     alias toString = opIndex;
-
-    /// Hash implementation
-    size_t toHash()
-    {
-        return hashOf(opIndex);
-    }
 
     /// Comparisons operator overloads
     bool opEquals(ref scope const SmallString rhs)
