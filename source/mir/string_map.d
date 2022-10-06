@@ -49,7 +49,7 @@ struct StringMap(T)
     }
 
     /// `hashOf` Implementation. Doesn't depend on order
-    size_t toHash() scope @trusted const nothrow // pure  @nogc
+    size_t toHash() scope @trusted const nothrow pure @nogc
     {
         if (implementation is null)
             return 0;
