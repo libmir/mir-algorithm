@@ -38,6 +38,7 @@ struct StringMap(T)
     import mir.utility: _expect;
     import core.lifetime: move;
     import mir.conv: emplaceRef;
+    import mir.algebraic: Algebraic;
 
     ///
     static struct KeyValue
@@ -49,7 +50,24 @@ struct StringMap(T)
     }
 
     /// `hashOf` Implementation. Doesn't depend on order
+    static if (is(T == Algebraic!Union, Union) && is(Union == union))
     size_t toHash() scope @trusted const nothrow pure @nogc
+    {
+        if (implementation is null)
+            return 0;
+        size_t hash;
+        foreach (i, index; implementation.indices)
+        {
+            hash = hashOf(implementation._keys[index], hash);
+            static if (__traits(hasMember, T, "toHash"))
+               hash = hashOf(implementation._values[index].toHash, hash);
+            else
+               hash = hashOf(implementation._values[index], hash);
+        }
+        return hash;
+    }
+    else
+    size_t toHash() scope @trusted const nothrow // pure @nogc
     {
         if (implementation is null)
             return 0;
