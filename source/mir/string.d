@@ -28,6 +28,8 @@ bool containsAny(C, size_t L)
     alias U = Representation!C;
 
     // version(none)
+    version (MirNoSIMD) {}
+    else
     version (LittleEndian)
     version (LDC)
     static if (L <= 8)
@@ -119,6 +121,8 @@ template scanLeftAny(string op = "==")
         alias U = Representation!C;
 
         // version(none)
+        version (MirNoSIMD) {}
+        else
         version (LittleEndian)
         version (LDC)
         static if (L <= 8)
@@ -250,6 +254,8 @@ template scanRightAny(string op = "==")
         alias U = Representation!C;
 
         // version(none)
+        version (MirNoSIMD) {}
+        else
         version (LittleEndian)
         version (LDC)
         static if (L <= 8)

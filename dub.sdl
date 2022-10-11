@@ -7,6 +7,7 @@ license "Apache-2.0"
 
 dependency "mir-core" version=">=1.3.5"
 
+// dflags "-version=MirNoSIMD"
 // dflags "-mtriple=aarch64-linux-gnu"
 
 // versions "TeslAlgoM"
