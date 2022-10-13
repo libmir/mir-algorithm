@@ -51,7 +51,7 @@ bool containsAny(C, size_t L)
             {
                 auto a = cast(V) *cast(const U[N]*) str.ptr;
 
-                import ldc.simd: mask = equalMask;
+                import mir.internal.ldc_simd: mask = equalMask;
 
                 V[L] masked;
                 static foreach (i; 0 .. L)
@@ -143,7 +143,7 @@ template scanLeftAny(string op = "==")
                 {
                     auto a = cast(V) *cast(const U[N]*) str.ptr;
 
-                    import ldc.simd: mask = equalMask;
+                    import mir.internal.ldc_simd: mask = equalMask;
 
                     V[L] masked;
                     static foreach (i; 0 .. L)
@@ -277,7 +277,7 @@ template scanRightAny(string op = "==")
                 {
                     auto a = cast(V) *cast(const U[N]*) (str.ptr + str.length - N);
 
-                    import ldc.simd: mask = equalMask;
+                    import mir.internal.ldc_simd: mask = equalMask;
 
                     V[L] masked;
                     static foreach (i; 0 .. L)

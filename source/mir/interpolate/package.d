@@ -307,7 +307,7 @@ void shuffle3(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N
     {
         enum masks = generateShuffles3!(N, P);
         import std.meta: aliasSeqOf;
-        import ldc.simd: shufflevector;
+        import mir.internal.ldc_simd: shufflevector;
         alias V = __vector(F[N]); // @FUTURE@ vector support
         auto as = shufflevector!(V, aliasSeqOf!(masks[0]))(*cast(V*)a.ptr, *cast(V*)b.ptr);
         auto bs = shufflevector!(V, aliasSeqOf!(masks[1]))(*cast(V*)a.ptr, *cast(V*)b.ptr);
@@ -347,7 +347,7 @@ void shuffle2(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N
     {
         enum masks = generateShuffles2!(N, P);
         import std.meta: aliasSeqOf;
-        import ldc.simd: shufflevector;
+        import mir.internal.ldc_simd: shufflevector;
         alias V = __vector(F[N]); // @FUTURE@ vector support
         auto as = shufflevector!(V, aliasSeqOf!(masks[0]))(*cast(V*)a.ptr, *cast(V*)b.ptr);
         auto bs = shufflevector!(V, aliasSeqOf!(masks[1]))(*cast(V*)a.ptr, *cast(V*)b.ptr);
@@ -388,7 +388,7 @@ void shuffle1(size_t P, F, size_t N)(ref F[N] a, ref F[N] b, ref F[N] c, ref F[N
     {
         enum masks = generateShuffles1!(N, P);
         import std.meta: aliasSeqOf;
-        import ldc.simd: shufflevector;
+        import mir.internal.ldc_simd: shufflevector;
         alias V = __vector(F[N]); // @FUTURE@ vector support
         auto as = shufflevector!(V, aliasSeqOf!(masks[0]))(*cast(V*)a.ptr, *cast(V*)b.ptr);
         auto bs = shufflevector!(V, aliasSeqOf!(masks[1]))(*cast(V*)a.ptr, *cast(V*)b.ptr);
