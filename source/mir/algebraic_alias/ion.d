@@ -60,6 +60,7 @@ See also $(MREF mir,string_map) - ordered string-value associative array.
 alias IonAlgebraic = Algebraic!Ion_;
 
 ///
+@safe pure
 version(mir_test)
 unittest
 {
@@ -137,6 +138,7 @@ unittest
     value = object["array"] = arr;
     assert(value.kind == IonAlgebraic.Kind.array);
     assert(value == arr);
+    assert(value == [0, 1, 2, 3, 4].map!IonAlgebraic.array);// by value
     assert(value.array[3] == 3);
 
     // Object
