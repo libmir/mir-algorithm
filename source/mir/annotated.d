@@ -69,12 +69,6 @@ struct Annotated(T) {
             return annotations == rhs.annotations && value == rhs.value;
         }
 
-        /// ditto
-        bool opEquals(ref scope const Annotated rhs) scope const
-        {
-            return annotations == rhs.annotations && value == rhs.value;
-        }
-
         size_t toHash() scope @trusted const pure nothrow @nogc
         {
             static if (__traits(compiles, hashOf(value)))
@@ -120,12 +114,12 @@ struct Annotated(T) {
             this.value = T(forward!args);
     }
 
-    private alias E = .basicElementType!T;
+    // private alias E = .basicElementType!T;
 
     import std.traits: isAssociativeArray, isAggregateType;
     ///
-    int opCmp()(ref scope const typeof(this) rhs) scope const pure nothrow @nogc
-        if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
+    int opCmp()(scope const typeof(this) rhs) scope const pure nothrow @nogc @system
+        // if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
     {
         if (auto d = __cmp(annotations, rhs.annotations))
             return d;
@@ -226,12 +220,6 @@ struct AnnotatedOnce(T) {
         {
             return annotation == rhs.annotation && value == rhs.value;
         }
-
-        ///
-        bool opEquals(ref scope const AnnotatedOnce rhs) scope const
-        {
-            return annotation == rhs.annotation && value == rhs.value;
-        }
     }
     else
     {
@@ -260,12 +248,12 @@ struct AnnotatedOnce(T) {
             this.value = T(forward!args);
     }
 
-    private alias E = .basicElementType!T;
+    // private alias E = .basicElementType!T;
 
     import std.traits: isAssociativeArray, isAggregateType;
-    static if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
+    // static if (!isAssociativeArray!E && (!isAggregateType!E || __traits(hasMember, E, "opCmp")))
     ///
-    int opCmp()(ref scope const typeof(this) rhs) scope const @safe pure nothrow @nogc
+    int opCmp()(scope const typeof(this) rhs) scope const @system pure nothrow @nogc
     {
         if (auto d = __cmp(annotation, rhs.annotation))
             return d;
