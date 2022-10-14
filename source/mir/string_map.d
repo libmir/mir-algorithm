@@ -1072,7 +1072,7 @@ struct StringMap(T)
     }
 
     import std.traits: isAssociativeArray, isAggregateType;
-    static if (!isAssociativeArray!(.basicElementType!T) && (!isAggregateType!(.basicElementType!T) || __traits(hasMember, .basicElementType!T, "opCmp")))
+    // static if (!isAssociativeArray!(.basicElementType!T) && (!isAggregateType!(.basicElementType!T) || __traits(hasMember, .basicElementType!T, "opCmp")))
     /// `opCmp` Implementation. Doesn't depend on order
     int opCmp()(ref scope const typeof(this) rhs) scope const @trusted // pure nothrow @nogc
     {
