@@ -258,6 +258,14 @@ struct StringMap(T)
         return implementation ? implementation.length : 0;
     }
 
+    /++
+    Returns: number of elements in the table.
+    +/
+    bool empty()() @safe pure nothrow @nogc const @property
+    {
+        return !implementation || implementation.length == 0;
+    }
+
     version(mir_test) static if (is(T == int))
     ///
     @safe pure unittest
@@ -345,8 +353,8 @@ struct StringMap(T)
     */
     auto byKeyValue(this This)() @trusted pure nothrow @nogc
     {
-        import mir.ndslice.topology: zip, map;
-        return keys.zip(values).map!KeyValue;
+        import mir.ndslice.topology: map;
+        return this.opIndex.map!KeyValue;
     }
 
     version(mir_test) static if (is(T == int))
@@ -367,6 +375,19 @@ struct StringMap(T)
         assert(map.values == []);
         map["c"] = 4.0;
         assert(map.values == [4.0]);
+    }
+
+    ///
+    auto opIndex(this This)() @trusted pure nothrow @nogc
+    {
+        import mir.ndslice.topology: zip;
+        return keys.zip(values);
+    }
+
+    ///
+    auto dup(this This)() @trusted
+    {
+        return StringMap(keys.dup, values.dup);
     }
 
     /++
@@ -688,7 +709,7 @@ struct StringMap(T)
 
     Complexity: `O(log(s))`, where `s` is the number of the keys with the same length as the input key.
     +/
-    inout(T) get()(scope const(char)[] key, lazy inout(T) defaultValue)
+    inout(T) get()(scope const(char)[] key, lazy inout(T) defaultValue) inout
     {
         size_t index;
         if (implementation && implementation.findIndex(key, index))
@@ -808,6 +829,7 @@ struct StringMap(T)
     }
 
     ///
+    version(mir_test) static if (is(T == int))
     @safe pure nothrow unittest
     {
         StringMap!int map = ["k": 1];
@@ -971,22 +993,22 @@ struct StringMap(T)
             return _length;
         }
 
-        inout(string)[] keys()() @trusted inout @property
+        inout(string)[] keys()() @trusted inout @property pure @nogc nothrow
         {
             return _keys[0 .. _length];
         }
 
-        inout(T)[] values()() @trusted inout @property
+        inout(T)[] values()() @trusted inout @property pure @nogc nothrow
         {
             return _values[0 .. _length];
         }
 
-        inout(U)[] indices()() @trusted inout @property
+        inout(U)[] indices()() @trusted inout @property pure @nogc nothrow
         {
             return _indices[0 .. _length];
         }
 
-        inout(U)[] lengthTable()() @trusted inout @property
+        inout(U)[] lengthTable()() @trusted inout @property pure @nogc nothrow
         {
             return _lengthTable;
         }
@@ -1216,4 +1238,63 @@ version(mir_test)
     const tkType = `token_type` in token;
 
     assert((*tkType) == "Bearer"); // *tkType contains value 3599
+}
+
+///
+template intersectionMap(alias merger)
+{
+    ///
+    StringMap!V intersectionMap(V)(StringMap!V a, StringMap!V b)
+    {
+        import mir.functional : naryFun;
+        typeof(return) res;
+        foreach (key, ref value; a)
+            if (auto bValPtr = key in b)
+                res[key] = naryFun!merger(value, *bValPtr);
+        return res;
+    }
+}
+
+///
+version(mir_test)
+@safe pure
+unittest {
+    import mir.test: should;
+    import mir.string_map : StringMap;
+    auto m0 = StringMap!int(["foo", "bar"], [1, 2]);
+    auto m1 = StringMap!int(["foo"], [2]);
+    auto m2 = StringMap!int(["foo"], [3]);
+    intersectionMap!"a + b"(m0, m1).should == m2;
+}
+
+///
+template unionMap(alias merger)
+{
+    ///
+    StringMap!V unionMap(V)(StringMap!V a, StringMap!V b)
+    {
+        import mir.functional : naryFun;
+        typeof(return) res;
+        foreach (key, ref value; a)
+            if (auto bValPtr = key in b)
+                res[key] = naryFun!merger(value, *bValPtr);
+            else
+                res[key] = value;
+        foreach (key, ref value; b)
+            if (key !in res)
+                res[key] = value;
+        return res;
+    }
+}
+
+///
+version(mir_test)
+@safe pure
+unittest {
+    import mir.test: should;
+    import mir.string_map : StringMap;
+    auto m0 = StringMap!int(["foo", "bar"], [1, 2]);
+    auto m1 = StringMap!int(["foo"], [2]);
+    auto m2 = StringMap!int(["foo", "bar"], [3, 2]);
+    unionMap!"a + b"(m0, m1).should == m2;
 }

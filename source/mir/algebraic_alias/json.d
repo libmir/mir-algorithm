@@ -49,6 +49,7 @@ version(mir_test)
 @safe pure
 unittest
 {
+    import mir.test: should;
     import mir.ndslice.topology: map;
     import mir.array.allocation: array;
 
@@ -141,4 +142,11 @@ unittest
     JsonAlgebraic fromAA = ["a" : JsonAlgebraic(3), "b" : JsonAlgebraic("b")];
     assert(fromAA.object["a"] == 3);
     assert(fromAA.object["b"] == "b");
+
+    // object foreach iteration
+    long sum;
+    foreach (ref key, ref val; fromAA.object)
+        if (key == "a")
+            sum += val.get!long;
+    sum.should == 3;
 }

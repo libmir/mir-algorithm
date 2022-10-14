@@ -64,6 +64,7 @@ alias IonAlgebraic = Algebraic!Ion_;
 version(mir_test)
 unittest
 {
+    import mir.test: should;
     import mir.ndslice.topology: map;
     import mir.array.allocation: array;
 
@@ -158,6 +159,14 @@ unittest
     assert(fromAA.object["a"] == 3);
     assert(fromAA.object["b"] == "b");
 
+    // object foreach iteration
+    long sum;
+    foreach (ref key, ref val; fromAA.object)
+        if (key == "a")
+            sum += val.get!long;
+    sum.should == 3;
+
+    // annotations
     auto annotated = Annotated!IonAlgebraic(["birthday"], Timestamp("2001-01-01"));
     value = annotated;
     assert(value == annotated);
