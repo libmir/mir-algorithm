@@ -220,6 +220,7 @@ struct BigUIntView(W)
     /++
     +/
     BigUIntView topMostSignificantPart(size_t length)
+        in (length <= coefficients.length)
     {
         return BigUIntView(coefficients[$ - length .. $]);
     }
@@ -227,6 +228,7 @@ struct BigUIntView(W)
     /++
     +/
     BigUIntView topLeastSignificantPart(size_t length)
+        in (length <= coefficients.length)
     {
         return BigUIntView(coefficients[0 .. length]);
     }
@@ -376,9 +378,13 @@ struct BigUIntView(W)
             current >>>= 4 * (W.sizeof * 2 - j % (W.sizeof * 2));
             work.coefficients[$ - 1] = current;
         }
+        else
+        {
+            work.coefficients = work.coefficients[0 .. (j / (W.sizeof * 2) + (j % (W.sizeof * 2) != 0))];
+            work = work.normalized;
+        }
 
-        coefficients = coefficients[0 .. (j / (W.sizeof * 2) + (j % (W.sizeof * 2) != 0))];
-
+        this = work;
         return true;
     }
 
@@ -475,9 +481,13 @@ struct BigUIntView(W)
             current >>>= (W.sizeof * 8 - j % (W.sizeof * 8));
             work.coefficients[$ - 1] = current;
         }
+        else
+        {
+            work.coefficients = work.coefficients[0 .. (j / (W.sizeof * 8) + (j % (W.sizeof * 8) != 0))];
+            work = work.normalized;
+        }
 
-        coefficients = coefficients[0 .. (j / (W.sizeof * 8) + (j % (W.sizeof * 8) != 0))];
-
+        this = work;
         return true;
     }
 
@@ -1007,8 +1017,9 @@ version(mir_bignum_test_llv)
 @safe pure
 unittest
 {
+    import mir.test;
     auto view = BigUIntView!size_t.fromHexString!(char, true)("abcd_efab_cdef");
-    assert(cast(ulong)view == 0xabcd_efab_cdef);
+    (cast(ulong)view).should == 0xabcd_efab_cdef;
 }
 
 ///
@@ -1365,7 +1376,9 @@ struct BigIntView(W)
             str = str[1 .. $];
         }
 
-        return unsigned.fromHexStringImpl!(C, allowUnderscores)(str);
+        auto ret = unsigned.fromHexStringImpl!(C, allowUnderscores)(str);
+        sign = sign && unsigned.coefficients.length;
+        return ret;
     }
 
     /++
@@ -1412,7 +1425,9 @@ struct BigIntView(W)
             str = str[1 .. $];
         }
 
-        return unsigned.fromBinaryStringImpl!(C, allowUnderscores)(str);
+        auto ret = unsigned.fromBinaryStringImpl!(C, allowUnderscores)(str);
+        sign = sign && unsigned.coefficients.length;
+        return ret;
     }
 
     ///

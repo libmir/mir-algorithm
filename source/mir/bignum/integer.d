@@ -265,10 +265,10 @@ struct BigInt(uint size64)
     ///
     BigInt copy() @property
     {
-        BigInt ret;
+        BigInt ret = void;
         ret.sign = sign;
         ret.length = length;
-        ret.data = data;
+        ret.data[0 .. length] = data[0 .. length];
         return ret;
     }
 
@@ -762,7 +762,7 @@ struct BigInt(uint size64)
     static BigInt fromHexString(bool allowUnderscores = false)(scope const(char)[] str)
         @trusted pure
     {
-        BigInt ret;
+        BigInt ret = void;
         if (ret.fromHexStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
@@ -779,11 +779,8 @@ struct BigInt(uint size64)
     {
         auto work = BigIntView!size_t(data);
         auto ret = work.fromHexStringImpl!(C, allowUnderscores)(str);
-        if (ret)
-        {
-            length = cast(uint)work.unsigned.coefficients.length;
-            sign = work.sign;
-        }
+        length = cast(uint)work.unsigned.coefficients.length;
+        sign = work.sign;
         return ret;
     }
 
@@ -792,7 +789,7 @@ struct BigInt(uint size64)
     static BigInt fromBinaryString(bool allowUnderscores = false)(scope const(char)[] str)
         @trusted pure
     {
-        BigInt ret;
+        BigInt ret = void;
         if (ret.fromBinaryStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
@@ -817,11 +814,8 @@ struct BigInt(uint size64)
     {
         auto work = BigIntView!size_t(data);
         auto ret = work.fromBinaryStringImpl!(C, allowUnderscores)(str);
-        if (ret)
-        {
-            length = cast(uint)work.unsigned.coefficients.length;
-            sign = work.sign;
-        }
+        length = cast(uint)work.unsigned.coefficients.length;
+        sign = work.sign;
         return ret;
     }
 
@@ -1065,6 +1059,7 @@ version(mir_bignum_test) @safe pure @nogc unittest
 version(mir_bignum_test)
 unittest
 {
+    import mir.test;
     import mir.bignum.fixed;
     import mir.bignum.low_level_view;
 
@@ -1073,18 +1068,22 @@ unittest
         auto b = UInt!128.fromHexString("f79a222050aaeaaa417fa25a2ac93291");
 
         // ca3d7e25aebe687b 168dcef32d0bb2f0
-        import mir.format;
-        assert((a %= b) == BigInt!4.fromHexString("bf4c87424431d21563f23b1fc00d75ac"));
+        auto c = BigInt!4.fromHexString("bf4c87424431d21563f23b1fc00d75ac");
+        a %= b;
+        a.should == c;
         a = BigInt!4.fromHexString("c39b18a9f06fd8e962d99935cea0707f79a222050aaeaaaed17feb7aa76999d7");
         a /= b;
-        assert(a == BigInt!4.fromHexString("ca3d7e25aebe687b7cc1b250b44690fb"), a.data.text);
+        assert(a == BigInt!4.fromHexString("ca3d7e25aebe687b7cc1b250b44690fb"));
     }
 
     {
         auto a = BigInt!4.fromHexString("7fff000080000000000000000000");
         auto b = UInt!128.fromHexString("80000000000000000001");
 
-        assert((a /= b) == BigInt!4.fromHexString("fffe0000"));
+        auto c = BigInt!4.fromHexString("fffe0000");
+        a /= b;
+        a.should == c;
+
         a = BigInt!4.fromHexString("7fff000080000000000000000000");
         assert((a %= b) == BigInt!4.fromHexString("7fffffffffff00020000"));
     }

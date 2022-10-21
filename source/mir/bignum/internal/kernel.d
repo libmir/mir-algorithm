@@ -183,7 +183,7 @@ unittest
         // Test division by a single-digit divisor here.
         auto dividend = BigUIntView!uint.fromHexString("5");
         auto divisor = BigUIntView!uint.fromHexString("5");
-        auto quotient = BigUIntView!uint.fromHexString("0");
+        auto quotient = BigUIntView!uint([0u]);
         // auto remainder = BigUIntView!uint.fromHexString("0");
 
         divMod(dividend, divisor, quotient);
@@ -194,7 +194,7 @@ unittest
         // Test division by a single-digit divisor here.
         auto dividend = BigUIntView!uint.fromHexString("55a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf");
         auto divisor = BigUIntView!uint.fromHexString("5");
-        auto quotient = BigUIntView!uint.fromHexString("0000000000000000000000000000000000000000000000000000000000000000");
+        auto quotient = BigUIntView!uint.fromHexString("1000000000000000000000000000000000000000000000000000000000000000");
         divMod(dividend, divisor, quotient);
         assert(dividend.normalized == BigUIntView!uint.fromHexString("3"));
         assert(quotient == BigUIntView!uint.fromHexString("1120a1229e8a217d0691b02b819107174a4b677088ef0df874259b283c1d588c"));
@@ -204,8 +204,8 @@ unittest
     {
         auto dividend = BigUIntView!uint.fromHexString("55a325ad18b2a77120d870d987d5237473790532acab45da44bc07c92c92babf0b5e2e2c7771cd472ae5d7acdb159a56fbf74f851a058ae341f69d1eb750d7e3");
         auto divisor = BigUIntView!uint.fromHexString("55e5669576d31726f4a9b58a90159de5923adc6c762ebd3c4ba518d495229072");
-        auto quotient = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000");
-        // auto remainder = BigUIntView!uint.fromHexString("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+        auto quotient = BigUIntView!uint.fromHexString("10000000000000000000000000000000000000000000000000000000000000000");
+        // auto remainder = BigUIntView!uint.fromHexString("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
 
         divMod(dividend, divisor, quotient);
         assert(quotient.normalized == BigUIntView!uint.fromHexString("ff3a8aa4da35237811a0ffbf007fe938630dee8a810f2f82ae01f80c033291f6"));
@@ -216,8 +216,8 @@ unittest
     {
         auto dividend = BigUIntView!uint.fromHexString("800000000000000000000003");
         auto divisor = BigUIntView!uint.fromHexString("200000000000000000000001");
-        auto quotient = BigUIntView!uint.fromHexString("0");
-        // auto remainder = BigUIntView!uint.fromHexString("000000000000000000000000");
+        auto quotient = BigUIntView!uint([0u]);
+        // auto remainder = BigUIntView!uint.fromHexString("100000000000000000000000");
         divMod(dividend, divisor, quotient);
         assert(quotient == BigUIntView!uint.fromHexString("3"));
         assert(dividend == BigUIntView!uint.fromHexString("200000000000000000000000"));
