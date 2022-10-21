@@ -133,17 +133,26 @@ version(mir_ndslice_test) unittest
     // 4 5 6
     auto matrix = iota([2, 3], 1);
 
-    assert(concatenation(vector, matrix).slice == [
+    auto c0 = concatenation(vector, matrix);
+
+    assert(c0.slice == [
         [0, 0, 0],
         [1, 2, 3],
         [4, 5, 6],
     ]);
 
     vector.popFront;
-    assert(concatenation!1(vector, matrix).slice == [
+    auto c1 = concatenation!1(vector, matrix);
+    assert(c1.slice == [
         [0, 1, 2, 3],
         [0, 4, 5, 6],
     ]);
+
+    auto opIndexCompiles0 = c0[];
+    auto opIndexCompiles1 = c1[];
+
+    auto opIndexCompilesForConst0 = (cast(const)c0)[];
+    auto opIndexCompilesForConst1 = (cast(const)c1)[];
 }
 
 /// Multidimensional
@@ -363,6 +372,21 @@ struct Concatenation(size_t dim, Slices...)
         }
         assert(indices[dim] < _slices[$-1].length!dim);
         return _slices[$-1][indices];
+    }
+
+    ref opIndex()() scope return
+    {
+        return this;
+    }
+
+    auto opIndex()() const return scope
+    {
+        import mir.ndslice.topology: iota;
+        import mir.qualifier: LightConstOf, lightConst;
+        import std.format: format;
+        alias Ret = .Concatenation!(dim, staticMap!(LightConstOf, Slices));
+        enum ret = "Ret(%(lightConst(_slices[%s]),%)]))".format(_slices.length.iota);
+        return mixin(ret);
     }
 }
 

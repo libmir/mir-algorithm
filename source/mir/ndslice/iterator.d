@@ -606,7 +606,7 @@ struct ZipIterator(Iterators...)
     ///
     auto lightConst()() const @property
     {
-        import std.format;
+        import std.format: format;
         import mir.ndslice.topology: iota;
         import std.meta: staticMap;
         alias Ret = ZipIterator!(staticMap!(LightConstOf, Iterators));
@@ -617,7 +617,7 @@ struct ZipIterator(Iterators...)
     ///
     auto lightImmutable()() immutable @property
     {
-        import std.format;
+        import std.format: format;
         import mir.ndslice.topology: iota;
         import std.meta: staticMap;
         alias Ret = ZipIterator!(staticMap!(LightImmutableOf, Iterators));
