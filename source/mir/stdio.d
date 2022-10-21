@@ -211,7 +211,6 @@ mixin template FileMembers()
         {
             if (__ctfe)
                 return this;
-            import mir.format: print;
             this.put(endl);
             this.flush;
             return this;

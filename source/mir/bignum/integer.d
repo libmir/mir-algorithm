@@ -191,9 +191,10 @@ struct BigInt(uint size64)
     static BigInt fromBigEndian()(scope const(ubyte)[] data, bool sign = false)
         @trusted pure @nogc
     {
+        static immutable bigIntOverflowException = new Exception("BigInt!" ~ size64.stringof ~ ".fromBigEndian: data overflow");
         BigInt ret = void;
         if (!ret.copyFromBigEndian(data, sign))
-            static immutable bigIntOverflowException = new Exception("BigInt!" ~ size64.stringof ~ ".fromBigEndian: data overflow");
+            throw bigIntOverflowException;
         return ret;
     }
 
