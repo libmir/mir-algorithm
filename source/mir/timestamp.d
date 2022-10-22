@@ -342,10 +342,11 @@ struct Timestamp
     ///
     version (mir_test)
     @safe unittest {
+        import mir.test: should;
         import std.datetime.date : TimeOfDay;
         auto dt = TimeOfDay(7, 14, 30);
         Timestamp ts = dt;
-        assert(dt.toISOExtString == ts.toString);
+        (dt.toISOExtString ~ "-00:00").should == ts.toString;
         assert(dt == cast(TimeOfDay) ts);
     }
 
@@ -362,7 +363,7 @@ struct Timestamp
         import std.datetime.date : DateTime;
         auto dt = DateTime(1982, 4, 1, 20, 59, 22);
         Timestamp ts = dt;
-        assert(dt.toISOExtString == ts.toString);
+        assert(dt.toISOExtString ~ "-00:00" == ts.toString);
         assert(dt == cast(DateTime) ts);
     }
 
@@ -434,15 +435,15 @@ struct Timestamp
         auto duration = 5.weeks + 2.days + 7.hours + 40.minutes + 4.seconds + 9876543.hnsecs;
         Timestamp ts = duration;
 
-        assert(ts.toISOExtString == `0005-02-88T07:40:04.9876543`);
+        assert(ts.toISOExtString == `0005-02-88T07:40:04.9876543-00:00`);
         assert(duration == cast(Duration) ts);
 
         duration = -duration;
         ts = Timestamp(duration);
-        assert(ts.toISOExtString == `0005-02-99T07:40:04.9876543`);
+        assert(ts.toISOExtString == `0005-02-99T07:40:04.9876543-00:00`);
         assert(duration == cast(Duration) ts);
 
-        assert(Timestamp(Duration.zero).toISOExtString == `0000-00-88T00:00:00.0000000`);
+        assert(Timestamp(Duration.zero).toISOExtString == `0000-00-88T00:00:00.0000000-00:00`);
     }
 
     /++
@@ -732,8 +733,8 @@ struct Timestamp
         Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60).toString.should == "2021-01-29T19:42:44+07";
         Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30).toString.should == "2021-01-29T20:12:44+07:30";
 
-        Timestamp.onlyTime(7, 40).toString.should == "07:40";
-        Timestamp.onlyTime(7, 40, 30).toString.should == "07:40:30";
+        Timestamp.onlyTime(7, 40).toString.should == "07:40-00:00";
+        Timestamp.onlyTime(7, 40, 30).toString.should == "07:40:30-00:00";
         Timestamp.onlyTime(7, 40, 30, -3, 56).withOffset(0).toString.should == "07:40:30.056Z";
     }
 
@@ -756,9 +757,9 @@ struct Timestamp
         assert(Timestamp(-9999, 7, 4).toISOExtString == "-9999-07-04");
         assert(Timestamp(-10000, 10, 20).toISOExtString == "-10000-10-20");
 
-        assert(Timestamp.onlyTime(7, 40).toISOExtString == "07:40");
-        assert(Timestamp.onlyTime(7, 40, 30).toISOExtString == "07:40:30");
-        assert(Timestamp.onlyTime(7, 40, 30, -3, 56).toISOExtString == "07:40:30.056");
+        assert(Timestamp.onlyTime(7, 40).toISOExtString == "07:40-00:00");
+        assert(Timestamp.onlyTime(7, 40, 30).toISOExtString == "07:40:30-00:00");
+        assert(Timestamp.onlyTime(7, 40, 30, -3, 56).toISOExtString == "07:40:30.056-00:00");
 
         const cdate = Timestamp(1999, 7, 6);
         immutable idate = Timestamp(1999, 7, 6);
@@ -784,19 +785,20 @@ struct Timestamp
     version (mir_test)
     @safe pure nothrow unittest
     {
-        assert(Timestamp.init.toISOString == "0000T");
-        assert(Timestamp(2010, 7, 4).toISOString == "20100704");
-        assert(Timestamp(1998, 12, 25).toISOString == "19981225");
-        assert(Timestamp(0, 1, 5).toISOString == "00000105");
-        assert(Timestamp(-4, 1, 5).toISOString == "-00040105");
+        import mir.test;
+        Timestamp.init.toISOString.should == "0000T";
+        Timestamp(2010, 7, 4).toISOString.should == "20100704";
+        Timestamp(1998, 12, 25).toISOString.should == "19981225";
+        Timestamp(0, 1, 5).toISOString.should == "00000105";
+        Timestamp(-4, 1, 5).toISOString.should == "-00040105";
 
         // YYYYMMDDThhmmss±hhmm
-        assert(Timestamp(2021).toISOString == "2021T");
-        assert(Timestamp(2021, 01).toISOString == "2021-01T"); // always extended
-        assert(Timestamp(2021, 01, 29).toISOString == "20210129");
-        assert(Timestamp(2021, 01, 29, 19, 42).toISOString == "20210129T1942");
-        assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60).toISOString == "20210129T194244+07");
-        assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30).toISOString == "20210129T201244+0730");
+        Timestamp(2021).toISOString.should == "2021T";
+        Timestamp(2021, 01).toISOString.should == "2021-01T"; // always extended
+        Timestamp(2021, 01, 29).toISOString.should == "20210129";
+        Timestamp(2021, 01, 29, 19, 42).toISOString.should == "20210129T1942";
+        Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60).toISOString.should == "20210129T194244+07";
+        Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30).toISOString.should == "20210129T201244+0730";
         static assert(Timestamp(2021, 01, 29, 12, 42, 44).withOffset(7 * 60 + 30).toISOString == "20210129T201244+0730");
 
         assert(Timestamp.onlyTime(7, 40).toISOString == "T0740");
@@ -966,7 +968,11 @@ struct Timestamp
             }
 
             if (t.isLocalTime)
+            {
+                static if (ext)
+                    w.put("-00:00");
                 return;
+            }
 
             if (t.offset == 0)
             {
@@ -1485,6 +1491,8 @@ struct Timestamp
                 return true;
             }
 
+            bool neg = str[0] == '-';
+
             int hour;
             int minute;
             if (str.length < 3 || str[0].isDigit || !fromString(str[0 .. 3], hour))
@@ -1515,7 +1523,10 @@ struct Timestamp
                     return false;
             }
 
-            value.offset = cast(short)(hour * 60 + (hour < 0 ? -minute : minute));
+            if (neg && hour == 0 && minute == 0)
+                value.setLocalTimezone;
+            else
+                value.offset = cast(short)(hour * 60 + (hour < 0 ? -minute : minute));
             value.addMinutes(cast(short)-int(value.offset));
             return true;
         }
