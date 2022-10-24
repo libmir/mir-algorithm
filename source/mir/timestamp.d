@@ -373,7 +373,7 @@ struct Timestamp
     {
         import std.datetime.timezone : LocalTime;
         auto isLocal = systime.timezone is LocalTime();
-        auto thisTimes = isLocal ? systime : systime.toUTC;
+        auto thisTimes = isLocal ? systime + systime.utcOffset : systime.toUTC;
         this = fromUnixTime(thisTimes.toUnixTime);
         this.fractionExponent = -7;
         this.fractionCoefficient = thisTimes.fracSecs.total!"hnsecs";
@@ -593,8 +593,18 @@ struct Timestamp
             import std.datetime.date: DateTime;
             import std.datetime.systime: SysTime;
             import std.datetime.timezone: UTC, LocalTime, SimpleTimeZone;
-            auto timezone = isLocalTime ? LocalTime() : !offset ? UTC() : new immutable SimpleTimeZone(offset.minutes);
-            return SysTime.fromUnixTime(toUnixTime, timezone) + getFraction!7.hnsecs;
+            auto ret = SysTime.fromUnixTime(toUnixTime, UTC()) + getFraction!7.hnsecs;
+            if (isLocalTime)
+            {
+                ret = ret.toLocalTime;
+                ret -= ret.utcOffset;
+            }
+            else
+            if (offset)
+            {
+                ret.timezone = new immutable SimpleTimeZone(offset.minutes);
+            }
+            return ret;
         }
         else
         static if (T.stringof == "Duration")
@@ -1559,4 +1569,16 @@ unittest
     }
     auto ts2 = "1900-01-01T00:00:00.000000000".Timestamp;
     assert(ts == ts2);
+}
+
+version(mir_test)
+@safe unittest
+{
+    import std.datetime.systime : SysTime;
+    import mir.test;
+    auto ts = "2001-12-15T2:59:43.1234567".Timestamp;
+    ts.toString.should == "2001-12-15T02:59:43.1234567-00:00";
+    auto st = cast(SysTime)ts;
+    st.toISOExtString.should == "2001-12-15T02:59:43.1234567";
+    st.Timestamp.should == ts;
 }
