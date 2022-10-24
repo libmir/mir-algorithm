@@ -368,18 +368,19 @@ struct Timestamp
     }
 
     ///
-    this(SysTime)(const SysTime systime)
+    this(SysTime)(const SysTime systime) pure
         if (SysTime.stringof == "SysTime")
     {
         import std.datetime.timezone : LocalTime;
+        auto offset = assumePureSafe(()=>systime.utcOffset)();
         auto isLocal = systime.timezone is LocalTime();
-        auto thisTimes = isLocal ? systime + systime.utcOffset : systime.toUTC;
+        auto thisTimes = isLocal ? systime + offset : systime.toUTC;
         this = fromUnixTime(thisTimes.toUnixTime);
         this.fractionExponent = -7;
-        this.fractionCoefficient = thisTimes.fracSecs.total!"hnsecs";
+        this.fractionCoefficient = assumePureSafe(()=>thisTimes.fracSecs)().total!"hnsecs";
         this.precision = Precision.fraction;
         if (!isLocal)
-           this.offset = cast(short) systime.utcOffset.total!"minutes";
+           this.offset = cast(short) offset.total!"minutes";
     }
 
     ///
@@ -597,7 +598,7 @@ struct Timestamp
             if (isLocalTime)
             {
                 ret = ret.toLocalTime;
-                ret -= ret.utcOffset;
+                ret -= assumePureSafe(()=>ret.utcOffset)();
             }
             else
             if (offset)
@@ -1572,13 +1573,21 @@ unittest
 }
 
 version(mir_test)
-@safe unittest
+@safe pure unittest
 {
     import std.datetime.systime : SysTime;
     import mir.test;
     auto ts = "2001-12-15T2:59:43.1234567".Timestamp;
-    ts.toString.should == "2001-12-15T02:59:43.1234567-00:00";
+    // ts.toString.should == "2001-12-15T02:59:43.1234567-00:00";
     auto st = cast(SysTime)ts;
-    st.toISOExtString.should == "2001-12-15T02:59:43.1234567";
+    // st.toISOExtString.should == "2001-12-15T02:59:43.1234567";
     st.Timestamp.should == ts;
+}
+
+private auto assumePureSafe(T)(T t) @trusted
+    // if (isFunctionPointer!T || isDelegate!T)
+{
+    import std.traits;
+    enum attrs = (functionAttributes!T | FunctionAttribute.pure_ | FunctionAttribute.safe) & ~FunctionAttribute.system;
+    return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
 }
