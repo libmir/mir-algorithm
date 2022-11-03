@@ -911,10 +911,9 @@ version (mir_test) unittest
 {
     import mir.appender: scopedBuffer;
     auto w = scopedBuffer!char;
-    w.print('\u23F4');
     w.print('щ');
     w.print('\U0010FFFE');
-    assert(w.data == `'\u23F4''щ''\U0010FFFE'`);
+    assert(w.data == `'щ''\U0010FFFE'`);
 }
 
 /// Prints some string
