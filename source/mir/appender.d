@@ -214,7 +214,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     alias opOpAssign(string op : "~") = put;
 
     ///
-    void reset() scope nothrow
+    void reset() @trusted scope nothrow
     {
         this.__dtor;
         _currentLength = 0;
