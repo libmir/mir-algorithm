@@ -298,7 +298,7 @@ template serdeGetAlgebraicAnnotation(T)
     }
     else
     {
-        T* aggregate;
+        private __gshared T* aggregate;
         alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
         enum serdeGetAlgebraicAnnotation = .serdeGetAlgebraicAnnotation!A;
     }
@@ -345,7 +345,7 @@ template serdeIsDynamicAlgebraic(T)
         else
         static if (__traits(getAliasThis, T).length)
         {
-            T* aggregate;
+            private __gshared T* aggregate;
             alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
             enum serdeIsDynamicAlgebraic = .serdeIsDynamicAlgebraic!A;
         }
@@ -370,7 +370,7 @@ template serdeGetAlgebraicDeserializer(T)
     }
     else
     {
-        T* aggregate;
+        private __gshared T* aggregate;
         alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
         alias serdeGetAlgebraicDeserializer = .serdeGetAlgebraicDeserializer!A;
     }
@@ -965,7 +965,7 @@ Deserialization member type
 template serdeDeserializationMemberType(T, string member)
 {
     import std.traits: Unqual, Parameters;
-    T* aggregate;
+    private __gshared T* aggregate;
     static if (hasField!(T, member))
     {
         alias serdeDeserializationMemberType = typeof(__traits(getMember, *aggregate, member));
@@ -1022,7 +1022,7 @@ Serialization member type
 template serdeSerializationMemberType(T, string member)
 {
     import std.traits: Unqual, Parameters;
-    T* aggregate;
+    private __gshared T* aggregate;
     static if (hasField!(T, member))
     {
         alias serdeSerializationMemberType = typeof(__traits(getMember, *aggregate, member));
@@ -1535,7 +1535,7 @@ template serdeDeserializationFinalDeepProxyMemberTypes(T)
     else
     static if (isAlgebraicAliasThis!T)
     {
-        T* aggregate;
+        private __gshared T* aggregate;
         alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
         alias serdeDeserializationFinalDeepProxyMemberTypes = .serdeDeserializationFinalDeepProxyMemberTypes!A;
     }
@@ -1584,7 +1584,7 @@ template serdeSerializationFinalDeepProxyMemberTypes(T)
     else
     static if (isAlgebraicAliasThis!T)
     {
-        T* aggregate;
+        private __gshared T* aggregate;
         alias A = typeof(__traits(getMember, aggregate, __traits(getAliasThis, T)));
         alias serdeSerializationFinalDeepProxyMemberTypes = .serdeSerializationFinalDeepProxyMemberTypes!A;
     }
@@ -1864,7 +1864,7 @@ package template isAlgebraicAliasThis(T)
     static if (__traits(getAliasThis, T).length)
     {
         import mir.algebraic: isVariant;
-        T* aggregate;
+        private __gshared T* aggregate;
         alias A = AliasSeq!(typeof(__traits(getMember, aggregate, __traits(getAliasThis, T))));
         static if (A.length != 1)
             enum isAlgebraicAliasThis = false;
