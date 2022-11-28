@@ -9,7 +9,8 @@ namespace mir {
             cardinal,
             monotone,
             doubleQuadratic,
-            akima
+            akima,
+            makima
         };
 
         enum class SplineBoundaryType
@@ -20,7 +21,8 @@ namespace mir {
             secondDerivative,
             parabolic,
             monotone,
-            akima
+            akima,
+            makima
         };
 
         template<class T>
