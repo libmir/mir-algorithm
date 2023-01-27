@@ -1,5 +1,5 @@
 [![codecov.io](https://codecov.io/github/libmir/mir-algorithm/coverage.svg?branch=master)](https://codecov.io/github/libmir/mir-algorithm?branch=master)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/libmir/mir-algorithm/CI/master)](https://github.com/libmir/mir-algorithm/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/algorithmus/libmir/mir-algorithm/ci.yml?branch=master)](https://github.com/libmir/mir-algorithm/actions)
 [![Circle CI](https://circleci.com/gh/libmir/mir-algorithm.svg?style=svg)](https://circleci.com/gh/libmir/mir-algorithm)
 
 [![Dub downloads](https://img.shields.io/dub/dt/mir-algorithm.svg)](http://code.dlang.org/packages/mir-algorithm)
