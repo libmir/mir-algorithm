@@ -954,7 +954,7 @@ public:
     }
 
     /// ditto
-    auto lightScope()() return scope const @property
+    auto lightScope()() @trusted return scope const @property
     {
         auto ret = Slice!(LightConstOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightConstOfLightScopeOf, Labels))
             (_structure, .lightScope(_iterator));
