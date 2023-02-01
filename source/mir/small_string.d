@@ -37,24 +37,24 @@ struct SmallString(uint maxLength)
 extern(D) @safe pure @nogc:
 
     /// Constructor
-    this(typeof(null))
+    this(typeof(null)) scope
     {
     }
 
     /// ditto
-    this(scope const(char)[] str)
-    {
-        this.opAssign(str);
-    }
-
-    /// ditto
-    this(uint n)(auto ref scope const SmallString!n str)
+    this(scope const(char)[] str) scope
     {
         this.opAssign(str);
     }
 
     /// ditto
-    this(Range)(auto ref Range str)
+    this(uint n)(auto ref scope const SmallString!n str) scope
+    {
+        this.opAssign(str);
+    }
+
+    /// ditto
+    this(Range)(auto ref scope Range str) scope
         if (isIterable!Range)
     {
         size_t i = 0;
@@ -70,14 +70,14 @@ extern(D) @safe pure @nogc:
     }
 
     /// `=` operator
-    ref typeof(this) opAssign(typeof(null)) return
+    ref typeof(this) opAssign(typeof(null)) scope return
     {
         _data = '\0';
         return this;
     }
 
     /// ditto
-    ref typeof(this) opAssign(scope const(char)[] str) return @trusted
+    ref typeof(this) opAssign(scope const(char)[] str) scope return @trusted
     {
         _data = '\0';
         if (str.length > _data.sizeof)
@@ -93,7 +93,7 @@ extern(D) @safe pure @nogc:
     }
 
     /// ditto
-    ref typeof(this) opAssign(uint n)(auto ref scope const SmallString!n rhs) return
+    ref typeof(this) opAssign(uint n)(auto ref scope const SmallString!n rhs) scope return
         if (n != maxLength)
     {
         static if (n < maxLength)
@@ -117,7 +117,7 @@ extern(D) @safe pure @nogc:
     }
 
     /// ditto
-    ref typeof(this) opAssign(uint n)(const SmallString!n rhs) return
+    ref typeof(this) opAssign(uint n)(const SmallString!n rhs) scope return
         if (n != maxLength)
     {
         static if (n < maxLength)

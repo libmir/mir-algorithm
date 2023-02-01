@@ -84,7 +84,7 @@ template SmallArray(T, uint maxLength)
         }
 
         /// `=` operator
-        ref typeof(this) opAssign(typeof(null)) return
+        ref typeof(this) opAssign(typeof(null)) scope return
         {
             _length = 0;
             _data = T.init;
@@ -92,7 +92,7 @@ template SmallArray(T, uint maxLength)
         }
 
         /// ditto
-        ref typeof(this) opAssign(V[] array) return @trusted
+        ref typeof(this) opAssign(V[] array) scope return @trusted
         {
             if (array.length > maxLength)
             {
@@ -106,7 +106,7 @@ template SmallArray(T, uint maxLength)
         }
 
         /// ditto
-        ref typeof(this) opAssign(ref const SmallArray rhs) return nothrow
+        ref typeof(this) opAssign(ref const SmallArray rhs) scope return nothrow
         {
             _length = rhs._length;
             _data = rhs._data;
@@ -114,7 +114,7 @@ template SmallArray(T, uint maxLength)
         }
         
         /// ditto
-        ref typeof(this) opAssign(const SmallArray rhs) return nothrow
+        ref typeof(this) opAssign(const SmallArray rhs) scope return nothrow
         {
             _length = rhs._length;
             _data = rhs._data;
@@ -122,7 +122,7 @@ template SmallArray(T, uint maxLength)
         }
 
         /// ditto
-        ref typeof(this) opAssign(uint n)(ref const SmallArray!(T, n) rhs) return
+        ref typeof(this) opAssign(uint n)(ref const SmallArray!(T, n) rhs) scope return
             if (n != maxLength)
         {
             static if (n < maxLength)
@@ -145,7 +145,7 @@ template SmallArray(T, uint maxLength)
         }
 
         /// ditto
-        ref typeof(this) opAssign(uint n)(const SmallArray!(T, n) rhs) return
+        ref typeof(this) opAssign(uint n)(const SmallArray!(T, n) rhs) scope return
             if (n != maxLength)
         {
             static if (n < maxLength)

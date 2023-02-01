@@ -1229,7 +1229,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     ///
-    ref opAssign(typeof(this) rvalue) return @trusted
+    ref opAssign(typeof(this) rvalue) scope return @trusted
     {
         import mir.utility: swap;
         this.data._structure = rvalue.data._structure;
@@ -1239,7 +1239,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(Series!(RIndexIterator, RIterator, N, kind) rvalue) return
+    ref opAssign(RIndexIterator, RIterator)(Series!(RIndexIterator, RIterator, N, kind) rvalue) scope return
         if (isAssignable!(IndexIterator, RIndexIterator) && isAssignable!(Iterator, RIterator))
     {
         import core.lifetime: move;
@@ -1250,21 +1250,21 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, RIterator, N, kind) rvalue) return
+    ref opAssign(RIndexIterator, RIterator)(auto ref const Series!(RIndexIterator, RIterator, N, kind) rvalue) scope return
         if (isAssignable!(IndexIterator, LightConstOf!RIndexIterator) && isAssignable!(Iterator, LightConstOf!RIterator))
     {
         return this = rvalue.opIndex;
     }
 
     /// ditto
-    ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, RIterator, N, kind) rvalue) return
+    ref opAssign(RIndexIterator, RIterator)(auto ref immutable Series!(RIndexIterator, RIterator, N, kind) rvalue) scope return
         if (isAssignable!(IndexIterator, LightImmutableOf!RIndexIterator) && isAssignable!(Iterator, LightImmutableOf!RIterator))
     {
         return this = rvalue.opIndex;
     }
 
     /// ditto
-    ref opAssign(typeof(null)) return
+    ref opAssign(typeof(null)) scope return
     {
         return this = this.init;
     }

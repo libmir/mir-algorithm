@@ -186,20 +186,20 @@ struct mir_slim_rcptr(T)
     }
 
     ///
-    ref opAssign(typeof(null)) return @trusted // pure nothrow @nogc
+    ref opAssign(typeof(null)) scope return @trusted // pure nothrow @nogc
     {
         this = typeof(this).init;
     }
 
     ///
-    ref opAssign(return typeof(this) rhs) return @trusted // pure nothrow @nogc
+    ref opAssign(return typeof(this) rhs) scope return @trusted // pure nothrow @nogc
     {
         this.proxySwap(rhs);
         return this;
     }
 
     ///
-    ref opAssign(Q)(return ThisTemplate!Q rhs) return @trusted // pure nothrow @nogc
+    ref opAssign(Q)(return ThisTemplate!Q rhs) scope return @trusted // pure nothrow @nogc
         if (isImplicitlyConvertible!(Q*, T*))
     {
         this.proxySwap(*()@trusted{return cast(typeof(this)*)&rhs;}());

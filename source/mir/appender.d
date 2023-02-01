@@ -155,7 +155,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     void put(T e) @safe scope
     {
         auto cl = _currentLength;
-        auto d = prepare(1);
+        auto d = ()@trusted {return prepare(1);} ();
         static if (isMutable!T)
         {
             import core.lifetime: moveEmplace;
@@ -172,7 +172,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     void put(ref R e) scope
     {
         auto cl = _currentLength;
-        auto d = prepare(1);
+        auto d = ()@trusted {return prepare(1);} ();
         emplaceRef!(Unqual!T)(d[cl], e);
     }
 
@@ -181,7 +181,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
     void put(scope R[] e) scope
     {
         auto cl = _currentLength;
-        auto d = prepare(e.length);
+        auto d = ()@trusted {return prepare(e.length);} ();
         if (!__ctfe)
             (()@trusted=>memcpy(cast(void*)(d.ptr + cl), e.ptr, e.length * T.sizeof))();
         else
@@ -198,7 +198,7 @@ struct ScopedBuffer(T, size_t bytes = 4096)
         static if (hasLength!Iterable)
         {
             auto cl = _currentLength;
-            auto d = prepare(range.length);
+            auto d = ()@trusted {return prepare(range.length);} ();
             foreach(ref e; range)
                 emplaceRef!(Unqual!T)(d[cl++], e);
             assert(_currentLength == cl);

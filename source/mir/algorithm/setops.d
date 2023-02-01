@@ -69,7 +69,7 @@ struct MultiwayMerge(alias less, RangeOfRanges)
     BinaryHeap!(compFront, RangeOfRanges) _heap;
 
     ///
-    this(RangeOfRanges ror)
+    this(scope return RangeOfRanges ror)
     {
         // Preemptively get rid of all empty ranges in the input
         // No need for stability either
@@ -82,7 +82,7 @@ struct MultiwayMerge(alias less, RangeOfRanges)
                 continue;
             }
             import mir.utility: swap;
-            swap(temp.back, temp.front);
+            () @trusted {swap(temp.back, temp.front);} ();
             temp.popBack;
             ror.popBack;
         }
@@ -114,7 +114,7 @@ struct MultiwayMerge(alias less, RangeOfRanges)
 /// Ditto
 MultiwayMerge!(naryFun!less, RangeOfRanges) multiwayMerge
 (alias less = "a < b", RangeOfRanges)
-(RangeOfRanges ror)
+(scope RangeOfRanges ror)
 {
     return typeof(return)(move(ror));
 }
@@ -163,7 +163,7 @@ Returns:
     A range of the union of the ranges in `ror`.
 See also: $(LREF multiwayMerge)
  */
-auto multiwayUnion(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
+auto multiwayUnion(alias less = "a < b", RangeOfRanges)(scope RangeOfRanges ror)
 {
     import mir.functional: not;
     import mir.algorithm.iteration : Uniq;
@@ -212,7 +212,7 @@ Returns:
     A length of the union of the ranges in `ror`.
 +/
 pragma(inline, false)
-size_t unionLength(alias less = "a < b", RangeOfRanges)(RangeOfRanges ror)
+size_t unionLength(alias less = "a < b", RangeOfRanges)(scope RangeOfRanges ror)
 {
     size_t length;
     auto u = move(ror).multiwayUnion!less;
