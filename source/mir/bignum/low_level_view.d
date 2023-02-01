@@ -91,7 +91,7 @@ struct BigUIntView(W)
     /++
     Retrurns: signed integer view using the same data payload
     +/
-    BigIntView!W signed()(bool sign = false) @safe pure nothrow @nogc return @property
+    BigIntView!W signed()(bool sign = false) @safe pure nothrow @nogc return scope @property
     {
         return typeof(return)(this, sign);
     }
@@ -384,7 +384,7 @@ struct BigUIntView(W)
             work = work.normalized;
         }
 
-        this = work;
+        ()@trusted {this = work;}();
         return true;
     }
 
@@ -487,7 +487,7 @@ struct BigUIntView(W)
             work = work.normalized;
         }
 
-        this = work;
+        ()@trusted {this = work;}();
         return true;
     }
 
@@ -1692,7 +1692,7 @@ struct BigIntView(W)
 
     static if (isMutable!W && W.sizeof >= 4)
     /// ditto
-    bool opOpAssign(string op)(BigUIntView!(const W) rhs, bool overflow = false)
+    bool opOpAssign(string op)(scope BigUIntView!(const W) rhs, bool overflow = false)
     @safe pure nothrow @nogc
         if (op == "+" || op == "-")
     {
