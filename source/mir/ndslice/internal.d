@@ -153,10 +153,8 @@ size_t[] reverse()(size_t[] ar)
     return ar;
 }
 
-enum indexError(size_t pos, size_t N) =
-    "index at position " ~ pos.stringof
-    ~ " from the range [0 .." ~ N.stringof ~ ")"
-    ~ " must be less than corresponding length.";
+enum indexError(DeepElement, int pos, int N) =
+    N.stringof ~ "D slice of " ~ DeepElement.stringof ~ ": bounds check failed at " ~ (pos + 1).stringof ~ " dimension";
 
 enum string tailErrorMessage(
     string fun = __FUNCTION__,

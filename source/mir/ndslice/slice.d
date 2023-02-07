@@ -785,13 +785,13 @@ package(mir):
             static if (kind == Contiguous)
             {
                 enum E = I - 1;
-                assert(_indices[E] < _lengths[E], indexError!(E, N));
+                assert(_indices[E] < _lengths[E], indexError!(DeepElement, E, N));
                 ptrdiff_t ball = this._stride!E;
                 ptrdiff_t stride = _indices[E] * ball;
                 foreach_reverse (i; Iota!E) //static
                 {
                     ball *= _lengths[i + 1];
-                    assert(_indices[i] < _lengths[i], indexError!(i, N));
+                    assert(_indices[i] < _lengths[i], indexError!(DeepElement, i, N));
                     stride += ball * _indices[i];
                 }
             }
@@ -799,25 +799,25 @@ package(mir):
             static if (kind == Canonical)
             {
                 enum E = I - 1;
-                assert(_indices[E] < _lengths[E], indexError!(E, N));
+                assert(_indices[E] < _lengths[E], indexError!(DeepElement, E, N));
                 static if (I == N)
                     size_t stride = _indices[E];
                 else
                     size_t stride = _strides[E] * _indices[E];
                 foreach_reverse (i; Iota!E) //static
                 {
-                    assert(_indices[i] < _lengths[i], indexError!(i, N));
+                    assert(_indices[i] < _lengths[i], indexError!(DeepElement, i, N));
                     stride += _strides[i] * _indices[i];
                 }
             }
             else
             {
                 enum E = I - 1;
-                assert(_indices[E] < _lengths[E], indexError!(E, N));
+                assert(_indices[E] < _lengths[E], indexError!(DeepElement, E, N));
                 size_t stride = _strides[E] * _indices[E];
                 foreach_reverse (i; Iota!E) //static
                 {
-                    assert(_indices[i] < _lengths[i], indexError!(i, N));
+                    assert(_indices[i] < _lengths[i], indexError!(DeepElement, i, N));
                     stride += _strides[i] * _indices[i];
                 }
             }
