@@ -1020,7 +1020,7 @@ public:
     /// ditto
     void put(Range: Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind)(Range r)
     {
-        static if (N > 1 && kind == Contiguous)
+        static if (N > 1 && kind == Contiguous && isMutable!Range)
         {
             import mir.ndslice.topology: flattened;
             this.put(r.flattened);
@@ -1724,6 +1724,100 @@ unittest
     }
 }
 
+// Confirm Summator works for const(Slice!(double*, 1))
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: canonical, universal;
+    double[] x = [1.0, 2, 3];
+    auto y = x.sliced;
+    const z = y;
+    Summator!(double, Summation.pairwise) s;
+    s.put(z);
+    assert(s.sum == 6);
+    const z2 = y.canonical;
+    Summator!(double, Summation.pairwise) s2;
+    s2.put(z2);
+    assert(s2.sum == 6);
+    const z3 = y.universal;
+    Summator!(double, Summation.pairwise) s3;
+    s3.put(z3);
+    assert(s3.sum == 6);
+}
+
+// Confirm Summator works for const(Slice!(const(double)*, 1))
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    import mir.ndslice.topology: canonical, universal;
+    double[] x = [1.0, 2, 3];
+    auto y = x.sliced;
+    const z = y.toConst;
+    Summator!(double, Summation.pairwise) s;
+    s.put(z);
+    assert(s.sum == 6);
+    const z2 = y.canonical.toConst;
+    Summator!(double, Summation.pairwise) s2;
+    s2.put(z2);
+    assert(s2.sum == 6);
+    const z3 = y.universal.toConst;
+    Summator!(double, Summation.pairwise) s3;
+    s3.put(z3);
+    assert(s3.sum == 6);
+}
+
+// Confirm Summator works for const(Slice!(double*, 2))
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: canonical, pack, universal;
+    double[][] x = [[1.0, 2, 3],
+                    [4.0, 5, 6]];
+    auto y = x.fuse;
+    const z = y;
+    Summator!(double, Summation.pairwise) s;
+    s.put(z);
+    assert(s.sum == 21);
+    const z2 = y.canonical.pack!1;
+    Summator!(double, Summation.pairwise) s2;
+    s2.put(z2);
+    assert(s2.sum == 21);
+    const z3 = y.universal.pack!1;
+    Summator!(double, Summation.pairwise) s3;
+    s3.put(z3);
+    assert(s3.sum == 21);
+}
+
+// Confirm Summator works for const(Slice!(double*, 2))
+version(mir_test)
+@safe pure
+unittest
+{
+    import mir.ndslice.fuse: fuse;
+    import mir.ndslice.topology: canonical, pack, universal;
+    double[][] x = [[1.0, 2, 3],
+                    [4.0, 5, 6]];
+    auto y = x.fuse;
+    const z = y.toConst;
+    Summator!(double, Summation.pairwise) s;
+    s.put(z);
+    assert(s.sum == 21);
+    const z2 = y.canonical.toConst.pack!1;
+    Summator!(double, Summation.pairwise) s2;
+    s2.put(z2);
+    assert(s2.sum == 21);
+    const z3 = y.universal.toConst.pack!1;
+    Summator!(double, Summation.pairwise) s3;
+    s3.put(z3);
+    assert(s3.sum == 21);
+}
+
 /++
 Sums elements of `r`, which must be a finite
 iterable.
@@ -1765,7 +1859,10 @@ template sum(F, Summation summation = Summation.appropriate)
                 {
                     Summator!(F, ResolveSummationType!(summation, Range, sumType!Range)) sum;
                 }
-                sum.put(r.move);
+                static if (isMutable!Range)
+                    sum.put(r.move);
+                else
+                    sum.put(r);
                 return sum.sum;
             }
         }
@@ -1820,7 +1917,10 @@ template sum(F, Summation summation = Summation.appropriate)
                 {
                     auto sum = Summator!(F, ResolveSummationType!(summation, Range, F))(seed);
                 }
-                sum.put(r.move);
+                static if (isMutable!Range)
+                    sum.put(r.move);
+                else
+                    sum.put(r);
                 return sum.sum;
             }
         }
@@ -1851,7 +1951,11 @@ template sum(Summation summation = Summation.appropriate)
     {
         import core.lifetime: move;
         alias F = typeof(return);
-        return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move);
+        alias s = .sum!(F, ResolveSummationType!(summation, Range, F));
+        static if (isMutable!Range)
+            return s(r.move);
+        else
+            return s(r);
     }
 
     ///
@@ -1859,7 +1963,11 @@ template sum(Summation summation = Summation.appropriate)
         if (isIterable!Range)
     {
         import core.lifetime: move;
-        return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move, seed);
+        alias s = .sum!(F, ResolveSummationType!(summation, Range, F));
+        static if (isMutable!Range)
+            return s(r.move, seed);
+        else
+            return s(r, seed);
     }
 
     ///
@@ -2110,6 +2218,30 @@ unittest
             assert(s == c);
         }
     }
+}
+
+// Confirm Summator works for const(Slice!(double*, 1))
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    double[] x = [1.0, 2, 3];
+    auto y = x.sliced;
+    const z = y;
+    assert(z.sum == 6);
+}
+
+// Confirm Summator works for const(Slice!(const(double)*, 1))
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    double[] x = [1.0, 2, 3];
+    auto y = x.sliced;
+    const z = y.toConst;
+    assert(z.sum == 6);
 }
 
 package(mir)
