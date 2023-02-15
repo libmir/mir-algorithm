@@ -1018,7 +1018,7 @@ public:
     import mir.ndslice.slice;
 
     /// ditto
-    void put(Range: Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind)(Range r)
+    void put(Range: const Slice!(Iterator, N, kind), Iterator, size_t N, SliceKind kind)(Range r)
     {
         static if (N > 1 && kind == Contiguous && isMutable!Range)
         {
