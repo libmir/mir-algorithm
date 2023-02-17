@@ -95,6 +95,190 @@ version (mir_test) @safe pure nothrow @nogc unittest
     assert(p.opCall!2(7.2).approxEqual(d2f(7.2)));
 }
 
+typeof(F.init * X.init * 1f + F.init) polyImpl(X, T, F, uint derivative = 0)(in X x, in T coefficients)
+{
+    import mir.internal.utility: Iota;
+    auto ret = cast(typeof(return))0;
+    if (coefficients.length > 0)
+    {
+        ptrdiff_t i = coefficients.length - 1;
+        assert(i >= 0);
+        auto c = cast()coefficients[i];
+        static foreach (d; Iota!derivative)
+            c *= i - d;
+        ret = cast(typeof(return)) c;
+        while (--i >= cast(ptrdiff_t)derivative)
+        {
+            assert(i < coefficients.length);
+            c = cast()coefficients[i];
+            static foreach (d; Iota!derivative)
+                c *= i - d;
+            ret *= x;
+            ret += c;
+        }
+    }
+    return ret;
+}
+
+/++
+Evaluate polynomial.
+
+Coefficients assumed to be in the order a0 + a1 * x ^^ 1 + ... + aN * x ^^ N
+
+Params:
+    F = controls type of output
+    derivative = order of derivatives (default = 0)
+
+Returns:
+    Value of the polynomial, evaluated at `x`
+
+See_also:
+    $(WEB en.wikipedia.org/wiki/Polynomial, Polynomial).
++/
+template poly(F, uint derivative = 0)
+{
+    import mir.ndslice.slice: Slice, SliceKind;
+
+    /++
+    Params:
+        x = value to evaluate
+        coefficients = coefficients of polynomial
+    +/
+    typeof(F.init * X.init * 1f + F.init) poly(X, T : Slice!(const(U)*, 1, sliceKind), U, SliceKind sliceKind)
+        (in X x, T coefficients)
+    {
+        import core.lifetime: move;
+        return polyImpl!(X, T, F, derivative)(x, coefficients.move);
+    }
+
+    /// ditto
+    typeof(F.init * X.init * 1f + F.init) poly(X, T)(in X x, scope const T[] coefficients...)
+    {
+        return polyImpl!(X, typeof(coefficients), F, derivative)(x, coefficients);
+    }
+}
+
+/// ditto
+template poly(uint derivative = 0)
+{
+    import mir.ndslice.slice: Slice, SliceKind;
+
+    /// ditto
+    typeof(U.init * X.init * 1f + U.init) poly(X, T : Slice!(const(U)*, 1, sliceKind), U, SliceKind sliceKind)
+        (in X x, T coefficients)
+    {
+        import core.lifetime: move;
+        return polyImpl!(X, T, U, derivative)(x, coefficients.move);
+    }
+
+    /// ditto
+    typeof(T.init * X.init * 1f + T.init) poly(X, T)(in X x, scope const T[] coefficients...)
+    {
+        return polyImpl!(X, typeof(coefficients), T, derivative)(x, coefficients);
+    }
+}
+
+///
+version (mir_test) @safe pure nothrow @nogc unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    static immutable a = [3.0, 4.5, 1.9, 2];
+    auto x = a.sliced;
+
+    alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3;
+    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
+    alias d2f = (x) => 2 * 1.9 + 6 *   2 * x^^1;
+
+    assert(poly(3.3, x).approxEqual(f(3.3)));
+    assert(poly(7.2, x).approxEqual(f(7.2)));
+
+    assert(poly!1(3.3, x).approxEqual(df(3.3)));
+    assert(poly!1(7.2, x).approxEqual(df(7.2)));
+
+    assert(poly!2(3.3, x).approxEqual(d2f(3.3)));
+    assert(poly!2(7.2, x).approxEqual(d2f(7.2)));
+
+    // can also control the type
+    assert(poly!real(3.3, x).approxEqual(f(3.3)));
+}
+
+/// Dynamic array
+version (mir_test) @safe pure nothrow unittest
+{
+    import mir.math.common: approxEqual;
+    double[] x = [3.0, 4.5, 1.9, 2];
+
+    alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3;
+    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
+    alias d2f = (x) => 2 * 1.9 + 6 *   2 * x^^1;
+
+    assert(poly(3.3, x).approxEqual(f(3.3)));
+    assert(poly!real(3.3, x).approxEqual(f(3.3)));
+}
+
+// Check coefficient.length = 3
+version (mir_test) @safe pure nothrow @nogc unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    static immutable a = [3.0, 4.5, 1.9];
+    auto x = a.sliced;
+
+    alias   f = (x) =>     3.0 +     4.5 * x^^1 + 1.9 * x^^2;
+    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1;
+    alias d2f = (x) => 2 * 1.9;
+
+    assert(poly(3.3, x).approxEqual(f(3.3)));
+    assert(poly(7.2, x).approxEqual(f(7.2)));
+
+    assert(poly!1(3.3, x).approxEqual(df(3.3)));
+    assert(poly!1(7.2, x).approxEqual(df(7.2)));
+
+    assert(poly!2(3.3, x).approxEqual(d2f(3.3)));
+    assert(poly!2(7.2, x).approxEqual(d2f(7.2)));
+}
+
+// Check coefficient.length = 2
+version (mir_test) @safe pure nothrow @nogc unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    static immutable a = [3.0, 4.5];
+    auto x = a.sliced;
+
+    alias   f = (x) => 3.0 + 4.5 * x^^1;
+    alias  df = (x) => 4.5;
+    alias d2f = (x) => 0.0;
+
+    assert(poly(3.3, x).approxEqual(f(3.3)));
+    assert(poly(7.2, x).approxEqual(f(7.2)));
+
+    assert(poly!1(3.3, x).approxEqual(df(3.3)));
+    assert(poly!1(7.2, x).approxEqual(df(7.2)));
+
+    assert(poly!2(3.3, x).approxEqual(d2f(3.3)));
+    assert(poly!2(7.2, x).approxEqual(d2f(7.2)));
+}
+
+// Check coefficient.length = 1
+version (mir_test) @safe pure nothrow @nogc unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+    static immutable a = [3.0];
+    auto x = a.sliced;
+
+    alias  f = (x) => 3.0;
+    alias df = (x) => 0.0;
+
+    assert(poly(3.3, x).approxEqual(f(3.3)));
+    assert(poly(7.2, x).approxEqual(f(7.2)));
+
+    assert(poly!1(3.3, x).approxEqual(df(3.3)));
+    assert(poly!1(7.2, x).approxEqual(df(7.2)));
+}
+
 typeof(F.init * X.init * 1f + F.init) monicImpl(X, T, F, uint derivative = 0)(in X x, in T coefficients)
 {
     import mir.internal.utility: Iota;
