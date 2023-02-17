@@ -94,70 +94,7 @@ version (mir_test) @safe pure nothrow @nogc unittest
     assert(p.opCall!2(3.3).approxEqual(d2f(3.3)));
     assert(p.opCall!2(7.2).approxEqual(d2f(7.2)));
 }
-/*
-/++
-Monic polynomial (leading coefficient equals 1) callable ref-counted structure.
 
-See_also:
-    $(WEB en.wikipedia.org/wiki/Monic_polynomial, Monic polynomial).
-
-+/
-struct Monic(F)
-{
-    ///
-    RCArray!(const F) coefficients;
-
-    /++
-    Params:
-        coefficients = coefficients `c[i]` for polynomial function `f(x)=c[0]+c[1]*x^^1+...+c[n]*x^^(n - 1)+x^^n`
-    +/
-    this(RCArray!(const F) coefficients)
-    {
-        import core.lifetime: move;
-        this.coefficients = coefficients.move;
-    }
-
-    /++
-    Params:
-        derivative = derivative order
-    +/
-    template opCall(uint derivative = 0)
-    {
-        /++
-        Params:
-            x = `x` point
-        +/
-        @optmath typeof(F.init * X.init * 1f + F.init) opCall(X)(in X x) const
-        {
-            import mir.internal.utility: Iota;
-            auto ret = cast(typeof(return))0;
-            if (coefficients)
-            {
-                ptrdiff_t i = coefficients.length - 1;
-                assert(i >= 0);
-                ptrdiff_t j = 1;
-                static foreach (d; Iota!derivative) {
-                    j *= i - d + 1;
-                }
-                ret += j;
-                typeof(cast()coefficients[0]) c;
-                if (i >= cast(ptrdiff_t)derivative) {
-                    do
-                    {
-                        assert(i < coefficients.length);
-                        ret *= x;
-                        c = cast()coefficients[i];
-                        static foreach (d; Iota!derivative)
-                            c *= i - d;
-                        ret += c;
-                    } while (--i >= cast(ptrdiff_t)derivative);
-                }
-            }
-            return ret;
-        }
-    }
-}
-*/
 typeof(F.init * X.init * 1f + F.init) monicImpl(X, T, F, uint derivative = 0)(in X x, in T coefficients)
 {
     import mir.internal.utility: Iota;
