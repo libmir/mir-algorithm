@@ -81,9 +81,9 @@ version (mir_test) @safe pure nothrow @nogc unittest
     auto a = rcarray!(const double)(3.0, 4.5, 1.9, 2);
     auto p = a.polynomial;
 
-    alias f = (x) => 3.0 + 4.5 * x^^1 + 1.9 * x^^2 + 2 * x^^3;
-    alias df = (x) => 4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
-    alias d2f = (x) => 2 * 1.9  + 6 * 2 * x^^1;
+    alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3;
+    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
+    alias d2f = (x) => 2 * 1.9 + 6 *   2 * x^^1;
 
     assert(p(3.3).approxEqual(f(3.3)));
     assert(p(7.2).approxEqual(f(7.2)));
@@ -125,19 +125,19 @@ typeof(F.init * X.init * 1f + F.init) monicImpl(X, T, F, uint derivative = 0)(in
 }
 
 /++
-Monic polynomial (leading coefficient equals 1).
+Evaluate monic polynomial (leading coefficient equals 1).
+
+Coefficients assumed to be in the order: a0 + a1 * x ^^ 1 + ... + aN * x ^^ N + x ^^ (N + 1)
 
 Params:
     F = controls type of output
     derivative = order of derivatives (default = 0)
 
 Returns:
-    The quantile of all the elements in the input at probability `p`.
-
+    Value of the monic polynomial, evaluated at `x`
 
 See_also:
     $(WEB en.wikipedia.org/wiki/Monic_polynomial, Monic polynomial).
-
 +/
 template monic(F, uint derivative = 0)
 {
@@ -190,8 +190,8 @@ version (mir_test) @safe pure nothrow @nogc unittest
     static immutable a = [3.0, 4.5, 1.9, 2];
     auto x = a.sliced;
 
-    alias f = (x) =>       3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3 + x^^4;
-    alias df = (x) =>      4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2 + 4 * x^^3;
+    alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3 + x^^4;
+    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2 + 4 * x^^3;
     alias d2f = (x) => 2 * 1.9 +   6 * 2 * x^^1 + 3 * 4 * x^^2;
 
     assert(monic(3.3, x).approxEqual(f(3.3)));
@@ -202,7 +202,7 @@ version (mir_test) @safe pure nothrow @nogc unittest
 
     assert(monic!2(3.3, x).approxEqual(d2f(3.3)));
     assert(monic!2(7.2, x).approxEqual(d2f(7.2)));
-    
+
     // can also control the type
     assert(monic!real(3.3, x).approxEqual(f(3.3)));
 }
@@ -213,7 +213,7 @@ version (mir_test) @safe pure nothrow unittest
     import mir.math.common: approxEqual;
     double[] x = [3.0, 4.5, 1.9, 2];
 
-    alias f = (x) =>       3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3 + x^^4;
+    alias f = (x) =>  3.0 + 4.5 * x^^1 + 1.9 * x^^2 + 2 * x^^3 + x^^4;
 
     assert(monic(3.3, x).approxEqual(f(3.3)));
     assert(monic!real(3.3, x).approxEqual(f(3.3)));
@@ -227,8 +227,8 @@ version (mir_test) @safe pure nothrow @nogc unittest
     static immutable a = [3.0, 4.5, 1.9];
     auto x = a.sliced;
 
-    alias f = (x) =>       3.0 +     4.5 * x^^1 + 1.9 * x^^2 + x^^3;
-    alias df = (x) =>      4.5 + 2 * 1.9 * x^^1 +   3 * x^^2;
+    alias   f = (x) =>     3.0 +     4.5 * x^^1 + 1.9 * x^^2 + x^^3;
+    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 +   3 * x^^2;
     alias d2f = (x) => 2 * 1.9 +       6 * x^^1;
 
     assert(monic(3.3, x).approxEqual(f(3.3)));
@@ -249,9 +249,9 @@ version (mir_test) @safe pure nothrow @nogc unittest
     static immutable a = [3.0, 4.5];
     auto x = a.sliced;
 
-    alias f = (x) =>   3.0 + 4.5 * x^^1 + x^^2;
-    alias df = (x) =>  4.5 +   2 * x^^1;
-    alias d2f = (x) =>   2;
+    alias   f = (x) => 3.0 + 4.5 * x^^1 + x^^2;
+    alias  df = (x) => 4.5 +   2 * x^^1;
+    alias d2f = (x) => 2;
 
     assert(monic(3.3, x).approxEqual(f(3.3)));
     assert(monic(7.2, x).approxEqual(f(7.2)));
@@ -271,7 +271,7 @@ version (mir_test) @safe pure nothrow @nogc unittest
     static immutable a = [3.0];
     auto x = a.sliced;
 
-    alias f = (x) =>  3.0 + x^^1;
+    alias  f = (x) => 3.0 + x^^1;
     alias df = (x) => 1;
 
     assert(monic(3.3, x).approxEqual(f(3.3)));
