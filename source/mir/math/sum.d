@@ -1830,25 +1830,16 @@ template sum(F, Summation summation = Summation.appropriate)
     template sum(Range)
         if (isIterable!Range && !isMutable!Range)
     {
-        import core.lifetime: move;
-
         ///
         F sum(Range r)
         {
-            import core.lifetime: move;
-            auto r2 = r.lightConst;
-            alias s = .sum!(F, ResolveSummationType!(summation, typeof(r2), F));
-            return s(r2.move);
+            return .sum!(F, summation)(r.lightConst);
         }
 
         ///
         F sum(Range r, F seed)
         {
-
-            import core.lifetime: move;
-            auto r2 = r.lightConst;
-            alias s = .sum!(F, ResolveSummationType!(summation, typeof(r2), F));
-            return s(r2.move, seed);
+            return .sum!(F, summation)(r.lightConst, seed);
         }
     }
 
@@ -1894,21 +1885,14 @@ template sum(Summation summation = Summation.appropriate)
     sumType!Range sum(Range)(Range r)
         if (isIterable!Range && !isMutable!Range)
     {
-        import core.lifetime: move;
-        alias F = typeof(return);
-        auto r2 = r.lightConst;
-        alias s = .sum!(F, ResolveSummationType!(summation, typeof(r2), F));
-        return s(r2.move);
+        return .sum!(typeof(return), summation)(r.lightConst);
     }
 
     ///
     F sum(Range, F)(Range r, F seed)
         if (isIterable!Range && !isMutable!Range)
     {
-        import core.lifetime: move;
-        auto r2 = r.lightConst;
-        alias s = .sum!(F, ResolveSummationType!(summation, typeof(r2), F));
-        return s(r2.move, seed);
+        return .sum!(F, summation)(r.lightConst, seed);
     }
 
     ///
