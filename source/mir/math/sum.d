@@ -1743,7 +1743,7 @@ template sum(F, Summation summation = Summation.appropriate)
 {
     ///
     template sum(Range)
-        if (isIterable!Range)
+        if (isIterable!Range && isMutable!Range)
     {
         import core.lifetime: move;
 
@@ -1827,6 +1827,23 @@ template sum(F, Summation summation = Summation.appropriate)
     }
 
     ///
+    template sum(Range)
+        if (isIterable!Range && !isMutable!Range)
+    {
+        ///
+        F sum(Range r)
+        {
+            return .sum!(F, summation)(r.lightConst);
+        }
+
+        ///
+        F sum(Range r, F seed)
+        {
+            return .sum!(F, summation)(r.lightConst, seed);
+        }
+    }
+
+    ///
     F sum(scope const F[] r...)
     {
         static if (isComplex!F && (summation == Summation.precise || summation == Summation.decimal))
@@ -1847,19 +1864,35 @@ template sum(Summation summation = Summation.appropriate)
 {
     ///
     sumType!Range sum(Range)(Range r)
-        if (isIterable!Range)
+        if (isIterable!Range && isMutable!Range)
     {
         import core.lifetime: move;
         alias F = typeof(return);
-        return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move);
+        alias s = .sum!(F, ResolveSummationType!(summation, Range, F));
+        return s(r.move);
     }
 
     ///
     F sum(Range, F)(Range r, F seed)
-        if (isIterable!Range)
+        if (isIterable!Range && isMutable!Range)
     {
         import core.lifetime: move;
-        return .sum!(F, ResolveSummationType!(summation, Range, F))(r.move, seed);
+        alias s = .sum!(F, ResolveSummationType!(summation, Range, F));
+        return s(r.move, seed);
+    }
+
+    ///
+    sumType!Range sum(Range)(Range r)
+        if (isIterable!Range && !isMutable!Range)
+    {
+        return .sum!(typeof(return), summation)(r.lightConst);
+    }
+
+    ///
+    F sum(Range, F)(Range r, F seed)
+        if (isIterable!Range && !isMutable!Range)
+    {
+        return .sum!(F, summation)(r.lightConst, seed);
     }
 
     ///
@@ -2110,6 +2143,51 @@ unittest
             assert(s == c);
         }
     }
+}
+
+// Confirm sum works for Slice!(const(double)*, 1))
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    double[] x = [1.0, 2, 3];
+    auto y = x.sliced;
+    auto z = y.toConst;
+    assert(z.sum == 6);
+    assert(z.sum(0.0) == 6);
+    assert(z.sum!double == 6);
+    assert(z.sum!double(0.0) == 6);
+}
+
+// Confirm sum works for const(Slice!(double*, 1))
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    double[] x = [1.0, 2, 3];
+    auto y = x.sliced;
+    const z = y;
+    assert(z.sum == 6);
+    assert(z.sum(0.0) == 6);
+    assert(z.sum!double == 6);
+    assert(z.sum!double(0.0) == 6);
+}
+
+// Confirm sum works for const(Slice!(const(double)*, 1))
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    double[] x = [1.0, 2, 3];
+    auto y = x.sliced;
+    const z = y.toConst;
+    assert(z.sum == 6);
+    assert(z.sum(0.0) == 6);
+    assert(z.sum!double == 6);
+    assert(z.sum!double(0.0) == 6);
 }
 
 package(mir)
