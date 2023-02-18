@@ -137,21 +137,11 @@ See_also:
 +/
 template poly(F, uint derivative = 0)
 {
-    import mir.ndslice.slice: Slice, SliceKind;
-
     /++
     Params:
         x = value to evaluate
         coefficients = coefficients of polynomial
     +/
-    typeof(F.init * X.init * 1f + F.init) poly(X, T : Slice!(const(U)*, 1, sliceKind), U, SliceKind sliceKind)
-        (in X x, T coefficients)
-    {
-        import core.lifetime: move;
-        return polyImpl!(X, T, F, derivative)(x, coefficients.move);
-    }
-
-    /// ditto
     typeof(F.init * X.init * 1f + F.init) poly(X, T)(in X x, scope const T[] coefficients...)
     {
         return polyImpl!(X, typeof(coefficients), F, derivative)(x, coefficients);
@@ -161,30 +151,19 @@ template poly(F, uint derivative = 0)
 /// ditto
 template poly(uint derivative = 0)
 {
-    import mir.ndslice.slice: Slice, SliceKind;
-
     /// ditto
-    typeof(U.init * X.init * 1f + U.init) poly(X, T : Slice!(const(U)*, 1, sliceKind), U, SliceKind sliceKind)
-        (in X x, T coefficients)
-    {
-        import core.lifetime: move;
-        return polyImpl!(X, T, U, derivative)(x, coefficients.move);
-    }
-
-    /// ditto
-    typeof(T.init * X.init * 1f + T.init) poly(X, T)(in X x, scope const T[] coefficients...)
+    typeof(T.init * X.init * 1f + T.init) poly(X, T)(in X x, scope T[] coefficients...)
     {
         return polyImpl!(X, typeof(coefficients), T, derivative)(x, coefficients);
     }
 }
 
 ///
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0, 4.5, 1.9, 2];
-    auto x = a.sliced;
+
+    double[] x = [3.0, 4.5, 1.9, 2];
 
     alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3;
     alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
@@ -203,27 +182,33 @@ version (mir_test) @safe pure nothrow @nogc unittest
     assert(poly!real(3.3, x).approxEqual(f(3.3)));
 }
 
-/// Dynamic array
-version (mir_test) @safe pure nothrow unittest
+// static array test
+version (mir_test) @safe pure @nogc nothrow unittest
 {
     import mir.math.common: approxEqual;
-    double[] x = [3.0, 4.5, 1.9, 2];
+
+    double[4] x = [3.0, 4.5, 1.9, 2];
 
     alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3;
     alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
     alias d2f = (x) => 2 * 1.9 + 6 *   2 * x^^1;
 
     assert(poly(3.3, x).approxEqual(f(3.3)));
-    assert(poly!real(3.3, x).approxEqual(f(3.3)));
+    assert(poly(7.2, x).approxEqual(f(7.2)));
+
+    assert(poly!1(3.3, x).approxEqual(df(3.3)));
+    assert(poly!1(7.2, x).approxEqual(df(7.2)));
+
+    assert(poly!2(3.3, x).approxEqual(d2f(3.3)));
+    assert(poly!2(7.2, x).approxEqual(d2f(7.2)));
 }
 
 // Check coefficient.length = 3
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0, 4.5, 1.9];
-    auto x = a.sliced;
+
+    double[] x = [3.0, 4.5, 1.9];
 
     alias   f = (x) =>     3.0 +     4.5 * x^^1 + 1.9 * x^^2;
     alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1;
@@ -240,12 +225,11 @@ version (mir_test) @safe pure nothrow @nogc unittest
 }
 
 // Check coefficient.length = 2
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0, 4.5];
-    auto x = a.sliced;
+
+    double[] x = [3.0, 4.5];
 
     alias   f = (x) => 3.0 + 4.5 * x^^1;
     alias  df = (x) => 4.5;
@@ -262,12 +246,11 @@ version (mir_test) @safe pure nothrow @nogc unittest
 }
 
 // Check coefficient.length = 1
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0];
-    auto x = a.sliced;
+
+    double[] x = [3.0];
 
     alias  f = (x) => 3.0;
     alias df = (x) => 0.0;
@@ -325,22 +308,12 @@ See_also:
 +/
 template monic(F, uint derivative = 0)
 {
-    import mir.ndslice.slice: Slice, SliceKind;
-
     /++
     Params:
         x = value to evaluate
         coefficients = coefficients of polynomial
     +/
-    typeof(F.init * X.init * 1f + F.init) monic(X, T : Slice!(const(U)*, 1, sliceKind), U, SliceKind sliceKind)
-        (in X x, T coefficients)
-    {
-        import core.lifetime: move;
-        return monicImpl!(X, T, F, derivative)(x, coefficients.move);
-    }
-
-    /// ditto
-    typeof(F.init * X.init * 1f + F.init) monic(X, T)(in X x, scope const T[] coefficients...)
+    typeof(F.init * X.init * 1f + F.init) monic(X, T)(in X x, scope T[] coefficients...)
     {
         return monicImpl!(X, typeof(coefficients), F, derivative)(x, coefficients);
     }
@@ -349,30 +322,19 @@ template monic(F, uint derivative = 0)
 /// ditto
 template monic(uint derivative = 0)
 {
-    import mir.ndslice.slice: Slice, SliceKind;
-
     /// ditto
-    typeof(U.init * X.init * 1f + U.init) monic(X, T : Slice!(const(U)*, 1, sliceKind), U, SliceKind sliceKind)
-        (in X x, T coefficients)
-    {
-        import core.lifetime: move;
-        return monicImpl!(X, T, U, derivative)(x, coefficients.move);
-    }
-
-    /// ditto
-    typeof(T.init * X.init * 1f + T.init) monic(X, T)(in X x, scope const T[] coefficients...)
+    typeof(T.init * X.init * 1f + T.init) monic(X, T)(in X x, scope T[] coefficients...)
     {
         return monicImpl!(X, typeof(coefficients), T, derivative)(x, coefficients);
     }
 }
 
 ///
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0, 4.5, 1.9, 2];
-    auto x = a.sliced;
+
+    double[] x = [3.0, 4.5, 1.9, 2];
 
     alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3 + x^^4;
     alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2 + 4 * x^^3;
@@ -391,25 +353,33 @@ version (mir_test) @safe pure nothrow @nogc unittest
     assert(monic!real(3.3, x).approxEqual(f(3.3)));
 }
 
-/// Dynamic array
-version (mir_test) @safe pure nothrow unittest
+// static array test
+version (mir_test) @safe pure @nogc nothrow unittest
 {
     import mir.math.common: approxEqual;
-    double[] x = [3.0, 4.5, 1.9, 2];
 
-    alias f = (x) =>  3.0 + 4.5 * x^^1 + 1.9 * x^^2 + 2 * x^^3 + x^^4;
+    double[4] x = [3.0, 4.5, 1.9, 2];
+
+    alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3 + x^^4;
+    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2 + 4 * x^^3;
+    alias d2f = (x) => 2 * 1.9 +   6 * 2 * x^^1 + 3 * 4 * x^^2;
 
     assert(monic(3.3, x).approxEqual(f(3.3)));
-    assert(monic!real(3.3, x).approxEqual(f(3.3)));
+    assert(monic(7.2, x).approxEqual(f(7.2)));
+
+    assert(monic!1(3.3, x).approxEqual(df(3.3)));
+    assert(monic!1(7.2, x).approxEqual(df(7.2)));
+
+    assert(monic!2(3.3, x).approxEqual(d2f(3.3)));
+    assert(monic!2(7.2, x).approxEqual(d2f(7.2)));
 }
 
 // Check coefficient.length = 3
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0, 4.5, 1.9];
-    auto x = a.sliced;
+
+    double[] x = [3.0, 4.5, 1.9];
 
     alias   f = (x) =>     3.0 +     4.5 * x^^1 + 1.9 * x^^2 + x^^3;
     alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 +   3 * x^^2;
@@ -426,12 +396,11 @@ version (mir_test) @safe pure nothrow @nogc unittest
 }
 
 // Check coefficient.length = 2
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0, 4.5];
-    auto x = a.sliced;
+
+    double[] x = [3.0, 4.5];
 
     alias   f = (x) => 3.0 + 4.5 * x^^1 + x^^2;
     alias  df = (x) => 4.5 +   2 * x^^1;
@@ -448,12 +417,11 @@ version (mir_test) @safe pure nothrow @nogc unittest
 }
 
 // Check coefficient.length = 1
-version (mir_test) @safe pure nothrow @nogc unittest
+version (mir_test) @safe pure nothrow unittest
 {
     import mir.math.common: approxEqual;
-    import mir.ndslice.slice: sliced;
-    static immutable a = [3.0];
-    auto x = a.sliced;
+
+    double[] x = [3.0];
 
     alias  f = (x) => 3.0 + x^^1;
     alias df = (x) => 1;
