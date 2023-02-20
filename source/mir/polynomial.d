@@ -41,27 +41,7 @@ struct Polynomial(F)
         +/
         @optmath typeof(F.init * X.init * 1f + F.init) opCall(X)(in X x) const
         {
-            import mir.internal.utility: Iota;
-            auto ret = cast(typeof(return))0;
-            if (coefficients)
-            {
-                ptrdiff_t i = coefficients.length - 1;
-                assert(i >= 0);
-                auto c = cast()coefficients[i];
-                static foreach (d; Iota!derivative)
-                    c *= i - d;
-                ret = cast(typeof(return)) c;
-                while (--i >= cast(ptrdiff_t)derivative)
-                {
-                    assert(i < coefficients.length);
-                    c = cast()coefficients[i];
-                    static foreach (d; Iota!derivative)
-                        c *= i - d;
-                    ret *= x;
-                    ret += c;
-                }
-            }
-            return ret;
+            return x.poly!derivative(this.coefficients[]);
         }
     }
 }
