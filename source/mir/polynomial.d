@@ -95,31 +95,6 @@ version (mir_test) @safe pure nothrow @nogc unittest
     assert(p.opCall!2(7.2).approxEqual(d2f(7.2)));
 }
 
-typeof(F.init * X.init * 1f + F.init) polyImpl(X, T, F, uint derivative = 0)(in X x, in T coefficients)
-{
-    import mir.internal.utility: Iota;
-    auto ret = cast(typeof(return))0;
-    if (coefficients.length > 0)
-    {
-        ptrdiff_t i = coefficients.length - 1;
-        assert(i >= 0);
-        auto c = cast()coefficients[i];
-        static foreach (d; Iota!derivative)
-            c *= i - d;
-        ret = cast(typeof(return)) c;
-        while (--i >= cast(ptrdiff_t)derivative)
-        {
-            assert(i < coefficients.length);
-            c = cast()coefficients[i];
-            static foreach (d; Iota!derivative)
-                c *= i - d;
-            ret *= x;
-            ret += c;
-        }
-    }
-    return ret;
-}
-
 /++
 Evaluate polynomial.
 
@@ -135,26 +110,36 @@ Returns:
 See_also:
     $(WEB en.wikipedia.org/wiki/Polynomial, Polynomial).
 +/
-template poly(F, uint derivative = 0)
+template poly(uint derivative = 0)
 {
     /++
     Params:
         x = value to evaluate
         coefficients = coefficients of polynomial
     +/
-    typeof(F.init * X.init * 1f + F.init) poly(X, T)(in X x, scope const T[] coefficients...)
+    typeof(F.init * X.init * 1f + F.init) poly(X, F)(in X x, scope F[] coefficients...)
     {
-        return polyImpl!(X, typeof(coefficients), F, derivative)(x, coefficients);
-    }
-}
-
-/// ditto
-template poly(uint derivative = 0)
-{
-    /// ditto
-    typeof(T.init * X.init * 1f + T.init) poly(X, T)(in X x, scope T[] coefficients...)
-    {
-        return polyImpl!(X, typeof(coefficients), T, derivative)(x, coefficients);
+        import mir.internal.utility: Iota;
+        auto ret = cast(typeof(return))0;
+        if (coefficients.length > 0)
+        {
+            ptrdiff_t i = coefficients.length - 1;
+            assert(i >= 0);
+            auto c = cast()coefficients[i];
+            static foreach (d; Iota!derivative)
+                c *= i - d;
+            ret = cast(typeof(return)) c;
+            while (--i >= cast(ptrdiff_t)derivative)
+            {
+                assert(i < coefficients.length);
+                c = cast()coefficients[i];
+                static foreach (d; Iota!derivative)
+                    c *= i - d;
+                ret *= x;
+                ret += c;
+            }
+        }
+        return ret;
     }
 }
 
@@ -177,9 +162,6 @@ version (mir_test) @safe pure nothrow unittest
 
     assert(poly!2(3.3, x).approxEqual(d2f(3.3)));
     assert(poly!2(7.2, x).approxEqual(d2f(7.2)));
-
-    // can also control the type
-    assert(poly!real(3.3, x).approxEqual(f(3.3)));
 }
 
 // static array test
