@@ -92,12 +92,13 @@ See_also:
 +/
 template poly(uint derivative = 0)
 {
+    import std.traits: ForeachType;
     /++
     Params:
         x = value to evaluate
         coefficients = coefficients of polynomial
     +/
-    typeof(F.init * X.init * 1f + F.init) poly(X, F)(in X x, scope F[] coefficients...)
+    typeof(ForeachType!F.init * X.init * 1f + ForeachType!F.init) poly(X, F)(in X x, scope const F coefficients...)
     {
         import mir.internal.utility: Iota;
         auto ret = cast(typeof(return))0;
