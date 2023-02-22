@@ -98,7 +98,7 @@ template poly(uint derivative = 0)
         x = value to evaluate
         coefficients = coefficients of polynomial
     +/
-    typeof(F.init * X.init * 1f + F.init) poly(X, F)(in X x, scope const F[] coefficients...)
+    @optmath typeof(F.init * X.init * 1f + F.init) poly(X, F)(in X x, scope const F[] coefficients...)
     {
         import mir.internal.utility: Iota;
         auto ret = cast(typeof(return))0;
