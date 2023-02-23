@@ -4189,6 +4189,21 @@ unittest {
     assert(z2.equal!equal(result2));
 }
 
+// Ensure filter works with each
+version(mir_test)
+@safe pure nothrow
+unittest {
+    import mir.ndslice.slice: sliced;
+
+    int[] result = [3, 4];
+
+    int[] x = [1, 2, 3];
+    auto y = x.filter!"a >= 2";
+    y.each!"a++";
+
+    assert(y.equal(result));
+}
+
 /++
 Implements the higher order filter and map function. The predicate and map functions are passed to
 `mir.functional.naryFun`, and can either accept a string, or any callable
