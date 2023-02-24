@@ -990,14 +990,18 @@ public:
 
         immutable Slice!(int*, 1) x = [1, 2].sliced;
         auto y = x.lightImmutable;
-        // Outer immutable is moved to iteration type
-        static assert(is(typeof(y) == Slice!(immutable(int)*, 1)));
         // this._iterator is copied to the new slice (i.e. both point to the same underlying data)
         assert(x._iterator == y._iterator);
         assert(x[0] == 1);
         assert(x[1] == 2);
         assert(y[0] == 1);
         assert(y[1] == 2);
+        // Outer immutable is moved to iteration type
+        static assert(is(typeof(y) == Slice!(immutable(int)*, 1)));
+        // meaning that y can be modified, even if its elements can't
+        y.popFront;
+        // even if x can't be modified
+        //x.popFront; //error
     }
 
     /// Returns: Mutable slice over const data.
@@ -1023,12 +1027,16 @@ public:
 
         const Slice!(int*, 1) x = [1, 2].sliced;
         auto y = x.lightConst;
-        // Outer const is moved to iteration type
-        static assert(is(typeof(y) == Slice!(const(int)*, 1)));
         // this._iterator is copied to the new slice (i.e. both point to the same underlying data)
+        assert(x._iterator == y._iterator);
         assert(x.equal([1, 2]));
         assert(y.equal([1, 2]));
-        assert(x._iterator == y._iterator);
+        // Outer const is moved to iteration type
+        static assert(is(typeof(y) == Slice!(const(int)*, 1)));
+        // meaning that y can be modified, even if its elements can't
+        y.popFront;
+        // even if x can't be modified
+        //x.popFront; //error
     }
 
     /// Label for the dimensions 'd'. By default returns the row label.
