@@ -137,7 +137,7 @@ struct serdeKeyOut
 }
 
 /++
-The attribute should be used as a hind for scripting languages to register type deserializer in the type system.
+The attribute should be used as a hint for scripting languages to register type deserializer in the type system.
 
 The attribute should be applied to a type definition.
 +/
