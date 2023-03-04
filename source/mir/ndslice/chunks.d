@@ -17,7 +17,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.ndslice.chunks;
 
 import mir.internal.utility;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.internal;
 import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.slice;
@@ -229,7 +229,7 @@ version(mir_ndslice_test) unittest
 +/
 struct Chunks(size_t[] dimensions, Iterator, size_t N = 1, SliceKind kind = Contiguous)
 {
-@optmath:
+@fmamath:
 
     /++
     Chunk shape.

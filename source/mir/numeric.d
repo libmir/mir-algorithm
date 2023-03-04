@@ -1864,7 +1864,7 @@ T integrate(alias f, T)(const T a, const T b, const T tolerance = T.epsilon)
 }
 
 /// ditto
-@optmath
+@fmamath
 T integrateImpl(T)(
     scope const T delegate(T) @safe pure nothrow @nogc f,
     const T a,

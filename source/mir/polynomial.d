@@ -6,10 +6,10 @@ Authors: Ilia Ki
 +/
 module mir.polynomial;
 
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.rc.array;
 
-@optmath:
+@fmamath:
 
 /++
 Polynomial callable ref-counted structure.
@@ -39,7 +39,7 @@ struct Polynomial(F)
         Params:
             x = `x` point
         +/
-        @optmath typeof(F.init * X.init * 1f + F.init) opCall(X)(in X x) const
+        @fmamath typeof(F.init * X.init * 1f + F.init) opCall(X)(in X x) const
         {
             return x.poly!derivative(this.coefficients[]);
         }
@@ -56,23 +56,23 @@ Polynomial!F polynomial(F)(RCArray!(const F) coefficients)
 ///
 version (mir_test) @safe pure nothrow @nogc unittest
 {
-    import mir.math.common: approxEqual;
+    import mir.test;
     import mir.rc.array;
     auto a = rcarray!(const double)(3.0, 4.5, 1.9, 2);
     auto p = a.polynomial;
 
-    alias   f = (x) =>     3.0 +     4.5 * x^^1 +   1.9 * x^^2 + 2 * x^^3;
-    alias  df = (x) =>     4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
-    alias d2f = (x) => 2 * 1.9 + 6 *   2 * x^^1;
+    alias f = (x) => 3.0 + 4.5 * x^^1 + 1.9 * x^^2 + 2 * x^^3;
+    alias df = (x) => 4.5 + 2 * 1.9 * x^^1 + 3 * 2 * x^^2;
+    alias d2f = (x) => 2 * 1.9  + 6 * 2 * x^^1;
 
-    assert(p(3.3).approxEqual(f(3.3)));
-    assert(p(7.2).approxEqual(f(7.2)));
+    p(3.3).shouldApprox == f(3.3);
+    p(7.2).shouldApprox == f(7.2);
 
-    assert(p.opCall!1(3.3).approxEqual(df(3.3)));
-    assert(p.opCall!1(7.2).approxEqual(df(7.2)));
+    p.opCall!1(3.3).shouldApprox == df(3.3);
+    p.opCall!1(7.2).shouldApprox == df(7.2);
 
-    assert(p.opCall!2(3.3).approxEqual(d2f(3.3)));
-    assert(p.opCall!2(7.2).approxEqual(d2f(7.2)));
+    p.opCall!2(3.3).shouldApprox == d2f(3.3);
+    p.opCall!2(7.2).shouldApprox == d2f(7.2);
 }
 
 /++
@@ -98,7 +98,7 @@ template poly(uint derivative = 0)
         x = value to evaluate
         coefficients = coefficients of polynomial
     +/
-    @optmath typeof(F.init * X.init * 1f + F.init) poly(X, F)(in X x, scope const F[] coefficients...)
+    @fmamath typeof(F.init * X.init * 1f + F.init) poly(X, F)(in X x, scope const F[] coefficients...)
     {
         import mir.internal.utility: Iota;
         auto ret = cast(typeof(return))0;

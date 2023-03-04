@@ -17,7 +17,7 @@ import core.lifetime: move;
 import mir.functional;
 import mir.internal.utility;
 import mir.interpolate;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.slice;
 import mir.primitives;
 import mir.rc.array;
@@ -36,7 +36,7 @@ version(D_Exceptions)
     static immutable exc_eq = new Exception(msg_eq);
 }
 
-@optmath:
+@fmamath:
 
 /++
 Constructs multivariate linear interpolant with nodes on rectilinear grid.
@@ -197,7 +197,7 @@ struct Linear(F, size_t N = 1, X = F)
     /// Grid iterators. $(RED For internal use.)
     Repeat!(N, RCI!(immutable X)) _grid;
 
-@optmath extern(D):
+@fmamath extern(D):
 
     bool opEquals()(auto ref scope const typeof(this) rhs) scope const @trusted pure nothrow @nogc
     {
@@ -362,7 +362,7 @@ struct LinearKernel(X)
     X w0 = 0;
     X w1 = 0;
 
-@optmath:
+@fmamath:
 
     ///
     auto lightConst()() const @property

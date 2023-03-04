@@ -83,9 +83,9 @@ version(mir_ndslice_test) unittest
 }
 
 import mir.ndslice.slice;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 
-@optmath:
+@fmamath:
 
 @safe pure version(mir_ndslice_test) unittest
 {
@@ -128,7 +128,7 @@ template sort(alias less = "a < b")
     import mir.series: Series;
     static if (__traits(isSame, naryFun!less, less))
     {
-@optmath:
+@fmamath:
         /++
         Sort n-dimensional slice.
         +/
@@ -514,7 +514,7 @@ template assumeSortedContains(alias test = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!test, test))
     {
-@optmath:
+@fmamath:
         /++
         Params:
             slice = sorted one-dimensional slice or array.
@@ -555,7 +555,7 @@ template assumeSortedEqualIndex(alias test = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!test, test))
     {
-@optmath:
+@fmamath:
         /++
         Params:
             slice = sorted one-dimensional slice or array.
@@ -606,7 +606,7 @@ template transitionIndex(alias test = "a < b")
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!test, test))
     {
-@optmath:
+@fmamath:
         /++
         Params:
             slice = sorted one-dimensional slice or array.

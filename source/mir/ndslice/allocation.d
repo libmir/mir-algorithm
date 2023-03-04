@@ -53,7 +53,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.ndslice.allocation;
 
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.concatenation;
 import mir.ndslice.field: BitField;
 import mir.ndslice.internal;
@@ -63,7 +63,7 @@ import mir.rc.array;
 import std.traits;
 import std.meta: staticMap;
 
-@optmath:
+@fmamath:
 
 /++
 Allocates an n-dimensional reference-counted (thread-safe) slice.

@@ -2,7 +2,7 @@ module mir.interpolate.utility;
 
 import mir.ndslice.slice;
 import std.traits;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 
 package template DeepType(T)
 {
@@ -24,7 +24,7 @@ struct ParabolaKernel(T)
     ///
     T c = 0;
 
-@optmath:
+@fmamath:
 
     ///
     this(T a, T b, T c)
@@ -160,7 +160,7 @@ struct CubicKernel(T)
     ///
     T d = 0;
 
-@optmath:
+@fmamath:
 
     ///
     this(T a, T b, T c, T d)

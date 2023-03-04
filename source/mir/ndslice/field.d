@@ -32,11 +32,11 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.ndslice.field;
 
 import mir.internal.utility: Iota;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.internal;
 import mir.qualifier;
 
-@optmath:
+@fmamath:
 
 package template ZeroShiftField(T)
 {
@@ -73,7 +73,7 @@ auto MapField__map(Field, alias fun, alias fun1)(ref MapField!(Field, fun) f)
 +/
 struct MapField(Field, alias _fun)
 {
-@optmath:
+@fmamath:
     ///
     Field _field;
 
@@ -137,7 +137,7 @@ struct MapField(Field, alias _fun)
 +/
 struct VmapField(Field, Fun)
 {
-@optmath:
+@fmamath:
     ///
     Field _field;
     ///
@@ -238,7 +238,7 @@ Iterates multiple fields in lockstep.
 struct ZipField(Fields...)
     if (Fields.length > 1)
 {
-@optmath:
+@fmamath:
     import mir.functional: Tuple, Ref, _ref;
     import std.meta: anySatisfy;
 
@@ -297,7 +297,7 @@ struct RepeatField(T)
 {
     import std.traits: Unqual;
 
-@optmath:
+@fmamath:
     alias UT = Unqual!T;
 
     ///
@@ -325,7 +325,7 @@ struct RepeatField(T)
 struct BitField(Field, I = typeof(cast()Field.init[size_t.init]))
     if (__traits(isUnsigned, I))
 {
-@optmath:
+@fmamath:
     import mir.bitop: ctlz;
     package(mir) alias E = I;
     package(mir) enum shift = ctlz(I.sizeof) + 3;
@@ -425,7 +425,7 @@ struct BitpackField(Field, uint pack, I = typeof(cast()Field.init[size_t.init]))
     if (__traits(isUnsigned, I))
 {
     //static assert();
-@optmath:
+@fmamath:
     package(mir) alias E = I;
     package(mir) enum mask = (I(1) << pack) - 1;
     package(mir) enum bits = I.sizeof * 8;
@@ -539,7 +539,7 @@ struct OrthogonalReduceField(FieldsIterator, alias fun, T)
 {
     import mir.ndslice.slice: Slice;
 
-@optmath:
+@fmamath:
     /// non empty slice
 
     Slice!FieldsIterator _fields;
@@ -582,7 +582,7 @@ struct CycleField(Field)
 {
     import mir.ndslice.slice: Slice;
 
-@optmath:
+@fmamath:
     /// Cycle length
     size_t _length;
     ///
@@ -630,7 +630,7 @@ struct CycleField(Field, size_t length)
 {
     import mir.ndslice.slice: Slice;
 
-@optmath:
+@fmamath:
     /// Cycle length
     enum _length = length;
     ///
@@ -679,7 +679,7 @@ struct CycleField(Field, size_t length)
 struct ndIotaField(size_t N)
     if (N)
 {
-@optmath:
+@fmamath:
     ///
     size_t[N - 1] _lengths;
 
@@ -746,7 +746,7 @@ struct LinspaceField(T)
         return a + b;
     }
 
-@optmath:
+@fmamath:
 
     ///
     size_t length(size_t dimension = 0)() scope const @property
@@ -767,7 +767,7 @@ Magic square field.
 +/
 struct MagicField
 {
-@optmath:
+@fmamath:
 @safe pure nothrow @nogc:
 
     /++

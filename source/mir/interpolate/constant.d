@@ -13,7 +13,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.constant;
 
-@optmath:
+@fmamath:
 
 ///
 version(mir_test)
@@ -42,7 +42,7 @@ import core.lifetime: move;
 import mir.internal.utility;
 import mir.functional;
 import mir.interpolate;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.slice;
 import mir.primitives;
 import mir.rc.array;
@@ -77,7 +77,7 @@ Multivariate constant interpolant with nodes on rectilinear grid.
 struct Constant(F, size_t N = 1, X = F)
     if (N && N <= 6)
 {
-@optmath:
+@fmamath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(RCI!(const F), N) _data;

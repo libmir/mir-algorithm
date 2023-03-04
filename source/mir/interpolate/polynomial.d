@@ -28,12 +28,14 @@ import mir.rc.array;
 import mir.utility: min, swap;
 import std.traits: Unqual;
 
-@optmath:
+@fmamath:
 
 ///
 version(mir_test)
-@safe pure unittest
+// @safe pure
+unittest
 {
+    import mir.test;
     import mir.algorithm.iteration: all;
     import mir.math;
     import mir.ndslice;
@@ -61,7 +63,7 @@ version(mir_test)
         auto l_ldx = l.withDerivative(testX);
         auto l_ld_ld2x = l.withTwoDerivatives(testX);
 
-        assert(lx.approxEqual(f(testX)));
+        lx.shouldApprox == f(testX);
         assert(l_ldx[].all!approxEqual(fWithDerivative(testX)[]));
         assert(l_ld_ld2x[].all!approxEqual(fWithTwoDerivatives(testX)[]));
     }
@@ -100,7 +102,7 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0, X = T)
     /// $(RED for internal use only.)
     T[maxAdditionalFunctions + 1] _asums;
 
-@optmath @safe pure @nogc extern(D):
+@fmamath @safe pure @nogc extern(D):
 
     ///
     enum uint derivativeOrder = maxAdditionalFunctions;

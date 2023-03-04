@@ -114,7 +114,7 @@ T4=$(TR $(TDNW $(LREF $1)) $(TD $2) $(TD $3) $(TD $4))
 module mir.ndslice.topology;
 
 import mir.internal.utility;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.field;
 import mir.ndslice.internal;
 import mir.ndslice.iterator;
@@ -128,7 +128,7 @@ import std.meta: AliasSeq, allSatisfy, staticMap, templateOr, Repeat;
 private immutable choppedExceptionMsg = "bounds passed to chopped are out of sliceable bounds.";
 version (D_Exceptions) private immutable choppedException = new Exception(choppedExceptionMsg);
 
-@optmath:
+@fmamath:
 
 /++
 Converts a slice to user provided kind.
@@ -2744,7 +2744,7 @@ template map(fun...)
         static if (__traits(isSame, naryFun!(fun[0]), fun[0]))
         {
             alias f = fun[0];
-        @optmath:
+        @fmamath:
             /++
             Params:
                 slice = An ndslice, array, or an input range.
@@ -3045,7 +3045,7 @@ See_Also:
     $(LREF pairwise), $(LREF subSlices), $(LREF slide), $(LREF zip),
     $(HTTP en.wikipedia.org/wiki/Map_(higher-order_function), Map (higher-order function))
 +/
-@optmath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
+@fmamath auto vmap(Iterator, size_t N, SliceKind kind, Callable)
     (
         Slice!(Iterator, N, kind) slice,
         Callable callable,
@@ -3317,7 +3317,7 @@ template rcmap(fun...)
         static if (__traits(isSame, naryFun!(fun[0]), fun[0]))
         {
             alias f = fun[0];
-        @optmath:
+        @fmamath:
             /++
             Params:
                 slice = An ndslice, array, or an input range.
@@ -3663,7 +3663,7 @@ See_also: $(LREF map), $(LREF vmap)
 template as(T)
 {
     ///
-    @optmath auto as(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    @fmamath auto as(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         static if (is(slice.DeepElement == T))
             return slice;
@@ -3932,7 +3932,7 @@ template zip(bool sameStrides = false)
         n-dimensional slice of elements tuple
     See_also: $(SUBREF slice, Slice.strides).
     +/
-    @optmath
+    @fmamath
     auto zip(Slices...)(Slices slices)
         if (Slices.length > 1 && allSatisfy!(isConvertibleToSlice, Slices))
     {
@@ -4082,7 +4082,7 @@ template slideAlong(size_t params, alias fun, SDimensions...)
 
     static if (allSatisfy!(isSizediff_t, SDimensions) && params > 1 && __traits(isSame, naryFun!fun, fun))
     {
-    @optmath:
+    @fmamath:
         /++
         Params: slice = ndslice or array
         Returns: lazy convolution result
@@ -4184,7 +4184,7 @@ template slide(size_t params, alias fun)
 
     static if (params > 1 && __traits(isSame, naryFun!fun, fun))
     {
-    @optmath:
+    @fmamath:
         /++
         Params: slice = ndslice or array
         Returns: lazy convolution result
@@ -4378,7 +4378,7 @@ template withNeighboursSum(alias fun = "a + b")
 
     static if (__traits(isSame, naryFun!fun, fun))
     {
-    @optmath:
+    @fmamath:
         /++
         Params:
             slice = ndslice or array
@@ -4559,7 +4559,7 @@ template kronecker(alias fun = product)
     Returns:
         $(SUBREF ndfield, Kronecker)`!(fun, NdFields)(fields).`$(SUBREF slice, slicedNdField)
     +/
-    @optmath auto kronecker(NdFields...)(NdFields fields)
+    @fmamath auto kronecker(NdFields...)(NdFields fields)
         if (allSatisfy!(hasShape, NdFields) || allSatisfy!(hasLength, NdFields))
     {
         return Kronecker!(fun, NdFields)(fields).slicedNdField;
@@ -4869,7 +4869,7 @@ template alongDim(SDimensions...)
         Returns:
             `(n-d)`-dimensional slice composed of d-dimensional slices
         +/
-        @optmath auto alongDim(Iterator, size_t N, SliceKind kind)
+        @fmamath auto alongDim(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
             if (N > SDimensions.length)
         {
@@ -5156,7 +5156,7 @@ template byDim(SDimensions...)
         Returns:
             d-dimensional slice composed of `(n-d)`-dimensional slices
         +/
-        @optmath auto byDim(Iterator, size_t N, SliceKind kind)
+        @fmamath auto byDim(Iterator, size_t N, SliceKind kind)
             (Slice!(Iterator, N, kind) slice)
             if (N >= SDimensions.length)
         {
@@ -5885,7 +5885,7 @@ template orthogonalReduceField(alias fun)
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!fun, fun))
     {
-    @optmath:
+    @fmamath:
         /++
         Params:
             slice = Non empty input slice composed of fields or iterators.

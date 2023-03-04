@@ -36,16 +36,16 @@ import std.traits;
 import std.meta;
 
 import mir.internal.utility;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.primitives;
 
-@optmath:
+@fmamath:
 
 private template _expose(size_t maxN, size_t dim)
 {
-    static @optmath auto _expose(S)(S s)
+    static @fmamath auto _expose(S)(S s)
     {
         static if (s.N == maxN)
         {
@@ -239,7 +239,7 @@ enum size_t concatenationDimension(T : Concatenation!(dim, Slices), size_t dim, 
 struct Concatenation(size_t dim, Slices...)
     if (Slices.length > 1)
 {
-    @optmath:
+    @fmamath:
 
 
     /// Slices and sub-concatenations
@@ -488,7 +488,7 @@ See_also: $(LREF ._concatenation) examples.
 template pad(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @optmath:
+    @fmamath:
 
     /++
     Params:
@@ -634,7 +634,7 @@ See_also: $(LREF ._concatenation) examples.
 template padWrap(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @optmath:
+    @fmamath:
 
     /++
     Params:
@@ -802,7 +802,7 @@ See_also: $(LREF ._concatenation) examples.
 template padSymmetric(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @optmath:
+    @fmamath:
 
     /++
     Params:
@@ -988,7 +988,7 @@ See_also: $(LREF ._concatenation) examples.
 template padEdge(size_t[] dimensions, string[] directions)
     if (dimensions.length && dimensions.length == directions.length)
 {
-    @optmath:
+    @fmamath:
 
     /++
     Params:
@@ -1109,7 +1109,7 @@ See_also: $(LREF ._concatenation) examples.
 +/
 template forEachFragment(alias pred)
 {
-    @optmath:
+    @fmamath:
 
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))
@@ -1179,7 +1179,7 @@ See_also: $(LREF ._concatenation) examples.
 +/
 template until(alias pred)
 {
-    @optmath:
+    @fmamath:
 
     import mir.functional: naryFun;
     static if (__traits(isSame, naryFun!pred, pred))

@@ -54,7 +54,7 @@ module mir.algorithm.iteration;
 
 import mir.functional: naryFun;
 import mir.internal.utility;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.field: BitField;
 import mir.ndslice.internal;
 import mir.ndslice.iterator: FieldIterator, RetroIterator;
@@ -101,7 +101,7 @@ version(mir_test) unittest
 
 }
 
-@optmath:
+@fmamath:
 
 /+
 Bitslice representation for accelerated bitwise algorithm.
@@ -130,7 +130,7 @@ private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
     /// tail length
     int tailLength;
 
-@optmath:
+@fmamath:
 
     this(Slice!(FieldIterator!(BitField!(Field, I))) slice)
     {
@@ -458,6 +458,7 @@ scope const:
 
     sizediff_t nBitsToCount(size_t count)
     {
+        pragma(inline, false);
         size_t ret;
         if (count == 0)
             return count;
@@ -557,6 +558,22 @@ sizediff_t nBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!
     return BitSliceAccelerator!(Field, I)(bitSlice.retro).retroNBitsToCount(count);
 }
 
+/++
+Сount bits starting from the end until set bit count is reached. Works with ndslices created with $(REF bitwise, mir,ndslice,topology), $(REF bitSlice, mir,ndslice,allocation).
+Returns: bit count if set bit count is reached or `-1` otherwise.
++/
+sizediff_t retroNBitsToCount(Field, I)(Slice!(FieldIterator!(BitField!(Field, I))) bitSlice, size_t count)
+{
+    return BitSliceAccelerator!(Field, I)(bitSlice).retroNBitsToCount(count);
+}
+
+///ditto
+sizediff_t retroNBitsToCount(Field, I)(Slice!(RetroIterator!(FieldIterator!(BitField!(Field, I)))) bitSlice, size_t count)
+{
+    import mir.ndslice.topology: retro;
+    return BitSliceAccelerator!(Field, I)(bitSlice.retro).nBitsToCount(count);
+}
+
 ///
 version(mir_test)
 pure unittest
@@ -604,7 +621,7 @@ package(mir) template allFlattened(args...)
     static if (args.length)
     {
         alias arg = args[0];
-        @optmath @property allFlattenedMod()()
+        @fmamath @property allFlattenedMod()()
         {
             import mir.ndslice.topology: flattened;
             return flattened(arg);
@@ -661,11 +678,11 @@ version(Mir_disable_inlining_in_reduce)
 
     private template nonInlinedNaryFun(alias fun)
     {
-        import mir.math.common : optmath;
+        import mir.math.common : fmamath;
         static if (is(typeof(fun) : string))
         {
             /// Specialization for string lambdas
-            @optmath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
+            @fmamath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
                 if (args.length <= 26)
             {
                 pragma(inline,false);
@@ -675,7 +692,7 @@ version(Mir_disable_inlining_in_reduce)
         }
         else static if (is(typeof(fun.opCall) == function))
         {
-            @optmath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
+            @fmamath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
                 if (is(typeof(fun.opCall(args))))
             {
                 pragma(inline,false);
@@ -684,7 +701,7 @@ version(Mir_disable_inlining_in_reduce)
         }
         else
         {
-            @optmath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
+            @fmamath auto ref nonInlinedNaryFun(Args...)(auto ref Args args)
                 if (is(typeof(fun(args))))
             {
                 pragma(inline,false);
@@ -745,7 +762,7 @@ template reduce(alias fun)
     Returns:
         the accumulated `result`
     +/
-    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
+    @fmamath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -768,7 +785,7 @@ template reduce(alias fun)
     }
     else version(Mir_disable_inlining_in_reduce)
     //As above, but with inlining disabled.
-    @optmath auto reduce(S, Slices...)(S seed, Slices slices)
+    @fmamath auto reduce(S, Slices...)(S seed, Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -849,9 +866,9 @@ version(mir_test) unittest
     import std.numeric : dotProduct;
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota, zip, universal;
-    import mir.math.common : optmath;
+    import mir.math.common : fmamath;
 
-    static @optmath T fmuladd(T, Z)(const T a, Z z)
+    static @fmamath T fmuladd(T, Z)(const T a, Z z)
     {
         return a + z.a * z.b;
     }
@@ -879,9 +896,9 @@ unittest
 {
     import mir.ndslice.allocation : slice;
     import mir.ndslice.topology : as, iota;
-    import mir.math.common : optmath;
+    import mir.math.common : fmamath;
 
-    static @optmath T fun(T)(const T a, ref T b)
+    static @fmamath T fun(T)(const T a, ref T b)
     {
         return a + b++;
     }
@@ -1018,7 +1035,7 @@ template eachOnBorder(alias fun)
     Params:
         slices = One or more slices.
     +/
-    @optmath void eachOnBorder(Slices...)(Slices slices)
+    @fmamath void eachOnBorder(Slices...)(Slices slices)
         if (allSatisfy!(isSlice, Slices))
     {
         import mir.ndslice.traits: isContiguousSlice;
@@ -1117,7 +1134,7 @@ template each(alias fun)
         Params:
             slices = One or more slices, ranges, and arrays.
         +/
-        @optmath auto each(Slices...)(Slices slices)
+        @fmamath auto each(Slices...)(Slices slices)
             if (Slices.length && !is(Slices[0] : Chequer))
         {
             static if (Slices.length > 1)
@@ -1141,7 +1158,7 @@ template each(alias fun)
             color = $(LREF Chequer).
             slices = One or more slices.
         +/
-        @optmath auto each(Slices...)(Chequer color, Slices slices)
+        @fmamath auto each(Slices...)(Chequer color, Slices slices)
             if (Slices.length && allSatisfy!(isSlice, Slices))
         {
             static if (Slices.length > 1)
@@ -1546,7 +1563,7 @@ template minmaxPos(alias pred = "a < b")
     Returns:
         2 subslices with minimal and maximal `first` elements.
     +/
-    @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)[2]
+    @fmamath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)[2]
         minmaxPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         typeof(return) pret;
@@ -1622,7 +1639,7 @@ template minmaxIndex(alias pred = "a < b")
     Returns:
         Subslice with minimal (maximal) `first` element.
     +/
-    @optmath size_t[N][2] minmaxIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    @fmamath size_t[N][2] minmaxIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         typeof(return) pret = size_t.max;
         if (!slice.anyEmpty)
@@ -1691,7 +1708,7 @@ template minPos(alias pred = "a < b")
         Multidimensional backward index such that element is minimal(maximal).
         Backward index equals zeros, if slice is empty.
     +/
-    @optmath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)
+    @fmamath Slice!(Iterator, N, kind == Contiguous && N > 1 ? Canonical : kind)
         minPos(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         typeof(return) ret;
@@ -1766,7 +1783,7 @@ template minIndex(alias pred = "a < b")
         Multidimensional index such that element is minimal(maximal).
         Index elements equal to `size_t.max`, if slice is empty.
     +/
-    @optmath size_t[N] minIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    @fmamath size_t[N] minIndex(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
     {
         size_t[N] ret = size_t.max;
         if (!slice.anyEmpty)
@@ -1922,7 +1939,7 @@ template findIndex(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) findIndex(Slices...)(Slices slices)
+    @fmamath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) findIndex(Slices...)(Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -2018,7 +2035,7 @@ template find(alias pred)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) find(Slices...)(Slices slices)
+    @fmamath Select!(DimensionCount!(Slices[0]) > 1, size_t[DimensionCount!(Slices[0])], size_t) find(Slices...)(Slices slices)
         if (Slices.length && allSatisfy!(hasShape, Slices))
     {
         static if (Slices.length > 1)
@@ -2197,7 +2214,7 @@ template any(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath bool any(Slices...)(Slices slices)
+    @fmamath bool any(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         static if (Slices.length > 1)
@@ -2357,7 +2374,7 @@ template all(alias pred = "a")
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath bool all(Slices...)(Slices slices)
+    @fmamath bool all(Slices...)(Slices slices)
         if ((Slices.length == 1 || !__traits(isSame, pred, "a")) && Slices.length)
     {
         static if (Slices.length > 1)
@@ -2487,7 +2504,7 @@ template count(alias fun)
     Constraints:
         All slices must have the same shape.
     +/
-    @optmath size_t count(Slices...)(Slices slices)
+    @fmamath size_t count(Slices...)(Slices slices)
         if (Slices.length)
     {
         static if (Slices.length > 1)
@@ -4308,7 +4325,7 @@ template fold(alias fun)
     Returns:
         the accumulated result
     +/
-    @optmath auto fold(Slice, S)(scope Slice slice, S seed)
+    @fmamath auto fold(Slice, S)(scope Slice slice, S seed)
     {
         import core.lifetime: move;
         return reduce!fun(seed, slice.move);

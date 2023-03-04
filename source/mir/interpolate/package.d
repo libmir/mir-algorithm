@@ -21,13 +21,13 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.interpolate;
 
 import mir.functional: Tuple;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.slice: Slice, Contiguous;
 import mir.primitives;
 import mir.qualifier;
 import std.traits: isInstanceOf;
 
-@optmath:
+@fmamath:
 
 package ref iter(alias s)() { return s._iterator; };
 package alias GridVector(It) = Slice!It;

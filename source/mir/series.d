@@ -193,11 +193,11 @@ unittest{
 
 import mir.ndslice.slice;
 import mir.ndslice.internal: is_Slice, isIndex;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 
 import std.meta;
 
-@optmath:
+@fmamath:
 
 /++
 Plain index/time observation data structure.
@@ -349,7 +349,7 @@ struct mir_series(IndexIterator_, Iterator_, size_t N_ = 1, SliceKind kind_ = Co
             sort(mutableOf);
     }
 
-@optmath:
+@fmamath:
 
     ///
     this()(Slice!IndexIterator index, Slice!(Iterator, N, kind) data)

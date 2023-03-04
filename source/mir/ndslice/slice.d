@@ -33,7 +33,7 @@ STD = $(TD $(SMALL $0))
 module mir.ndslice.slice;
 
 import mir.internal.utility : Iota;
-import mir.math.common : optmath;
+import mir.math.common : fmamath;
 import mir.ndslice.concatenation;
 import mir.ndslice.field;
 import mir.ndslice.internal;
@@ -139,7 +139,7 @@ template toSlices(args...)
         static if (isMutable!Arg && isSlice!Arg)
             alias slc = arg;
         else
-        @optmath @property auto ref slc()()
+        @fmamath @property auto ref slc()()
         {
             return toSlice(arg);
         }
@@ -476,7 +476,7 @@ package(mir) template allLightScope(args...)
         static if(!isDynamicArray!Arg)
         {
             static if(!is(LightScopeOf!Arg == Arg))
-            @optmath @property auto allLightScopeMod()()
+            @fmamath @property auto allLightScopeMod()()
             {
                 import mir.qualifier: lightScope;
                 return args[0].lightScope;
@@ -669,7 +669,7 @@ Slice!(Iterator, N, Contiguous)
 struct mir_slice(Iterator_, size_t N_ = 1, SliceKind kind_ = Contiguous, Labels_...)
     if (0 < N_ && N_ < 255 && !(kind_ == Canonical && N_ == 1) && Labels_.length <= N_ && isIterator!Iterator_)
 {
-@optmath:
+@fmamath:
 
     /// $(LREF SliceKind)
     enum SliceKind kind = kind_;

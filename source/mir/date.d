@@ -4209,12 +4209,12 @@ version(unittest)
     auto testYearsAD = [1, 4, 1000, 1999, 2000, 2012];
 
     // I'd use a Tuple, but I get forward reference errors if I try.
-    struct MonthDay
+    static struct MonthDay
     {
         Month month;
         short day;
 
-        this(int m, short d)
+        this(int m, short d) @safe
         {
             month = cast(Month) m;
             day = d;

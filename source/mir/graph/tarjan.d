@@ -16,9 +16,9 @@ module mir.graph.tarjan;
 
 import std.traits;
 
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 
-@optmath:
+@fmamath:
 
 
 /++

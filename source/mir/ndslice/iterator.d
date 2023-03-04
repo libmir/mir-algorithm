@@ -37,7 +37,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 module mir.ndslice.iterator;
 
 import mir.internal.utility: Iota;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.field;
 import mir.ndslice.internal;
 import mir.ndslice.slice: SliceKind, Slice, Universal, Canonical, Contiguous, isSlice;
@@ -49,7 +49,7 @@ private static immutable assumeZeroShiftExceptionMsg = "*.assumeFieldsHaveZeroSh
 version(D_Exceptions)
     private static immutable assumeZeroShiftException = new Exception(assumeZeroShiftExceptionMsg);
 
-@optmath:
+@fmamath:
 
 enum std_ops = q{
     void opUnary(string op)() scope
@@ -91,7 +91,7 @@ Step counter.
 struct IotaIterator(I)
     if (isIntegral!I || isPointer!I)
 {
-@optmath:
+@fmamath:
 
     ///
     I _index;
@@ -225,7 +225,7 @@ Reverse directions for an iterator.
 +/
 struct RetroIterator(Iterator)
 {
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
 
@@ -342,7 +342,7 @@ Iterates an iterator with a fixed strides.
 +/
 struct StrideIterator(Iterator)
 {
-@optmath:
+@fmamath:
     ///
     ptrdiff_t _stride;
     ///
@@ -450,7 +450,7 @@ Iterates an iterator with a fixed strides.
 +/
 struct StrideIterator(Iterator, ptrdiff_t factor)
 {
-@optmath:
+@fmamath:
     ///
     enum _stride = factor;
 
@@ -596,7 +596,7 @@ Iterates multiple iterators in lockstep.
 struct ZipIterator(Iterators...)
     if (Iterators.length > 1)
 {
-@optmath:
+@fmamath:
     import std.traits: ConstOf, ImmutableOf;
     import std.meta: staticMap;
     import mir.functional: Tuple, Ref, _ref;
@@ -746,7 +746,7 @@ struct CachedIterator(Iterator, CacheIterator, FlagIterator)
     ///
     FlagIterator _flags;
 
-@optmath:
+@fmamath:
 
     ///
     auto lightScope()() return scope @property
@@ -926,7 +926,7 @@ private enum map_primitives = q{
 +/
 struct VmapIterator(Iterator, Fun)
 {
-@optmath:
+@fmamath:
 
     ///
     Iterator _iterator;
@@ -1025,7 +1025,7 @@ auto MapIterator__map(Iterator, alias fun0, alias fun)(ref MapIterator!(Iterator
 +/
 struct MapIterator(Iterator, alias _fun)
 {
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
 
@@ -1181,7 +1181,7 @@ auto _vmapIterator(Iterator, Fun)(Iterator iterator, Fun fun)
 struct NeighboursIterator(Iterator, size_t N, alias _fun, bool around)
 {
     import std.meta: AliasSeq;
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
     static if (N)
@@ -1291,7 +1291,7 @@ struct NeighboursIterator(Iterator, size_t N, alias _fun, bool around)
 +/
 struct MemberIterator(Iterator, string member)
 {
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
 
@@ -1344,7 +1344,7 @@ struct MemberIterator(Iterator, string member)
 struct BytegroupIterator(Iterator, size_t count, DestinationType)
     if (count)
 {
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
 
@@ -1448,7 +1448,7 @@ auto SlideIterator__map(Iterator, size_t params, alias fun0, alias fun)(SlideIte
 struct SlideIterator(Iterator, size_t params, alias fun)
     if (params > 1)
 {
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
 
@@ -1518,7 +1518,7 @@ struct IndexIterator(Iterator, Field)
 {
     import mir.functional: Tuple, autoExpandAndForward;
 
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
     ///
@@ -1611,7 +1611,7 @@ auto elem  = sliceable[index[0] .. index[1]];
 +/
 struct SubSliceIterator(Iterator, Sliceable)
 {
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
     ///
@@ -1654,7 +1654,7 @@ auto elem  = _sliceable[_iterator[index] .. _iterator[index + 1]];
 +/
 struct ChopIterator(Iterator, Sliceable)
 {
-@optmath:
+@fmamath:
     ///
     Iterator _iterator;
     ///
@@ -1693,7 +1693,7 @@ as a multidimensional window at the current position.
 +/
 struct SliceIterator(Iterator, size_t N = 1, SliceKind kind = Contiguous)
 {
-@optmath:
+@fmamath:
     ///
     alias Element = Slice!(Iterator, N, kind);
     ///
@@ -1749,7 +1749,7 @@ Creates an iterator on top of a field.
 +/
 struct FieldIterator(Field)
 {
-@optmath:
+@fmamath:
     ///
     ptrdiff_t _index;
     ///
@@ -1871,7 +1871,7 @@ Creates an iterator on top of all elements in a slice.
 struct FlattenedIterator(Iterator, size_t N, SliceKind kind)
     if (N > 1 && (kind == Universal || kind == Canonical))
 {
-@optmath:
+@fmamath:
     ///
     ptrdiff_t[N] _indices;
     ///
@@ -2116,7 +2116,7 @@ struct StairsIterator(Iterator, string direction)
         return StairsIterator!(LightImmutableOf!Iterator, direction)(_length, .lightImmutable(_iterator));
     }
 
-@optmath:
+@fmamath:
 
     ///
     Slice!Iterator opUnary(string op : "*")()
@@ -2263,7 +2263,7 @@ Element type of $(LREF TripletIterator).
 +/
 struct Triplet(Iterator, SliceKind kind = Contiguous)
 {
-@optmath:
+@fmamath:
     ///
     size_t _iterator;
     ///
@@ -2313,7 +2313,7 @@ Iterates triplets position in a slice.
 +/
 struct TripletIterator(Iterator, SliceKind kind = Contiguous)
 {
-@optmath:
+@fmamath:
 
     ///
     size_t _iterator;

@@ -81,13 +81,13 @@ module mir.ndslice.dynamic;
 import std.traits;
 import std.meta;
 
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.internal.utility: Iota;
 import mir.ndslice.internal;
 import mir.ndslice.slice;
 import mir.utility;
 
-@optmath:
+@fmamath:
 
 /++
 Reverses iteration order for dimensions with negative strides, they become not negative;
@@ -180,7 +180,7 @@ See_also: $(LREF everted), $(LREF transposed)
 template swapped(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @optmath auto swapped(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
+    @fmamath auto swapped(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
     {
         static if (kind == Universal || kind == Canonical && dimensionA + 1 < N && dimensionB + 1 < N)
         {
@@ -312,7 +312,7 @@ Returns:
 template rotated(size_t dimensionA, size_t dimensionB)
 {
     ///
-    @optmath auto rotated(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, sizediff_t k = 1)
+    @fmamath auto rotated(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, sizediff_t k = 1)
     {
         static if (kind == Universal || kind == Canonical && dimensionA + 1 < N && dimensionB + 1 < N)
         {
@@ -491,7 +491,7 @@ template transposed(Dimensions...)
 {
     static if (allSatisfy!(isSize_t, Dimensions))
     ///
-    @optmath auto transposed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
+    @fmamath auto transposed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice)
     {
         import mir.algorithm.iteration: any;
         enum s = N;
@@ -664,7 +664,7 @@ template reversed(Dimensions...)
 {
     static if (allSatisfy!(isSize_t, Dimensions))
     ///
-    @optmath auto reversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice) @trusted
+    @fmamath auto reversed(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice) @trusted
     {
         import mir.algorithm.iteration: any;
         enum s = N;
@@ -837,7 +837,7 @@ template strided(Dimensions...)
         _slice = input slice
         factors = list of step extension factors
     +/
-    @optmath auto strided(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
+    @fmamath auto strided(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) _slice, Repeat!(Dimensions.length, ptrdiff_t) factors)
     {
         import mir.algorithm.iteration: any;
         enum s = N;

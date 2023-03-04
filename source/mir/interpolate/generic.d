@@ -13,7 +13,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 +/
 module mir.interpolate.generic;
 
-@optmath:
+@fmamath:
 
 ///
 version(mir_test)
@@ -64,7 +64,7 @@ import core.lifetime: move;
 import mir.internal.utility;
 import mir.functional;
 import mir.interpolate;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.slice;
 import mir.primitives;
 import mir.rc.array;
@@ -98,7 +98,7 @@ Multivariate generic interpolant with nodes on rectilinear grid.
 +/
 struct Generic(X, F)
 {
-@optmath:
+@fmamath:
 
     /// Aligned buffer allocated with `mir.internal.memory`. $(RED For internal use.)
     Slice!(RCI!(const F)) _data;

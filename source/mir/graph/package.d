@@ -12,7 +12,7 @@ T2=$(TR $(TDNW $(LREF $1)) $(TD $+))
 
 module mir.graph;
 
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 
 import mir.series;
 import mir.rc.array;
@@ -45,7 +45,7 @@ Returns:
     A graph series composed of keys (sorted `.index`) and arrays of indeces (`.data`)
 Complexity: `O(log(V) (V + E))`
 +/
-@optmath
+@fmamath
 GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aaGraph)
 {
     import mir.array.allocation: array;
@@ -106,7 +106,7 @@ Returns:
     A graph as an arrays of indeces
 Complexity: `O(log(V) (V + E))`
 +/
-@optmath
+@fmamath
 RCGraph!(I, J) rcgraph(I = uint, J = size_t, KeyIterator, RangeIterator)(Series!(KeyIterator, RangeIterator) graph)
 {
     import mir.array.allocation: array;

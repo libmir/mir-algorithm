@@ -1,14 +1,14 @@
 module mir.ndslice.internal;
 
 import mir.internal.utility : isFloatingPoint, Iota;
-import mir.math.common: optmath;
+import mir.math.common: fmamath;
 import mir.ndslice.iterator: IotaIterator;
 import mir.ndslice.slice;
 import mir.primitives;
 import std.meta;
 import std.traits;
 
-@optmath:
+@fmamath:
 
 template ConstIfPointer(T)
 {
@@ -348,7 +348,7 @@ package(mir) template strideOf(args...)
         enum strideOf = args;
     else
     {
-        @optmath @property auto ref ls()()
+        @fmamath @property auto ref ls()()
         {
             import mir.ndslice.topology: stride;
             return stride(args[0]);
@@ -377,7 +377,7 @@ package(mir) template frontOf2(args...)
         enum frontOf2 = args;
     else
     {
-        @optmath @property auto frontOf2Mod()()
+        @fmamath @property auto frontOf2Mod()()
         {
             return args[0].front;
         }
@@ -391,7 +391,7 @@ package(mir) template backOf(args...)
         enum backOf = args;
     else
     {
-        @optmath @property auto ref backOfMod()()
+        @fmamath @property auto ref backOfMod()()
         {
             return args[0].back;
         }
@@ -405,7 +405,7 @@ package(mir) template frontOfD(size_t dimension, args...)
         enum frontOfD = args;
     else
     {
-        @optmath @property auto ref frontOfDMod()()
+        @fmamath @property auto ref frontOfDMod()()
         {
             return args[0].front!dimension;
         }
@@ -419,7 +419,7 @@ package(mir) template backOfD(size_t dimension, args...)
         enum backOfD = args;
     else
     {
-        @optmath @property auto ref backOfDMod()()
+        @fmamath @property auto ref backOfDMod()()
         {
             return args[0].back!dimension;
         }
@@ -434,7 +434,7 @@ package(mir) template frontOfDim(size_t dim, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref frontOfDimMod()
+        @fmamath @property auto ref frontOfDimMod()
         {
             return arg.front!dim;
         }
@@ -449,7 +449,7 @@ package(mir) template selectFrontOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref selectFrontOfMod()()
+        @fmamath @property auto ref selectFrontOfMod()()
         {
             return arg.lightScope.selectFront!0(input);
         }
@@ -464,7 +464,7 @@ package(mir) template selectBackOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref selectBackOfMod()()
+        @fmamath @property auto ref selectBackOfMod()()
         {
             return arg.selectBack!0(input);
         }
@@ -479,7 +479,7 @@ package(mir) template frontSelectFrontOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref frontSelectFrontOfMod()()
+        @fmamath @property auto ref frontSelectFrontOfMod()()
         {
             return arg.lightScope.front.selectFront!0(input);
         }
@@ -494,7 +494,7 @@ package(mir) template frontSelectBackOf(alias input, args...)
     else
     {
         alias arg = args[0];
-        @optmath @property auto ref frontSelectBackOfMod
+        @fmamath @property auto ref frontSelectBackOfMod
         ()()
         {
             return arg.lightScope.front.selectBack!0(input);

@@ -120,6 +120,7 @@ unittest
 version(mir_test)
 unittest
 {
+    import mir.test;
     import mir.math;
 
     // Test Const
@@ -162,16 +163,16 @@ unittest
     assert(f3.getFunctionValue == f2.getFunctionValue);
     assert(f3.getDerivative!(["vol"]) == f2.getDerivative!(["vol"]));
     assert(f3.getDerivative!(["strike"]) == f2.getDerivative!(["strike"]) * fc.getDerivative!(["strike"]));
-    assert(f3.getDerivative!(["barrier"]) == f2.getDerivative!(["strike"]) * fc.getDerivative!(["barrier"]));
-    assert(getDerivative!(["barrier"])(f3 + barrier) == f2.getDerivative!(["strike"]) * fc.getDerivative!(["barrier"]) + 1);
-    assert(f3.getDerivative!(["strike", "barrier"]) == 
+    f3.getDerivative!(["barrier"]).shouldApprox == f2.getDerivative!(["strike"]) * fc.getDerivative!(["barrier"]);
+    getDerivative!(["barrier"])(f3 + barrier).shouldApprox == f2.getDerivative!(["strike"]) * fc.getDerivative!(["barrier"]) + 1;
+    f3.getDerivative!(["strike", "barrier"]).shouldApprox == 
         f2.getDerivative!(["strike", "strike"]) * fc.getDerivative!(["strike"]) * fc.getDerivative!(["barrier"]) +
-        f2.getDerivative!(["strike"]) * fc.getDerivative!(["strike", "barrier"]));
+        f2.getDerivative!(["strike"]) * fc.getDerivative!(["strike", "barrier"]);
 
     /// normalDistribution
     import mir.math.func.normal: constantNormalCDF = normalCDF, normalPDF;
-    assert(barrier.powi!2.normalCDF.getFunctionValue == constantNormalCDF(13.0 ^^ 2));
-    assert(barrier.powi!2.normalCDF.getDerivative!(["barrier"]) == normalPDF(13.0 ^^ 2) * (2 * 13));
+    barrier.powi!2.normalCDF.getFunctionValue.shouldApprox == constantNormalCDF(13.0 ^^ 2);
+    barrier.powi!2.normalCDF.getDerivative!(["barrier"]).shouldApprox == normalPDF(13.0 ^^ 2) * (2 * 13);
 }
 
 import mir.algorithm.iteration: uniq;
@@ -180,7 +181,7 @@ import mir.math.common;
 import mir.ndslice.sorting: sort;
 import std.traits: Unqual, getUDAs, hasUDA, isPointer, PointerTarget;
 
-@optmath:
+@fmamath:
 
 /++
 +/
@@ -278,7 +279,7 @@ private template Sum(A, B, bool diff = false)
         A a;
         B b;
 
-    @optmath:
+    @fmamath:
 
         template getDerivative(string[] variables, bool strict = true)
         {
@@ -315,7 +316,7 @@ private template Product(A, B)
 
         template getDerivative(string[] variables, bool strict = true)
         {
-        @optmath:
+        @fmamath:
             static if (Dependencies!(typeof(this)).containsAll(variables))
                 auto getDerivative() const @property
                 {
@@ -459,7 +460,7 @@ template getDerivative(string[] variables, bool strict = true)
     import mir.ndslice.topology: pairwise;
     import mir.algorithm.iteration: all;
 
-@optmath:
+@fmamath:
 
     static if (variables.length == 0 || variables.pairwise!"a <= b".all)
     {
@@ -634,7 +635,7 @@ private template DerivativeOf(T, string variable)
         // Underlying expression
         T underlying;
 
-    @optmath:
+    @fmamath:
 
         ///
         auto ref getDerivative(string[] variables, bool strict = true)() const @property
@@ -653,7 +654,7 @@ Constructs a partial derivative of one order.
 +/
 template derivativeOf(string variable)
 {
-@optmath:
+@fmamath:
 
     /++
     Params:
@@ -723,7 +724,7 @@ private template Powi(int power, T)
 
         template getDerivative(string[] variables, bool strict = true)
         {
-        @optmath:
+        @fmamath:
             static if (Dependencies!(typeof(this)).containsAll(variables))
                 auto getDerivative() const @property
                 {
@@ -792,7 +793,7 @@ private template Exp(T)
 
         template getDerivative(string[] variables, bool strict = true)
         {
-        @optmath:
+        @fmamath:
             static if (Dependencies!(typeof(this)).containsAll(variables))
                 auto getDerivative() const @property
                 {
@@ -830,7 +831,7 @@ private template Log(T)
 
         template getDerivative(string[] variables, bool strict = true)
         {
-        @optmath:
+        @fmamath:
             static if (Dependencies!(typeof(this)).containsAll(variables))
                 auto getDerivative() const @property
                 {
@@ -868,7 +869,7 @@ private template Sqrt(T)
 
         template getDerivative(string[] variables, bool strict = true)
         {
-        @optmath:
+        @fmamath:
             static if (Dependencies!(typeof(this)).containsAll(variables))
                 auto getDerivative() const @property
                 {
@@ -907,7 +908,7 @@ private template NormalCDF(T)
 
         template getDerivative(string[] variables, bool strict = true)
         {
-        @optmath:
+        @fmamath:
             static if (Dependencies!(typeof(this)).containsAll(variables))
                 auto getDerivative() const @property
                 {
