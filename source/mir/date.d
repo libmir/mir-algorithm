@@ -2338,6 +2338,15 @@ public:
     }
 
     /++
+    Returns;
+        Day Of Gregorian Calendar Minus One
+    +/
+    int dayNumber() @safe pure nothrow @nogc const @property
+    {
+        return _dayNumber;
+    }
+
+    /++
         The Xth day of the Gregorian Calendar that this $(LREF Date) is on.
      +/
     @property int dayOfGregorianCal() const @safe pure nothrow @nogc
