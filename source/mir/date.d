@@ -1914,10 +1914,11 @@ struct YearQuarter
 
     Year 0 is a leap year.
  +/
-extern(C++, "boost", "gregorian")
-extern(C++, class)
+// extern(C++, "boost", "gregorian")
+// extern(C++, class)
+extern(C++, "mir")
 @serdeProxy!YearMonthDay
-struct date
+struct Date
 {
 extern(D):
 public:
@@ -1927,7 +1928,7 @@ public:
     ///
     uint toHash() @safe pure nothrow @nogc const scope
     {
-        return _julianDay;
+        return _dayNumber;
     }
 
     /++
@@ -1957,7 +1958,7 @@ public:
         {
             if (_year == 1)
             {
-                ret._julianDay = dayOfYear;
+                ret._dayNumber = dayOfYear;
                 goto R;
             }
 
@@ -1975,11 +1976,11 @@ public:
 
             days += dayOfYear;
 
-            ret._julianDay = days;
+            ret._dayNumber = days;
         }
         else if (_year == 0)
         {
-            ret._julianDay = dayOfYear - daysInLeapYear;
+            ret._dayNumber = dayOfYear - daysInLeapYear;
         }
         else
         {
@@ -2005,10 +2006,10 @@ public:
             else
                 days -= daysInLeapYear - dayOfYear;
 
-            ret._julianDay = days;
+            ret._dayNumber = days;
         }
     R:
-        ret._julianDay += _julianShift;
+        ret._dayNumber -= 1;
         return ret;
     }
 
@@ -2073,7 +2074,7 @@ public:
     version(mir_test)
     @safe unittest
     {
-        auto d = date(YearMonthDay(2020, Month.may, 31));
+        auto d = Date(YearMonthDay(2020, Month.may, 31));
     }
 
     version(D_Exceptions)
@@ -2094,8 +2095,8 @@ public:
     version(mir_test)
     @safe unittest
     {
-        auto d1 = date(YearQuarter(2020, Quarter.q2));
-        auto d2 = date(YearQuarter(2020, Quarter.q2), AssumePeriod.end);
+        auto d1 = Date(YearQuarter(2020, Quarter.q2));
+        auto d2 = Date(YearQuarter(2020, Quarter.q2), AssumePeriod.end);
     }
 
     version(D_Exceptions)
@@ -2109,8 +2110,8 @@ public:
     version(mir_test)
     @safe unittest
     {
-        auto d1 = date(YearMonth(2020, Month.may));
-        auto d2 = date(YearMonth(2020, Month.may), AssumePeriod.end);
+        auto d1 = Date(YearMonth(2020, Month.may));
+        auto d2 = Date(YearMonth(2020, Month.may), AssumePeriod.end);
     }
 
     version(D_Exceptions)
@@ -2190,9 +2191,10 @@ public:
         Params:
             day = Julian day.
      +/
+    deprecated("Use `fromDayNumber` adjusted by -1_721_426")
     this(int day) @safe pure nothrow @nogc
     {
-        _julianDay = day;
+        _dayNumber = day - (1 + _julianShift);
     }
 
     version (mir_test)
@@ -2218,7 +2220,7 @@ public:
      +/
     int opCmp(Date rhs) const @safe pure nothrow @nogc
     {
-        return this._julianDay - rhs._julianDay;
+        return this._dayNumber - rhs._dayNumber;
     }
 
     version (mir_test)
@@ -2310,7 +2312,7 @@ public:
       +/
     @property DayOfWeek dayOfWeek() const @safe pure nothrow @nogc
     {
-        return getDayOfWeek(_julianDay);
+        return getDayOfWeek(_dayNumber);
     }
 
     version (mir_test)
@@ -2325,11 +2327,22 @@ public:
     }
 
     /++
+    Params:
+        dayNumber = Day Of Gregorian Calendar Minus One
+    +/
+    static Date fromDayNumber(int dayNumber) @safe pure nothrow @nogc
+    {
+        Date date;
+        date._dayNumber = dayNumber;
+        return date;
+    }
+
+    /++
         The Xth day of the Gregorian Calendar that this $(LREF Date) is on.
      +/
     @property int dayOfGregorianCal() const @safe pure nothrow @nogc
     {
-        return _julianDay - _julianShift;
+        return _dayNumber + 1;
     }
 
     ///
@@ -2369,18 +2382,21 @@ public:
 
         Params:
             day = The day of the Gregorian Calendar to set this $(LREF Date) to.
+        
+        Note:
+            Zero value corresponds to 
      +/
     @property void dayOfGregorianCal(int day) @safe pure nothrow @nogc
     {
-        this = Date(day + _julianShift);
+        _dayNumber = day - 1;
     }
 
     ///
     version (mir_test)
     @safe unittest
     {
+        import mir.test;
         auto date = Date.init;
-        date.dayOfGregorianCal = 1;
         assert(date == Date(1, 1, 1));
 
         date.dayOfGregorianCal = 365;
@@ -2417,20 +2433,20 @@ public:
         static assert(!__traits(compiles, idate.dayOfGregorianCal = 187));
     }
 
-    private enum uint _startDict = Date(1900, 1, 1)._julianDay; // [
-    private enum uint _endDict = Date(2040, 1, 1)._julianDay; // )
+    private enum uint _startDict = Date(1900, 1, 1)._dayNumber; // [
+    private enum uint _endDict = Date(2040, 1, 1)._dayNumber; // )
     static immutable _dictYMD = ()
     {
         YearMonthDay[Date._endDict - Date._startDict] dict;
         foreach (uint i; 0 .. dict.length)
-            dict[i] = Date(i + Date._startDict).yearMonthDayImpl;
+            dict[i] = Date.fromDayNumber(i + Date._startDict).yearMonthDayImpl;
         return dict;
     }();
 
     ///
     YearMonthDay yearMonthDay() const @safe pure nothrow @nogc @property
     {
-        uint day = _julianDay;
+        uint day = _dayNumber;
         if (day < _endDict)
         {
             import mir.checkedint: subu;
@@ -2445,7 +2461,7 @@ public:
     ///
     YearQuarter yearQuarter() const @safe pure nothrow @nogc @property
     {
-        uint day = _julianDay;
+        uint day = _dayNumber;
         if (day < _endDict)
         {
             return yearMonthDay().YearQuarter;
@@ -2748,7 +2764,7 @@ public:
     version(mir_test)
     @safe unittest
     {
-        auto d = date(2020, Month.may, 31);
+        auto d = Date(2020, Month.may, 31);
         auto yq = d.yearQuarterImpl;
     }
 
@@ -2759,7 +2775,7 @@ public:
     {
         with(yearMonthDay)
         {
-            int d = _julianDay - day;
+            int d = _dayNumber - day;
             final switch (month) with(Month)
             {
                 case jan: d += maxDay(year, jan); goto case;
@@ -2778,7 +2794,7 @@ public:
                 case nov: d += maxDay(year, nov); goto case;
                 case dec: d += maxDay(year, dec); break;
             }
-            return Date(d);
+            return Date.fromDayNumber(d);
         }
     }
 
@@ -2798,7 +2814,7 @@ public:
     @property Date endOfMonth() const @safe pure nothrow @nogc
     {
         with(yearMonthDay)
-            return Date(_julianDay + maxDay(year, month) - day);
+            return Date.fromDayNumber(_dayNumber + maxDay(year, month) - day);
     }
 
     ///
@@ -2853,25 +2869,25 @@ public:
     ///
     int opBinary(string op : "-")(Date rhs) const
     {
-        return _julianDay - rhs._julianDay;
+        return _dayNumber - rhs._dayNumber;
     }
 
     ///
     Date opBinary(string op : "+")(int rhs) const
     {
-        return Date(_julianDay + rhs);
+        return Date.fromDayNumber(_dayNumber + rhs);
     }
 
     ///
     Date opBinaryRight(string op : "+")(int rhs) const
     {
-        return Date(_julianDay + rhs);
+        return Date.fromDayNumber(_dayNumber + rhs);
     }
 
     ///
     Date opBinary(string op : "-")(int rhs) const
     {
-        return Date(_julianDay - rhs);
+        return Date.fromDayNumber(_dayNumber - rhs);
     }
 
     ///
@@ -2943,7 +2959,7 @@ public:
       +/
     @property int julianDay() const @safe pure nothrow @nogc
     {
-        return _julianDay;
+        return _dayNumber + (1 + _julianShift);
     }
 
     version (mir_test)
@@ -3716,7 +3732,7 @@ public:
       +/
     @property static Date min() @safe pure nothrow @nogc
     {
-        return Date(-(int.max / 2));
+        return Date.fromDayNumber(int.max);
     }
 
     /++
@@ -3725,7 +3741,7 @@ public:
       +/
     @property static Date max() @safe pure nothrow @nogc
     {
-        return Date(int.max / 2);
+        return Date.fromDayNumber(int.min);
     }
 
 private:
@@ -3766,7 +3782,7 @@ package:
       +/
     ref Date _addDays(long days) return @safe pure nothrow @nogc
     {
-        _julianDay = cast(int)(_julianDay + days);
+        _dayNumber = cast(int)(_dayNumber + days);
         return this;
     }
 
@@ -3929,11 +3945,12 @@ package:
         static assert(!__traits(compiles, idate._addDays(12)));
     }
 
-    int _julianDay;
+    int _dayNumber;
 }
 
 /// ditto
-alias Date = date;
+deprecated("use `Date` instead")
+alias date = Date;
 
 /++
     Returns the number of days from the current day of the week to the given

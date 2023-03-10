@@ -30,6 +30,7 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
 +/
 @safe version(mir_test) unittest
 {
+    import mir.test;
     import mir.ndslice;
     import mir.series;
 
@@ -86,21 +87,17 @@ See_also: $(LREF unionSeries), $(LREF troykaSeries), $(LREF troykaGalop).
     assert(series0.getVerbose(refDate) == 3);
     assert(series0.getExtraVerbose(refDate, "My exception msg") == 3);
 
-    assert(collectExceptionMsg!Exception(
-            series0.get(missingDate)
-        ) == "Series double[date]: Missing required key");
+    collectExceptionMsg!Exception(series0.get(missingDate)).should
+        == "Series double[Date]: Missing required key";
 
-    assert(collectExceptionMsg!Exception(
-            series0.get(missingDate, new Exception("My exception msg"))
-        ) == "My exception msg");
+    collectExceptionMsg!Exception(series0.get(missingDate, new Exception("My exception msg"))).should
+        == "My exception msg";
 
-    assert(collectExceptionMsg!Exception(
-            series0.getVerbose(missingDate)
-        ) == "Series double[date]: Missing 2016-03-01 key");
+    collectExceptionMsg!Exception(series0.getVerbose(missingDate)).should
+        == "Series double[Date]: Missing 2016-03-01 key";
 
-    assert(collectExceptionMsg!Exception(
-            series0.getExtraVerbose(missingDate, "My exception msg")
-        ) == "My exception msg. Series double[date]: Missing 2016-03-01 key");
+    collectExceptionMsg!Exception(series0.getExtraVerbose(missingDate, "My exception msg")).should
+        == "My exception msg. Series double[Date]: Missing 2016-03-01 key";
 
     // assign with get*
     series0.get(refDate) = 100;
