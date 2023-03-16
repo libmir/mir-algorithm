@@ -982,6 +982,28 @@ public:
         return ret;
     }
 
+    static if (doUnittest)
+    ///
+    @safe pure nothrow
+    version(mir_ndslice_test) unittest {
+        import mir.algorithm.iteration: equal;
+
+        immutable Slice!(int*, 1) x = [1, 2].sliced;
+        auto y = x.lightImmutable;
+        // this._iterator is copied to the new slice (i.e. both point to the same underlying data)
+        assert(x._iterator == y._iterator);
+        assert(x[0] == 1);
+        assert(x[1] == 2);
+        assert(y[0] == 1);
+        assert(y[1] == 2);
+        // Outer immutable is moved to iteration type
+        static assert(is(typeof(y) == Slice!(immutable(int)*, 1)));
+        // meaning that y can be modified, even if its elements can't
+        y.popFront;
+        // even if x can't be modified
+        //x.popFront; //error
+    }
+
     /// Returns: Mutable slice over const data.
     Slice!(LightConstOf!Iterator, N, kind, staticMap!(LightConstOf, Labels)) lightConst()() return scope const @property @trusted
     {
@@ -995,6 +1017,26 @@ public:
     Slice!(LightImmutableOf!Iterator, N, kind, staticMap!(LightImmutableOf, Labels)) lightConst()() return scope immutable @property
     {
         return this.lightImmutable;
+    }
+
+    static if (doUnittest)
+    ///
+    @safe pure nothrow
+    version(mir_ndslice_test) unittest {
+        import mir.algorithm.iteration: equal;
+
+        const Slice!(int*, 1) x = [1, 2].sliced;
+        auto y = x.lightConst;
+        // this._iterator is copied to the new slice (i.e. both point to the same underlying data)
+        assert(x._iterator == y._iterator);
+        assert(x.equal([1, 2]));
+        assert(y.equal([1, 2]));
+        // Outer const is moved to iteration type
+        static assert(is(typeof(y) == Slice!(const(int)*, 1)));
+        // meaning that y can be modified, even if its elements can't
+        y.popFront;
+        // even if x can't be modified
+        //x.popFront; //error
     }
 
     /// Label for the dimensions 'd'. By default returns the row label.
