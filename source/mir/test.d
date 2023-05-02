@@ -14,15 +14,15 @@ private noreturn assumeAllAttrAndCall(scope const void delegate() t)
 }
 
 ///
-struct ShouldApprox(T)
-    if (__traits(isFloating, T))
+struct ShouldApprox(T, F = T)
+    if ((__traits(isFloating, T) || __traits(hasMember, T, "approxEqual")) && __traits(isFloating, F))
 {
     ///
     T value;
     ///
-    T maxRelDiff = 0x1p-20f;
+    F maxRelDiff = 0x1p-20f;
     ///
-    T maxAbsDiff = 0x1p-20f;
+    F maxAbsDiff = 0x1p-20f;
 
     ///
     void opEquals(T expected, string file = __FILE__, int line = __LINE__) @safe pure nothrow @nogc
@@ -57,6 +57,28 @@ unittest
 {
     1.0.shouldApprox == 1 + 9e-7;
     shouldApprox(1 + 9e-7, 1e-6, 1e-6) == 1;
+}
+
+/// ditto
+ShouldApprox!(T, F) shouldApprox(T, F)(const T value, const F maxRelDiff = double(0x1p-20f), const F maxAbsDiff = double(0x1p-20f))
+    if (__traits(hasMember, T, "approxEqual") && __traits(isFloating, F))
+{
+    return typeof(return)(value, maxRelDiff, maxAbsDiff);
+}
+
+///
+version(mir_test)
+unittest
+{
+    static struct C {
+        double re, im;
+        auto approxEqual(C rhs, double maxRelDiff, double maxAbsDiff)
+        {
+            import mir.math.common: approxEqual;
+            return approxEqual(re, rhs.re, maxRelDiff, maxAbsDiff) && approxEqual(im, rhs.im, maxRelDiff, maxAbsDiff);
+        }
+    }
+    C(1.0, 1.0).shouldApprox == C(1 + 9e-7, 1 - 9e-7);
 }
 
 ///
