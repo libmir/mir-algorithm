@@ -873,7 +873,7 @@ private enum map_primitives = q{
             return _fun(*_iterator);
     }
 
-    auto ref opIndex(ptrdiff_t index) scope
+    auto ref opIndex(ptrdiff_t index)
     {
         static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
@@ -958,7 +958,7 @@ struct VmapIterator(Iterator, Fun)
             return _fun(*_iterator);
     }
 
-    auto ref opIndex(ptrdiff_t index) scope
+    auto ref opIndex(ptrdiff_t index)
     {
         static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
@@ -1058,7 +1058,7 @@ struct MapIterator(Iterator, alias _fun)
             return _fun(*_iterator);
     }
 
-    auto ref opIndex(ptrdiff_t index) scope
+    auto ref opIndex(ptrdiff_t index)
     {
         static if (is(typeof(_iterator[0]) : Tuple!T, T...))
         {
@@ -1222,7 +1222,7 @@ struct NeighboursIterator(Iterator, size_t N, alias _fun, bool around)
         return opIndex(0);
     }
 
-    auto ref opIndex(ptrdiff_t index) scope
+    auto ref opIndex(ptrdiff_t index)
     {
         static if (around)
             RA result = _fun(_iterator[index - 1], _iterator[index + 1]);
