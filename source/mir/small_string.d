@@ -289,6 +289,12 @@ scope const:
     {
         return __cmp(opIndex, str);
     }
+
+    ///
+    extern (D) auto toHash() const nothrow @safe
+    {
+        return hashOf(this[]);
+    }
 }
 
 ///
