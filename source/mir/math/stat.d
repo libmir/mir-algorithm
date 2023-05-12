@@ -2026,27 +2026,36 @@ enum VarianceAlgo
 {
     /++
     Performs Welford's online algorithm for updating variance. Can also `put`
-    another VarianceAccumulator of the same type, which uses the parallel
+    another VarianceAccumulator of different types, which uses the parallel
     algorithm from Chan et al., described above.
     +/
     online,
     
     /++
     Calculates variance using E(x^^2) - E(x)^2 (alowing for adjustments for 
-    population/sample variance). This algorithm can be numerically unstable.
+    population/sample variance). This algorithm can be numerically unstable. As
+    in: 
+    (E(x ^^ 2) - E(x) ^^ 2
     +/
     naive,
 
     /++
     Calculates variance using a two-pass algorithm whereby the input is first 
-    centered and then the sum of squares is calculated from that.
+    centered and then the sum of squares is calculated from that. As in:
+    E((x - E(x)) ^^ 2)
     +/
     twoPass,
 
     /++
     Calculates variance assuming the mean of the dataseries is zero. 
     +/
-    assumeZeroMean
+    assumeZeroMean,
+    
+    /++
+    When slices, slice-like objects, or ranges are the inputs, uses the two-pass
+    algorithm. When an individual data-point is added, uses the online algorithm.
+    +/
+    hybrid
 }
 
 ///
@@ -2157,7 +2166,7 @@ unittest
 }
 
 // Can put VarianceAccumulator
-version(mir_stat_test)
+version(mir_test)
 @safe pure nothrow
 unittest
 {
@@ -2167,9 +2176,9 @@ unittest
     auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
     auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
 
-    VarianceAccumulator!(double, SkewnessAlgo.naive, Summation.naive) v;
+    VarianceAccumulator!(double, VarianceAlgo.naive, Summation.naive) v;
     v.put(x);
-    VarianceAccumulator!(double, SkewnessAlgo.naive, Summation.naive) w;
+    VarianceAccumulator!(double, VarianceAlgo.naive, Summation.naive) w;
     w.put(y);
     v.put(w);
     v.variance(true).shouldApprox == 54.76562 / 12;
@@ -2738,6 +2747,296 @@ unittest
     assert(v.variance(false).approxEqual(Complex!double(-4.0, -6) / 2));
 }
 
+///
+struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
+    if (isMutable!T && varianceAlgo == VarianceAlgo.hybrid)
+{
+    import mir.math.sum: elementType, Summator;
+    import mir.ndslice.slice: isConvertibleToSlice, isSlice, Slice, SliceKind;
+    import std.range: isInputRange;
+
+    ///
+    private MeanAccumulator!(T, summation) meanAccumulator;
+
+    ///
+    private Summator!(T, summation) centeredSummatorOfSquares;
+
+    ///
+    this(Iterator, size_t N, SliceKind kind)(
+         Slice!(Iterator, N, kind) slice)
+    {
+        import mir.functional: naryFun;
+        import mir.ndslice.internal: LeftOp;
+        import mir.ndslice.topology: vmap, map;
+
+        meanAccumulator.put(slice.lightScope);
+        centeredSummatorOfSquares.put(slice.vmap(LeftOp!("-", T)(meanAccumulator.mean)).map!(naryFun!"a * a"));
+    }
+
+    ///
+    this(SliceLike)(SliceLike x)
+        if (isConvertibleToSlice!SliceLike && !isSlice!SliceLike)
+    {
+        import mir.ndslice.slice: toSlice;
+        this(x.toSlice);
+    }
+
+    ///
+    this(Range)(Range range)
+        if (isIterable!Range && !isConvertibleToSlice!Range)
+    {
+        static if (isInputRange!Range && is(elementType!Range : T))
+        {
+            import std.algorithm: map;
+            meanAccumulator.put(range);
+
+            auto centeredRangeMultiplier = range.map!(a => (a - mean)).map!("a * a");
+            centeredSummatorOfSquares.put(centeredRangeMultiplier);
+        } else {
+            this.put(range);
+        }
+    }
+
+    ///
+    void put(Range)(Range r)
+        if (isIterable!Range)
+    {
+        static if (isInputRange!Range && is(elementType!Range : T)) {
+            auto v = typeof(this)(r);
+            this.put(v);
+        } else{
+            foreach(x; r)
+            {
+                this.put(x);
+            }
+        }
+    }
+
+    ///
+    void put()(T x)
+    {
+        T delta = x;
+        if (count > 0) {
+            delta -= meanAccumulator.mean;
+        }
+        meanAccumulator.put(x);
+        centeredSummatorOfSquares.put(delta * (x - meanAccumulator.mean));
+    }
+
+    ///
+    void put(U, VarianceAlgo varAlgo, Summation sumAlgo)(VarianceAccumulator!(U, varAlgo, sumAlgo) v)
+        if(!is(varAlgo == VarianceAlgo.assumeZeroMean))
+    {
+        size_t oldCount = count;
+        T delta = v.mean!T;
+        if (oldCount > 0) {
+            delta -= meanAccumulator.mean;
+        }
+        meanAccumulator.put!T(v.meanAccumulator);
+        centeredSummatorOfSquares.put(v.centeredSumOfSquares!T + delta * delta * v.count * oldCount / count);
+    }
+
+const:
+
+    ///
+    size_t count() @property
+    {
+        return meanAccumulator.count;
+    }
+    ///
+    F mean(F = T)() const @property
+    {
+        return meanAccumulator.mean!F;
+    }
+    ///
+    F centeredSumOfSquares(F = T)()
+    {
+        return cast(F) centeredSummatorOfSquares.sum;
+    }
+    ///
+    F variance(F = T)(bool isPopulation) @property
+    in
+    {
+        assert(count > 1, "VarianceAccumulator.variance: count must be larger than one");
+    }
+    do
+    {
+        return centeredSumOfSquares!F / (count + isPopulation - 1);
+    }
+}
+
+/// online
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25,
+              2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    auto v = VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive)(x);
+    assert(v.variance(true).approxEqual(54.76562 / 12));
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+
+    v.put(4.0);
+    assert(v.variance(true).approxEqual(57.01923 / 13));
+    assert(v.variance(false).approxEqual(57.01923 / 12));
+}
+
+// can put slices
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    auto v = VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive)(x);
+    assert(v.variance(true).approxEqual(12.55208 / 6));
+    assert(v.variance(false).approxEqual(12.55208 / 5));
+
+    v.put(y);
+    assert(v.variance(true).approxEqual(54.76562 / 12));
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+}
+
+// Can put accumulator (hybrid)
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual(12.55208 / 6));
+    assert(v.variance(false).approxEqual(12.55208 / 5));
+
+    VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive) w;
+    w.put(y);
+    v.put(w);
+    assert(v.variance(true).approxEqual(54.76562 / 12));
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+}
+
+// Can put accumulator (naive)
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual(12.55208 / 6));
+    assert(v.variance(false).approxEqual(12.55208 / 5));
+
+    VarianceAccumulator!(double, VarianceAlgo.naive, Summation.naive) w;
+    w.put(y);
+    v.put(w);
+    assert(v.variance(true).approxEqual(54.76562 / 12));
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+}
+
+// Can put accumulator (online)
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual(12.55208 / 6));
+    assert(v.variance(false).approxEqual(12.55208 / 5));
+
+    VarianceAccumulator!(double, VarianceAlgo.online, Summation.naive) w;
+    w.put(y);
+    v.put(w);
+    assert(v.variance(true).approxEqual(54.76562 / 12));
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+}
+
+// Can put accumulator (twoPass)
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.common: approxEqual;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [0.0, 1.0, 1.5, 2.0, 3.5, 4.25].sliced;
+    auto y = [2.0, 7.5, 5.0, 1.0, 1.5, 0.0].sliced;
+
+    VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual(12.55208 / 6));
+    assert(v.variance(false).approxEqual(12.55208 / 5));
+
+    auto w = VarianceAccumulator!(double, VarianceAlgo.twoPass, Summation.naive)(y);
+    v.put(w);
+    assert(v.variance(true).approxEqual(54.76562 / 12));
+    assert(v.variance(false).approxEqual(54.76562 / 11));
+}
+
+// complex
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.complex.math: approxEqual;
+    import mir.ndslice.slice: sliced;
+    import mir.complex: Complex;
+
+    auto x = [Complex!double(1.0, 3), Complex!double(2), Complex!double(3)].sliced;
+
+    VarianceAccumulator!(Complex!double, VarianceAlgo.hybrid, Summation.naive) v;
+    v.put(x);
+    assert(v.variance(true).approxEqual(Complex!double(-4.0, -6) / 3));
+    assert(v.variance(false).approxEqual(Complex!double(-4.0, -6) / 2));
+}
+
+// Test input range
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.math.sum: Summation;
+    import mir.test: should;
+    import std.range: chunks, iota;
+    import std.algorithm: map;
+
+    auto x1 = iota(0, 5);
+    auto v1 = VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive)(x1);
+    v1.variance(true).should == 2;
+    v1.centeredSumOfSquares.should == 10;
+    auto x2 = x1.map!(a => 2 * a);
+    auto v2 = VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive)(x2);
+    v2.variance(true).should == 8;
+    VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive) v3;
+    v3.put(x1.chunks(1));
+    v3.centeredSumOfSquares.should == 10;
+    auto v4 = VarianceAccumulator!(double, VarianceAlgo.hybrid, Summation.naive)(x1.chunks(1));
+    v4.centeredSumOfSquares.should == 10;
+}
+
 /++
 Calculates the variance of the input
 
@@ -2747,14 +3046,14 @@ type or a type for which `isComplex!F` is true.
 
 Params:
     F = controls type of output
-    varianceAlgo = algorithm for calculating variance (default: VarianceAlgo.online)
+    varianceAlgo = algorithm for calculating variance (default: VarianceAlgo.hybrid)
     summation = algorithm for calculating sums (default: Summation.appropriate)
 Returns:
     The variance of the input, must be floating point or complex type
 +/
 template variance(
     F, 
-    VarianceAlgo varianceAlgo = VarianceAlgo.online, 
+    VarianceAlgo varianceAlgo = VarianceAlgo.hybrid, 
     Summation summation = Summation.appropriate)
 {
     /++
@@ -2786,7 +3085,7 @@ template variance(
 
 /// ditto
 template variance(
-    VarianceAlgo varianceAlgo = VarianceAlgo.online, 
+    VarianceAlgo varianceAlgo = VarianceAlgo.hybrid, 
     Summation summation = Summation.appropriate)
 {
     /++
@@ -2923,14 +3222,17 @@ unittest
     // The naive algorithm is numerically unstable in this case
     auto z0 = x.variance!"naive";
     assert(!z0.approxEqual(y));
+    
+    auto z1 = x.variance!"online";
+    assert(z1.approxEqual(54.76562 / 11));
 
     // But the two-pass algorithm provides a consistent answer
-    auto z1 = x.variance!"twoPass";
-    assert(z1.approxEqual(y));
+    auto z2 = x.variance!"twoPass";
+    assert(z2.approxEqual(y));
 
     // And the assumeZeroMean algorithm is way off
-    auto z2 = x.variance!"assumeZeroMean";
-    assert(z2.approxEqual(1.2e19 / 11));
+    auto z3 = x.variance!"assumeZeroMean";
+    assert(z3.approxEqual(1.2e19 / 11));
 }
 
 /// Can also set algorithm or output type
