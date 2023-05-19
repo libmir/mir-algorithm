@@ -1716,7 +1716,7 @@ Returns:
 +/
 template center(alias centralTendency = mean!(Summation.appropriate))
 {
-    import mir.ndslice.slice: Slice, SliceKind, sliced, hasAsSlice;
+    import mir.ndslice.slice: isConvertibleToSlice, isSlice, Slice, SliceKind;
     /++
     Params:
         slice = slice
@@ -1734,16 +1734,11 @@ template center(alias centralTendency = mean!(Summation.appropriate))
     }
     
     /// ditto
-    auto center(T)(T[] array)
+    auto center(T)(T x)
+        if (isConvertibleToSlice!T && !isSlice!T)
     {
-        return center(array.sliced);
-    }
-
-    /// ditto
-    auto center(T)(T withAsSlice)
-        if (hasAsSlice!T)
-    {
-        return center(withAsSlice.asSlice);
+        import mir.ndslice.slice: toSlice;
+        return center(x.toSlice);
     }
 }
 
@@ -1763,6 +1758,32 @@ unittest
     assert(x.center!hmean.all!approxEqual([-1.44898, -0.44898, 0.55102, 1.55102, 2.55102, 3.55102]));
     assert(x.center!gmean.all!approxEqual([-1.99379516, -0.99379516, 0.00620483, 1.00620483, 2.00620483, 3.00620483]));
     assert(x.center!median.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+
+    // center operates lazily, if original slice is changed, then 
+    auto y = x.center;
+    assert(y.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    x[0]++;
+    assert(y.all!approxEqual([-1.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+}
+
+/// Example of lazy behavior of center
+version(mir_test)
+@safe pure nothrow
+unittest
+{
+    import mir.algorithm.iteration: all;
+    import mir.math.common: approxEqual;
+    import mir.ndslice.allocation: slice;
+    import mir.ndslice.slice: sliced;
+
+    auto x = [1.0, 2, 3, 4, 5, 6].sliced;
+    auto y = x.center;
+    auto z = x.center.slice;
+    assert(y.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    x[0]++;
+    // y changes, while z does not
+    assert(y.all!approxEqual([-1.5, -1.5, -0.5, 0.5, 1.5, 2.5]));
+    assert(z.all!approxEqual([-2.5, -1.5, -0.5, 0.5, 1.5, 2.5]));   
 }
 
 /// Center dynamic array
