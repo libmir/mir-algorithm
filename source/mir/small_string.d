@@ -196,6 +196,11 @@ extern(D) @safe pure @nogc:
     /// ditto
     alias opBinary(string op : "~") = concat;
 
+    ///
+    extern (D) size_t toHash() const nothrow @safe
+    {
+        return hashOf(this[]);
+    }
 
 scope nothrow:
 
@@ -288,12 +293,6 @@ scope const:
     int opCmp()(scope const(char)[] str)
     {
         return __cmp(opIndex, str);
-    }
-
-    ///
-    extern (D) auto toHash() const nothrow @safe
-    {
-        return hashOf(this[]);
     }
 }
 
