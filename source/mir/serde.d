@@ -14,7 +14,9 @@ module mir.serde;
 import mir.functional: naryFun;
 import mir.reflection;
 import std.meta: AliasSeq;
-import std.traits: TemplateArgsOf, EnumMembers, hasUDA, isAggregateType;
+import std.traits: TemplateArgsOf, EnumMembers, isAggregateType;
+import mir.internal.meta: hasUDA;
+import mir.reflection: getUDA;
 
 version (D_Exceptions)
 {
@@ -612,7 +614,6 @@ version(mir_test) unittest
         double d = 0; // skips field if 0 during deserialization
     }
 
-    import std.traits: hasUDA;
 
     static assert(hasUDA!(S.d, serdeIgnoreDefault));
 }
@@ -636,7 +637,6 @@ version(mir_test) unittest
         double d;
     }
 
-    import std.traits: hasUDA;
 
     static assert(hasUDA!(S.d, serdeProxy));
     static assert(hasUDA!(S.d, serdeProxy!(SmallString!32)));
@@ -1074,7 +1074,7 @@ Final proxy type
 template serdeGetFinalProxy(T)
 {
     import mir.timestamp: Timestamp;
-    import std.traits: hasUDA, isAggregateType;
+    import std.traits: isAggregateType;
     static if (isAggregateType!T || is(T == enum))
     {
         static if (hasUDA!(T, serdeProxy))
@@ -1120,7 +1120,7 @@ Final deep proxy type
 template serdeGetFinalDeepProxy(T)
 {
     import mir.timestamp: Timestamp;
-    import std.traits: Unqual, hasUDA, isAggregateType, isArray, ForeachType;
+    import std.traits: Unqual, isAggregateType, isArray, ForeachType;
     static if (isAggregateType!T || is(T == enum))
     {
         static if (hasUDA!(T, serdeProxy))
@@ -1348,7 +1348,6 @@ Deserialization member final proxy type
 +/
 template serdeFinalDeserializationMemberType(T, string member)
 {
-    import std.traits: hasUDA;
     static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
     {
         alias serdeFinalDeserializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(__traits(getMember, T, member)));
@@ -1438,7 +1437,6 @@ Serialization member final proxy type
 +/
 template serdeFinalSerializationMemberType(T, string member)
 {
-    import std.traits: hasUDA;
     static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
     {
         alias serdeFinalSerializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(__traits(getMember, T, member)));
@@ -2018,7 +2016,6 @@ A dummy structure usefull $(LREF serdeOrderedIn) support.
 struct SerdeOrderedDummy(T, bool __optionalByDefault = false)
     if (is(serdeGetFinalProxy!T == T) && isAggregateType!T)
 {
-    import std.traits: hasUDA;
 
     @serdeIgnore
     SerdeFlags!(typeof(this)) __serdeFlags;
