@@ -96,7 +96,7 @@ struct Annotated(T) {
         if (annotations.length == 0)
         {
             version (D_Exceptions)
-                throw exc;
+                { import mir.exception : toMutable; throw exc.toMutable; }
             else
                 assert(0, excMsg);
         }

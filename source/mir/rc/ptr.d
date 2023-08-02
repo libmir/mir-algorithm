@@ -308,7 +308,7 @@ template createRC(T)
             if (!_context)
             {
                 version(D_Exceptions)
-                    throw allocationError;
+                    { import mir.exception : toMutable; throw allocationError.toMutable; }
                 else
                     assert(0, allocationExcMsg);
             }

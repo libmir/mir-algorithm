@@ -105,7 +105,7 @@ struct UInt(size_t size)
         else
         {
             static immutable exception = new Exception("Can't parse UInt!" ~ size.stringof ~ ".");
-            throw exception;
+            { import mir.exception : toMutable; throw exception.toMutable; }
         }
     }
 
@@ -205,7 +205,7 @@ struct UInt(size_t size)
         version(D_Exceptions)
         {
             import mir.bignum.low_level_view: hexStringException;
-            throw hexStringException;
+            { import mir.exception : toMutable; throw hexStringException.toMutable; }
         }
         else
         {
@@ -232,7 +232,7 @@ struct UInt(size_t size)
         version(D_Exceptions)
         {
             import mir.bignum.low_level_view: binaryStringException;
-            throw binaryStringException;
+            { import mir.exception : toMutable; throw binaryStringException.toMutable; }
         }
         else
         {

@@ -1944,7 +1944,7 @@ template sumSlices()
             if (sl.length != ret.length)
             {
                 version (D_Exceptions)
-                    throw jaggedException;
+                    { import mir.exception : toMutable; throw jaggedException.toMutable; }
                 else
                     assert(0);
             }

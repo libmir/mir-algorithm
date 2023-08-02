@@ -7,6 +7,8 @@ Copyright: 2021 Harrison Ford, Symmetry Investments
 +/
 module mir.base64;
 
+import mir.exception: toMutable;
+
 package static immutable base64DecodeInvalidCharMsg = "base64: Invalid character encountered.";
 package static immutable base64DecodeInvalidLenMsg = "Cannot decode a buffer with given length (not a multiple of 4, missing padding?)";
 version(D_Exceptions) {
@@ -78,7 +80,7 @@ private ubyte lookup_decoding(char i, char plusChar = '+', char slashChar = '/')
     }
     else {
         version(D_Exceptions) {
-            throw base64DecodeInvalidCharException;
+            throw base64DecodeInvalidCharException.toMutable;
         } else {
             assert(0, base64DecodeInvalidCharMsg);
         }
@@ -110,7 +112,7 @@ void decodeBase64(Appender)(scope const(char)[] data,
     if (data.length % 4 != 0)
     {
         version(D_Exceptions) {
-            throw base64DecodeInvalidLenException;
+            throw base64DecodeInvalidLenException.toMutable;
         } else {
             assert(0, base64DecodeInvalidLenMsg);
         }
@@ -137,7 +139,7 @@ void decodeBase64(Appender)(scope const(char)[] data,
         if (group[0] == '=' || group[1] == '=')
         {
             version(D_Exceptions)
-                throw base64DecodeInvalidCharException;
+                throw base64DecodeInvalidCharException.toMutable;
             else
                 assert(0, base64DecodeInvalidCharMsg);
         }
@@ -151,7 +153,7 @@ void decodeBase64(Appender)(scope const(char)[] data,
             if ((i / 4) != ((data.length / 4) - 1))
             {
                 version(D_Exceptions)
-                    throw base64DecodeInvalidCharException;
+                    throw base64DecodeInvalidCharException.toMutable;
                 else
                     assert(0, base64DecodeInvalidCharMsg);
             }
@@ -166,7 +168,7 @@ void decodeBase64(Appender)(scope const(char)[] data,
             else
             {
                 version(D_Exceptions)
-                    throw base64DecodeInvalidCharException;
+                    throw base64DecodeInvalidCharException.toMutable;
                 else
                     assert(0, base64DecodeInvalidCharMsg);
             }
@@ -180,7 +182,7 @@ void decodeBase64(Appender)(scope const(char)[] data,
             if ((i / 4) != ((data.length / 4) - 1))
             {
                 version(D_Exceptions)
-                    throw base64DecodeInvalidCharException;
+                    throw base64DecodeInvalidCharException.toMutable;
                 else
                     assert(0, base64DecodeInvalidCharMsg);
             }

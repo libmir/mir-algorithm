@@ -277,7 +277,7 @@ struct BigUIntView(W)
         if (view.fromHexStringImpl!(C, allowUnderscores)(str))
             return BigUIntView(cast(W[])view.coefficients);
         version(D_Exceptions)
-            throw hexStringException;
+            { import mir.exception : toMutable; throw hexStringException.toMutable; }
         else
             assert(0, hexStringErrorMsg);
     }
@@ -400,7 +400,7 @@ struct BigUIntView(W)
         if (view.fromBinaryStringImpl!(C, allowUnderscores)(str))
             return BigUIntView(cast(W[])view.coefficients);
         version(D_Exceptions)
-            throw binaryStringException;
+            { import mir.exception : toMutable; throw binaryStringException.toMutable; }
         else
             assert(0, binaryStringErrorMsg);
     }
@@ -1343,7 +1343,7 @@ struct BigIntView(W)
         if (ret.fromHexStringImpl!(C, allowUnderscores)(str))
             return  cast(BigIntView) ret;
         version(D_Exceptions)
-            throw hexStringException;
+            { import mir.exception : toMutable; throw hexStringException.toMutable; }
         else
             assert(0, hexStringErrorMsg);
     }
@@ -1392,7 +1392,7 @@ struct BigIntView(W)
         if (ret.fromBinaryStringImpl!(C, allowUnderscores)(str))
             return cast(BigIntView) ret;
         version(D_Exceptions)
-            throw binaryStringException;
+            { import mir.exception : toMutable; throw binaryStringException.toMutable; }
         else
             assert(0, binaryStringErrorMsg);
     }

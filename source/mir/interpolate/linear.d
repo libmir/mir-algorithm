@@ -217,12 +217,12 @@ struct Linear(F, size_t N = 1, X = F)
         {
             if (x.length < 2)
             {
-                version(D_Exceptions) throw exc_min;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exc_min.toMutable; }
                 else assert(0, msg_min);
             }
             if (x.length != data._lengths[i])
             {
-                version(D_Exceptions) throw exc_eq;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exc_eq.toMutable; }
                 else assert(0, msg_eq);
             }
             _grid[i] = x._iterator.move;
@@ -461,12 +461,12 @@ struct MetaLinear(T, X)
 
         if (grid.length < 2)
         {
-            version(D_Exceptions) throw exc_min;
+            version(D_Exceptions) { import mir.exception : toMutable; throw exc_min.toMutable; }
             else assert(0, msg_min);
         }
         if (grid.length != data.length)
         {
-            version(D_Exceptions) throw exc_eq;
+            version(D_Exceptions) { import mir.exception : toMutable; throw exc_eq.toMutable; }
             else assert(0, msg_eq);
         }
 

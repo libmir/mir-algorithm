@@ -1836,7 +1836,7 @@ struct FieldIterator(Field)
         if (_expect(_index != 0, false))
         {
             version (D_Exceptions)
-                throw assumeZeroShiftException;
+                { import mir.exception : toMutable; throw assumeZeroShiftException.toMutable; }
             else
                 assert(0, assumeZeroShiftExceptionMsg);
         }

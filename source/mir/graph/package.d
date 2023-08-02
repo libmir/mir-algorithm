@@ -70,7 +70,7 @@ GraphSeries!(T, I, J) graphSeries(I = uint, J = size_t, T, Range)(in Range[T] aa
             if (index >= keys.length)
             {
                 version(D_Exceptions)
-                    throw exception;
+                    { import mir.exception : toMutable; throw exception.toMutable; }
                 else
                     assert(0, exc_msg);
             }
@@ -132,7 +132,7 @@ RCGraph!(I, J) rcgraph(I = uint, J = size_t, KeyIterator, RangeIterator)(Series!
             if (index >= keys.length)
             {
                 version(D_Exceptions)
-                    throw exception;
+                    { import mir.exception : toMutable; throw exception.toMutable; }
                 else
                     assert(0, exc_msg);
             }

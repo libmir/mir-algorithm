@@ -172,9 +172,9 @@ template isAnnotated(T)
 private template serdeIsAnnotationMemberIn(T)
 {
     enum bool serdeIsAnnotationMemberIn(string member)
-          = hasUDA!(__traits(getMember, T, member), serdeAnnotation) 
-        && !hasUDA!(__traits(getMember, T, member), serdeIgnore) 
-        && !hasUDA!(__traits(getMember, T, member), serdeIgnoreIn);
+          = hasUDA!(T, member, serdeAnnotation) 
+        && !hasUDA!(T, member, serdeIgnore) 
+        && !hasUDA!(T, member, serdeIgnoreIn);
 }
 
 /++
@@ -213,9 +213,9 @@ version(mir_test) unittest
 private template serdeIsAnnotationMemberOut(T)
 {
     enum bool serdeIsAnnotationMemberOut(string member)
-          = hasUDA!(__traits(getMember, T, member), serdeAnnotation) 
-        && !hasUDA!(__traits(getMember, T, member), serdeIgnore) 
-        && !hasUDA!(__traits(getMember, T, member), serdeIgnoreOut);
+          = hasUDA!(T, member, serdeAnnotation) 
+        && !hasUDA!(T, member, serdeIgnore) 
+        && !hasUDA!(T, member, serdeIgnoreOut);
 }
 
 /++
@@ -223,6 +223,7 @@ private template serdeIsAnnotationMemberOut(T)
 template serdeGetAnnotationMembersOut(T)
 {
     import std.meta: aliasSeqOf, Filter;
+    import mir.ndslice.topology;
     static if (isAggregateType!T)
         enum string[] serdeGetAnnotationMembersOut = [Filter!(serdeIsAnnotationMemberOut!T, aliasSeqOf!(SerializableMembers!T))];
     else
@@ -393,6 +394,18 @@ template serdeGetKeysIn(alias symbol)
         enum immutable(string)[] serdeGetKeysIn = [__traits(identifier, symbol)];
 }
 
+// ditto
+template serdeGetKeysIn(T, string member)
+{
+    static if (hasUDA!(T, member, serdeAnnotation) || hasUDA!(T, member, serdeIgnore) || hasUDA!(T, member, serdeIgnoreIn))
+        enum immutable(string)[] serdeGetKeysIn = null;
+    else
+    static if (hasUDA!(T, member, serdeKeys))
+        enum immutable(string)[] serdeGetKeysIn = getUDA!(T, member, serdeKeys).keys;
+    else
+        enum immutable(string)[] serdeGetKeysIn = [member];
+}
+
 /// ditto
 immutable(string)[] serdeGetKeysIn(T)(const T value) @trusted pure nothrow @nogc
     if (is(T == enum))
@@ -487,6 +500,21 @@ template serdeGetKeyOut(alias symbol)
         enum string serdeGetKeyOut = getUDA!(symbol, serdeKeys).keys[0];
     else
         enum string serdeGetKeyOut = __traits(identifier, symbol);
+}
+
+/// ditto
+template serdeGetKeyOut(T, string member)
+{
+    static if (hasUDA!(T, member, serdeAnnotation) || hasUDA!(T, member, serdeIgnore) || hasUDA!(T, member, serdeIgnoreOut))
+        enum string serdeGetKeyOut = null;
+    else
+    static if (hasUDA!(T, member, serdeKeyOut))
+        enum string serdeGetKeyOut = getUDA!(T, member, serdeKeyOut).key;
+    else
+    static if (hasUDA!(T, member, serdeKeys))
+        enum string serdeGetKeyOut = getUDA!(T, member, serdeKeys).keys[0];
+    else
+        enum string serdeGetKeyOut = member;
 }
 
 ///ditto
@@ -646,6 +674,8 @@ version(mir_test) unittest
 /++
 +/
 alias serdeGetProxy(alias symbol) = TemplateArgsOf!(getUDA!(symbol, serdeProxy))[0];
+/// ditto
+alias serdeGetProxy(T, string member) = TemplateArgsOf!(getUDA!(T, member, serdeProxy))[0];
 
 /// Can be applied to @serdeProxy types to make (de)serialization use
 /// underlying type through casting. Useful for enums.
@@ -666,6 +696,8 @@ struct serdeIgnoreOutIf(alias pred);
 /++
 +/
 alias serdeGetIgnoreOutIf(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreOutIf))[0]);
+/// ditto
+alias serdeGetIgnoreOutIf(T, string member) = naryFun!(TemplateArgsOf!(getUDA!(T, member, serdeIgnoreOutIf))[0]);
 
 /++
 Attributes to conditional ignore field during serialization.
@@ -679,6 +711,8 @@ struct serdeIgnoreOutIfAggregate(alias pred);
 /++
 +/
 alias serdeGetIgnoreOutIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreOutIfAggregate))[0]);
+/// ditto
+alias serdeGetIgnoreOutIfAggregate(T, string member) = naryFun!(TemplateArgsOf!(getUDA!(T, member, serdeIgnoreOutIfAggregate))[0]);
 
 /++
 Attributes to conditional ignore field during deserialization.
@@ -692,6 +726,8 @@ struct serdeIgnoreInIfAggregate(alias pred);
 /++
 +/
 alias serdeGetIgnoreInIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreInIfAggregate))[0]);
+/// ditto
+alias serdeGetIgnoreInIfAggregate(T, string member) = naryFun!(TemplateArgsOf!(getUDA!(T, member, serdeIgnoreInIfAggregate))[0]);
 
 /++
 Attributes to conditional ignore field during serialization and deserialization.
@@ -707,6 +743,8 @@ struct serdeIgnoreIfAggregate(alias pred);
 /++
 +/
 alias serdeGetIgnoreIfAggregate(alias symbol) = naryFun!(TemplateArgsOf!(getUDA!(symbol, serdeIgnoreIfAggregate))[0]);
+/// ditto
+alias serdeGetIgnoreIfAggregate(T, string member) = naryFun!(TemplateArgsOf!(getUDA!(T, member, serdeIgnoreIfAggregate))[0]);
 
 /++
 Allows to use flexible deserialization rules such as conversion from input string to numeric types.
@@ -862,6 +900,8 @@ struct serdeTransformIn(alias fun) {}
 Returns: unary function of underlaying alias of $(LREF serdeTransformIn)
 +/
 alias serdeGetTransformIn(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformIn))[0]);
+/// ditto
+alias serdeGetTransformIn(T, string member) = naryFun!(TemplateArgsOf!(getUDA!(T, member, serdeTransformIn))[0]);
 
 /++
 Attributes for out transformation.
@@ -874,6 +914,8 @@ struct serdeTransformOut(alias fun) {}
 Returns: unary function of underlaying alias of $(LREF serdeTransformOut)
 +/
 alias serdeGetTransformOut(alias value) = naryFun!(TemplateArgsOf!(getUDA!(value, serdeTransformOut))[0]);
+/// ditto
+alias serdeGetTransformOut(T, string member) = naryFun!(TemplateArgsOf!(getUDA!(T, member, serdeTransformOut))[0]);
 
 /++
 +/
@@ -995,7 +1037,7 @@ Is deserializable member
 template serdeIsDeserializable(T)
 {
     ///
-    enum bool serdeIsDeserializable(string member) = serdeGetKeysIn!(__traits(getMember, T, member)).length > 0;
+    enum bool serdeIsDeserializable(string member) = serdeGetKeysIn!(T, member).length > 0;
 }
 
 ///
@@ -1047,7 +1089,7 @@ Is deserializable member
 template serdeIsSerializable(T)
 {
     ///
-    enum bool serdeIsSerializable(string member) = serdeGetKeyOut!(__traits(getMember, T, member)) !is null;
+    enum bool serdeIsSerializable(string member) = serdeGetKeyOut!(T, member) !is null;
 }
 
 ///
@@ -1348,9 +1390,9 @@ Deserialization member final proxy type
 +/
 template serdeFinalDeserializationMemberType(T, string member)
 {
-    static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
+    static if (hasUDA!(T, member, serdeProxy))
     {
-        alias serdeFinalDeserializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(__traits(getMember, T, member)));
+        alias serdeFinalDeserializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(T, member));
     }
     else
     {
@@ -1437,9 +1479,9 @@ Serialization member final proxy type
 +/
 template serdeFinalSerializationMemberType(T, string member)
 {
-    static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
+    static if (hasUDA!(T, member, serdeProxy))
     {
-        alias serdeFinalSerializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(__traits(getMember, T, member)));
+        alias serdeFinalSerializationMemberType = serdeGetFinalProxy!(serdeGetProxy!(T, member));
     }
     else
     {
@@ -1775,12 +1817,12 @@ package string[] sortUniqKeys()(string[] keys)
 private template serdeGetKeysIn2(T)
 {
     // T* value;
-    enum string[] serdeGetKeysIn2(string member) = serdeGetKeysIn!(__traits(getMember, T, member));
+    enum string[] serdeGetKeysIn2(string member) = serdeGetKeysIn!(T, member);
 }
 
 private template serdeGetKeyOut2(T)
 {
-    enum string[] serdeGetKeyOut2(string member) = serdeGetKeyOut!(__traits(getMember, T, member)) is null ? null : [serdeGetKeyOut!(__traits(getMember, T, member))];
+    enum string[] serdeGetKeyOut2(string member) = serdeGetKeyOut!(T, member) is null ? null : [serdeGetKeyOut!(T, member)];
 }
 
 private template serdeFinalDeepProxyDeserializableMemberKeys(T)
@@ -1998,6 +2040,7 @@ See_also: $(LREF serdeOrderedIn), $(LREF serdeIgnoreInIfAggregate)
 +/
 enum serdeRealOrderedIn;
 
+
 /++
 UDA used to force deserializer to skip the member final deserialization.
 A user should finalize the member deserialize using the dummy object provided in `serdeFinalizeWithDummy(ref SerdeOrderedDummy!(typeof(this)) dummy)` struct method
@@ -2043,7 +2086,7 @@ public:
     {
         static if (hasField!(T, member))
         {
-            static if (hasUDA!(__traits(getMember, T, member), serdeProxy))
+            static if (hasUDA!(T, member, serdeProxy))
             {
                 mixin("@(__traits(getAttributes, T." ~ member ~ ")) serdeDeserializationMemberType!(T, `" ~ member ~ "`) " ~ member ~ ";");
             }
@@ -2090,9 +2133,9 @@ public:
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
             __traits(getMember, flags, member) = __traits(getMember, __serdeFlags, member);
         static foreach (member; serdeFinalProxyDeserializableMembers!T)
-            static if (!hasUDA!(__traits(getMember, T, member), serdeFromDummyByUser))
+            static if (!hasUDA!(T, member, serdeFromDummyByUser))
         {{
-            if (hasUDA!(__traits(getMember, T, member), __serdeOptionalRequired) == __optionalByDefault || __traits(getMember, __serdeFlags, member))
+            if (hasUDA!(T, member, __serdeOptionalRequired) == __optionalByDefault || __traits(getMember, __serdeFlags, member))
             {
                 static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
                 {
@@ -2129,7 +2172,7 @@ public:
     /// Initialize target member
     void serdeFinalizeTargetMember(string member)(ref T value)
     {
-            if (hasUDA!(__traits(getMember, T, member), __serdeOptionalRequired) == __optionalByDefault || __traits(getMember, __serdeFlags, member))
+            if (hasUDA!(T, member, __serdeOptionalRequired) == __optionalByDefault || __traits(getMember, __serdeFlags, member))
             {
                 static if (is(typeof(__traits(getMember, this, member)) : SerdeOrderedDummy!I, I))
                 {
@@ -2215,10 +2258,10 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
         import core.lifetime: move;
         import mir.conv: to;
 
-        enum likeList = hasUDA!(__traits(getMember, value, member), serdeLikeList);
-        enum likeStruct  = hasUDA!(__traits(getMember, value, member), serdeLikeStruct);
-        enum hasProxy = hasUDA!(__traits(getMember, value, member), serdeProxy);
-        enum hasScoped = hasUDA!(__traits(getMember, value, member), serdeScoped);
+        enum likeList = hasUDA!(T, member, serdeLikeList);
+        enum likeStruct  = hasUDA!(T, member, serdeLikeStruct);
+        enum hasProxy = hasUDA!(T, member, serdeProxy);
+        enum hasScoped = hasUDA!(T, member, serdeScoped);
 
         static assert (likeList + likeStruct <= 1, T.stringof ~ "." ~ member ~ " can't have both @serdeLikeStruct and @serdeLikeList attributes");
         static assert (hasProxy >= likeStruct, T.stringof ~ "." ~ member ~ " should have a Proxy type for deserialization");
@@ -2227,7 +2270,7 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
         alias Member = serdeDeserializationMemberType!(T, member);
 
         static if (hasProxy)
-            alias Temporal = serdeGetProxy!(__traits(getMember, value, member));
+            alias Temporal = serdeGetProxy!(T, member);
         else
             alias Temporal = Member;
 
@@ -2241,7 +2284,7 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
 
         static immutable excm(string member) = new SerdeException("ASDF deserialisation: multiple keys for member '" ~ member ~ "' in " ~ T.stringof ~ " are not allowed.");
 
-        static if (!hasUDA!(__traits(getMember, value, member), serdeAllowMultiple))
+        static if (!hasUDA!(T, member, serdeAllowMultiple))
             if (__traits(getMember, requiredFlags, member))
                 return excm!member;
 
@@ -2290,9 +2333,9 @@ template deserializeValueMemberImpl(alias deserializeValue, alias deserializeSco
             __traits(getMember, value, member) = move(temporal);
         }
 
-        static if (hasUDA!(__traits(getMember, value, member), serdeTransformIn))
+        static if (hasUDA!(T, member, serdeTransformIn))
         {
-            alias transform = serdeGetTransformIn!(__traits(getMember, value, member));
+            alias transform = serdeGetTransformIn!(T, member, member);
             static if (hasField!(T, member))
             {
                 transform(__traits(getMember, value, member));

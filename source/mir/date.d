@@ -343,7 +343,7 @@ struct YearMonthDay
         if (timestamp.precision != Timestamp.Precision.day)
         {
             static immutable exc = new Exception("YearMonthDay: invalid timestamp precision");
-            throw exc;
+            { import mir.exception : toMutable; throw exc.toMutable; }
         }
         with(timestamp) this(year, cast(Month)month, day);
     }
@@ -459,7 +459,7 @@ struct YearMonthDay
 
         static if (useExceptions)
         {
-            if (dayOutOfRange) throw InvalidDay;
+            if (dayOutOfRange) { import mir.exception : toMutable; throw InvalidDay.toMutable; }
         }
         else
         {
@@ -632,7 +632,7 @@ struct YearMonth
     {
         static immutable exc = new Exception("Month out of bounds [1, 12]");
         if (1 > month || month > 12)
-            throw exc;
+            { import mir.exception : toMutable; throw exc.toMutable; }
         this.year = year;
         this.month = cast(Month)month;
     }
@@ -711,7 +711,7 @@ struct YearMonth
         if (timestamp.precision != Timestamp.Precision.month)
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
-            throw exc;
+            { import mir.exception : toMutable; throw exc.toMutable; }
         }
         with(timestamp) this(year, cast(Month)month);
     }
@@ -851,7 +851,7 @@ struct YearMonth
         if (fromISOExtString(str, ret))
             return ret;
         static immutable exc = new Exception("Invalid YearMonth string");
-        throw exc;
+        { import mir.exception : toMutable; throw exc.toMutable; }
     }
 
 nothrow:
@@ -1087,7 +1087,7 @@ nothrow:
 
         static if (useExceptions)
         {
-            if (dayOutOfRange) throw InvalidDay;
+            if (dayOutOfRange) { import mir.exception : toMutable; throw InvalidDay.toMutable; }
         }
         else
         {
@@ -1482,7 +1482,7 @@ struct YearQuarter
         if (timestamp.precision != Timestamp.Precision.month)
         {
             static immutable exc = new Exception("YearMonth: invalid timestamp precision");
-            throw exc;
+            { import mir.exception : toMutable; throw exc.toMutable; }
         }
         with(timestamp) this(year, cast(Month)month);
     }
@@ -1662,7 +1662,7 @@ struct YearQuarter
 
         static if (useExceptions)
         {
-            if (dayOutOfRange) throw InvalidDay;
+            if (dayOutOfRange) { import mir.exception : toMutable; throw InvalidDay.toMutable; }
         }
         else
         {
@@ -2035,7 +2035,7 @@ public:
         if (timestamp.precision != Timestamp.Precision.day)
         {
             static immutable exc = new Exception("Date: invalid timestamp precision");
-            throw exc;
+            { import mir.exception : toMutable; throw exc.toMutable; }
         }
         with(timestamp) this(year, cast(Month)month, day);
     }
@@ -2119,9 +2119,9 @@ public:
     this(int _year, int _month, int _day) @safe pure @nogc
     {
         if (!valid!"months"(_month))
-            throw InvalidMonth;
+            { import mir.exception : toMutable; throw InvalidMonth.toMutable; }
         if (!valid!"days"(_year, cast(Month) _month, _day))
-            throw InvalidDay;
+            { import mir.exception : toMutable; throw InvalidDay.toMutable; }
         this = trustedCreate(_year, _month, _day);
     }
 
@@ -3330,7 +3330,7 @@ public:
         Date ret;
         if (fromISOString(str, ret))
             return ret;
-        throw InvalidISOString;
+        { import mir.exception : toMutable; throw InvalidISOString.toMutable; }
     }
 
     ///
@@ -3461,7 +3461,7 @@ public:
         Date ret;
         if (fromISOExtString(str, ret))
             return ret;
-        throw InvalidISOExtendedString;
+        { import mir.exception : toMutable; throw InvalidISOExtendedString.toMutable; }
     }
 
     ///
@@ -3732,7 +3732,7 @@ public:
         Date ret;
         if (fromString(str, ret))
             return ret;
-        throw InvalidString;
+        { import mir.exception : toMutable; throw InvalidString.toMutable; }
     }
 
     /++

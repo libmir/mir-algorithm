@@ -191,7 +191,7 @@ struct mir_rcarray(T)
             if (!ctx)
             {
                 version(D_Exceptions)
-                    throw allocationError;
+                    { import mir.exception : toMutable; throw allocationError.toMutable; }
                 else
                     assert(0, allocationExcMsg);
             }

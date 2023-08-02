@@ -3876,7 +3876,7 @@ do {
         if (length && bounds[length - 1] > sliceable.length)
         {
             version (D_Exceptions)
-                throw choppedException;
+                { import mir.exception : toMutable; throw choppedException.toMutable; }
             else
                assert(0, choppedExceptionMsg);
         }

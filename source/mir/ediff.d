@@ -179,7 +179,8 @@ import mir.algorithm.iteration: uniq;
 import mir.array.allocation;
 import mir.math.common;
 import mir.ndslice.sorting: sort;
-import std.traits: Unqual, getUDAs, hasUDA, isPointer, PointerTarget;
+import std.traits: Unqual, isPointer, PointerTarget;
+import mir.internal.meta: getUDAs, hasUDA;
 
 @fmamath:
 
@@ -405,9 +406,9 @@ template Dependencies(T)
             string[] variables;
             static foreach (member; __traits(allMembers, T))
             {
-                static if (hasUDA!(__traits(getMember, T, member), Derivative))
+                static if (hasUDA!(T, member, Derivative))
                 {
-                    variables ~= getUDAs!(__traits(getMember, T, member), Derivative)[0].variables;
+                    variables ~= getUDAs!(T, member, Derivative)[0].variables;
                 }
             }
             return variables.sort.uniq.array.DependsOn;
@@ -478,8 +479,8 @@ template getDerivative(string[] variables, bool strict = true)
                     alias V = T;
                 template hasDerivative(string member)
                 {
-                    static if (hasUDA!(__traits(getMember, V, member), Derivative))
-                        enum hasDerivative = variables == getUDAs!(__traits(getMember, V, member), Derivative)[0].variables;
+                    static if (hasUDA!(V, member, Derivative))
+                        enum hasDerivative = variables == getUDAs!(V, member, Derivative)[0].variables;
                     else
                         enum hasDerivative = false;
                 }
@@ -489,7 +490,7 @@ template getDerivative(string[] variables, bool strict = true)
                     {
                         static if (hasDerivative!member)
                         {
-                            static if (hasUDA!(__traits(getMember, V, member), Minus))
+                            static if (hasUDA!(V, member, Minus))
                                 return -__traits(getMember, value, member);
                             else
                                 return __traits(getMember, value, member);
@@ -530,16 +531,16 @@ void setDerivatives(bool strict = true, D, E)(scope ref D derivatives, E express
         return derivatives.setDerivatives!strict(expression);
     else
     {
-        import std.traits: getUDAs, hasUDA, isPointer, PointerTarget;
+        import std.traits: isPointer, PointerTarget;
 
         static foreach (member; __traits(allMembers, D))
         {
-            static if (hasUDA!(__traits(getMember, D, member), Derivative))
+            static if (hasUDA!(D, member, Derivative))
             {
-                static if (hasUDA!(__traits(getMember, derivatives, member), Minus))
-                    __traits(getMember, derivatives, member) = -expression.getDerivative!(getUDAs!(__traits(getMember, derivatives, member), Derivative)[0].variables, strict);
+                static if (hasUDA!(D, member, Minus))
+                    __traits(getMember, derivatives, member) = -expression.getDerivative!(getUDAs!(D, member, Derivative)[0].variables, strict);
                 else
-                    __traits(getMember, derivatives, member) = expression.getDerivative!(getUDAs!(__traits(getMember, derivatives, member), Derivative)[0].variables, strict);
+                    __traits(getMember, derivatives, member) = expression.getDerivative!(getUDAs!(D, member, Derivative)[0].variables, strict);
             }
         }
     }

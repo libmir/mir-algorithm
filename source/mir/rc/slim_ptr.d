@@ -223,7 +223,7 @@ template createSlimRC(T)
             if (!context)
             {
                 version(D_Exceptions)
-                    throw allocationError;
+                    { import mir.exception : toMutable; throw allocationError.toMutable; }
                 else
                     assert(0, allocationExcMsg);
             }

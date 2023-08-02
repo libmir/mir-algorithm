@@ -115,7 +115,7 @@ struct BigInt(uint size64)
         else
         {
             static immutable exception = new Exception("Can't parse BigInt!" ~ size64.stringof ~ ".");
-            throw exception;
+            { import mir.exception : toMutable; throw exception.toMutable; }
         }
     }
 
@@ -194,7 +194,7 @@ struct BigInt(uint size64)
         static immutable bigIntOverflowException = new Exception("BigInt!" ~ size64.stringof ~ ".fromBigEndian: data overflow");
         BigInt ret = void;
         if (!ret.copyFromBigEndian(data, sign))
-            throw bigIntOverflowException;
+            { import mir.exception : toMutable; throw bigIntOverflowException.toMutable; }
         return ret;
     }
 
@@ -766,7 +766,7 @@ struct BigInt(uint size64)
         if (ret.fromHexStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
-            throw hexStringException;
+            { import mir.exception : toMutable; throw hexStringException.toMutable; }
         else
             assert(0, hexStringErrorMsg);
     }
@@ -793,7 +793,7 @@ struct BigInt(uint size64)
         if (ret.fromBinaryStringImpl!(char, allowUnderscores)(str))
             return ret;
         version(D_Exceptions)
-            throw binaryStringException;
+            { import mir.exception : toMutable; throw binaryStringException.toMutable; }
         else
             assert(0, binaryStringErrorMsg);
     }

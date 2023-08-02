@@ -510,7 +510,7 @@ struct Timestamp
         static if (staticIndexOf!(Timestamp, T.AllowedTypes) < 0)
         {
             static immutable exc = new Exception("Cannot cast Timestamp to " ~ T.stringof);
-            throw exc;
+            { import mir.exception : toMutable; throw exc.toMutable; }
         }
         else
         {
@@ -611,7 +611,7 @@ struct Timestamp
         static if (T.stringof == "Duration")
         {
             if (!isDuration)
-                throw ExpectedDuration;
+                { import mir.exception : toMutable; throw ExpectedDuration.toMutable; }
             auto coeff = ((((long(year) * 7 + month) * 24 + hour) * 60 + minute) * 60 + second) * 10_000_000 + getFraction!7;
             if (isNegativeDuration)
                 coeff = -coeff;
@@ -1304,7 +1304,7 @@ struct Timestamp
         Timestamp ret;
         if (fromString(str, ret))
             return ret;
-        throw InvalidString;
+        { import mir.exception : toMutable; throw InvalidString.toMutable; }
     }
 
     template fromISOStringImpl(bool ext, bool yaml = false)
@@ -1316,12 +1316,12 @@ struct Timestamp
             if (fromISOStringImpl(str, ret))
                 return ret;
             static if (yaml)
-                throw InvalidYamlString;
+                { import mir.exception : toMutable; throw InvalidYamlString.toMutable; }
             else
             static if (ext)
-                throw InvalidISOExtendedString;
+                { import mir.exception : toMutable; throw InvalidISOExtendedString.toMutable; }
             else
-                throw InvalidISOString;
+                { import mir.exception : toMutable; throw InvalidISOString.toMutable; }
         }
 
         static bool fromISOStringImpl(C)(scope const(C)[] str, out Timestamp value) @safe pure nothrow @nogc

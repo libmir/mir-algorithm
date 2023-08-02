@@ -363,7 +363,7 @@ size_t[fuseDimensionCount!Range] fuseShape(Range)(Range r)
                         if (elemShape != ret[N .. $])
                         {
                             version (D_Exceptions)
-                                throw shapeException;
+                                { import mir.exception : toMutable; throw shapeException.toMutable; }
                             else
                                 assert(0, shapeExceptionMsg);
                         }

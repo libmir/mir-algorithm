@@ -7,6 +7,8 @@ module mir.stdio;
 
 static import core.stdc.stdio;
 
+import mir.exception: toMutable;
+
 /// Writes values in a text form
 void writeln(string separator = "", Args...)(auto ref const Args args)
     if (Args.length > 0)
@@ -118,7 +120,7 @@ struct File
             return;
         core.stdc.stdio.fwrite(data.ptr, 1, data.length, fp);
         if (core.stdc.stdio.ferror(fp))
-            throw writeException;
+            throw writeException.toMutable;
     }
 
     /++
@@ -131,7 +133,7 @@ struct File
             return;
         core.stdc.stdio.fflush(fp);
         if (core.stdc.stdio.ferror(fp))
-            throw writeException;
+            throw writeException.toMutable;
     }
 }
 
@@ -158,7 +160,7 @@ struct AssumeNothrowFile
             return;
         core.stdc.stdio.fwrite(data.ptr, 1, data.length, fp);
         if (core.stdc.stdio.ferror(fp))
-            throw writeError;
+            throw writeError.toMutable;
     }
 
     /++
@@ -171,7 +173,7 @@ struct AssumeNothrowFile
             return;
         core.stdc.stdio.fflush(fp);
         if (core.stdc.stdio.ferror(fp))
-            throw writeError;
+            throw writeError.toMutable;
     }
 }
 

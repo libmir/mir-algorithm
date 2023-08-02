@@ -11,6 +11,7 @@ module mir.numeric;
 import mir.internal.utility: isFloatingPoint;
 import mir.math.common;
 import mir.math.ieee;
+import mir.exception: toMutable;
 
 version(D_Exceptions)
 {
@@ -64,9 +65,9 @@ struct mir_find_root_result(T)
         with(FindRootStatus) final switch(status)
         {
             case success: return this;
-            case badBounds: throw findRoot_badBounds;
-            case nanX: throw findRoot_nanX;
-            case nanY: throw findRoot_nanY;
+            case badBounds: throw findRoot_badBounds.toMutable;
+            case nanX: throw findRoot_nanX.toMutable;
+            case nanY: throw findRoot_nanY.toMutable;
         }
     }
 
@@ -1128,9 +1129,9 @@ struct FindLocalMinResult(T)
         with(FindRootStatus) final switch(status)
         {
             case success: return this;
-            case badBounds: throw findRoot_badBounds;
-            case nanX: throw findRoot_nanX;
-            case nanY: throw findRoot_nanY;
+            case badBounds: throw findRoot_badBounds.toMutable;
+            case nanX: throw findRoot_nanX.toMutable;
+            case nanY: throw findRoot_nanY.toMutable;
         }
     }
 
@@ -1564,9 +1565,9 @@ struct FindSmileRootsResult(T)
         with(FindRootStatus) final switch(status)
         {
             case success: return this;
-            case badBounds: throw findRoot_badBounds;
-            case nanX: throw findRoot_nanX;
-            case nanY: throw findRoot_nanY;
+            case badBounds: throw findRoot_badBounds.toMutable;
+            case nanX: throw findRoot_nanX.toMutable;
+            case nanY: throw findRoot_nanY.toMutable;
         }
     }
 

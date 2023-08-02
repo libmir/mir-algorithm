@@ -243,7 +243,7 @@ struct Decimal(uint size64)
         else
         {
             static immutable exception = new Exception("Can't parse Decimal!" ~ size64.stringof ~ ".");
-            throw exception;
+            { import mir.exception : toMutable; throw exception.toMutable; }
         }
     }
 

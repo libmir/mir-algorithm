@@ -125,7 +125,7 @@ struct Lagrange(T, uint maxAdditionalFunctions = 0, X = T)
             enum T md = T.min_normal / T.epsilon;
             static immutable exc = new Exception(msg);
             if (!grid.lightScope.diff.all!(a => md <= a && a <= T.max))
-                throw exc;
+                { import mir.exception : toMutable; throw exc.toMutable; }
         }
         swap(_grid, grid);
         swap(_inversedBarycentricWeights, inversedBarycentricWeights);

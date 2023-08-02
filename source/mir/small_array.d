@@ -76,7 +76,7 @@ template SmallArray(T, uint maxLength)
             {
                 if (_length > _data.length)
                 {
-                    version(D_Exceptions) throw exception;
+                    version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                     else assert(0, errorMsg);
                 }
                 _data[_length++] = c;
@@ -96,7 +96,7 @@ template SmallArray(T, uint maxLength)
         {
             if (array.length > maxLength)
             {
-                version(D_Exceptions) throw exception;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                 else assert(0, errorMsg);
             }
             _data[0 .. _length] = T.init;
@@ -135,7 +135,7 @@ template SmallArray(T, uint maxLength)
             {
                 if (rhs._length > maxLength)
                 {
-                    version(D_Exceptions) throw exception;
+                    version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                     else assert(0, errorMsg);
                 }
                 _data = rhs._data[0 .. maxLength];
@@ -158,7 +158,7 @@ template SmallArray(T, uint maxLength)
             {
                 if (rhs._length > maxLength)
                 {
-                    version(D_Exceptions) throw exception;
+                    version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                     else assert(0, errorMsg);
                 }
                 _data = rhs._data[0 .. maxLength];
@@ -181,7 +181,7 @@ template SmallArray(T, uint maxLength)
             import core.lifetime: move;
             if (_length == maxLength)
             {
-                version(D_Exceptions) throw exception;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                 else assert(0, errorMsg);
             }
             _data[_length++] = move(elem);
@@ -200,7 +200,7 @@ template SmallArray(T, uint maxLength)
         {
             if (_length + array.length > maxLength)
             {
-                version(D_Exceptions) throw exception;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                 else assert(0, errorMsg);
             }
             _data[_length .. _length + array.length] = array;

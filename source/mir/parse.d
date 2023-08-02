@@ -115,7 +115,7 @@ template fromString(T)
             if (_expect(.fromString(str, value), true))
                 return value;
             version (D_Exceptions)
-                throw excfp;
+                { import mir.exception : toMutable; throw excfp.toMutable; }
             else
                 assert(0);
         }
@@ -129,14 +129,14 @@ template fromString(T)
                 if (_expect(str.length == 0, true))
                     return value;
                 version (D_Exceptions)
-                    throw excne;
+                    { import mir.exception : toMutable; throw excne.toMutable; }
                 else
                     assert(0);
             }
             else
             {
                 version (D_Exceptions)
-                    throw excfp;
+                    { import mir.exception : toMutable; throw excfp.toMutable; }
                 else
                     assert(0);
             }

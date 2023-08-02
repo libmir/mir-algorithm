@@ -62,7 +62,7 @@ extern(D) @safe pure @nogc:
         {
             if (i > _data.length)
             {
-                version(D_Exceptions) throw exception;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                 else assert(0, errorMsg);
             }
             _data[i++] = c;
@@ -82,7 +82,7 @@ extern(D) @safe pure @nogc:
         _data = '\0';
         if (str.length > _data.sizeof)
         {
-            version(D_Exceptions) throw exception;
+            version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
             else assert(0, errorMsg);
         }
         if (__ctfe)
@@ -108,7 +108,7 @@ extern(D) @safe pure @nogc:
         {
             if (rhs._data[maxLength])
             {
-                version(D_Exceptions) throw exception;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                 else assert(0, errorMsg);
             }
             _data = cast(char[maxLength])(rhs._data[0 .. maxLength]);
@@ -132,7 +132,7 @@ extern(D) @safe pure @nogc:
         {
             if (rhs._data[maxLength])
             {
-                version(D_Exceptions) throw exception;
+                version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
                 else assert(0, errorMsg);
             }
             _data = cast(char[maxLength])(rhs._data[0 .. maxLength]);
@@ -156,7 +156,7 @@ extern(D) @safe pure @nogc:
         auto length = opIndex.length;
         if (length == maxLength)
         {
-            version(D_Exceptions) throw exception;
+            version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
             else assert(0, errorMsg);
         }
         _data[length] = c;
@@ -169,7 +169,7 @@ extern(D) @safe pure @nogc:
         auto length = opIndex.length;
         if (length + str.length > maxLength)
         {
-            version(D_Exceptions) throw exception;
+            version(D_Exceptions) { import mir.exception : toMutable; throw exception.toMutable; }
             else assert(0, errorMsg);
         }
         if (__ctfe)
