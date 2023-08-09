@@ -417,25 +417,11 @@ immutable(string)[] serdeGetKeysIn(T)(const T value) @trusted pure nothrow @nogc
 
     import std.meta: staticMap;
     static immutable ret = [staticMap!(.serdeGetKeysIn, EnumMembers!T)];
-    static if (__VERSION__ < 2093)
-    {
-        final switch (value)
-        {
-            foreach (i, member; EnumMembers!T)
-            {
-                case member:
-                    return ret[i];
-            }
-        }
-    }
-    else
-    {
     import mir.enums: getEnumIndex;
     uint index = void;
     if (getEnumIndex(value, index))
         return ret[index];
     assert(0);
-    }
 }
 
 ///
@@ -527,21 +513,6 @@ string serdeGetKeyOut(T)(const T value)
         alias all = __traits(getAttributes, EnumMembers!T[i]);
     }}
 
-    static if (__VERSION__ < 2093)
-    {
-        import std.meta: staticMap;
-        static immutable ret = [staticMap!(.serdeGetKeyOut, EnumMembers!T)];
-        final switch (value)
-        {
-            foreach (i, member; EnumMembers!T)
-            {
-                case member:
-                    return ret[i];
-            }
-        }
-    }
-    else
-    {
     import std.meta: staticMap;
     import mir.enums: getEnumIndex;
     static immutable ret = [staticMap!(.serdeGetKeyOut, EnumMembers!T)];
@@ -549,7 +520,6 @@ string serdeGetKeyOut(T)(const T value)
     if (getEnumIndex(value, index))
         return ret[index];
     assert(0);
-    }
 }
 
 ///

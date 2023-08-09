@@ -39,22 +39,19 @@ Idioms:
 */
 module mir.bignum.internal.phobos_kernel;
 
-static if (__VERSION__ > 2100)
-    version (D_InlineAsm_X86)
-        static import std.internal.math.biguintx86;
+version (D_InlineAsm_X86)
+    static import std.internal.math.biguintx86;
 
 version (DMD)
 {
-    static if (__VERSION__ > 2100)
-        version (D_InlineAsm_X86)
-            version = HaveAsmVersion;
+    version (D_InlineAsm_X86)
+        version = HaveAsmVersion;
 }
 
 version (LDC)
 {
-    static if (__VERSION__ > 2100)
-        version (D_InlineAsm_X86)
-            version = HaveAsmVersion;
+    version (D_InlineAsm_X86)
+        version = HaveAsmVersion;
 
     version (ARM)
     {

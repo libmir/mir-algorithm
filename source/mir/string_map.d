@@ -1142,10 +1142,7 @@ version(mir_test)
     table["0"] = v0;
     table["1"] = v1;
     assert(table.keys == ["0", "1"]);
-    static if (__VERSION__ > 2098) // See https://github.com/libmir/mir-algorithm/runs/6809888795?check_suite_focus=true#step:5:17
-    {
-        assert(table.values == [v0, v1]); // TODO: qualify unittest as `pure` when this is inferred `pure`
-    }
+    assert(table.values == [v0, v1]); // TODO: qualify unittest as `pure` when this is inferred `pure`
     static assert(is(typeof(table.values) == const(C)[]));
 }
 
