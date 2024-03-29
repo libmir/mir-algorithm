@@ -360,8 +360,8 @@ Returns:
         where с is the number of channels in the image.
         Dense data layout is guaranteed.
 +/
-Slice!(ubyte*, 3) movingWindowByChannel
-(Slice!(Universal, [3], ubyte*) image, size_t nr, size_t nc, ubyte delegate(Slice!(Universal, [2], ubyte*)) filter)
+Slice!(C*, 3) movingWindowByChannel(alias filter, C)
+(Slice!(C*, 3, Universal) image, size_t nr, size_t nc)
 {
         // 0. 3D
         // The last dimension represents the color channel.
@@ -374,10 +374,12 @@ Slice!(ubyte*, 3) movingWindowByChannel
         .windows(nr, nc)
         // 3. 5D
         // Unpacks the windows.
-        .unpack
-        .transposed!(0, 1, 4)
+        .unpack.unpack
         // 4. 5D
         // Brings the color channel dimension to the third position.
+        .transposed!(0, 1, 4)
+        // 5. 3D Composed of 2D
+        // Packs the last two dimensions.
         .pack!2
         // 2D to pixel lazy conversion.
         .map!filter
@@ -397,12 +399,15 @@ Params:
 Returns:
     median value over the range `r`
 +/
-T median(Range, T)(Slice!(Universal, [2], Range) sl, T[] buf)
+T median(Iterator, SliceKind kind, T)(Slice!(Iterator, 2, kind) sl, T[] buf)
 {
     import std.algorithm.sorting : topN;
     // copy sl to the buffer
     auto retPtr = reduce!(
-        (ptr, elem) { *ptr = elem; return ptr + 1;} )(buf.ptr, sl);
+        (ptr, elem) {
+            *ptr = elem;
+            return ptr + 1;
+        } )(buf.ptr, sl);
     auto n = retPtr - buf.ptr;
     buf[0 .. n].topN(n / 2);
     return buf[n / 2];
@@ -414,9 +419,9 @@ The `main` function:
 -------
 void main(string[] args)
 {
-    import std.conv : to;
-    import std.getopt : getopt, defaultGetoptPrinter;
-    import std.path : stripExtension;
+    import std.conv: to;
+    import std.getopt: getopt, defaultGetoptPrinter;
+    import std.path: stripExtension;
 
     uint nr, nc, def = 3;
     auto helpInformation = args.getopt(
@@ -434,6 +439,12 @@ void main(string[] args)
 
     auto buf = new ubyte[nr * nc];
 
+    if (args.length == 1)
+    {
+        import std.stdio: writeln;
+        writeln("No input file given");
+    }
+
     foreach (name; args[1 .. $])
     {
         import imageformats; // can be found at code.dlang.org
@@ -442,6 +453,7 @@ void main(string[] args)
 
         auto ret = image.pixels
             .sliced(cast(size_t)image.h, cast(size_t)image.w, cast(size_t)image.c)
+            .universal
             .movingWindowByChannel
                 !(window => median(window, buf))
                  (nr, nc);
@@ -450,7 +462,7 @@ void main(string[] args)
             name.stripExtension ~ "_filtered.png",
             ret.length!1,
             ret.length!0,
-            (&ret[0, 0, 0])[0 .. ret.elementCount]);
+            ret.field);
     }
 }
 -------
