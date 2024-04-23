@@ -2193,6 +2193,16 @@ version(mir_test) unittest
     static assert(hasUDA!(SerdeOrderedDummy!S.d, serdeProxy));
 }
 
+/++ 
+Exact amount of total serializable members in a structure/class.
+The UDA is used to help CBOR and MsgPack serializers to construct finite length maps.
++/
+struct serdeMembersExactly
+{
+    ///
+    int n;
+}
+
 /++
 A dummy structure passed to `.serdeFinalizeWithFlags` finalizer method.
 +/
