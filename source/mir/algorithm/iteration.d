@@ -20,8 +20,10 @@ $(T2 find, Finds backward index.)
 $(T2 findIndex, Finds index.)
 $(T2 fold, Accumulates all elements (different parameter order than `reduce`).)
 $(T2 isSymmetric, Checks if the matrix is symmetric.)
+$(T2 maxElement, Returns the maximum.)
 $(T2 maxIndex, Finds index of the maximum.)
 $(T2 maxPos, Finds backward index of the maximum.)
+$(T2 maxIndex, Returns the minimum.)
 $(T2 minIndex, Finds index of the minimum.)
 $(T2 minmaxIndex, Finds indices of the minimum and the maximum.)
 $(T2 minmaxPos, Finds backward indices of the minimum and the maximum.)
@@ -4431,4 +4433,87 @@ unittest
     auto z3 = y.minmaxIndex;
     auto z4 = y.minIndex;
     auto z5 = y.maxIndex;
+}
+
+/++
+Returns the minimal(maximal) element of a multidimensional slice.
+
+Params:
+    pred = A predicate.
+
+See_also:
+    $(LREF minIndex),
+    $(LREF maxElement),
+    $(LREF maxIndex),
+    $(LREF maxPos).
++/
+template minElement(alias pred = "a < b")
+{
+    import mir.functional: naryFun;
+    static if (__traits(isSame, naryFun!pred, pred))
+    /++
+    Params:
+        slice = ndslice.
+    Returns:
+        Minimal(maximal) element of a multidimensional slice
+    +/
+    @fmamath DeepElementType!(Slice!(Iterator, N, kind)) minElement(Iterator, size_t N, SliceKind kind)(Slice!(Iterator, N, kind) slice)
+    {
+        return slice[slice.minIndex!pred];
+    }
+    else
+        alias minElement = .minElement!(naryFun!pred);
+}
+
+/// ditto
+template maxElement(alias pred = "a < b")
+{
+    import mir.functional: naryFun, reverseArgs;
+    alias maxElement = minElement!(reverseArgs!(naryFun!pred));
+}
+
+///
+@safe pure nothrow
+version(mir_test)
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    auto s = [
+        2, 6, 4, -3,
+        0, -4, -3, 3,
+        -3, -2, 7, 8,
+        ].sliced(3, 4);
+
+    assert(s.minElement == -4);
+    assert(s.maxElement == 8);
+}
+
+///
+@safe pure nothrow
+version(mir_test)
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    auto s = [
+        -8, 6, 4, -3,
+        0, -4, -3, 3,
+        -3, -2, 7, 8,
+        ].sliced(3, 4);
+
+    assert(s.minElement == -8);
+}
+
+@safe pure nothrow
+version(mir_test)
+unittest
+{
+    import mir.ndslice.slice: sliced;
+    auto s = [
+            0, 1, 2, 3,
+            4, 5, 6, 7,
+            8, 9, 10, 11
+            ].sliced(3, 4);
+
+    assert(s.minElement == 0);
+    assert(s.maxElement == 11);
 }
