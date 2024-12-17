@@ -1058,15 +1058,16 @@ struct MapIterator(Iterator, alias _fun)
             return _fun(*_iterator);
     }
 
+    static if (is(typeof(_iterator[0]) : Tuple!T, T...))
+    auto ref opIndex(ptrdiff_t index) 
+    {
+        auto t = _iterator[index];
+        return _fun(autoExpandAndForward!t);
+    }
+    else
     auto ref opIndex(ptrdiff_t index) scope
     {
-        static if (is(typeof(_iterator[0]) : Tuple!T, T...))
-        {
-            auto t = _iterator[index];
-            return _fun(autoExpandAndForward!t);
-        }
-        else
-            return _fun(_iterator[index]);
+        return _fun(_iterator[index]);
     }
 
     static if (!__traits(compiles, &opIndex(ptrdiff_t.init)))
