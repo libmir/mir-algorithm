@@ -38,6 +38,9 @@ struct Decimal(uint size64)
     void toString(C = char, W)(ref scope W w, NumericSpec spec = NumericSpec.init) const scope
         if(isSomeChar!C && isMutable!C)
     {
+        scope C[] _buffer;
+        if (false) w.put(_buffer);
+        () @trusted {
         assert(spec.format == NumericSpec.Format.exponent || spec.format == NumericSpec.Format.human);
         import mir.utility: _expect;
         // handle special values
@@ -212,6 +215,7 @@ struct Decimal(uint size64)
         auto expLength = printSignedToTail(exponent, buffer0[$ - N - 16 .. $ - 16], '+');
         buffer[$ - ++expLength] = spec.exponentChar;
         w.put(buffer[$ - expLength .. $]);
+    } ();
     }
 
 @safe:
@@ -422,7 +426,7 @@ struct Decimal(uint size64)
     }
 
     ///
-    ref opOpAssign(string op, size_t rhsMaxSize64)(ref const Decimal!rhsMaxSize64 rhs) @safe pure return
+    ref opOpAssign(string op, size_t rhsMaxSize64)(ref const Decimal!rhsMaxSize64 rhs) @trusted pure return
         if (op == "+" || op == "-")
     {
         import mir.utility: max;
@@ -450,7 +454,7 @@ struct Decimal(uint size64)
 
 ///
 version(mir_bignum_test)
-@safe pure nothrow @nogc
+@trusted pure nothrow @nogc
 unittest
 {
     import mir.test: should;

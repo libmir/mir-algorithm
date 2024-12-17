@@ -637,7 +637,7 @@ struct Fp(uint size)
 
 ///
 Fp!(coefficientizeA + coefficientizeB) extendedMul(bool noSpecial = false, uint coefficientizeA, uint coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
-    @safe pure nothrow @nogc
+    @trusted pure nothrow @nogc
 {
     import mir.bignum.fixed: extendedMul;
     import mir.checkedint: adds;

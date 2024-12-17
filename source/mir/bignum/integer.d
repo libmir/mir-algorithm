@@ -263,7 +263,7 @@ struct BigInt(uint size64)
     }
 
     ///
-    BigInt copy() @property
+    BigInt copy() @property @trusted
     {
         BigInt ret = void;
         ret.sign = sign;
@@ -479,7 +479,7 @@ struct BigInt(uint size64)
 
     ///ditto
     ref powMod()(scope BigUIntView!(const size_t) exponent, scope ref const BigInt modulus)
-        @safe pure nothrow @nogc return scope
+        @trusted pure nothrow @nogc return scope
     {
         pragma(inline, false);
 
@@ -654,7 +654,7 @@ struct BigInt(uint size64)
         remainder or quotient from the truncated division
     +/
     ref opOpAssign(string op : "*", size_t rhsSize64)(scope const ref BigInt!rhsSize64 rhs)
-        @safe pure nothrow @nogc return
+        @trusted pure nothrow @nogc return
     {
         BigInt!(size64 + rhsSize64) c = void;
         c.multiply(this, rhs);

@@ -288,7 +288,7 @@ private template bigSize(T)
     }
 }
 
-@optStrategy("minsize")
+@optStrategy("minsize") @trusted
 private T algorithmM(T)(scope const size_t[] coefficients, long exponent)
     if ((is(T == float) || is(T == double) || is(T == real)))
     in (coefficients.length)

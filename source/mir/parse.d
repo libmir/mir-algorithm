@@ -295,27 +295,27 @@ Performs `nothrow` and `@nogc` string to native type conversion.
 
 Rseturns: true if success and false otherwise.
 +/
-bool fromString(T, C)(scope const(C)[] str, ref T value)
-    if (isSomeChar!C)
+bool fromString(T, C)(scope const(C)[] str, ref T value) @trusted
+    if (isSomeChar!C && isFloatingPoint!T)
 {
-    static if (isFloatingPoint!T)
-    {
-        import mir.bignum.decimal: Decimal, DecimalExponentKey;
-        import mir.utility: _expect;
+    import mir.bignum.decimal: Decimal, DecimalExponentKey;
+    import mir.utility: _expect;
 
-        Decimal!128 decimal = void;
-        DecimalExponentKey key;
-        auto ret = decimal.fromStringImpl(str, key);
-        if (_expect(ret, true))
-        {
-            value = cast(T) decimal;
-        }
-        return ret;
-    }
-    else
+    Decimal!128 decimal = void;
+    DecimalExponentKey key;
+    auto ret = decimal.fromStringImpl(str, key);
+    if (_expect(ret, true))
     {
-        return parse!T(str, value) && str.length == 0;
+        value = cast(T) decimal;
     }
+    return ret;
+}
+
+/// ditto 
+bool fromString(T, C)(scope const(C)[] str, ref T value)
+    if (isSomeChar!C && !isFloatingPoint!T)
+{
+    return parse!T(str, value) && str.length == 0;
 }
 
 ///
