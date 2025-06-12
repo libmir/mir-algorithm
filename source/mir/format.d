@@ -88,7 +88,7 @@ unittest
 }
 
 /// Concatenated string results
-string text(string separator = "", Args...)(auto scope ref const Args args)
+string text(string separator = "", Args...)(auto ref scope const Args args)
     if (Args.length > 0)
 {
     import mir.utility: _expect;
@@ -607,7 +607,7 @@ void printElement(C = char, EscapeFormat escapeFormat = EscapeFormat.ion, W, T)(
 /++
 Multiargument overload.
 +/
-void print(C = char, W, Args...)(scope ref W w, auto scope ref const Args args)
+void print(C = char, W, Args...)(scope ref W w, auto ref scope const Args args)
     if (isSomeChar!C && Args.length > 1)
 {
     foreach(i, ref c; args)

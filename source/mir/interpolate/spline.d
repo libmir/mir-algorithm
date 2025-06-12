@@ -843,7 +843,7 @@ struct Spline(F, size_t N = 1, X = F)
         this._data = shape.rcslice!(F[2 ^^ N]);
     }
 
-    package static auto pickDataSubslice(D)(auto scope ref D data, size_t index) @trusted
+    package static auto pickDataSubslice(D)(auto ref scope D data, size_t index) @trusted
     {
         auto strides = data.strides;
         foreach (i; Iota!(strides.length))

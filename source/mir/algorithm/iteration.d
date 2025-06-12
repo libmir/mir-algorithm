@@ -121,7 +121,7 @@ private struct BitSliceAccelerator(Field, I = typeof(Field.init[size_t.init]))
     import mir.ndslice.field: BitField;
 
     ///
-    alias U = typeof(I + 1u);
+    alias U = typeof(I.init + 1u);
     /// body bits chunks
     static if (isIterator!Field)
         Slice!Field bodyChunks;
