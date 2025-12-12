@@ -963,7 +963,7 @@ UInt!(size + size_t.sizeof * 8)
     extendedMul(size_t size)(UInt!size a, size_t b)
     @safe pure nothrow @nogc
 {
-    size_t overflow = a.view *= b;
+    size_t overflow = a.view.opOpAssign!"*"(b);
     auto ret = a.toSize!(size + size_t.sizeof * 8);
     ret.data[$ - 1] = overflow;
     return ret;
@@ -1060,6 +1060,7 @@ UInt!(size + size_t.sizeof * 8)
 {
     auto ret = extendedMul(a, b);
     auto view = ret.view;
-    view.coefficients[$ - 1] += view.topLeastSignificantPart(a.data.length) += c.view;
+    view.coefficients[$ - 1] +=
+        view.topLeastSignificantPart(a.data.length).opOpAssign!"+"(c.view);
     return ret;
 }
