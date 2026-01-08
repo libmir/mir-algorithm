@@ -104,7 +104,12 @@ jobs:
           dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+        uses: codecov/codecov-action@v5
+        with:
+            fail_ci_if_error: true
+            verbose: true
+        env:
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   ubuntu:
     name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
@@ -149,7 +154,12 @@ jobs:
           dub test --arch=$ARCH --combined 
         shell: bash
       - name: Upload coverage data
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+        uses: codecov/codecov-action@v5
+        with:
+            fail_ci_if_error: true
+            verbose: true
+        env:
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   
   windows:
     name: '[windows] x86_64/${{ matrix.dc }}'
@@ -193,6 +203,11 @@ jobs:
           dub test --arch=$ARCH --build=unittest-ci -c ci-test
         shell: bash
       - name: Upload coverage data
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+        uses: codecov/codecov-action@v5
+        with:
+            fail_ci_if_error: true
+            verbose: true
+        env:
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     
         
