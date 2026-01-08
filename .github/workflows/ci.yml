@@ -88,15 +88,22 @@ jobs:
         uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
           compiler: ${{ matrix.dc }}
-      - name: Cache dub dependencies
+      - name: Cache dub packages (safe to share)
         uses: actions/cache@v4
         with:
           path: |
             ~/.dub/packages
+          key: macos-latest-build-dub-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
+          restore-keys: |
+            macos-latest-build-dub-packages-
+      - name: Cache dub build cache (compiler-specific)
+        uses: actions/cache@v4
+        with:
+          path: |
             ~/Library/Caches/dub
           key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            ${{ runner.os }}-dub-${{ matrix.dc }}-
+            ${{ runner.os }}-dub-cache-${{ matrix.dc }}-
       - name: Build / test
         run: |
           dub test --arch=$ARCH --build=unittest-cov
@@ -136,15 +143,22 @@ jobs:
       - name: Install multi-lib for 32-bit systems
         if: matrix.arch == 'x86'
         run: sudo apt-get update && sudo apt-get install gcc-multilib
-      - name: Cache dub dependencies
+      - name: Cache dub packages (safe to share)
         uses: actions/cache@v4
         with:
           path: |
             ~/.dub/packages
-            ~/.cache/dub
-          key: ${{ runner.os }}-dub-${{ matrix.arch }}-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
+          key: ubuntu-latest-build-dub-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            ${{ runner.os }}-dub-${{ matrix.arch }}-${{ matrix.dc }}-
+            ubuntu-latest-build-dub-packages
+      - name: Cache dub build cache (compiler-specific)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/dub
+          key: ${{ runner.os }}-dub-cache-${{ matrix.arch }}-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-dub-cache-${{ matrix.arch }}-${{ matrix.dc }}-
       - name: Build / test 
         run: |
           dub test --arch=$ARCH --build=unittest-cov
@@ -180,11 +194,18 @@ jobs:
         uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
         with:
           compiler: ${{ matrix.dc }}
-      - name: Cache dub dependencies
+      - name: Cache dub packages (safe to share)
         uses: actions/cache@v4
         with:
           path: |
             ${{ env.APPDATA }}\dub\packages
+          key: windows-latest-build-dub-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
+          restore-keys: |
+            windows-latest-build-dub-
+      - name: Cache dub build cache (compiler-specific)
+        uses: actions/cache@v4
+        with:
+          path: |
             ${{ env.LOCALAPPDATA }}\dub
           key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
