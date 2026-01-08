@@ -97,7 +97,6 @@ jobs:
           key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
             ${{ runner.os }}-dub-${{ matrix.dc }}-
-            ${{ runner.os }}-dub-
       - name: Build / test
         run: |
           dub test --arch=$ARCH --build=unittest-cov
@@ -146,8 +145,6 @@ jobs:
           key: ${{ runner.os }}-dub-${{ matrix.arch }}-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
             ${{ runner.os }}-dub-${{ matrix.arch }}-${{ matrix.dc }}-
-            ${{ runner.os }}-dub-${{ matrix.arch }}-
-            ${{ runner.os }}-dub-
       - name: Build / test 
         run: |
           dub test --arch=$ARCH --build=unittest-cov
@@ -192,7 +189,6 @@ jobs:
           key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
             ${{ runner.os }}-dub-${{ matrix.dc }}-
-            ${{ runner.os }}-dub-
       # Tests are split up to work around OOM errors -- no combined testing is done
       # as it's simply too big for the compiler to handle on Windows.
       - name: Build / test
