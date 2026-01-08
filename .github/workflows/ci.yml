@@ -89,12 +89,15 @@ jobs:
         with:
           compiler: ${{ matrix.dc }}
       - name: Cache dub dependencies
-        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        uses: actions/cache@v4
         with:
-          path: ~/.dub/packages
-          key: macos-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          path: |
+            ~/.dub/packages
+            ~/Library/Caches/dub
+          key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            macos-latest-build-
+            ${{ runner.os }}-dub-${{ matrix.dc }}-
+            ${{ runner.os }}-dub-
       - name: Build / test
         run: |
           dub test --arch=$ARCH --build=unittest-cov
@@ -130,12 +133,16 @@ jobs:
         if: matrix.arch == 'x86'
         run: sudo apt-get update && sudo apt-get install gcc-multilib
       - name: Cache dub dependencies
-        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        uses: actions/cache@v4
         with:
-          path: ~/.dub/packages
-          key: ubuntu-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          path: |
+            ~/.dub/packages
+            ~/.cache/dub
+          key: ${{ runner.os }}-dub-${{ matrix.arch }}-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            ubuntu-latest-build-
+            ${{ runner.os }}-dub-${{ matrix.arch }}-${{ matrix.dc }}-
+            ${{ runner.os }}-dub-${{ matrix.arch }}-
+            ${{ runner.os }}-dub-
       - name: Build / test 
         run: |
           dub test --arch=$ARCH --build=unittest-cov
@@ -167,12 +174,15 @@ jobs:
         with:
           compiler: ${{ matrix.dc }}
       - name: Cache dub dependencies
-        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+        uses: actions/cache@v4
         with:
-          path: ~\AppData\Local\dub
-          key: windows-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          path: |
+            ${{ env.APPDATA }}\dub\packages
+            ${{ env.LOCALAPPDATA }}\dub
+          key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            windows-latest-build-
+            ${{ runner.os }}-dub-${{ matrix.dc }}-
+            ${{ runner.os }}-dub-
       # Tests are split up to work around OOM errors -- no combined testing is done
       # as it's simply too big for the compiler to handle on Windows.
       - name: Build / test
