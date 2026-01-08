@@ -69,6 +69,7 @@ jobs:
   macos:
     name: '[macos] x86_64/${{ matrix.dc }}'
     runs-on: macos-13
+    timeout-minutes: 60
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).macos != '' && fromJSON(needs.setup.outputs.compilers).macos != '[]' }}
@@ -105,6 +106,7 @@ jobs:
   ubuntu:
     name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu != '' && fromJSON(needs.setup.outputs.compilers).ubuntu != '[]' }}
@@ -145,6 +147,7 @@ jobs:
   windows:
     name: '[windows] x86_64/${{ matrix.dc }}'
     runs-on: windows-2022
+    timeout-minutes: 60
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).windows != '' && fromJSON(needs.setup.outputs.compilers).windows != '[]' }}
