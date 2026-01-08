@@ -18,7 +18,7 @@ concurrency:
 jobs:
   setup:
     name: 'Load job configuration'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     outputs:
       compilers: ${{ steps.load-config.outputs.compilers }}
     steps:
@@ -68,7 +68,7 @@ jobs:
 
   macos:
     name: '[macos] x86_64/${{ matrix.dc }}'
-    runs-on: macos-11
+    runs-on: macos-13
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).macos != '' && fromJSON(needs.setup.outputs.compilers).macos != '[]' }}
@@ -104,7 +104,7 @@ jobs:
 
   ubuntu:
     name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu != '' && fromJSON(needs.setup.outputs.compilers).ubuntu != '[]' }}
