@@ -206,6 +206,13 @@ jobs:
         uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
+      - name: Verify toolchain
+        shell: pwsh
+        run: |
+            Get-Command dmd, ldc2, dub -ErrorAction SilentlyContinue | Format-Table -AutoSize
+            Get-Command dub -all
+            dub --version
+            echo $env:Path
       - name: Cache dub packages (safe to share)
         uses: actions/cache@v4
         with:
