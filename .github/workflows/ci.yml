@@ -215,10 +215,10 @@ jobs:
             dub --version 2>$null
             if ($LASTEXITCODE -ne 0) { "dub not found"; exit 1 }
             
-            if ($env:DC_NAME -like "dmd.*") {
+            if ($env:DC_NAME -like "dmd*") {
                 dmd --version 2>$null
                 if ($LASTEXITCODE -ne 0) { "dmd not found"; exit 1 }
-            } elseif ($env:DC_NAME -like "ldc.*") {
+            } elseif ($env:DC_NAME -like "ldc*") {
                 ldc2 --version 2>$null
                 if ($LASTEXITCODE -ne 0) { "dmd not found"; exit 1 }
             } else {
