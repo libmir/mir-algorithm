@@ -102,6 +102,8 @@ jobs:
             echo "ERROR: dub not found on PATH"
             exit 1
           fi
+          which dub
+          file "$(which dub)" || true
           dub --version
 
           if [[ "${DC_NAME}" == dmd* ]]; then
