@@ -88,6 +88,43 @@ jobs:
         uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
+      - name: Verify toolchain
+        shell: bash
+        env:
+          DC_NAME: ${{ matrix.dc }}
+        run: |
+          set -euo pipefail
+
+          echo "matrix.dc = ${DC_NAME}"
+
+          # dub must exist for all jobs
+          if ! command -v dub >/dev/null 2>&1; then
+            echo "ERROR: dub not found on PATH"
+            exit 1
+          fi
+          dub --version
+
+          if [[ "${DC_NAME}" == dmd* ]]; then
+            if ! command -v dmd >/dev/null 2>&1; then
+              echo "ERROR: dmd not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            dmd --version
+
+          elif [[ "${DC_NAME}" == ldc* ]]; then
+            if ! command -v ldc2 >/dev/null 2>&1; then
+              echo "ERROR: ldc2 not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            ldc2 --version
+
+          else
+            echo "ERROR: Unknown compiler in matrix.dc: '${DC_NAME}' (expected prefix 'dmd' or 'ldc')"
+            exit 1
+          fi
+
+          echo "ARCH=${ARCH:-<unset>}"
+          echo "PATH=${PATH}"
       - name: Cache dub packages (safe to share)
         uses: actions/cache@v4
         with:
@@ -149,6 +186,43 @@ jobs:
       - name: Install multi-lib for 32-bit systems
         if: matrix.arch == 'x86'
         run: sudo apt-get update && sudo apt-get install gcc-multilib
+      - name: Verify toolchain
+        shell: bash
+        env:
+          DC_NAME: ${{ matrix.dc }}
+        run: |
+          set -euo pipefail
+
+          echo "matrix.dc = ${DC_NAME}"
+
+          # dub must exist for all jobs
+          if ! command -v dub >/dev/null 2>&1; then
+            echo "ERROR: dub not found on PATH"
+            exit 1
+          fi
+          dub --version
+
+          if [[ "${DC_NAME}" == dmd* ]]; then
+            if ! command -v dmd >/dev/null 2>&1; then
+              echo "ERROR: dmd not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            dmd --version
+
+          elif [[ "${DC_NAME}" == ldc* ]]; then
+            if ! command -v ldc2 >/dev/null 2>&1; then
+              echo "ERROR: ldc2 not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            ldc2 --version
+
+          else
+            echo "ERROR: Unknown compiler in matrix.dc: '${DC_NAME}' (expected prefix 'dmd' or 'ldc')"
+            exit 1
+          fi
+
+          echo "ARCH=${ARCH:-<unset>}"
+          echo "PATH=${PATH}"
       - name: Cache dub packages (safe to share)
         uses: actions/cache@v4
         with:
