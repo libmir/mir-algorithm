@@ -115,6 +115,7 @@ jobs:
           dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         uses: codecov/codecov-action@v5
         with:
             fail_ci_if_error: true
@@ -175,6 +176,7 @@ jobs:
           dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         uses: codecov/codecov-action@v5
         with:
             fail_ci_if_error: true
@@ -239,6 +241,7 @@ jobs:
           dub test --arch=$ARCH --build=unittest-cov-ci -c ci-test
         shell: bash
       - name: Upload coverage data
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         uses: codecov/codecov-action@v5
         with:
             fail_ci_if_error: true
