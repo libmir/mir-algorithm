@@ -81,6 +81,7 @@ jobs:
       fail-fast: false
       matrix:
         dc: ${{ fromJSON(needs.setup.outputs.compilers).macos }}
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
@@ -139,6 +140,7 @@ jobs:
       matrix:
         dc: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu }}
         arch: [x86, x86_64]
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
@@ -199,6 +201,7 @@ jobs:
       fail-fast: false
       matrix:
         dc: ${{ fromJSON(needs.setup.outputs.compilers).windows }}
+    continue-on-error: ${{ contains(matrix.dc, 'beta') || contains(matrix.dc, 'master') }}
     steps:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
