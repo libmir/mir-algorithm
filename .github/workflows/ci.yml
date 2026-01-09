@@ -85,7 +85,7 @@ jobs:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - name: Setup D compiler 
-        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
       - name: Cache dub packages (safe to share)
@@ -143,7 +143,7 @@ jobs:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - name: Setup D compiler 
-        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
       - name: Install multi-lib for 32-bit systems
@@ -203,7 +203,7 @@ jobs:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - name: Setup D compiler 
-        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
       - name: Cache dub packages (safe to share)
@@ -231,7 +231,7 @@ jobs:
           dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-ndslice-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-test
-        shell: bash
+        shell: pwsh
       - name: Build / test (stable compiler; with coverage)
         if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         run: |
@@ -239,7 +239,7 @@ jobs:
           dub test --arch=$ARCH --build=unittest-cov-ci -c ci-core-test
           dub test --arch=$ARCH --build=unittest-cov-ci -c ci-ndslice-test
           dub test --arch=$ARCH --build=unittest-cov-ci -c ci-test
-        shell: bash
+        shell: pwsh
       - name: Upload coverage data
         if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         uses: codecov/codecov-action@v5
