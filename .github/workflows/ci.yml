@@ -209,10 +209,10 @@ jobs:
       - name: Verify toolchain
         shell: pwsh
         run: |
-            Get-Command dmd, ldc2, dub -ErrorAction SilentlyContinue | Format-Table -AutoSize
-            Get-Command dub -all
-            dub --version
-            echo $env:Path
+            dmd --version 2>$null; if ($LASTEXITCODE -ne 0) { "dmd not found"; exit 1 }
+            dub --version; if ($LASTEXITCODE -ne 0) { "dub not found"; exit 1 }
+            Write-Host "ARCH=$env:ARCH"
+            Write-Host "Path=$env:Path"
       - name: Cache dub packages (safe to share)
         uses: actions/cache@v4
         with:
@@ -234,18 +234,18 @@ jobs:
       - name: Build / test (nightly compiler; no coverage)
         if: contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')
         run: |
-          dub test --arch=$ARCH --build=unittest-ci -c ci-bignum-test
-          dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
-          dub test --arch=$ARCH --build=unittest-ci -c ci-ndslice-test
-          dub test --arch=$ARCH --build=unittest-ci -c ci-test
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-bignum-test
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-core-test
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-ndslice-test
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-test
         shell: pwsh
       - name: Build / test (stable compiler; with coverage)
         if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         run: |
-          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-bignum-test
-          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-core-test
-          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-ndslice-test
-          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-test
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-bignum-test
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-core-test
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-ndslice-test
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-test
         shell: pwsh
       - name: Upload coverage data
         if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
