@@ -104,7 +104,13 @@ jobs:
           key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
             ${{ runner.os }}-dub-cache-${{ matrix.dc }}-
-      - name: Build / test
+      - name: Build / test (nightly compiler; no coverage)
+        if: contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')
+        run: |
+          dub test --arch=$ARCH --combined
+        shell: bash
+      - name: Build / test (stable compiler; with coverage)
+        if: !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master'))
         run: |
           dub test --arch=$ARCH --build=unittest-cov
           dub test --arch=$ARCH --combined
@@ -159,10 +165,16 @@ jobs:
           key: ${{ runner.os }}-dub-cache-${{ matrix.arch }}-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
             ${{ runner.os }}-dub-cache-${{ matrix.arch }}-${{ matrix.dc }}-
-      - name: Build / test 
+      - name: Build / test (nightly compiler; no coverage)
+        if: contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')
+        run: |
+          dub test --arch=$ARCH --combined
+        shell: bash
+      - name: Build / test (stable compiler; with coverage)
+        if: !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master'))
         run: |
           dub test --arch=$ARCH --build=unittest-cov
-          dub test --arch=$ARCH --combined 
+          dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data
         uses: codecov/codecov-action@v5
@@ -212,13 +224,21 @@ jobs:
             ${{ runner.os }}-dub-${{ matrix.dc }}-
       # Tests are split up to work around OOM errors -- no combined testing is done
       # as it's simply too big for the compiler to handle on Windows.
-      - name: Build / test
+      - name: Build / test (nightly compiler; no coverage)
+        if: contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')
         run: |
           dub test --arch=$ARCH --build=unittest-ci -c ci-bignum-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-ndslice-test
           dub test --arch=$ARCH --build=unittest-ci -c ci-test
         shell: bash
+      - name: Build / test (stable compiler; with coverage)
+        if: !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master'))
+        run: |
+          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-bignum-test
+          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-core-test
+          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-ndslice-test
+          dub test --arch=$ARCH --build=unittest-cov-ci -c ci-test
       - name: Upload coverage data
         uses: codecov/codecov-action@v5
         with:
