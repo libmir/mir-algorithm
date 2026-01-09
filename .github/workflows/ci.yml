@@ -213,14 +213,14 @@ jobs:
         run: |
             Write-Host "matrix.dc = $env:DC_NAME"
             dub --version 2>$null
-            if ($LASTEXITCODE -ne 0) { "dub not found"; exit 1 }
+            if ($LASTEXITCODE -ne 0) { throw "dub not found" }
             
             if ($env:DC_NAME -like "dmd*") {
                 dmd --version 2>$null
-                if ($LASTEXITCODE -ne 0) { "dmd not found"; exit 1 }
+                if ($LASTEXITCODE -ne 0) { throw "dmd not found" }
             } elseif ($env:DC_NAME -like "ldc*") {
                 ldc2 --version 2>$null
-                if ($LASTEXITCODE -ne 0) { "dmd not found"; exit 1 }
+                if ($LASTEXITCODE -ne 0) { throw "ldc2 not found" }
             } else {
                 throw "Unknown compiler in matrix.dc: '$env:DC_NAME' (expected prefix 'dmd' or 'ldc')"
             }
