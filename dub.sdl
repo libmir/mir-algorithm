@@ -42,8 +42,12 @@ buildType "unittest-cov" {
     versions "mir_bignum_test" "mir_bignum_test_llv" "mir_ndslice_test" "mir_test"
     dflags "-lowmem"
 }
-buildType "unittest-ci" {
+buildType "unittest-cov-ci" {
     buildOptions "unittests" "coverage" "debugMode" "debugInfo"
+    dflags "-lowmem"
+}
+buildType "unittest-ci" {
+    buildOptions "unittests" "debugMode" "debugInfo"
     dflags "-lowmem"
 }
 buildType "unittest-release" {

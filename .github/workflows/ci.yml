@@ -18,7 +18,7 @@ concurrency:
 jobs:
   setup:
     name: 'Load job configuration'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     outputs:
       compilers: ${{ steps.load-config.outputs.compilers }}
     steps:
@@ -68,7 +68,8 @@ jobs:
 
   macos:
     name: '[macos] x86_64/${{ matrix.dc }}'
-    runs-on: macos-11
+    runs-on: macos-15-intel
+    timeout-minutes: 60
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).macos != '' && fromJSON(needs.setup.outputs.compilers).macos != '[]' }}
@@ -84,27 +85,87 @@ jobs:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - name: Setup D compiler 
-        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
-      - name: Cache dub dependencies
-        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      - name: Verify toolchain
+        shell: bash
+        env:
+          DC_NAME: ${{ matrix.dc }}
+        run: |
+          set -euo pipefail
+
+          echo "matrix.dc = ${DC_NAME}"
+
+          # dub must exist for all jobs
+          if ! command -v dub >/dev/null 2>&1; then
+            echo "ERROR: dub not found on PATH"
+            exit 1
+          fi
+          which dub
+          file "$(which dub)" || true
+          dub --version
+
+          if [[ "${DC_NAME}" == dmd* ]]; then
+            if ! command -v dmd >/dev/null 2>&1; then
+              echo "ERROR: dmd not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            dmd --version
+
+          elif [[ "${DC_NAME}" == ldc* ]]; then
+            if ! command -v ldc2 >/dev/null 2>&1; then
+              echo "ERROR: ldc2 not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            ldc2 --version
+
+          else
+            echo "ERROR: Unknown compiler in matrix.dc: '${DC_NAME}' (expected prefix 'dmd' or 'ldc')"
+            exit 1
+          fi
+
+          echo "ARCH=${ARCH:-<unset>}"
+          echo "PATH=${PATH}"
+      - name: Cache dub packages (safe to share)
+        uses: actions/cache@v4
         with:
-          path: ~/.dub/packages
-          key: macos-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          path: |
+            ~/.dub/packages
+          key: ${{ runner.os }}-dub-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            macos-latest-build-
-      - name: Build / test
+            ${{ runner.os }}-dub-packages-
+      - name: Cache dub build cache (compiler-specific)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/dub
+          key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-dub-cache-${{ matrix.dc }}-
+      - name: Build / test (nightly compiler; no coverage)
+        if: contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')
+        run: dub test --arch=$ARCH --combined
+        shell: bash
+      - name: Build / test (stable compiler; with coverage)
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         run: |
           dub test --arch=$ARCH --build=unittest-cov
           dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
+        uses: codecov/codecov-action@v5
+        with:
+            fail_ci_if_error: true
+            verbose: true
+        env:
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   ubuntu:
     name: '[ubuntu] ${{ matrix.arch }}/${{ matrix.dc }}'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).ubuntu != '' && fromJSON(needs.setup.outputs.compilers).ubuntu != '[]' }}
@@ -121,30 +182,88 @@ jobs:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - name: Setup D compiler 
-        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
       - name: Install multi-lib for 32-bit systems
         if: matrix.arch == 'x86'
         run: sudo apt-get update && sudo apt-get install gcc-multilib
-      - name: Cache dub dependencies
-        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      - name: Verify toolchain
+        shell: bash
+        env:
+          DC_NAME: ${{ matrix.dc }}
+        run: |
+          set -euo pipefail
+
+          echo "matrix.dc = ${DC_NAME}"
+
+          # dub must exist for all jobs
+          if ! command -v dub >/dev/null 2>&1; then
+            echo "ERROR: dub not found on PATH"
+            exit 1
+          fi
+          dub --version
+
+          if [[ "${DC_NAME}" == dmd* ]]; then
+            if ! command -v dmd >/dev/null 2>&1; then
+              echo "ERROR: dmd not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            dmd --version
+
+          elif [[ "${DC_NAME}" == ldc* ]]; then
+            if ! command -v ldc2 >/dev/null 2>&1; then
+              echo "ERROR: ldc2 not found on PATH (matrix.dc=${DC_NAME})"
+              exit 1
+            fi
+            ldc2 --version
+
+          else
+            echo "ERROR: Unknown compiler in matrix.dc: '${DC_NAME}' (expected prefix 'dmd' or 'ldc')"
+            exit 1
+          fi
+
+          echo "ARCH=${ARCH:-<unset>}"
+          echo "PATH=${PATH}"
+      - name: Cache dub packages (safe to share)
+        uses: actions/cache@v4
         with:
-          path: ~/.dub/packages
-          key: ubuntu-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          path: |
+            ~/.dub/packages
+          key: ${{ runner.os }}-dub-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            ubuntu-latest-build-
-      - name: Build / test 
+            ${{ runner.os }}-dub-packages
+      - name: Cache dub build cache (compiler-specific)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/dub
+          key: ${{ runner.os }}-dub-cache-${{ matrix.arch }}-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-dub-cache-${{ matrix.arch }}-${{ matrix.dc }}-
+      - name: Build / test (nightly compiler; no coverage)
+        if: contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')
+        run: dub test --arch=$ARCH --combined
+        shell: bash
+      - name: Build / test (stable compiler; with coverage)
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         run: |
           dub test --arch=$ARCH --build=unittest-cov
-          dub test --arch=$ARCH --combined 
+          dub test --arch=$ARCH --combined
         shell: bash
       - name: Upload coverage data
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
+        uses: codecov/codecov-action@v5
+        with:
+            fail_ci_if_error: true
+            verbose: true
+        env:
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   
   windows:
     name: '[windows] x86_64/${{ matrix.dc }}'
     runs-on: windows-2022
+    timeout-minutes: 60
     needs: setup
     # Only run if the setup phase explicitly defined compilers to be used
     if: ${{ fromJSON(needs.setup.outputs.compilers).windows != '' && fromJSON(needs.setup.outputs.compilers).windows != '[]' }}
@@ -160,26 +279,70 @@ jobs:
       - name: Checkout repo 
         uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
       - name: Setup D compiler 
-        uses: dlang-community/setup-dlang@763d869b4d67e50c3ccd142108c8bca2da9df166
+        uses: dlang-community/setup-dlang@d7d85fcde7c4cd5f9a6618fce1bccc316e1e910b
         with:
           compiler: ${{ matrix.dc }}
-      - name: Cache dub dependencies
-        uses: actions/cache@937d24475381cd9c75ae6db12cb4e79714b926ed
+      - name: Verify toolchain
+        shell: pwsh
+        env:
+            DC_NAME: ${{ matrix.dc }}
+        run: |
+            Write-Host "matrix.dc = $env:DC_NAME"
+            dub --version 2>$null
+            if ($LASTEXITCODE -ne 0) { throw "dub not found" }
+            
+            if ($env:DC_NAME -like "dmd*") {
+                dmd --version 2>$null
+                if ($LASTEXITCODE -ne 0) { throw "dmd not found" }
+            } elseif ($env:DC_NAME -like "ldc*") {
+                ldc2 --version 2>$null
+                if ($LASTEXITCODE -ne 0) { throw "ldc2 not found" }
+            } else {
+                throw "Unknown compiler in matrix.dc: '$env:DC_NAME' (expected prefix 'dmd' or 'ldc')"
+            }
+            Write-Host "ARCH=$env:ARCH"
+            Write-Host "Path=$env:Path"
+      - name: Cache dub packages (safe to share)
+        uses: actions/cache@v4
         with:
-          path: ~\AppData\Local\dub
-          key: windows-latest-build-${{ hashFiles('**/dub.sdl', '**/dub.json') }}
+          path: |
+            ${{ env.APPDATA }}\dub\packages
+          key: ${{ runner.os }}-dub-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
           restore-keys: |
-            windows-latest-build-
+            ${{ runner.os }}-dub-
+      - name: Cache dub build cache (compiler-specific)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.LOCALAPPDATA }}\dub
+          key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.sdl', '**/dub.json', '**/dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-dub-${{ matrix.dc }}-
       # Tests are split up to work around OOM errors -- no combined testing is done
       # as it's simply too big for the compiler to handle on Windows.
-      - name: Build / test
+      - name: Build / test (nightly compiler; no coverage)
+        if: contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')
         run: |
-          dub test --arch=$ARCH --build=unittest-ci -c ci-bignum-test
-          dub test --arch=$ARCH --build=unittest-ci -c ci-core-test
-          dub test --arch=$ARCH --build=unittest-ci -c ci-ndslice-test
-          dub test --arch=$ARCH --build=unittest-ci -c ci-test
-        shell: bash
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-bignum-test
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-core-test
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-ndslice-test
+          dub test --arch=$env:ARCH --build=unittest-ci -c ci-test
+        shell: pwsh
+      - name: Build / test (stable compiler; with coverage)
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
+        run: |
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-bignum-test
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-core-test
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-ndslice-test
+          dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-test
+        shell: pwsh
       - name: Upload coverage data
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b
+        if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
+        uses: codecov/codecov-action@v5
+        with:
+            fail_ci_if_error: true
+            verbose: true
+        env:
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     
         
