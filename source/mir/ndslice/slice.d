@@ -966,7 +966,7 @@ public:
     /// ditto
     auto lightScope()() return scope immutable @property
     {
-        auto ret =  Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightImmutableOfLightConstOf(Labels)))
+        auto ret =  Slice!(LightImmutableOf!(LightScopeOf!Iterator), N, kind, staticMap!(LightImmutableOfLightConstOf, Labels))
             (_structure, .lightScope(_iterator));
         foreach(i; Iota!L)
             ret._labels[i] = .lightScope(_labels[i]);
@@ -4155,4 +4155,22 @@ unittest
     auto row = matrix[2];
     row[3] = 6;
     assert(matrix[2, 3] == 6); // D & C index order
+}
+
+// Test fix to issue #470
+@safe pure nothrow @nogc
+version(mir_ndslice_test)
+unittest
+{
+    import mir.ndslice.slice: LightImmutableOfLightConstOf, Slice, Contiguous;
+	import std.meta: staticMap;
+	// Make `x` immutable with label to ensure trigger of staticMap with immutable lightScope overload
+	alias T = Slice!(int*, 2, Contiguous, int*);
+	immutable T x = T.init;
+	// For compilation of immutable lightScope overload with auto return type inference
+	alias R = typeof(x.lightScope);
+	// Ensure `R` is a Slice
+	static assert(is(T : Slice!(Iterator, 2, Contiguous), Iterator));
+	// Ensure staticMap working properly
+	static assert(is(R.Labels[0] == staticMap!(LightImmutableOfLightConstOf, int*)[0]));
 }
