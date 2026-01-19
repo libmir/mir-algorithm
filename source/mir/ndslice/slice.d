@@ -4170,7 +4170,26 @@ unittest
 	// For compilation of immutable lightScope overload with auto return type inference
 	alias R = typeof(x.lightScope);
 	// Ensure `R` is a Slice
-	static assert(is(T : Slice!(Iterator, 2, Contiguous), Iterator));
+	static assert(is(R : Slice!(Iterator, 2, Contiguous), Iterator));
 	// Ensure staticMap working properly
 	static assert(is(R.Labels[0] == staticMap!(LightImmutableOfLightConstOf, int*)[0]));
+}
+
+// Additional test for fix on issue #470
+@safe pure nothrow @nogc
+version(mir_ndslice_test)
+unittest
+{
+    import mir.ndslice.slice: LightImmutableOfLightConstOf, Slice, Contiguous;
+	import std.meta: staticMap;
+	// Make `x` immutable with label to ensure trigger of staticMap with immutable lightScope overload
+	alias T = Slice!(int*, 2, Contiguous, int*, long*);
+	immutable T x = T.init;
+	// For compilation of immutable lightScope overload with auto return type inference
+	alias R = typeof(x.lightScope);
+	// Ensure `R` is a Slice
+	static assert(is(R : Slice!(Iterator, 2, Contiguous), Iterator));
+	// Ensure staticMap working properly
+	static assert(is(R.Labels[0] == staticMap!(LightImmutableOfLightConstOf, int*, long*)[0]));
+	static assert(is(R.Labels[1] == staticMap!(LightImmutableOfLightConstOf, int*, long*)[1]));
 }
