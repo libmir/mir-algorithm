@@ -209,41 +209,44 @@ version(mir_bignum_test)
         else
         {
             str.fromString!float.should == str._stdc_parse!float;
+            auto mirStrValue = str.fromString!double;
+            auto crtStrValue = str._stdc_parse!double;
+            
+            version(CRuntime_Microsoft) {
+                // Some Windows CRTs clamp extreme underflow to min-subnormal instead of 0.
+                // Accept both behaviors *only* at the very bottom of the subnormal range.
+                bool equalOrTinyUnderflow(double a, double b)
+                {
+                    import core.stdc.math: fpclassify, FP_SUBNORMAL;
+                    import mir.math.common: fabs;
+                    import mir.math.ieee: signbit;
+                    import std.math.operations: nextafter;
 
-            // Some Windows CRTs clamp extreme underflow to min-subnormal instead of 0.
-            // Accept both behaviors *only* at the very bottom of the subnormal range.
-            bool equalOrTinyUnderflow(double a, double b)
-            {
-                import core.stdc.math: fpclassify, FP_SUBNORMAL;
-                import mir.math.common: fabs;
-                import mir.math.ieee: signbit;
-                import std.math.operations: nextafter;
+                    if (a == b) return true;
+                    if (signbit(a) != signbit(b)) return false;
 
-                if (a == b) return true;
-                if (signbit(a) != signbit(b)) return false;
+                    enum double minSub = nextafter(0.0, 1.0); // smallest positive subnormal
 
-                enum double minSub = nextafter(0.0, 1.0); // smallest positive subnormal
+                    const aa = fabs(a);
+                    const bb = fabs(b);
 
-                const aa = fabs(a);
-                const bb = fabs(b);
+                    // 0 <-> min-subnormal (or similar one-ULP-at-zero behavior)
+                    if (aa == 0.0 && bb > 0.0)
+                        return fpclassify(b) == FP_SUBNORMAL && bb <= minSub;
+                    if (bb == 0.0 && aa > 0.0)
+                        return fpclassify(a) == FP_SUBNORMAL && aa <= minSub;
 
-                // 0 <-> min-subnormal (or similar one-ULP-at-zero behavior)
-                if (aa == 0.0 && bb > 0.0)
-                    return fpclassify(b) == FP_SUBNORMAL && bb <= minSub;
-                if (bb == 0.0 && aa > 0.0)
-                    return fpclassify(a) == FP_SUBNORMAL && aa <= minSub;
+                    // If both are subnormal, permit differences only if both are at the very bottom.
+                    if (fpclassify(a) == FP_SUBNORMAL && fpclassify(b) == FP_SUBNORMAL)
+                        return aa <= minSub && bb <= minSub;
 
-                // If both are subnormal, permit differences only if both are at the very bottom.
-                if (fpclassify(a) == FP_SUBNORMAL && fpclassify(b) == FP_SUBNORMAL)
-                    return aa <= minSub && bb <= minSub;
-
-                return false;
-            }
-
-            auto mirv = str.fromString!double;
-            auto crtv = str._stdc_parse!double;
-            if (!equalOrTinyUnderflow(mirv, crtv)) {
-                mirv.should == crtv;
+                    return false;
+                }
+                if (!equalOrTinyUnderflow(mirStrValue, crtStrValue)) {
+                    mirStrValue.should == crtStrValue;
+                }
+            } else {
+                mirStrValue.should == crtStrValue;
             }
 
             version (Windows) // No precise real parsing on windows
