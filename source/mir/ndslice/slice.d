@@ -362,6 +362,7 @@ Slice!(Iterator, N, kind)
         assert(e == i+6);
 }
 
+/// slicedExactly wrapper function wrt Issue 313 https://github.com/libmir/mir-algorithm/issues/313
 /++
 Creates an n-dimensional slice-shell over an iterator having the exact elemnt count as that of the iterator.
 Params:
@@ -381,7 +382,6 @@ auto slicedExactly(size_t N, Iterator)(return scope Iterator iterator, size_t[N]
     return iterator.sliced(lengths);
 }
 
-/// Test case for Issue 313 https://github.com/libmir/mir-algorithm/issues/313
 @safe pure nothrow @nogc unittest
 {
     int[6] values= [1, 2, 3, 4, 5, 6];
