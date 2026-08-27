@@ -300,34 +300,6 @@ auto sliced(size_t N, Iterator)(return scope Iterator iterator, size_t[N] length
 }
 
 /++
-Creates an n-dimensional slice-shell over an iterator having the exact elemnt count as that of the array.
-Params:
-    iterator = An iterator, a pointer, or an array.
-    lengths = A list of lengths for each dimension
-Returns:
-    n-dimensional slice
-+/
-auto slicedExactly(size_t N, Iterator)(return scope Iterator iterator, size_t[N] lengths...)
-    if (!__traits(isStaticArray, Iterator) && N
-        && !is(Iterator : Slice!(_Iterator, _N, kind), _Iterator, size_t _N, SliceKind kind))
-{
-    static if (isDynamicArray!Iterator)
-    {
-        assert(lengthsProduct(lengths) == iterator.length, "array length should be exactly equal to the product of constructed ndslice dimensions");
-    }
-    return iterator.sliced(lengths);
-}
-
-/// Test case for Issue 313 https://github.com/libmir/mir-algorithm/issues/313
-@safe pure nothrow @nogc unittest
-{
-    int[6] values= [1, 2, 3, 4, 5, 6];
-    auto arr = values[];
-    auto s = arr.slicedExactly(2, 3);
-    assert(s.elementCount == arr.length);
-}
-
-/++
 Creates an 1-dimensional slice-shell over an array.
 Params:
     array = An array.
@@ -388,6 +360,58 @@ Slice!(Iterator, N, kind)
         assert(e == 2*i);
     foreach (i, e; data[6..$])
         assert(e == i+6);
+}
+
+/++
+Creates an n-dimensional slice-shell over an iterator having the exact elemnt count as that of the iterator.
+Params:
+    iterator = An iterator, a pointer, or an array.
+    lengths = A list of lengths for each dimension
+Returns:
+    n-dimensional slice
++/
+auto slicedExactly(size_t N, Iterator)(return scope Iterator iterator, size_t[N] lengths...)
+    if (!__traits(isStaticArray, Iterator) && N
+        && !is(Iterator : Slice!(_Iterator, _N, kind), _Iterator, size_t _N, SliceKind kind))
+{
+    static if (isDynamicArray!Iterator)
+    {
+        assert(lengthsProduct(lengths) == iterator.length, "array length should be exactly equal to the product of constructed ndslice dimensions");
+    }
+    return iterator.sliced(lengths);
+}
+
+/// Test case for Issue 313 https://github.com/libmir/mir-algorithm/issues/313
+@safe pure nothrow @nogc unittest
+{
+    int[6] values= [1, 2, 3, 4, 5, 6];
+    auto arr = values[];
+    auto s = arr.slicedExactly(2, 3);
+    assert(s.elementCount == arr.length);
+}
+
+/++
+Creates an n-dimensional slice-shell over the 1-dimensional input slice having exact same number of elements as the 1-dimensional input slice.
+Params:
+    slice = slice
+    lengths = A list of lengths for each dimension.
+Returns:
+    n-dimensional slice
++/
+Slice!(Iterator, N, kind) slicedExactly (Iterator, size_t N, SliceKind kind)
+    (Slice!(Iterator, 1, kind) slice, size_t[N] lengths...)
+    if (N)
+{
+    assert(lengthsProduct(lengths) == slice.length,"slice length should be exactly equal to the product of constructed ndslice lengths");
+    return slice.sliced(lengths);
+}
+
+@safe pure nothrow version(mir_ndslice_test) unittest
+{  
+    import mir.ndslice.topology: iota;
+    auto a = iota(8).slicedExactly(2, 2, 2);
+    assert(a.elementCount == 8);
+    assert(a == [[[0, 1], [2, 3]], [[4, 5], [6, 7]]]);
 }
 
 /++
