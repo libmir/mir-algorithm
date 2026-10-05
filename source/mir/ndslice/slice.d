@@ -3323,10 +3323,10 @@ public:
             // @@@workaround@@@ for Issue 16473
             //if (op == `++` || op == `--`)
         {
-            // check op safety
-            static auto ref fun(DeepElement t) @safe
+            // Check op safety without returning a reference to the local value.
+            static void fun(DeepElement t) @safe
             {
-                return mixin(op ~ `t`);
+                cast(void) mixin(op ~ `t`);
             }
             return mixin (op ~ `_iterator[indexStride(_indices)]`);
         }
@@ -3340,6 +3340,25 @@ public:
 
             ++a[1, 2];
             assert(a[1, 2] == 1);
+        }
+
+        // https://github.com/libmir/mir-algorithm/issues/483
+        // Check that indexed increment and decrement compile for narrow integers
+        // with optimized GDC and -Werror, and still return the cell by reference.
+        static if (doUnittest)
+        @safe pure nothrow @nogc version(mir_ndslice_test) unittest
+        {
+            import std.meta: AliasSeq;
+            static foreach (T; AliasSeq!(ubyte, ushort, uint, ulong))
+            {{
+                T[6] data;
+                auto a = data[].sliced(2, 3);
+                assert(++a[1, 2] == 1);
+                assert(data[5] == 1);
+                assert(--a[1, 2] == 0);
+                (++a[1, 2]) = T(7);
+                assert(data[5] == 7 && a[0, 0] == 0);
+            }}
         }
 
         // Issue 16473
