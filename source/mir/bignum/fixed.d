@@ -184,16 +184,32 @@ struct UInt(size_t size)
 
     import mir.bignum.low_level_view: BigUIntView;
 
+    // Infer view return types after UInt is complete to avoid the Fp/UInt
+    // instantiation cycle: https://github.com/libmir/mir-algorithm/issues/485
+
     ///
-    BigUIntView!size_t view() @property pure nothrow @nogc scope return @safe
+    auto view() @property pure nothrow @nogc scope return @safe
     {
         return BigUIntView!size_t(data);
     }
 
     ///
-    BigUIntView!(const size_t) view() const @property pure nothrow @nogc scope return @safe
+    auto view() const @property pure nothrow @nogc scope return @safe
     {
         return BigUIntView!(const size_t)(data);
+    }
+
+    version(mir_bignum_test)
+    @safe pure nothrow @nogc unittest
+    {
+        UInt!128 value;
+        static assert(is(typeof(value.view) == BigUIntView!size_t));
+        value.view.coefficients[0] = 17;
+        assert(value.data[0] == 17);
+
+        const frozen = value;
+        static assert(is(typeof(frozen.view) == BigUIntView!(const size_t)));
+        assert(frozen.view.coefficients[0] == 17);
     }
 
     ///

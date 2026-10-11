@@ -153,6 +153,9 @@ jobs:
           dub test --arch=$ARCH --build=unittest-cov
           dub test --arch=$ARCH --combined
         shell: bash
+      - name: Standalone factorial regression
+        shell: bash
+        run: dub run --root=tests/factorial --arch="$ARCH"
       - name: Upload coverage data
         if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         uses: codecov/codecov-action@v5
@@ -251,6 +254,9 @@ jobs:
           dub test --arch=$ARCH --build=unittest-cov
           dub test --arch=$ARCH --combined
         shell: bash
+      - name: Standalone factorial regression
+        shell: bash
+        run: dub run --root=tests/factorial --arch="$ARCH"
       - name: Upload coverage data
         if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         uses: codecov/codecov-action@v5
@@ -336,6 +342,9 @@ jobs:
           dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-ndslice-test
           dub test --arch=$env:ARCH --build=unittest-cov-ci -c ci-test
         shell: pwsh
+      - name: Standalone factorial regression
+        shell: bash
+        run: dub run --root=tests/factorial --arch="$ARCH"
       - name: Upload coverage data
         if: ${{ !(contains(matrix.dc, 'beta') || contains(matrix.dc, 'master')) }}
         uses: codecov/codecov-action@v5

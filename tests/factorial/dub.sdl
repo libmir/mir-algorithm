@@ -1,0 +1,6 @@
+name "factorial-regression"
+dependency "mir-core" version=">=1.6.0"
+sourcePaths "."
+importPaths "../../source"
+// Compile only the imports used by this caller, not the whole library.
+dflags "-i"
