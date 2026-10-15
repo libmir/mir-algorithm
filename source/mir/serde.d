@@ -735,7 +735,7 @@ foreach(ref value; yourRangeOrContainer)
 
 `put(value)` method is used for deserialization.
 
-See_also: $(MREF serdeIgnoreOut), $(MREF serdeIgnoreIn)
+See_also: $(LREF serdeIgnoreOut), $(LREF serdeIgnoreIn)
 +/
 enum serdeLikeList;
 
@@ -758,7 +758,7 @@ yourObject["key"] = value;
 -----
 Multiple value types is supported for deserialization.
 
-See_also: $(MREF serdeIgnoreOut), $(MREF serdeIgnoreIn)
+See_also: $(LREF serdeIgnoreOut), $(LREF serdeIgnoreIn)
 +/
 enum serdeLikeStruct;
 

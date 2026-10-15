@@ -3,7 +3,7 @@ This is a submodule of $(MREF mir,ndslice).
 
 Note:
     The combination of
-    $(SUBREF topology, pairwise) with lambda `"a <= b"` (`"a < b"`) and $(SUBREF algorithm, all) can be used
+    $(SUBREF topology, pairwise) with lambda `"a <= b"` (`"a < b"`) and $(REF all, mir, algorithm, iteration) can be used
     to check if an ndslice is sorted (strictly monotonic).
     $(SUBREF topology, iota) can be used to make an index.
     $(SUBREF topology, map) and $(SUBREF topology, zip) can be used to create Schwartzian transform.
