@@ -3480,7 +3480,7 @@ pure nothrow version(mir_ndslice_test) unittest
 
 /++
 Creating a slice from text.
-See also $(MREF std, format).
+See also $(LINK2 https://dlang.org/phobos/std_format.html, $(D std.format)).
 +/
 version(mir_ndslice_test) unittest
 {
