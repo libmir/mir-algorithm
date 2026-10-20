@@ -30,7 +30,6 @@ Ordered string-value associative array with extremely fast lookup.
 
 Params:
     T = mutable value type, can be instance of $(AlgebraicREF Algebraic) for example.
-    U = an unsigned type that can hold an index of keys. `U.max` must be less then the maximum possible number of struct members.
 +/
 struct StringMap(T)
     // if (!is(typeof(T.opPostMove)))

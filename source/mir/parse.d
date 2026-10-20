@@ -156,6 +156,124 @@ version(unittest)
     private static @trusted float _stdc_parse(T : float)(string str){ auto endPtr = str.ptr + str.length; return _assumePure(&strtof)(str.ptr, &endPtr);  }
     private static @trusted double _stdc_parse(T : double)(string str){ auto endPtr = str.ptr + str.length; return _assumePure(&strtod)(str.ptr, &endPtr);  }
     private static @trusted real _stdc_parse(T : real)(string str){ auto endPtr = str.ptr + str.length; return _assumePure(&strtold)(str.ptr, &endPtr);  }
+
+    // Internal comparison with the C runtime uses private parsing helpers.
+    version(mir_bignum_test)
+    @safe pure @nogc unittest
+    {
+        import mir.test;
+
+        void test(string str)
+        {
+            version(CRuntime_DigitalMars) // No precise parsing at all
+            {
+            }
+            else
+            {
+                str.fromString!float.should == str._stdc_parse!float;
+                auto mirStrValue = str.fromString!double;
+                auto crtStrValue = str._stdc_parse!double;
+
+                version(CRuntime_Microsoft) {
+                    // Some Windows CRTs clamp extreme underflow to min-subnormal instead of 0.
+                    // Accept both behaviors *only* at the very bottom of the subnormal range.
+                    bool equalOrTinyUnderflow(double a, double b)
+                    {
+                        import core.stdc.math: fpclassify, FP_SUBNORMAL;
+                        import mir.math.common: fabs;
+                        import mir.math.ieee: signbit;
+                        import std.math.operations: nextafter;
+
+                        if (a == b) return true;
+                        if (signbit(a) != signbit(b)) return false;
+
+                        enum double minSub = nextafter(0.0, 1.0); // smallest positive subnormal
+
+                        const aa = fabs(a);
+                        const bb = fabs(b);
+
+                        // 0 <-> min-subnormal (or similar one-ULP-at-zero behavior)
+                        if (aa == 0.0 && bb > 0.0)
+                            return fpclassify(b) == FP_SUBNORMAL && bb <= minSub;
+                        if (bb == 0.0 && aa > 0.0)
+                            return fpclassify(a) == FP_SUBNORMAL && aa <= minSub;
+
+                        // If both are subnormal, permit differences only if both are at the very bottom.
+                        if (fpclassify(a) == FP_SUBNORMAL && fpclassify(b) == FP_SUBNORMAL)
+                            return aa <= minSub && bb <= minSub;
+
+                        return false;
+                    }
+                    if (!equalOrTinyUnderflow(mirStrValue, crtStrValue)) {
+                        mirStrValue.should == crtStrValue;
+                    }
+                } else {
+                    mirStrValue.should == crtStrValue;
+                }
+
+                version (Windows) // No precise real parsing on windows
+                {
+                }
+                else
+                    str.fromString!real.should == str._stdc_parse!real;
+            }
+        }
+
+        test("2.5e-324");
+
+        // large
+        test("1e300");
+        test("123456789.34567e250");
+        test("943794359898089732078308743689303290943794359843568973207830874368930329.");
+
+        // min normal
+        test("2.2250738585072014e-308");
+
+        // subnormals
+        test("5e-324");
+        test("91e-324");
+        test("1e-322");
+        test("13245643e-320");
+        test("2.22507385851e-308");
+        test("2.1e-308");
+        test("4.9406564584124654e-324");
+
+        // infinity
+        test("1e400");
+        test("1e309");
+        test("2e308");
+        test("1.7976931348624e308");
+
+        // zero
+        test("0.0");
+        test("1e-325");
+        test("1e-326");
+        test("1e-500");
+
+        // Triggers the tricky underflow case in AlgorithmM (for f32)
+        test("101e-33");
+        // Triggers AlgorithmR
+        test("1e23");
+        // Triggers another path through AlgorithmR
+        test("2075e23");
+        // ... and yet another.
+        test("8713e-23");
+
+        // 2^65 - 3, triggers half-to-even with even significand
+        test("36893488147419103229.0");
+        test("36893488147419103229");
+
+        test("18446744073709551615.");
+        test("-18446744073709551615.");
+        test("18446744073709551616.");
+        test("-18446744073709551616.");
+
+    //  Related DMD Issues:
+    // https://issues.dlang.org/show_bug.cgi?id=20951
+    // https://issues.dlang.org/show_bug.cgi?id=20952
+    // https://issues.dlang.org/show_bug.cgi?id=20953
+    // https://issues.dlang.org/show_bug.cgi?id=20967
+    }
 }
 
 ///
@@ -201,116 +319,6 @@ version(mir_bignum_test)
             static assert("3.518437208883201171875".fromString!real == 0xe.12e13424bb4232fp-2L);    
     }
 
-    void test(string str)
-    {
-        version(CRuntime_DigitalMars) // No precise parsing at all
-        {
-        }
-        else
-        {
-            str.fromString!float.should == str._stdc_parse!float;
-            auto mirStrValue = str.fromString!double;
-            auto crtStrValue = str._stdc_parse!double;
-            
-            version(CRuntime_Microsoft) {
-                // Some Windows CRTs clamp extreme underflow to min-subnormal instead of 0.
-                // Accept both behaviors *only* at the very bottom of the subnormal range.
-                bool equalOrTinyUnderflow(double a, double b)
-                {
-                    import core.stdc.math: fpclassify, FP_SUBNORMAL;
-                    import mir.math.common: fabs;
-                    import mir.math.ieee: signbit;
-                    import std.math.operations: nextafter;
-
-                    if (a == b) return true;
-                    if (signbit(a) != signbit(b)) return false;
-
-                    enum double minSub = nextafter(0.0, 1.0); // smallest positive subnormal
-
-                    const aa = fabs(a);
-                    const bb = fabs(b);
-
-                    // 0 <-> min-subnormal (or similar one-ULP-at-zero behavior)
-                    if (aa == 0.0 && bb > 0.0)
-                        return fpclassify(b) == FP_SUBNORMAL && bb <= minSub;
-                    if (bb == 0.0 && aa > 0.0)
-                        return fpclassify(a) == FP_SUBNORMAL && aa <= minSub;
-
-                    // If both are subnormal, permit differences only if both are at the very bottom.
-                    if (fpclassify(a) == FP_SUBNORMAL && fpclassify(b) == FP_SUBNORMAL)
-                        return aa <= minSub && bb <= minSub;
-
-                    return false;
-                }
-                if (!equalOrTinyUnderflow(mirStrValue, crtStrValue)) {
-                    mirStrValue.should == crtStrValue;
-                }
-            } else {
-                mirStrValue.should == crtStrValue;
-            }
-
-            version (Windows) // No precise real parsing on windows
-            {
-            }
-            else
-                str.fromString!real.should == str._stdc_parse!real;
-        }
-    }
-
-    test("2.5e-324");
-
-    // large
-    test("1e300");
-    test("123456789.34567e250");
-    test("943794359898089732078308743689303290943794359843568973207830874368930329.");
-
-    // min normal
-    test("2.2250738585072014e-308");
-
-    // subnormals
-    test("5e-324");
-    test("91e-324");
-    test("1e-322");
-    test("13245643e-320");
-    test("2.22507385851e-308");
-    test("2.1e-308");
-    test("4.9406564584124654e-324");
-
-    // infinity
-    test("1e400");
-    test("1e309");
-    test("2e308");
-    test("1.7976931348624e308");
-
-    // zero
-    test("0.0");
-    test("1e-325");
-    test("1e-326");
-    test("1e-500");
-
-    // Triggers the tricky underflow case in AlgorithmM (for f32)
-    test("101e-33");
-    // Triggers AlgorithmR
-    test("1e23");
-    // Triggers another path through AlgorithmR
-    test("2075e23");
-    // ... and yet another.
-    test("8713e-23");
-
-    // 2^65 - 3, triggers half-to-even with even significand
-    test("36893488147419103229.0");
-    test("36893488147419103229");
-
-    test("18446744073709551615.");
-    test("-18446744073709551615.");
-    test("18446744073709551616.");
-    test("-18446744073709551616.");
-
-//  Related DMD Issues:
-// https://issues.dlang.org/show_bug.cgi?id=20951
-// https://issues.dlang.org/show_bug.cgi?id=20952
-// https://issues.dlang.org/show_bug.cgi?id=20953
-// https://issues.dlang.org/show_bug.cgi?id=20967
 }
 
 version(mir_bignum_test)

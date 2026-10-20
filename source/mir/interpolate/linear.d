@@ -555,7 +555,7 @@ unittest
 
     auto g = [7.0, 10, 15];
 
-    import mir.rc.array: RCArray;
+    import mir.rc.array: RCArray, rcarray;
     import mir.ndslice.allocation: rcslice;
 
     auto d = RCArray!(Linear!double)(3);

@@ -165,11 +165,12 @@ unittest
 {
     import mir.bignum.fixed: UInt;
     import mir.bignum.low_level_view: BigUIntView;
+    import mir.bignum.internal.kernel: kernelDivMod = divMod;
 
     uint[100] buffer = void;
     auto divMod(BigUIntView!uint a, BigUIntView!uint b, BigUIntView!uint c)
     {
-        .divMod(
+        kernelDivMod(
             c.coefficients,
             a.coefficients,
             a.coefficients,
