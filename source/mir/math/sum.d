@@ -1430,10 +1430,24 @@ public:
         else
         static if (summation == Summation.pairwise)
         {
+            // A single partial is read before put can modify it, so even
+            // a self-merge needs no snapshot.
+            if (rhs.index == 1)
+            {
+                put(rhs.partials[0]);
+                return;
+            }
+            // Keep the source stable when insertion also modifies rhs.
+            if (rhs.partials[] is partials[])
+            {
+                auto source = this;
+                this += source;
+                return;
+            }
+            // Each source partial is one new leaf in this tree. put updates
+            // counter to match that tree; rhs.counter counts a different tree.
             foreach_reverse (e; rhs.partials[0 .. rhs.index])
                 put(e);
-            counter -= rhs.index;
-            counter += rhs.counter;
         }
         else
         static if (summation == Summation.naive)
@@ -1527,10 +1541,23 @@ public:
         else
         static if (summation == Summation.pairwise)
         {
+            // A single partial is read before put can modify it, so even
+            // a self-merge needs no snapshot.
+            if (rhs.index == 1)
+            {
+                put(-rhs.partials[0]);
+                return;
+            }
+            // Keep the source stable when insertion also modifies rhs.
+            if (rhs.partials[] is partials[])
+            {
+                auto source = this;
+                this -= source;
+                return;
+            }
+            // Count the inserted partials, not the source's original inputs.
             foreach_reverse (e; rhs.partials[0 .. rhs.index])
                 put(-e);
-            counter -= rhs.index;
-            counter += rhs.counter;
         }
         else
         static if (summation == Summation.naive)
@@ -1652,6 +1679,92 @@ public:
     else
     {
         //User defined types
+    }
+}
+
+// A seven-element source previously caused index underflow on the second merge.
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    foreach (T; AliasSeq!(float, double, real))
+    foreach (op; AliasSeq!("+", "-"))
+    {
+        Summator!(T, Summation.pairwise) source, total;
+        foreach (i; 0 .. 7)
+            source.put(1);
+
+        total.opOpAssign!op(source);
+        assert(total.sum == (op == "+" ? 7 : -7));
+        total.opOpAssign!op(source);
+        assert(total.sum == (op == "+" ? 14 : -14));
+        assert(source.sum == 7);
+    }
+}
+
+// Merging source partials must preserve the destination's binary-tree state.
+version(mir_test)
+@safe pure nothrow @nogc unittest
+{
+    import core.bitop: popcnt;
+
+    foreach (T; AliasSeq!(float, double, real))
+    foreach (op; AliasSeq!("+", "-"))
+    {
+        alias S = Summator!(T, Summation.pairwise);
+        S batch, total;
+        batch.put(1);
+        batch.put(1);
+        foreach (i; 0 .. 130)
+        {
+            total.opOpAssign!op(batch);
+            const expected = cast(T) (2 * (i + 1));
+            assert(total.sum == (op == "+" ? expected : -expected));
+            assert(total.index == popcnt(total.counter));
+        }
+        assert(batch.sum == 2);
+
+        // Empty, odd-sized and power-of-two batches, with scalar insertions
+        // between merges. These small integers are exact in all tested types.
+        total = S.init;
+        T expected = 0;
+        foreach (i; 0 .. 1024)
+        {
+            batch = S.init;
+            T batchSum = 0;
+            foreach (j; 0 .. i % 33)
+            {
+                const value = cast(T) (cast(int) (j % 7) - 3);
+                batch.put(value);
+                batchSum += value;
+            }
+            const sourceCounter = batch.counter;
+            const sourceIndex = batch.index;
+            total.opOpAssign!op(batch);
+            expected += op == "+" ? batchSum : -batchSum;
+            assert(total.sum == expected);
+            assert(total.index == popcnt(total.counter));
+            assert(batch.sum == batchSum);
+            assert(batch.counter == sourceCounter && batch.index == sourceIndex);
+            total.put(2);
+            expected += 2;
+            assert(total.sum == expected);
+            assert(total.index == popcnt(total.counter));
+        }
+
+        // A self-merge must read a stable source even when put collapses
+        // several occupied tree levels during the first insertion.
+        foreach (length; 0 .. 34)
+        {
+            S self;
+            foreach (j; 0 .. length)
+                self.put(cast(T) (j + 1));
+            const before = self.sum;
+            self.opOpAssign!op(self);
+            assert(self.sum == (op == "+" ? 2 * before : 0));
+            assert(self.index == popcnt(self.counter));
+            self.put(3);
+            assert(self.sum == (op == "+" ? 2 * before + 3 : 3));
+        }
     }
 }
 
