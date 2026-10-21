@@ -1,6 +1,23 @@
 /++
 This module contains base statistical algorithms.
 
+$(LREF variance), $(LREF standardDeviation), $(LREF VarianceAccumulator), and
+$(LREF VarianceAlgo) are deprecated. Use the corresponding symbols exported by
+`mir.stat.descriptive` in the $(WEB github.com/libmir/mir-stat, mir-stat) package.
+Add mir-stat as a dependency and replace the selective import, for example:
+
+---
+import mir.stat.descriptive: variance, standardDeviation,
+    VarianceAccumulator, VarianceAlgo;
+---
+
+The legacy implementations and their `online` defaults are unchanged.
+Mir-stat defaults to `hybrid` for variance and standard deviation; select its
+`VarianceAlgo.online` explicitly when online calculation is required. Rounding
+can differ between algorithms. The enum types are distinct, and accumulator
+internals are not interchangeable; migrate code using public accumulator state
+or constructors separately rather than assuming an import-only replacement.
+
 Note that used specialized summing algorithms execute more primitive operations
 than vanilla summation. Therefore, if in certain cases maximum speed is required
 at expense of precision, one can use $(REF_ALTTEXT $(TT Summation.fast), Summation.fast, mir, math, sum)$(NBSP).
@@ -2022,6 +2039,7 @@ Variance algorithms.
 See Also:
     $(WEB en.wikipedia.org/wiki/Algorithms_for_calculating_variance, Algorithms for calculating variance).
 +/
+deprecated("Use VarianceAlgo from mir.stat.descriptive (mir-stat) instead.")
 enum VarianceAlgo
 {
     /++
@@ -2050,6 +2068,7 @@ enum VarianceAlgo
 }
 
 ///
+deprecated("Use VarianceAccumulator from mir.stat.descriptive (mir-stat) instead.")
 struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && varianceAlgo == VarianceAlgo.naive)
 {
@@ -2145,6 +2164,7 @@ unittest
 }
 
 ///
+deprecated("Use VarianceAccumulator from mir.stat.descriptive (mir-stat) instead.")
 struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && 
         varianceAlgo == VarianceAlgo.online)
@@ -2370,6 +2390,7 @@ unittest
 }
 
 ///
+deprecated("Use VarianceAccumulator from mir.stat.descriptive (mir-stat) instead.")
 struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && varianceAlgo == VarianceAlgo.twoPass)
 {
@@ -2494,6 +2515,7 @@ unittest
 }
 
 ///
+deprecated("Use VarianceAccumulator from mir.stat.descriptive (mir-stat) instead.")
 struct VarianceAccumulator(T, VarianceAlgo varianceAlgo, Summation summation)
     if (isMutable!T && varianceAlgo == VarianceAlgo.assumeZeroMean)
 {
@@ -2734,6 +2756,7 @@ Params:
 Returns:
     The variance of the input, must be floating point or complex type
 +/
+deprecated("Use variance from mir.stat.descriptive (mir-stat) instead.")
 template variance(
     F, 
     VarianceAlgo varianceAlgo = VarianceAlgo.online, 
@@ -2767,6 +2790,7 @@ template variance(
 }
 
 /// ditto
+deprecated("Use variance from mir.stat.descriptive (mir-stat) instead.")
 template variance(
     VarianceAlgo varianceAlgo = VarianceAlgo.online, 
     Summation summation = Summation.appropriate)
@@ -2797,12 +2821,14 @@ template variance(
 }
 
 /// ditto
+deprecated("Use variance from mir.stat.descriptive (mir-stat) instead.")
 template variance(F, string varianceAlgo, string summation = "appropriate")
 {
     mixin("alias variance = .variance!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 /// ditto
+deprecated("Use variance from mir.stat.descriptive (mir-stat) instead.")
 template variance(string varianceAlgo, string summation = "appropriate")
 {
     mixin("alias variance = .variance!(VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
@@ -3117,6 +3143,7 @@ Params:
 Returns:
     The standard deviation of the input, must be floating point type type
 +/
+deprecated("Use standardDeviation from mir.stat.descriptive (mir-stat) instead.")
 template standardDeviation(
     F, 
     VarianceAlgo varianceAlgo = VarianceAlgo.online, 
@@ -3149,6 +3176,7 @@ template standardDeviation(
 }
 
 /// ditto
+deprecated("Use standardDeviation from mir.stat.descriptive (mir-stat) instead.")
 template standardDeviation(
     VarianceAlgo varianceAlgo = VarianceAlgo.online, 
     Summation summation = Summation.appropriate)
@@ -3179,12 +3207,14 @@ template standardDeviation(
 }
 
 /// ditto
+deprecated("Use standardDeviation from mir.stat.descriptive (mir-stat) instead.")
 template standardDeviation(F, string varianceAlgo, string summation = "appropriate")
 {
     mixin("alias standardDeviation = .standardDeviation!(F, VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
 }
 
 /// ditto
+deprecated("Use standardDeviation from mir.stat.descriptive (mir-stat) instead.")
 template standardDeviation(string varianceAlgo, string summation = "appropriate")
 {
     mixin("alias standardDeviation = .standardDeviation!(VarianceAlgo." ~ varianceAlgo ~ ", Summation." ~ summation ~ ");");
