@@ -52,6 +52,7 @@ sources_list = [
     'mir/math/func/normal',
     'mir/math/numeric',
     'mir/math/stat',
+    'mir/math/internal/stat_type',
     'mir/math/sum',
     'mir/ndslice/allocation',
     'mir/ndslice/chunks',
