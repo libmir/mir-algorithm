@@ -790,7 +790,7 @@ package(mir):
                 ptrdiff_t stride = _indices[E] * ball;
                 foreach_reverse (i; Iota!E) //static
                 {
-                    ball *= _lengths[i + 1];
+                    ball = _lengths[i + 1] * ball;
                     assert(_indices[i] < _lengths[i], indexError!(DeepElement, i, N));
                     stride += ball * _indices[i];
                 }
@@ -4239,4 +4239,30 @@ unittest
     auto empty = view[end .. end, begin .. end];
     assert(empty.shape == [0, 3]);
     assert(empty.elementCount == 0);
+}
+
+// DMD 2.113.x can reuse a stale index after inlining contiguous indexing.
+// Keep the scoped owner and helper calls: they preserve the triggering code shape.
+version(mir_ndslice_test)
+unittest
+{
+    import mir.ndslice.allocation: mininitRcslice;
+    import mir.rc.array: RCI;
+    import mir.exception: enforce;
+
+    static size_t status(A)(A a) { return 0; }
+    static void consume(A)(A a) { enforce!"failure"(status(a) == 0); }
+
+    static Slice!(RCI!double, 2) makeMatrix()()
+    {
+        auto result = mininitRcslice!double(3, 3);
+        consume(result);
+        return result;
+    }
+
+    { auto previous = makeMatrix(); }
+    auto matrix = makeMatrix();
+    foreach (i; 0 .. 9)
+        matrix._iterator[i] = 1.0;
+    assert(matrix[0, 0] == 1 && matrix[1, 0] == 1 && matrix[1, 1] == 1);
 }
