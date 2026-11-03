@@ -2164,7 +2164,10 @@ public:
     }
     do
     {
-        return typeof(return)(j - i, typeof(return).Iterator(i));
+        // Initialize the one-element length array directly. Scalar initialization
+        // emits an unnecessary fill loop and can clobber live registers on DMD:
+        // https://github.com/dlang/dmd/issues/24171
+        return typeof(return)([j - i], typeof(return).Iterator(i));
     }
 
     /++
@@ -4192,4 +4195,48 @@ unittest
     // Ensure staticMap working properly
     static assert(is(R.Labels[0] == staticMap!(LightImmutableOfLightConstOf, int*, long*)[0]));
     static assert(is(R.Labels[1] == staticMap!(LightImmutableOfLightConstOf, int*, long*)[1]));
+}
+
+// Range lengths and offsets must survive nested slicing and changes of layout.
+@safe pure nothrow @nogc
+version(mir_ndslice_test)
+unittest
+{
+    import mir.ndslice.dynamic: transposed, reversed;
+    import mir.ndslice.topology: universal;
+
+    // Keep the bounds dynamic when testing optimized, inlined code.
+    pragma(inline, false)
+    static size_t bound(size_t value) { return value; }
+
+    int[20] storage;
+    foreach (i, ref value; storage)
+        value = cast(int) i;
+    auto matrix = storage[].sliced(4, 5);
+    auto begin = bound(1);
+    auto end = bound(4);
+
+    auto range = matrix.opSlice!1(begin, end);
+    assert(range.length == end - begin);
+    assert(range[0] == begin);
+    assert(range[range.length - 1] == end - 1);
+    assert(matrix.opSlice!1(end, end).length == 0);
+
+    auto block = matrix[begin .. end, begin .. end];
+    assert(block.shape == [3, 3]);
+    assert(block[0, 0] == 6);
+    assert(block[2, 2] == 18);
+    block[1, 1] = 42;
+    assert(matrix[2, 2] == 42);
+
+    auto transformed = matrix.universal.transposed.reversed!0;
+    auto nested = transformed[begin .. end, begin .. end][0 .. bound(2), 0 .. bound(2)];
+    assert(nested.shape == [2, 2]);
+    assert(nested[0, 0] == matrix[1, 3]);
+    assert(nested[1, 1] == matrix[2, 2]);
+
+    const view = matrix;
+    auto empty = view[end .. end, begin .. end];
+    assert(empty.shape == [0, 3]);
+    assert(empty.elementCount == 0);
 }
