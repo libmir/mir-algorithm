@@ -8,6 +8,7 @@ Macros:
 module mir.annotated;
 
 import mir.internal.meta: basicElementType;
+import mir.algebraic: isVariant;
 import mir.serde: serdeRegister, serdeAnnotation, serdeIsDynamicAlgebraic;
 
 static immutable excMsg = "At least one annotation is required to create an annotated value.";
@@ -33,7 +34,6 @@ struct Annotated(T) {
         private enum _alloc_ = true;
     else
     {
-        import mir.algebraic: isVariant;
         static if (isVariant!T)
             private enum _alloc_ = true;
         else
@@ -63,10 +63,23 @@ struct Annotated(T) {
             return *_value;
         }
 
-        ///
-        bool opEquals(scope const Annotated rhs) scope const
+        // Algebraic equality already promises these attributes. State them here
+        // to break recursive attribute inference through annotated alternatives.
+        static if (isVariant!T)
         {
-            return annotations == rhs.annotations && value == rhs.value;
+            ///
+            bool opEquals(scope const Annotated rhs) scope const pure nothrow @nogc
+            {
+                return annotations == rhs.annotations && value == rhs.value;
+            }
+        }
+        else
+        {
+            /// ditto
+            bool opEquals(scope const Annotated rhs) scope const
+            {
+                return annotations == rhs.annotations && value == rhs.value;
+            }
         }
 
         size_t toHash() scope @trusted const pure nothrow @nogc
@@ -186,7 +199,6 @@ struct AnnotatedOnce(T) {
         private enum _alloc_ = true;
     else
     {
-        import mir.algebraic: isVariant;
         static if (isVariant!T)
             private enum _alloc_ = true;
         else
@@ -215,10 +227,23 @@ struct AnnotatedOnce(T) {
             return *_value;
         }
 
-        ///
-        bool opEquals(scope const AnnotatedOnce rhs) scope const
+        // Algebraic equality already promises these attributes. State them here
+        // to break recursive attribute inference through annotated alternatives.
+        static if (isVariant!T)
         {
-            return annotation == rhs.annotation && value == rhs.value;
+            ///
+            bool opEquals(scope const AnnotatedOnce rhs) scope const pure nothrow @nogc
+            {
+                return annotation == rhs.annotation && value == rhs.value;
+            }
+        }
+        else
+        {
+            /// ditto
+            bool opEquals(scope const AnnotatedOnce rhs) scope const
+            {
+                return annotation == rhs.annotation && value == rhs.value;
+            }
         }
     }
     else
@@ -299,4 +324,40 @@ unittest
     auto ac = AnnotatedOnce!(Variant!S)(annotation, 5);
     assert(ac.annotation == annotation);
     assert(ac.value.x == 5);
+}
+
+// Equality must not acquire attributes that the wrapped value cannot satisfy.
+unittest
+{
+    static struct Effectful
+    {
+        enum _serdeRecursiveAlgebraic = true;
+        int payload;
+        static int comparisons;
+
+        bool opEquals(scope const Effectful rhs) const
+        {
+            ++comparisons;
+            auto copy = new int(payload);
+            if (payload < 0)
+                throw new Exception("negative payload");
+            return *copy == rhs.payload;
+        }
+    }
+    static foreach (once; [false, true])
+    {{
+        static if (once)
+            alias W = AnnotatedOnce!Effectful;
+        else
+            alias W = Annotated!Effectful;
+        static assert(!__traits(compiles, () pure { W a, b; return a == b; }));
+        static assert(!__traits(compiles, () nothrow { W a, b; return a == b; }));
+        static assert(!__traits(compiles, () @nogc { W a, b; return a == b; }));
+        W a, b;
+        a.value = Effectful(1);
+        b.value = Effectful(1);
+        auto before = Effectful.comparisons;
+        assert(a == b);
+        assert(Effectful.comparisons > before);
+    }}
 }

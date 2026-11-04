@@ -173,3 +173,56 @@ unittest
     value = annotated.IonAlgebraic;
     assert(value == annotated);
 }
+
+version (unittest)
+{
+    private import mir.algebraic : Variant;
+    private import mir.annotated : AnnotatedOnce;
+    private alias OnceAnnotatedAlgebraic = Variant!(int, AnnotatedOnce!This);
+}
+
+// Compile this module together with mir.annotated in both source orders.
+// Recursive equality must preserve attributes and compare tags and values.
+unittest
+{
+    import mir.annotated : AnnotatedOnce;
+
+    static foreach (once; [false, true])
+    {{
+        static if (!once)
+        {
+            alias Node = IonAlgebraic;
+            alias W = Annotated!Node;
+            auto a = W(["tag"], 1);
+            auto b = W(["tag"], 1);
+            auto differentTag = W(["other"], 1);
+            auto differentValue = W(["tag"], 2);
+            auto parentA = W(["parent"], a);
+            auto parentB = W(["parent"], b);
+        }
+        else
+        {
+            alias Node = OnceAnnotatedAlgebraic;
+            alias W = AnnotatedOnce!Node;
+            auto a = W("tag", 1);
+            auto b = W("tag", 1);
+            auto differentTag = W("other", 1);
+            auto differentValue = W("tag", 2);
+            auto parentA = W("parent", a);
+            auto parentB = W("parent", b);
+        }
+        static bool equal(scope const ref W lhs, scope const ref W rhs) pure nothrow @nogc
+        {
+            return lhs == rhs;
+        }
+        assert(a == b);
+        const ca = a;
+        assert(ca == b);
+        assert(equal(a, b));
+        assert(!equal(a, differentTag));
+        assert(!equal(a, differentValue));
+        assert(equal(parentA, parentB));
+        parentB.value = differentValue;
+        assert(!equal(parentA, parentB));
+    }}
+}
