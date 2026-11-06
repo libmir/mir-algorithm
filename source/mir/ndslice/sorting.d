@@ -23,6 +23,14 @@ Macros:
 +/
 module mir.ndslice.sorting;
 
+// Older DMD inliners can miscompile quicksort's returned subviews.
+// https://github.com/libmir/mir-algorithm/issues/501
+// The reproducer starts passing at dlang/dmd#22189, released in DMD 2.113.
+version (DigitalMars)
+    private enum useDmdSortingWorkaround = __VERSION__ >= 2105 && __VERSION__ < 2113;
+else
+    private enum useDmdSortingWorkaround = false;
+
 /// Check if ndslice is sorted, or strictly monotonic.
 @safe pure version(mir_ndslice_test) unittest
 {
@@ -378,8 +386,18 @@ void quickSortImpl(alias less, Iterator)(Slice!Iterator slice) @trusted
         swapStars(r, lessI);
 
         ptrdiff_t len = lessI - l;
-        auto tail = slice[len + 1 .. $];
-        slice = slice[0 .. len];
+        static if (useDmdSortingWorkaround)
+        {
+            // Construct the tail and shorten the head without returned range views.
+            ptrdiff_t tailOffset = len + 1;
+            auto tail = typeof(slice)(slice.length - tailOffset, slice._iterator + tailOffset);
+            slice._lengths[0] = len;
+        }
+        else
+        {
+            auto tail = slice[len + 1 .. $];
+            slice = slice[0 .. len];
+        }
         if (tail.length > slice.length)
             swap(slice, tail);
         quickSortImpl!less(tail);
@@ -1855,5 +1873,56 @@ unittest
         return ret;
     }
 
+    // Preserve this call shape: it triggers the older DMD inlining failure.
     auto arrayB = createStructBArray(10000).sort!((a,b) => a.productId<b.productId);
+
+    import std.algorithm.sorting: referenceSort = sort;
+    auto expected = createStructBArray(10000);
+    referenceSort!((a, b) => a.productId < b.productId)(expected);
+    assert(arrayB == expected);
+}
+
+// Check both ordering and record preservation around quicksort's size thresholds.
+version(mir_ndslice_test)
+unittest
+{
+    struct Record
+    {
+        ulong key;
+        ulong id;
+        double[2] payload;
+    }
+
+    foreach (length; [0, 1, 31, 32, 33, 511, 512, 513, 1000])
+    {
+        auto original = new Record[length];
+        foreach (i, ref record; original)
+            record = Record((i * 37) % 17, i, [double(i + 1), -double(i + 2)]);
+
+        static foreach (descending; [false, true])
+        {{
+            auto records = original.dup;
+            static if (descending)
+                records.sort!((a, b) => a.key > b.key);
+            else
+                records.sort!((a, b) => a.key < b.key);
+
+            auto seen = new bool[length];
+            foreach (i, record; records)
+            {
+                assert(record.id < length);
+                auto id = cast(size_t) record.id;
+                assert(!seen[id]);
+                seen[id] = true;
+                assert(record == original[id]);
+                if (i)
+                {
+                    static if (descending)
+                        assert(records[i - 1].key >= record.key);
+                    else
+                        assert(records[i - 1].key <= record.key);
+                }
+            }
+        }}
+    }
 }
