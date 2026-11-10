@@ -2966,7 +2966,9 @@ unittest
 {
     import mir.ndslice.topology: byDim, alongDim;
     import mir.ndslice.fuse: fuse;
-    import mir.math.stat: mean;
+    import mir.math.sum: sum;
+    import mir.primitives: elementCount;
+    alias mean = (values) => values.sum / cast(double) values.elementCount;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
 
@@ -3015,7 +3017,9 @@ pure version(mir_ndslice_test) unittest
 {
     import mir.algorithm.iteration: reduce;
     import mir.math.common: fmax;
-    import mir.math.stat: mean;
+    import mir.math.sum: sum;
+    import mir.primitives: elementCount;
+    alias mean = (values) => values.sum / cast(double) values.elementCount;
     import mir.math.sum;
     /// Returns maximal column average.
     auto maxAvg(S)(S matrix) {
@@ -3187,7 +3191,9 @@ version(mir_ndslice_test)
 unittest
 {
     import mir.ndslice.fuse: fuse;
-    import mir.math.stat: mean;
+    import mir.math.sum: sum;
+    import mir.primitives: elementCount;
+    alias mean = (values) => values.sum / cast(double) values.elementCount;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
 
@@ -3200,7 +3206,7 @@ unittest
     {
         double factor;
         this(double f) {factor = f;}
-        auto opCall(U)(U x) const {return x.mean + factor; }
+        auto opCall(U)(U x) const {return mean(x) + factor; }
         auto lightConst()() const @property { return Callable(factor); }
     }
 
@@ -5089,7 +5095,9 @@ unittest
 {
     import mir.ndslice.topology: alongDim;
     import mir.ndslice.fuse: fuse;
-    import mir.math.stat: mean;
+    import mir.math.sum: sum;
+    import mir.primitives: elementCount;
+    alias mean = (values) => values.sum / cast(double) values.elementCount;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
 
@@ -5432,7 +5440,9 @@ unittest
 {
     import mir.ndslice.topology: byDim;
     import mir.ndslice.fuse: fuse;
-    import mir.math.stat: mean;
+    import mir.math.sum: sum;
+    import mir.primitives: elementCount;
+    alias mean = (values) => values.sum / cast(double) values.elementCount;
     import mir.algorithm.iteration: all;
     import mir.math.common: approxEqual;
 

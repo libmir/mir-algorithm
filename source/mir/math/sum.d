@@ -224,9 +224,7 @@ unittest
     struct MovingAverage(T)
         if (isFloatingPoint!T)
     {
-        import mir.math.stat: MeanAccumulator;
-
-        MeanAccumulator!(T, Summation.precise) meanAccumulator;
+        Summator!(T, Summation.precise) summator;
         double[] circularBuffer;
         size_t frontIndex;
 
@@ -234,24 +232,24 @@ unittest
 
         auto avg() @property const
         {
-            return meanAccumulator.mean;
+            return summator.sum / cast(T) circularBuffer.length;
         }
 
         this(double[] buffer)
         {
             assert(buffer.length);
             circularBuffer = buffer;
-            meanAccumulator.put(buffer);
+            summator.put(buffer);
         }
 
         ///operation without rounding
         void put(T x)
         {
             import mir.utility: swap;
-            meanAccumulator.summator += x;
+            summator += x;
             swap(circularBuffer[frontIndex++], x);
             frontIndex = frontIndex == circularBuffer.length ? 0 : frontIndex;
-            meanAccumulator.summator -= x;
+            summator -= x;
         }
     }
 

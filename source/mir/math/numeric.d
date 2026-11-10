@@ -199,7 +199,7 @@ package template prodType(T)
         auto temp = U.init * U.init;
         temp *= U.init;
     })) {
-        import mir.math.stat: statType;
+        import mir.math.internal.stat_type: statType;
 
         alias V = typeof(U.init * U.init);
         alias prodType = statType!(V, false);

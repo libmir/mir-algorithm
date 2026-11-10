@@ -1,6 +1,23 @@
 /++
 This module contains base statistical algorithms.
 
+The mean functions (`mean`, `hmean`, `gmean`), their accumulators
+(`MeanAccumulator`, `GMeanAccumulator`), and `median` are deprecated in favor of
+the corresponding exports from `mir.stat.descriptive` in the
+$(WEB github.com/libmir/mir-stat, mir-stat) package. Use `center` from `mir.stat`.
+Add mir-stat as a dependency and update selective imports, for example:
+
+---
+import mir.stat.descriptive: mean, hmean, gmean, median,
+    MeanAccumulator, GMeanAccumulator;
+import mir.stat: center;
+---
+
+The legacy implementations and defaults remain unchanged. Mir-stat includes
+numerical fixes, so results can differ for extreme inputs. Accumulator types
+from the two packages are distinct; migrate interacting declarations together.
+`center` remains a lazy view and `median` preserves its input by default.
+
 Note that used specialized summing algorithms execute more primitive operations
 than vanilla summation. Therefore, if in certain cases maximum speed is required
 at expense of precision, one can use $(REF_ALTTEXT $(TT Summation.fast), Summation.fast, mir, math, sum)$(NBSP).
@@ -29,149 +46,8 @@ import std.traits: Unqual, isArray, isMutable, isIterable, isIntegral, CommonTyp
 ///
 public import mir.math.sum: Summation;
 
-///
-package(mir)
-template statType(T, bool checkComplex = true)
-{
-    import mir.internal.utility: isFloatingPoint;
-
-    static if (isFloatingPoint!T) {
-        import std.traits: Unqual;
-        alias statType = Unqual!T;
-    } else static if (is(T : double)) {
-        alias statType = double;
-    } else static if (checkComplex) {
-        import mir.internal.utility: isComplex;
-        static if (isComplex!T) {
-            static if (__traits(getAliasThis, T).length == 1)
-            {
-                alias statType = .statType!(typeof(__traits(getMember, T, __traits(getAliasThis, T)[0]))); 
-            }
-            else
-            {
-                alias statType = Unqual!T;
-            }
-        } else {
-            static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a complex floating point type");
-        }
-    } else {
-        static assert(0, "statType: type " ~ T.stringof ~ " must be convertible to a floating point type");
-    }
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    static assert(is(statType!int == double));
-    static assert(is(statType!uint == double));
-    static assert(is(statType!double == double));
-    static assert(is(statType!float == float));
-    static assert(is(statType!real == real));
-    
-    static assert(is(statType!(const(int)) == double));
-    static assert(is(statType!(immutable(int)) == double));
-    static assert(is(statType!(const(double)) == double));
-    static assert(is(statType!(immutable(double)) == double));
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    import mir.complex: Complex;
-
-    static assert(is(statType!(Complex!float) == Complex!float));
-    static assert(is(statType!(Complex!double) == Complex!double));
-    static assert(is(statType!(Complex!real) == Complex!real));
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    static struct Foo {
-        float x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == double)); // note: this is not float
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    import mir.complex;
-    static struct Foo {
-        Complex!float x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == Complex!float));
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    static struct Foo {
-        double x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == double));
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    import mir.complex;
-    static struct Foo {
-        Complex!double x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == Complex!double));
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    static struct Foo {
-        real x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == double)); // note: this is not real
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    import mir.complex;
-    static struct Foo {
-        Complex!real x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == Complex!real));
-}
-
-version(mir_test)
-@safe pure nothrow @nogc
-unittest
-{
-    static struct Foo {
-        int x;
-        alias x this;
-    }
-
-    static assert(is(statType!Foo == double)); // note: this is not ints
-}
+// Preserve the package-visible import path for existing mir code.
+package(mir) import mir.math.internal.stat_type: statType;
 
 ///
 package(mir)
@@ -238,6 +114,7 @@ unittest
 /++
 Output range for mean.
 +/
+deprecated("Use MeanAccumulator from mir.stat.descriptive (mir-stat) instead.")
 struct MeanAccumulator(T, Summation summation)
 {
     ///
@@ -350,6 +227,7 @@ Returns:
 See_also: 
     $(SUBREF sum, Summation)
 +/
+deprecated("Use mean from mir.stat.descriptive (mir-stat) instead.")
 template mean(F, Summation summation = Summation.appropriate)
 {
     /++
@@ -379,6 +257,7 @@ template mean(F, Summation summation = Summation.appropriate)
 }
 
 /// ditto
+deprecated("Use mean from mir.stat.descriptive (mir-stat) instead.")
 template mean(Summation summation = Summation.appropriate)
 {
     /++
@@ -404,12 +283,14 @@ template mean(Summation summation = Summation.appropriate)
 }
 
 /// ditto
+deprecated("Use mean from mir.stat.descriptive (mir-stat) instead.")
 template mean(F, string summation)
 {
     mixin("alias mean = .mean!(F, Summation." ~ summation ~ ");");
 }
 
 /// ditto
+deprecated("Use mean from mir.stat.descriptive (mir-stat) instead.")
 template mean(string summation)
 {
     mixin("alias mean = .mean!(Summation." ~ summation ~ ");");
@@ -678,6 +559,7 @@ Returns:
 See_also: 
     $(SUBREF sum, Summation)
 +/
+deprecated("Use hmean from mir.stat.descriptive (mir-stat) instead.")
 template hmean(F, Summation summation = Summation.appropriate)
 {
     /++
@@ -730,6 +612,7 @@ template hmean(F, Summation summation = Summation.appropriate)
 }
 
 /// ditto
+deprecated("Use hmean from mir.stat.descriptive (mir-stat) instead.")
 template hmean(Summation summation = Summation.appropriate)
 {
     /++
@@ -755,12 +638,14 @@ template hmean(Summation summation = Summation.appropriate)
 }
 
 /// ditto
+deprecated("Use hmean from mir.stat.descriptive (mir-stat) instead.")
 template hmean(F, string summation)
 {
     mixin("alias hmean = .hmean!(F, Summation." ~ summation ~ ");");
 }
 
 /// ditto
+deprecated("Use hmean from mir.stat.descriptive (mir-stat) instead.")
 template hmean(string summation)
 {
     mixin("alias hmean = .hmean!(Summation." ~ summation ~ ");");
@@ -936,6 +821,7 @@ unittest
 /++
 Output range for gmean.
 +/
+deprecated("Use GMeanAccumulator from mir.stat.descriptive (mir-stat) instead.")
 struct GMeanAccumulator(T) 
     if (isMutable!T && isFloatingPoint!T)
 {
@@ -1057,6 +943,7 @@ Returns:
 See_also: 
     $(SUBREF numeric, prod)
 +/
+deprecated("Use gmean from mir.stat.descriptive (mir-stat) instead.")
 @fmamath gmeanType!F gmean(F, Range)(Range r)
     if (isFloatingPoint!F && isIterable!Range)
 {
@@ -1067,6 +954,7 @@ See_also:
 }
     
 /// ditto
+deprecated("Use gmean from mir.stat.descriptive (mir-stat) instead.")
 @fmamath gmeanType!Range gmean(Range)(Range r)
     if (isIterable!Range)
 {
@@ -1078,6 +966,7 @@ See_also:
 Params:
     ar = values
 +/
+deprecated("Use gmean from mir.stat.descriptive (mir-stat) instead.")
 @fmamath gmeanType!F gmean(F)(scope const F[] ar...)
     if (isFloatingPoint!F)
 {
@@ -1316,6 +1205,7 @@ Returns:
 See_also: 
     $(SUBREF stat, mean)
 +/
+deprecated("Use median from mir.stat.descriptive (mir-stat) instead.")
 template median(F, bool allowModify = false)
 {
     /++
@@ -1368,6 +1258,7 @@ template median(F, bool allowModify = false)
 }
 
 /// ditto
+deprecated("Use median from mir.stat.descriptive (mir-stat) instead.")
 template median(bool allowModify = false)
 {
     /// ditto
@@ -1386,6 +1277,7 @@ template median(bool allowModify = false)
 Params:
     ar = array
 +/
+deprecated("Use median from mir.stat.descriptive (mir-stat) instead.")
 meanType!(T[]) median(T)(scope const T[] ar...)
 {
     import mir.ndslice.slice: sliced;
@@ -1398,6 +1290,7 @@ meanType!(T[]) median(T)(scope const T[] ar...)
 Params:
     withAsSlice = input that satisfies hasAsSlice
 +/
+deprecated("Use median from mir.stat.descriptive (mir-stat) instead.")
 auto median(T)(T withAsSlice)
     if (hasAsSlice!T)
 {
@@ -1714,6 +1607,7 @@ provided using `centralTendency`.
 Returns:
     The elements in the slice with the average subtracted from them.
 +/
+deprecated("Use center from mir.stat (mir-stat) instead.")
 template center(alias centralTendency = mean!(Summation.appropriate))
 {
     import mir.ndslice.slice: isConvertibleToSlice, isSlice, Slice, SliceKind;
