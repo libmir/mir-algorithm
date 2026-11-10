@@ -549,7 +549,7 @@ version(mir_ndslice_test)
 
 /++
 Allocates an array through a specified allocator and creates an n-dimensional slice over it.
-See also $(MREF std, experimental, allocator).
+See also $(LINK2 https://dlang.org/phobos/std_experimental_allocator.html, $(D std.experimental.allocator)).
 Params:
     alloc = allocator
     lengths = list of lengths for each dimension
@@ -635,7 +635,7 @@ version(mir_ndslice_test)
 
 /++
 Allocates an uninitialized array through a specified allocator and creates an n-dimensional slice over it.
-See also $(MREF std, experimental, allocator).
+See also $(LINK2 https://dlang.org/phobos/std_experimental_allocator.html, $(D std.experimental.allocator)).
 Params:
     alloc = allocator
     lengths = list of lengths for each dimension

@@ -269,7 +269,6 @@ unittest
 /++
 Interpolator used for non-rectiliner trapezoid-like greeds.
 Params:
-    grid = rc-array of interpolation grid
     data = rc-array of interpolator-like structures
 +/
 auto metaSingleConstant(T)(T data)

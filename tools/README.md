@@ -1,0 +1,65 @@
+# Documentation preview
+
+The `Documentation` GitHub Actions workflow builds HTML on pull requests,
+pushes to `master`, and manual runs. Download the `documentation-html` artifact
+from a successful run and open `index.html`. This workflow does not publish a
+website or require CircleCI/AWS credentials.
+
+To reproduce the build on Linux, install LDC and ldmd2 **1.36.0**, Git, g++,
+Ninja, and Python 3.9 or newer with pip, then run from the repository root:
+
+```sh
+python3 tools/build_docs.py build/docs
+python3 -m http.server --directory build/docs/site 8000
+```
+
+Use a fresh output directory for each build. The script retains its cloned
+inputs, isolated Python dependencies, Meson build, logs, and a version manifest
+in that directory. It copies tracked build inputs from the working tree so
+local source edits are included. The original checkout is not modified.
+
+Run `python3 tools/test_build_docs.py` to check how the builder copies tracked
+edits, additions, and deletions into its temporary source snapshot.
+
+Meson 0.61.1, semver 2.13.0, and exact commits of `libmir/circle-dlang` and
+`libmir/mir-core` are pinned in the script. The existing Ddoc templates and
+styles are reused. HTML is compiled with warnings treated as errors.
+
+This is an **HTML build check**, not an example-test check. It deliberately
+selects the HTML targets from the old Meson template. Public documentation
+examples are kept self-contained for extraction into separate test modules.
+Tests that require private helpers remain library unit tests, and disabled
+legacy tests are not marked as documentation examples. The existing compiler
+CI remains responsible for library tests.
+
+Some legacy cross-references, search-domain settings, and template links still
+need repair before deployment. A successful artifact build does not certify
+those links or the external online example runner. Hosting migration is a
+separate step.
+
+## Meson D, C++, and documentation example tests
+
+The separate `Meson tests` workflow runs the library unit tests, C++
+interoperability example, and extracted documentation examples with LDC 1.36.0
+and the same pinned dependencies.
+It preserves the Meson test versions, including `mir_secure_memory`, and
+the project's DIP1008 compiler option. Reproduce it on Linux with:
+
+```sh
+python3 tools/build_docs.py build/meson-tests --tests-with-examples
+```
+
+This mode enables both `with_test` and `with_doc`. The legacy template builds
+HTML alongside the extracted example executables. Meson's configured test list
+determines the required results, without a fixed example count. The D and C++
+tests and at least one extracted-example suite must be configured, and every
+configured test must run successfully; skipped tests are rejected.
+
+The driver creates the pinned extractor's default `out` directory before
+starting parallel example extraction. Single-file results go to stdout, but
+the extractor still creates this directory and otherwise races on first use.
+All build modes retain two Ninja build jobs.
+
+Use `--tests-only` instead for a shorter local run containing only the D and
+C++ tests. Logs are retained locally and uploaded as `meson-test-logs` in CI.
+CircleCI's extracted-example tests and release-tag publishing remain in place.

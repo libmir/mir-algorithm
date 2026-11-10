@@ -298,7 +298,7 @@ private template fuseDimensionCount(R)
         enum size_t fuseDimensionCount = 0;
 }
 
-///
+// Internal test of dimension inference; the helper is not public API.
 @safe pure version(mir_ndslice_test) unittest
 {
     import mir.ndslice;
