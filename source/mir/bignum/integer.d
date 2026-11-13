@@ -1044,6 +1044,38 @@ struct BigInt(uint size64)
     }
 }
 
+// Division by a single-limb power of two must also work through the
+// BigInt divisor path, which uses the low-level division dispatcher.
+version(mir_bignum_test)
+@safe pure @nogc unittest
+{
+    auto one = BigInt!2(1);
+    auto divisorOne = BigInt!2(1);
+    one /= divisorOne;
+    assert(one == 1);
+
+    foreach (shift; 0 .. 32)
+    {
+        const divisor = 1u << shift;
+        auto bigDivisor = BigInt!2(divisor);
+        foreach (dividend; [1UL, 0x0123_4567_89ab_cdefUL, ulong.max])
+        {
+            auto quotient = BigInt!2(dividend);
+            quotient /= bigDivisor;
+            assert(quotient == dividend / divisor);
+
+            auto remainder = BigInt!2(dividend);
+            remainder %= bigDivisor;
+            assert(remainder == dividend % divisor);
+
+            auto scalarQuotient = BigInt!2(dividend);
+            const scalarRemainder = scalarQuotient /= divisor;
+            assert(scalarQuotient == dividend / divisor);
+            assert(scalarRemainder == dividend % divisor);
+        }
+    }
+}
+
 /// Check @nogc toString impl
 version(mir_bignum_test) @safe pure @nogc unittest
 {
