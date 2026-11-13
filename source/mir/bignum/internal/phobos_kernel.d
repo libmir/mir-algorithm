@@ -194,13 +194,60 @@ uint multibyteDivAssign()(uint[] dest, uint divisor, uint overflow)
     if (__ctfe)
         return std.internal.math.biguintnoasm.multibyteDivAssign(dest, divisor, overflow);
     else version (D_InlineAsm_X86)
+    {
+        // The x86 assembly divider requires a non-power-of-two divisor.
+        if ((divisor & (divisor - 1)) == 0)
+            return std.internal.math.biguintnoasm.multibyteDivAssign(dest, divisor, overflow);
         return std.internal.math.biguintx86.multibyteDivAssign(dest, divisor, overflow);
+    }
     else version (LDC_ARM_asm)
         return std.internal.math.biguintarm.multibyteDivAssign(dest, divisor, overflow);
     else
         return std.internal.math.biguintnoasm.multibyteDivAssign(dest, divisor, overflow);
 }
 else alias multibyteDivAssign = std.internal.math.biguintnoasm.multibyteDivAssign;
+
+version(mir_bignum_test)
+@safe unittest
+{
+    // Cover every uint power of two, including 1 and the high bit, and
+    // non-powers of two that continue to use the x86 assembly divider.
+    immutable uint[8] otherDivisors =
+        [3u, 6u, 7u, 10u, 0x7fff_ffffu, 0x8000_0001u, 0xffff_fffeu, uint.max];
+    immutable uint[4][4] inputs = [
+        [0u, 0u, 0u, 0u],
+        [1u, 0u, 0u, 0u],
+        [uint.max, uint.max, uint.max, uint.max],
+        [0x0123_4567u, 0x89ab_cdefu, 0xfedc_ba98u, 0x7654_3210u]];
+    foreach (i; 0 .. 32 + otherDivisors.length)
+    {
+        const divisor = i < 32 ? 1u << i : otherDivisors[i - 32];
+        foreach (overflow; [0u, divisor / 2, divisor - 1])
+        foreach (input; inputs)
+        foreach (length; 1 .. input.length + 1)
+        {
+            uint[4] actual = input;
+            uint[4] expected = input;
+            ulong remainder = overflow;
+            foreach_reverse (ref limb; expected[0 .. length])
+            {
+                const value = (remainder << 32) | limb;
+                limb = cast(uint)(value / divisor);
+                remainder = value % divisor;
+            }
+            const result = multibyteDivAssign(actual[0 .. length], divisor, overflow);
+            assert(actual == expected);
+            assert(result == remainder);
+        }
+    }
+
+    // The dispatcher's compile-time path must remain usable as well.
+    static assert(() {
+        uint[2] value = [1u, 1u];
+        const remainder = multibyteDivAssign(value[], 2, 1);
+        return value == [0x8000_0000u, 0x8000_0000u] && remainder == 1;
+    }());
+}
 
 version (HaveAsmVersion)
 void multibyteAddDiagonalSquares()(uint[] dest, const(uint)[] src)
