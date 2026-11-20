@@ -36,21 +36,28 @@ T normalPDF(T)(const T z)
 T normalPDF(T)(const T x, const T mean, const T stdDev)
 if (isFloatingPoint!T)
 {
-    return normalPDF((x - mean) / stdDev) / stdDev;
+    const T z = standardizedNormal(x, mean, stdDev);
+    const T density = normalPDF(z);
+    // A subnormal intermediate loses precision before division by a small
+    // scale. Delay exponentiation until the scale has been included.
+    if (density < T.min_normal && stdDev > 0 && stdDev < 1)
+        return exp((-T(0.5) * z) * z - T(LOGSQRT2PI) - log(stdDev));
+    return density / stdDev;
 }
 
 /++
 Computes the normal distribution cumulative distribution function (CDF).
 The normal (or Gaussian, or bell-shaped) distribution is
 defined as:
-normalDist(x) = 1/$(SQRT) &pi; $(INTEGRAL -$(INFINITY), x) exp( - $(POWER t, 2)/2) dt
+normalDist(x) = 1/$(SQRT)(2&pi;) $(INTEGRAL -$(INFINITY), x) exp( - $(POWER t, 2)/2) dt
     = 0.5 + 0.5 * erf(x/sqrt(2))
     = 0.5 * erfc(- x/sqrt(2))
-To maintain accuracy at high values of x, use
-normalCDF(x) = 1 - normalCDF(-x).
+To obtain a small upper-tail probability, evaluate $(D normalCDF(-x))
+directly instead of subtracting $(D normalCDF(x)) from one.
 Accuracy:
 Within a few bits of machine resolution over the entire
-range.
+range. Relative accuracy decreases for subnormal results; extreme tails
+also inherit the rounding error of the platform exponential function.
 References:
 $(LINK http://www.netlib.org/cephes/ldoubdoc.html),
 G. Marsaglia, "Evaluating the Normal Distribution",
@@ -73,10 +80,12 @@ T normalCDF(T)(const T a)
     {
         T y = 0.5f * erfce(z);
         /* Multiply by exp(-x^2 / 2)  */
-        z = expx2(a, -1);
-        y = y * sqrt(z);
+        // Evaluate the half exponent directly. Taking sqrt(exp(-a*a))
+        // loses tails as soon as the full exponent underflows.
+        z = expx2!(T, true)(a, -1);
+        y = y * z;
         if (y != y)
-            y = 0;
+            y = a != a ? a : 0;
         if (x > 0)
             y = 1 - y;
         return y;
@@ -87,7 +96,7 @@ T normalCDF(T)(const T a)
 T normalCDF(T)(const T x, const T mean, const T stdDev)
     if (isFloatingPoint!T)
 {
-    return normalCDF((x - mean) / stdDev);
+    return normalCDF(standardizedNormal(x, mean, stdDev));
 }
 
 version(mir_test)
@@ -134,7 +143,10 @@ do
         y = y - 0.5L;
         y2 = y * y;
         x = y + y * (y2 * rationalPoly!(P0, Q0)(y2));
-        return x * double(SQRT2PI);
+        static if (T.mant_dig > double.mant_dig)
+            return x * T(SQRT2PI);
+        else
+            return x * double(SQRT2PI);
     }
 
     x = sqrt( -2 * log(y) );
@@ -164,7 +176,13 @@ do
 T normalInvCDF(T)(const T p, const T mean, const T stdDev)
     if (isFloatingPoint!T)
 {
-    return normalInvCDF(p) * stdDev + mean;
+    const T z = normalInvCDF(p);
+    const T scaled = z * stdDev;
+    // A finite opposite-signed mean can bring an overflowing product back
+    // into range. Halve both terms first, preserving endpoint infinities.
+    if (fabs(scaled) == T.infinity && fabs(z) <= T.max && fabs(stdDev) <= T.max && fabs(mean) <= T.max)
+        return ((z * T(0.5)) * stdDev + mean * T(0.5)) * 2;
+    return scaled + mean;
 }
 
 ///
@@ -187,6 +205,18 @@ version(mir_test)
     real unknown1 = normalInvCDF(1e-250L);
     assert( fabs(unknown1 -(-33.79958617269L) ) < 0.00000005);
 }
+
+// Keep ordinary subtraction and rounding; divide first only if finite
+// opposite-signed inputs overflow their difference.
+private T standardizedNormal(T)(T x, T mean, T stdDev)
+{
+    const T delta = x - mean;
+    if (fabs(delta) == T.infinity && fabs(x) <= T.max && fabs(mean) <= T.max)
+        return x / stdDev - mean / stdDev;
+    return delta / stdDev;
+}
+
+private enum real LOGSQRT2PI = 0.91893853320467274178032973640561764L;
 
 ///
 enum real SQRT2PI = 2.50662827463100050241576528481104525L; // sqrt(2pi)
@@ -218,20 +248,22 @@ enum T MINLOG(T) = log(T.min_normal * T.epsilon); // log(smallest denormal);
  *   IEEE     -106.566, 106.566    10^5       1.6e-19     4.4e-20
  */
 package(mir)
-T expx2(T)(const T x_, int sign)
+T expx2(T, bool halfExponent = false)(const T x_, int sign)
 {
     /*
     Cephes Math Library Release 2.9:  June, 2000
     Copyright 2000 by Stephen L. Moshier
     */
-    const T M = 32_768.0;
-    const T MINV = 3.0517578125e-5L;
+    // For float normal tails, multiples of 1/16 have an exact square
+    // throughout the nonzero tail. The finer split suits double/real.
+    enum T M = halfExponent && T.mant_dig == 24 ? 16 : 32_768;
+    enum T MINV = 1 / M;
 
     T x = fabs(x_);
     if (sign < 0)
         x = -x;
 
-  /* Represent x as an exact multiple of M plus a residual.
+  /* Represent x as an exact multiple of 1/M plus a residual.
      M is a power of 2 chosen so that exp(m * m) does not overflow
      or underflow and so that |x - m| is small.  */
     T m = MINV * floor(M * x + 0.5f);
@@ -245,6 +277,12 @@ T expx2(T)(const T x_, int sign)
     {
         u = -u;
         u1 = -u1;
+    }
+
+    static if (halfExponent)
+    {
+        u *= T(0.5);
+        u1 *= T(0.5);
     }
 
     if (u + u1 > MAXLOG!T)
@@ -461,3 +499,93 @@ static immutable real[8] Q3 =
 -0x1.d19e6ec03a85e556p-17, -0x1.9ea2a7b4422f6502p-11, -0x1.c54b1e852f107162p-8,
 0x1.e05268dd3c07989ep-3, 0x1.239c6aff14afbf82p+1, 1.0
 ];
+
+// Independent mpmath references (100 decimal digits), including tails that
+// used to vanish when exp(-x*x) underflowed before taking its square root.
+version(mir_test)
+unittest
+{
+    import std.meta: AliasSeq;
+    static foreach (T; AliasSeq!(float, double, real))
+    {{
+        static if (T.mant_dig == 24)
+        {
+            enum T x = 12;
+            enum T expected = 1.776482112077678997696171001845557e-33L;
+        }
+        else static if (T.max_exp == 1024)
+        {
+            enum T x = 30;
+            enum T expected = 4.906713927148187059533809256580190e-198L;
+        }
+        else
+        {
+            enum T x = 150;
+            enum T expected = 4.091457980903002399032776796971440e-4889L;
+        }
+        // The platform exp implementation can lose O(epsilon*x*x) relative
+        // accuracy at the extreme extended-precision exponent.
+        static if (T.max_exp > 1024)
+            assert(fabs(normalCDF(-x) / expected - 1) <= 4 * T.epsilon*x*x);
+        else
+            assert(fabs(normalCDF(-x) / expected - 1) <= 16 * T.epsilon);
+        assert(normalCDF(T.nan) != normalCDF(T.nan));
+        assert(normalCDF(T.max) == 1);
+        assert(normalCDF(-T.max) == 0);
+    }}
+    enum double subnormal = 2.885428360068784308350970481566904e-316L;
+    assert(fabs(normalCDF(-38.0) - subnormal) <= 2 * double.min_normal * double.epsilon);
+    assert(fabs(normalCDF(-27.0) / 7.389481006885018257517944005216002e-161 - 1)
+        <= 8 * double.epsilon);
+}
+
+version(mir_test)
+unittest
+{
+    import std.meta: AliasSeq;
+    static foreach (T; AliasSeq!(float, double, real))
+    {{
+        const T scale = T.max * T(0.75);
+        assert(fabs(normalCDF(scale, -scale, scale) - normalCDF(T(2))) <= 4*T.epsilon);
+        assert(fabs(normalPDF(scale, -scale, scale) - normalPDF(T(2)) / scale)
+            <= 2*T.min_normal*T.epsilon);
+        // At p=.99 the standard quantile exceeds two: the product overflows,
+        // but subtracting scale puts the result back inside the finite range.
+        const T q = normalInvCDF(T(0.99));
+        assert(fabs(normalInvCDF(T(0.99), -scale, scale) / scale - (q - 1))
+            <= 8*T.epsilon);
+        assert(normalInvCDF(T(0), -scale, scale) == -T.infinity);
+        assert(normalInvCDF(T(1), -scale, scale) == T.infinity);
+        static if (T.mant_dig == 24)
+        {
+            enum T z = 16;
+            enum T expected = 6.983703985129843791196611283129551e-18L;
+        }
+        else static if (T.max_exp == 1024)
+        {
+            enum T z = 40;
+            enum T expected = 5.261021768760553166461947867031892e-40L;
+        }
+        else
+        {
+            enum T z = 160;
+            enum T expected = 1.018639841583995008567464946201700e-627L;
+        }
+        enum T tinyScale = T.min_normal / 8;
+        assert(fabs(normalPDF(z * tinyScale, T(0), tinyScale) / expected - 1)
+            <= 16*T.epsilon*z*z);
+    }}
+}
+
+version(mir_test)
+unittest
+{
+    // The central inverse polynomial must not narrow its final multiplier
+    // to double when the caller requested extended precision.
+    static if (real.mant_dig > 53)
+    {
+        enum real q = 0.6744897501960817432022270145413071854L;
+        assert(fabs(normalInvCDF(0.25L) + q) <= 16 * real.epsilon);
+        assert(fabs(normalInvCDF(0.75L) - q) <= 16 * real.epsilon);
+    }
+}
