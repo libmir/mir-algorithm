@@ -4,7 +4,7 @@ adaptor that makes a binary heap out of any user-provided random-access range.
 
 Current implementation is suitable for Mir/BetterC concepts.
 
-This module is a submodule of $(MREF mir, container).
+This module is a submodule of `mir.container`.
 
 Copyright: 2020 Ilia Ki, Kaleidic Associates Advisory Limited, Symmetry Investments
 

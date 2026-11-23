@@ -1105,7 +1105,7 @@ nothrow:
         assert(0, "Invalid day of the year.");
     }
 
-    ///
+    // Internal test of the private day-of-year setter.
     version(mir_test)
     @safe unittest
     {
@@ -1680,7 +1680,7 @@ struct YearQuarter
         assert(0, "Invalid day of the year.");
     }
 
-    ///
+    // Internal test of the private day-of-year setter.
     version(mir_test)
     @safe unittest
     {

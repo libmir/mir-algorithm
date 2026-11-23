@@ -606,6 +606,8 @@ enum serdeIgnoreDefault;
 ///
 version(mir_test) unittest
 {
+    import std.traits: hasUDA;
+
     struct S
     {
         @serdeIgnoreDefault
@@ -628,6 +630,7 @@ struct serdeProxy(T);
 version(mir_test) unittest
 {
     import mir.small_string;
+    import std.traits: hasUDA;
 
     struct S
     {
@@ -735,7 +738,7 @@ foreach(ref value; yourRangeOrContainer)
 
 `put(value)` method is used for deserialization.
 
-See_also: $(MREF serdeIgnoreOut), $(MREF serdeIgnoreIn)
+See_also: $(LREF serdeIgnoreOut), $(LREF serdeIgnoreIn)
 +/
 enum serdeLikeList;
 
@@ -758,7 +761,7 @@ yourObject["key"] = value;
 -----
 Multiple value types is supported for deserialization.
 
-See_also: $(MREF serdeIgnoreOut), $(MREF serdeIgnoreIn)
+See_also: $(LREF serdeIgnoreOut), $(LREF serdeIgnoreIn)
 +/
 enum serdeLikeStruct;
 

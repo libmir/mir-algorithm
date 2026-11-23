@@ -1179,7 +1179,7 @@ successive parabolic interpolation. Convergence is never much slower
 than that for a Fibonacci search.
 References:
     "Algorithms for Minimization without Derivatives", Richard Brent, Prentice-Hall, Inc. (1973)
-See_Also: $(LREF findRoot), $(REF isNormal, std,math)
+See_Also: $(LREF findRoot), $(LINK2 https://dlang.org/phobos/std_math.html#.isNormal, $(D std.math.isNormal))
 +/
 FindLocalMinResult!T findLocalMin(alias f, T)(
     const T ax,

@@ -171,6 +171,7 @@ T normalInvCDF(T)(const T p, const T mean, const T stdDev)
 version(mir_test)
 @safe unittest
 {
+    import mir.math.common: fabs;
     import std.math: feqrel;
     // TODO: Use verified test points.
     // The values below are from Excel 2003.

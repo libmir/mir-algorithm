@@ -3652,7 +3652,7 @@ version(mir_ndslice_test) unittest
 /++
 Convenience function that creates a lazy view,
 where each element of the original slice is converted to the type `T`.
-It uses $(LREF  map) and $(REF_ALTTEXT $(TT to), to, mir,conv)$(NBSP)
+It uses $(LREF  map) and $(GREF_ALTTEXT mir-core, $(TT to), to, mir,conv)$(NBSP)
 composition under the hood.
 Params:
     slice = a slice to create a view on.
