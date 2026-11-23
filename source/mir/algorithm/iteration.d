@@ -3778,7 +3778,7 @@ Lazily iterates unique consecutive elements of the given range (functionality
 akin to the $(HTTP wikipedia.org/wiki/_Uniq, _uniq) system
 utility). Equivalence of elements is assessed by using the predicate
 $(D pred), by default $(D "a == b"). The predicate is passed to
-$(REF nary, mir,functional), and can either accept a string, or any callable
+$(GREF mir-core, nary, mir,functional), and can either accept a string, or any callable
 that can be executed via $(D pred(element, element)). If the given range is
 bidirectional, $(D uniq) also yields a
 `std,range,primitives`.

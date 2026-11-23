@@ -81,7 +81,6 @@ Evaluate polynomial.
 Coefficients assumed to be in the order a0 + a1 * x ^^ 1 + ... + aN * x ^^ N
 
 Params:
-    F = controls type of output
     derivative = order of derivatives (default = 0)
 
 Returns:
@@ -95,6 +94,7 @@ template poly(uint derivative = 0)
     import std.traits: ForeachType;
     /++
     Params:
+        F = coefficient type used to determine the output type
         x = value to evaluate
         coefficients = coefficients of polynomial
     +/

@@ -1,7 +1,7 @@
 /++
 Low-level betterC utilities for big integer arithmetic libraries.
 
-The module provides $(REF BigUIntView), and $(LREF BigIntView),  $(REF DecimalView).
+The module provides $(LREF BigUIntView), and $(LREF BigIntView),  $(LREF DecimalView).
 
 Note:
     The module doesn't provide full arithmetic API for now.
@@ -1267,7 +1267,7 @@ struct BigIntView(W)
     import mir.bignum.fp: Fp;
 
     /++
-    Self-assigned to unsigned integer view $(MREF BigUIntView).
+    Self-assigned to unsigned integer view $(LREF BigUIntView).
 
     Sign is stored in the most significant bit.
 

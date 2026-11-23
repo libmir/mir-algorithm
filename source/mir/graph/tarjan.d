@@ -42,7 +42,7 @@ Note:
     $(NOTE Most of other Tarjan implementations returns reverse order.)
 
 See_also:
-    $(SUBREF utility, graph)
+    $(REF graphSeries, mir, graph)
 +/
 pragma(inline, false)
 auto tarjan(bool RC = false, G, I = Unqual!(ForeachType!(ForeachType!G)))(G graph)
