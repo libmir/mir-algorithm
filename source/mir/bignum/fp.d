@@ -384,7 +384,7 @@ struct Fp(uint size)
     ///
     Fp!(max(size, rhsSize)) opBinary(string op : "*", uint rhsSize)(Fp!rhsSize rhs) nothrow const
     {
-        return cast(Fp) .extendedMul(cast()this, rhs);
+        return fpMultiply!(false, max(size, rhsSize))(cast()this, rhs);
     }
 
     static if (size == 128)
@@ -573,6 +573,30 @@ struct Fp(uint size)
             }
         }
 
+        static if (!noSpecial)
+        {
+            // At the exponent floor, a coefficient that already fits needs
+            // no normalization. Widening near the floor may normalize only
+            // as far as the remaining exponent range permits.
+            static if (newSize > size)
+            {
+                // Measure the available shift as an unsigned distance from the floor.
+                if (cast(ulong)this.exponent - cast(ulong)long.min < newSize - size)
+                {
+                    ret.coefficient = this.coefficient.toSize!newSize;
+                    ret.coefficient <<= cast(uint)(this.exponent - long.min);
+                    ret.exponent = ret.coefficient ? long.min : 0;
+                    return ret;
+                }
+            }
+            else if (this.exponent == long.min && this.coefficient.ctlz >= size - newSize)
+            {
+                ret.coefficient = this.coefficient.toSize!newSize;
+                ret.exponent = ret.coefficient ? long.min : 0;
+                return ret;
+            }
+        }
+
         UInt!size coefficient = this.coefficient;
         int shift;
         // subnormal
@@ -608,7 +632,7 @@ struct Fp(uint size)
                 // underflow
                 else
                 {
-                    ret.coefficient >>= cast(uint)(ret.exponent - exponent.min);
+                    ret.coefficient >>= cast(uint)(cast(ulong)exponent.min - cast(ulong)ret.exponent);
                     ret.exponent = ret.coefficient ? ret.exponent.min : 0;
                 }
             }
@@ -639,10 +663,18 @@ struct Fp(uint size)
 Fp!(coefficientizeA + coefficientizeB) extendedMul(bool noSpecial = false, uint coefficientizeA, uint coefficientizeB)(Fp!coefficientizeA a, Fp!coefficientizeB b)
     @trusted pure nothrow @nogc
 {
+    return fpMultiply!(noSpecial, coefficientizeA + coefficientizeB)(a, b);
+}
+
+// Carry the destination precision into underflow handling so the product is
+// rounded once, rather than first to a wide subnormal and then to the result.
+private Fp!resultSize fpMultiply(bool noSpecial, uint resultSize, uint coefficientizeA, uint coefficientizeB)(
+    Fp!coefficientizeA a, Fp!coefficientizeB b) @trusted pure nothrow @nogc
+{
     import mir.bignum.fixed: extendedMul;
     import mir.checkedint: adds;
 
-    typeof(return) ret = void;
+    Fp!(coefficientizeA + coefficientizeB) ret = void;
     ret.coefficient = extendedMul(a.coefficient, b.coefficient);
     static if (noSpecial)
     {
@@ -681,9 +713,9 @@ Fp!(coefficientizeA + coefficientizeB) extendedMul(bool noSpecial = false, uint 
                 //  underflow
                 else // a.exponent < 0 and b.exponent < 0
                 {
-                    // TODO: subnormal
-                    ret.exponent = 0;
-                    ret.coefficient = 0;
+                    const deficit = cast(ulong)long.min - cast(ulong)ret.exponent;
+                    return fpUnderflowProduct!resultSize(
+                        ret.coefficient, deficit, a.sign ^ b.sign);
                 }
             }
             else
@@ -696,6 +728,47 @@ Fp!(coefficientizeA + coefficientizeB) extendedMul(bool noSpecial = false, uint 
         }
     }
     ret.sign = a.sign ^ b.sign;
+    static if (resultSize == coefficientizeA + coefficientizeB)
+        return ret;
+    else
+        return cast(Fp!resultSize)ret;
+}
+
+private import mir.bignum.fixed: UInt;
+
+// Round a finite product whose raw exponent lies below long.min directly
+// to the requested width. Rounding only once matters when narrowing a product.
+private Fp!resultSize fpUnderflowProduct(uint resultSize, uint wideSize)(
+    UInt!wideSize coefficient, ulong deficit, bool sign) @safe pure nothrow @nogc
+{
+    Fp!resultSize ret;
+    ret.sign = sign;
+    if (!coefficient || deficit > wideSize)
+        return ret;
+    const bits = wideSize - coefficient.ctlz;
+    const uint shift = cast(uint)(deficit > (bits > resultSize ? bits - resultSize : 0)
+        ? deficit : bits - resultSize);
+    auto discarded = coefficient;
+    if (shift == wideSize)
+        coefficient = 0;
+    else
+    {
+        discarded <<= wideSize - shift;
+        coefficient >>= shift;
+    }
+    UInt!wideSize halfway = UInt!wideSize(1);
+    halfway <<= wideSize - 1;
+    if (discarded > halfway || (discarded == halfway && coefficient.bt(0)))
+        coefficient += 1;
+    if (!coefficient)
+        return ret;
+    ret.exponent = long.min + cast(long)(shift - deficit);
+    if (wideSize - coefficient.ctlz > resultSize)
+    {
+        coefficient >>= 1;
+        ++ret.exponent;
+    }
+    ret.coefficient = coefficient.toSize!resultSize;
     return ret;
 }
 
@@ -748,4 +821,50 @@ unittest
 
     double x = 123456789.0e+123;
     assert(approxEqual(x.Fp!128.fp_log!double, x.log));
+}
+
+// Products and conversions at the exponent floor retain representable values.
+version(mir_bignum_test)
+@safe pure nothrow @nogc unittest
+{
+    static foreach (bits; [64u, 128u, 256u]) {{
+        alias T = Fp!bits;
+        auto x = T(1);
+        x.exponent = long.min;
+        const identity = x * T(1);
+        assert(identity.coefficient == x.coefficient && identity.exponent == x.exponent);
+        auto a = T(1);
+        a.exponent = long.min / 2;
+        const square = a * a;
+        assert(square.coefficient == T(1).coefficient);
+        assert(square.exponent == long.min + bits - 1);
+        // Halfway cases at the smallest representable spacing, ties to even.
+        foreach (count; [1u, 3u, 5u, 7u]) {
+            x.coefficient = count;
+            const result = x * T(0.5);
+            const expected = (count / 2) + ((count / 2) & 1);
+            assert(result.coefficient == UInt!bits(expected));
+            assert(result.exponent == (expected ? long.min : 0));
+            const wide = extendedMul(x, T(0.5));
+            assert(wide.coefficient == UInt!(2 * bits)(expected));
+            assert(wide.exponent == result.exponent);
+        }
+        x.coefficient = 1;
+        x.sign = true;
+        const zero = x * T(0.25);
+        assert(!zero.coefficient && zero.sign);
+        const widened = cast(Fp!(2 * bits))x;
+        assert(widened.coefficient == UInt!(2 * bits)(1));
+        assert(widened.exponent == long.min && widened.sign);
+        const narrowed = cast(T)widened;
+        assert(narrowed.coefficient == x.coefficient);
+        assert(narrowed.exponent == x.exponent && narrowed.sign);
+    }}
+    // Exact integer reference: rounding the wide subnormal first gives a
+    // result one unit too small. Ordinary multiplication must round once.
+    const a = Fp!64(false, long.min / 2, UInt!64(0xfe63216bc6e74ca2UL));
+    const b = Fp!64(false, long.min / 2 - 63, UInt!64(0xd6d04b97443b0491UL));
+    const result = a * b;
+    assert(result.exponent == long.min + 1);
+    assert(result.coefficient == UInt!64(15381439351810898457UL));
 }
