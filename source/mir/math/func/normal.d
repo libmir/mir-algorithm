@@ -218,20 +218,21 @@ enum T MINLOG(T) = log(T.min_normal * T.epsilon); // log(smallest denormal);
  *   IEEE     -106.566, 106.566    10^5       1.6e-19     4.4e-20
  */
 package(mir)
-T expx2(T)(const T x_, int sign)
+T expx2(T, bool halfExponent = false)(const T x_, int sign)
 {
     /*
     Cephes Math Library Release 2.9:  June, 2000
     Copyright 2000 by Stephen L. Moshier
     */
-    const T M = 32_768.0;
-    const T MINV = 3.0517578125e-5L;
+    // Use a coarser grid to keep m*m exact in the float erfc tail.
+    enum T M = halfExponent && T.mant_dig == 24 ? 16 : 32_768;
+    enum T MINV = 1 / M;
 
     T x = fabs(x_);
     if (sign < 0)
         x = -x;
 
-  /* Represent x as an exact multiple of M plus a residual.
+  /* Represent x as an exact multiple of 1/M plus a residual.
      M is a power of 2 chosen so that exp(m * m) does not overflow
      or underflow and so that |x - m| is small.  */
     T m = MINV * floor(M * x + 0.5f);
@@ -245,6 +246,12 @@ T expx2(T)(const T x_, int sign)
     {
         u = -u;
         u1 = -u1;
+    }
+
+    static if (halfExponent)
+    {
+        u *= T(0.5);
+        u1 *= T(0.5);
     }
 
     if (u + u1 > MAXLOG!T)
@@ -371,43 +378,48 @@ F erf(F)(const F x)
 package(mir)
 T erfc(T)(const T a)
 {
-    if (a == T.infinity)
-        return 0;
-    if (a == -T.infinity)
-        return 2;
-
     immutable x = (a < 0) ? -a : a;
 
     if (x < 1)
         return 1 - erf(a);
 
-    if (-a * a < -MAXLOG!T)
-    {
-        // underflow
-        if (a < 0) return 2;
-        else return 0;
-    }
+    // erfc(x) < exp(-x*x) < 2^^(-x*x) for x >= 1. Beyond this
+    // bound even the latter is at most half the smallest subnormal.
+    enum T zeroBound = sqrt(T(T.mant_dig - T.min_exp + 1));
+    if (x >= zeroBound)
+        return a < 0 ? 2 : 0;
 
     T y;
-    immutable z = expx2(a, -1);
-
-    y = 1 / x;
-    if (x < 8)
-        y = z * rationalPoly!(P, Q)(y);
-    else
-        y = z * y * rationalPoly!(R, S)(y * y);
-
-    if (a < 0)
-        y = 2 - y;
-
-    if (y == 0)
+    enum T normalExponentLimit = -log(T.min_normal);
+    if (x * x >= normalExponentLimit)
     {
-        // underflow
-        if (a < 0) return 2;
-        else return 0;
+        // Keep the factors normal until the final multiplication.
+        immutable z = expx2!(T, true)(x, -1);
+        y = (z * erfce(x)) * z;
     }
+    else
+        y = expx2(x, -1) * erfce(x);
 
-    return y;
+    return a < 0 ? 2 - y : y;
+}
+
+version(mir_test)
+@safe unittest
+{
+    enum float f = float.min_normal * float.epsilon;
+    enum double d = double.min_normal * double.epsilon;
+    // MPFR reference values, rounded to the destination type.
+    assert(erfc(9.4375f) == 88427 * f);
+    assert(erfc(26.65625) == 10993406833395L * d);
+    // Adjacent inputs on either side of the round-to-zero boundary.
+    assert(erfc(0x1.41bbf6p+3f) == f);
+    assert(erfc(0x1.41bbf8p+3f) == 0);
+    assert(erfc(0x1.b39dc41e48bfcp+4) == d);
+    assert(erfc(0x1.b39dc41e48bfdp+4) == 0);
+    assert(erfc(-26.65625) == 2);
+    assert(erfc(double.max) == 0);
+    assert(erfc(-double.infinity) == 2);
+    assert(erfc(double.nan) != erfc(double.nan));
 }
 
 private:
